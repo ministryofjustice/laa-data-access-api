@@ -10,8 +10,10 @@ import org.axonframework.modelling.command.Repository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationContentParser;
+import uk.gov.justice.laa.dstew.access.applicationcontent.LinkedApplication;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ParsedAppContentDetails;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
+import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 
 /** Creates an Application aggregate after parsing the request's application content. */
 @Component
@@ -43,18 +45,57 @@ public class CreateApplicationCommandHandler {
   public UUID handle(CreateApplicationCommand command) throws Exception {
     ParsedAppContentDetails parsed = applicationContentParser.parse(command.applicationContent());
     ApplicationCreatedEvent event = toEvent(command, parsed);
-    claimApplyApplicationId(event);
+    claimApplyApplicationId(event, resolveLeadApplicationId(parsed));
     return command.applicationId();
   }
 
-  private void claimApplyApplicationId(ApplicationCreatedEvent event) throws Exception {
+  private void claimApplyApplicationId(ApplicationCreatedEvent event, UUID leadApplicationId)
+      throws Exception {
     try {
       applyApplicationIdRepository
           .load(event.applyApplicationId().toString())
-          .execute(aggregate -> aggregate.claim(event));
+          .execute(aggregate -> aggregate.claim(event, leadApplicationId));
     } catch (AggregateNotFoundException exception) {
-      applyApplicationIdRepository.newInstance(() -> new ApplyApplicationIdAggregate(event));
+      applyApplicationIdRepository.newInstance(
+          () -> new ApplyApplicationIdAggregate(event, leadApplicationId));
     }
+  }
+
+  private UUID resolveLeadApplicationId(ParsedAppContentDetails parsed) {
+    List<LinkedApplication> linkedApplications = parsed.allLinkedApplications();
+    if (linkedApplications == null || linkedApplications.isEmpty()) {
+      return null;
+    }
+
+    UUID leadApplyApplicationId = linkedApplications.getFirst().getLeadApplicationId();
+    if (leadApplyApplicationId == null) {
+      return null;
+    }
+
+    linkedApplications.stream()
+        .map(LinkedApplication::getAssociatedApplicationId)
+        .filter(associatedId -> !associatedId.equals(parsed.applyApplicationId()))
+        .filter(associatedId -> !associatedId.equals(leadApplyApplicationId))
+        .distinct()
+        .forEach(this::requireClaimedApplication);
+
+    return requireClaimedApplication(leadApplyApplicationId);
+  }
+
+  private UUID requireClaimedApplication(UUID applyApplicationId) {
+    try {
+      UUID applicationId =
+          applyApplicationIdRepository
+              .load(applyApplicationId.toString())
+              .invoke(ApplyApplicationIdAggregate::claimedApplicationId);
+      if (applicationId != null) {
+        return applicationId;
+      }
+    } catch (AggregateNotFoundException exception) {
+      // Both absent and released claims are unavailable as linked applications.
+    }
+    throw new ResourceNotFoundException(
+        "No linked application found with Apply Application ID: " + applyApplicationId);
   }
 
   private ApplicationCreatedEvent toEvent(

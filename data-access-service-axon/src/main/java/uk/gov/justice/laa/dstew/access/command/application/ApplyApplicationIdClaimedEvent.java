@@ -4,4 +4,7 @@ import java.util.UUID;
 
 /** Records the Application that owns an Apply Application identifier. */
 public record ApplyApplicationIdClaimedEvent(
-    UUID applyApplicationId, UUID applicationId, ApplicationCreatedEvent applicationCreatedEvent) {}
+    UUID applyApplicationId,
+    UUID applicationId,
+    ApplicationCreatedEvent applicationCreatedEvent,
+    UUID leadApplicationId) {}

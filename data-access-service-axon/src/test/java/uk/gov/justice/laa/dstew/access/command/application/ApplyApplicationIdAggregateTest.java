@@ -26,9 +26,10 @@ class ApplyApplicationIdAggregateTest {
 
     fixture
         .givenNoPriorActivity()
-        .whenConstructing(() -> new ApplyApplicationIdAggregate(application))
+        .whenConstructing(() -> new ApplyApplicationIdAggregate(application, null))
         .expectEvents(
-            new ApplyApplicationIdClaimedEvent(applyApplicationId, applicationId, application));
+            new ApplyApplicationIdClaimedEvent(
+                applyApplicationId, applicationId, application, null));
   }
 
   @Test
@@ -41,11 +42,12 @@ class ApplyApplicationIdAggregateTest {
     fixture
         .given(
             new ApplyApplicationIdClaimedEvent(
-                applyApplicationId, applicationId, claimedApplication))
+                applyApplicationId, applicationId, claimedApplication, null))
         .whenInvoking(
             applyApplicationId.toString(),
             aggregate ->
-                aggregate.claim(applicationCreatedEvent(applyApplicationId, UUID.randomUUID())))
+                aggregate.claim(
+                    applicationCreatedEvent(applyApplicationId, UUID.randomUUID()), null))
         .expectException(ValidationException.class)
         .expectNoEvents();
   }
@@ -55,6 +57,7 @@ class ApplyApplicationIdAggregateTest {
     UUID applyApplicationId = UUID.randomUUID();
     UUID originalApplicationId = UUID.randomUUID();
     UUID retriedApplicationId = UUID.randomUUID();
+    UUID leadApplicationId = UUID.randomUUID();
     ApplicationCreatedEvent originalApplication =
         applicationCreatedEvent(applyApplicationId, originalApplicationId);
     ApplicationCreatedEvent retriedApplication =
@@ -63,13 +66,14 @@ class ApplyApplicationIdAggregateTest {
     fixture
         .given(
             new ApplyApplicationIdClaimedEvent(
-                applyApplicationId, originalApplicationId, originalApplication),
+                applyApplicationId, originalApplicationId, originalApplication, null),
             new ApplyApplicationIdReleasedEvent(applyApplicationId, originalApplicationId))
         .whenInvoking(
-            applyApplicationId.toString(), aggregate -> aggregate.claim(retriedApplication))
+            applyApplicationId.toString(),
+            aggregate -> aggregate.claim(retriedApplication, leadApplicationId))
         .expectEvents(
             new ApplyApplicationIdClaimedEvent(
-                applyApplicationId, retriedApplicationId, retriedApplication));
+                applyApplicationId, retriedApplicationId, retriedApplication, leadApplicationId));
   }
 
   @Test
@@ -80,7 +84,9 @@ class ApplyApplicationIdAggregateTest {
         applicationCreatedEvent(applyApplicationId, applicationId);
 
     fixture
-        .given(new ApplyApplicationIdClaimedEvent(applyApplicationId, applicationId, application))
+        .given(
+            new ApplyApplicationIdClaimedEvent(
+                applyApplicationId, applicationId, application, null))
         .when(new ReleaseApplyApplicationIdCommand(applyApplicationId, applicationId))
         .expectEvents(new ApplyApplicationIdReleasedEvent(applyApplicationId, applicationId));
   }

@@ -20,15 +20,21 @@ public class ApplyApplicationIdAggregate {
   private boolean claimed;
 
   /** Creates the claim and its event stream. */
-  ApplyApplicationIdAggregate(ApplicationCreatedEvent applicationCreatedEvent) {
-    apply(claimedEvent(applicationCreatedEvent));
+  ApplyApplicationIdAggregate(
+      ApplicationCreatedEvent applicationCreatedEvent, UUID leadApplicationId) {
+    apply(claimedEvent(applicationCreatedEvent, leadApplicationId));
   }
 
-  void claim(ApplicationCreatedEvent applicationCreatedEvent) {
+  void claim(ApplicationCreatedEvent applicationCreatedEvent, UUID leadApplicationId) {
     if (claimed) {
       throw new DuplicateApplyApplicationIdException(applyApplicationId);
     }
-    apply(claimedEvent(applicationCreatedEvent));
+    apply(claimedEvent(applicationCreatedEvent, leadApplicationId));
+  }
+
+  /** Returns the owning Application only while this identifier is actively claimed. */
+  UUID claimedApplicationId() {
+    return claimed ? applicationId : null;
   }
 
   /** Releases this claim only when it still belongs to the failed Application creation. */
@@ -52,11 +58,12 @@ public class ApplyApplicationIdAggregate {
   }
 
   private ApplyApplicationIdClaimedEvent claimedEvent(
-      ApplicationCreatedEvent applicationCreatedEvent) {
+      ApplicationCreatedEvent applicationCreatedEvent, UUID leadApplicationId) {
     return new ApplyApplicationIdClaimedEvent(
         applicationCreatedEvent.applyApplicationId(),
         applicationCreatedEvent.applicationId(),
-        applicationCreatedEvent);
+        applicationCreatedEvent,
+        leadApplicationId);
   }
 
   protected ApplyApplicationIdAggregate() {

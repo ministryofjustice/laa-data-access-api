@@ -23,7 +23,8 @@ class ApplicationAggregateTest {
 
     fixture
         .givenNoPriorActivity()
-        .when(new FinaliseApplicationCreationCommand(application.applicationId(), application))
+        .when(
+            new FinaliseApplicationCreationCommand(application.applicationId(), application, null))
         .expectResultMessagePayload(ApplicationFinalisationResult.CREATED)
         .expectEvents(application);
   }
@@ -35,7 +36,8 @@ class ApplicationAggregateTest {
 
     fixture
         .given(application)
-        .when(new FinaliseApplicationCreationCommand(application.applicationId(), application))
+        .when(
+            new FinaliseApplicationCreationCommand(application.applicationId(), application, null))
         .expectResultMessagePayload(ApplicationFinalisationResult.ALREADY_CREATED)
         .expectNoEvents();
   }
@@ -48,8 +50,26 @@ class ApplicationAggregateTest {
 
     fixture
         .given(existing)
-        .when(new FinaliseApplicationCreationCommand(applicationId, conflicting))
+        .when(new FinaliseApplicationCreationCommand(applicationId, conflicting, null))
         .expectException(IllegalStateException.class)
         .expectNoEvents();
+  }
+
+  @Test
+  void givenLeadApplication_whenFinalised_thenCreatesAndLinksApplication() {
+    ApplicationCreatedEvent application =
+        applicationCreatedEvent(UUID.randomUUID(), UUID.randomUUID());
+    UUID leadApplicationId = UUID.randomUUID();
+
+    fixture
+        .givenNoPriorActivity()
+        .when(
+            new FinaliseApplicationCreationCommand(
+                application.applicationId(), application, leadApplicationId))
+        .expectResultMessagePayload(ApplicationFinalisationResult.CREATED)
+        .expectEvents(
+            application,
+            new ApplicationLinkedEvent(
+                application.applicationId(), leadApplicationId, application.occurredAt()));
   }
 }

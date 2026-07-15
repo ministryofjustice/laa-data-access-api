@@ -25,7 +25,9 @@ public class CreateApplicationSaga {
       ApplicationFinalisationResult result =
           commandGateway.sendAndWait(
               new FinaliseApplicationCreationCommand(
-                  event.applicationId(), event.applicationCreatedEvent()));
+                  event.applicationId(),
+                  event.applicationCreatedEvent(),
+                  event.leadApplicationId()));
       if (result == ApplicationFinalisationResult.ALREADY_CREATED) {
         SagaLifecycle.end();
       }

@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.testutils;
 
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -57,6 +58,38 @@ public final class ApplicationCreateRequestFixture {
         .applicationContent(content)
         .laaReference("LAA-123")
         .individuals(List.of(individual))
+        .build();
+  }
+
+  /** Creates a valid request that links the new Application to an existing Apply Application. */
+  public static ApplicationCreateRequest validLinkedCreateApplicationRequest(
+      UUID applyApplicationId, UUID applyProceedingId, UUID leadApplyApplicationId) {
+    return validLinkedCreateApplicationRequest(
+        applyApplicationId, applyProceedingId, leadApplyApplicationId, applyApplicationId);
+  }
+
+  /** Creates a valid request with an explicitly declared linked Application group member. */
+  public static ApplicationCreateRequest validLinkedCreateApplicationRequest(
+      UUID applyApplicationId,
+      UUID applyProceedingId,
+      UUID leadApplyApplicationId,
+      UUID associatedApplyApplicationId) {
+    ApplicationCreateRequest request =
+        validCreateApplicationRequest(applyApplicationId, applyProceedingId);
+    Map<String, Object> content = new HashMap<>(request.getApplicationContent());
+    content.put(
+        "allLinkedApplications",
+        List.of(
+            Map.of(
+                "leadApplicationId", leadApplyApplicationId.toString(),
+                "associatedApplicationId", associatedApplyApplicationId.toString())));
+
+    return ApplicationCreateRequest.builder()
+        .applicationType(request.getApplicationType())
+        .status(request.getStatus())
+        .applicationContent(content)
+        .laaReference(request.getLaaReference())
+        .individuals(request.getIndividuals())
         .build();
   }
 }

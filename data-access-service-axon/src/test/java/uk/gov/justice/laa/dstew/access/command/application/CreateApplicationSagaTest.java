@@ -29,11 +29,12 @@ class CreateApplicationSagaTest {
         .givenNoPriorActivity()
         .whenAggregate(applyApplicationId.toString())
         .publishes(
-            new ApplyApplicationIdClaimedEvent(applyApplicationId, applicationId, application))
+            new ApplyApplicationIdClaimedEvent(
+                applyApplicationId, applicationId, application, null))
         .expectActiveSagas(1)
         .expectAssociationWith("applicationId", applicationId.toString())
         .expectDispatchedCommands(
-            new FinaliseApplicationCreationCommand(applicationId, application));
+            new FinaliseApplicationCreationCommand(applicationId, application, null));
   }
 
   @Test
@@ -46,7 +47,8 @@ class CreateApplicationSagaTest {
     fixture
         .givenAggregate(applyApplicationId.toString())
         .published(
-            new ApplyApplicationIdClaimedEvent(applyApplicationId, applicationId, application))
+            new ApplyApplicationIdClaimedEvent(
+                applyApplicationId, applicationId, application, null))
         .whenAggregate(applicationId.toString())
         .publishes(application)
         .expectActiveSagas(0);
@@ -59,7 +61,7 @@ class CreateApplicationSagaTest {
     ApplicationCreatedEvent application =
         applicationCreatedEvent(applyApplicationId, applicationId);
     FinaliseApplicationCreationCommand finalise =
-        new FinaliseApplicationCreationCommand(applicationId, application);
+        new FinaliseApplicationCreationCommand(applicationId, application, null);
     fixture.setCallbackBehavior(
         (command, metadata) -> {
           if (command instanceof FinaliseApplicationCreationCommand) {
@@ -72,7 +74,8 @@ class CreateApplicationSagaTest {
         .givenNoPriorActivity()
         .whenAggregate(applyApplicationId.toString())
         .publishes(
-            new ApplyApplicationIdClaimedEvent(applyApplicationId, applicationId, application))
+            new ApplyApplicationIdClaimedEvent(
+                applyApplicationId, applicationId, application, null))
         .expectActiveSagas(0)
         .expectDispatchedCommands(
             finalise, new ReleaseApplyApplicationIdCommand(applyApplicationId, applicationId));
@@ -85,7 +88,7 @@ class CreateApplicationSagaTest {
     ApplicationCreatedEvent application =
         applicationCreatedEvent(applyApplicationId, applicationId);
     FinaliseApplicationCreationCommand finalise =
-        new FinaliseApplicationCreationCommand(applicationId, application);
+        new FinaliseApplicationCreationCommand(applicationId, application, null);
     fixture.setCallbackBehavior(
         (command, metadata) -> ApplicationFinalisationResult.ALREADY_CREATED);
 
@@ -93,7 +96,8 @@ class CreateApplicationSagaTest {
         .givenNoPriorActivity()
         .whenAggregate(applyApplicationId.toString())
         .publishes(
-            new ApplyApplicationIdClaimedEvent(applyApplicationId, applicationId, application))
+            new ApplyApplicationIdClaimedEvent(
+                applyApplicationId, applicationId, application, null))
         .expectActiveSagas(0)
         .expectDispatchedCommands(finalise);
   }

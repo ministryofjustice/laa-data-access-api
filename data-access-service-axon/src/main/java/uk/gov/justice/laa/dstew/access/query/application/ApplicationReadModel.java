@@ -51,6 +51,9 @@ public class ApplicationReadModel {
   @Column(name = "apply_application_id")
   private UUID applyApplicationId;
 
+  @Column(name = "lead_application_id")
+  private UUID leadApplicationId;
+
   @Column(name = "submitted_at")
   private Instant submittedAt;
 

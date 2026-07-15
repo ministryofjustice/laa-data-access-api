@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.applicationcontent;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
+import java.io.Serializable;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -15,7 +16,9 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 @Data
 @Builder(toBuilder = true)
 @ExcludeFromGeneratedCodeCoverage
-public class LinkedApplication {
+public class LinkedApplication implements Serializable {
+
+  private static final long serialVersionUID = 1L;
 
   @NotNull
   @Schema(name = "leadApplicationId", requiredMode = Schema.RequiredMode.REQUIRED)

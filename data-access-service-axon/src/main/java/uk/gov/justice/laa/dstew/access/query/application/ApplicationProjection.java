@@ -5,6 +5,7 @@ import org.axonframework.eventhandling.EventHandler;
 import org.axonframework.eventhandling.ResetHandler;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
 
 /** Independently replayable projection of the current state of each Application. */
 @Component
@@ -39,6 +40,19 @@ public class ApplicationProjection {
             .createdAt(event.occurredAt())
             .modifiedAt(event.occurredAt())
             .build());
+  }
+
+  /** Updates the linked-group membership after the Application is created. */
+  @EventHandler
+  public void on(ApplicationLinkedEvent event) {
+    applicationReadRepository
+        .findById(event.applicationId())
+        .ifPresent(
+            application -> {
+              application.setLeadApplicationId(event.leadApplicationId());
+              application.setModifiedAt(event.occurredAt());
+              applicationReadRepository.save(application);
+            });
   }
 
   /** Clears the disposable current-state table before replay. */

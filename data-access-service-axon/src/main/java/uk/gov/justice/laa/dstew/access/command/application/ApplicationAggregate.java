@@ -29,6 +29,7 @@ public class ApplicationAggregate {
   private int schemaVersion;
   private String applicationType;
   private UUID applyApplicationId;
+  private UUID leadApplicationId;
   private Instant submittedAt;
   private String officeCode;
   private Boolean usedDelegatedFunctions;
@@ -48,6 +49,13 @@ public class ApplicationAggregate {
           "Application ID " + applicationId + " is already owned by another Apply application");
     }
     apply(command.applicationCreatedEvent());
+    if (command.leadApplicationId() != null) {
+      apply(
+          new ApplicationLinkedEvent(
+              applicationId,
+              command.leadApplicationId(),
+              command.applicationCreatedEvent().occurredAt()));
+    }
     return ApplicationFinalisationResult.CREATED;
   }
 
@@ -67,6 +75,11 @@ public class ApplicationAggregate {
     categoryOfLaw = event.categoryOfLaw();
     matterType = event.matterType();
     proceedings = List.copyOf(event.proceedings());
+  }
+
+  @EventSourcingHandler
+  void on(ApplicationLinkedEvent event) {
+    leadApplicationId = event.leadApplicationId();
   }
 
   protected ApplicationAggregate() {

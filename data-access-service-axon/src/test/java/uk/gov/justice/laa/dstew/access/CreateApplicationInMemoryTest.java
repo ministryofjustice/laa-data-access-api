@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
+import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validLinkedCreateApplicationRequest;
 
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -128,6 +129,94 @@ class CreateApplicationInMemoryTest {
     assertThat(duplicateResponse.getBody())
         .contains("Generic Validation Error")
         .contains("Application already exists for Apply Application Id: " + applyApplicationId);
+  }
+
+  @Test
+  void givenMissingLeadApplication_whenPostApplication_thenReturnsNotFoundBeforeClaiming()
+      throws Exception {
+    UUID missingApplyApplicationId = UUID.randomUUID();
+    ApplicationCreateRequest request =
+        validLinkedCreateApplicationRequest(
+            UUID.randomUUID(), UUID.randomUUID(), missingApplyApplicationId);
+
+    ResponseEntity<String> response =
+        restTemplate.postForEntity(
+            "/api/v0/applications", new HttpEntity<>(request, headers()), String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    assertThat(response.getBody()).contains(missingApplyApplicationId.toString());
+  }
+
+  @Test
+  void givenMissingAssociatedApplication_whenPostApplication_thenReturnsNotFoundBeforeClaiming()
+      throws Exception {
+    UUID leadApplyApplicationId = UUID.randomUUID();
+    ResponseEntity<Void> leadResponse =
+        restTemplate.postForEntity(
+            "/api/v0/applications",
+            new HttpEntity<>(
+                validCreateApplicationRequest(leadApplyApplicationId, UUID.randomUUID()),
+                headers()),
+            Void.class);
+    awaitProjection(applicationId(leadResponse));
+
+    UUID missingAssociatedApplyApplicationId = UUID.randomUUID();
+    ApplicationCreateRequest request =
+        validLinkedCreateApplicationRequest(
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            leadApplyApplicationId,
+            missingAssociatedApplyApplicationId);
+
+    ResponseEntity<String> response =
+        restTemplate.postForEntity(
+            "/api/v0/applications", new HttpEntity<>(request, headers()), String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    assertThat(response.getBody()).contains(missingAssociatedApplyApplicationId.toString());
+  }
+
+  @Test
+  void givenExistingLeadApplication_whenPostLinkedApplication_thenProjectsLeadLink()
+      throws Exception {
+    UUID leadApplyApplicationId = UUID.randomUUID();
+    ResponseEntity<Void> leadResponse =
+        restTemplate.postForEntity(
+            "/api/v0/applications",
+            new HttpEntity<>(
+                validCreateApplicationRequest(leadApplyApplicationId, UUID.randomUUID()),
+                headers()),
+            Void.class);
+    UUID leadApplicationId = applicationId(leadResponse);
+    awaitProjection(leadApplicationId);
+
+    UUID linkedApplyApplicationId = UUID.randomUUID();
+    ResponseEntity<Void> linkedResponse =
+        restTemplate.postForEntity(
+            "/api/v0/applications",
+            new HttpEntity<>(
+                validLinkedCreateApplicationRequest(
+                    linkedApplyApplicationId, UUID.randomUUID(), leadApplyApplicationId),
+                headers()),
+            Void.class);
+
+    assertThat(linkedResponse.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+    ApplicationReadModel projected = awaitProjection(applicationId(linkedResponse));
+    assertThat(projected.getLeadApplicationId()).isEqualTo(leadApplicationId);
+  }
+
+  private HttpHeaders headers() {
+    HttpHeaders headers = new HttpHeaders();
+    headers.set("X-Service-Name", "CIVIL_APPLY");
+    headers.set("X-Schema-Version", "2");
+    return headers;
+  }
+
+  private UUID applicationId(ResponseEntity<Void> response) {
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+    assertThat(response.getHeaders().getLocation()).isNotNull();
+    return UUID.fromString(
+        response.getHeaders().getLocation().getPath().replace("/api/v0/applications/", ""));
   }
 
   private ApplicationReadModel awaitProjection(UUID applicationId) throws Exception {
