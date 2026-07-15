@@ -10,6 +10,7 @@ import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequest
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,12 +36,23 @@ import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
+import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.command.application.ApplyApplicationIdClaimedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationCommandHandler;
 import uk.gov.justice.laa.dstew.access.controller.application.CreateApplicationCommandMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
+import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.model.ApplicationType;
+import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.IndividualCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.InvolvedChildResponse;
+import uk.gov.justice.laa.dstew.access.model.MatterType;
+import uk.gov.justice.laa.dstew.access.model.OpponentResponse;
+import uk.gov.justice.laa.dstew.access.model.ProviderResponse;
+import uk.gov.justice.laa.dstew.access.model.ScopeLimitationResponse;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadRepository;
@@ -57,6 +69,8 @@ class PostgresAxonIntegrationTest {
   @LocalServerPort private int port;
 
   @Autowired private TestRestTemplate restTemplate;
+
+  @Autowired private ObjectMapper objectMapper;
 
   @Autowired private EventStorageEngine eventStorageEngine;
 
@@ -197,6 +211,118 @@ class PostgresAxonIntegrationTest {
                   .isEqualTo(ApplyApplicationIdClaimedEvent.class.getName());
               assertThat(event.get("sequence_number")).isEqualTo(0L);
             });
+  }
+
+  @Test
+  void givenCreatedApplication_whenGetApplication_thenReturnsCurrentStateProjection()
+      throws Exception {
+    UUID applyApplicationId = UUID.randomUUID();
+    UUID applyProceedingId = UUID.randomUUID();
+    final UUID involvedChildId = UUID.randomUUID();
+    ApplicationCreateRequest request =
+        validCreateApplicationRequest(applyApplicationId, applyProceedingId);
+    Map<String, Object> content = new HashMap<>(request.getApplicationContent());
+    Map<String, Object> proceeding = firstProceeding(content);
+    proceeding.put("meaning", "Care proceedings");
+    proceeding.put("substantiveLevelOfServiceNameEnum", "FULL_REPRESENTATION");
+    proceeding.put("substantiveCostLimitation", 2_500.0);
+    proceeding.put(
+        "scopeLimitations", List.of(Map.of("meaning", "LIMITED", "description", "Limited scope")));
+    content.put("proceedings", List.of(proceeding));
+    content.put("submitterEmail", "provider@example.com");
+    content.put(
+        "applicationMerits",
+        Map.of(
+            "opponents",
+            List.of(
+                Map.of(
+                    "opposableType",
+                    "INDIVIDUAL",
+                    "opposable",
+                    Map.of("firstName", "Grace", "lastName", "Hopper"))),
+            "involvedChildren",
+            List.of(
+                Map.of(
+                    "id",
+                    involvedChildId.toString(),
+                    "fullName",
+                    "Child Example",
+                    "dateOfBirth",
+                    "2015-01-02"))));
+    content.put(
+        "proceedingMerits",
+        List.of(
+            Map.of(
+                "proceedingId",
+                applyProceedingId.toString(),
+                "proceedingLinkedChildren",
+                List.of(Map.of("involvedChildId", involvedChildId.toString())))));
+    request.setApplicationContent(content);
+
+    UUID applicationId = applicationId(post(request, headers()));
+    ResponseEntity<ApplicationResponse> response = awaitGet(applicationId);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    ApplicationResponse actual = response.getBody();
+    assertThat(actual).isNotNull();
+    assertThat(actual.getLastUpdated()).isNotNull();
+    assertThat(actual.getProceedings())
+        .singleElement()
+        .satisfies(
+            proceedingResponse -> assertThat(proceedingResponse.getProceedingId()).isNotNull());
+
+    ApplicationResponse expected =
+        new ApplicationResponse()
+            .applicationId(applicationId)
+            .status(ApplicationStatus.APPLICATION_SUBMITTED)
+            .laaReference("LAA-123")
+            .lastUpdated(actual.getLastUpdated())
+            .submittedAt(OffsetDateTime.parse("2026-07-14T12:30:00Z"))
+            .isLead(true)
+            .usedDelegatedFunctions(false)
+            .applicationType(ApplicationType.INITIAL)
+            .provider(
+                new ProviderResponse().officeCode("1A001B").contactEmail("provider@example.com"))
+            .opponents(
+                List.of(
+                    new OpponentResponse()
+                        .opponentType("INDIVIDUAL")
+                        .firstName("Grace")
+                        .lastName("Hopper")))
+            .proceedings(
+                List.of(
+                    new ApplicationProceedingResponse()
+                        .proceedingId(actual.getProceedings().getFirst().getProceedingId())
+                        .proceedingDescription("Care order")
+                        .proceedingType("Care proceedings")
+                        .categoryOfLaw(CategoryOfLaw.FAMILY)
+                        .matterType(MatterType.SPECIAL_CHILDREN_ACT)
+                        .levelOfService("FULL_REPRESENTATION")
+                        .substantiveCostLimitation(2_500.0)
+                        .scopeLimitations(
+                            List.of(
+                                new ScopeLimitationResponse()
+                                    .scopeLimitation("LIMITED")
+                                    .scopeDescription("Limited scope")))
+                        .involvedChildren(
+                            List.of(
+                                new InvolvedChildResponse()
+                                    .fullName("Child Example")
+                                    .dateOfBirth(LocalDate.parse("2015-01-02"))))));
+
+    assertThat(actual).usingRecursiveComparison().isEqualTo(expected);
+  }
+
+  @Test
+  void givenUnknownApplication_whenGetApplication_thenReturnsNotFound() {
+    UUID applicationId = UUID.randomUUID();
+
+    ResponseEntity<String> response =
+        restTemplate.getForEntity(
+            "http://localhost:" + port + "/api/v0/applications/" + applicationId, String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    assertThat(response.getBody()).contains("No application found with ID: " + applicationId);
   }
 
   @Test
@@ -459,6 +585,24 @@ class PostgresAxonIntegrationTest {
     Map<String, Object> proceeding = new HashMap<>();
     source.forEach((key, value) -> proceeding.put(key.toString(), value));
     return proceeding;
+  }
+
+  private ResponseEntity<ApplicationResponse> awaitGet(UUID applicationId) throws Exception {
+    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(15);
+    while (System.nanoTime() < deadline) {
+      ResponseEntity<String> response =
+          restTemplate.getForEntity(
+              "http://localhost:" + port + "/api/v0/applications/" + applicationId, String.class);
+      if (response.getStatusCode() == HttpStatus.OK) {
+        return new ResponseEntity<>(
+            objectMapper.readValue(response.getBody(), ApplicationResponse.class),
+            response.getHeaders(),
+            response.getStatusCode());
+      }
+      Thread.sleep(100);
+    }
+    throw new AssertionError(
+        "Application was not available from the query projection: " + applicationId);
   }
 
   private void awaitClaimEventCount(UUID applyApplicationId, int expectedCount) throws Exception {

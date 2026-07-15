@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.applicationcontent;
 
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,7 +19,7 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 @AllArgsConstructor
 @Data
 @ExcludeFromGeneratedCodeCoverage
-public class ApplicationMerits {
+public class ApplicationMerits implements Serializable {
 
   @Nullable private List<OpponentDetails> opponents;
 

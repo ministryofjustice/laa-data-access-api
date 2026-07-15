@@ -67,6 +67,17 @@ class CreateApplicationInMemoryTest {
   }
 
   @Test
+  void givenUnknownApplication_whenGetApplication_thenReturnsNotFound() {
+    UUID applicationId = UUID.randomUUID();
+
+    ResponseEntity<String> response =
+        restTemplate.getForEntity("/api/v0/applications/" + applicationId, String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    assertThat(response.getBody()).contains("No application found with ID: " + applicationId);
+  }
+
+  @Test
   void givenValidRequest_whenPostApplication_thenReturnsAcceptedAndProjectsOwnedState()
       throws Exception {
     UUID applyApplicationId = UUID.randomUUID();

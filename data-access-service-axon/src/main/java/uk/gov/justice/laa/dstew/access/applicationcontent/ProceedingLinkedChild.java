@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.applicationcontent;
 
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -18,7 +19,7 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 @AllArgsConstructor
 @Data
 @ExcludeFromGeneratedCodeCoverage
-public class ProceedingLinkedChild {
+public class ProceedingLinkedChild implements Serializable {
 
   @Nullable private UUID involvedChildId;
 

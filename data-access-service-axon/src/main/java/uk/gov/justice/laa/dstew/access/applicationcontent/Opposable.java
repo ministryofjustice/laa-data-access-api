@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.applicationcontent;
 
+import java.io.Serializable;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -13,7 +14,7 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 @AllArgsConstructor
 @Data
 @ExcludeFromGeneratedCodeCoverage
-public class Opposable {
+public class Opposable implements Serializable {
   private @Nullable String firstName;
   private @Nullable String lastName;
   private @Nullable String name;

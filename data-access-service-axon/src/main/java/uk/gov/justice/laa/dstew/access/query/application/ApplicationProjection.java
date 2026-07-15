@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.query.application;
 import org.axonframework.config.ProcessingGroup;
 import org.axonframework.eventhandling.EventHandler;
 import org.axonframework.eventhandling.ResetHandler;
+import org.axonframework.queryhandling.QueryHandler;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
@@ -16,6 +17,12 @@ public class ApplicationProjection {
 
   public ApplicationProjection(ApplicationReadRepository applicationReadRepository) {
     this.applicationReadRepository = applicationReadRepository;
+  }
+
+  /** Returns the current-state projection for the requested Application. */
+  @QueryHandler
+  public java.util.Optional<ApplicationReadModel> handle(FindApplicationByIdQuery query) {
+    return applicationReadRepository.findById(query.applicationId());
   }
 
   /** Creates the current-state row from an Application's creation event. */
