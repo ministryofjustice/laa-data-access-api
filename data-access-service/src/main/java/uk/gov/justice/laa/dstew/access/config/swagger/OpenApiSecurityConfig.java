@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.config;
+package uk.gov.justice.laa.dstew.access.config.swagger;
 
 import io.swagger.v3.oas.annotations.enums.SecuritySchemeType;
 import io.swagger.v3.oas.annotations.security.SecurityScheme;

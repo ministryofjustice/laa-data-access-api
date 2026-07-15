@@ -5,10 +5,16 @@
   "description": "Base civil application schema for data common across Civil Apply matter types",
   "type": "object",
   "required": [
+    "id",
     "createdAt",
     "submittedAt"
   ],
   "properties": {
+    "id": {
+      "type": "string",
+        "format": "uuid",
+      "description": "ID from Apply application system"
+    },
     "createdAt": {
       "type": "string",
       "format": "date-time",

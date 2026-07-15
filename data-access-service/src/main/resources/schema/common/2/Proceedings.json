@@ -5,7 +5,7 @@
   "description": "Proceeding information for the application",
   "type": "object",
   "required": [
-    "proceedingId",
+    "id",
     "leadProceeding",
     "ccmsCode",
     "meaning",
@@ -20,7 +20,7 @@
     "scopeLimitations"
   ],
   "properties": {
-    "proceedingId": {
+    "id": {
       "type": "string",
       "format": "uuid",
       "description": "Unique identifier for the proceeding"

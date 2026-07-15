@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.config;
+package uk.gov.justice.laa.dstew.access.config.swagger;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;

@@ -9,6 +9,7 @@ import io.swagger.v3.oas.models.media.Schema;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import uk.gov.justice.laa.dstew.access.config.swagger.ApplicationContentSchemaCustomizer;
 
 class ApplicationContentSchemaCustomizerTest {
 
@@ -68,7 +69,6 @@ class ApplicationContentSchemaCustomizerTest {
     customizer.customise(openApi);
 
     // then
-    @SuppressWarnings("unchecked")
     Schema<?> proceedingsSchema =
         (Schema<?>)
             openApi
