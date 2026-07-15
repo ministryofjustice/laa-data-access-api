@@ -27,6 +27,12 @@ public final class ApplicationCreateRequestFixture {
             "2026-07-14T12:30:00Z",
             "office",
             Map.of("code", "1A001B"),
+            "applicant",
+            Map.of(
+                "id",
+                UUID.randomUUID().toString(),
+                "addresses",
+                List.of(Map.of("id", UUID.randomUUID().toString()))),
             "proceedings",
             List.of(
                 Map.of(

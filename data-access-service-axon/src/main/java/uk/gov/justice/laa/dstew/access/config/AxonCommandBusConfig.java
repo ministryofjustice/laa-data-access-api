@@ -9,6 +9,8 @@ import org.axonframework.config.Configuration;
 import org.axonframework.messaging.interceptors.CorrelationDataInterceptor;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
+import uk.gov.justice.laa.dstew.access.config.interceptor.CreateApplicationSchemaValidationDispatchInterceptor;
+import uk.gov.justice.laa.dstew.access.config.interceptor.ServiceNameMetadataDispatchInterceptor;
 
 /** Runs each command in its own worker unit of work, including commands dispatched by sagas. */
 @org.springframework.context.annotation.Configuration
@@ -22,7 +24,10 @@ public class AxonCommandBusConfig {
   AsynchronousCommandBus commandBus(
       TransactionManager transactionManager,
       Configuration axonConfiguration,
-      DuplicateCommandHandlerResolver duplicateCommandHandlerResolver) {
+      DuplicateCommandHandlerResolver duplicateCommandHandlerResolver,
+      ServiceNameMetadataDispatchInterceptor serviceNameMetadataDispatchInterceptor,
+      CreateApplicationSchemaValidationDispatchInterceptor
+          createApplicationSchemaValidationDispatchInterceptor) {
     AsynchronousCommandBus commandBus =
         AsynchronousCommandBus.builder()
             .transactionManager(transactionManager)
@@ -32,6 +37,8 @@ public class AxonCommandBusConfig {
             .build();
     commandBus.registerHandlerInterceptor(
         new CorrelationDataInterceptor<>(axonConfiguration.correlationDataProviders()));
+    commandBus.registerDispatchInterceptor(serviceNameMetadataDispatchInterceptor);
+    commandBus.registerDispatchInterceptor(createApplicationSchemaValidationDispatchInterceptor);
     return commandBus;
   }
 }

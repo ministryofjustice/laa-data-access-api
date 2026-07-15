@@ -31,9 +31,16 @@ public class CreateApplicationCommandMapper {
         toIndividuals(request.getIndividuals()),
         serialise(request),
         schemaVersion,
+        schemaName(request),
         request.getApplicationType() == null
             ? ApplicationType.APPLY.name()
             : request.getApplicationType().name());
+  }
+
+  private String schemaName(ApplicationCreateRequest request) {
+    return request.getApplicationType() == ApplicationType.CCS
+        ? "CssApplication.json"
+        : "ApplyApplication.json";
   }
 
   private List<CreateApplicationIndividual> toIndividuals(

@@ -254,6 +254,7 @@ class PostgresAxonIntegrationTest {
         command.individuals(),
         command.serialisedRequest(),
         command.schemaVersion(),
+        command.schemaName(),
         command.applicationType());
   }
 

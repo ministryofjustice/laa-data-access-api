@@ -2,6 +2,8 @@ package uk.gov.justice.laa.dstew.access.applicationcontent;
 
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
+import java.io.Serial;
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,7 +20,9 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 @AllArgsConstructor
 @Data
 @ExcludeFromGeneratedCodeCoverage
-public class ApplicationApplicant {
+public class ApplicationApplicant implements Serializable {
+
+  @Serial private static final long serialVersionUID = 1L;
 
   @Nullable private List<Map<String, Object>> addresses;
 

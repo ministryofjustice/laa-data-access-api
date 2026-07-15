@@ -1,6 +1,9 @@
 package uk.gov.justice.laa.dstew.access;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validLinkedCreateApplicationRequest;
 
@@ -19,6 +22,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationCommandHandler;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
@@ -45,6 +50,8 @@ class CreateApplicationInMemoryTest {
   @Autowired private ApplicationReadRepository applicationReadRepository;
 
   @Autowired private EventProcessingConfiguration eventProcessingConfiguration;
+
+  @MockitoSpyBean private CreateApplicationCommandHandler createApplicationCommandHandler;
 
   @Test
   void givenAxonApplication_whenOpenApiRequested_thenDocumentsCreateApplication() {
@@ -107,6 +114,24 @@ class CreateApplicationInMemoryTest {
     var processor = eventProcessingConfiguration.eventProcessor("application-projection");
     assertThat(processor).isPresent();
     assertThat(processor.get()).isInstanceOf(TrackingEventProcessor.class);
+  }
+
+  @Test
+  void givenSchemaInvalidRequest_whenPostApplication_thenReturnsBadRequestBeforeHandlerRuns()
+      throws Exception {
+    ApplicationCreateRequest validRequest =
+        validCreateApplicationRequest(UUID.randomUUID(), UUID.randomUUID());
+    var invalidContent = new java.util.HashMap<>(validRequest.getApplicationContent());
+    invalidContent.remove("id");
+    validRequest.setApplicationContent(invalidContent);
+
+    ResponseEntity<String> response =
+        restTemplate.postForEntity(
+            "/api/v0/applications", new HttpEntity<>(validRequest, headers()), String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(response.getBody()).contains("Generic Validation Error");
+    verify(createApplicationCommandHandler, never()).handle(any());
   }
 
   @Test
