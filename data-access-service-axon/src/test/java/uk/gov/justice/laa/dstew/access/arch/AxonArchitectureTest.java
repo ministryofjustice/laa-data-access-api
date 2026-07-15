@@ -108,7 +108,7 @@ class AxonArchitectureTest {
   }
 
   @Test
-  void commandMessagesMustBeRecords() {
+  void commandAndEventMessagesInCommandPackagesMustBeRecords() {
     DescribedPredicate<JavaClass> commandOrEvent =
         new DescribedPredicate<>("have a simple name ending with Command or Event") {
           @Override
