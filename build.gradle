@@ -100,9 +100,6 @@ allprojects {
     configurations.configureEach { conf ->
         if (lockedConfigs.contains(conf.name)) {
             resolutionStrategy.activateDependencyLocking()
-            //Incorrect Authorization (new) [High Severity][https://security.snyk.io/vuln/SNYK-JAVA-TOOLSJACKSONCORE-17972609] in tools.jackson.core:jackson-databind@3.1.4
-            resolutionStrategy.force "tools.jackson.core:jackson-databind:3.2.1"
-
         }
 
     }
