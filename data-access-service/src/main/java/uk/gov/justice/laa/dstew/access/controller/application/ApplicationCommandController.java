@@ -5,9 +5,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import java.net.URI;
-import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -17,68 +15,46 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
-import uk.gov.justice.laa.dstew.access.api.ApplicationApi;
+import uk.gov.justice.laa.dstew.access.api.ApplicationCommandApi;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
-import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
-import uk.gov.justice.laa.dstew.access.model.ApplicationNotesResponse;
-import uk.gov.justice.laa.dstew.access.model.ApplicationOrderBy;
-import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
-import uk.gov.justice.laa.dstew.access.model.ApplicationSortBy;
-import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
-import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
 import uk.gov.justice.laa.dstew.access.model.CreateNoteRequest;
 import uk.gov.justice.laa.dstew.access.model.DocumentDeleteResponse;
-import uk.gov.justice.laa.dstew.access.model.DocumentDownloadResponse;
 import uk.gov.justice.laa.dstew.access.model.DocumentUpdateResponse;
 import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
-import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
-import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.service.applications.SdsService;
 import uk.gov.justice.laa.dstew.access.service.applications.UnassignCaseworkerService;
-import uk.gov.justice.laa.dstew.access.service.domainevents.GetDomainEventService;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
 import uk.gov.justice.laa.dstew.access.usecase.assigncaseworker.AssignCaseworkerUseCase;
 import uk.gov.justice.laa.dstew.access.usecase.createapplication.CreateApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.usecase.createnote.CreateNoteUseCase;
-import uk.gov.justice.laa.dstew.access.usecase.getallapplications.GetAllApplicationsUseCase;
-import uk.gov.justice.laa.dstew.access.usecase.getallnotesforapplication.GetAllNotesForApplicationUseCase;
-import uk.gov.justice.laa.dstew.access.usecase.getapplication.GetApplicationUseCase;
-import uk.gov.justice.laa.dstew.access.usecase.getcertificate.GetCertificateUseCase;
 import uk.gov.justice.laa.dstew.access.usecase.makedecision.MakeDecisionUseCase;
 import uk.gov.justice.laa.dstew.access.usecase.updateapplication.UpdateApplicationUseCase;
 
-/** Controller for handling /api/v0/applications requests. */
+/** Controller for handling /api/v0/applications command requests. */
 @RequiredArgsConstructor
 @RestController
 @ExcludeFromGeneratedCodeCoverage
-public class ApplicationController implements ApplicationApi {
+public class ApplicationCommandController implements ApplicationCommandApi {
 
   private final CreateApplicationUseCase createApplicationUseCase;
   private final CreateApplicationCommandMapper createApplicationCommandMapper;
   private final UpdateApplicationUseCase updateApplicationUseCase;
   private final UpdateApplicationCommandMapper updateApplicationCommandMapper;
-  private final GetApplicationUseCase getApplicationUseCase;
-  private final GetApplicationResponseMapper getApplicationResponseMapper;
-  private final GetAllApplicationsUseCase getAllApplicationsUseCase;
-  private final GetAllApplicationsQueryMapper getAllApplicationsQueryMapper;
-  private final GetAllApplicationsResponseMapper getAllApplicationsResponseMapper;
-  private final GetCertificateUseCase getCertificateUseCase;
+
   private final AssignCaseworkerUseCase assignCaseworkerUseCase;
   private final AssignCaseworkerCommandMapper assignCaseworkerCommandMapper;
   private final UnassignCaseworkerService unassignCaseworkerService;
   private final MakeDecisionUseCase makeDecisionUseCase;
   private final MakeDecisionCommandMapper makeDecisionCommandMapper;
-  private final GetAllNotesForApplicationUseCase getAllNotesForApplicationUseCase;
-  private final GetAllNotesForApplicationResponseMapper getAllNotesForApplicationResponseMapper;
+
   private final CreateNoteUseCase createNoteUseCase;
   private final CreateNoteCommandMapper createNoteCommandMapper;
-  private final GetDomainEventService getDomainEventsService;
   private final SdsService sdsService;
 
   @LogMethodArguments
@@ -112,48 +88,6 @@ public class ApplicationController implements ApplicationApi {
   }
 
   @Override
-  @LogMethodResponse
-  @LogMethodArguments
-  public ResponseEntity<ApplicationSummaryResponse> getApplications(
-      ServiceName serviceName,
-      ApplicationStatus status,
-      String laaReference,
-      String clientFirstName,
-      String clientLastName,
-      LocalDate clientDateOfBirth,
-      UUID userId,
-      Boolean isAutoGranted,
-      MatterType matterType,
-      ApplicationSortBy sortBy,
-      ApplicationOrderBy orderBy,
-      Integer page,
-      Integer pageSize) {
-
-    return getAllApplicationsResponseMapper.toGetAllApplicationsResponse(
-        getAllApplicationsUseCase.execute(
-            getAllApplicationsQueryMapper.toGetAllApplicationsQuery(
-                status,
-                laaReference,
-                clientFirstName,
-                clientLastName,
-                clientDateOfBirth,
-                userId,
-                isAutoGranted,
-                matterType,
-                sortBy,
-                orderBy,
-                page,
-                pageSize)));
-  }
-
-  @Override
-  @LogMethodResponse
-  @LogMethodArguments
-  public ResponseEntity<ApplicationResponse> getApplicationById(ServiceName serviceName, UUID id) {
-    return getApplicationResponseMapper.toGetApplicationResponse(getApplicationUseCase.execute(id));
-  }
-
-  @Override
   @LogMethodArguments
   @LogMethodResponse
   public ResponseEntity<Void> assignCaseworker(
@@ -177,17 +111,6 @@ public class ApplicationController implements ApplicationApi {
   @Override
   @LogMethodArguments
   @LogMethodResponse
-  public ResponseEntity<ApplicationHistoryResponse> getApplicationHistory(
-      @NotNull ServiceName serviceName,
-      UUID applicationId,
-      @Valid List<DomainEventType> eventType) {
-    var events = getDomainEventsService.getEvents(applicationId, eventType);
-    return ResponseEntity.ok(ApplicationHistoryResponse.builder().events(events).build());
-  }
-
-  @Override
-  @LogMethodArguments
-  @LogMethodResponse
   public ResponseEntity<Void> makeDecision(
       @NotNull ServiceName serviceName, UUID applicationId, @Valid MakeDecisionRequest request) {
     makeDecisionUseCase.execute(
@@ -204,24 +127,6 @@ public class ApplicationController implements ApplicationApi {
     return ResponseEntity.noContent().build();
   }
 
-  @Override
-  @LogMethodArguments
-  @LogMethodResponse
-  public ResponseEntity<ApplicationNotesResponse> getApplicationNotes(
-      @NotNull ServiceName serviceName, UUID applicationId) {
-    return ResponseEntity.ok(
-        getAllNotesForApplicationResponseMapper.toResponse(
-            getAllNotesForApplicationUseCase.execute(applicationId)));
-  }
-
-  @Override
-  @LogMethodArguments
-  @LogMethodResponse
-  public ResponseEntity<Map<String, Object>> getCertificate(
-      @NotNull ServiceName serviceName, UUID applicationId) {
-    return ResponseEntity.ok(getCertificateUseCase.execute(applicationId).certificateContent());
-  }
-
   @Hidden
   @LogMethodArguments
   @LogMethodResponse
@@ -230,15 +135,6 @@ public class ApplicationController implements ApplicationApi {
       @NotNull ServiceName serviceName, UUID id, MultipartFile file) {
     DocumentUploadResponse response = sdsService.saveFile(id, file);
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
-  }
-
-  @Hidden
-  @LogMethodArguments
-  @LogMethodResponse
-  @Override
-  public ResponseEntity<DocumentDownloadResponse> downloadDocument(
-      @NotNull ServiceName serviceName, UUID id, String documentId) {
-    return ResponseEntity.ok(sdsService.getFile(id, documentId));
   }
 
   @Hidden
