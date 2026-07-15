@@ -15,7 +15,7 @@ import uk.gov.justice.laa.dstew.access.model.ServiceName;
 public class ServiceNameMetadataDispatchInterceptor
     implements MessageDispatchInterceptor<CommandMessage<?>> {
 
-  static final String SERVICE_NAME_METADATA_KEY = "X-Service-Name";
+  public static final String SERVICE_NAME_METADATA_KEY = "X-Service-Name";
 
   private final ServiceNameContext serviceNameContext;
 

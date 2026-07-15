@@ -29,6 +29,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadRepository;
+import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadRepository;
 
 @SpringBootTest(
     classes = DataAccessServiceAxonApplication.class,
@@ -48,6 +49,8 @@ class CreateApplicationInMemoryTest {
   @Autowired private TestRestTemplate restTemplate;
 
   @Autowired private ApplicationReadRepository applicationReadRepository;
+
+  @Autowired private ApplicationHistoryReadRepository applicationHistoryReadRepository;
 
   @Autowired private EventProcessingConfiguration eventProcessingConfiguration;
 
@@ -111,9 +114,20 @@ class CreateApplicationInMemoryTest {
               assertThat(proceeding.description()).isEqualTo("Care order");
             });
 
+    assertThat(awaitHistory(applicationId, 1))
+        .singleElement()
+        .satisfies(
+            history -> {
+              assertThat(history.getEventType()).isEqualTo("APPLICATION_CREATED");
+              assertThat(history.getRequestPayload()).contains("\"laaReference\"", "\"LAA-123\"");
+              assertThat(history.getServiceName()).isEqualTo("CIVIL_APPLY");
+            });
+
     var processor = eventProcessingConfiguration.eventProcessor("application-projection");
     assertThat(processor).isPresent();
     assertThat(processor.get()).isInstanceOf(TrackingEventProcessor.class);
+    assertThat(eventProcessingConfiguration.eventProcessor("application-history-projection"))
+        .containsInstanceOf(TrackingEventProcessor.class);
   }
 
   @Test
@@ -228,6 +242,9 @@ class CreateApplicationInMemoryTest {
     assertThat(linkedResponse.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
     ApplicationReadModel projected = awaitProjection(applicationId(linkedResponse));
     assertThat(projected.getLeadApplicationId()).isEqualTo(leadApplicationId);
+    assertThat(awaitHistory(projected.getApplicationId(), 2))
+        .extracting(history -> history.getEventType())
+        .containsExactly("APPLICATION_CREATED", "APPLICATION_LINKED");
   }
 
   private HttpHeaders headers() {
@@ -254,5 +271,22 @@ class CreateApplicationInMemoryTest {
       Thread.sleep(50);
     }
     throw new AssertionError("Application projection was not populated for " + applicationId);
+  }
+
+  private java.util.List<
+          uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadModel>
+      awaitHistory(UUID applicationId, int expectedCount) throws Exception {
+    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+    while (System.nanoTime() < deadline) {
+      var history =
+          applicationHistoryReadRepository.findAllByApplicationIdOrderByOccurredAtAsc(
+              applicationId);
+      if (history.size() == expectedCount) {
+        return history;
+      }
+      Thread.sleep(50);
+    }
+    throw new AssertionError(
+        "Application history projection was not populated for " + applicationId);
   }
 }

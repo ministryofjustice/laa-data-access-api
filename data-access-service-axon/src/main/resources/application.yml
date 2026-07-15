@@ -32,6 +32,8 @@ axon:
     processors:
       application-projection:
         mode: tracking
+      application-history-projection:
+        mode: tracking
       create-application-saga:
         mode: tracking
 

@@ -70,6 +70,9 @@ class ApplicationAggregateTest {
         .expectEvents(
             application,
             new ApplicationLinkedEvent(
-                application.applicationId(), leadApplicationId, application.occurredAt()));
+                application.applicationId(),
+                leadApplicationId,
+                application.serialisedRequest(),
+                application.occurredAt()));
   }
 }

@@ -33,6 +33,7 @@ import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationComm
 import uk.gov.justice.laa.dstew.access.controller.application.CreateApplicationCommandMapper;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadRepository;
+import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadRepository;
 
 @Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -52,6 +53,8 @@ class PostgresAxonIntegrationTest {
   @Autowired private JdbcTemplate jdbcTemplate;
 
   @Autowired private ApplicationReadRepository applicationReadRepository;
+
+  @Autowired private ApplicationHistoryReadRepository applicationHistoryReadRepository;
 
   @Autowired private CommandGateway commandGateway;
 
@@ -143,6 +146,15 @@ class PostgresAxonIntegrationTest {
               assertThat(proceeding.description()).isEqualTo("Care order");
               assertThat(proceeding.lead()).isTrue();
               assertThat(proceeding.proceedingContent().getId()).isEqualTo(applyProceedingId);
+            });
+
+    assertThat(awaitHistory(applicationId, 1))
+        .singleElement()
+        .satisfies(
+            history -> {
+              assertThat(history.getEventType()).isEqualTo("APPLICATION_CREATED");
+              assertThat(history.getRequestPayload()).contains("\"laaReference\"", "\"LAA-123\"");
+              assertThat(history.getServiceName()).isEqualTo("CIVIL_APPLY");
             });
 
     List<Map<String, Object>> events =
@@ -285,5 +297,22 @@ class PostgresAxonIntegrationTest {
       Thread.sleep(100);
     }
     throw new AssertionError("Application projection was not populated for " + applicationId);
+  }
+
+  private java.util.List<
+          uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadModel>
+      awaitHistory(UUID applicationId, int expectedCount) throws Exception {
+    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+    while (System.nanoTime() < deadline) {
+      var history =
+          applicationHistoryReadRepository.findAllByApplicationIdOrderByOccurredAtAsc(
+              applicationId);
+      if (history.size() == expectedCount) {
+        return history;
+      }
+      Thread.sleep(50);
+    }
+    throw new AssertionError(
+        "Application history projection was not populated for " + applicationId);
   }
 }

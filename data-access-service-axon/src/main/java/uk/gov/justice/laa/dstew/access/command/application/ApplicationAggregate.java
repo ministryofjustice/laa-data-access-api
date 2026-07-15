@@ -54,6 +54,7 @@ public class ApplicationAggregate {
           new ApplicationLinkedEvent(
               applicationId,
               command.leadApplicationId(),
+              command.applicationCreatedEvent().serialisedRequest(),
               command.applicationCreatedEvent().occurredAt()));
     }
     return ApplicationFinalisationResult.CREATED;
