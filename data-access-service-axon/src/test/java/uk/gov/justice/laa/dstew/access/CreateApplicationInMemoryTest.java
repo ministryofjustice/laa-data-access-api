@@ -46,6 +46,16 @@ class CreateApplicationInMemoryTest {
   @Autowired private EventProcessingConfiguration eventProcessingConfiguration;
 
   @Test
+  void givenAxonApplication_whenOpenApiRequested_thenDocumentsCreateApplication() {
+    ResponseEntity<String> response = restTemplate.getForEntity("/v3/api-docs", String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(response.getBody())
+        .contains("\"openapi\":\"3.1")
+        .contains("\"/api/v0/applications\"");
+  }
+
+  @Test
   void givenValidRequest_whenPostApplication_thenReturnsAcceptedAndProjectsOwnedState()
       throws Exception {
     UUID applyApplicationId = UUID.randomUUID();
