@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.axonframework.commandhandling.CommandHandler;
+import org.axonframework.modelling.command.AggregateNotFoundException;
 import org.axonframework.modelling.command.Repository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -16,34 +17,44 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 @Component
 public class CreateApplicationCommandHandler {
 
-  private final Repository<ApplicationAggregate> applicationRepository;
+  private final Repository<ApplyApplicationIdAggregate> applyApplicationIdRepository;
   private final ApplicationContentParser applicationContentParser;
   private final Clock clock;
 
   /** Creates the external handler using the system UTC clock. */
   @Autowired
   public CreateApplicationCommandHandler(
-      Repository<ApplicationAggregate> applicationRepository,
+      Repository<ApplyApplicationIdAggregate> applyApplicationIdRepository,
       ApplicationContentParser applicationContentParser) {
-    this(applicationRepository, applicationContentParser, Clock.systemUTC());
+    this(applyApplicationIdRepository, applicationContentParser, Clock.systemUTC());
   }
 
   CreateApplicationCommandHandler(
-      Repository<ApplicationAggregate> applicationRepository,
+      Repository<ApplyApplicationIdAggregate> applyApplicationIdRepository,
       ApplicationContentParser applicationContentParser,
       Clock clock) {
-    this.applicationRepository = applicationRepository;
+    this.applyApplicationIdRepository = applyApplicationIdRepository;
     this.applicationContentParser = applicationContentParser;
     this.clock = clock;
   }
 
-  /** Parses the command and creates the event-sourced Application aggregate. */
+  /** Parses the command and creates only the Apply Application identifier claim. */
   @CommandHandler
   public UUID handle(CreateApplicationCommand command) throws Exception {
     ParsedAppContentDetails parsed = applicationContentParser.parse(command.applicationContent());
     ApplicationCreatedEvent event = toEvent(command, parsed);
-    applicationRepository.newInstance(() -> new ApplicationAggregate(event));
+    claimApplyApplicationId(event);
     return command.applicationId();
+  }
+
+  private void claimApplyApplicationId(ApplicationCreatedEvent event) throws Exception {
+    try {
+      applyApplicationIdRepository
+          .load(event.applyApplicationId().toString())
+          .execute(aggregate -> aggregate.claim(event));
+    } catch (AggregateNotFoundException exception) {
+      applyApplicationIdRepository.newInstance(() -> new ApplyApplicationIdAggregate(event));
+    }
   }
 
   private ApplicationCreatedEvent toEvent(

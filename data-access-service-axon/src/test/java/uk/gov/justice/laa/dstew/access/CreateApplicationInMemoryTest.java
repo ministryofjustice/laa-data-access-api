@@ -46,7 +46,7 @@ class CreateApplicationInMemoryTest {
   @Autowired private EventProcessingConfiguration eventProcessingConfiguration;
 
   @Test
-  void givenValidRequest_whenPostApplication_thenReturnsCreatedAndProjectsOwnedState()
+  void givenValidRequest_whenPostApplication_thenReturnsAcceptedAndProjectsOwnedState()
       throws Exception {
     UUID applyApplicationId = UUID.randomUUID();
     UUID applyProceedingId = UUID.randomUUID();
@@ -60,7 +60,7 @@ class CreateApplicationInMemoryTest {
         restTemplate.postForEntity(
             "/api/v0/applications", new HttpEntity<>(request, headers), Void.class);
 
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
     assertThat(response.getHeaders().getLocation()).isNotNull();
     assertThat(response.getHeaders().getLocation().getPath())
         .matches("/api/v0/applications/[a-f0-9-]{36}");
@@ -96,6 +96,28 @@ class CreateApplicationInMemoryTest {
     var processor = eventProcessingConfiguration.eventProcessor("application-projection");
     assertThat(processor).isPresent();
     assertThat(processor.get()).isInstanceOf(TrackingEventProcessor.class);
+  }
+
+  @Test
+  void
+      givenExistingApplyApplicationId_whenPostApplicationAgain_thenReturnsDuplicateValidationError() {
+    UUID applyApplicationId = UUID.randomUUID();
+    HttpHeaders headers = new HttpHeaders();
+    headers.set("X-Service-Name", "CIVIL_APPLY");
+    HttpEntity<ApplicationCreateRequest> request =
+        new HttpEntity<>(
+            validCreateApplicationRequest(applyApplicationId, UUID.randomUUID()), headers);
+
+    ResponseEntity<String> firstResponse =
+        restTemplate.postForEntity("/api/v0/applications", request, String.class);
+    ResponseEntity<String> duplicateResponse =
+        restTemplate.postForEntity("/api/v0/applications", request, String.class);
+
+    assertThat(firstResponse.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+    assertThat(duplicateResponse.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(duplicateResponse.getBody())
+        .contains("Generic Validation Error")
+        .contains("Application already exists for Apply Application Id: " + applyApplicationId);
   }
 
   private ApplicationReadModel awaitProjection(UUID applicationId) throws Exception {

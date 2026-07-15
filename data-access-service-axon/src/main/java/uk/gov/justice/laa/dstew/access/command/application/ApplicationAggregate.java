@@ -6,8 +6,11 @@ import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import org.axonframework.commandhandling.CommandHandler;
 import org.axonframework.eventsourcing.EventSourcingHandler;
+import org.axonframework.modelling.command.AggregateCreationPolicy;
 import org.axonframework.modelling.command.AggregateIdentifier;
+import org.axonframework.modelling.command.CreationPolicy;
 import org.axonframework.spring.stereotype.Aggregate;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.applicationcontent.CategoryOfLaw;
@@ -33,8 +36,19 @@ public class ApplicationAggregate {
   private MatterType matterType;
   private List<ApplicationProceeding> proceedings;
 
-  ApplicationAggregate(ApplicationCreatedEvent event) {
-    apply(event);
+  /** Creates an Application, treating redelivery of its original claim as idempotent. */
+  @CommandHandler
+  @CreationPolicy(AggregateCreationPolicy.CREATE_IF_MISSING)
+  ApplicationFinalisationResult handle(FinaliseApplicationCreationCommand command) {
+    if (applicationId != null) {
+      if (applyApplicationId.equals(command.applicationCreatedEvent().applyApplicationId())) {
+        return ApplicationFinalisationResult.ALREADY_CREATED;
+      }
+      throw new IllegalStateException(
+          "Application ID " + applicationId + " is already owned by another Apply application");
+    }
+    apply(command.applicationCreatedEvent());
+    return ApplicationFinalisationResult.CREATED;
   }
 
   @EventSourcingHandler

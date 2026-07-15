@@ -32,6 +32,8 @@ axon:
     processors:
       application-projection:
         mode: tracking
+      create-application-saga:
+        mode: tracking
 
 management:
   endpoints:

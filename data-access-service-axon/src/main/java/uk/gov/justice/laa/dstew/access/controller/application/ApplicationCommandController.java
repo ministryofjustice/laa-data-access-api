@@ -4,6 +4,8 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import java.net.URI;
 import org.axonframework.commandhandling.gateway.CommandGateway;
+import org.axonframework.modelling.command.AggregateStreamCreationException;
+import org.axonframework.modelling.command.ConcurrencyException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -14,6 +16,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationCommand;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
+import uk.gov.justice.laa.dstew.access.validation.DuplicateApplyApplicationIdException;
 
 /** HTTP command adapter for Application writes. */
 @RestController
@@ -37,13 +40,25 @@ public class ApplicationCommandController {
           int schemaVersion,
       @Valid @RequestBody ApplicationCreateRequest request) {
     CreateApplicationCommand command = commandMapper.toCommand(request, schemaVersion);
-    commandGateway.sendAndWait(command);
+    try {
+      commandGateway.sendAndWait(command);
+    } catch (AggregateStreamCreationException | ConcurrencyException exception) {
+      throw duplicateApplication(command, exception);
+    }
 
     URI location =
         ServletUriComponentsBuilder.fromCurrentRequest()
             .path("/{id}")
             .buildAndExpand(command.applicationId())
             .toUri();
-    return ResponseEntity.created(location).build();
+    return ResponseEntity.accepted().location(location).build();
+  }
+
+  private DuplicateApplyApplicationIdException duplicateApplication(
+      CreateApplicationCommand command, RuntimeException cause) {
+    DuplicateApplyApplicationIdException exception =
+        new DuplicateApplyApplicationIdException(command.applyApplicationId());
+    exception.initCause(cause);
+    return exception;
   }
 }

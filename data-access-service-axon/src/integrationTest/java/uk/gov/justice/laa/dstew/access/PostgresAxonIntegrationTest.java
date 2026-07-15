@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import org.axonframework.commandhandling.gateway.CommandGateway;
 import org.axonframework.eventsourcing.eventstore.EventStorageEngine;
 import org.axonframework.eventsourcing.eventstore.jpa.JpaEventStorageEngine;
 import org.junit.jupiter.api.Test;
@@ -27,6 +28,9 @@ import org.springframework.test.annotation.DirtiesContext;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
+import uk.gov.justice.laa.dstew.access.command.application.ApplyApplicationIdClaimedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationCommand;
+import uk.gov.justice.laa.dstew.access.controller.application.CreateApplicationCommandMapper;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadRepository;
 
@@ -49,18 +53,27 @@ class PostgresAxonIntegrationTest {
 
   @Autowired private ApplicationReadRepository applicationReadRepository;
 
+  @Autowired private CommandGateway commandGateway;
+
+  @Autowired private CreateApplicationCommandMapper commandMapper;
+
   @Test
   void givenPostgresAxonStore_whenHealthRequested_thenReportsUp() {
     ResponseEntity<String> response =
         restTemplate.getForEntity("http://localhost:" + port + "/actuator/health", String.class);
 
-    List<String> eventStoreTables =
+    List<String> axonTables =
         jdbcTemplate.queryForList(
             """
             SELECT table_name
             FROM information_schema.tables
             WHERE table_schema = 'axon'
-              AND table_name IN ('domain_event_entry', 'snapshot_event_entry')
+              AND table_name IN (
+                'association_value_entry',
+                'domain_event_entry',
+                'saga_entry',
+                'snapshot_event_entry'
+              )
             ORDER BY table_name
             """,
             String.class);
@@ -68,7 +81,9 @@ class PostgresAxonIntegrationTest {
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(response.getBody()).contains("\"status\":\"UP\"");
     assertThat(eventStorageEngine).isInstanceOf(JpaEventStorageEngine.class);
-    assertThat(eventStoreTables).containsExactly("domain_event_entry", "snapshot_event_entry");
+    assertThat(axonTables)
+        .containsExactly(
+            "association_value_entry", "domain_event_entry", "saga_entry", "snapshot_event_entry");
   }
 
   @Test
@@ -87,7 +102,7 @@ class PostgresAxonIntegrationTest {
                 validCreateApplicationRequest(applyApplicationId, applyProceedingId), headers),
             Void.class);
 
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
     UUID applicationId =
         UUID.fromString(
             response.getHeaders().getLocation().getPath().replace("/api/v0/applications/", ""));
@@ -144,6 +159,119 @@ class PostgresAxonIntegrationTest {
                       "uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent");
               assertThat(event.get("sequence_number")).isEqualTo(0L);
             });
+
+    List<Map<String, Object>> claimEvents =
+        jdbcTemplate.queryForList(
+            "SELECT payload_type, sequence_number FROM axon.domain_event_entry "
+                + "WHERE aggregate_identifier = ?",
+            applyApplicationId.toString());
+    assertThat(claimEvents)
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.get("payload_type"))
+                  .isEqualTo(ApplyApplicationIdClaimedEvent.class.getName());
+              assertThat(event.get("sequence_number")).isEqualTo(0L);
+            });
+  }
+
+  @Test
+  void givenApplicationFinalisationFails_whenClaimReleased_thenApplyIdCanBeRetried()
+      throws Exception {
+    UUID existingApplicationId = UUID.randomUUID();
+    CreateApplicationCommand existingApplication =
+        withApplicationId(
+            commandMapper.toCommand(
+                validCreateApplicationRequest(UUID.randomUUID(), UUID.randomUUID()), 1),
+            existingApplicationId);
+    commandGateway.sendAndWait(existingApplication);
+    awaitProjection(existingApplicationId);
+
+    UUID unclaimedApplyApplicationId = UUID.randomUUID();
+    CreateApplicationCommand conflictingApplication =
+        withApplicationId(
+            commandMapper.toCommand(
+                validCreateApplicationRequest(unclaimedApplyApplicationId, UUID.randomUUID()), 1),
+            existingApplicationId);
+
+    commandGateway.sendAndWait(conflictingApplication);
+    awaitClaimEventCount(unclaimedApplyApplicationId, 2);
+
+    CreateApplicationCommand retry =
+        commandMapper.toCommand(
+            validCreateApplicationRequest(unclaimedApplyApplicationId, UUID.randomUUID()), 1);
+    commandGateway.sendAndWait(retry);
+    awaitProjection(retry.applicationId());
+
+    List<String> claimEventTypes =
+        jdbcTemplate.queryForList(
+            "SELECT payload_type FROM axon.domain_event_entry "
+                + "WHERE aggregate_identifier = ? ORDER BY sequence_number",
+            String.class,
+            unclaimedApplyApplicationId.toString());
+    assertThat(claimEventTypes)
+        .containsExactly(
+            ApplyApplicationIdClaimedEvent.class.getName(),
+            "uk.gov.justice.laa.dstew.access.command.application.ApplyApplicationIdReleasedEvent",
+            ApplyApplicationIdClaimedEvent.class.getName());
+  }
+
+  @Test
+  void givenClaimedApplyApplicationId_whenPostApplicationAgain_thenReturnsBadRequest() {
+    UUID applyApplicationId = UUID.randomUUID();
+    HttpHeaders headers = new HttpHeaders();
+    headers.set("X-Service-Name", "CIVIL_APPLY");
+    HttpEntity<?> request =
+        new HttpEntity<>(
+            validCreateApplicationRequest(applyApplicationId, UUID.randomUUID()), headers);
+
+    ResponseEntity<String> firstResponse =
+        restTemplate.postForEntity(
+            "http://localhost:" + port + "/api/v0/applications", request, String.class);
+    ResponseEntity<String> duplicateResponse =
+        restTemplate.postForEntity(
+            "http://localhost:" + port + "/api/v0/applications", request, String.class);
+
+    assertThat(firstResponse.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+    assertThat(duplicateResponse.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(duplicateResponse.getBody())
+        .contains("Application already exists for Apply Application Id: " + applyApplicationId);
+    Integer claimEventCount =
+        jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM axon.domain_event_entry WHERE aggregate_identifier = ?",
+            Integer.class,
+            applyApplicationId.toString());
+    assertThat(claimEventCount).isEqualTo(1);
+  }
+
+  private CreateApplicationCommand withApplicationId(
+      CreateApplicationCommand command, UUID applicationId) {
+    return new CreateApplicationCommand(
+        applicationId,
+        command.status(),
+        command.laaReference(),
+        command.applicationContent(),
+        command.individuals(),
+        command.serialisedRequest(),
+        command.schemaVersion(),
+        command.applicationType());
+  }
+
+  private void awaitClaimEventCount(UUID applyApplicationId, int expectedCount) throws Exception {
+    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(15);
+    while (System.nanoTime() < deadline) {
+      Integer count =
+          jdbcTemplate.queryForObject(
+              "SELECT COUNT(*) FROM axon.domain_event_entry WHERE aggregate_identifier = ?",
+              Integer.class,
+              applyApplicationId.toString());
+      if (count != null && count == expectedCount) {
+        return;
+      }
+      Thread.sleep(100);
+    }
+    throw new AssertionError(
+        "Claim event count did not reach " + expectedCount + " for " + applyApplicationId);
   }
 
   private ApplicationReadModel awaitProjection(UUID applicationId) throws Exception {

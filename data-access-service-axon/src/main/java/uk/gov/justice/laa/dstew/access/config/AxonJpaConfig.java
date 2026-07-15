@@ -1,5 +1,7 @@
 package uk.gov.justice.laa.dstew.access.config;
 
+import javax.sql.DataSource;
+import org.axonframework.common.jdbc.PersistenceExceptionResolver;
 import org.axonframework.common.jpa.EntityManagerProvider;
 import org.axonframework.common.transaction.TransactionManager;
 import org.axonframework.eventhandling.tokenstore.TokenStore;
@@ -8,6 +10,9 @@ import org.axonframework.eventsourcing.eventstore.EmbeddedEventStore;
 import org.axonframework.eventsourcing.eventstore.EventStorageEngine;
 import org.axonframework.eventsourcing.eventstore.jpa.DomainEventEntry;
 import org.axonframework.eventsourcing.eventstore.jpa.JpaEventStorageEngine;
+import org.axonframework.eventsourcing.eventstore.jpa.SQLErrorCodesResolver;
+import org.axonframework.modelling.saga.repository.jpa.AssociationValueEntry;
+import org.axonframework.modelling.saga.repository.jpa.SagaEntry;
 import org.axonframework.serialization.Serializer;
 import org.axonframework.spring.messaging.unitofwork.SpringTransactionManager;
 import org.axonframework.springboot.util.jpa.ContainerManagedEntityManagerProvider;
@@ -25,6 +30,8 @@ import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
     basePackageClasses = {
       DomainEventEntry.class,
       org.axonframework.eventhandling.tokenstore.jpa.TokenEntry.class,
+      SagaEntry.class,
+      AssociationValueEntry.class,
       ApplicationReadModel.class
     })
 @ConditionalOnProperty(
@@ -46,6 +53,13 @@ public class AxonJpaConfig {
   }
 
   @Bean
+  @ConditionalOnMissingBean(PersistenceExceptionResolver.class)
+  PersistenceExceptionResolver persistenceExceptionResolver(DataSource dataSource)
+      throws Exception {
+    return new SQLErrorCodesResolver(dataSource);
+  }
+
+  @Bean
   EmbeddedEventStore eventStore(EventStorageEngine storageEngine) {
     return EmbeddedEventStore.builder().storageEngine(storageEngine).build();
   }
@@ -54,12 +68,14 @@ public class AxonJpaConfig {
   EventStorageEngine storageEngine(
       EntityManagerProvider entityManagerProvider,
       TransactionManager transactionManager,
-      Serializer serializer) {
+      Serializer serializer,
+      PersistenceExceptionResolver persistenceExceptionResolver) {
     return JpaEventStorageEngine.builder()
         .entityManagerProvider(entityManagerProvider)
         .transactionManager(transactionManager)
         .eventSerializer(serializer)
         .snapshotSerializer(serializer)
+        .persistenceExceptionResolver(persistenceExceptionResolver)
         .build();
   }
 

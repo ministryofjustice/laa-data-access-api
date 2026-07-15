@@ -13,4 +13,10 @@ public record CreateApplicationCommand(
     List<CreateApplicationIndividual> individuals,
     String serialisedRequest,
     int schemaVersion,
-    String applicationType) {}
+    String applicationType) {
+
+  /** Returns the validated Apply identifier carried by the application content. */
+  public UUID applyApplicationId() {
+    return UUID.fromString(applicationContent.get("id").toString());
+  }
+}
