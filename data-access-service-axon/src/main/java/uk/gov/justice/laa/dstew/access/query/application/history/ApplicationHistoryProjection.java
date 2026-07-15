@@ -23,6 +23,12 @@ public class ApplicationHistoryProjection {
     this.applicationHistoryReadRepository = applicationHistoryReadRepository;
   }
 
+  /**
+   * Appends an audit entry when an Application is created.
+   *
+   * @param event the Application creation event
+   * @param message the Axon message carrying event metadata
+   */
   @EventHandler
   public void on(ApplicationCreatedEvent event, EventMessage<?> message) {
     append(
@@ -33,6 +39,12 @@ public class ApplicationHistoryProjection {
         event.occurredAt());
   }
 
+  /**
+   * Appends an audit entry when an Application is linked.
+   *
+   * @param event the Application linking event
+   * @param message the Axon message carrying event metadata
+   */
   @EventHandler
   public void on(ApplicationLinkedEvent event, EventMessage<?> message) {
     append(
