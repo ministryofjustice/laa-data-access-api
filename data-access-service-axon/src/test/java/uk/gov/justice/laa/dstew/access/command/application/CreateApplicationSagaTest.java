@@ -24,6 +24,7 @@ class CreateApplicationSagaTest {
     UUID applicationId = UUID.randomUUID();
     ApplicationCreatedEvent application =
         applicationCreatedEvent(applyApplicationId, applicationId);
+    fixture.setCallbackBehavior((command, metadata) -> ApplicationFinalisationResult.CREATED);
 
     fixture
         .givenNoPriorActivity()
@@ -79,6 +80,31 @@ class CreateApplicationSagaTest {
         .expectActiveSagas(0)
         .expectDispatchedCommands(
             finalise, new ReleaseApplyApplicationIdCommand(applyApplicationId, applicationId));
+  }
+
+  @Test
+  void givenCompensationFails_whenClaimHandled_thenStillEndsSaga() {
+    UUID applyApplicationId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    ApplicationCreatedEvent application =
+        applicationCreatedEvent(applyApplicationId, applicationId);
+    FinaliseApplicationCreationCommand finalise =
+        new FinaliseApplicationCreationCommand(applicationId, application, null);
+    ReleaseApplyApplicationIdCommand release =
+        new ReleaseApplyApplicationIdCommand(applyApplicationId, applicationId);
+    fixture.setCallbackBehavior(
+        (command, metadata) -> {
+          throw new IllegalStateException("Command failed");
+        });
+
+    fixture
+        .givenNoPriorActivity()
+        .whenAggregate(applyApplicationId.toString())
+        .publishes(
+            new ApplyApplicationIdClaimedEvent(
+                applyApplicationId, applicationId, application, null))
+        .expectActiveSagas(0)
+        .expectDispatchedCommands(finalise, release);
   }
 
   @Test

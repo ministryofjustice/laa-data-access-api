@@ -21,21 +21,16 @@ public class CreateApplicationSaga {
   @SagaEventHandler(associationProperty = "applyApplicationId")
   public void on(ApplyApplicationIdClaimedEvent event) {
     SagaLifecycle.associateWith("applicationId", event.applicationId().toString());
-    try {
-      ApplicationFinalisationResult result =
-          commandGateway.sendAndWait(
-              new FinaliseApplicationCreationCommand(
-                  event.applicationId(),
-                  event.applicationCreatedEvent(),
-                  event.leadApplicationId()));
-      if (result == ApplicationFinalisationResult.ALREADY_CREATED) {
-        SagaLifecycle.end();
-      }
-    } catch (RuntimeException exception) {
-      commandGateway.sendAndWait(
-          new ReleaseApplyApplicationIdCommand(event.applyApplicationId(), event.applicationId()));
-      SagaLifecycle.end();
-    }
+    commandGateway.send(
+        new FinaliseApplicationCreationCommand(
+            event.applicationId(), event.applicationCreatedEvent(), event.leadApplicationId()),
+        (commandMessage, resultMessage) -> {
+          if (resultMessage.isExceptional()) {
+            releaseClaim(event);
+          } else if (resultMessage.getPayload() == ApplicationFinalisationResult.ALREADY_CREATED) {
+            SagaLifecycle.end();
+          }
+        });
   }
 
   /** Ends coordination when the Application aggregate confirms creation. */
@@ -43,6 +38,12 @@ public class CreateApplicationSaga {
   @SagaEventHandler(associationProperty = "applicationId")
   public void on(ApplicationCreatedEvent event) {
     // Association and lifecycle annotations perform the state transition.
+  }
+
+  private void releaseClaim(ApplyApplicationIdClaimedEvent event) {
+    commandGateway.send(
+        new ReleaseApplyApplicationIdCommand(event.applyApplicationId(), event.applicationId()),
+        (commandMessage, resultMessage) -> SagaLifecycle.end());
   }
 
   @Autowired
