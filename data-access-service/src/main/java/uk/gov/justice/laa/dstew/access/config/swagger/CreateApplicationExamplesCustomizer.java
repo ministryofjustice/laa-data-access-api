@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.config;
+package uk.gov.justice.laa.dstew.access.config.swagger;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.models.Operation;
@@ -43,22 +43,22 @@ public class CreateApplicationExamplesCustomizer implements OperationCustomizer 
    * Each variant points to an actual JSON Schema definition file. The example shown in Swagger UI
    * is generated from that file's {@code properties}, so it always matches the live schema.
    */
-  List<ExampleVariant> variants =
+  private List<ExampleVariant> variants =
       List.of(
           new ExampleVariant(
               "apply_v1",
               "APPLY — version 1 (id + submittedAt required)",
               "schema/1/ApplyApplication.json"),
-
-          // TODO: activate additional variants once the applicationContent schema structure has
-          // been
-          // confirmed.
           new ExampleVariant("apply_v2", "APPLY — version 2", "schema/2/ApplyApplication.json"));
 
-  //  new ExampleVariant(
-  //      "css_v1",
-  //      "CSS — version 1 (id, submittedAt, laaReference required)",
-  //      "schema/1/CssApplication.json")
+  /**
+   * Replace the default variants used in test classes.
+   *
+   * @param variants list of ExampleVariants
+   */
+  public void setExampleVariants(List<ExampleVariant> variants) {
+    this.variants = variants;
+  }
 
   @Override
   public Operation customize(Operation operation, HandlerMethod handlerMethod) {
@@ -99,7 +99,7 @@ public class CreateApplicationExamplesCustomizer implements OperationCustomizer 
     MediaType mediaType =
         content.computeIfAbsent(
             MEDIA_TYPE,
-            k -> {
+            _ -> {
               MediaType mt = new MediaType();
               mt.setSchema(new Schema<>().$ref("#/components/schemas/ApplicationCreateRequest"));
               return mt;
@@ -134,5 +134,14 @@ public class CreateApplicationExamplesCustomizer implements OperationCustomizer 
         .build();
   }
 
-  record ExampleVariant(String key, String summary, String schemaPath) {}
+  /**
+   * Example variant metadata: the key used in Swagger UI, a short summary, and the classpath path
+   * to the JSON Schema file that defines the example's {@code applicationContent}.
+   *
+   * @param key unique identifier.
+   * @param summary description of the example variant.
+   * @param schemaPath path to the schema file that defines the example's {@code
+   *     applicationContent}.
+   */
+  public record ExampleVariant(String key, String summary, String schemaPath) {}
 }

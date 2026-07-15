@@ -13,6 +13,8 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import uk.gov.justice.laa.dstew.access.config.swagger.CreateApplicationExamplesCustomizer;
+import uk.gov.justice.laa.dstew.access.config.swagger.SchemaExampleGenerator;
 
 class CreateApplicationExamplesCustomizerTest {
 
@@ -148,10 +150,10 @@ class CreateApplicationExamplesCustomizerTest {
   void givenRichSchemaVariant_whenCustomize_thenAllTypeSwitchBranchesAreExercised() {
     // given – a single variant pointing to a test schema that contains every field type and
     // edge-case combination needed to exercise all switch branches in generateValueExample
-    customizer.variants =
+    customizer.setExampleVariants(
         List.of(
             new CreateApplicationExamplesCustomizer.ExampleVariant(
-                "rich", "Rich example", "schema/test/RichExample.json"));
+                "rich", "Rich example", "schema/test/RichExample.json")));
     Operation operation = new Operation();
     operation.setOperationId("createApplication");
 
@@ -167,10 +169,10 @@ class CreateApplicationExamplesCustomizerTest {
   void givenSchemaVariantWithNoProperties_whenCustomize_thenSkipsPropertiesProcessing() {
     // given – schema exists but has no "properties" key, covering the early-return branch in
     // generateObjectExample (!schema.has("properties") == true)
-    customizer.variants =
+    customizer.setExampleVariants(
         List.of(
             new CreateApplicationExamplesCustomizer.ExampleVariant(
-                "noprops", "No-properties example", "schema/test/NoProperties.json"));
+                "noprops", "No-properties example", "schema/test/NoProperties.json")));
     Operation operation = new Operation();
     operation.setOperationId("createApplication");
 
@@ -188,10 +190,10 @@ class CreateApplicationExamplesCustomizerTest {
     // given – every variant points to a file that does not exist; schema load returns null,
     // applicationContent is null, examples stays empty, and customize() returns the unmodified
     // operation immediately (the examples.isEmpty() true-branch)
-    customizer.variants =
+    customizer.setExampleVariants(
         List.of(
             new CreateApplicationExamplesCustomizer.ExampleVariant(
-                "missing", "Missing schema", "schema/test/DoesNotExist.json"));
+                "missing", "Missing schema", "schema/test/DoesNotExist.json")));
     Operation operation = new Operation();
     operation.setOperationId("createApplication");
 

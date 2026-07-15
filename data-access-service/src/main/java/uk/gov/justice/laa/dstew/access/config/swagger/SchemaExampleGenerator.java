@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.config;
+package uk.gov.justice.laa.dstew.access.config.swagger;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -129,6 +129,7 @@ public class SchemaExampleGenerator {
       case "uuid" -> "550e8400-e29b-41d4-a716-446655440000";
       case "date-time" -> "2024-03-21T09:00:00Z";
       case "date" -> "2024-03-21";
+      case "email" -> "test@test.com";
       default -> "example-string";
     };
   }
@@ -174,7 +175,7 @@ public class SchemaExampleGenerator {
     for (String part : parts) {
       if ("..".equals(part)) {
         if (!resolved.isEmpty()) {
-          resolved.remove(resolved.size() - 1);
+          resolved.removeLast();
         }
       } else if (!part.isEmpty() && !".".equals(part)) {
         resolved.add(part);
