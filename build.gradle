@@ -28,6 +28,8 @@ ext['jackson-2-bom.version'] = '2.21.5'
 // Upgrade managed Log4j 2 dependencies from 2.25.4 to 2.25.5 to fix
 //  ✗ Improper Encoding or Escaping of Output (new) [Medium Severity][https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHELOGGINGLOG4J-17954276]
 ext['log4j2.version'] = '2.25.5'
+//Incorrect Authorization (new) [High Severity][https://security.snyk.io/vuln/SNYK-JAVA-TOOLSJACKSONCORE-17972609] in tools.jackson.core:jackson-databind@3.1.4
+ext['jackson-bom.version'] = '3.1.5'
 
 def requiredJavaVersion = 25
 def currentJavaVersion = JavaVersion.current().majorVersion.toInteger()
