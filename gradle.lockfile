@@ -1,5 +1,6 @@
 # This is a Gradle generated file for dependency locking.
 # Manual edits can break the build and are not advised.
 # This file is expected to be part of source control.
+# To regenerate this file, run: ./gradlew :dependencies --write-locks
 org.projectlombok:lombok:1.18.46=compileClasspath,testCompileClasspath
 empty=runtimeClasspath,testRuntimeClasspath
