@@ -1,10 +1,16 @@
 package uk.gov.justice.laa.dstew.access;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
+import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validLinkedCreateApplicationRequest;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -25,12 +31,16 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import uk.gov.justice.laa.dstew.access.command.application.ApplyApplicationIdClaimedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationCommand;
+import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationCommandHandler;
 import uk.gov.justice.laa.dstew.access.controller.application.CreateApplicationCommandMapper;
+import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.IndividualCreateRequest;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadRepository;
@@ -59,6 +69,8 @@ class PostgresAxonIntegrationTest {
   @Autowired private CommandGateway commandGateway;
 
   @Autowired private CreateApplicationCommandMapper commandMapper;
+
+  @MockitoSpyBean private CreateApplicationCommandHandler createApplicationCommandHandler;
 
   @Test
   void givenPostgresAxonStore_whenHealthRequested_thenReportsUp() {
@@ -256,6 +268,145 @@ class PostgresAxonIntegrationTest {
     assertThat(claimEventCount).isEqualTo(1);
   }
 
+  @Test
+  void givenExistingLeadApplication_whenPostLinkedApplication_thenProjectsCurrentStateAndHistory()
+      throws Exception {
+    UUID leadApplyApplicationId = UUID.randomUUID();
+    ResponseEntity<Void> leadResponse =
+        post(validCreateApplicationRequest(leadApplyApplicationId, UUID.randomUUID()), headers());
+    UUID leadApplicationId = applicationId(leadResponse);
+    awaitProjection(leadApplicationId);
+
+    ResponseEntity<Void> linkedResponse =
+        post(
+            validLinkedCreateApplicationRequest(
+                UUID.randomUUID(), UUID.randomUUID(), leadApplyApplicationId),
+            headers());
+    UUID linkedApplicationId = applicationId(linkedResponse);
+
+    assertThat(awaitProjection(linkedApplicationId).getLeadApplicationId())
+        .isEqualTo(leadApplicationId);
+    assertThat(awaitHistory(linkedApplicationId, 2))
+        .extracting(history -> history.getEventType())
+        .containsExactly("APPLICATION_CREATED", "APPLICATION_LINKED");
+  }
+
+  @Test
+  void givenMissingLeadApplication_whenPostApplication_thenReturnsNotFound() {
+    UUID missingLeadApplyApplicationId = UUID.randomUUID();
+
+    ResponseEntity<String> response =
+        post(
+            validLinkedCreateApplicationRequest(
+                UUID.randomUUID(), UUID.randomUUID(), missingLeadApplyApplicationId),
+            headers(),
+            String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    assertThat(response.getBody()).contains(missingLeadApplyApplicationId.toString());
+  }
+
+  @Test
+  void givenMissingAssociatedApplication_whenPostApplication_thenReturnsNotFound()
+      throws Exception {
+    UUID leadApplyApplicationId = UUID.randomUUID();
+    UUID leadApplicationId =
+        applicationId(
+            post(
+                validCreateApplicationRequest(leadApplyApplicationId, UUID.randomUUID()),
+                headers()));
+    awaitProjection(leadApplicationId);
+
+    UUID missingAssociatedApplyApplicationId = UUID.randomUUID();
+    ResponseEntity<String> response =
+        post(
+            validLinkedCreateApplicationRequest(
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                leadApplyApplicationId,
+                missingAssociatedApplyApplicationId),
+            headers(),
+            String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    assertThat(response.getBody()).contains(missingAssociatedApplyApplicationId.toString());
+  }
+
+  @Test
+  void givenSchemaInvalidRequest_whenPostApplication_thenReturnsBadRequestBeforeHandlerRuns()
+      throws Exception {
+    ApplicationCreateRequest request =
+        validCreateApplicationRequest(UUID.randomUUID(), UUID.randomUUID());
+    Map<String, Object> invalidContent = new HashMap<>(request.getApplicationContent());
+    invalidContent.remove("id");
+    request.setApplicationContent(invalidContent);
+    clearInvocations(createApplicationCommandHandler);
+
+    ResponseEntity<String> response = post(request, headers(), String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(response.getBody()).contains("Generic Validation Error");
+    verify(createApplicationCommandHandler, never()).handle(any());
+  }
+
+  @Test
+  void givenContentWithoutLeadProceeding_whenPostApplication_thenReturnsBadRequest() {
+    ApplicationCreateRequest request =
+        validCreateApplicationRequest(UUID.randomUUID(), UUID.randomUUID());
+    Map<String, Object> content = new HashMap<>(request.getApplicationContent());
+    Map<String, Object> proceeding = firstProceeding(content);
+    proceeding.put("leadProceeding", false);
+    content.put("proceedings", List.of(proceeding));
+    request.setApplicationContent(content);
+
+    ResponseEntity<String> response = post(request, headers(1), String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(response.getBody()).contains("No lead proceeding found in application content");
+  }
+
+  @Test
+  void givenUnparseableSubmissionTimestamp_whenPostApplication_thenReturnsBadRequest() {
+    ApplicationCreateRequest request =
+        validCreateApplicationRequest(UUID.randomUUID(), UUID.randomUUID());
+    Map<String, Object> content = new HashMap<>(request.getApplicationContent());
+    content.put("submittedAt", "not-an-instant");
+    request.setApplicationContent(content);
+
+    ResponseEntity<String> response = post(request, headers(), String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(response.getBody()).contains("submittedAt: must be an ISO-8601 instant");
+  }
+
+  @Test
+  void givenInvalidContentType_whenPostApplication_thenReturnsBadRequest() {
+    ApplicationCreateRequest request =
+        validCreateApplicationRequest(UUID.randomUUID(), UUID.randomUUID());
+    Map<String, Object> content = new HashMap<>(request.getApplicationContent());
+    Map<String, Object> proceeding = firstProceeding(content);
+    proceeding.put("substantiveCostLimitation", "not-a-number");
+    content.put("proceedings", List.of(proceeding));
+    request.setApplicationContent(content);
+
+    ResponseEntity<String> response = post(request, headers(), String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(response.getBody()).contains("substantiveCostLimitation");
+  }
+
+  @Test
+  void givenBeanInvalidRequest_whenPostApplication_thenReturnsBadRequest() {
+    ApplicationCreateRequest request =
+        validCreateApplicationRequest(UUID.randomUUID(), UUID.randomUUID());
+    IndividualCreateRequest invalidIndividual = request.getIndividuals().getFirst();
+    invalidIndividual.setType(null);
+
+    ResponseEntity<String> response = post(request, headers(), String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+  }
+
   private CreateApplicationCommand withApplicationId(
       CreateApplicationCommand command, UUID applicationId) {
     return new CreateApplicationCommand(
@@ -268,6 +419,46 @@ class PostgresAxonIntegrationTest {
         command.schemaVersion(),
         command.schemaName(),
         command.applicationType());
+  }
+
+  private ResponseEntity<Void> post(ApplicationCreateRequest request, HttpHeaders headers) {
+    return restTemplate.postForEntity(
+        "http://localhost:" + port + "/api/v0/applications",
+        new HttpEntity<>(request, headers),
+        Void.class);
+  }
+
+  private ResponseEntity<String> post(
+      ApplicationCreateRequest request, HttpHeaders headers, Class<String> responseType) {
+    return restTemplate.postForEntity(
+        "http://localhost:" + port + "/api/v0/applications",
+        new HttpEntity<>(request, headers),
+        responseType);
+  }
+
+  private HttpHeaders headers() {
+    return headers(2);
+  }
+
+  private HttpHeaders headers(int schemaVersion) {
+    HttpHeaders headers = new HttpHeaders();
+    headers.set("X-Service-Name", "CIVIL_APPLY");
+    headers.set("X-Schema-Version", String.valueOf(schemaVersion));
+    return headers;
+  }
+
+  private UUID applicationId(ResponseEntity<Void> response) {
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+    assertThat(response.getHeaders().getLocation()).isNotNull();
+    return UUID.fromString(
+        response.getHeaders().getLocation().getPath().replace("/api/v0/applications/", ""));
+  }
+
+  private Map<String, Object> firstProceeding(Map<String, Object> applicationContent) {
+    Map<?, ?> source = (Map<?, ?>) ((List<?>) applicationContent.get("proceedings")).getFirst();
+    Map<String, Object> proceeding = new HashMap<>();
+    source.forEach((key, value) -> proceeding.put(key.toString(), value));
+    return proceeding;
   }
 
   private void awaitClaimEventCount(UUID applyApplicationId, int expectedCount) throws Exception {

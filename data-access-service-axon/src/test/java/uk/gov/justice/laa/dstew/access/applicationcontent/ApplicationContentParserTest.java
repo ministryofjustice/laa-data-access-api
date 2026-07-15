@@ -98,12 +98,14 @@ class ApplicationContentParserTest {
   }
 
   @Test
-  void givenUnparseableSubmittedAt_whenParse_thenThrowsDateTimeParseException() {
+  void givenUnparseableSubmittedAt_whenParse_thenThrowsValidationFailure() {
     Map<String, Object> rawContent =
         Map.of("id", UUID.randomUUID().toString(), "submittedAt", "not-an-instant");
 
     assertThatThrownBy(() -> parser.parse(rawContent))
-        .isInstanceOf(java.time.format.DateTimeParseException.class);
+        .isInstanceOf(ValidationException.class)
+        .extracting("errors")
+        .isEqualTo(List.of("submittedAt: must be an ISO-8601 instant"));
   }
 
   @Test

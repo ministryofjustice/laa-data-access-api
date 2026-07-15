@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.applicationcontent;
 
 import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -88,12 +89,20 @@ public class ApplicationContentParser {
         .applyApplicationId(applicationContent.getId())
         .categoryOfLaw(getCategoryOfLaw(leadProceeding))
         .matterType(getMatterType(leadProceeding))
-        .submittedAt(Instant.parse(applicationContent.getSubmittedAt()))
+        .submittedAt(parseSubmittedAt(applicationContent.getSubmittedAt()))
         .usedDelegatedFunctions(usedDelegatedFunction)
         .officeCode(officeCode)
         .proceedings(proceedings)
         .allLinkedApplications(allLinkedApplications)
         .build();
+  }
+
+  private Instant parseSubmittedAt(String submittedAt) {
+    try {
+      return Instant.parse(submittedAt);
+    } catch (DateTimeParseException exception) {
+      throw new ValidationException(List.of("submittedAt: must be an ISO-8601 instant"));
+    }
   }
 
   private MatterType getMatterType(Proceeding leadProceeding) {
