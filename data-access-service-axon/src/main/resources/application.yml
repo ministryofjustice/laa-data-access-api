@@ -36,6 +36,8 @@ axon:
         mode: tracking
       create-application-saga:
         mode: tracking
+      synchronous-application-projection:
+        mode: subscribing
 
 management:
   endpoints:
