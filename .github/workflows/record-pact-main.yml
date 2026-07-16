@@ -6,9 +6,11 @@ on:
       - main
 
 jobs:
+  # Record every main commit as a provider version on the broker so consumer
+  # can-i-deploy checks and webhook triggers resolve against main. (No SNAPSHOT
+  # guard here — unlike claims-api, this repo's commit messages never contain it.)
   record-commit-against-pact-broker:
     runs-on: ubuntu-latest
-    if: contains(github.event.head_commit.message, 'SNAPSHOT')
     steps:
       - id: pact-broker-version
         shell: bash
