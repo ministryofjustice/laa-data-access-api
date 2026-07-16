@@ -19,6 +19,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.annotation.DirtiesContext;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.query.synchronousapplication.SynchronousApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.synchronousapplication.SynchronousApplicationReadRepository;
@@ -95,6 +96,30 @@ class CreateSynchronousApplicationInMemoryTest {
     assertThat(duplicateResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
     // Only one event was stored — no second event on idempotent re-delivery
     assertThat(synchronousApplicationReadRepository.findById(applyApplicationId)).isPresent();
+  }
+
+  @Test
+  void givenCreatedApplication_whenGet_thenRebuildsRichDetailFromSubmissionsPayload() {
+    UUID applyApplicationId = UUID.randomUUID();
+    UUID applyProceedingId = UUID.randomUUID();
+    ApplicationCreateRequest request =
+        validCreateApplicationRequest(applyApplicationId, applyProceedingId);
+    restTemplate.postForEntity(
+        "/api/v0/synchronous-applications", new HttpEntity<>(request, headers()), Void.class);
+
+    ResponseEntity<ApplicationResponse> response =
+        restTemplate.getForEntity(
+            "/api/v0/synchronous-applications/" + applyApplicationId, ApplicationResponse.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    ApplicationResponse body = response.getBody();
+    assertThat(body).isNotNull();
+    assertThat(body.getApplicationId()).isEqualTo(applyApplicationId);
+    assertThat(body.getLaaReference()).isEqualTo("LAA-123");
+    // Metadata comes from the read model; rich content is rebuilt from the submissions payload.
+    assertThat(body.getProvider().getOfficeCode()).isEqualTo("1A001B");
+    assertThat(body.getProceedings()).isNotEmpty();
+    assertThat(body.getProceedings().get(0).getProceedingDescription()).isEqualTo("Care order");
   }
 
   @Test

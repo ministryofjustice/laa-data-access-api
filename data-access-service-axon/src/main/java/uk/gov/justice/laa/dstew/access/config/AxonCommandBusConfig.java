@@ -7,6 +7,7 @@ import org.axonframework.commandhandling.DuplicateCommandHandlerResolver;
 import org.axonframework.common.transaction.TransactionManager;
 import org.axonframework.config.Configuration;
 import org.axonframework.messaging.correlation.CorrelationDataProvider;
+import org.axonframework.messaging.correlation.MessageOriginProvider;
 import org.axonframework.messaging.correlation.SimpleCorrelationDataProvider;
 import org.axonframework.messaging.interceptors.CorrelationDataInterceptor;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -23,6 +24,12 @@ public class AxonCommandBusConfig {
   CorrelationDataProvider serviceNameCorrelationDataProvider() {
     return new SimpleCorrelationDataProvider(
         ServiceNameMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY);
+  }
+
+  /** Propagates correlationId (root) and traceId (causation) metadata down the message chain. */
+  @Bean
+  CorrelationDataProvider messageOriginProvider() {
+    return new MessageOriginProvider();
   }
 
   /**

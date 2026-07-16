@@ -70,8 +70,6 @@ class SynchronousApplicationPostgresIntegrationTest {
     assertThat(projected.getOfficeCode()).isEqualTo("1A001B");
     assertThat(projected.getSubmittedAt()).isEqualTo(Instant.parse("2026-07-14T12:30:00Z"));
     assertThat(projected.getCreatedAt()).isNotNull();
-    assertThat(projected.getIndividuals()).hasSize(1);
-    assertThat(projected.getProceedings()).hasSize(1);
   }
 
   @Test
@@ -94,6 +92,9 @@ class SynchronousApplicationPostgresIntegrationTest {
     assertThat(body.getApplicationId()).isEqualTo(applyApplicationId);
     assertThat(body.getStatus()).isEqualTo(ApplicationStatus.APPLICATION_SUBMITTED);
     assertThat(body.getLaaReference()).isEqualTo("LAA-123");
+    // Rich detail is rebuilt from the submissions payload store, not the metadata read model.
+    assertThat(body.getProceedings()).isNotEmpty();
+    assertThat(body.getProceedings().get(0).getProceedingDescription()).isEqualTo("Care order");
   }
 
   @Test

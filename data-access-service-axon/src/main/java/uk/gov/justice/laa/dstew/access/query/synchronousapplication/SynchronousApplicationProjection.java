@@ -34,8 +34,6 @@ public class SynchronousApplicationProjection {
             .applyApplicationId(event.applyApplicationId())
             .status(event.status())
             .laaReference(event.laaReference())
-            .applicationContent(event.applicationContent())
-            .individuals(event.individuals())
             .schemaVersion(event.schemaVersion())
             .applicationType(event.applicationType())
             .submittedAt(event.submittedAt())
@@ -43,7 +41,6 @@ public class SynchronousApplicationProjection {
             .usedDelegatedFunctions(event.usedDelegatedFunctions())
             .categoryOfLaw(event.categoryOfLaw() == null ? null : event.categoryOfLaw().name())
             .matterType(event.matterType() == null ? null : event.matterType().name())
-            .proceedings(event.proceedings())
             .createdAt(event.occurredAt())
             .build());
   }

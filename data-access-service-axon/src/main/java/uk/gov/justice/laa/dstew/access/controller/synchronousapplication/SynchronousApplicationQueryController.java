@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
+import uk.gov.justice.laa.dstew.access.query.submission.FindSubmissionByApplicationIdQuery;
+import uk.gov.justice.laa.dstew.access.query.submission.SubmissionData;
 import uk.gov.justice.laa.dstew.access.query.synchronousapplication.FindSynchronousApplicationByIdQuery;
 import uk.gov.justice.laa.dstew.access.query.synchronousapplication.SynchronousApplicationReadModel;
 
@@ -40,6 +42,13 @@ public class SynchronousApplicationQueryController {
                 () ->
                     new ResourceNotFoundException(
                         "No synchronous application found with ID: " + id));
-    return ResponseEntity.ok(responseMapper.toResponse(application));
+    SubmissionData payload =
+        queryGateway
+            .query(
+                new FindSubmissionByApplicationIdQuery(id),
+                ResponseTypes.optionalInstanceOf(SubmissionData.class))
+            .join()
+            .orElse(null);
+    return ResponseEntity.ok(responseMapper.toResponse(application, payload));
   }
 }

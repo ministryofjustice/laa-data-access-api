@@ -38,7 +38,5 @@ class SynchronousApplicationProjectionTest {
     assertThat(saved.getSchemaVersion()).isEqualTo(1);
     assertThat(saved.getApplicationType()).isEqualTo("APPLY");
     assertThat(saved.getCreatedAt()).isEqualTo(event.occurredAt());
-    assertThat(saved.getIndividuals()).hasSize(1);
-    assertThat(saved.getProceedings()).hasSize(1);
   }
 }

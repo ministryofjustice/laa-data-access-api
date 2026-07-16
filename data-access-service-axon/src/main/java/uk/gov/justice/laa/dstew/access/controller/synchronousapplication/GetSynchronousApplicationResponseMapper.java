@@ -24,15 +24,19 @@ import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.OpponentResponse;
 import uk.gov.justice.laa.dstew.access.model.ProviderResponse;
 import uk.gov.justice.laa.dstew.access.model.ScopeLimitationResponse;
+import uk.gov.justice.laa.dstew.access.query.submission.SubmissionData;
 import uk.gov.justice.laa.dstew.access.query.synchronousapplication.SynchronousApplicationReadModel;
 
 /** Maps the SynchronousApplication current-state projection to the public application response. */
 @Component
 public class GetSynchronousApplicationResponseMapper {
 
-  /** Builds a response from the SynchronousApplicationReadModel. */
-  public ApplicationResponse toResponse(SynchronousApplicationReadModel application) {
-    ApplicationContent content = application.getApplicationContent();
+  /** Builds a response from the read-model metadata and the raw submission payload. */
+  public ApplicationResponse toResponse(
+      SynchronousApplicationReadModel application, SubmissionData payload) {
+    ApplicationContent content = payload == null ? null : payload.applicationContent();
+    List<SynchronousApplicationProceeding> proceedings =
+        payload == null ? null : payload.proceedings();
     ApplicationResponse response = new ApplicationResponse();
     response.setApplicationId(application.getApplyApplicationId());
     response.setStatus(ApplicationStatus.valueOf(application.getStatus()));
@@ -47,7 +51,7 @@ public class GetSynchronousApplicationResponseMapper {
     response.setApplicationType(ApplicationType.INITIAL);
     response.setProvider(toProvider(application, content));
     response.setOpponents(toOpponents(content));
-    response.setProceedings(toProceedings(application.getProceedings(), content));
+    response.setProceedings(toProceedings(proceedings, content));
     return response;
   }
 
