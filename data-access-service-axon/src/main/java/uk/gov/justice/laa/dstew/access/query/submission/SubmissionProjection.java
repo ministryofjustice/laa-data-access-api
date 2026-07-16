@@ -42,6 +42,7 @@ public class SubmissionProjection {
         SubmissionRecord.builder()
             .eventId(UUID.fromString(message.getIdentifier()))
             .applyApplicationId(event.applyApplicationId())
+            .submissionType(SubmissionType.CIVIL_APPLICATION)
             .causationId(asUuid(metaData.get("traceId")))
             .correlationId(asUuid(metaData.get("correlationId")))
             .data(

@@ -2,6 +2,8 @@ package uk.gov.justice.laa.dstew.access.query.submission;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
@@ -32,6 +34,10 @@ public class SubmissionRecord {
 
   @Column(name = "apply_application_id")
   private UUID applyApplicationId;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "submission_type")
+  private SubmissionType submissionType;
 
   @Column(name = "causation_id")
   private UUID causationId;
