@@ -5,7 +5,7 @@ import java.util.function.BiFunction;
 import org.axonframework.commandhandling.CommandMessage;
 import org.axonframework.messaging.MessageDispatchInterceptor;
 import org.springframework.stereotype.Component;
-import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationCommand;
+import uk.gov.justice.laa.dstew.access.command.synchronousapplication.CreateSynchronousApplicationCommand;
 import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
 
 /** Validates create-application content before Axon resolves a command handler. */
@@ -24,7 +24,7 @@ public class CreateApplicationSchemaValidationDispatchInterceptor
   public BiFunction<Integer, CommandMessage<?>, CommandMessage<?>> handle(
       List<? extends CommandMessage<?>> messages) {
     return (index, commandMessage) -> {
-      if (commandMessage.getPayload() instanceof CreateApplicationCommand command) {
+      if (commandMessage.getPayload() instanceof CreateSynchronousApplicationCommand command) {
         jsonSchemaValidator.validate(
             command.applicationContent(), command.schemaName(), command.schemaVersion());
       }

@@ -43,9 +43,7 @@ public class SynchronousApplicationAggregate {
   @CommandHandler
   @CreationPolicy(AggregateCreationPolicy.CREATE_IF_MISSING)
   UUID handle(
-      CreateSynchronousApplicationCommand command,
-      ApplicationContentParser parser,
-      Clock clock) {
+      CreateSynchronousApplicationCommand command, ApplicationContentParser parser, Clock clock) {
     if (applyApplicationId != null) {
       return applyApplicationId;
     }
@@ -119,4 +117,3 @@ public class SynchronousApplicationAggregate {
     // Required by Axon when rebuilding the aggregate from its event stream.
   }
 }
-

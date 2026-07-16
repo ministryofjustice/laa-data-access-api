@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.command.synchronousapplication;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import jakarta.validation.Validation;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -11,10 +12,9 @@ import java.util.UUID;
 import org.axonframework.test.aggregate.AggregateTestFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.json.JsonMapper;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationContentParser;
 import uk.gov.justice.laa.dstew.access.applicationcontent.PayloadValidator;
-import tools.jackson.databind.json.JsonMapper;
-import jakarta.validation.Validation;
 
 class SynchronousApplicationAggregateTest {
 
@@ -75,7 +75,8 @@ class SynchronousApplicationAggregateTest {
   }
 
   @Test
-  void givenApplicationAlreadyCreated_whenCommandRedelivered_thenReturnsIdempotentlyWithNoNewEvent() {
+  void
+      givenApplicationAlreadyCreated_whenCommandRedelivered_thenReturnsIdempotentlyWithNoNewEvent() {
     UUID applyApplicationId = UUID.randomUUID();
     UUID applyProceedingId = UUID.randomUUID();
     Map<String, Object> content = validContent(applyApplicationId, applyProceedingId);
@@ -128,15 +129,17 @@ class SynchronousApplicationAggregateTest {
         "proceedings",
             List.of(
                 Map.of(
-                    "id", applyProceedingId.toString(),
-                    "leadProceeding", true,
-                    "description", "Care order",
-                    "categoryOfLawEnum", "FAMILY",
-                    "matterTypeEnum", "SPECIAL_CHILDREN_ACT",
-                    "usedDelegatedFunctions", false)));
+                    "id",
+                    applyProceedingId.toString(),
+                    "leadProceeding",
+                    true,
+                    "description",
+                    "Care order",
+                    "categoryOfLawEnum",
+                    "FAMILY",
+                    "matterTypeEnum",
+                    "SPECIAL_CHILDREN_ACT",
+                    "usedDelegatedFunctions",
+                    false)));
   }
 }
-
-
-
-

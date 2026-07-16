@@ -16,10 +16,11 @@ public record CreateSynchronousApplicationCommand(
     String schemaName,
     String applicationType) {
 
-  /** Returns the Apply Application identifier extracted from the content and used as aggregate id. */
+  /**
+   * Returns the Apply Application identifier extracted from the content and used as aggregate id.
+   */
   @TargetAggregateIdentifier
   public UUID applyApplicationId() {
     return UUID.fromString(applicationContent.get("id").toString());
   }
 }
-

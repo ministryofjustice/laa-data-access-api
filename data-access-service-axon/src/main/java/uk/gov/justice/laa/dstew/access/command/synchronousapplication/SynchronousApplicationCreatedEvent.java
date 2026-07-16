@@ -24,4 +24,3 @@ public record SynchronousApplicationCreatedEvent(
     List<SynchronousApplicationProceeding> proceedings,
     String serialisedRequest,
     Instant occurredAt) {}
-

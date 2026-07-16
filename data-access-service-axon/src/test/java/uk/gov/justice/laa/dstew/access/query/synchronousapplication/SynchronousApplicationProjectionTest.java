@@ -42,4 +42,3 @@ class SynchronousApplicationProjectionTest {
     assertThat(saved.getProceedings()).hasSize(1);
   }
 }
-

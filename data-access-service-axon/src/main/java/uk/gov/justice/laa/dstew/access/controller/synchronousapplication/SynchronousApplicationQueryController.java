@@ -43,4 +43,3 @@ public class SynchronousApplicationQueryController {
     return ResponseEntity.ok(responseMapper.toResponse(application));
   }
 }
-

@@ -54,4 +54,3 @@ public class SynchronousApplicationProjection {
     repository.deleteAllInBatch();
   }
 }
-

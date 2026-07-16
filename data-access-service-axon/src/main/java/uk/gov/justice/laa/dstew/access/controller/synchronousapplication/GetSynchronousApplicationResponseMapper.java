@@ -101,7 +101,8 @@ public class GetSynchronousApplicationResponseMapper {
         .proceedingId(applicationProceeding.proceedingId())
         .proceedingDescription(applicationProceeding.description())
         .proceedingType(proceeding == null ? null : proceeding.getMeaning())
-        .delegatedFunctionsDate(proceeding == null ? null : proceeding.getUsedDelegatedFunctionsOn())
+        .delegatedFunctionsDate(
+            proceeding == null ? null : proceeding.getUsedDelegatedFunctionsOn())
         .categoryOfLaw(
             proceeding == null ? null : toCategoryOfLaw(proceeding.getCategoryOfLawEnum()))
         .matterType(proceeding == null ? null : toMatterType(proceeding.getMatterTypeEnum()))
@@ -172,4 +173,3 @@ public class GetSynchronousApplicationResponseMapper {
     return value == null ? null : value.toString();
   }
 }
-

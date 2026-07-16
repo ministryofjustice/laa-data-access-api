@@ -37,4 +37,3 @@ public final class SynchronousApplicationCreatedEventFixture {
         Instant.parse("2026-07-15T08:00:00Z"));
   }
 }
-

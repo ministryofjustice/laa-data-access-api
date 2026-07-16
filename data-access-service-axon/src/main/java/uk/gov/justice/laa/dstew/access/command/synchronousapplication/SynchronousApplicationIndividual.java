@@ -14,4 +14,3 @@ public record SynchronousApplicationIndividual(
     LocalDate dateOfBirth,
     Map<String, Object> individualContent,
     String type) {}
-

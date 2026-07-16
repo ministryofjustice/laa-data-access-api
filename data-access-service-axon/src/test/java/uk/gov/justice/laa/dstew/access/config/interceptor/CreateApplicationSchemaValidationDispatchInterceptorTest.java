@@ -9,7 +9,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.axonframework.commandhandling.GenericCommandMessage;
 import org.junit.jupiter.api.Test;
-import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationCommand;
+import uk.gov.justice.laa.dstew.access.command.synchronousapplication.CreateSynchronousApplicationCommand;
 import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
 
 class CreateApplicationSchemaValidationDispatchInterceptorTest {
@@ -19,7 +19,7 @@ class CreateApplicationSchemaValidationDispatchInterceptorTest {
     JsonSchemaValidator validator = mock(JsonSchemaValidator.class);
     CreateApplicationSchemaValidationDispatchInterceptor interceptor =
         new CreateApplicationSchemaValidationDispatchInterceptor(validator);
-    CreateApplicationCommand command = createCommand("CssApplication.json", "CCS");
+    CreateSynchronousApplicationCommand command = createCommand("CssApplication.json", "CCS");
     var commandMessage = GenericCommandMessage.asCommandMessage(command);
 
     interceptor.handle(List.of(commandMessage)).apply(0, commandMessage);
@@ -39,9 +39,9 @@ class CreateApplicationSchemaValidationDispatchInterceptorTest {
     verifyNoInteractions(validator);
   }
 
-  private CreateApplicationCommand createCommand(String schemaName, String applicationType) {
-    return new CreateApplicationCommand(
-        UUID.randomUUID(),
+  private CreateSynchronousApplicationCommand createCommand(
+      String schemaName, String applicationType) {
+    return new CreateSynchronousApplicationCommand(
         "APPLICATION_SUBMITTED",
         "LAA-123",
         Map.of("id", UUID.randomUUID().toString()),

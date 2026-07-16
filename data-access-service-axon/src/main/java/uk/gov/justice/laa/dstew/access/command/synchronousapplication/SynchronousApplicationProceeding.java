@@ -12,4 +12,3 @@ public record SynchronousApplicationProceeding(
     String description,
     boolean leadProceeding,
     Proceeding proceeding) {}
-

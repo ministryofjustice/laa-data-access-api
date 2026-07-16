@@ -55,14 +55,14 @@ class SynchronousApplicationPostgresIntegrationTest {
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
     assertThat(response.getHeaders().getLocation()).isNotNull();
     String locationPath = response.getHeaders().getLocation().getPath();
-    assertThat(locationPath)
-        .isEqualTo("/api/v0/synchronous-applications/" + applyApplicationId);
+    assertThat(locationPath).isEqualTo("/api/v0/synchronous-applications/" + applyApplicationId);
 
     // Projection is synchronous — available immediately
     SynchronousApplicationReadModel projected =
         synchronousApplicationReadRepository
             .findById(applyApplicationId)
-            .orElseThrow(() -> new AssertionError("Projection not found for " + applyApplicationId));
+            .orElseThrow(
+                () -> new AssertionError("Projection not found for " + applyApplicationId));
 
     assertThat(projected.getApplyApplicationId()).isEqualTo(applyApplicationId);
     assertThat(projected.getStatus()).isEqualTo(ApplicationStatus.APPLICATION_SUBMITTED.name());
@@ -101,8 +101,7 @@ class SynchronousApplicationPostgresIntegrationTest {
     UUID unknownId = UUID.randomUUID();
 
     ResponseEntity<String> response =
-        restTemplate.getForEntity(
-            "/api/v0/synchronous-applications/" + unknownId, String.class);
+        restTemplate.getForEntity("/api/v0/synchronous-applications/" + unknownId, String.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
   }
@@ -131,8 +130,3 @@ class SynchronousApplicationPostgresIntegrationTest {
     return headers;
   }
 }
-
-
-
-
-

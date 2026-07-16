@@ -65,15 +65,15 @@ class CreateSynchronousApplicationInMemoryTest {
         synchronousApplicationReadRepository.findById(applyApplicationId);
     assertThat(projected).isPresent();
     assertThat(projected.get().getApplyApplicationId()).isEqualTo(applyApplicationId);
-    assertThat(projected.get().getStatus()).isEqualTo(ApplicationStatus.APPLICATION_SUBMITTED.name());
+    assertThat(projected.get().getStatus())
+        .isEqualTo(ApplicationStatus.APPLICATION_SUBMITTED.name());
     assertThat(projected.get().getLaaReference()).isEqualTo("LAA-123");
     assertThat(projected.get().getOfficeCode()).isEqualTo("1A001B");
   }
 
   @Test
   void givenSynchronousApplicationProcessor_whenStarted_thenIsSubscribingProcessor() {
-    assertThat(
-            eventProcessingConfiguration.eventProcessor("synchronous-application-projection"))
+    assertThat(eventProcessingConfiguration.eventProcessor("synchronous-application-projection"))
         .containsInstanceOf(SubscribingEventProcessor.class);
   }
 
@@ -102,8 +102,7 @@ class CreateSynchronousApplicationInMemoryTest {
     UUID unknownId = UUID.randomUUID();
 
     ResponseEntity<String> response =
-        restTemplate.getForEntity(
-            "/api/v0/synchronous-applications/" + unknownId, String.class);
+        restTemplate.getForEntity("/api/v0/synchronous-applications/" + unknownId, String.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     assertThat(response.getBody())
@@ -117,5 +116,3 @@ class CreateSynchronousApplicationInMemoryTest {
     return headers;
   }
 }
-
-

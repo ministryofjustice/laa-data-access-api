@@ -30,12 +30,6 @@ axon:
     messages: jackson
   eventhandling:
     processors:
-      application-projection:
-        mode: tracking
-      application-history-projection:
-        mode: tracking
-      create-application-saga:
-        mode: tracking
       synchronous-application-projection:
         mode: subscribing
 

@@ -28,8 +28,7 @@ public class SynchronousApplicationCommandController {
   private final CreateSynchronousApplicationCommandMapper commandMapper;
 
   public SynchronousApplicationCommandController(
-      CommandGateway commandGateway,
-      CreateSynchronousApplicationCommandMapper commandMapper) {
+      CommandGateway commandGateway, CreateSynchronousApplicationCommandMapper commandMapper) {
     this.commandGateway = commandGateway;
     this.commandMapper = commandMapper;
   }
@@ -52,11 +51,7 @@ public class SynchronousApplicationCommandController {
       throw ex;
     }
     URI location =
-        ServletUriComponentsBuilder.fromCurrentRequest()
-            .path("/{id}")
-            .buildAndExpand(id)
-            .toUri();
+        ServletUriComponentsBuilder.fromCurrentRequest().path("/{id}").buildAndExpand(id).toUri();
     return ResponseEntity.created(location).build();
   }
 }
-

@@ -15,4 +15,3 @@ public class SynchronousApplicationConfig {
     return Clock.systemUTC();
   }
 }
-

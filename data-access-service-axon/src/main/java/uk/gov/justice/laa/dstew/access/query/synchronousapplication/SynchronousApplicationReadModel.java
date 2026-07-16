@@ -69,4 +69,3 @@ public class SynchronousApplicationReadModel {
   @Column(name = "created_at")
   private Instant createdAt;
 }
-

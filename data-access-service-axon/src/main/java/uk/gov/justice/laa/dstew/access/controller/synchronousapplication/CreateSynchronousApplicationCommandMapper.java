@@ -64,9 +64,7 @@ public class CreateSynchronousApplicationCommandMapper {
     try {
       return objectMapper.writeValueAsString(request);
     } catch (JacksonException exception) {
-      throw new IllegalStateException(
-          "Unable to serialise ApplicationCreateRequest", exception);
+      throw new IllegalStateException("Unable to serialise ApplicationCreateRequest", exception);
     }
   }
 }
-
