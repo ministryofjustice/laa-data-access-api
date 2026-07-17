@@ -20,6 +20,7 @@ import org.springframework.boot.persistence.autoconfigure.EntityScan;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
+import uk.gov.justice.laa.dstew.access.query.draft.DraftRecord;
 import uk.gov.justice.laa.dstew.access.query.submission.SubmissionRecord;
 import uk.gov.justice.laa.dstew.access.query.synchronousapplication.SynchronousApplicationReadModel;
 
@@ -30,7 +31,8 @@ import uk.gov.justice.laa.dstew.access.query.synchronousapplication.SynchronousA
       DomainEventEntry.class,
       org.axonframework.eventhandling.tokenstore.jpa.TokenEntry.class,
       SynchronousApplicationReadModel.class,
-      SubmissionRecord.class
+      SubmissionRecord.class,
+      DraftRecord.class
     })
 @ConditionalOnProperty(
     name = "axon.eventstore.jpa.enabled",
