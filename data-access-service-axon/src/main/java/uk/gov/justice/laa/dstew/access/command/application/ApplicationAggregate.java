@@ -5,18 +5,19 @@ import static org.axonframework.modelling.command.AggregateLifecycle.apply;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import java.time.Clock;
 import java.time.Instant;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import org.axonframework.commandhandling.CommandHandler;
 import org.axonframework.eventsourcing.EventSourcingHandler;
 import org.axonframework.modelling.command.AggregateCreationPolicy;
 import org.axonframework.modelling.command.AggregateIdentifier;
+import org.axonframework.modelling.command.AggregateMember;
 import org.axonframework.modelling.command.CreationPolicy;
 import org.axonframework.spring.stereotype.Aggregate;
 import uk.gov.justice.laa.dstew.access.applicationcontent.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.applicationcontent.MatterType;
-import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.exception.ConflictException;
 
 /**
  * Event-sourced aggregate for application submission without a reservation saga.
@@ -39,7 +40,8 @@ public class ApplicationAggregate {
   private Boolean usedDelegatedFunctions;
   private CategoryOfLaw categoryOfLaw;
   private MatterType matterType;
-  private final Set<UUID> priorAuthorityIds = new HashSet<>();
+
+  @AggregateMember private final List<PriorAuthority> priorAuthorities = new ArrayList<>();
   private boolean submitted;
 
   /**
@@ -70,26 +72,23 @@ public class ApplicationAggregate {
     return command.applyApplicationId();
   }
 
-  /** Starts a new prior authority draft against this application. */
+  /**
+   * Starts a new prior authority draft against this application. Prior authority is a
+   * post-submission concern, so the application must already be {@code SUBMITTED}.
+   */
   @CommandHandler
-  UUID handle(CreateDraftPriorAuthorityCommand command, Clock clock) {
+  UUID handle(CreatePriorAuthorityDraftCommand command, Clock clock) {
+    if (!submitted) {
+      throw new ConflictException(
+          "Cannot add a prior authority to application "
+              + applyApplicationId
+              + "; the application is not submitted");
+    }
     UUID priorAuthorityId = UUID.randomUUID();
     apply(
-        new DraftPriorAuthorityCreatedEvent(
+        new PriorAuthorityDraftedEvent(
             applyApplicationId, priorAuthorityId, command.content(), Instant.now(clock)));
     return priorAuthorityId;
-  }
-
-  /** Updates an existing prior authority draft in place. */
-  @CommandHandler
-  void handle(UpdateDraftPriorAuthorityCommand command, Clock clock) {
-    if (!priorAuthorityIds.contains(command.priorAuthorityId())) {
-      throw new ResourceNotFoundException(
-          "No prior authority draft found with ID: " + command.priorAuthorityId());
-    }
-    apply(
-        new DraftPriorAuthorityUpdatedEvent(
-            applyApplicationId, command.priorAuthorityId(), command.content(), Instant.now(clock)));
   }
 
   /** Starts a new draft application, treating redelivery of the command as idempotent. */
@@ -129,8 +128,8 @@ public class ApplicationAggregate {
   }
 
   @EventSourcingHandler
-  void on(DraftPriorAuthorityCreatedEvent event) {
-    priorAuthorityIds.add(event.priorAuthorityId());
+  void on(PriorAuthorityDraftedEvent event) {
+    priorAuthorities.add(new PriorAuthority(event.priorAuthorityId()));
   }
 
   @EventSourcingHandler

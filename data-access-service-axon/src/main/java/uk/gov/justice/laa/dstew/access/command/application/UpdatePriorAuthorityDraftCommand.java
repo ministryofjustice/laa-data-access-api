@@ -5,10 +5,11 @@ import java.util.UUID;
 import org.axonframework.modelling.command.TargetAggregateIdentifier;
 
 /**
- * Command to update an existing prior authority draft in place. The aggregate guards that both the
- * parent application and the referenced prior authority draft exist.
+ * Command to update an existing prior authority draft in place. Routed to the owning prior
+ * authority member by {@code priorAuthorityId}; only permitted while the member is still in {@code
+ * DRAFT}.
  */
-public record UpdateDraftPriorAuthorityCommand(
+public record UpdatePriorAuthorityDraftCommand(
     @TargetAggregateIdentifier UUID applyApplicationId,
     UUID priorAuthorityId,
     Map<String, Object> content) {}

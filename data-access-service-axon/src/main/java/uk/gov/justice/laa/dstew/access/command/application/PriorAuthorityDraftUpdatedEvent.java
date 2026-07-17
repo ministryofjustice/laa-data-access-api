@@ -4,8 +4,8 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 
-/** Event recording that a new prior authority draft was created against an application. */
-public record DraftPriorAuthorityCreatedEvent(
+/** Event recording that an existing prior authority draft was updated in place. */
+public record PriorAuthorityDraftUpdatedEvent(
     UUID applyApplicationId,
     UUID priorAuthorityId,
     Map<String, Object> content,

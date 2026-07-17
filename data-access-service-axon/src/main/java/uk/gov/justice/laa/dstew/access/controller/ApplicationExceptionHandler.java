@@ -6,6 +6,7 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import uk.gov.justice.laa.dstew.access.exception.ConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
@@ -25,6 +26,13 @@ public class ApplicationExceptionHandler {
       ResourceNotFoundException exception) {
     return ResponseEntity.status(HttpStatus.NOT_FOUND)
         .body(ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, exception.getMessage()));
+  }
+
+  /** Returns a state-conflict (e.g. adding a prior authority to an unsubmitted application). */
+  @ExceptionHandler(ConflictException.class)
+  ResponseEntity<ProblemDetail> handleConflictException(ConflictException exception) {
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage()));
   }
 
   private ResponseEntity<ProblemDetail> validationError(List<String> errors) {

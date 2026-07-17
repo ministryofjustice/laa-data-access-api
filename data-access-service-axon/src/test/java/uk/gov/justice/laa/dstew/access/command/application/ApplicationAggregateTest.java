@@ -101,21 +101,22 @@ class ApplicationAggregateTest {
   }
 
   @Test
-  void givenApplication_whenCreatePriorAuthority_thenPublishesDraftPriorAuthorityCreatedEvent() {
+  void
+      givenSubmittedApplication_whenCreatePriorAuthority_thenPublishesPriorAuthorityDraftedEvent() {
     UUID applyApplicationId = UUID.randomUUID();
     Map<String, Object> content = Map.of("reference", "PA-1", "amount", 500);
 
     fixture
         .given(createdEvent(applyApplicationId))
-        .when(new CreateDraftPriorAuthorityCommand(applyApplicationId, content))
+        .when(new CreatePriorAuthorityDraftCommand(applyApplicationId, content))
         .expectEventsMatching(
             new org.hamcrest.BaseMatcher<>() {
               @Override
               public boolean matches(Object o) {
                 var events = (java.util.List<?>) o;
                 assertThat(events).hasSize(1);
-                DraftPriorAuthorityCreatedEvent event =
-                    (DraftPriorAuthorityCreatedEvent)
+                PriorAuthorityDraftedEvent event =
+                    (PriorAuthorityDraftedEvent)
                         ((org.axonframework.messaging.Message<?>) events.getFirst()).getPayload();
                 assertThat(event.applyApplicationId()).isEqualTo(applyApplicationId);
                 assertThat(event.priorAuthorityId()).isNotNull();
@@ -125,9 +126,23 @@ class ApplicationAggregateTest {
 
               @Override
               public void describeTo(org.hamcrest.Description description) {
-                description.appendText("DraftPriorAuthorityCreatedEvent with expected fields");
+                description.appendText("PriorAuthorityDraftedEvent with expected fields");
               }
             });
+  }
+
+  @Test
+  void givenDraftApplication_whenCreatePriorAuthority_thenRejectsWithConflict() {
+    UUID applyApplicationId = UUID.randomUUID();
+
+    fixture
+        .given(
+            new ApplicationDraftedEvent(
+                applyApplicationId,
+                Map.of("status", "DRAFT"),
+                Instant.parse("2026-07-15T08:00:00Z")))
+        .when(new CreatePriorAuthorityDraftCommand(applyApplicationId, Map.of("reference", "PA-1")))
+        .expectException(uk.gov.justice.laa.dstew.access.exception.ConflictException.class);
   }
 
   @Test
@@ -136,7 +151,7 @@ class ApplicationAggregateTest {
 
     fixture
         .givenNoPriorActivity()
-        .when(new CreateDraftPriorAuthorityCommand(applyApplicationId, Map.of("reference", "PA-1")))
+        .when(new CreatePriorAuthorityDraftCommand(applyApplicationId, Map.of("reference", "PA-1")))
         .expectException(org.axonframework.modelling.command.AggregateNotFoundException.class);
   }
 
@@ -149,13 +164,13 @@ class ApplicationAggregateTest {
     fixture
         .given(
             createdEvent(applyApplicationId),
-            new DraftPriorAuthorityCreatedEvent(
+            new PriorAuthorityDraftedEvent(
                 applyApplicationId,
                 priorAuthorityId,
                 Map.of("reference", "PA-1", "amount", 500),
                 Instant.parse("2026-07-15T08:00:00Z")))
         .when(
-            new UpdateDraftPriorAuthorityCommand(
+            new UpdatePriorAuthorityDraftCommand(
                 applyApplicationId, priorAuthorityId, updatedContent))
         .expectEventsMatching(
             new org.hamcrest.BaseMatcher<>() {
@@ -163,8 +178,8 @@ class ApplicationAggregateTest {
               public boolean matches(Object o) {
                 var events = (java.util.List<?>) o;
                 assertThat(events).hasSize(1);
-                DraftPriorAuthorityUpdatedEvent event =
-                    (DraftPriorAuthorityUpdatedEvent)
+                PriorAuthorityDraftUpdatedEvent event =
+                    (PriorAuthorityDraftUpdatedEvent)
                         ((org.axonframework.messaging.Message<?>) events.getFirst()).getPayload();
                 assertThat(event.priorAuthorityId()).isEqualTo(priorAuthorityId);
                 assertThat(event.content()).isEqualTo(updatedContent);
@@ -173,21 +188,76 @@ class ApplicationAggregateTest {
 
               @Override
               public void describeTo(org.hamcrest.Description description) {
-                description.appendText("DraftPriorAuthorityUpdatedEvent with expected fields");
+                description.appendText("PriorAuthorityDraftUpdatedEvent with expected fields");
               }
             });
   }
 
   @Test
-  void givenUnknownPriorAuthority_whenUpdated_thenRejectsWithResourceNotFound() {
+  void givenUnknownPriorAuthority_whenUpdated_thenRejectsWithEntityNotFound() {
     UUID applyApplicationId = UUID.randomUUID();
 
     fixture
         .given(createdEvent(applyApplicationId))
         .when(
-            new UpdateDraftPriorAuthorityCommand(
+            new UpdatePriorAuthorityDraftCommand(
                 applyApplicationId, UUID.randomUUID(), Map.of("reference", "PA-1")))
-        .expectException(uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException.class);
+        .expectException(
+            org.axonframework.modelling.command.AggregateEntityNotFoundException.class);
+  }
+
+  @Test
+  void givenPriorAuthorityDraft_whenSubmitted_thenPublishesPriorAuthoritySubmittedEvent() {
+    UUID applyApplicationId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
+
+    fixture
+        .given(
+            createdEvent(applyApplicationId),
+            new PriorAuthorityDraftedEvent(
+                applyApplicationId,
+                priorAuthorityId,
+                Map.of("reference", "PA-1"),
+                Instant.parse("2026-07-15T08:00:00Z")))
+        .when(new SubmitPriorAuthorityCommand(applyApplicationId, priorAuthorityId))
+        .expectEventsMatching(
+            new org.hamcrest.BaseMatcher<>() {
+              @Override
+              public boolean matches(Object o) {
+                var events = (java.util.List<?>) o;
+                assertThat(events).hasSize(1);
+                PriorAuthoritySubmittedEvent event =
+                    (PriorAuthoritySubmittedEvent)
+                        ((org.axonframework.messaging.Message<?>) events.getFirst()).getPayload();
+                assertThat(event.applyApplicationId()).isEqualTo(applyApplicationId);
+                assertThat(event.priorAuthorityId()).isEqualTo(priorAuthorityId);
+                return true;
+              }
+
+              @Override
+              public void describeTo(org.hamcrest.Description description) {
+                description.appendText("PriorAuthoritySubmittedEvent with expected fields");
+              }
+            });
+  }
+
+  @Test
+  void givenSubmittedPriorAuthority_whenSubmittedAgain_thenRejectsWithConflict() {
+    UUID applyApplicationId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
+
+    fixture
+        .given(
+            createdEvent(applyApplicationId),
+            new PriorAuthorityDraftedEvent(
+                applyApplicationId,
+                priorAuthorityId,
+                Map.of("reference", "PA-1"),
+                Instant.parse("2026-07-15T08:00:00Z")),
+            new PriorAuthoritySubmittedEvent(
+                applyApplicationId, priorAuthorityId, Instant.parse("2026-07-15T08:00:00Z")))
+        .when(new SubmitPriorAuthorityCommand(applyApplicationId, priorAuthorityId))
+        .expectException(uk.gov.justice.laa.dstew.access.exception.ConflictException.class);
   }
 
   @Test

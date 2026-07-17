@@ -104,7 +104,51 @@ class PriorAuthorityCommandControllerInMemoryTest {
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     assertThat(response.getBody())
-        .contains("No prior authority draft found with ID: " + unknownPriorAuthorityId);
+        .contains("No prior authority found with ID: " + unknownPriorAuthorityId);
+  }
+
+  @Test
+  void givenPriorAuthorityDraft_whenSubmitted_thenReturns204() {
+    UUID applicationId = createApplication();
+    URI created =
+        restTemplate
+            .postForEntity(
+                priorAuthorities(applicationId),
+                new HttpEntity<>(Map.of("reference", "PA-1", "amount", 500), headers()),
+                Void.class)
+            .getHeaders()
+            .getLocation();
+
+    ResponseEntity<Void> response =
+        restTemplate.postForEntity(created + "/submit", new HttpEntity<>(headers()), Void.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+  }
+
+  @Test
+  void givenDraftApplication_whenCreatePriorAuthority_thenReturns409() {
+    UUID draftApplicationId = createDraftApplication();
+
+    ResponseEntity<String> response =
+        restTemplate.postForEntity(
+            priorAuthorities(draftApplicationId),
+            new HttpEntity<>(Map.of("reference", "PA-1"), headers()),
+            String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+  }
+
+  private UUID createDraftApplication() {
+    URI location =
+        restTemplate
+            .postForEntity(
+                "/api/v0/draft-applications",
+                new HttpEntity<>(Map.of("status", "DRAFT"), headers()),
+                Void.class)
+            .getHeaders()
+            .getLocation();
+    String path = location.getPath();
+    return UUID.fromString(path.substring(path.lastIndexOf('/') + 1));
   }
 
   private UUID createApplication() {

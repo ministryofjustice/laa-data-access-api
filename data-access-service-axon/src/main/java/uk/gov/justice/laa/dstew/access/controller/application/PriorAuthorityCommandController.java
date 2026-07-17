@@ -4,6 +4,7 @@ import java.net.URI;
 import java.util.Map;
 import java.util.UUID;
 import org.axonframework.commandhandling.gateway.CommandGateway;
+import org.axonframework.modelling.command.AggregateEntityNotFoundException;
 import org.axonframework.modelling.command.AggregateNotFoundException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -13,11 +14,16 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
-import uk.gov.justice.laa.dstew.access.command.application.CreateDraftPriorAuthorityCommand;
-import uk.gov.justice.laa.dstew.access.command.application.UpdateDraftPriorAuthorityCommand;
+import uk.gov.justice.laa.dstew.access.command.application.CreatePriorAuthorityDraftCommand;
+import uk.gov.justice.laa.dstew.access.command.application.SubmitPriorAuthorityCommand;
+import uk.gov.justice.laa.dstew.access.command.application.UpdatePriorAuthorityDraftCommand;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 
-/** HTTP command adapter for prior authority drafts nested within an application. */
+/**
+ * HTTP command adapter for prior authorities nested within an application. Prior authority is a
+ * post-submission concern: it can only be created against an already-submitted application, has its
+ * own {@code DRAFT} then {@code SUBMITTED} lifecycle, and is addressed by {@code priorAuthorityId}.
+ */
 @RestController
 @RequestMapping("/api/v0/applications/{applicationId}/prior-authorities")
 public class PriorAuthorityCommandController {
@@ -35,7 +41,7 @@ public class PriorAuthorityCommandController {
     UUID priorAuthorityId;
     try {
       priorAuthorityId =
-          commandGateway.sendAndWait(new CreateDraftPriorAuthorityCommand(applicationId, content));
+          commandGateway.sendAndWait(new CreatePriorAuthorityDraftCommand(applicationId, content));
     } catch (AggregateNotFoundException e) {
       throw applicationNotFound(applicationId, e);
     }
@@ -55,9 +61,25 @@ public class PriorAuthorityCommandController {
       @RequestBody Map<String, Object> content) {
     try {
       commandGateway.sendAndWait(
-          new UpdateDraftPriorAuthorityCommand(applicationId, priorAuthorityId, content));
+          new UpdatePriorAuthorityDraftCommand(applicationId, priorAuthorityId, content));
     } catch (AggregateNotFoundException e) {
       throw applicationNotFound(applicationId, e);
+    } catch (AggregateEntityNotFoundException e) {
+      throw priorAuthorityNotFound(priorAuthorityId, e);
+    }
+    return ResponseEntity.noContent().build();
+  }
+
+  /** Submits an existing prior authority draft and returns 204 No Content. */
+  @PostMapping("/{priorAuthorityId}/submit")
+  public ResponseEntity<Void> submitPriorAuthority(
+      @PathVariable UUID applicationId, @PathVariable UUID priorAuthorityId) {
+    try {
+      commandGateway.sendAndWait(new SubmitPriorAuthorityCommand(applicationId, priorAuthorityId));
+    } catch (AggregateNotFoundException e) {
+      throw applicationNotFound(applicationId, e);
+    } catch (AggregateEntityNotFoundException e) {
+      throw priorAuthorityNotFound(priorAuthorityId, e);
     }
     return ResponseEntity.noContent().build();
   }
@@ -66,6 +88,14 @@ public class PriorAuthorityCommandController {
       UUID applicationId, RuntimeException cause) {
     ResourceNotFoundException ex =
         new ResourceNotFoundException("No application found with ID: " + applicationId);
+    ex.initCause(cause);
+    return ex;
+  }
+
+  private static ResourceNotFoundException priorAuthorityNotFound(
+      UUID priorAuthorityId, RuntimeException cause) {
+    ResourceNotFoundException ex =
+        new ResourceNotFoundException("No prior authority found with ID: " + priorAuthorityId);
     ex.initCause(cause);
     return ex;
   }
