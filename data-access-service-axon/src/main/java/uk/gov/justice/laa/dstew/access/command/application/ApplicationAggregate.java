@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.command.application;
 import static org.axonframework.modelling.command.AggregateLifecycle.apply;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -76,15 +77,14 @@ public class ApplicationAggregate {
    *
    * <p>Because {@code ApplicationAggregate} uses {@code CREATE_IF_MISSING}, Axon will construct a
    * fresh (empty) aggregate if the lead does not exist. The {@code applicationId == null} guard
-   * detects this and throws {@link ResourceNotFoundException} with no events applied — the ghost
-   * stream is never persisted.
+   * detects this and throws {@link ResourceNotFoundException} with no events applied.
    *
-   * <p>A fresh {@code groupId} UUID is generated here rather than reusing {@code applicationId}
-   * (the lead's UUID). Axon's {@code readEvents(aggregateIdentifier)} returns all events for a UUID
-   * regardless of aggregate type. If {@code LinkedApplicationGroupAggregate} reused the lead's
-   * UUID, it would replay {@code ApplicationCreatedEvent} (for which it has no
-   * {@code @EventSourcingHandler}), leaving its {@code @AggregateIdentifier} null and causing an
-   * {@code IncompatibleAggregateException}.
+   * <p>The {@code groupId} is derived deterministically from the lead's {@code applicationId} via
+   * {@link UUID#nameUUIDFromBytes}. This ensures all applications that reference the same lead
+   * converge on the same {@link
+   * uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupAggregate},
+   * while remaining distinct from the lead's UUID (avoiding Axon event-stream collision — {@code
+   * readEvents} queries by identifier only, regardless of aggregate type).
    */
   @CommandHandler
   @CreationPolicy(AggregateCreationPolicy.CREATE_IF_MISSING)
@@ -93,9 +93,11 @@ public class ApplicationAggregate {
       throw new ResourceNotFoundException(
           "No linked application found with Application ID: " + command.leadApplicationId());
     }
+    UUID groupId =
+        UUID.nameUUIDFromBytes(("linked-group:" + applicationId).getBytes(StandardCharsets.UTF_8));
     apply(
         new LinkedApplicationGroupRequested(
-            UUID.randomUUID(), // distinct groupId — must not reuse applicationId
+            groupId,
             applicationId, // leadApplicationId
             command.allMemberApplicationIds(),
             command.serialisedRequest(),

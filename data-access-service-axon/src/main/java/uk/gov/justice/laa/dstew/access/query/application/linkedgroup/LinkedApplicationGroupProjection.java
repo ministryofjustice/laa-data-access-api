@@ -5,6 +5,7 @@ import org.axonframework.eventhandling.EventHandler;
 import org.axonframework.eventhandling.ResetHandler;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
 
 /**
  * Independently replayable projection of the current state of each linked application group.
@@ -39,6 +40,22 @@ public class LinkedApplicationGroupProjection {
             .createdAt(event.occurredAt())
             .modifiedAt(event.occurredAt())
             .build());
+  }
+
+  /**
+   * Adds a new member to an existing group's read model. Appends the member ID to {@code memberIds}
+   * and updates {@code modifiedAt}.
+   */
+  @EventHandler
+  public void on(MemberAddedToGroupEvent event) {
+    groupReadRepository
+        .findById(event.groupId())
+        .ifPresent(
+            group -> {
+              group.getMemberIds().add(event.memberId());
+              group.setModifiedAt(event.occurredAt());
+              groupReadRepository.save(group);
+            });
   }
 
   /** Clears the disposable group current-state table before replay. */

@@ -306,6 +306,60 @@ class CreateApplicationInMemoryTest {
         .satisfies(h -> assertThat(h.getEventType()).isEqualTo("APPLICATION_CREATED"));
   }
 
+  @Test
+  void givenExistingLeadAndFirstLinked_whenPostSecondLinkedApplication_thenJoinsExistingGroup() {
+    UUID leadApplyApplicationId = UUID.randomUUID();
+    UUID leadApplicationId =
+        applicationId(
+            restTemplate.postForEntity(
+                "/api/v0/applications",
+                new HttpEntity<>(
+                    validCreateApplicationRequest(leadApplyApplicationId, UUID.randomUUID()),
+                    headers()),
+                Void.class));
+    awaitProjection(leadApplicationId);
+
+    UUID firstLinkedApplyApplicationId = UUID.randomUUID();
+    UUID firstLinkedApplicationId =
+        applicationId(
+            restTemplate.postForEntity(
+                "/api/v0/applications",
+                new HttpEntity<>(
+                    validLinkedCreateApplicationRequest(
+                        firstLinkedApplyApplicationId, UUID.randomUUID(), leadApplyApplicationId),
+                    headers()),
+                Void.class));
+    awaitProjection(firstLinkedApplicationId);
+
+    UUID secondLinkedApplyApplicationId = UUID.randomUUID();
+    UUID secondLinkedApplicationId =
+        applicationId(
+            restTemplate.postForEntity(
+                "/api/v0/applications",
+                new HttpEntity<>(
+                    validLinkedCreateApplicationRequest(
+                        secondLinkedApplyApplicationId, UUID.randomUUID(), leadApplyApplicationId),
+                    headers()),
+                Void.class));
+    awaitProjection(secondLinkedApplicationId);
+
+    // All three should end up in the same group.
+    await()
+        .atMost(10, TimeUnit.SECONDS)
+        .pollInterval(50, TimeUnit.MILLISECONDS)
+        .untilAsserted(
+            () ->
+                assertThat(groupReadRepository.findByLeadApplicationId(leadApplicationId))
+                    .isPresent()
+                    .hasValueSatisfying(
+                        group ->
+                            assertThat(group.getMemberIds())
+                                .containsExactlyInAnyOrder(
+                                    leadApplicationId,
+                                    firstLinkedApplicationId,
+                                    secondLinkedApplicationId)));
+  }
+
   private HttpHeaders headers() {
     HttpHeaders headers = new HttpHeaders();
     headers.set("X-Service-Name", "CIVIL_APPLY");

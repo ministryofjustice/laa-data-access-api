@@ -50,6 +50,25 @@ class LinkedApplicationGroupAggregateTest {
   }
 
   @Test
+  void givenGroupAlreadyExists_whenNewMemberJoins_thenEmitsMemberAddedEvent() {
+    UUID groupId = UUID.randomUUID();
+    UUID leadId = UUID.randomUUID();
+    UUID firstMemberId = UUID.randomUUID();
+    UUID newMemberId = UUID.randomUUID();
+    List<UUID> originalMembers = List.of(leadId, firstMemberId);
+    Instant occurredAt = Instant.parse("2026-07-15T08:00:00Z");
+    LinkedApplicationGroupCreatedEvent existing =
+        new LinkedApplicationGroupCreatedEvent(groupId, leadId, originalMembers, occurredAt);
+
+    fixture
+        .given(existing)
+        .when(
+            new InitialiseLinkedApplicationGroupCommand(
+                groupId, leadId, List.of(leadId, newMemberId), "{}", occurredAt))
+        .expectEvents(new MemberAddedToGroupEvent(groupId, newMemberId, occurredAt));
+  }
+
+  @Test
   void givenLeadNotInMemberList_whenInitialise_thenRejectsWithIllegalArgument() {
     UUID groupId = UUID.randomUUID();
     UUID someOtherId = UUID.randomUUID();

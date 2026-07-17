@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.command.application;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationCreatedEvent;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationCreationDetails;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -130,41 +131,19 @@ class ApplicationAggregateTest {
     UUID leadApplicationId = UUID.randomUUID();
     ApplicationCreatedEvent leadCreated = applicationCreatedEvent(leadApplicationId);
     List<UUID> members = List.of(leadApplicationId, UUID.randomUUID());
+    java.time.Instant occurredAt = java.time.Instant.parse("2026-07-15T08:00:00Z");
+    UUID expectedGroupId =
+        UUID.nameUUIDFromBytes(
+            ("linked-group:" + leadApplicationId).getBytes(StandardCharsets.UTF_8));
 
     fixture
         .given(leadCreated)
         .when(
             new CreateLinkedApplicationGroupCommand(
-                leadApplicationId,
-                members.get(1),
-                members,
-                "{}",
-                java.time.Instant.parse("2026-07-15T08:00:00Z")))
-        // groupId is a freshly-generated UUID — verify event type and key fields only.
-        .expectEventsMatching(requestedEventWith(leadApplicationId, members));
-  }
-
-  @SuppressWarnings({"unchecked", "rawtypes"})
-  private static org.hamcrest.Matcher requestedEventWith(
-      UUID expectedLeadApplicationId, List<UUID> expectedMembers) {
-    return new org.hamcrest.TypeSafeMatcher<List>() {
-      @Override
-      protected boolean matchesSafely(List msgs) {
-        if (msgs.size() != 1) return false;
-        Object payload = ((org.axonframework.messaging.Message<?>) msgs.get(0)).getPayload();
-        if (!(payload instanceof LinkedApplicationGroupRequested r)) return false;
-        return r.groupId() != null
-            && expectedLeadApplicationId.equals(r.leadApplicationId())
-            && expectedMembers.equals(r.memberApplicationIds());
-      }
-
-      @Override
-      public void describeTo(org.hamcrest.Description desc) {
-        desc.appendText(
-            "one LinkedApplicationGroupRequested with leadApplicationId="
-                + expectedLeadApplicationId);
-      }
-    };
+                leadApplicationId, members.get(1), members, "{}", occurredAt))
+        .expectEvents(
+            new LinkedApplicationGroupRequested(
+                expectedGroupId, leadApplicationId, members, "{}", occurredAt));
   }
 
   @Test
