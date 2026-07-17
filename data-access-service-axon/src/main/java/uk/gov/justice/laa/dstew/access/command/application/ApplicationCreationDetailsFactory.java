@@ -4,7 +4,6 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
-import org.axonframework.commandhandling.CommandHandler;
 import org.axonframework.modelling.command.AggregateNotFoundException;
 import org.axonframework.modelling.command.Repository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,51 +14,36 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.ParsedAppContentDetail
 import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 
-/** Creates an Application aggregate after parsing the request's application content. */
+/** Prepares the creation details for a new Application aggregate from a create command. */
 @Component
-public class CreateApplicationCommandHandler {
+public class ApplicationCreationDetailsFactory {
 
-  private final Repository<ApplyApplicationIdAggregate> applyApplicationIdRepository;
+  private final Repository<ApplicationAggregate> applicationRepository;
   private final ApplicationContentParser applicationContentParser;
   private final Clock clock;
 
-  /** Creates the external handler using the system UTC clock. */
+  /** Creates the factory using the system UTC clock. */
   @Autowired
-  public CreateApplicationCommandHandler(
-      Repository<ApplyApplicationIdAggregate> applyApplicationIdRepository,
+  public ApplicationCreationDetailsFactory(
+      Repository<ApplicationAggregate> applicationRepository,
       ApplicationContentParser applicationContentParser) {
-    this(applyApplicationIdRepository, applicationContentParser, Clock.systemUTC());
+    this(applicationRepository, applicationContentParser, Clock.systemUTC());
   }
 
-  CreateApplicationCommandHandler(
-      Repository<ApplyApplicationIdAggregate> applyApplicationIdRepository,
+  ApplicationCreationDetailsFactory(
+      Repository<ApplicationAggregate> applicationRepository,
       ApplicationContentParser applicationContentParser,
       Clock clock) {
-    this.applyApplicationIdRepository = applyApplicationIdRepository;
+    this.applicationRepository = applicationRepository;
     this.applicationContentParser = applicationContentParser;
     this.clock = clock;
   }
 
-  /** Parses the command and creates only the Apply Application identifier claim. */
-  @CommandHandler
-  public UUID handle(CreateApplicationCommand command) throws Exception {
+  /** Parses the command and resolves linked application references into creation details. */
+  public ApplicationCreationDetails prepare(CreateApplicationCommand command) {
     ParsedAppContentDetails parsed = applicationContentParser.parse(command.applicationContent());
-    ApplicationFinalisationDetails details = toFinalisationDetails(command, parsed);
-    claimApplyApplicationId(command.applicationId(), details, resolveLeadApplicationId(parsed));
-    return command.applicationId();
-  }
-
-  private void claimApplyApplicationId(
-      UUID applicationId, ApplicationFinalisationDetails details, UUID leadApplicationId)
-      throws Exception {
-    try {
-      applyApplicationIdRepository
-          .load(details.applyApplicationId().toString())
-          .execute(aggregate -> aggregate.claim(applicationId, details, leadApplicationId));
-    } catch (AggregateNotFoundException exception) {
-      applyApplicationIdRepository.newInstance(
-          () -> new ApplyApplicationIdAggregate(applicationId, details, leadApplicationId));
-    }
+    UUID leadApplicationId = resolveLeadApplicationId(parsed);
+    return toCreationDetails(command, parsed, leadApplicationId);
   }
 
   private UUID resolveLeadApplicationId(ParsedAppContentDetails parsed) {
@@ -73,35 +57,35 @@ public class CreateApplicationCommandHandler {
       return null;
     }
 
+    // Associated applications: self (current apply ID) is already excluded by the filter below;
+    // a new aggregate has no event stream yet so the self-reference is skipped.
     linkedApplications.stream()
         .map(LinkedApplication::getAssociatedApplicationId)
         .filter(associatedId -> !associatedId.equals(parsed.applyApplicationId()))
         .filter(associatedId -> !associatedId.equals(leadApplyApplicationId))
         .distinct()
-        .forEach(this::requireClaimedApplication);
+        .forEach(this::requireExistingApplicationStream);
 
-    return requireClaimedApplication(leadApplyApplicationId);
+    // Lead must always be an existing stream; self-referential lead is not permitted.
+    return requireExistingApplicationStream(leadApplyApplicationId);
   }
 
-  private UUID requireClaimedApplication(UUID applyApplicationId) {
+  private UUID requireExistingApplicationStream(UUID applicationId) {
     try {
-      UUID applicationId =
-          applyApplicationIdRepository
-              .load(applyApplicationId.toString())
-              .invoke(ApplyApplicationIdAggregate::claimedApplicationId);
-      if (applicationId != null) {
+      Boolean exists = applicationRepository.load(applicationId.toString()).invoke(a -> a != null);
+      if (Boolean.TRUE.equals(exists)) {
         return applicationId;
       }
     } catch (AggregateNotFoundException exception) {
-      // Both absent and released claims are unavailable as linked applications.
+      // Application stream does not exist — fall through to throw.
     }
     throw new ResourceNotFoundException(
-        "No linked application found with Apply Application ID: " + applyApplicationId);
+        "No linked application found with Application ID: " + applicationId);
   }
 
-  private ApplicationFinalisationDetails toFinalisationDetails(
-      CreateApplicationCommand command, ParsedAppContentDetails parsed) {
-    return new ApplicationFinalisationDetails(
+  private ApplicationCreationDetails toCreationDetails(
+      CreateApplicationCommand command, ParsedAppContentDetails parsed, UUID leadApplicationId) {
+    return new ApplicationCreationDetails(
         command.status(),
         command.laaReference(),
         parsed.applicationContent(),
@@ -116,7 +100,8 @@ public class CreateApplicationCommandHandler {
         parsed.matterType(),
         toProceedings(parsed.proceedings()),
         command.serialisedRequest(),
-        Instant.now(clock));
+        Instant.now(clock),
+        leadApplicationId);
   }
 
   private List<ApplicationIndividual> toIndividuals(List<CreateApplicationIndividual> individuals) {

@@ -31,6 +31,7 @@ dependencies {
         transitive = false
     }
 
+    implementation 'io.projectreactor:reactor-core'
     implementation 'org.axonframework:axon-spring-boot-starter:4.10.3'
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.21.5'
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.21.5'

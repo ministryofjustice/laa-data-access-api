@@ -15,6 +15,7 @@ import org.axonframework.spring.stereotype.Aggregate;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.applicationcontent.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.applicationcontent.MatterType;
+import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 
 /** Event-sourced consistency boundary for an Application and its owned child state. */
 @Aggregate
@@ -36,33 +37,42 @@ public class ApplicationAggregate {
   private CategoryOfLaw categoryOfLaw;
   private MatterType matterType;
   private List<ApplicationProceeding> proceedings;
+  private String serialisedRequest;
 
-  /** Creates an Application, treating redelivery of its original claim as idempotent. */
+  /**
+   * Creates or idempotently re-identifies an Application.
+   *
+   * <p>On the first command for this aggregate ID, parses the request and emits {@link
+   * ApplicationCreatedEvent} (and optionally {@link ApplicationLinkedEvent}). On an identical retry
+   * (same serialised request and schema version), returns the existing ID with no events. On a
+   * conflicting retry (same ID, different payload or schema version), throws {@link
+   * ApplicationCreationConflictException} with no events.
+   */
   @CommandHandler
   @CreationPolicy(AggregateCreationPolicy.CREATE_IF_MISSING)
-  ApplicationFinalisationResult handle(FinaliseApplicationCreationCommand command) {
-    ApplicationFinalisationDetails details = command.applicationFinalisationDetails();
+  UUID handle(CreateApplicationCommand command, ApplicationCreationDetailsFactory factory) {
     if (applicationId != null) {
-      if (applyApplicationId.equals(details.applyApplicationId())) {
-        return ApplicationFinalisationResult.ALREADY_CREATED;
+      if (serialisedRequest.equals(command.serialisedRequest())
+          && schemaVersion == command.schemaVersion()) {
+        return applicationId;
       }
-      throw new IllegalStateException(
-          "Application ID " + applicationId + " is already owned by another Apply application");
+      throw new ApplicationCreationConflictException(applicationId);
     }
+    ApplicationCreationDetails details = factory.prepare(command);
     apply(applicationCreatedEvent(command.applicationId(), details));
-    if (command.leadApplicationId() != null) {
+    if (details.leadApplicationId() != null) {
       apply(
           new ApplicationLinkedEvent(
               applicationId,
-              command.leadApplicationId(),
+              details.leadApplicationId(),
               details.serialisedRequest(),
               details.occurredAt()));
     }
-    return ApplicationFinalisationResult.CREATED;
+    return applicationId;
   }
 
   private ApplicationCreatedEvent applicationCreatedEvent(
-      UUID applicationId, ApplicationFinalisationDetails details) {
+      UUID applicationId, ApplicationCreationDetails details) {
     return new ApplicationCreatedEvent(
         applicationId,
         details.status(),
@@ -98,6 +108,7 @@ public class ApplicationAggregate {
     categoryOfLaw = event.categoryOfLaw();
     matterType = event.matterType();
     proceedings = List.copyOf(event.proceedings());
+    serialisedRequest = event.serialisedRequest();
   }
 
   @EventSourcingHandler

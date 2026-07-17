@@ -16,7 +16,9 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationCommand;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
-import uk.gov.justice.laa.dstew.access.validation.DuplicateApplyApplicationIdException;
+import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
+import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
+import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
 
 /** HTTP command adapter for Application writes. */
 @RestController
@@ -24,15 +26,20 @@ import uk.gov.justice.laa.dstew.access.validation.DuplicateApplyApplicationIdExc
 public class ApplicationCommandController {
 
   private final CommandGateway commandGateway;
+  private final SubscriptionProjectionGateway projectionGateway;
   private final CreateApplicationCommandMapper commandMapper;
 
+  /** Creates the command adapter. */
   public ApplicationCommandController(
-      CommandGateway commandGateway, CreateApplicationCommandMapper commandMapper) {
+      CommandGateway commandGateway,
+      SubscriptionProjectionGateway projectionGateway,
+      CreateApplicationCommandMapper commandMapper) {
     this.commandGateway = commandGateway;
+    this.projectionGateway = projectionGateway;
     this.commandMapper = commandMapper;
   }
 
-  /** Dispatches create directly to Axon and returns the pre-generated aggregate location. */
+  /** Dispatches create directly to Axon and returns 201 once the projection is readable. */
   @PostMapping
   public ResponseEntity<Void> createApplication(
       @RequestHeader("X-Service-Name") ServiceName serviceName,
@@ -40,25 +47,34 @@ public class ApplicationCommandController {
           int schemaVersion,
       @Valid @RequestBody ApplicationCreateRequest request) {
     CreateApplicationCommand command = commandMapper.toCommand(request, schemaVersion);
-    try {
-      commandGateway.sendAndWait(command);
-    } catch (AggregateStreamCreationException | ConcurrencyException exception) {
-      throw duplicateApplication(command, exception);
-    }
 
     URI location =
         ServletUriComponentsBuilder.fromCurrentRequest()
             .path("/{id}")
             .buildAndExpand(command.applicationId())
             .toUri();
-    return ResponseEntity.accepted().location(location).build();
+
+    boolean projected =
+        projectionGateway.awaitProjection(
+            new FindApplicationByIdQuery(command.applicationId()),
+            ApplicationReadModel.class,
+            () -> dispatchWithRetry(command));
+
+    return projected
+        ? ResponseEntity.created(location).build()
+        : ResponseEntity.accepted().location(location).build();
   }
 
-  private DuplicateApplyApplicationIdException duplicateApplication(
-      CreateApplicationCommand command, RuntimeException cause) {
-    DuplicateApplyApplicationIdException exception =
-        new DuplicateApplyApplicationIdException(command.applyApplicationId());
-    exception.initCause(cause);
-    return exception;
+  void dispatchWithRetry(CreateApplicationCommand command) {
+    try {
+      commandGateway.sendAndWait(command);
+    } catch (ConcurrencyException | AggregateStreamCreationException first) {
+      try {
+        commandGateway.sendAndWait(command);
+      } catch (RuntimeException retry) {
+        retry.addSuppressed(first);
+        throw retry;
+      }
+    }
   }
 }

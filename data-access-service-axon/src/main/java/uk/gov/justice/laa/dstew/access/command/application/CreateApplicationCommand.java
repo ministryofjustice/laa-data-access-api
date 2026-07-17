@@ -3,10 +3,15 @@ package uk.gov.justice.laa.dstew.access.command.application;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.axonframework.modelling.command.TargetAggregateIdentifier;
 
-/** Command carrying the client-generated aggregate identifier and raw create request data. */
+/**
+ * Command that creates or idempotently re-identifies an Application aggregate. The mapper currently
+ * sets {@code applicationId} from the Apply content ID so the aggregate stream identifier equals
+ * the Apply Application UUID.
+ */
 public record CreateApplicationCommand(
-    UUID applicationId,
+    @TargetAggregateIdentifier UUID applicationId,
     String status,
     String laaReference,
     Map<String, Object> applicationContent,
@@ -18,6 +23,6 @@ public record CreateApplicationCommand(
 
   /** Returns the validated Apply identifier carried by the application content. */
   public UUID applyApplicationId() {
-    return UUID.fromString(applicationContent.get("id").toString());
+    return applicationId;
   }
 }

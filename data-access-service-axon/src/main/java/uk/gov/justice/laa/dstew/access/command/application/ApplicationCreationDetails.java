@@ -8,7 +8,7 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.applicationcontent.MatterType;
 
 /** Values needed by the Application aggregate to establish its initial state. */
-public record ApplicationFinalisationDetails(
+public record ApplicationCreationDetails(
     String status,
     String laaReference,
     ApplicationContent applicationContent,
@@ -23,9 +23,10 @@ public record ApplicationFinalisationDetails(
     MatterType matterType,
     List<ApplicationProceeding> proceedings,
     String serialisedRequest,
-    Instant occurredAt) {
+    Instant occurredAt,
+    UUID leadApplicationId) {
 
-  public ApplicationFinalisationDetails {
+  public ApplicationCreationDetails {
     individuals = List.copyOf(individuals);
     proceedings = List.copyOf(proceedings);
   }

@@ -34,8 +34,10 @@ axon:
         mode: tracking
       application-history-projection:
         mode: tracking
-      create-application-saga:
-        mode: tracking
+
+application:
+  projection:
+    timeout: 5s
 
 management:
   endpoints:

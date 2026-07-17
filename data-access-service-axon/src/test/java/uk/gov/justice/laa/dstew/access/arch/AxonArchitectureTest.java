@@ -6,18 +6,15 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
-import com.tngtech.archunit.core.domain.JavaMethodCall;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.lang.ArchCondition;
 import com.tngtech.archunit.lang.ArchRule;
 import com.tngtech.archunit.lang.ConditionEvents;
 import com.tngtech.archunit.lang.SimpleConditionEvent;
-import java.util.Set;
 import org.axonframework.commandhandling.gateway.CommandGateway;
 import org.axonframework.queryhandling.QueryGateway;
 import org.axonframework.spring.stereotype.Aggregate;
-import org.axonframework.spring.stereotype.Saga;
 import org.junit.jupiter.api.Test;
 
 class AxonArchitectureTest {
@@ -26,32 +23,6 @@ class AxonArchitectureTest {
       new ClassFileImporter()
           .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
           .importPackages("uk.gov.justice.laa.dstew.access");
-
-  private static final Set<String> BLOCKING_GATEWAY_METHODS =
-      Set.of("publish", "scatterGather", "sendAndWait");
-
-  @Test
-  void sagasMustNotCallBlockingGatewayMethods() {
-    DescribedPredicate<JavaMethodCall> blockingGatewayCall =
-        new DescribedPredicate<>("call a blocking Axon gateway method") {
-          @Override
-          public boolean test(JavaMethodCall methodCall) {
-            String ownerName = methodCall.getTarget().getOwner().getName();
-            return ownerName.startsWith("org.axonframework.")
-                && ownerName.endsWith("Gateway")
-                && BLOCKING_GATEWAY_METHODS.contains(methodCall.getTarget().getName());
-          }
-        };
-
-    ArchRule rule =
-        noClasses()
-            .that()
-            .areAnnotatedWith(Saga.class)
-            .should()
-            .callMethodWhere(blockingGatewayCall)
-            .allowEmptyShould(true);
-    rule.check(classes);
-  }
 
   @Test
   void eventsMustNotDeclareEventTypedFields() {

@@ -19,7 +19,8 @@ class CreateApplicationSchemaValidationDispatchInterceptorTest {
     JsonSchemaValidator validator = mock(JsonSchemaValidator.class);
     CreateApplicationSchemaValidationDispatchInterceptor interceptor =
         new CreateApplicationSchemaValidationDispatchInterceptor(validator);
-    CreateApplicationCommand command = createCommand("CssApplication.json", "CCS");
+    UUID id = UUID.randomUUID();
+    CreateApplicationCommand command = createCommand(id, "CssApplication.json", "CCS");
     var commandMessage = GenericCommandMessage.asCommandMessage(command);
 
     interceptor.handle(List.of(commandMessage)).apply(0, commandMessage);
@@ -39,12 +40,13 @@ class CreateApplicationSchemaValidationDispatchInterceptorTest {
     verifyNoInteractions(validator);
   }
 
-  private CreateApplicationCommand createCommand(String schemaName, String applicationType) {
+  private CreateApplicationCommand createCommand(
+      UUID id, String schemaName, String applicationType) {
     return new CreateApplicationCommand(
-        UUID.randomUUID(),
+        id,
         "APPLICATION_SUBMITTED",
         "LAA-123",
-        Map.of("id", UUID.randomUUID().toString()),
+        Map.of("id", id.toString()),
         List.of(),
         "{}",
         1,

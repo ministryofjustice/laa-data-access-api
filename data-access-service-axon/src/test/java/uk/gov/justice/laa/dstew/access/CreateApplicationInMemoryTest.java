@@ -1,9 +1,6 @@
 package uk.gov.justice.laa.dstew.access;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validLinkedCreateApplicationRequest;
 
@@ -22,8 +19,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.annotation.DirtiesContext;
-import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
-import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationCommandHandler;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
@@ -54,8 +49,6 @@ class CreateApplicationInMemoryTest {
 
   @Autowired private EventProcessingConfiguration eventProcessingConfiguration;
 
-  @MockitoSpyBean private CreateApplicationCommandHandler createApplicationCommandHandler;
-
   @Test
   void givenAxonApplication_whenOpenApiRequested_thenDocumentsCreateApplication() {
     ResponseEntity<String> response = restTemplate.getForEntity("/v3/api-docs", String.class);
@@ -78,7 +71,7 @@ class CreateApplicationInMemoryTest {
   }
 
   @Test
-  void givenValidRequest_whenPostApplication_thenReturnsAcceptedAndProjectsOwnedState()
+  void givenValidRequest_whenPostApplication_thenReturnsCreatedAndProjectsOwnedState()
       throws Exception {
     UUID applyApplicationId = UUID.randomUUID();
     UUID applyProceedingId = UUID.randomUUID();
@@ -92,14 +85,15 @@ class CreateApplicationInMemoryTest {
         restTemplate.postForEntity(
             "/api/v0/applications", new HttpEntity<>(request, headers), Void.class);
 
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
     assertThat(response.getHeaders().getLocation()).isNotNull();
     assertThat(response.getHeaders().getLocation().getPath())
-        .matches("/api/v0/applications/[a-f0-9-]{36}");
+        .isEqualTo("/api/v0/applications/" + applyApplicationId);
 
     UUID applicationId =
         UUID.fromString(
             response.getHeaders().getLocation().getPath().replace("/api/v0/applications/", ""));
+    assertThat(applicationId).isEqualTo(applyApplicationId);
     ApplicationReadModel projected = awaitProjection(applicationId);
 
     assertThat(projected.getApplicationId()).isEqualTo(applicationId);
@@ -142,10 +136,11 @@ class CreateApplicationInMemoryTest {
   }
 
   @Test
-  void givenSchemaInvalidRequest_whenPostApplication_thenReturnsBadRequestBeforeHandlerRuns()
+  void givenSchemaInvalidRequest_whenPostApplication_thenReturnsBadRequestAndNoProjection()
       throws Exception {
+    UUID applyApplicationId = UUID.randomUUID();
     ApplicationCreateRequest validRequest =
-        validCreateApplicationRequest(UUID.randomUUID(), UUID.randomUUID());
+        validCreateApplicationRequest(applyApplicationId, UUID.randomUUID());
     var invalidContent = new java.util.HashMap<>(validRequest.getApplicationContent());
     invalidContent.remove("id");
     validRequest.setApplicationContent(invalidContent);
@@ -156,34 +151,67 @@ class CreateApplicationInMemoryTest {
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     assertThat(response.getBody()).contains("Generic Validation Error");
-    verify(createApplicationCommandHandler, never()).handle(any());
+    assertThat(applicationReadRepository.findById(applyApplicationId)).isEmpty();
   }
 
   @Test
-  void
-      givenExistingApplyApplicationId_whenPostApplicationAgain_thenReturnsDuplicateValidationError() {
+  void givenIdenticalRetry_whenPostApplicationAgain_thenReturnsCreatedIdempotently()
+      throws Exception {
     UUID applyApplicationId = UUID.randomUUID();
     HttpHeaders headers = new HttpHeaders();
     headers.set("X-Service-Name", "CIVIL_APPLY");
+    headers.set("X-Schema-Version", "2");
     HttpEntity<ApplicationCreateRequest> request =
         new HttpEntity<>(
             validCreateApplicationRequest(applyApplicationId, UUID.randomUUID()), headers);
 
-    ResponseEntity<String> firstResponse =
-        restTemplate.postForEntity("/api/v0/applications", request, String.class);
-    ResponseEntity<String> duplicateResponse =
-        restTemplate.postForEntity("/api/v0/applications", request, String.class);
+    ResponseEntity<Void> firstResponse =
+        restTemplate.postForEntity("/api/v0/applications", request, Void.class);
+    awaitProjection(applicationId(firstResponse));
+    ResponseEntity<Void> retryResponse =
+        restTemplate.postForEntity("/api/v0/applications", request, Void.class);
 
-    assertThat(firstResponse.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
-    assertThat(duplicateResponse.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-    assertThat(duplicateResponse.getBody())
-        .contains("Generic Validation Error")
-        .contains("Application already exists for Apply Application Id: " + applyApplicationId);
+    assertThat(firstResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    assertThat(retryResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    assertThat(retryResponse.getHeaders().getLocation())
+        .isEqualTo(firstResponse.getHeaders().getLocation());
+
+    UUID applicationId = applicationId(firstResponse);
+    assertThat(awaitHistory(applicationId, 1))
+        .singleElement()
+        .satisfies(h -> assertThat(h.getEventType()).isEqualTo("APPLICATION_CREATED"));
   }
 
   @Test
-  void givenMissingLeadApplication_whenPostApplication_thenReturnsNotFoundBeforeClaiming()
-      throws Exception {
+  void givenChangedPayload_whenPostApplicationAgain_thenReturnsConflict() throws Exception {
+    UUID applyApplicationId = UUID.randomUUID();
+    UUID applyProceedingId = UUID.randomUUID();
+    HttpHeaders headers = new HttpHeaders();
+    headers.set("X-Service-Name", "CIVIL_APPLY");
+    headers.set("X-Schema-Version", "2");
+
+    ResponseEntity<Void> firstResponse =
+        restTemplate.postForEntity(
+            "/api/v0/applications",
+            new HttpEntity<>(
+                validCreateApplicationRequest(applyApplicationId, applyProceedingId), headers),
+            Void.class);
+    awaitProjection(applicationId(firstResponse));
+
+    ResponseEntity<String> conflictResponse =
+        restTemplate.postForEntity(
+            "/api/v0/applications",
+            new HttpEntity<>(
+                validCreateApplicationRequest(applyApplicationId, UUID.randomUUID()), headers),
+            String.class);
+
+    assertThat(firstResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    assertThat(conflictResponse.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+    assertThat(awaitHistory(applyApplicationId, 1)).hasSize(1);
+  }
+
+  @Test
+  void givenMissingLeadApplication_whenPostApplication_thenReturnsNotFound() throws Exception {
     UUID missingApplyApplicationId = UUID.randomUUID();
     ApplicationCreateRequest request =
         validLinkedCreateApplicationRequest(
@@ -198,7 +226,7 @@ class CreateApplicationInMemoryTest {
   }
 
   @Test
-  void givenMissingAssociatedApplication_whenPostApplication_thenReturnsNotFoundBeforeClaiming()
+  void givenMissingAssociatedApplication_whenPostApplication_thenReturnsNotFound()
       throws Exception {
     UUID leadApplyApplicationId = UUID.randomUUID();
     ResponseEntity<Void> leadResponse =
@@ -250,12 +278,18 @@ class CreateApplicationInMemoryTest {
                 headers()),
             Void.class);
 
-    assertThat(linkedResponse.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
-    ApplicationReadModel projected = awaitProjection(applicationId(linkedResponse));
-    assertThat(projected.getLeadApplicationId()).isEqualTo(leadApplicationId);
-    assertThat(awaitHistory(projected.getApplicationId(), 2))
-        .extracting(history -> history.getEventType())
+    assertThat(linkedResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    UUID linkedApplicationId = applicationId(linkedResponse);
+    // Wait for both APPLICATION_CREATED and APPLICATION_LINKED events before asserting
+    var history = awaitHistory(linkedApplicationId, 2);
+    assertThat(history)
+        .extracting(h -> h.getEventType())
         .containsExactly("APPLICATION_CREATED", "APPLICATION_LINKED");
+    ApplicationReadModel projected =
+        applicationReadRepository
+            .findById(linkedApplicationId)
+            .orElseThrow(() -> new AssertionError("Application not found: " + linkedApplicationId));
+    assertThat(projected.getLeadApplicationId()).isEqualTo(leadApplicationId);
   }
 
   private HttpHeaders headers() {
@@ -266,7 +300,7 @@ class CreateApplicationInMemoryTest {
   }
 
   private UUID applicationId(ResponseEntity<Void> response) {
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+    assertThat(response.getStatusCode()).isIn(HttpStatus.CREATED, HttpStatus.ACCEPTED);
     assertThat(response.getHeaders().getLocation()).isNotNull();
     return UUID.fromString(
         response.getHeaders().getLocation().getPath().replace("/api/v0/applications/", ""));

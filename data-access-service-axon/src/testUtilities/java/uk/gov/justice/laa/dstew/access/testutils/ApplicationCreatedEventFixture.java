@@ -4,23 +4,27 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.ApplicationFinalisationDetails;
+import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreationDetails;
 
-/** Builds compact Application events for aggregate and saga fixture tests. */
+/** Builds compact Application events for aggregate and factory fixture tests. */
 public final class ApplicationCreatedEventFixture {
 
   private ApplicationCreatedEventFixture() {}
 
+  /** Creates a minimal event where applicationId equals applyApplicationId. */
+  public static ApplicationCreatedEvent applicationCreatedEvent(UUID applicationId) {
+    return applicationCreatedEvent(applicationId, applicationCreationDetails(applicationId));
+  }
+
   /** Creates a minimal event with stable values and the supplied identifiers. */
   public static ApplicationCreatedEvent applicationCreatedEvent(
       UUID applyApplicationId, UUID applicationId) {
-    return applicationCreatedEvent(
-        applicationId, applicationFinalisationDetails(applyApplicationId));
+    return applicationCreatedEvent(applicationId, applicationCreationDetails(applyApplicationId));
   }
 
-  /** Creates an event from the supplied identifier and finalisation details. */
+  /** Creates an event from the supplied identifier and creation details. */
   public static ApplicationCreatedEvent applicationCreatedEvent(
-      UUID applicationId, ApplicationFinalisationDetails details) {
+      UUID applicationId, ApplicationCreationDetails details) {
     return new ApplicationCreatedEvent(
         applicationId,
         details.status(),
@@ -40,10 +44,9 @@ public final class ApplicationCreatedEventFixture {
         details.occurredAt());
   }
 
-  /** Creates minimal finalisation details with stable values and the supplied Apply identifier. */
-  public static ApplicationFinalisationDetails applicationFinalisationDetails(
-      UUID applyApplicationId) {
-    return new ApplicationFinalisationDetails(
+  /** Creates minimal creation details with stable values and the supplied Apply identifier. */
+  public static ApplicationCreationDetails applicationCreationDetails(UUID applyApplicationId) {
+    return new ApplicationCreationDetails(
         "APPLICATION_SUBMITTED",
         "LAA-123",
         null,
@@ -58,6 +61,7 @@ public final class ApplicationCreatedEventFixture {
         null,
         List.of(),
         "{}",
-        Instant.parse("2026-07-15T08:00:00Z"));
+        Instant.parse("2026-07-15T08:00:00Z"),
+        null);
   }
 }

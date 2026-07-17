@@ -1,10 +1,6 @@
 package uk.gov.justice.laa.dstew.access;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.clearInvocations;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validLinkedCreateApplicationRequest;
 
@@ -15,8 +11,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import org.axonframework.commandhandling.gateway.CommandGateway;
 import org.axonframework.eventsourcing.eventstore.EventStorageEngine;
 import org.axonframework.eventsourcing.eventstore.jpa.JpaEventStorageEngine;
 import org.junit.jupiter.api.Test;
@@ -32,15 +31,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.annotation.DirtiesContext;
-import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.ObjectMapper;
-import uk.gov.justice.laa.dstew.access.command.application.ApplyApplicationIdClaimedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationCommand;
-import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationCommandHandler;
-import uk.gov.justice.laa.dstew.access.controller.application.CreateApplicationCommandMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
@@ -80,12 +74,6 @@ class PostgresAxonIntegrationTest {
 
   @Autowired private ApplicationHistoryReadRepository applicationHistoryReadRepository;
 
-  @Autowired private CommandGateway commandGateway;
-
-  @Autowired private CreateApplicationCommandMapper commandMapper;
-
-  @MockitoSpyBean private CreateApplicationCommandHandler createApplicationCommandHandler;
-
   @Test
   void givenPostgresAxonStore_whenHealthRequested_thenReportsUp() {
     ResponseEntity<String> response =
@@ -98,10 +86,9 @@ class PostgresAxonIntegrationTest {
             FROM information_schema.tables
             WHERE table_schema = 'axon'
               AND table_name IN (
-                'association_value_entry',
                 'domain_event_entry',
-                'saga_entry',
-                'snapshot_event_entry'
+                'snapshot_event_entry',
+                'token_entry'
               )
             ORDER BY table_name
             """,
@@ -111,8 +98,7 @@ class PostgresAxonIntegrationTest {
     assertThat(response.getBody()).contains("\"status\":\"UP\"");
     assertThat(eventStorageEngine).isInstanceOf(JpaEventStorageEngine.class);
     assertThat(axonTables)
-        .containsExactly(
-            "association_value_entry", "domain_event_entry", "saga_entry", "snapshot_event_entry");
+        .containsExactly("domain_event_entry", "snapshot_event_entry", "token_entry");
   }
 
   @Test
@@ -131,10 +117,9 @@ class PostgresAxonIntegrationTest {
                 validCreateApplicationRequest(applyApplicationId, applyProceedingId), headers),
             Void.class);
 
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
-    UUID applicationId =
-        UUID.fromString(
-            response.getHeaders().getLocation().getPath().replace("/api/v0/applications/", ""));
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    UUID applicationId = applicationId(response);
+    assertThat(applicationId).isEqualTo(applyApplicationId);
 
     ApplicationReadModel projected = awaitProjection(applicationId);
     assertThat(projected.getApplicationId()).isEqualTo(applicationId);
@@ -195,20 +180,6 @@ class PostgresAxonIntegrationTest {
               assertThat(event.get("payload_type"))
                   .isEqualTo(
                       "uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent");
-              assertThat(event.get("sequence_number")).isEqualTo(0L);
-            });
-
-    List<Map<String, Object>> claimEvents =
-        jdbcTemplate.queryForList(
-            "SELECT payload_type, sequence_number FROM axon.domain_event_entry "
-                + "WHERE aggregate_identifier = ?",
-            applyApplicationId.toString());
-    assertThat(claimEvents)
-        .singleElement()
-        .satisfies(
-            event -> {
-              assertThat(event.get("payload_type"))
-                  .isEqualTo(ApplyApplicationIdClaimedEvent.class.getName());
               assertThat(event.get("sequence_number")).isEqualTo(0L);
             });
   }
@@ -326,72 +297,57 @@ class PostgresAxonIntegrationTest {
   }
 
   @Test
-  void givenApplicationFinalisationFails_whenClaimReleased_thenApplyIdCanBeRetried()
+  void givenIdenticalRetry_whenPostApplicationAgain_thenReturnsCreatedIdempotently()
       throws Exception {
-    UUID existingApplicationId = UUID.randomUUID();
-    CreateApplicationCommand existingApplication =
-        withApplicationId(
-            commandMapper.toCommand(
-                validCreateApplicationRequest(UUID.randomUUID(), UUID.randomUUID()), 1),
-            existingApplicationId);
-    commandGateway.sendAndWait(existingApplication);
-    awaitProjection(existingApplicationId);
+    UUID applyApplicationId = UUID.randomUUID();
+    HttpEntity<ApplicationCreateRequest> request =
+        new HttpEntity<>(
+            validCreateApplicationRequest(applyApplicationId, UUID.randomUUID()), headers());
 
-    UUID unclaimedApplyApplicationId = UUID.randomUUID();
-    CreateApplicationCommand conflictingApplication =
-        withApplicationId(
-            commandMapper.toCommand(
-                validCreateApplicationRequest(unclaimedApplyApplicationId, UUID.randomUUID()), 1),
-            existingApplicationId);
+    ResponseEntity<Void> firstResponse =
+        restTemplate.postForEntity(
+            "http://localhost:" + port + "/api/v0/applications", request, Void.class);
+    awaitProjection(applicationId(firstResponse));
 
-    commandGateway.sendAndWait(conflictingApplication);
-    awaitClaimEventCount(unclaimedApplyApplicationId, 2);
+    ResponseEntity<Void> retryResponse =
+        restTemplate.postForEntity(
+            "http://localhost:" + port + "/api/v0/applications", request, Void.class);
 
-    CreateApplicationCommand retry =
-        commandMapper.toCommand(
-            validCreateApplicationRequest(unclaimedApplyApplicationId, UUID.randomUUID()), 1);
-    commandGateway.sendAndWait(retry);
-    awaitProjection(retry.applicationId());
+    assertThat(firstResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    assertThat(retryResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    assertThat(retryResponse.getHeaders().getLocation())
+        .isEqualTo(firstResponse.getHeaders().getLocation());
 
-    List<String> claimEventTypes =
+    UUID applicationId = applicationId(firstResponse);
+    assertThat(awaitHistory(applicationId, 1))
+        .singleElement()
+        .satisfies(h -> assertThat(h.getEventType()).isEqualTo("APPLICATION_CREATED"));
+
+    List<Map<String, Object>> events =
         jdbcTemplate.queryForList(
-            "SELECT payload_type FROM axon.domain_event_entry "
-                + "WHERE aggregate_identifier = ? ORDER BY sequence_number",
-            String.class,
-            unclaimedApplyApplicationId.toString());
-    assertThat(claimEventTypes)
-        .containsExactly(
-            ApplyApplicationIdClaimedEvent.class.getName(),
-            "uk.gov.justice.laa.dstew.access.command.application.ApplyApplicationIdReleasedEvent",
-            ApplyApplicationIdClaimedEvent.class.getName());
+            "SELECT COUNT(*) as cnt FROM axon.domain_event_entry WHERE aggregate_identifier = ?",
+            applicationId.toString());
+    assertThat(events.getFirst().get("cnt")).isEqualTo(1L);
   }
 
   @Test
-  void givenClaimedApplyApplicationId_whenPostApplicationAgain_thenReturnsBadRequest() {
+  void givenChangedPayload_whenPostApplicationAgain_thenReturnsConflict() throws Exception {
     UUID applyApplicationId = UUID.randomUUID();
-    HttpHeaders headers = new HttpHeaders();
-    headers.set("X-Service-Name", "CIVIL_APPLY");
-    HttpEntity<?> request =
-        new HttpEntity<>(
-            validCreateApplicationRequest(applyApplicationId, UUID.randomUUID()), headers);
+    UUID applyProceedingId = UUID.randomUUID();
 
-    ResponseEntity<String> firstResponse =
-        restTemplate.postForEntity(
-            "http://localhost:" + port + "/api/v0/applications", request, String.class);
-    ResponseEntity<String> duplicateResponse =
-        restTemplate.postForEntity(
-            "http://localhost:" + port + "/api/v0/applications", request, String.class);
+    ResponseEntity<Void> firstResponse =
+        post(validCreateApplicationRequest(applyApplicationId, applyProceedingId), headers());
+    awaitProjection(applicationId(firstResponse));
 
-    assertThat(firstResponse.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
-    assertThat(duplicateResponse.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-    assertThat(duplicateResponse.getBody())
-        .contains("Application already exists for Apply Application Id: " + applyApplicationId);
-    Integer claimEventCount =
-        jdbcTemplate.queryForObject(
-            "SELECT COUNT(*) FROM axon.domain_event_entry WHERE aggregate_identifier = ?",
-            Integer.class,
-            applyApplicationId.toString());
-    assertThat(claimEventCount).isEqualTo(1);
+    ResponseEntity<String> conflictResponse =
+        post(
+            validCreateApplicationRequest(applyApplicationId, UUID.randomUUID()),
+            headers(),
+            String.class);
+
+    assertThat(firstResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    assertThat(conflictResponse.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+    assertThat(awaitHistory(applyApplicationId, 1)).hasSize(1);
   }
 
   @Test
@@ -410,11 +366,15 @@ class PostgresAxonIntegrationTest {
             headers());
     UUID linkedApplicationId = applicationId(linkedResponse);
 
-    assertThat(awaitProjection(linkedApplicationId).getLeadApplicationId())
-        .isEqualTo(leadApplicationId);
+    // Wait for both APPLICATION_CREATED and APPLICATION_LINKED before checking the read model
     assertThat(awaitHistory(linkedApplicationId, 2))
         .extracting(history -> history.getEventType())
         .containsExactly("APPLICATION_CREATED", "APPLICATION_LINKED");
+    ApplicationReadModel projected =
+        applicationReadRepository
+            .findById(linkedApplicationId)
+            .orElseThrow(() -> new AssertionError("Application not found: " + linkedApplicationId));
+    assertThat(projected.getLeadApplicationId()).isEqualTo(leadApplicationId);
   }
 
   @Test
@@ -459,20 +419,31 @@ class PostgresAxonIntegrationTest {
   }
 
   @Test
-  void givenSchemaInvalidRequest_whenPostApplication_thenReturnsBadRequestBeforeHandlerRuns()
-      throws Exception {
+  void givenNullContentId_whenPostApplication_thenReturnsBadRequestWithNoEvent() {
     ApplicationCreateRequest request =
         validCreateApplicationRequest(UUID.randomUUID(), UUID.randomUUID());
-    Map<String, Object> invalidContent = new HashMap<>(request.getApplicationContent());
-    invalidContent.remove("id");
-    request.setApplicationContent(invalidContent);
-    clearInvocations(createApplicationCommandHandler);
+    Map<String, Object> contentWithNullId = new HashMap<>(request.getApplicationContent());
+    contentWithNullId.put("id", null);
+    request.setApplicationContent(contentWithNullId);
 
     ResponseEntity<String> response = post(request, headers(), String.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     assertThat(response.getBody()).contains("Generic Validation Error");
-    verify(createApplicationCommandHandler, never()).handle(any());
+  }
+
+  @Test
+  void givenSchemaInvalidRequest_whenPostApplication_thenReturnsBadRequest() throws Exception {
+    ApplicationCreateRequest request =
+        validCreateApplicationRequest(UUID.randomUUID(), UUID.randomUUID());
+    Map<String, Object> invalidContent = new HashMap<>(request.getApplicationContent());
+    invalidContent.remove("id");
+    request.setApplicationContent(invalidContent);
+
+    ResponseEntity<String> response = post(request, headers(), String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(response.getBody()).contains("Generic Validation Error");
   }
 
   @Test
@@ -533,18 +504,67 @@ class PostgresAxonIntegrationTest {
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
   }
 
-  private CreateApplicationCommand withApplicationId(
-      CreateApplicationCommand command, UUID applicationId) {
-    return new CreateApplicationCommand(
-        applicationId,
-        command.status(),
-        command.laaReference(),
-        command.applicationContent(),
-        command.individuals(),
-        command.serialisedRequest(),
-        command.schemaVersion(),
-        command.schemaName(),
-        command.applicationType());
+  @Test
+  void givenConcurrentIdenticalRequests_whenPosted_thenBothSucceedWithOneCreationEvent()
+      throws Exception {
+    UUID applyApplicationId = UUID.randomUUID();
+    UUID applyProceedingId = UUID.randomUUID();
+    ApplicationCreateRequest request =
+        validCreateApplicationRequest(applyApplicationId, applyProceedingId);
+    HttpEntity<ApplicationCreateRequest> entity = new HttpEntity<>(request, headers());
+
+    CyclicBarrier barrier = new CyclicBarrier(2);
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+    try {
+      CompletableFuture<ResponseEntity<Void>> f1 =
+          CompletableFuture.supplyAsync(
+              () -> {
+                try {
+                  barrier.await(10, TimeUnit.SECONDS);
+                  return restTemplate.postForEntity(
+                      "http://localhost:" + port + "/api/v0/applications", entity, Void.class);
+                } catch (Exception e) {
+                  throw new RuntimeException(e);
+                }
+              },
+              executor);
+      CompletableFuture<ResponseEntity<Void>> f2 =
+          CompletableFuture.supplyAsync(
+              () -> {
+                try {
+                  barrier.await(10, TimeUnit.SECONDS);
+                  return restTemplate.postForEntity(
+                      "http://localhost:" + port + "/api/v0/applications", entity, Void.class);
+                } catch (Exception e) {
+                  throw new RuntimeException(e);
+                }
+              },
+              executor);
+
+      ResponseEntity<Void> r1 = f1.get(20, TimeUnit.SECONDS);
+      ResponseEntity<Void> r2 = f2.get(20, TimeUnit.SECONDS);
+
+      // Both requests must resolve successfully regardless of which wins the concurrency race.
+      assertThat(r1.getStatusCode().is2xxSuccessful()).isTrue();
+      assertThat(r2.getStatusCode().is2xxSuccessful()).isTrue();
+    } finally {
+      executor.shutdown();
+    }
+
+    // The event store must contain exactly one ApplicationCreatedEvent.
+    awaitProjection(applyApplicationId);
+    List<Map<String, Object>> events =
+        jdbcTemplate.queryForList(
+            "SELECT payload_type, sequence_number FROM axon.domain_event_entry "
+                + "WHERE aggregate_identifier = ? ORDER BY sequence_number",
+            applyApplicationId.toString());
+    assertThat(events)
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.get("payload_type")).asString().contains("ApplicationCreatedEvent");
+              assertThat(event.get("sequence_number")).isEqualTo(0L);
+            });
   }
 
   private ResponseEntity<Void> post(ApplicationCreateRequest request, HttpHeaders headers) {
@@ -574,7 +594,7 @@ class PostgresAxonIntegrationTest {
   }
 
   private UUID applicationId(ResponseEntity<Void> response) {
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+    assertThat(response.getStatusCode()).isIn(HttpStatus.CREATED, HttpStatus.ACCEPTED);
     assertThat(response.getHeaders().getLocation()).isNotNull();
     return UUID.fromString(
         response.getHeaders().getLocation().getPath().replace("/api/v0/applications/", ""));
@@ -603,23 +623,6 @@ class PostgresAxonIntegrationTest {
     }
     throw new AssertionError(
         "Application was not available from the query projection: " + applicationId);
-  }
-
-  private void awaitClaimEventCount(UUID applyApplicationId, int expectedCount) throws Exception {
-    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(15);
-    while (System.nanoTime() < deadline) {
-      Integer count =
-          jdbcTemplate.queryForObject(
-              "SELECT COUNT(*) FROM axon.domain_event_entry WHERE aggregate_identifier = ?",
-              Integer.class,
-              applyApplicationId.toString());
-      if (count != null && count == expectedCount) {
-        return;
-      }
-      Thread.sleep(100);
-    }
-    throw new AssertionError(
-        "Claim event count did not reach " + expectedCount + " for " + applyApplicationId);
   }
 
   private ApplicationReadModel awaitProjection(UUID applicationId) throws Exception {

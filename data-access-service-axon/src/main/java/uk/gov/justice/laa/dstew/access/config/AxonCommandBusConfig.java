@@ -1,21 +1,15 @@
 package uk.gov.justice.laa.dstew.access.config;
 
-import org.axonframework.commandhandling.AsynchronousCommandBus;
-import org.axonframework.commandhandling.CommandBus;
-import org.axonframework.commandhandling.CommandBusSpanFactory;
-import org.axonframework.commandhandling.DuplicateCommandHandlerResolver;
-import org.axonframework.common.transaction.TransactionManager;
-import org.axonframework.config.Configuration;
+import org.axonframework.config.ConfigurerModule;
 import org.axonframework.messaging.correlation.CorrelationDataProvider;
 import org.axonframework.messaging.correlation.SimpleCorrelationDataProvider;
-import org.axonframework.messaging.interceptors.CorrelationDataInterceptor;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import uk.gov.justice.laa.dstew.access.config.interceptor.CreateApplicationSchemaValidationDispatchInterceptor;
 import uk.gov.justice.laa.dstew.access.config.interceptor.ServiceNameMetadataDispatchInterceptor;
 
-/** Runs each command in its own worker unit of work, including commands dispatched by sagas. */
-@org.springframework.context.annotation.Configuration
+/** Configures the default Axon command bus with dispatch interceptors and metadata correlation. */
+@Configuration
 public class AxonCommandBusConfig {
 
   /** Copies the request service name from commands onto the events they cause. */
@@ -26,28 +20,19 @@ public class AxonCommandBusConfig {
   }
 
   /**
-   * Replaces Axon's synchronous local command bus while preserving its standard instrumentation.
+   * Registers dispatch interceptors on the Axon command bus during initialisation. Axon's Spring
+   * Boot starter does not auto-register MessageDispatchInterceptor beans, so explicit registration
+   * via ConfigurerModule is required.
    */
-  @Bean(destroyMethod = "shutdown")
-  @Qualifier("localSegment")
-  AsynchronousCommandBus commandBus(
-      TransactionManager transactionManager,
-      Configuration axonConfiguration,
-      DuplicateCommandHandlerResolver duplicateCommandHandlerResolver,
-      ServiceNameMetadataDispatchInterceptor serviceNameMetadataDispatchInterceptor,
-      CreateApplicationSchemaValidationDispatchInterceptor
-          createApplicationSchemaValidationDispatchInterceptor) {
-    AsynchronousCommandBus commandBus =
-        AsynchronousCommandBus.builder()
-            .transactionManager(transactionManager)
-            .duplicateCommandHandlerResolver(duplicateCommandHandlerResolver)
-            .spanFactory(axonConfiguration.getComponent(CommandBusSpanFactory.class))
-            .messageMonitor(axonConfiguration.messageMonitor(CommandBus.class, "commandBus"))
-            .build();
-    commandBus.registerHandlerInterceptor(
-        new CorrelationDataInterceptor<>(axonConfiguration.correlationDataProviders()));
-    commandBus.registerDispatchInterceptor(serviceNameMetadataDispatchInterceptor);
-    commandBus.registerDispatchInterceptor(createApplicationSchemaValidationDispatchInterceptor);
-    return commandBus;
+  @Bean
+  ConfigurerModule commandDispatchInterceptors(
+      ServiceNameMetadataDispatchInterceptor serviceNameInterceptor,
+      CreateApplicationSchemaValidationDispatchInterceptor schemaInterceptor) {
+    return configurer ->
+        configurer.onInitialize(
+            config -> {
+              config.commandBus().registerDispatchInterceptor(serviceNameInterceptor);
+              config.commandBus().registerDispatchInterceptor(schemaInterceptor);
+            });
   }
 }

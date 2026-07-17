@@ -6,6 +6,7 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
@@ -25,6 +26,19 @@ public class ApplicationExceptionHandler {
       ResourceNotFoundException exception) {
     return ResponseEntity.status(HttpStatus.NOT_FOUND)
         .body(ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, exception.getMessage()));
+  }
+
+  /** Returns a conflict when an application ID is reused with different creation data. */
+  @ExceptionHandler(ApplicationCreationConflictException.class)
+  ResponseEntity<ProblemDetail> handleApplicationCreationConflictException(
+      ApplicationCreationConflictException exception) {
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(
+            ProblemDetail.forStatusAndDetail(
+                HttpStatus.CONFLICT,
+                "Application ID "
+                    + exception.getApplicationId()
+                    + " already exists with different creation data"));
   }
 
   private ResponseEntity<ProblemDetail> validationError(List<String> errors) {

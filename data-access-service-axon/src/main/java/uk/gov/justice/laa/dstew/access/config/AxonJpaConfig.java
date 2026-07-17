@@ -11,8 +11,6 @@ import org.axonframework.eventsourcing.eventstore.EventStorageEngine;
 import org.axonframework.eventsourcing.eventstore.jpa.DomainEventEntry;
 import org.axonframework.eventsourcing.eventstore.jpa.JpaEventStorageEngine;
 import org.axonframework.eventsourcing.eventstore.jpa.SQLErrorCodesResolver;
-import org.axonframework.modelling.saga.repository.jpa.AssociationValueEntry;
-import org.axonframework.modelling.saga.repository.jpa.SagaEntry;
 import org.axonframework.serialization.Serializer;
 import org.axonframework.spring.messaging.unitofwork.SpringTransactionManager;
 import org.axonframework.springboot.util.jpa.ContainerManagedEntityManagerProvider;
@@ -30,8 +28,6 @@ import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
     basePackageClasses = {
       DomainEventEntry.class,
       org.axonframework.eventhandling.tokenstore.jpa.TokenEntry.class,
-      SagaEntry.class,
-      AssociationValueEntry.class,
       ApplicationReadModel.class
     })
 @ConditionalOnProperty(
