@@ -37,6 +37,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
       "spring.flyway.enabled=false",
       "spring.jpa.hibernate.ddl-auto=create-drop",
       "spring.jpa.properties.hibernate.default_schema=PUBLIC",
+      "spring.jpa.database-platform=org.hibernate.dialect.H2Dialect",
       "spring.datasource.url=jdbc:h2:mem:axon-timeout;DB_CLOSE_DELAY=-1",
       "application.projection.timeout=200ms"
     })
@@ -52,8 +53,7 @@ class ProjectionTimeoutInMemoryTest {
   @Autowired private EventStore eventStore;
 
   @Test
-  void givenStoppedProjectionProcessor_whenPostApplication_thenReturnsAcceptedWithLocation()
-      throws Exception {
+  void givenStoppedProjectionProcessor_whenPostApplication_thenReturnsAcceptedWithLocation() {
     // Stop the projection processor so no QueryUpdateEmitter.emit can be called for this command.
     eventProcessingConfiguration
         .eventProcessor("application-projection", TrackingEventProcessor.class)

@@ -34,6 +34,7 @@ import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHist
       "spring.flyway.enabled=false",
       "spring.jpa.hibernate.ddl-auto=create-drop",
       "spring.jpa.properties.hibernate.default_schema=PUBLIC",
+      "spring.jpa.database-platform=org.hibernate.dialect.H2Dialect",
       "spring.datasource.url=jdbc:h2:mem:axon-create;DB_CLOSE_DELAY=-1"
     })
 @AutoConfigureTestRestTemplate

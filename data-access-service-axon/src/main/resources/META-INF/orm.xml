@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<entity-mappings xmlns="http://java.sun.com/xml/ns/persistence/orm" version="2.0">
+
+  <!-- Force BYTEA on Axon's event store columns instead of PostgreSQL Large Object Storage (OID) -->
+
+  <entity class="org.axonframework.eventsourcing.eventstore.jpa.DomainEventEntry">
+    <!--
+      Override allocationSize to 1 to match INCREMENT BY 1 on the sequence.
+      Hibernate's default of 50 causes gaps in global_index on restart/multi-instance,
+      which can stall tracking processors waiting for values that never arrive.
+    -->
+    <sequence-generator name="DomainEventEntrySeq"
+                        sequence-name="domain_event_entry_seq"
+                        allocation-size="1"/>
+    <attribute-override name="payload">
+      <column name="payload" column-definition="BYTEA"/>
+    </attribute-override>
+    <attribute-override name="metaData">
+      <column name="meta_data" column-definition="BYTEA"/>
+    </attribute-override>
+  </entity>
+
+  <!--
+    SnapshotEventEntry is intentionally omitted: explicitly listing it in orm.xml triggers a
+    Hibernate 7 AnnotationException (AbstractSnapshotEventEntry$PK has no persistent properties).
+    This is a Hibernate 7 regression unresolved as of Axon 4.11.2. The dialect alone is sufficient
+    for correct BYTEA runtime behaviour on snapshot columns; orm.xml is only needed when Hibernate
+    generates the schema, which is handled by Flyway here. Re-evaluate when Hibernate 7 fixes the
+    @IdClass validation, or when snapshotting is enabled.
+  -->
+
+  <entity class="org.axonframework.eventhandling.tokenstore.jpa.TokenEntry">
+    <attribute-override name="token">
+      <column name="token" column-definition="BYTEA"/>
+    </attribute-override>
+  </entity>
+
+</entity-mappings>

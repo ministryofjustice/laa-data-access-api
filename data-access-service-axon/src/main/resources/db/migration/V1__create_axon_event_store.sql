@@ -1,4 +1,4 @@
-CREATE SEQUENCE domain_event_entry_seq START WITH 1 INCREMENT BY 50;
+CREATE SEQUENCE domain_event_entry_seq START WITH 1 INCREMENT BY 1;
 
 CREATE TABLE domain_event_entry (
     global_index BIGINT NOT NULL DEFAULT nextval('domain_event_entry_seq'),
