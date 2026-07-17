@@ -20,6 +20,7 @@ import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.CreateLin
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupRequested;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.ValidateApplicationExistsCommand;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
+import uk.gov.justice.laa.dstew.access.exception.ApplicationGroupInvariantException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 
 /** Event-sourced consistency boundary for an Application and its owned child state. */
@@ -28,6 +29,7 @@ import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 public class ApplicationAggregate {
 
   @AggregateIdentifier private UUID applicationId;
+  private boolean isAssociatedMember;
   private String status;
   private String laaReference;
   private ApplicationContent applicationContent;
@@ -68,6 +70,11 @@ public class ApplicationAggregate {
       throw new ApplicationCreationConflictException(applicationId);
     }
     ApplicationCreationDetails details = factory.prepare(command);
+    if (details.leadApplicationId() != null
+        && details.leadApplicationId().equals(command.applicationId())) {
+      throw new ApplicationGroupInvariantException(
+          "Application " + command.applicationId() + " cannot be its own lead");
+    }
     apply(applicationCreatedEvent(command.applicationId(), details));
     return applicationId;
   }
@@ -92,6 +99,12 @@ public class ApplicationAggregate {
     if (applicationId == null) {
       throw new ResourceNotFoundException(
           "No linked application found with Application ID: " + command.leadApplicationId());
+    }
+    if (isAssociatedMember) {
+      throw new ApplicationGroupInvariantException(
+          "Application "
+              + applicationId
+              + " is already a member of another group and cannot be a lead");
     }
     UUID groupId =
         UUID.nameUUIDFromBytes(("linked-group:" + applicationId).getBytes(StandardCharsets.UTF_8));
@@ -132,6 +145,7 @@ public class ApplicationAggregate {
   @EventSourcingHandler
   void on(ApplicationCreatedEvent event) {
     applicationId = event.applicationId();
+    isAssociatedMember = event.leadApplicationId() != null;
     status = event.status();
     laaReference = event.laaReference();
     applicationContent = event.applicationContent();

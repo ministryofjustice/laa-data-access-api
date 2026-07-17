@@ -86,7 +86,8 @@ class GetAllApplicationsResponseMapperTest {
             .build();
 
     ApplicationSummary summary =
-        mapper.toResponse(new FindAllApplicationsResult(List.of(app), Map.of(), 1L, 1, 20))
+        mapper
+            .toResponse(new FindAllApplicationsResult(List.of(app), Map.of(), 1L, 1, 20))
             .getBody()
             .getApplications()
             .get(0);
@@ -105,7 +106,8 @@ class GetAllApplicationsResponseMapperTest {
             .build();
 
     ApplicationSummary summary =
-        mapper.toResponse(new FindAllApplicationsResult(List.of(app), Map.of(), 1L, 1, 20))
+        mapper
+            .toResponse(new FindAllApplicationsResult(List.of(app), Map.of(), 1L, 1, 20))
             .getBody()
             .getApplications()
             .get(0);
@@ -126,7 +128,8 @@ class GetAllApplicationsResponseMapperTest {
             .build();
 
     ApplicationSummary summary =
-        mapper.toResponse(new FindAllApplicationsResult(List.of(app), Map.of(), 1L, 1, 20))
+        mapper
+            .toResponse(new FindAllApplicationsResult(List.of(app), Map.of(), 1L, 1, 20))
             .getBody()
             .getApplications()
             .get(0);
@@ -159,9 +162,9 @@ class GetAllApplicationsResponseMapperTest {
             .build();
 
     ApplicationSummary summary =
-        mapper.toResponse(
-                new FindAllApplicationsResult(
-                    List.of(leadApp), Map.of(leadId, group), 1L, 1, 20))
+        mapper
+            .toResponse(
+                new FindAllApplicationsResult(List.of(leadApp), Map.of(leadId, group), 1L, 1, 20))
             .getBody()
             .getApplications()
             .get(0);
@@ -181,7 +184,8 @@ class GetAllApplicationsResponseMapperTest {
             .build();
 
     ApplicationSummary summary =
-        mapper.toResponse(new FindAllApplicationsResult(List.of(app), Map.of(), 1L, 1, 20))
+        mapper
+            .toResponse(new FindAllApplicationsResult(List.of(app), Map.of(), 1L, 1, 20))
             .getBody()
             .getApplications()
             .get(0);

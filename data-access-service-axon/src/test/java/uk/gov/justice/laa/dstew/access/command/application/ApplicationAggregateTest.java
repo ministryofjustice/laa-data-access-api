@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.CreateLinkedApplicationGroupCommand;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupRequested;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
+import uk.gov.justice.laa.dstew.access.exception.ApplicationGroupInvariantException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 
 class ApplicationAggregateTest {
@@ -161,6 +162,82 @@ class ApplicationAggregateTest {
                 "{}",
                 java.time.Instant.parse("2026-07-15T08:00:00Z")))
         .expectException(ResourceNotFoundException.class)
+        .expectNoEvents();
+  }
+
+  @Test
+  void givenSelfReferentialLead_whenCreateApplication_thenRejectsWithIllegalArgument() {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationCreationDetailsFactory selfLeadFactory =
+        new ApplicationCreationDetailsFactory(null, null) {
+          @Override
+          public ApplicationCreationDetails prepare(CreateApplicationCommand command) {
+            return new ApplicationCreationDetails(
+                "APPLICATION_SUBMITTED",
+                "LAA-123",
+                null,
+                List.of(),
+                1,
+                "APPLY",
+                applicationId,
+                java.time.Instant.parse("2026-07-14T12:30:00Z"),
+                "1A001B",
+                false,
+                null,
+                null,
+                List.of(),
+                "{}",
+                java.time.Instant.parse("2026-07-15T08:00:00Z"),
+                applicationId); // leadApplicationId == self
+          }
+        };
+    fixture = new AggregateTestFixture<>(ApplicationAggregate.class);
+    fixture.registerInjectableResource(selfLeadFactory);
+
+    fixture
+        .givenNoPriorActivity()
+        .when(createCommand(applicationId, "{}"))
+        .expectException(ApplicationGroupInvariantException.class)
+        .expectNoEvents();
+  }
+
+  @Test
+  void
+      givenAssociatedApplication_whenCreateLinkedApplicationGroupCommand_thenRejectsWithIllegalState() {
+    UUID applicationId = UUID.randomUUID();
+    UUID otherLeadId = UUID.randomUUID();
+    // Build an event representing this app having been created as an associated member
+    ApplicationCreationDetails associatedDetails =
+        new ApplicationCreationDetails(
+            "APPLICATION_SUBMITTED",
+            "LAA-123",
+            null,
+            List.of(),
+            1,
+            "APPLY",
+            applicationId,
+            java.time.Instant.parse("2026-07-14T12:30:00Z"),
+            "1A001B",
+            false,
+            null,
+            null,
+            List.of(),
+            "{}",
+            java.time.Instant.parse("2026-07-15T08:00:00Z"),
+            otherLeadId); // already a member of another group
+    ApplicationCreatedEvent associatedCreated =
+        applicationCreatedEvent(applicationId, associatedDetails);
+
+    fixture
+        .given(associatedCreated)
+        .when(
+            new CreateLinkedApplicationGroupCommand(
+                applicationId,
+                UUID.randomUUID(),
+                List.of(applicationId, UUID.randomUUID()),
+                "{}",
+                java.time.Instant.parse("2026-07-15T08:00:00Z")))
+        .expectException(ApplicationGroupInvariantException.class)
         .expectNoEvents();
   }
 

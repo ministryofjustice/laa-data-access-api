@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
+import uk.gov.justice.laa.dstew.access.exception.ApplicationGroupInvariantException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
@@ -18,6 +19,14 @@ public class ApplicationExceptionHandler {
   @ExceptionHandler(ValidationException.class)
   ResponseEntity<ProblemDetail> handleValidationException(ValidationException exception) {
     return validationError(exception.errors());
+  }
+
+  /** Returns a 400 when a command would violate an application-group invariant. */
+  @ExceptionHandler(ApplicationGroupInvariantException.class)
+  ResponseEntity<ProblemDetail> handleApplicationGroupInvariantException(
+      ApplicationGroupInvariantException exception) {
+    return ResponseEntity.badRequest()
+        .body(ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, exception.getMessage()));
   }
 
   /** Returns a missing linked application as a standard HTTP not-found response. */

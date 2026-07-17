@@ -24,8 +24,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.test.annotation.DirtiesContext;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
-import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
+import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadModel;
@@ -446,7 +446,8 @@ class CreateApplicationInMemoryTest {
               assertThat(summary.getLinkedApplications())
                   .singleElement()
                   .satisfies(
-                      linked -> assertThat(linked.getApplicationId()).isEqualTo(linkedApplicationId));
+                      linked ->
+                          assertThat(linked.getApplicationId()).isEqualTo(linkedApplicationId));
             });
   }
 
