@@ -2,8 +2,8 @@ package uk.gov.justice.laa.dstew.access.query.submission;
 
 import java.util.List;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationContent;
-import uk.gov.justice.laa.dstew.access.command.synchronousapplication.SynchronousApplicationIndividual;
-import uk.gov.justice.laa.dstew.access.command.synchronousapplication.SynchronousApplicationProceeding;
+import uk.gov.justice.laa.dstew.access.command.application.ApplicationIndividual;
+import uk.gov.justice.laa.dstew.access.command.application.ApplicationProceeding;
 
 /**
  * The raw submitted payload stored as the {@code submissions.data} JSON blob. Kept out of the
@@ -12,5 +12,5 @@ import uk.gov.justice.laa.dstew.access.command.synchronousapplication.Synchronou
  */
 public record SubmissionData(
     ApplicationContent applicationContent,
-    List<SynchronousApplicationIndividual> individuals,
-    List<SynchronousApplicationProceeding> proceedings) {}
+    List<ApplicationIndividual> individuals,
+    List<ApplicationProceeding> proceedings) {}

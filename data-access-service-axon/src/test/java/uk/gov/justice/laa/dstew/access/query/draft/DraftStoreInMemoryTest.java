@@ -12,7 +12,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.annotation.DirtiesContext;
 import uk.gov.justice.laa.dstew.access.AxonInMemoryConfig;
 import uk.gov.justice.laa.dstew.access.DataAccessServiceAxonApplication;
-import uk.gov.justice.laa.dstew.access.command.synchronousapplication.SynchronousApplicationIndividual;
+import uk.gov.justice.laa.dstew.access.command.application.ApplicationIndividual;
 
 @SpringBootTest(
     classes = DataAccessServiceAxonApplication.class,
@@ -43,7 +43,7 @@ class DraftStoreInMemoryTest {
                 new DraftData(
                     null,
                     List.of(
-                        new SynchronousApplicationIndividual(
+                        new ApplicationIndividual(
                             UUID.randomUUID(), "Ada", "Lovelace", null, null, "CLIENT")),
                     List.of()))
             .createdAt(Instant.parse("2026-07-16T09:00:00Z"))
@@ -55,7 +55,7 @@ class DraftStoreInMemoryTest {
         new DraftData(
             null,
             List.of(
-                new SynchronousApplicationIndividual(
+                new ApplicationIndividual(
                     UUID.randomUUID(), "Grace", "Hopper", null, null, "CLIENT")),
             List.of()));
     draftRepository.saveAndFlush(stored);

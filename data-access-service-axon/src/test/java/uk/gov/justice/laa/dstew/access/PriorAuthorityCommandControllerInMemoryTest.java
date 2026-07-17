@@ -87,7 +87,7 @@ class PriorAuthorityCommandControllerInMemoryTest {
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     assertThat(response.getBody())
-        .contains("No synchronous application found with ID: " + unknownApplicationId);
+        .contains("No application found with ID: " + unknownApplicationId);
   }
 
   @Test
@@ -112,12 +112,12 @@ class PriorAuthorityCommandControllerInMemoryTest {
     ApplicationCreateRequest request =
         validCreateApplicationRequest(applicationId, UUID.randomUUID());
     restTemplate.postForEntity(
-        "/api/v0/synchronous-applications", new HttpEntity<>(request, headers()), Void.class);
+        "/api/v0/applications", new HttpEntity<>(request, headers()), Void.class);
     return applicationId;
   }
 
   private static String priorAuthorities(UUID applicationId) {
-    return "/api/v0/synchronous-applications/" + applicationId + "/prior-authorities";
+    return "/api/v0/applications/" + applicationId + "/prior-authorities";
   }
 
   private HttpHeaders headers() {

@@ -20,9 +20,9 @@ import org.springframework.boot.persistence.autoconfigure.EntityScan;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
+import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.draft.DraftRecord;
 import uk.gov.justice.laa.dstew.access.query.submission.SubmissionRecord;
-import uk.gov.justice.laa.dstew.access.query.synchronousapplication.SynchronousApplicationReadModel;
 
 /** Configures Axon's event and token stores to use the application JPA transaction boundary. */
 @Configuration
@@ -30,7 +30,7 @@ import uk.gov.justice.laa.dstew.access.query.synchronousapplication.SynchronousA
     basePackageClasses = {
       DomainEventEntry.class,
       org.axonframework.eventhandling.tokenstore.jpa.TokenEntry.class,
-      SynchronousApplicationReadModel.class,
+      ApplicationReadModel.class,
       SubmissionRecord.class,
       DraftRecord.class
     })

@@ -30,7 +30,7 @@ axon:
     messages: jackson
   eventhandling:
     processors:
-      synchronous-application-projection:
+      application-projection:
         mode: subscribing
 
 management:
