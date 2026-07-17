@@ -35,14 +35,14 @@ import uk.gov.justice.laa.dstew.access.usecase.shared.PagedResult;
  * Pact provider verification entry point for {@code laa-data-access-api}.
  *
  * <p>Pulls every consumer pact registered against the provider name below from the broker, runs
- * each interaction against this Spring Boot app on a random local port, and (when broker creds
- * are set in env) publishes the verification result back.
+ * each interaction against this Spring Boot app on a random local port, and (when broker creds are
+ * set in env) publishes the verification result back.
  *
- * <p>Each {@code @State("...")} method on this class is the provider-side implementation of a
- * state string a consumer named via {@code .given("...")} when they generated their pact.
+ * <p>Each {@code @State("...")} method on this class is the provider-side implementation of a state
+ * string a consumer named via {@code .given("...")} when they generated their pact.
  *
- * <p>State strings live across repos: the literal string here must match the literal string
- * the consumer wrote. Agree these with the consumer team before changing.
+ * <p>State strings live across repos: the literal string here must match the literal string the
+ * consumer wrote. Agree these with the consumer team before changing.
  */
 @Slf4j
 @ActiveProfiles("test")
