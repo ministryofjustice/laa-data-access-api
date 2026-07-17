@@ -1,26 +1,25 @@
 package uk.gov.justice.laa.dstew.access.command.application;
 
-import java.util.List;
-import java.util.Map;
+import java.time.Instant;
 import java.util.UUID;
 import org.axonframework.modelling.command.TargetAggregateIdentifier;
+import uk.gov.justice.laa.dstew.access.applicationcontent.CategoryOfLaw;
+import uk.gov.justice.laa.dstew.access.applicationcontent.MatterType;
 
-/** Command to create a new Application aggregate. */
+/**
+ * Command to submit an application. Carries no personal data: the body has already been persisted
+ * to the deletable {@code submissions} table by the application layer and is referenced here only
+ * by {@code contentId}. The remaining fields are non-PII structural metadata.
+ */
 public record CreateApplicationCommand(
+    @TargetAggregateIdentifier UUID applyApplicationId,
+    UUID contentId,
     String status,
     String laaReference,
-    Map<String, Object> applicationContent,
-    List<ApplicationIndividual> individuals,
-    String serialisedRequest,
     int schemaVersion,
-    String schemaName,
-    String applicationType) {
-
-  /**
-   * Returns the Apply Application identifier extracted from the content and used as aggregate id.
-   */
-  @TargetAggregateIdentifier
-  public UUID applyApplicationId() {
-    return UUID.fromString(applicationContent.get("id").toString());
-  }
-}
+    String applicationType,
+    Instant submittedAt,
+    String officeCode,
+    Boolean usedDelegatedFunctions,
+    CategoryOfLaw categoryOfLaw,
+    MatterType matterType) {}

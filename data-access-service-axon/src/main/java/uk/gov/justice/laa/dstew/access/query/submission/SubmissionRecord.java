@@ -16,9 +16,10 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 /**
- * Payload store for a submitted application, populated by the submission projection. Holds the raw
- * submission as a JSON blob keyed by the producing event, with the causation and correlation ids
- * that link it back to the command/event chain. Deletable independently of the event stream.
+ * Payload store for a submitted application. Holds the raw submission as a JSON blob keyed by the
+ * minted {@code content_id} that the pointer event references. Written by the application layer
+ * before the event is emitted, and deletable independently of the event stream. It is the
+ * system-of-record for the submitted body and is NOT rebuildable by replaying events.
  */
 @Entity
 @Table(name = "submissions")
@@ -29,8 +30,8 @@ import org.hibernate.type.SqlTypes;
 public class SubmissionRecord {
 
   @Id
-  @Column(name = "event_id")
-  private UUID eventId;
+  @Column(name = "content_id")
+  private UUID contentId;
 
   @Column(name = "apply_application_id")
   private UUID applyApplicationId;

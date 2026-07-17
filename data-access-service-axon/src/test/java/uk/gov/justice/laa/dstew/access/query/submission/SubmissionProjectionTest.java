@@ -1,16 +1,13 @@
 package uk.gov.justice.laa.dstew.access.query.submission;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentCaptor.forClass;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
-import org.axonframework.eventhandling.EventMessage;
-import org.axonframework.eventhandling.GenericEventMessage;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
-import uk.gov.justice.laa.dstew.access.testutils.ApplicationSubmittedEventFixture;
 
 class SubmissionProjectionTest {
 
@@ -18,23 +15,28 @@ class SubmissionProjectionTest {
   private final SubmissionProjection projection = new SubmissionProjection(repository);
 
   @Test
-  void givenCreatedEvent_whenProjected_thenStoresTypedPayloadKeyedByEvent() {
+  void givenStoredSubmission_whenQueried_thenReturnsPayload() {
     UUID applyApplicationId = UUID.randomUUID();
-    var event = ApplicationSubmittedEventFixture.applicationSubmittedEvent(applyApplicationId);
-    EventMessage<?> message = GenericEventMessage.asEventMessage(event);
+    SubmissionData data = new SubmissionData(null, List.of(), List.of());
+    SubmissionRecord record = SubmissionRecord.builder().data(data).build();
+    when(repository.findFirstByApplyApplicationIdOrderByCreatedAtDesc(applyApplicationId))
+        .thenReturn(Optional.of(record));
 
-    projection.on(event, message);
+    Optional<SubmissionData> result =
+        projection.handle(new FindSubmissionByApplicationIdQuery(applyApplicationId));
 
-    ArgumentCaptor<SubmissionRecord> captor = forClass(SubmissionRecord.class);
-    verify(repository).save(captor.capture());
-    SubmissionRecord saved = captor.getValue();
+    assertThat(result).contains(data);
+  }
 
-    assertThat(saved.getEventId()).isEqualTo(UUID.fromString(message.getIdentifier()));
-    assertThat(saved.getApplyApplicationId()).isEqualTo(applyApplicationId);
-    assertThat(saved.getSubmissionType()).isEqualTo(SubmissionType.CIVIL_APPLICATION);
-    assertThat(saved.getData()).isNotNull();
-    assertThat(saved.getData().individuals()).hasSize(1);
-    assertThat(saved.getData().proceedings()).hasSize(1);
-    assertThat(saved.getCreatedAt()).isEqualTo(event.occurredAt());
+  @Test
+  void givenNoSubmission_whenQueried_thenReturnsEmpty() {
+    UUID applyApplicationId = UUID.randomUUID();
+    when(repository.findFirstByApplyApplicationIdOrderByCreatedAtDesc(applyApplicationId))
+        .thenReturn(Optional.empty());
+
+    Optional<SubmissionData> result =
+        projection.handle(new FindSubmissionByApplicationIdQuery(applyApplicationId));
+
+    assertThat(result).isEmpty();
   }
 }
