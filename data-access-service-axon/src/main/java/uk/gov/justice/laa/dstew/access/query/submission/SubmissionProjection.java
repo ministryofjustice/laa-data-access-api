@@ -9,7 +9,7 @@ import org.axonframework.eventhandling.ResetHandler;
 import org.axonframework.messaging.MetaData;
 import org.axonframework.queryhandling.QueryHandler;
 import org.springframework.stereotype.Component;
-import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.ApplicationSubmittedEvent;
 
 /**
  * Stores the raw submitted payload for each application in the {@code submissions} table, keyed by
@@ -36,7 +36,7 @@ public class SubmissionProjection {
 
   /** Persists the submitted payload alongside its causation and correlation ids. */
   @EventHandler
-  public void on(ApplicationCreatedEvent event, EventMessage<?> message) {
+  public void on(ApplicationSubmittedEvent event, EventMessage<?> message) {
     MetaData metaData = message.getMetaData();
     repository.save(
         SubmissionRecord.builder()

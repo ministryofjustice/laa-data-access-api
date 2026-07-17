@@ -7,8 +7,11 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.applicationcontent.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.applicationcontent.MatterType;
 
-/** Event establishing the complete initial state of a Application aggregate. */
-public record ApplicationCreatedEvent(
+/**
+ * Event marking that an application was submitted. Emitted either directly (a fresh aggregate is
+ * created straight into the submitted state) or as a transition from an existing draft.
+ */
+public record ApplicationSubmittedEvent(
     UUID applyApplicationId,
     String status,
     String laaReference,

@@ -3,18 +3,18 @@ package uk.gov.justice.laa.dstew.access.testutils;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
-import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationIndividual;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationProceeding;
+import uk.gov.justice.laa.dstew.access.command.application.ApplicationSubmittedEvent;
 
 /** Builds compact Application events for aggregate and projection tests. */
-public final class ApplicationCreatedEventFixture {
+public final class ApplicationSubmittedEventFixture {
 
-  private ApplicationCreatedEventFixture() {}
+  private ApplicationSubmittedEventFixture() {}
 
   /** Creates a minimal event with the supplied Apply Application identifier. */
-  public static ApplicationCreatedEvent applicationCreatedEvent(UUID applyApplicationId) {
-    return new ApplicationCreatedEvent(
+  public static ApplicationSubmittedEvent applicationSubmittedEvent(UUID applyApplicationId) {
+    return new ApplicationSubmittedEvent(
         applyApplicationId,
         "APPLICATION_SUBMITTED",
         "LAA-123",

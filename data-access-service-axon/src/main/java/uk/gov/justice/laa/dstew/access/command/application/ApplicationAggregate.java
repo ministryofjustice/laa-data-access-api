@@ -42,17 +42,22 @@ public class ApplicationAggregate {
   private MatterType matterType;
   private List<ApplicationProceeding> proceedings;
   private final Set<UUID> priorAuthorityIds = new HashSet<>();
+  private boolean submitted;
 
-  /** Creates a Application, treating redelivery of the command as idempotent. */
+  /**
+   * Submits an application. The aggregate may already be alive as a draft (genesis {@code
+   * ApplicationDraftedEvent}), in which case submission is a state transition; otherwise the
+   * aggregate is created directly. Re-submission of an already-submitted application is idempotent.
+   */
   @CommandHandler
   @CreationPolicy(AggregateCreationPolicy.CREATE_IF_MISSING)
   UUID handle(CreateApplicationCommand command, ApplicationContentParser parser, Clock clock) {
-    if (applyApplicationId != null) {
+    if (submitted) {
       return applyApplicationId;
     }
     ParsedAppContentDetails parsed = parser.parse(command.applicationContent());
     apply(
-        new ApplicationCreatedEvent(
+        new ApplicationSubmittedEvent(
             parsed.applyApplicationId(),
             command.status(),
             command.laaReference(),
@@ -101,7 +106,7 @@ public class ApplicationAggregate {
       return applyApplicationId;
     }
     apply(
-        new DraftApplicationCreatedEvent(
+        new ApplicationDraftedEvent(
             command.draftApplicationId(), command.content(), Instant.now(clock)));
     return applyApplicationId;
   }
@@ -110,12 +115,12 @@ public class ApplicationAggregate {
   @CommandHandler
   void handle(UpdateDraftApplicationCommand command, Clock clock) {
     apply(
-        new DraftApplicationUpdatedEvent(
+        new ApplicationDraftUpdatedEvent(
             command.draftApplicationId(), command.content(), Instant.now(clock)));
   }
 
   @EventSourcingHandler
-  void on(ApplicationCreatedEvent event) {
+  void on(ApplicationSubmittedEvent event) {
     applyApplicationId = event.applyApplicationId();
     status = event.status();
     laaReference = event.laaReference();
@@ -129,6 +134,7 @@ public class ApplicationAggregate {
     categoryOfLaw = event.categoryOfLaw();
     matterType = event.matterType();
     proceedings = List.copyOf(event.proceedings());
+    submitted = true;
   }
 
   @EventSourcingHandler
@@ -137,7 +143,7 @@ public class ApplicationAggregate {
   }
 
   @EventSourcingHandler
-  void on(DraftApplicationCreatedEvent event) {
+  void on(ApplicationDraftedEvent event) {
     applyApplicationId = event.draftApplicationId();
   }
 

@@ -6,7 +6,7 @@ import org.axonframework.eventhandling.EventHandler;
 import org.axonframework.eventhandling.ResetHandler;
 import org.axonframework.queryhandling.QueryHandler;
 import org.springframework.stereotype.Component;
-import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.ApplicationSubmittedEvent;
 
 /** Subscribing projection of the current state of each Application. */
 @Component
@@ -27,7 +27,7 @@ public class ApplicationProjection {
 
   /** Creates the current-state row from a Application's creation event. */
   @EventHandler
-  public void on(ApplicationCreatedEvent event) {
+  public void on(ApplicationSubmittedEvent event) {
     repository.save(
         ApplicationReadModel.builder()
             .applyApplicationId(event.applyApplicationId())

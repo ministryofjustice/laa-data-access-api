@@ -58,8 +58,8 @@ class ApplicationAggregateTest {
               public boolean matches(Object o) {
                 var events = (java.util.List<?>) o;
                 assertThat(events).hasSize(1);
-                ApplicationCreatedEvent event =
-                    (ApplicationCreatedEvent)
+                ApplicationSubmittedEvent event =
+                    (ApplicationSubmittedEvent)
                         ((org.axonframework.messaging.Message<?>) events.getFirst()).getPayload();
                 assertThat(event.applyApplicationId()).isEqualTo(applyApplicationId);
                 assertThat(event.status()).isEqualTo("APPLICATION_SUBMITTED");
@@ -69,7 +69,7 @@ class ApplicationAggregateTest {
 
               @Override
               public void describeTo(org.hamcrest.Description description) {
-                description.appendText("ApplicationCreatedEvent with expected fields");
+                description.appendText("ApplicationSubmittedEvent with expected fields");
               }
             });
   }
@@ -80,8 +80,8 @@ class ApplicationAggregateTest {
     UUID applyApplicationId = UUID.randomUUID();
     UUID applyProceedingId = UUID.randomUUID();
     Map<String, Object> content = validContent(applyApplicationId, applyProceedingId);
-    ApplicationCreatedEvent existingEvent =
-        new ApplicationCreatedEvent(
+    ApplicationSubmittedEvent existingEvent =
+        new ApplicationSubmittedEvent(
             applyApplicationId,
             "APPLICATION_SUBMITTED",
             "LAA-123",
@@ -113,6 +113,50 @@ class ApplicationAggregateTest {
         .when(command)
         .expectResultMessagePayload(applyApplicationId)
         .expectNoEvents();
+  }
+
+  @Test
+  void givenDraftedApplication_whenSubmitted_thenTransitionsWithApplicationSubmittedEvent() {
+    UUID applyApplicationId = UUID.randomUUID();
+    UUID applyProceedingId = UUID.randomUUID();
+    CreateApplicationCommand command =
+        new CreateApplicationCommand(
+            "APPLICATION_SUBMITTED",
+            "LAA-123",
+            validContent(applyApplicationId, applyProceedingId),
+            List.of(),
+            "{}",
+            1,
+            "ApplyApplication.json",
+            "APPLY");
+
+    fixture
+        .given(
+            new ApplicationDraftedEvent(
+                applyApplicationId,
+                Map.of("status", "DRAFT"),
+                Instant.parse("2026-07-15T08:00:00Z")))
+        .when(command)
+        .expectResultMessagePayload(applyApplicationId)
+        .expectEventsMatching(
+            new org.hamcrest.BaseMatcher<>() {
+              @Override
+              public boolean matches(Object o) {
+                var events = (java.util.List<?>) o;
+                assertThat(events).hasSize(1);
+                ApplicationSubmittedEvent event =
+                    (ApplicationSubmittedEvent)
+                        ((org.axonframework.messaging.Message<?>) events.getFirst()).getPayload();
+                assertThat(event.applyApplicationId()).isEqualTo(applyApplicationId);
+                assertThat(event.status()).isEqualTo("APPLICATION_SUBMITTED");
+                return true;
+              }
+
+              @Override
+              public void describeTo(org.hamcrest.Description description) {
+                description.appendText("ApplicationSubmittedEvent transitioning from a draft");
+              }
+            });
   }
 
   @Test
@@ -206,7 +250,7 @@ class ApplicationAggregateTest {
   }
 
   @Test
-  void givenNoActivity_whenCreateDraftApplication_thenPublishesDraftApplicationCreatedEvent() {
+  void givenNoActivity_whenCreateDraftApplication_thenPublishesApplicationDraftedEvent() {
     UUID draftApplicationId = UUID.randomUUID();
     Map<String, Object> content = Map.of("status", "DRAFT", "laaReference", "LAA-DRAFT-1");
 
@@ -220,8 +264,8 @@ class ApplicationAggregateTest {
               public boolean matches(Object o) {
                 var events = (java.util.List<?>) o;
                 assertThat(events).hasSize(1);
-                DraftApplicationCreatedEvent event =
-                    (DraftApplicationCreatedEvent)
+                ApplicationDraftedEvent event =
+                    (ApplicationDraftedEvent)
                         ((org.axonframework.messaging.Message<?>) events.getFirst()).getPayload();
                 assertThat(event.draftApplicationId()).isEqualTo(draftApplicationId);
                 assertThat(event.content()).isEqualTo(content);
@@ -230,7 +274,7 @@ class ApplicationAggregateTest {
 
               @Override
               public void describeTo(org.hamcrest.Description description) {
-                description.appendText("DraftApplicationCreatedEvent with expected fields");
+                description.appendText("ApplicationDraftedEvent with expected fields");
               }
             });
   }
@@ -241,7 +285,7 @@ class ApplicationAggregateTest {
 
     fixture
         .given(
-            new DraftApplicationCreatedEvent(
+            new ApplicationDraftedEvent(
                 draftApplicationId,
                 Map.of("status", "DRAFT"),
                 Instant.parse("2026-07-15T08:00:00Z")))
@@ -251,13 +295,13 @@ class ApplicationAggregateTest {
   }
 
   @Test
-  void givenDraftApplication_whenUpdated_thenPublishesDraftApplicationUpdatedEvent() {
+  void givenDraftApplication_whenUpdated_thenPublishesApplicationDraftUpdatedEvent() {
     UUID draftApplicationId = UUID.randomUUID();
     Map<String, Object> updatedContent = Map.of("status", "DRAFT", "laaReference", "LAA-DRAFT-2");
 
     fixture
         .given(
-            new DraftApplicationCreatedEvent(
+            new ApplicationDraftedEvent(
                 draftApplicationId,
                 Map.of("status", "DRAFT"),
                 Instant.parse("2026-07-15T08:00:00Z")))
@@ -268,8 +312,8 @@ class ApplicationAggregateTest {
               public boolean matches(Object o) {
                 var events = (java.util.List<?>) o;
                 assertThat(events).hasSize(1);
-                DraftApplicationUpdatedEvent event =
-                    (DraftApplicationUpdatedEvent)
+                ApplicationDraftUpdatedEvent event =
+                    (ApplicationDraftUpdatedEvent)
                         ((org.axonframework.messaging.Message<?>) events.getFirst()).getPayload();
                 assertThat(event.draftApplicationId()).isEqualTo(draftApplicationId);
                 assertThat(event.content()).isEqualTo(updatedContent);
@@ -278,7 +322,7 @@ class ApplicationAggregateTest {
 
               @Override
               public void describeTo(org.hamcrest.Description description) {
-                description.appendText("DraftApplicationUpdatedEvent with expected fields");
+                description.appendText("ApplicationDraftUpdatedEvent with expected fields");
               }
             });
   }
@@ -293,8 +337,8 @@ class ApplicationAggregateTest {
         .expectException(org.axonframework.modelling.command.AggregateNotFoundException.class);
   }
 
-  private ApplicationCreatedEvent createdEvent(UUID applyApplicationId) {
-    return new ApplicationCreatedEvent(
+  private ApplicationSubmittedEvent createdEvent(UUID applyApplicationId) {
+    return new ApplicationSubmittedEvent(
         applyApplicationId,
         "APPLICATION_SUBMITTED",
         "LAA-123",

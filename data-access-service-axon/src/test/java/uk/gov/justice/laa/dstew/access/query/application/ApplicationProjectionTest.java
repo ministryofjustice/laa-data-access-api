@@ -8,7 +8,7 @@ import static org.mockito.Mockito.verify;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture;
+import uk.gov.justice.laa.dstew.access.testutils.ApplicationSubmittedEventFixture;
 
 class ApplicationProjectionTest {
 
@@ -18,7 +18,7 @@ class ApplicationProjectionTest {
   @Test
   void givenCreatedEvent_whenProjected_thenSavesCorrectReadModel() {
     UUID applyApplicationId = UUID.randomUUID();
-    var event = ApplicationCreatedEventFixture.applicationCreatedEvent(applyApplicationId);
+    var event = ApplicationSubmittedEventFixture.applicationSubmittedEvent(applyApplicationId);
 
     projection.on(event);
 

@@ -10,7 +10,7 @@ import org.axonframework.eventhandling.EventMessage;
 import org.axonframework.eventhandling.GenericEventMessage;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture;
+import uk.gov.justice.laa.dstew.access.testutils.ApplicationSubmittedEventFixture;
 
 class SubmissionProjectionTest {
 
@@ -20,7 +20,7 @@ class SubmissionProjectionTest {
   @Test
   void givenCreatedEvent_whenProjected_thenStoresTypedPayloadKeyedByEvent() {
     UUID applyApplicationId = UUID.randomUUID();
-    var event = ApplicationCreatedEventFixture.applicationCreatedEvent(applyApplicationId);
+    var event = ApplicationSubmittedEventFixture.applicationSubmittedEvent(applyApplicationId);
     EventMessage<?> message = GenericEventMessage.asEventMessage(event);
 
     projection.on(event, message);

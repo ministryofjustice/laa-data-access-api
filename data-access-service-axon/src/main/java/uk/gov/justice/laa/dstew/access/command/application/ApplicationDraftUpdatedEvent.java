@@ -5,5 +5,5 @@ import java.util.Map;
 import java.util.UUID;
 
 /** Event recording that an existing draft application was updated in place. */
-public record DraftApplicationUpdatedEvent(
+public record ApplicationDraftUpdatedEvent(
     UUID draftApplicationId, Map<String, Object> content, Instant occurredAt) {}
