@@ -361,6 +361,14 @@ tasks.register('pactTest', Test) {
 
     // Broker connection — env-driven, with sensible defaults so it still parses locally.
     systemProperty 'pact.provider.version',     providers.environmentVariable('GIT_SHA').getOrElse('1.0.0')
+
+    // Record the provider branch with published verification results — the broker's
+    // auto-trigger and can-i-deploy resolve pacts against the provider's main branch,
+    // so verifications must carry branch data (see LFA mainBranch incident).
+    def providerBranch = providers.environmentVariable('PACT_PROVIDER_BRANCH').orNull
+    if (providerBranch) {
+        systemProperty 'pact.provider.branch', providerBranch
+    }
     systemProperty 'pactbroker.url',            providers.environmentVariable('PACT_BROKER_URL').getOrElse('https://laa-data-pact-broker.apps.live.cloud-platform.service.justice.gov.uk/')
     systemProperty 'pactbroker.auth.username',  providers.environmentVariable('PACT_BROKER_USERNAME').getOrElse('ABC')
     systemProperty 'pactbroker.auth.password',  providers.environmentVariable('PACT_BROKER_PASSWORD').getOrElse('ABC')
