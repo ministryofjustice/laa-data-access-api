@@ -280,16 +280,27 @@ class CreateApplicationInMemoryTest {
 
     assertThat(linkedResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
     UUID linkedApplicationId = applicationId(linkedResponse);
-    // Wait for both APPLICATION_CREATED and APPLICATION_LINKED events before asserting
-    var history = awaitHistory(linkedApplicationId, 2);
-    assertThat(history)
-        .extracting(h -> h.getEventType())
-        .containsExactly("APPLICATION_CREATED", "APPLICATION_LINKED");
-    ApplicationReadModel projected =
-        applicationReadRepository
-            .findById(linkedApplicationId)
-            .orElseThrow(() -> new AssertionError("Application not found: " + linkedApplicationId));
+
+    // ApplicationCreatedEvent carries leadApplicationId directly — projection sets it immediately.
+    ApplicationReadModel projected = awaitProjection(linkedApplicationId);
     assertThat(projected.getLeadApplicationId()).isEqualTo(leadApplicationId);
+
+    // isLead on the lead is set asynchronously via LinkedApplicationGroupCreatedEvent.
+    await()
+        .atMost(10, TimeUnit.SECONDS)
+        .pollInterval(50, TimeUnit.MILLISECONDS)
+        .untilAsserted(
+            () ->
+                assertThat(
+                        applicationReadRepository
+                            .findById(leadApplicationId)
+                            .map(ApplicationReadModel::getIsLead))
+                    .contains(true));
+
+    // History for the associated app contains only APPLICATION_CREATED (no APPLICATION_LINKED).
+    assertThat(awaitHistory(linkedApplicationId, 1))
+        .singleElement()
+        .satisfies(h -> assertThat(h.getEventType()).isEqualTo("APPLICATION_CREATED"));
   }
 
   private HttpHeaders headers() {

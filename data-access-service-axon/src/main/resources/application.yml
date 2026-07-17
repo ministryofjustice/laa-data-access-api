@@ -35,6 +35,8 @@ axon:
         mode: tracking
       application-history-projection:
         mode: tracking
+      linked-application-group-projection:
+        mode: tracking
 
 application:
   projection:

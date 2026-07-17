@@ -24,4 +24,6 @@ public record ApplicationCreatedEvent(
     MatterType matterType,
     List<ApplicationProceeding> proceedings,
     String serialisedRequest,
-    Instant occurredAt) {}
+    Instant occurredAt,
+    UUID leadApplicationId) {} // nullable — null for standalone (lead) applications;
+                              // backward-compatible via Jackson

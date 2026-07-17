@@ -9,7 +9,10 @@ import java.util.UUID;
 import org.axonframework.test.aggregate.AggregateTestFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.CreateLinkedApplicationGroupCommand;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupRequested;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
+import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 
 class ApplicationAggregateTest {
 
@@ -43,7 +46,7 @@ class ApplicationAggregateTest {
   }
 
   @Test
-  void givenLeadApplication_whenCreated_thenCreatesAndLinksApplication() {
+  void givenLeadApplication_whenCreated_thenCreatesApplicationWithLeadId() {
     UUID applicationId = UUID.randomUUID();
     UUID leadApplicationId = UUID.randomUUID();
     ApplicationCreationDetails detailsWithLead =
@@ -77,17 +80,13 @@ class ApplicationAggregateTest {
 
     ApplicationCreatedEvent createdEvent = applicationCreatedEvent(applicationId, detailsWithLead);
 
+    // ApplicationLinkedEvent is no longer emitted; linking is initiated by
+    // ApplicationGroupEventRouter after the projection picks up ApplicationCreatedEvent.
     fixture
         .givenNoPriorActivity()
         .when(createCommand(applicationId, "{}"))
         .expectResultMessagePayload(applicationId)
-        .expectEvents(
-            createdEvent,
-            new ApplicationLinkedEvent(
-                applicationId,
-                leadApplicationId,
-                createdEvent.serialisedRequest(),
-                createdEvent.occurredAt()));
+        .expectEvents(createdEvent);
   }
 
   @Test
@@ -123,6 +122,66 @@ class ApplicationAggregateTest {
         .given(existing)
         .when(createCommandWithSchema(applicationId, "{}", 2))
         .expectException(ApplicationCreationConflictException.class)
+        .expectNoEvents();
+  }
+
+  @Test
+  void givenExistingLeadApplication_whenCreateLinkedApplicationGroupCommand_thenEmitsRequested() {
+    UUID leadApplicationId = UUID.randomUUID();
+    ApplicationCreatedEvent leadCreated = applicationCreatedEvent(leadApplicationId);
+    List<UUID> members = List.of(leadApplicationId, UUID.randomUUID());
+
+    fixture
+        .given(leadCreated)
+        .when(
+            new CreateLinkedApplicationGroupCommand(
+                leadApplicationId,
+                members.get(1),
+                members,
+                "{}",
+                java.time.Instant.parse("2026-07-15T08:00:00Z")))
+        // groupId is a freshly-generated UUID — verify event type and key fields only.
+        .expectEventsMatching(requestedEventWith(leadApplicationId, members));
+  }
+
+  @SuppressWarnings({"unchecked", "rawtypes"})
+  private static org.hamcrest.Matcher requestedEventWith(
+      UUID expectedLeadApplicationId, List<UUID> expectedMembers) {
+    return new org.hamcrest.TypeSafeMatcher<List>() {
+      @Override
+      protected boolean matchesSafely(List msgs) {
+        if (msgs.size() != 1) return false;
+        Object payload = ((org.axonframework.messaging.Message<?>) msgs.get(0)).getPayload();
+        if (!(payload instanceof LinkedApplicationGroupRequested r)) return false;
+        return r.groupId() != null
+            && expectedLeadApplicationId.equals(r.leadApplicationId())
+            && expectedMembers.equals(r.memberApplicationIds());
+      }
+
+      @Override
+      public void describeTo(org.hamcrest.Description desc) {
+        desc.appendText(
+            "one LinkedApplicationGroupRequested with leadApplicationId="
+                + expectedLeadApplicationId);
+      }
+    };
+  }
+
+  @Test
+  void givenMissingLeadApplication_whenCreateLinkedApplicationGroupCommand_thenThrowsNotFound() {
+    UUID missingLeadId = UUID.randomUUID();
+    List<UUID> members = List.of(missingLeadId, UUID.randomUUID());
+
+    fixture
+        .givenNoPriorActivity()
+        .when(
+            new CreateLinkedApplicationGroupCommand(
+                missingLeadId,
+                members.get(1),
+                members,
+                "{}",
+                java.time.Instant.parse("2026-07-15T08:00:00Z")))
+        .expectException(ResourceNotFoundException.class)
         .expectNoEvents();
   }
 

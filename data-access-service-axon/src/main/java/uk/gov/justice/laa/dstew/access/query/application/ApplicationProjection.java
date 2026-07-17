@@ -51,6 +51,7 @@ public class ApplicationProjection {
                 .proceedings(event.proceedings())
                 .createdAt(event.occurredAt())
                 .modifiedAt(event.occurredAt())
+                .leadApplicationId(event.leadApplicationId())
                 .build());
     queryUpdateEmitter.emit(
         FindApplicationByIdQuery.class,

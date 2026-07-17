@@ -15,7 +15,11 @@ import org.axonframework.spring.stereotype.Aggregate;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.applicationcontent.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.applicationcontent.MatterType;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.CreateLinkedApplicationGroupCommand;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupRequested;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.ValidateApplicationExistsCommand;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
+import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 
 /** Event-sourced consistency boundary for an Application and its owned child state. */
 @Aggregate
@@ -43,10 +47,14 @@ public class ApplicationAggregate {
    * Creates or idempotently re-identifies an Application.
    *
    * <p>On the first command for this aggregate ID, parses the request and emits {@link
-   * ApplicationCreatedEvent} (and optionally {@link ApplicationLinkedEvent}). On an identical retry
-   * (same serialised request and schema version), returns the existing ID with no events. On a
-   * conflicting retry (same ID, different payload or schema version), throws {@link
-   * ApplicationCreationConflictException} with no events.
+   * ApplicationCreatedEvent}. On an identical retry (same serialised request and schema version),
+   * returns the existing ID with no events. On a conflicting retry (same ID, different payload or
+   * schema version), throws {@link ApplicationCreationConflictException} with no events.
+   *
+   * <p>Linking to a lead application is initiated asynchronously by {@link
+   * uk.gov.justice.laa.dstew.access.command.application.linkedgroup.ApplicationGroupEventRouter}
+   * after {@link ApplicationCreatedEvent} is processed; {@link ApplicationLinkedEvent} is no longer
+   * emitted for new operations.
    */
   @CommandHandler
   @CreationPolicy(AggregateCreationPolicy.CREATE_IF_MISSING)
@@ -60,36 +68,63 @@ public class ApplicationAggregate {
     }
     ApplicationCreationDetails details = factory.prepare(command);
     apply(applicationCreatedEvent(command.applicationId(), details));
-    if (details.leadApplicationId() != null) {
-      apply(
-          new ApplicationLinkedEvent(
-              applicationId,
-              details.leadApplicationId(),
-              details.serialisedRequest(),
-              details.occurredAt()));
-    }
     return applicationId;
   }
 
-  private ApplicationCreatedEvent applicationCreatedEvent(
-      UUID applicationId, ApplicationCreationDetails details) {
-    return new ApplicationCreatedEvent(
-        applicationId,
-        details.status(),
-        details.laaReference(),
-        details.applicationContent(),
-        details.individuals(),
-        details.schemaVersion(),
-        details.applicationType(),
-        details.applyApplicationId(),
-        details.submittedAt(),
-        details.officeCode(),
-        details.usedDelegatedFunctions(),
-        details.categoryOfLaw(),
-        details.matterType(),
-        details.proceedings(),
-        details.serialisedRequest(),
-        details.occurredAt());
+  /**
+   * Validates the lead exists and records a group-formation request.
+   *
+   * <p>Because {@code ApplicationAggregate} uses {@code CREATE_IF_MISSING}, Axon will construct a
+   * fresh (empty) aggregate if the lead does not exist. The {@code applicationId == null} guard
+   * detects this and throws {@link ResourceNotFoundException} with no events applied — the ghost
+   * stream is never persisted.
+   *
+   * <p>A fresh {@code groupId} UUID is generated here rather than reusing {@code applicationId}
+   * (the lead's UUID). Axon's {@code readEvents(aggregateIdentifier)} returns all events for a UUID
+   * regardless of aggregate type. If {@code LinkedApplicationGroupAggregate} reused the lead's
+   * UUID, it would replay {@code ApplicationCreatedEvent} (for which it has no
+   * {@code @EventSourcingHandler}), leaving its {@code @AggregateIdentifier} null and causing an
+   * {@code IncompatibleAggregateException}.
+   */
+  @CommandHandler
+  @CreationPolicy(AggregateCreationPolicy.CREATE_IF_MISSING)
+  void handle(CreateLinkedApplicationGroupCommand command) {
+    if (applicationId == null) {
+      throw new ResourceNotFoundException(
+          "No linked application found with Application ID: " + command.leadApplicationId());
+    }
+    apply(
+        new LinkedApplicationGroupRequested(
+            UUID.randomUUID(), // distinct groupId — must not reuse applicationId
+            applicationId, // leadApplicationId
+            command.allMemberApplicationIds(),
+            command.serialisedRequest(),
+            command.occurredAt()));
+  }
+
+  /**
+   * Proves that the targeted application exists.
+   *
+   * <p>Used by {@link
+   * uk.gov.justice.laa.dstew.access.command.application.linkedgroup.ApplicationGroupEventRouter} to
+   * validate that other referenced associated applications are present before the {@link
+   * uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupAggregate}
+   * is initialised. If the aggregate does not exist, {@code CREATE_IF_MISSING} ghost-creates it and
+   * the {@code applicationId == null} guard throws {@link ResourceNotFoundException}.
+   */
+  @CommandHandler
+  @CreationPolicy(AggregateCreationPolicy.CREATE_IF_MISSING)
+  void handle(ValidateApplicationExistsCommand command) {
+    if (applicationId == null) {
+      throw new ResourceNotFoundException(
+          "No linked application found with Application ID: " + command.applicationId());
+    }
+    // Application exists — no events, no state change.
+  }
+
+  @EventSourcingHandler
+  void on(LinkedApplicationGroupRequested event) {
+    // No state change on the lead aggregate — event is a domain record only.
   }
 
   @EventSourcingHandler
@@ -114,6 +149,28 @@ public class ApplicationAggregate {
   @EventSourcingHandler
   void on(ApplicationLinkedEvent event) {
     leadApplicationId = event.leadApplicationId();
+  }
+
+  private ApplicationCreatedEvent applicationCreatedEvent(
+      UUID applicationId, ApplicationCreationDetails details) {
+    return new ApplicationCreatedEvent(
+        applicationId,
+        details.status(),
+        details.laaReference(),
+        details.applicationContent(),
+        details.individuals(),
+        details.schemaVersion(),
+        details.applicationType(),
+        details.applyApplicationId(),
+        details.submittedAt(),
+        details.officeCode(),
+        details.usedDelegatedFunctions(),
+        details.categoryOfLaw(),
+        details.matterType(),
+        details.proceedings(),
+        details.serialisedRequest(),
+        details.occurredAt(),
+        details.leadApplicationId());
   }
 
   protected ApplicationAggregate() {

@@ -41,7 +41,8 @@ public final class ApplicationCreatedEventFixture {
         details.matterType(),
         details.proceedings(),
         details.serialisedRequest(),
-        details.occurredAt());
+        details.occurredAt(),
+        details.leadApplicationId());
   }
 
   /** Creates minimal creation details with stable values and the supplied Apply identifier. */

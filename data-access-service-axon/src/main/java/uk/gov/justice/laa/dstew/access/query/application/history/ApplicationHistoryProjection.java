@@ -9,6 +9,7 @@ import org.axonframework.eventhandling.ResetHandler;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
 import uk.gov.justice.laa.dstew.access.config.interceptor.ServiceNameMetadataDispatchInterceptor;
 
 /** Independently replayable, append-only audit projection of Application events. */
@@ -40,7 +41,8 @@ public class ApplicationHistoryProjection {
   }
 
   /**
-   * Appends an audit entry when an Application is linked.
+   * Appends an audit entry when an Application is linked (legacy event — retained for replay of
+   * existing event streams).
    *
    * @param event the Application linking event
    * @param message the Axon message carrying event metadata
@@ -53,6 +55,26 @@ public class ApplicationHistoryProjection {
         "APPLICATION_LINKED",
         event.serialisedRequest(),
         event.occurredAt());
+  }
+
+  /**
+   * Appends an audit entry when a linked application group is created.
+   *
+   * <p>Records {@code APPLICATION_GROUP_CREATED} against the lead application and {@code
+   * APPLICATION_GROUP_JOINED} against each non-lead member.
+   *
+   * @param event the group creation event
+   * @param message the Axon message carrying event metadata
+   */
+  @EventHandler
+  public void on(LinkedApplicationGroupCreatedEvent event, EventMessage<?> message) {
+    append(
+        message, event.leadApplicationId(), "APPLICATION_GROUP_CREATED", null, event.occurredAt());
+    event.memberApplicationIds().stream()
+        .filter(id -> !id.equals(event.leadApplicationId()))
+        .forEach(
+            memberId ->
+                append(message, memberId, "APPLICATION_GROUP_JOINED", null, event.occurredAt()));
   }
 
   @ResetHandler

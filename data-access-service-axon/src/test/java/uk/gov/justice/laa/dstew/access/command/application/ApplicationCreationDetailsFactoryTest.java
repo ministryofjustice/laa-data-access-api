@@ -1,9 +1,6 @@
 package uk.gov.justice.laa.dstew.access.command.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -11,34 +8,26 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import org.axonframework.modelling.command.Aggregate;
-import org.axonframework.modelling.command.AggregateNotFoundException;
-import org.axonframework.modelling.command.Repository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationContentParser;
 import uk.gov.justice.laa.dstew.access.applicationcontent.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.applicationcontent.MatterType;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ParsedAppContentDetails;
-import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 
 class ApplicationCreationDetailsFactoryTest {
 
   private static final Instant FIXED_NOW = Instant.parse("2026-07-15T08:00:00Z");
   private static final Clock FIXED_CLOCK = Clock.fixed(FIXED_NOW, ZoneOffset.UTC);
 
-  private Repository<ApplicationAggregate> applicationRepository;
   private ApplicationContentParser applicationContentParser;
   private ApplicationCreationDetailsFactory factory;
 
   @BeforeEach
-  @SuppressWarnings("unchecked")
   void setUp() {
-    applicationRepository = mock(Repository.class);
-    applicationContentParser = mock(ApplicationContentParser.class);
-    factory =
-        new ApplicationCreationDetailsFactory(
-            applicationRepository, applicationContentParser, FIXED_CLOCK);
+    applicationContentParser = Mockito.mock(ApplicationContentParser.class);
+    factory = new ApplicationCreationDetailsFactory(applicationContentParser, FIXED_CLOCK);
   }
 
   @Test
@@ -47,7 +36,7 @@ class ApplicationCreationDetailsFactoryTest {
     UUID applyApplicationId = UUID.randomUUID();
     CreateApplicationCommand command = command(applicationId);
     ParsedAppContentDetails parsed = parsedDetails(applyApplicationId);
-    when(applicationContentParser.parse(command.applicationContent())).thenReturn(parsed);
+    Mockito.when(applicationContentParser.parse(command.applicationContent())).thenReturn(parsed);
 
     ApplicationCreationDetails details = factory.prepare(command);
 
@@ -64,7 +53,7 @@ class ApplicationCreationDetailsFactoryTest {
   void givenIndividuals_whenPrepared_thenGeneratesIndividualIds() {
     UUID applicationId = UUID.randomUUID();
     CreateApplicationCommand command = commandWithIndividuals(applicationId);
-    when(applicationContentParser.parse(command.applicationContent()))
+    Mockito.when(applicationContentParser.parse(command.applicationContent()))
         .thenReturn(parsedDetails(UUID.randomUUID()));
 
     ApplicationCreationDetails details = factory.prepare(command);
@@ -78,7 +67,7 @@ class ApplicationCreationDetailsFactoryTest {
   void givenNoLinkedApplications_whenPrepared_thenReturnsNullLeadApplicationId() {
     UUID applicationId = UUID.randomUUID();
     CreateApplicationCommand command = command(applicationId);
-    when(applicationContentParser.parse(command.applicationContent()))
+    Mockito.when(applicationContentParser.parse(command.applicationContent()))
         .thenReturn(parsedDetailsWithNoLinks(applicationId));
 
     ApplicationCreationDetails details = factory.prepare(command);
@@ -87,73 +76,17 @@ class ApplicationCreationDetailsFactoryTest {
   }
 
   @Test
-  @SuppressWarnings("unchecked")
-  void givenExistingLeadApplicationStream_whenPrepared_thenResolvesLeadApplicationId()
-      throws Exception {
+  void givenLinkedApplications_whenPrepared_thenExtractsLeadApplicationId() {
     UUID applicationId = UUID.randomUUID();
     UUID leadApplicationId = UUID.randomUUID();
     CreateApplicationCommand command = command(applicationId);
     ParsedAppContentDetails parsed = parsedDetailsWithLead(applicationId, leadApplicationId);
-    when(applicationContentParser.parse(command.applicationContent())).thenReturn(parsed);
+    Mockito.when(applicationContentParser.parse(command.applicationContent())).thenReturn(parsed);
 
-    Aggregate<ApplicationAggregate> mockAggregate = mock(Aggregate.class);
-    when(applicationRepository.load(leadApplicationId.toString())).thenReturn(mockAggregate);
-    when(mockAggregate.invoke(org.mockito.ArgumentMatchers.any())).thenReturn(true);
-
+    // No repository lookup — factory simply extracts from parsed content.
     ApplicationCreationDetails details = factory.prepare(command);
 
     assertThat(details.leadApplicationId()).isEqualTo(leadApplicationId);
-  }
-
-  @Test
-  void givenSelfReferentialLeadApplication_whenPrepared_thenThrowsResourceNotFoundException() {
-    UUID applicationId = UUID.randomUUID();
-    CreateApplicationCommand command = command(applicationId);
-    ParsedAppContentDetails parsed = parsedDetailsWithLead(applicationId, applicationId);
-    when(applicationContentParser.parse(command.applicationContent())).thenReturn(parsed);
-    when(applicationRepository.load(applicationId.toString()))
-        .thenThrow(new AggregateNotFoundException(applicationId.toString(), "not found"));
-
-    assertThatThrownBy(() -> factory.prepare(command))
-        .isInstanceOf(ResourceNotFoundException.class)
-        .hasMessageContaining(applicationId.toString());
-  }
-
-  @Test
-  @SuppressWarnings("unchecked")
-  void givenSelfReferentialAssociatedApplication_whenPrepared_thenSkipsAssociatedStreamValidation()
-      throws Exception {
-    UUID applicationId = UUID.randomUUID();
-    UUID leadId = UUID.randomUUID();
-    CreateApplicationCommand command = command(applicationId);
-    // Associated list contains the current applicationId — no stream exists yet for it.
-    ParsedAppContentDetails parsed =
-        parsedDetailsWithMultipleLinked(applicationId, leadId, applicationId);
-    when(applicationContentParser.parse(command.applicationContent())).thenReturn(parsed);
-
-    Aggregate<ApplicationAggregate> mockLead = mock(Aggregate.class);
-    when(applicationRepository.load(leadId.toString())).thenReturn(mockLead);
-    when(mockLead.invoke(org.mockito.ArgumentMatchers.any())).thenReturn(true);
-    // No stub for applicationId.toString() — it must not be looked up.
-
-    ApplicationCreationDetails details = factory.prepare(command);
-
-    assertThat(details.leadApplicationId()).isEqualTo(leadId);
-  }
-
-  @Test
-  void givenMissingLeadApplicationStream_whenPrepared_thenThrowsResourceNotFoundException() {
-    UUID applicationId = UUID.randomUUID();
-    UUID missingLeadId = UUID.randomUUID();
-    CreateApplicationCommand command = command(applicationId);
-    ParsedAppContentDetails parsed = parsedDetailsWithLead(applicationId, missingLeadId);
-    when(applicationContentParser.parse(command.applicationContent())).thenReturn(parsed);
-    when(applicationRepository.load(missingLeadId.toString()))
-        .thenThrow(new AggregateNotFoundException(missingLeadId.toString(), "not found"));
-
-    assertThatThrownBy(() -> factory.prepare(command))
-        .isInstanceOf(ResourceNotFoundException.class)
-        .hasMessageContaining(missingLeadId.toString());
   }
 
   @Test
@@ -161,7 +94,7 @@ class ApplicationCreationDetailsFactoryTest {
     UUID applicationId = UUID.randomUUID();
     UUID applyProceedingId = UUID.randomUUID();
     CreateApplicationCommand command = command(applicationId);
-    when(applicationContentParser.parse(command.applicationContent()))
+    Mockito.when(applicationContentParser.parse(command.applicationContent()))
         .thenReturn(parsedDetailsWithProceedings(applicationId, applyProceedingId));
 
     ApplicationCreationDetails details = factory.prepare(command);
@@ -176,29 +109,18 @@ class ApplicationCreationDetailsFactoryTest {
   }
 
   @Test
-  @SuppressWarnings("unchecked")
-  void givenMissingAssociatedApplicationStream_whenPrepared_thenThrowsResourceNotFoundException()
-      throws Exception {
+  void givenMultipleLinkedApplications_whenPrepared_thenExtractsLeadFromFirstEntry() {
     UUID applicationId = UUID.randomUUID();
     UUID leadId = UUID.randomUUID();
-    UUID missingAssociatedId = UUID.randomUUID();
+    UUID anotherAssociatedId = UUID.randomUUID();
     CreateApplicationCommand command = command(applicationId);
     ParsedAppContentDetails parsed =
-        parsedDetailsWithMultipleLinked(applicationId, leadId, missingAssociatedId);
-    when(applicationContentParser.parse(command.applicationContent())).thenReturn(parsed);
+        parsedDetailsWithMultipleLinked(applicationId, leadId, anotherAssociatedId);
+    Mockito.when(applicationContentParser.parse(command.applicationContent())).thenReturn(parsed);
 
-    // The lead stream is present.
-    Aggregate<ApplicationAggregate> mockLead = mock(Aggregate.class);
-    when(applicationRepository.load(leadId.toString())).thenReturn(mockLead);
-    when(mockLead.invoke(org.mockito.ArgumentMatchers.any())).thenReturn(true);
+    ApplicationCreationDetails details = factory.prepare(command);
 
-    // The other associated stream is absent.
-    when(applicationRepository.load(missingAssociatedId.toString()))
-        .thenThrow(new AggregateNotFoundException(missingAssociatedId.toString(), "not found"));
-
-    assertThatThrownBy(() -> factory.prepare(command))
-        .isInstanceOf(ResourceNotFoundException.class)
-        .hasMessageContaining(missingAssociatedId.toString());
+    assertThat(details.leadApplicationId()).isEqualTo(leadId);
   }
 
   private ParsedAppContentDetails parsedDetailsWithProceedings(

@@ -54,6 +54,12 @@ public class ApplicationReadModel {
   @Column(name = "lead_application_id")
   private UUID leadApplicationId;
 
+  @Column(name = "is_lead")
+  private Boolean isLead;
+
+  @Column(name = "group_id")
+  private UUID groupId;
+
   @Column(name = "submitted_at")
   private Instant submittedAt;
 
