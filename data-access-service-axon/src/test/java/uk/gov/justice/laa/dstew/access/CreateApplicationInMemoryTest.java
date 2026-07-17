@@ -29,6 +29,7 @@ import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadRepository;
+import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
 
 @SpringBootTest(
     classes = DataAccessServiceAxonApplication.class,
@@ -49,9 +50,8 @@ class CreateApplicationInMemoryTest {
   @Autowired private TestRestTemplate restTemplate;
 
   @Autowired private ApplicationReadRepository applicationReadRepository;
-
   @Autowired private ApplicationHistoryReadRepository applicationHistoryReadRepository;
-
+  @Autowired private LinkedApplicationGroupReadRepository groupReadRepository;
   @Autowired private EventProcessingConfiguration eventProcessingConfiguration;
 
   @Test
@@ -285,17 +285,20 @@ class CreateApplicationInMemoryTest {
     ApplicationReadModel projected = awaitProjection(linkedApplicationId);
     assertThat(projected.getLeadApplicationId()).isEqualTo(leadApplicationId);
 
-    // isLead on the lead is set asynchronously via LinkedApplicationGroupCreatedEvent.
+    // LinkedApplicationGroupProjection (tracking) records group membership asynchronously.
     await()
         .atMost(10, TimeUnit.SECONDS)
         .pollInterval(50, TimeUnit.MILLISECONDS)
         .untilAsserted(
             () ->
-                assertThat(
-                        applicationReadRepository
-                            .findById(leadApplicationId)
-                            .map(ApplicationReadModel::getIsLead))
-                    .contains(true));
+                assertThat(groupReadRepository.findByLeadApplicationId(leadApplicationId))
+                    .isPresent()
+                    .hasValueSatisfying(
+                        group -> {
+                          assertThat(group.getLeadApplicationId()).isEqualTo(leadApplicationId);
+                          assertThat(group.getMemberIds())
+                              .contains(leadApplicationId, linkedApplicationId);
+                        }));
 
     // History for the associated app contains only APPLICATION_CREATED (no APPLICATION_LINKED).
     assertThat(awaitHistory(linkedApplicationId, 1))
