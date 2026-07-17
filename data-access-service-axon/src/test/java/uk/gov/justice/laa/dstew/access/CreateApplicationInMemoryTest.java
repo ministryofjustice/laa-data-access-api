@@ -1,9 +1,12 @@
 package uk.gov.justice.laa.dstew.access;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validLinkedCreateApplicationRequest;
 
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import org.axonframework.config.EventProcessingConfiguration;
@@ -24,6 +27,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadRepository;
+import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadRepository;
 
 @SpringBootTest(
@@ -72,8 +76,7 @@ class CreateApplicationInMemoryTest {
   }
 
   @Test
-  void givenValidRequest_whenPostApplication_thenReturnsCreatedAndProjectsOwnedState()
-      throws Exception {
+  void givenValidRequest_whenPostApplication_thenReturnsCreatedAndProjectsOwnedState() {
     UUID applyApplicationId = UUID.randomUUID();
     UUID applyProceedingId = UUID.randomUUID();
     ApplicationCreateRequest request =
@@ -137,8 +140,7 @@ class CreateApplicationInMemoryTest {
   }
 
   @Test
-  void givenSchemaInvalidRequest_whenPostApplication_thenReturnsBadRequestAndNoProjection()
-      throws Exception {
+  void givenSchemaInvalidRequest_whenPostApplication_thenReturnsBadRequestAndNoProjection() {
     UUID applyApplicationId = UUID.randomUUID();
     ApplicationCreateRequest validRequest =
         validCreateApplicationRequest(applyApplicationId, UUID.randomUUID());
@@ -156,8 +158,7 @@ class CreateApplicationInMemoryTest {
   }
 
   @Test
-  void givenIdenticalRetry_whenPostApplicationAgain_thenReturnsCreatedIdempotently()
-      throws Exception {
+  void givenIdenticalRetry_whenPostApplicationAgain_thenReturnsCreatedIdempotently() {
     UUID applyApplicationId = UUID.randomUUID();
     HttpHeaders headers = new HttpHeaders();
     headers.set("X-Service-Name", "CIVIL_APPLY");
@@ -184,7 +185,7 @@ class CreateApplicationInMemoryTest {
   }
 
   @Test
-  void givenChangedPayload_whenPostApplicationAgain_thenReturnsConflict() throws Exception {
+  void givenChangedPayload_whenPostApplicationAgain_thenReturnsConflict() {
     UUID applyApplicationId = UUID.randomUUID();
     UUID applyProceedingId = UUID.randomUUID();
     HttpHeaders headers = new HttpHeaders();
@@ -212,7 +213,7 @@ class CreateApplicationInMemoryTest {
   }
 
   @Test
-  void givenMissingLeadApplication_whenPostApplication_thenReturnsNotFound() throws Exception {
+  void givenMissingLeadApplication_whenPostApplication_thenReturnsNotFound() {
     UUID missingApplyApplicationId = UUID.randomUUID();
     ApplicationCreateRequest request =
         validLinkedCreateApplicationRequest(
@@ -227,8 +228,7 @@ class CreateApplicationInMemoryTest {
   }
 
   @Test
-  void givenMissingAssociatedApplication_whenPostApplication_thenReturnsNotFound()
-      throws Exception {
+  void givenMissingAssociatedApplication_whenPostApplication_thenReturnsNotFound() {
     UUID leadApplyApplicationId = UUID.randomUUID();
     ResponseEntity<Void> leadResponse =
         restTemplate.postForEntity(
@@ -256,8 +256,7 @@ class CreateApplicationInMemoryTest {
   }
 
   @Test
-  void givenExistingLeadApplication_whenPostLinkedApplication_thenProjectsLeadLink()
-      throws Exception {
+  void givenExistingLeadApplication_whenPostLinkedApplication_thenProjectsLeadLink() {
     UUID leadApplyApplicationId = UUID.randomUUID();
     ResponseEntity<Void> leadResponse =
         restTemplate.postForEntity(
@@ -307,32 +306,22 @@ class CreateApplicationInMemoryTest {
         response.getHeaders().getLocation().getPath().replace("/api/v0/applications/", ""));
   }
 
-  private ApplicationReadModel awaitProjection(UUID applicationId) throws Exception {
-    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
-    while (System.nanoTime() < deadline) {
-      var projected = applicationReadRepository.findById(applicationId);
-      if (projected.isPresent()) {
-        return projected.get();
-      }
-      Thread.sleep(50);
-    }
-    throw new AssertionError("Application projection was not populated for " + applicationId);
+  private ApplicationReadModel awaitProjection(UUID applicationId) {
+    return await()
+        .atMost(10, TimeUnit.SECONDS)
+        .pollInterval(50, TimeUnit.MILLISECONDS)
+        .until(() -> applicationReadRepository.findById(applicationId), Optional::isPresent)
+        .get();
   }
 
-  private java.util.List<
-          uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadModel>
-      awaitHistory(UUID applicationId, int expectedCount) throws Exception {
-    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
-    while (System.nanoTime() < deadline) {
-      var history =
-          applicationHistoryReadRepository.findAllByApplicationIdOrderByOccurredAtAsc(
-              applicationId);
-      if (history.size() == expectedCount) {
-        return history;
-      }
-      Thread.sleep(50);
-    }
-    throw new AssertionError(
-        "Application history projection was not populated for " + applicationId);
+  private List<ApplicationHistoryReadModel> awaitHistory(UUID applicationId, int expectedCount) {
+    return await()
+        .atMost(10, TimeUnit.SECONDS)
+        .pollInterval(50, TimeUnit.MILLISECONDS)
+        .until(
+            () ->
+                applicationHistoryReadRepository.findAllByApplicationIdOrderByOccurredAtAsc(
+                    applicationId),
+            history -> history.size() == expectedCount);
   }
 }
