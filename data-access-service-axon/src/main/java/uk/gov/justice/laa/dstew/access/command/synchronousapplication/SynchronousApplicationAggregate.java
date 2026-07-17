@@ -5,7 +5,9 @@ import static org.axonframework.modelling.command.AggregateLifecycle.apply;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.axonframework.commandhandling.CommandHandler;
 import org.axonframework.eventsourcing.EventSourcingHandler;
@@ -19,6 +21,7 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.applicationcontent.MatterType;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ParsedAppContentDetails;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
+import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 
 /** Event-sourced aggregate for synchronous application creation without a reservation saga. */
 @Aggregate
@@ -38,6 +41,7 @@ public class SynchronousApplicationAggregate {
   private CategoryOfLaw categoryOfLaw;
   private MatterType matterType;
   private List<SynchronousApplicationProceeding> proceedings;
+  private final Set<UUID> priorAuthorityIds = new HashSet<>();
 
   /** Creates a SynchronousApplication, treating redelivery of the command as idempotent. */
   @CommandHandler
@@ -68,6 +72,28 @@ public class SynchronousApplicationAggregate {
     return applyApplicationId;
   }
 
+  /** Starts a new prior authority draft against this application. */
+  @CommandHandler
+  UUID handle(CreateDraftPriorAuthorityCommand command, Clock clock) {
+    UUID priorAuthorityId = UUID.randomUUID();
+    apply(
+        new DraftPriorAuthorityCreatedEvent(
+            applyApplicationId, priorAuthorityId, command.content(), Instant.now(clock)));
+    return priorAuthorityId;
+  }
+
+  /** Updates an existing prior authority draft in place. */
+  @CommandHandler
+  void handle(UpdateDraftPriorAuthorityCommand command, Clock clock) {
+    if (!priorAuthorityIds.contains(command.priorAuthorityId())) {
+      throw new ResourceNotFoundException(
+          "No prior authority draft found with ID: " + command.priorAuthorityId());
+    }
+    apply(
+        new DraftPriorAuthorityUpdatedEvent(
+            applyApplicationId, command.priorAuthorityId(), command.content(), Instant.now(clock)));
+  }
+
   @EventSourcingHandler
   void on(SynchronousApplicationCreatedEvent event) {
     applyApplicationId = event.applyApplicationId();
@@ -83,6 +109,11 @@ public class SynchronousApplicationAggregate {
     categoryOfLaw = event.categoryOfLaw();
     matterType = event.matterType();
     proceedings = List.copyOf(event.proceedings());
+  }
+
+  @EventSourcingHandler
+  void on(DraftPriorAuthorityCreatedEvent event) {
+    priorAuthorityIds.add(event.priorAuthorityId());
   }
 
   private List<SynchronousApplicationIndividual> toIndividuals(
