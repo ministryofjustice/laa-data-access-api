@@ -205,6 +205,94 @@ class SynchronousApplicationAggregateTest {
         .expectException(uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException.class);
   }
 
+  @Test
+  void givenNoActivity_whenCreateDraftApplication_thenPublishesDraftApplicationCreatedEvent() {
+    UUID draftApplicationId = UUID.randomUUID();
+    Map<String, Object> content = Map.of("status", "DRAFT", "laaReference", "LAA-DRAFT-1");
+
+    fixture
+        .givenNoPriorActivity()
+        .when(new CreateDraftApplicationCommand(draftApplicationId, content))
+        .expectResultMessagePayload(draftApplicationId)
+        .expectEventsMatching(
+            new org.hamcrest.BaseMatcher<>() {
+              @Override
+              public boolean matches(Object o) {
+                var events = (java.util.List<?>) o;
+                assertThat(events).hasSize(1);
+                DraftApplicationCreatedEvent event =
+                    (DraftApplicationCreatedEvent)
+                        ((org.axonframework.messaging.Message<?>) events.getFirst()).getPayload();
+                assertThat(event.draftApplicationId()).isEqualTo(draftApplicationId);
+                assertThat(event.content()).isEqualTo(content);
+                return true;
+              }
+
+              @Override
+              public void describeTo(org.hamcrest.Description description) {
+                description.appendText("DraftApplicationCreatedEvent with expected fields");
+              }
+            });
+  }
+
+  @Test
+  void givenDraftApplication_whenCreateRedelivered_thenIdempotentWithNoNewEvent() {
+    UUID draftApplicationId = UUID.randomUUID();
+
+    fixture
+        .given(
+            new DraftApplicationCreatedEvent(
+                draftApplicationId,
+                Map.of("status", "DRAFT"),
+                Instant.parse("2026-07-15T08:00:00Z")))
+        .when(new CreateDraftApplicationCommand(draftApplicationId, Map.of("status", "DRAFT")))
+        .expectResultMessagePayload(draftApplicationId)
+        .expectNoEvents();
+  }
+
+  @Test
+  void givenDraftApplication_whenUpdated_thenPublishesDraftApplicationUpdatedEvent() {
+    UUID draftApplicationId = UUID.randomUUID();
+    Map<String, Object> updatedContent = Map.of("status", "DRAFT", "laaReference", "LAA-DRAFT-2");
+
+    fixture
+        .given(
+            new DraftApplicationCreatedEvent(
+                draftApplicationId,
+                Map.of("status", "DRAFT"),
+                Instant.parse("2026-07-15T08:00:00Z")))
+        .when(new UpdateDraftApplicationCommand(draftApplicationId, updatedContent))
+        .expectEventsMatching(
+            new org.hamcrest.BaseMatcher<>() {
+              @Override
+              public boolean matches(Object o) {
+                var events = (java.util.List<?>) o;
+                assertThat(events).hasSize(1);
+                DraftApplicationUpdatedEvent event =
+                    (DraftApplicationUpdatedEvent)
+                        ((org.axonframework.messaging.Message<?>) events.getFirst()).getPayload();
+                assertThat(event.draftApplicationId()).isEqualTo(draftApplicationId);
+                assertThat(event.content()).isEqualTo(updatedContent);
+                return true;
+              }
+
+              @Override
+              public void describeTo(org.hamcrest.Description description) {
+                description.appendText("DraftApplicationUpdatedEvent with expected fields");
+              }
+            });
+  }
+
+  @Test
+  void givenNoDraftApplication_whenUpdated_thenRejectsWithAggregateNotFound() {
+    UUID draftApplicationId = UUID.randomUUID();
+
+    fixture
+        .givenNoPriorActivity()
+        .when(new UpdateDraftApplicationCommand(draftApplicationId, Map.of("status", "DRAFT")))
+        .expectException(org.axonframework.modelling.command.AggregateNotFoundException.class);
+  }
+
   private SynchronousApplicationCreatedEvent createdEvent(UUID applyApplicationId) {
     return new SynchronousApplicationCreatedEvent(
         applyApplicationId,

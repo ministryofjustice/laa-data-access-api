@@ -94,6 +94,27 @@ public class SynchronousApplicationAggregate {
             applyApplicationId, command.priorAuthorityId(), command.content(), Instant.now(clock)));
   }
 
+  /** Starts a new draft application, treating redelivery of the command as idempotent. */
+  @CommandHandler
+  @CreationPolicy(AggregateCreationPolicy.CREATE_IF_MISSING)
+  UUID handle(CreateDraftApplicationCommand command, Clock clock) {
+    if (applyApplicationId != null) {
+      return applyApplicationId;
+    }
+    apply(
+        new DraftApplicationCreatedEvent(
+            command.draftApplicationId(), command.content(), Instant.now(clock)));
+    return applyApplicationId;
+  }
+
+  /** Updates an existing draft application in place. */
+  @CommandHandler
+  void handle(UpdateDraftApplicationCommand command, Clock clock) {
+    apply(
+        new DraftApplicationUpdatedEvent(
+            command.draftApplicationId(), command.content(), Instant.now(clock)));
+  }
+
   @EventSourcingHandler
   void on(SynchronousApplicationCreatedEvent event) {
     applyApplicationId = event.applyApplicationId();
@@ -114,6 +135,11 @@ public class SynchronousApplicationAggregate {
   @EventSourcingHandler
   void on(DraftPriorAuthorityCreatedEvent event) {
     priorAuthorityIds.add(event.priorAuthorityId());
+  }
+
+  @EventSourcingHandler
+  void on(DraftApplicationCreatedEvent event) {
+    applyApplicationId = event.draftApplicationId();
   }
 
   private List<SynchronousApplicationIndividual> toIndividuals(
