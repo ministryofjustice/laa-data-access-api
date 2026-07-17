@@ -74,21 +74,21 @@ public class ApplicationAggregate {
 
   /**
    * Starts a new prior authority draft against this application. Prior authority is a
-   * post-submission concern, so the application must already be {@code SUBMITTED}.
+   * post-submission concern, so the application must already be {@code SUBMITTED}. The {@code
+   * priorAuthorityId} is minted by the application layer, which has already written the draft body
+   * to the deletable {@code prior_authority_drafts} table.
    */
   @CommandHandler
-  UUID handle(CreatePriorAuthorityDraftCommand command, Clock clock) {
+  void handle(CreatePriorAuthorityDraftCommand command, Clock clock) {
     if (!submitted) {
       throw new ConflictException(
           "Cannot add a prior authority to application "
               + applyApplicationId
               + "; the application is not submitted");
     }
-    UUID priorAuthorityId = UUID.randomUUID();
     apply(
         new PriorAuthorityDraftedEvent(
-            applyApplicationId, priorAuthorityId, command.content(), Instant.now(clock)));
-    return priorAuthorityId;
+            applyApplicationId, command.priorAuthorityId(), Instant.now(clock)));
   }
 
   /** Starts a new draft application, treating redelivery of the command as idempotent. */

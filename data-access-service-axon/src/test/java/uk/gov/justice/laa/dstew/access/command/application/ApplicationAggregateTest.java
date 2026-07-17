@@ -104,11 +104,11 @@ class ApplicationAggregateTest {
   void
       givenSubmittedApplication_whenCreatePriorAuthority_thenPublishesPriorAuthorityDraftedEvent() {
     UUID applyApplicationId = UUID.randomUUID();
-    Map<String, Object> content = Map.of("reference", "PA-1", "amount", 500);
+    UUID priorAuthorityId = UUID.randomUUID();
 
     fixture
         .given(createdEvent(applyApplicationId))
-        .when(new CreatePriorAuthorityDraftCommand(applyApplicationId, content))
+        .when(new CreatePriorAuthorityDraftCommand(applyApplicationId, priorAuthorityId))
         .expectEventsMatching(
             new org.hamcrest.BaseMatcher<>() {
               @Override
@@ -119,8 +119,7 @@ class ApplicationAggregateTest {
                     (PriorAuthorityDraftedEvent)
                         ((org.axonframework.messaging.Message<?>) events.getFirst()).getPayload();
                 assertThat(event.applyApplicationId()).isEqualTo(applyApplicationId);
-                assertThat(event.priorAuthorityId()).isNotNull();
-                assertThat(event.content()).isEqualTo(content);
+                assertThat(event.priorAuthorityId()).isEqualTo(priorAuthorityId);
                 return true;
               }
 
@@ -141,7 +140,7 @@ class ApplicationAggregateTest {
                 applyApplicationId,
                 Map.of("status", "DRAFT"),
                 Instant.parse("2026-07-15T08:00:00Z")))
-        .when(new CreatePriorAuthorityDraftCommand(applyApplicationId, Map.of("reference", "PA-1")))
+        .when(new CreatePriorAuthorityDraftCommand(applyApplicationId, UUID.randomUUID()))
         .expectException(uk.gov.justice.laa.dstew.access.exception.ConflictException.class);
   }
 
@@ -151,7 +150,7 @@ class ApplicationAggregateTest {
 
     fixture
         .givenNoPriorActivity()
-        .when(new CreatePriorAuthorityDraftCommand(applyApplicationId, Map.of("reference", "PA-1")))
+        .when(new CreatePriorAuthorityDraftCommand(applyApplicationId, UUID.randomUUID()))
         .expectException(org.axonframework.modelling.command.AggregateNotFoundException.class);
   }
 
@@ -159,19 +158,13 @@ class ApplicationAggregateTest {
   void givenExistingPriorAuthorityDraft_whenUpdated_thenPublishesUpdatedEvent() {
     UUID applyApplicationId = UUID.randomUUID();
     UUID priorAuthorityId = UUID.randomUUID();
-    Map<String, Object> updatedContent = Map.of("reference", "PA-1", "amount", 750);
 
     fixture
         .given(
             createdEvent(applyApplicationId),
             new PriorAuthorityDraftedEvent(
-                applyApplicationId,
-                priorAuthorityId,
-                Map.of("reference", "PA-1", "amount", 500),
-                Instant.parse("2026-07-15T08:00:00Z")))
-        .when(
-            new UpdatePriorAuthorityDraftCommand(
-                applyApplicationId, priorAuthorityId, updatedContent))
+                applyApplicationId, priorAuthorityId, Instant.parse("2026-07-15T08:00:00Z")))
+        .when(new UpdatePriorAuthorityDraftCommand(applyApplicationId, priorAuthorityId))
         .expectEventsMatching(
             new org.hamcrest.BaseMatcher<>() {
               @Override
@@ -181,8 +174,8 @@ class ApplicationAggregateTest {
                 PriorAuthorityDraftUpdatedEvent event =
                     (PriorAuthorityDraftUpdatedEvent)
                         ((org.axonframework.messaging.Message<?>) events.getFirst()).getPayload();
+                assertThat(event.applyApplicationId()).isEqualTo(applyApplicationId);
                 assertThat(event.priorAuthorityId()).isEqualTo(priorAuthorityId);
-                assertThat(event.content()).isEqualTo(updatedContent);
                 return true;
               }
 
@@ -199,9 +192,7 @@ class ApplicationAggregateTest {
 
     fixture
         .given(createdEvent(applyApplicationId))
-        .when(
-            new UpdatePriorAuthorityDraftCommand(
-                applyApplicationId, UUID.randomUUID(), Map.of("reference", "PA-1")))
+        .when(new UpdatePriorAuthorityDraftCommand(applyApplicationId, UUID.randomUUID()))
         .expectException(
             org.axonframework.modelling.command.AggregateEntityNotFoundException.class);
   }
@@ -215,10 +206,7 @@ class ApplicationAggregateTest {
         .given(
             createdEvent(applyApplicationId),
             new PriorAuthorityDraftedEvent(
-                applyApplicationId,
-                priorAuthorityId,
-                Map.of("reference", "PA-1"),
-                Instant.parse("2026-07-15T08:00:00Z")))
+                applyApplicationId, priorAuthorityId, Instant.parse("2026-07-15T08:00:00Z")))
         .when(new SubmitPriorAuthorityCommand(applyApplicationId, priorAuthorityId))
         .expectEventsMatching(
             new org.hamcrest.BaseMatcher<>() {
@@ -250,10 +238,7 @@ class ApplicationAggregateTest {
         .given(
             createdEvent(applyApplicationId),
             new PriorAuthorityDraftedEvent(
-                applyApplicationId,
-                priorAuthorityId,
-                Map.of("reference", "PA-1"),
-                Instant.parse("2026-07-15T08:00:00Z")),
+                applyApplicationId, priorAuthorityId, Instant.parse("2026-07-15T08:00:00Z")),
             new PriorAuthoritySubmittedEvent(
                 applyApplicationId, priorAuthorityId, Instant.parse("2026-07-15T08:00:00Z")))
         .when(new SubmitPriorAuthorityCommand(applyApplicationId, priorAuthorityId))

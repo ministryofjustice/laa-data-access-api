@@ -36,7 +36,7 @@ class PriorAuthority {
     requireDraft("update");
     apply(
         new PriorAuthorityDraftUpdatedEvent(
-            command.applyApplicationId(), priorAuthorityId, command.content(), Instant.now(clock)));
+            command.applyApplicationId(), priorAuthorityId, Instant.now(clock)));
   }
 
   /** Submits a prior authority draft, transitioning it from {@code DRAFT} to {@code SUBMITTED}. */

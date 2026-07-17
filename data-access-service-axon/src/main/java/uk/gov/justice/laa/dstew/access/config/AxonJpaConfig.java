@@ -22,6 +22,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.draft.DraftRecord;
+import uk.gov.justice.laa.dstew.access.query.priorauthority.PriorAuthorityDraftRecord;
 import uk.gov.justice.laa.dstew.access.query.submission.SubmissionRecord;
 
 /** Configures Axon's event and token stores to use the application JPA transaction boundary. */
@@ -32,7 +33,8 @@ import uk.gov.justice.laa.dstew.access.query.submission.SubmissionRecord;
       org.axonframework.eventhandling.tokenstore.jpa.TokenEntry.class,
       ApplicationReadModel.class,
       SubmissionRecord.class,
-      DraftRecord.class
+      DraftRecord.class,
+      PriorAuthorityDraftRecord.class
     })
 @ConditionalOnProperty(
     name = "axon.eventstore.jpa.enabled",

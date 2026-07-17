@@ -1,16 +1,12 @@
 package uk.gov.justice.laa.dstew.access.command.application;
 
 import java.time.Instant;
-import java.util.Map;
 import java.util.UUID;
 
 /**
- * Event recording that a new prior authority draft was created against a submitted application. The
- * {@code content} map is still carried inline; slimming prior authority events to PII-free pointers
- * is a tracked follow-up.
+ * Pointer event recording that a new prior authority draft was created against a submitted
+ * application. Carries no personal data: the mutable draft body lives in the deletable {@code
+ * prior_authority_drafts} table, keyed by {@code priorAuthorityId}.
  */
 public record PriorAuthorityDraftedEvent(
-    UUID applyApplicationId,
-    UUID priorAuthorityId,
-    Map<String, Object> content,
-    Instant occurredAt) {}
+    UUID applyApplicationId, UUID priorAuthorityId, Instant occurredAt) {}

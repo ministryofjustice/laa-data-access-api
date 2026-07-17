@@ -3,7 +3,6 @@ package uk.gov.justice.laa.dstew.access.controller.application;
 import java.net.URI;
 import java.util.Map;
 import java.util.UUID;
-import org.axonframework.commandhandling.gateway.CommandGateway;
 import org.axonframework.modelling.command.AggregateEntityNotFoundException;
 import org.axonframework.modelling.command.AggregateNotFoundException;
 import org.springframework.http.ResponseEntity;
@@ -14,24 +13,23 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
-import uk.gov.justice.laa.dstew.access.command.application.CreatePriorAuthorityDraftCommand;
-import uk.gov.justice.laa.dstew.access.command.application.SubmitPriorAuthorityCommand;
-import uk.gov.justice.laa.dstew.access.command.application.UpdatePriorAuthorityDraftCommand;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.service.application.PriorAuthorityService;
 
 /**
  * HTTP command adapter for prior authorities nested within an application. Prior authority is a
  * post-submission concern: it can only be created against an already-submitted application, has its
  * own {@code DRAFT} then {@code SUBMITTED} lifecycle, and is addressed by {@code priorAuthorityId}.
+ * The draft body is persisted by {@link PriorAuthorityService}; the events stay PII-free pointers.
  */
 @RestController
 @RequestMapping("/api/v0/applications/{applicationId}/prior-authorities")
 public class PriorAuthorityCommandController {
 
-  private final CommandGateway commandGateway;
+  private final PriorAuthorityService priorAuthorityService;
 
-  public PriorAuthorityCommandController(CommandGateway commandGateway) {
-    this.commandGateway = commandGateway;
+  public PriorAuthorityCommandController(PriorAuthorityService priorAuthorityService) {
+    this.priorAuthorityService = priorAuthorityService;
   }
 
   /** Creates a new prior authority draft against the application and returns 201 Created. */
@@ -40,8 +38,7 @@ public class PriorAuthorityCommandController {
       @PathVariable UUID applicationId, @RequestBody Map<String, Object> content) {
     UUID priorAuthorityId;
     try {
-      priorAuthorityId =
-          commandGateway.sendAndWait(new CreatePriorAuthorityDraftCommand(applicationId, content));
+      priorAuthorityId = priorAuthorityService.createDraft(applicationId, content);
     } catch (AggregateNotFoundException e) {
       throw applicationNotFound(applicationId, e);
     }
@@ -60,8 +57,7 @@ public class PriorAuthorityCommandController {
       @PathVariable UUID priorAuthorityId,
       @RequestBody Map<String, Object> content) {
     try {
-      commandGateway.sendAndWait(
-          new UpdatePriorAuthorityDraftCommand(applicationId, priorAuthorityId, content));
+      priorAuthorityService.updateDraft(applicationId, priorAuthorityId, content);
     } catch (AggregateNotFoundException e) {
       throw applicationNotFound(applicationId, e);
     } catch (AggregateEntityNotFoundException e) {
@@ -75,7 +71,7 @@ public class PriorAuthorityCommandController {
   public ResponseEntity<Void> submitPriorAuthority(
       @PathVariable UUID applicationId, @PathVariable UUID priorAuthorityId) {
     try {
-      commandGateway.sendAndWait(new SubmitPriorAuthorityCommand(applicationId, priorAuthorityId));
+      priorAuthorityService.submit(applicationId, priorAuthorityId);
     } catch (AggregateNotFoundException e) {
       throw applicationNotFound(applicationId, e);
     } catch (AggregateEntityNotFoundException e) {
