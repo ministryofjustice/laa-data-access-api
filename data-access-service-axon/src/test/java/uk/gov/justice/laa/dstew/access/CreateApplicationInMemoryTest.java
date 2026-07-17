@@ -25,6 +25,7 @@ import org.springframework.test.annotation.DirtiesContext;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
+import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadModel;
@@ -358,6 +359,95 @@ class CreateApplicationInMemoryTest {
                                     leadApplicationId,
                                     firstLinkedApplicationId,
                                     secondLinkedApplicationId)));
+  }
+
+  @Test
+  void givenNoMatchingApplications_whenGetApplicationsFilteredByLaaReference_thenReturnsEmpty() {
+    ResponseEntity<ApplicationSummaryResponse> response =
+        restTemplate.getForEntity(
+            "/api/v0/applications?laaReference=DOES-NOT-EXIST-12345",
+            ApplicationSummaryResponse.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(response.getBody()).isNotNull();
+    assertThat(response.getBody().getApplications()).isEmpty();
+    assertThat(response.getBody().getPaging().getTotalRecords()).isZero();
+  }
+
+  @Test
+  void givenCreatedApplication_whenGetApplications_thenReturnsSummary() {
+    UUID applyApplicationId = UUID.randomUUID();
+    ResponseEntity<Void> postResponse =
+        restTemplate.postForEntity(
+            "/api/v0/applications",
+            new HttpEntity<>(
+                validCreateApplicationRequest(applyApplicationId, UUID.randomUUID()), headers()),
+            Void.class);
+    UUID applicationId = applicationId(postResponse);
+    awaitProjection(applicationId);
+
+    ResponseEntity<ApplicationSummaryResponse> response =
+        restTemplate.getForEntity("/api/v0/applications", ApplicationSummaryResponse.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(response.getBody().getApplications())
+        .anySatisfy(
+            summary -> {
+              assertThat(summary.getApplicationId()).isEqualTo(applicationId);
+              assertThat(summary.getLaaReference()).isEqualTo("LAA-123");
+              assertThat(summary.getIsLead()).isTrue();
+              assertThat(summary.getClientFirstName()).isEqualTo("Ada");
+              assertThat(summary.getClientLastName()).isEqualTo("Lovelace");
+            });
+  }
+
+  @Test
+  void givenLinkedApplications_whenGetApplications_thenLinkedApplicationsPopulatedOnLead() {
+    UUID leadApplyApplicationId = UUID.randomUUID();
+    UUID leadApplicationId =
+        applicationId(
+            restTemplate.postForEntity(
+                "/api/v0/applications",
+                new HttpEntity<>(
+                    validCreateApplicationRequest(leadApplyApplicationId, UUID.randomUUID()),
+                    headers()),
+                Void.class));
+    awaitProjection(leadApplicationId);
+
+    UUID linkedApplyApplicationId = UUID.randomUUID();
+    UUID linkedApplicationId =
+        applicationId(
+            restTemplate.postForEntity(
+                "/api/v0/applications",
+                new HttpEntity<>(
+                    validLinkedCreateApplicationRequest(
+                        linkedApplyApplicationId, UUID.randomUUID(), leadApplyApplicationId),
+                    headers()),
+                Void.class));
+    awaitProjection(linkedApplicationId);
+
+    // Wait for the group to be projected before asserting linked apps in the list response.
+    await()
+        .atMost(10, TimeUnit.SECONDS)
+        .pollInterval(50, TimeUnit.MILLISECONDS)
+        .until(
+            () -> groupReadRepository.findByLeadApplicationId(leadApplicationId),
+            Optional::isPresent);
+
+    ResponseEntity<ApplicationSummaryResponse> response =
+        restTemplate.getForEntity("/api/v0/applications", ApplicationSummaryResponse.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(response.getBody().getApplications())
+        .anySatisfy(
+            summary -> {
+              assertThat(summary.getApplicationId()).isEqualTo(leadApplicationId);
+              assertThat(summary.getIsLead()).isTrue();
+              assertThat(summary.getLinkedApplications())
+                  .singleElement()
+                  .satisfies(
+                      linked -> assertThat(linked.getApplicationId()).isEqualTo(linkedApplicationId));
+            });
   }
 
   private HttpHeaders headers() {

@@ -18,18 +18,23 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
+import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
 
 class ApplicationProjectionTest {
 
   private ApplicationReadRepository applicationReadRepository;
+  private LinkedApplicationGroupReadRepository groupReadRepository;
   private QueryUpdateEmitter queryUpdateEmitter;
   private ApplicationProjection projection;
 
   @BeforeEach
   void setUp() {
     applicationReadRepository = mock(ApplicationReadRepository.class);
+    groupReadRepository = mock(LinkedApplicationGroupReadRepository.class);
     queryUpdateEmitter = mock(QueryUpdateEmitter.class);
-    projection = new ApplicationProjection(applicationReadRepository, queryUpdateEmitter);
+    projection =
+        new ApplicationProjection(
+            applicationReadRepository, groupReadRepository, queryUpdateEmitter);
   }
 
   @Test
