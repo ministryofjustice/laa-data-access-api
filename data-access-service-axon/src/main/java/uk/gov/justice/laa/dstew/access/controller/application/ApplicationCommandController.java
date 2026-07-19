@@ -18,7 +18,6 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.AssignCaseworkerService;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.UnassignCaseworkerService;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
@@ -39,7 +38,6 @@ public class ApplicationCommandController {
   private final MakeDecisionCommandMapper decisionCommandMapper;
   private final AssignCaseworkerService assignCaseworkerService;
   private final AssignCaseworkerRequestMapper assignCaseworkerRequestMapper;
-  private final UnassignCaseworkerService unassignCaseworkerService;
   private final UnassignCaseworkerRequestMapper unassignCaseworkerRequestMapper;
 
   /** Creates the command adapter. */
@@ -50,7 +48,6 @@ public class ApplicationCommandController {
       MakeDecisionCommandMapper decisionCommandMapper,
       AssignCaseworkerService assignCaseworkerService,
       AssignCaseworkerRequestMapper assignCaseworkerRequestMapper,
-      UnassignCaseworkerService unassignCaseworkerService,
       UnassignCaseworkerRequestMapper unassignCaseworkerRequestMapper) {
     this.commandGateway = commandGateway;
     this.projectionGateway = projectionGateway;
@@ -58,7 +55,6 @@ public class ApplicationCommandController {
     this.decisionCommandMapper = decisionCommandMapper;
     this.assignCaseworkerService = assignCaseworkerService;
     this.assignCaseworkerRequestMapper = assignCaseworkerRequestMapper;
-    this.unassignCaseworkerService = unassignCaseworkerService;
     this.unassignCaseworkerRequestMapper = unassignCaseworkerRequestMapper;
   }
 
@@ -82,10 +78,7 @@ public class ApplicationCommandController {
       @RequestHeader("X-Service-Name") ServiceName serviceName,
       @PathVariable UUID id,
       @Valid @RequestBody CaseworkerUnassignRequest request) {
-    unassignCaseworkerService.unassign(
-        id,
-        unassignCaseworkerRequestMapper.serialise(request),
-        request.getEventHistory() == null ? null : request.getEventHistory().getEventDescription());
+    commandGateway.sendAndWait(unassignCaseworkerRequestMapper.toCommand(id, request));
     return ResponseEntity.ok().build();
   }
 

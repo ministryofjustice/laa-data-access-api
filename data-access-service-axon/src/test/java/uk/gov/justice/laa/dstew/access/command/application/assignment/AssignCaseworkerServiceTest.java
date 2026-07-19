@@ -10,8 +10,6 @@ import static org.mockito.Mockito.when;
 import java.time.Instant;
 import java.util.UUID;
 import org.axonframework.commandhandling.gateway.CommandGateway;
-import org.axonframework.eventsourcing.eventstore.DomainEventStream;
-import org.axonframework.eventsourcing.eventstore.EventStore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -21,26 +19,21 @@ import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 class AssignCaseworkerServiceTest {
 
   private CaseworkerRepository caseworkerRepository;
-  private EventStore eventStore;
   private CommandGateway commandGateway;
   private AssignCaseworkerService service;
 
   @BeforeEach
   void setUp() {
     caseworkerRepository = mock(CaseworkerRepository.class);
-    eventStore = mock(EventStore.class);
     commandGateway = mock(CommandGateway.class);
-    service = new AssignCaseworkerService(caseworkerRepository, eventStore, commandGateway);
+    service = new AssignCaseworkerService(caseworkerRepository, commandGateway);
   }
 
   @Test
   void givenKnownCaseworkerAndApplication_whenAssigned_thenDispatchesCommand() {
     UUID caseworkerId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
-    DomainEventStream stream = mock(DomainEventStream.class);
     when(caseworkerRepository.existsById(caseworkerId)).thenReturn(true);
-    when(eventStore.readEvents(applicationId.toString())).thenReturn(stream);
-    when(stream.hasNext()).thenReturn(true);
     Instant before = Instant.now();
 
     service.assign(caseworkerId, applicationId, "request", "description");
@@ -60,30 +53,13 @@ class AssignCaseworkerServiceTest {
   }
 
   @Test
-  void givenUnknownCaseworker_whenAssigned_thenReturnsNotFoundWithoutReadingApplication() {
+  void givenUnknownCaseworker_whenAssigned_thenReturnsNotFoundWithoutDispatching() {
     UUID caseworkerId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
 
     assertThatThrownBy(() -> service.assign(caseworkerId, applicationId, "{}", null))
         .isInstanceOf(ResourceNotFoundException.class)
         .hasMessage("No caseworker found with id: " + caseworkerId);
-
-    verify(eventStore, never()).readEvents(applicationId.toString());
-    verify(commandGateway, never()).sendAndWait(org.mockito.ArgumentMatchers.any());
-  }
-
-  @Test
-  void givenUnknownApplication_whenAssigned_thenReturnsNotFoundWithoutDispatching() {
-    UUID caseworkerId = UUID.randomUUID();
-    UUID applicationId = UUID.randomUUID();
-    DomainEventStream stream = mock(DomainEventStream.class);
-    when(caseworkerRepository.existsById(caseworkerId)).thenReturn(true);
-    when(eventStore.readEvents(applicationId.toString())).thenReturn(stream);
-    when(stream.hasNext()).thenReturn(false);
-
-    assertThatThrownBy(() -> service.assign(caseworkerId, applicationId, "{}", null))
-        .isInstanceOf(ResourceNotFoundException.class)
-        .hasMessage("No application found with id: " + applicationId);
 
     verify(commandGateway, never()).sendAndWait(org.mockito.ArgumentMatchers.any());
   }

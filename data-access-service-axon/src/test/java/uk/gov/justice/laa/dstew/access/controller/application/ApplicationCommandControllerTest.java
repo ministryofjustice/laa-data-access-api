@@ -17,7 +17,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.AssignCaseworkerService;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.UnassignCaseworkerService;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
 
@@ -42,7 +41,6 @@ class ApplicationCommandControllerTest {
             mock(MakeDecisionCommandMapper.class),
             mock(AssignCaseworkerService.class),
             mock(AssignCaseworkerRequestMapper.class),
-            mock(UnassignCaseworkerService.class),
             mock(UnassignCaseworkerRequestMapper.class));
   }
 

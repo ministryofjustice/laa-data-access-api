@@ -44,6 +44,16 @@ class ApplicationExceptionHandlerTest {
   }
 
   @Test
+  void givenMissingAggregate_whenHandled_thenReturnsStableApplicationNotFoundResponse() {
+    var response = handler.handleAggregateNotFoundException();
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    assertThat(response.getBody().getDetail())
+        .isEqualTo("The requested application was not found")
+        .doesNotContain("Axon", "aggregate", "event store");
+  }
+
+  @Test
   void givenStaleVersion_whenHandled_thenReturnsConflict() {
     UUID applicationId = UUID.randomUUID();
 

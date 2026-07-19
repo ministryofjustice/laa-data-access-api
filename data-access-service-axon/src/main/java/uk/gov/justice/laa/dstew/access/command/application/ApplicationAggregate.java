@@ -149,10 +149,6 @@ public class ApplicationAggregate {
   /** Validates and stores a decision as the next immutable application-data version. */
   @CommandHandler
   void handle(MakeApplicationDecisionCommand command, ApplicationDataStore applicationDataStore) {
-    if (applicationId == null) {
-      throw new ResourceNotFoundException(
-          "No application found with id: " + command.applicationId());
-    }
     if (command.expectedApplicationVersion() != applicationVersion) {
       throw new ApplicationVersionConflictException(
           command.applicationId(), command.expectedApplicationVersion());
@@ -214,10 +210,6 @@ public class ApplicationAggregate {
   @CommandHandler
   void handle(
       AssignCaseworkerToApplicationCommand command, ApplicationDataStore applicationDataStore) {
-    if (applicationId == null) {
-      throw new ResourceNotFoundException(
-          "No application found with id: " + command.applicationId());
-    }
     var current = applicationDataStore.get(applicationId, applicationDataVersion);
     long nextDataVersion = applicationDataVersion + 1;
     applicationDataStore.append(
@@ -239,10 +231,6 @@ public class ApplicationAggregate {
   @CommandHandler
   void handle(
       UnassignCaseworkerFromApplicationCommand command, ApplicationDataStore applicationDataStore) {
-    if (applicationId == null) {
-      throw new ResourceNotFoundException(
-          "No application found with id: " + command.applicationId());
-    }
     if (caseworkerId == null) {
       return;
     }
