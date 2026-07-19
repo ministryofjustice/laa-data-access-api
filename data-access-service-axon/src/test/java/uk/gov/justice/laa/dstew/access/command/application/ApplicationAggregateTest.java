@@ -15,6 +15,8 @@ import java.util.UUID;
 import org.axonframework.test.aggregate.AggregateTestFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
+import uk.gov.justice.laa.dstew.access.command.application.assignment.AssignCaseworkerToApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
@@ -206,6 +208,30 @@ class ApplicationAggregateTest {
         .expectEvents(
             new ApplicationDecisionMadeEvent(
                 applicationId, 2L, 2L, "REFUSED", false, secondOccurredAt));
+  }
+
+  @Test
+  void givenApplication_whenCaseworkerAssigned_thenStoresAuditDataAndEmitsThinEvent() {
+    UUID applicationId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-19T11:00:00Z");
+    ApplicationCreationDetails details = applicationCreationDetails(applicationId);
+    when(applicationDataStore.get(applicationId, 0L))
+        .thenReturn(ApplicationDataPayload.from(details));
+    when(applicationDataStore.append(any(), anyLong(), any(), any(), any())).thenReturn("hash");
+
+    fixture
+        .given(applicationCreatedEvent(applicationId, details))
+        .when(
+            new AssignCaseworkerToApplicationCommand(
+                applicationId,
+                caseworkerId,
+                "{\"caseworkerId\":\"" + caseworkerId + "\"}",
+                "Assigned for assessment",
+                occurredAt))
+        .expectEvents(
+            new ApplicationAssignedToCaseworkerEvent(
+                applicationId, 1L, 1L, caseworkerId, occurredAt));
   }
 
   @Test

@@ -29,7 +29,8 @@ public record ApplicationDataPayload(
     Map<UUID, ApplicationMeritsDecision> meritsDecisions,
     Map<String, Object> certificate,
     String decisionSerialisedRequest,
-    String decisionEventDescription) {
+    String decisionEventDescription,
+    String assignmentEventDescription) {
 
   /**
    * Creates an application-data payload from the details parsed from an application command.
@@ -53,6 +54,7 @@ public record ApplicationDataPayload(
         null,
         null,
         Map.of(),
+        null,
         null,
         null,
         null);
@@ -83,6 +85,30 @@ public record ApplicationDataPayload(
         Map.copyOf(newMeritsDecisions),
         newCertificate == null ? null : Map.copyOf(newCertificate),
         newDecisionSerialisedRequest,
-        newDecisionEventDescription);
+        newDecisionEventDescription,
+        assignmentEventDescription);
+  }
+
+  /** Returns a complete new data version containing assignment audit details. */
+  public ApplicationDataPayload withAssignment(String newAssignmentEventDescription) {
+    return new ApplicationDataPayload(
+        laaReference,
+        applicationContent,
+        individuals,
+        applyApplicationId,
+        submittedAt,
+        officeCode,
+        usedDelegatedFunctions,
+        categoryOfLaw,
+        matterType,
+        proceedings,
+        serialisedRequest,
+        overallDecision,
+        autoGranted,
+        meritsDecisions,
+        certificate,
+        decisionSerialisedRequest,
+        decisionEventDescription,
+        newAssignmentEventDescription);
   }
 }

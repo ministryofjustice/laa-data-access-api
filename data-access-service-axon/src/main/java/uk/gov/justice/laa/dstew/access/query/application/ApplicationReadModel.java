@@ -57,6 +57,9 @@ public class ApplicationReadModel {
   @Column(name = "lead_application_id")
   private UUID leadApplicationId;
 
+  @Column(name = "caseworker_id")
+  private UUID caseworkerId;
+
   @Transient private Instant submittedAt;
 
   @Transient private String officeCode;

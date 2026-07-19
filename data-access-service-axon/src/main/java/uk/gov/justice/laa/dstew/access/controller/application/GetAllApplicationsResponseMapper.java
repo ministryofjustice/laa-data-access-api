@@ -59,6 +59,7 @@ public class GetAllApplicationsResponseMapper {
     summary.setLastUpdated(app.getModifiedAt().atOffset(ZoneOffset.UTC));
     summary.setApplicationType(ApplicationType.INITIAL);
     summary.setIsLead(app.getLeadApplicationId() == null);
+    summary.setAssignedTo(app.getCaseworkerId());
 
     ApplicationIndividual client = primaryClient(app);
     if (client != null) {

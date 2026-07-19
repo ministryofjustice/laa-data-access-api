@@ -19,6 +19,7 @@ import org.springframework.boot.persistence.autoconfigure.EntityScan;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationData;
+import uk.gov.justice.laa.dstew.access.command.caseworker.Caseworker;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 
 /** Configures Axon's event and token stores to use the application JPA transaction boundary. */
@@ -28,7 +29,8 @@ import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
       DomainEventEntry.class,
       org.axonframework.eventhandling.tokenstore.jpa.TokenEntry.class,
       ApplicationReadModel.class,
-      ApplicationData.class
+      ApplicationData.class,
+      Caseworker.class
     })
 @ConditionalOnProperty(
     name = "axon.eventstore.jpa.enabled",

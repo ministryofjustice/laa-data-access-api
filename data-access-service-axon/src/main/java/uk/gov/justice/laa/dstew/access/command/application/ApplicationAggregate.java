@@ -17,6 +17,8 @@ import org.axonframework.modelling.command.AggregateIdentifier;
 import org.axonframework.modelling.command.CreationPolicy;
 import org.axonframework.spring.stereotype.Aggregate;
 import uk.gov.justice.laa.dstew.access.applicationcontent.LinkedApplication;
+import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
+import uk.gov.justice.laa.dstew.access.command.application.assignment.AssignCaseworkerToApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationMeritsDecision;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
@@ -42,6 +44,7 @@ public class ApplicationAggregate {
   private String requestFingerprint;
   private long applicationDataVersion;
   private long applicationVersion;
+  private UUID caseworkerId;
 
   /**
    * Creates or idempotently re-identifies an Application.
@@ -205,6 +208,31 @@ public class ApplicationAggregate {
             command.occurredAt()));
   }
 
+  /** Assigns a caseworker and stores free-text audit data outside the event stream. */
+  @CommandHandler
+  void handle(
+      AssignCaseworkerToApplicationCommand command, ApplicationDataStore applicationDataStore) {
+    if (applicationId == null) {
+      throw new ResourceNotFoundException(
+          "No application found with id: " + command.applicationId());
+    }
+    var current = applicationDataStore.get(applicationId, applicationDataVersion);
+    long nextDataVersion = applicationDataVersion + 1;
+    applicationDataStore.append(
+        applicationId,
+        nextDataVersion,
+        current.withAssignment(command.eventDescription()),
+        command.serialisedRequest(),
+        command.occurredAt());
+    apply(
+        new ApplicationAssignedToCaseworkerEvent(
+            applicationId,
+            applicationVersion + 1,
+            nextDataVersion,
+            command.caseworkerId(),
+            command.occurredAt()));
+  }
+
   private void validateDecision(MakeApplicationDecisionCommand command) {
     List<String> errors = new ArrayList<>();
     if (command.proceedings().isEmpty()) {
@@ -253,6 +281,13 @@ public class ApplicationAggregate {
   void on(ApplicationDecisionMadeEvent event) {
     applicationVersion = event.applicationVersion();
     applicationDataVersion = event.applicationDataVersion();
+  }
+
+  @EventSourcingHandler
+  void on(ApplicationAssignedToCaseworkerEvent event) {
+    applicationVersion = event.applicationVersion();
+    applicationDataVersion = event.applicationDataVersion();
+    caseworkerId = event.caseworkerId();
   }
 
   @EventSourcingHandler

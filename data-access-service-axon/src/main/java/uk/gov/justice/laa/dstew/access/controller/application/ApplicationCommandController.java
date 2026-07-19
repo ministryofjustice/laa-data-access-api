@@ -17,7 +17,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationCommand;
+import uk.gov.justice.laa.dstew.access.command.application.assignment.AssignCaseworkerService;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
@@ -33,17 +35,37 @@ public class ApplicationCommandController {
   private final SubscriptionProjectionGateway projectionGateway;
   private final CreateApplicationCommandMapper commandMapper;
   private final MakeDecisionCommandMapper decisionCommandMapper;
+  private final AssignCaseworkerService assignCaseworkerService;
+  private final AssignCaseworkerRequestMapper assignCaseworkerRequestMapper;
 
   /** Creates the command adapter. */
   public ApplicationCommandController(
       CommandGateway commandGateway,
       SubscriptionProjectionGateway projectionGateway,
       CreateApplicationCommandMapper commandMapper,
-      MakeDecisionCommandMapper decisionCommandMapper) {
+      MakeDecisionCommandMapper decisionCommandMapper,
+      AssignCaseworkerService assignCaseworkerService,
+      AssignCaseworkerRequestMapper assignCaseworkerRequestMapper) {
     this.commandGateway = commandGateway;
     this.projectionGateway = projectionGateway;
     this.commandMapper = commandMapper;
     this.decisionCommandMapper = decisionCommandMapper;
+    this.assignCaseworkerService = assignCaseworkerService;
+    this.assignCaseworkerRequestMapper = assignCaseworkerRequestMapper;
+  }
+
+  /** Assigns a caseworker to one or more Applications after validating the complete batch. */
+  @PostMapping("/assign")
+  public ResponseEntity<Void> assignCaseworker(
+      @RequestHeader("X-Service-Name") ServiceName serviceName,
+      @Valid @RequestBody CaseworkerAssignRequest request) {
+    var assignment = assignCaseworkerRequestMapper.toAssignment(request);
+    assignCaseworkerService.assign(
+        assignment.caseworkerId(),
+        assignment.applicationId(),
+        assignment.serialisedRequest(),
+        assignment.eventDescription());
+    return ResponseEntity.ok().build();
   }
 
   /** Applies an overall and per-proceeding decision to an existing Application version. */

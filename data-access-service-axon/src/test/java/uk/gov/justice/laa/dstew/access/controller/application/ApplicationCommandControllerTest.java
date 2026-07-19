@@ -16,6 +16,7 @@ import org.axonframework.modelling.command.ConcurrencyException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationCommand;
+import uk.gov.justice.laa.dstew.access.command.application.assignment.AssignCaseworkerService;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
 
@@ -37,7 +38,9 @@ class ApplicationCommandControllerTest {
             commandGateway,
             mock(SubscriptionProjectionGateway.class),
             mock(CreateApplicationCommandMapper.class),
-            mock(MakeDecisionCommandMapper.class));
+            mock(MakeDecisionCommandMapper.class),
+            mock(AssignCaseworkerService.class),
+            mock(AssignCaseworkerRequestMapper.class));
   }
 
   @Test

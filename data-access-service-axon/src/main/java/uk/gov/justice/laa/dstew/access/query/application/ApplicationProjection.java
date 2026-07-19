@@ -15,6 +15,7 @@ import org.axonframework.queryhandling.QueryUpdateEmitter;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
@@ -138,6 +139,21 @@ public class ApplicationProjection {
                   FindApplicationByIdQuery.class,
                   query -> query.applicationId().equals(event.applicationId()),
                   saved);
+            });
+  }
+
+  /** Updates the assigned caseworker and referenced application-data version. */
+  @EventHandler
+  public void on(ApplicationAssignedToCaseworkerEvent event) {
+    applicationReadRepository
+        .findById(event.applicationId())
+        .ifPresent(
+            application -> {
+              application.setCaseworkerId(event.caseworkerId());
+              application.setApplicationVersion(event.applicationVersion());
+              application.setApplicationDataVersion(event.applicationDataVersion());
+              application.setModifiedAt(event.occurredAt());
+              applicationReadRepository.save(application);
             });
   }
 

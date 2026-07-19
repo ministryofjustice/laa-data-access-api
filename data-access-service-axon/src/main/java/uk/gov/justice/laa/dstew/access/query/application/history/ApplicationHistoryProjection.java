@@ -11,6 +11,7 @@ import org.axonframework.eventhandling.ResetHandler;
 import org.axonframework.queryhandling.QueryHandler;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
@@ -109,6 +110,17 @@ public class ApplicationHistoryProjection {
         event.occurredAt());
   }
 
+  /** Appends a thin audit entry for a caseworker assignment. */
+  @EventHandler
+  public void on(ApplicationAssignedToCaseworkerEvent event, EventMessage<?> message) {
+    append(
+        message,
+        event.applicationId(),
+        "ASSIGN_APPLICATION_TO_CASEWORKER",
+        serialise(event),
+        event.occurredAt());
+  }
+
   /** Returns chronologically ordered history rows matching the requested public event types. */
   @QueryHandler
   public java.util.List<ApplicationHistoryReadModel> handle(FindApplicationHistoryQuery query) {
@@ -116,22 +128,27 @@ public class ApplicationHistoryProjection {
         .findAllByApplicationIdOrderByOccurredAtAsc(query.applicationId())
         .stream()
         .filter(history -> query.eventTypes().contains(history.getEventType()))
-        .map(this::hydrateDecisionDescription)
+        .map(this::hydrateEventDescription)
         .toList();
   }
 
-  private ApplicationHistoryReadModel hydrateDecisionDescription(
-      ApplicationHistoryReadModel history) {
-    if (!history.getEventType().startsWith("APPLICATION_MAKE_DECISION_")) {
+  private ApplicationHistoryReadModel hydrateEventDescription(ApplicationHistoryReadModel history) {
+    boolean decision = history.getEventType().startsWith("APPLICATION_MAKE_DECISION_");
+    boolean assignment = "ASSIGN_APPLICATION_TO_CASEWORKER".equals(history.getEventType());
+    if (!decision && !assignment) {
       return history;
     }
     try {
-      long version =
-          objectMapper.readTree(history.getRequestPayload()).get("applicationDataVersion").asLong();
+      var thinPayload = objectMapper.readTree(history.getRequestPayload());
+      long version = thinPayload.get("applicationDataVersion").asLong();
+      var data = applicationDataStore.get(history.getApplicationId(), version);
       String description =
-          applicationDataStore.get(history.getApplicationId(), version).decisionEventDescription();
+          decision ? data.decisionEventDescription() : data.assignmentEventDescription();
       java.util.Map<String, Object> reconstructedPayload = new java.util.HashMap<>();
       reconstructedPayload.put("eventDescription", description);
+      if (assignment && thinPayload.get("caseworkerId") != null) {
+        reconstructedPayload.put("caseworkerId", thinPayload.get("caseworkerId").asText());
+      }
       return ApplicationHistoryReadModel.builder()
           .eventId(history.getEventId())
           .applicationId(history.getApplicationId())

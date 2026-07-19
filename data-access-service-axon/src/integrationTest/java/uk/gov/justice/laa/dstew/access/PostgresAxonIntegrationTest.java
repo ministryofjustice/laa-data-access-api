@@ -45,6 +45,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationType;
+import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
@@ -374,6 +375,94 @@ class PostgresAxonIntegrationTest {
                 Integer.class,
                 applicationId))
         .isEqualTo(2);
+  }
+
+  @Test
+  void givenKnownCaseworkerAndApplication_whenAssigned_thenUpdatesOnlyRequestedApplication()
+      throws Exception {
+    UUID caseworkerId = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO axon.caseworkers (id, username) VALUES (?, ?)",
+        caseworkerId,
+        "caseworker@example.com");
+    UUID firstApplicationId = UUID.randomUUID();
+    UUID secondApplicationId = UUID.randomUUID();
+    applicationId(
+        post(validCreateApplicationRequest(firstApplicationId, UUID.randomUUID()), headers()));
+    applicationId(
+        post(validCreateApplicationRequest(secondApplicationId, UUID.randomUUID()), headers()));
+    awaitProjection(firstApplicationId);
+    awaitProjection(secondApplicationId);
+
+    CaseworkerAssignRequest request =
+        CaseworkerAssignRequest.builder()
+            .caseworkerId(caseworkerId)
+            .applicationIds(List.of(firstApplicationId))
+            .eventHistory(
+                EventHistoryRequest.builder().eventDescription("Assigned for assessment").build())
+            .build();
+    ResponseEntity<Void> response =
+        restTemplate.postForEntity(
+            "http://localhost:" + port + "/api/v0/applications/assign",
+            new HttpEntity<>(request, headers()),
+            Void.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(awaitProjectionVersion(firstApplicationId, 1L).getCaseworkerId())
+        .isEqualTo(caseworkerId);
+    assertThat(awaitProjection(secondApplicationId).getCaseworkerId()).isNull();
+    assertThat(awaitGet(firstApplicationId).getBody().getAssignedTo()).isEqualTo(caseworkerId);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT convert_from(payload, 'UTF8') FROM axon.domain_event_entry "
+                    + "WHERE aggregate_identifier = ? AND sequence_number = 1",
+                String.class,
+                firstApplicationId.toString()))
+        .contains("caseworkerId", caseworkerId.toString())
+        .doesNotContain("Assigned for assessment");
+
+    ResponseEntity<ApplicationHistoryResponse> historyResponse =
+        restTemplate.exchange(
+            "http://localhost:"
+                + port
+                + "/api/v0/applications/"
+                + firstApplicationId
+                + "/history-search?eventType=ASSIGN_APPLICATION_TO_CASEWORKER",
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            ApplicationHistoryResponse.class);
+    assertThat(historyResponse.getBody().getEvents())
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getCaseworkerId()).isEqualTo(caseworkerId);
+              assertThat(event.getEventDescription()).isEqualTo("Assigned for assessment");
+            });
+
+    CaseworkerAssignRequest multipleApplicationsRequest =
+        CaseworkerAssignRequest.builder()
+            .caseworkerId(caseworkerId)
+            .applicationIds(List.of(firstApplicationId, secondApplicationId))
+            .build();
+    ResponseEntity<Void> listResponse =
+        restTemplate.postForEntity(
+            "http://localhost:" + port + "/api/v0/applications/assign",
+            new HttpEntity<>(multipleApplicationsRequest, headers()),
+            Void.class);
+    assertThat(listResponse.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+
+    CaseworkerAssignRequest missingApplicationRequest =
+        CaseworkerAssignRequest.builder()
+            .caseworkerId(caseworkerId)
+            .applicationIds(List.of(UUID.randomUUID()))
+            .build();
+    ResponseEntity<Void> missingResponse =
+        restTemplate.postForEntity(
+            "http://localhost:" + port + "/api/v0/applications/assign",
+            new HttpEntity<>(missingApplicationRequest, headers()),
+            Void.class);
+    assertThat(missingResponse.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    assertThat(awaitProjection(secondApplicationId).getApplicationVersion()).isZero();
   }
 
   @Test

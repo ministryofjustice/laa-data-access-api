@@ -32,6 +32,7 @@ public class GetApplicationHistoryResponseMapper {
         .domainEventType(DomainEventType.fromValue(history.getEventType()))
         .createdAt(history.getOccurredAt().atOffset(ZoneOffset.UTC))
         .createdBy(history.getServiceName() == null ? "UNKNOWN" : history.getServiceName())
+        .caseworkerId(caseworkerId(history.getRequestPayload()))
         .eventDescription(eventDescription(history.getRequestPayload()))
         .build();
   }
@@ -43,6 +44,18 @@ public class GetApplicationHistoryResponseMapper {
     try {
       JsonNode description = objectMapper.readTree(requestPayload).get("eventDescription");
       return description == null || description.isNull() ? null : description.asText();
+    } catch (Exception exception) {
+      return null;
+    }
+  }
+
+  private java.util.UUID caseworkerId(String requestPayload) {
+    if (requestPayload == null || requestPayload.isBlank()) {
+      return null;
+    }
+    try {
+      JsonNode id = objectMapper.readTree(requestPayload).get("caseworkerId");
+      return id == null || id.isNull() ? null : java.util.UUID.fromString(id.asText());
     } catch (Exception exception) {
       return null;
     }

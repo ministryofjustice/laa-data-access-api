@@ -45,6 +45,7 @@ public class GetApplicationResponseMapper {
             ? null
             : application.getSubmittedAt().atOffset(ZoneOffset.UTC));
     response.setIsLead(application.getLeadApplicationId() == null);
+    response.setAssignedTo(application.getCaseworkerId());
     response.setUsedDelegatedFunctions(application.getUsedDelegatedFunctions());
     response.setAutoGrant(application.getAutoGranted());
     response.setDecisionStatus(
