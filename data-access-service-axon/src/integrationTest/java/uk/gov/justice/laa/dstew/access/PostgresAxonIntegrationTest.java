@@ -46,6 +46,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
+import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
@@ -439,6 +440,53 @@ class PostgresAxonIntegrationTest {
               assertThat(event.getEventDescription()).isEqualTo("Assigned for assessment");
             });
 
+    CaseworkerUnassignRequest unassignRequest =
+        CaseworkerUnassignRequest.builder()
+            .eventHistory(
+                EventHistoryRequest.builder().eventDescription("Returned to queue").build())
+            .build();
+    ResponseEntity<Void> unassignResponse =
+        restTemplate.postForEntity(
+            "http://localhost:" + port + "/api/v0/applications/" + firstApplicationId + "/unassign",
+            new HttpEntity<>(unassignRequest, headers()),
+            Void.class);
+    assertThat(unassignResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(awaitProjectionVersion(firstApplicationId, 2L).getCaseworkerId()).isNull();
+    assertThat(awaitGet(firstApplicationId).getBody().getAssignedTo()).isNull();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT convert_from(payload, 'UTF8') FROM axon.domain_event_entry "
+                    + "WHERE aggregate_identifier = ? AND sequence_number = 2",
+                String.class,
+                firstApplicationId.toString()))
+        .doesNotContain("Returned to queue");
+
+    ResponseEntity<ApplicationHistoryResponse> unassignHistoryResponse =
+        restTemplate.exchange(
+            "http://localhost:"
+                + port
+                + "/api/v0/applications/"
+                + firstApplicationId
+                + "/history-search?eventType=UNASSIGN_APPLICATION_TO_CASEWORKER",
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            ApplicationHistoryResponse.class);
+    assertThat(unassignHistoryResponse.getBody().getEvents())
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getCaseworkerId()).isNull();
+              assertThat(event.getEventDescription()).isEqualTo("Returned to queue");
+            });
+
+    ResponseEntity<Void> repeatedUnassignResponse =
+        restTemplate.postForEntity(
+            "http://localhost:" + port + "/api/v0/applications/" + firstApplicationId + "/unassign",
+            new HttpEntity<>(unassignRequest, headers()),
+            Void.class);
+    assertThat(repeatedUnassignResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(awaitProjection(firstApplicationId).getApplicationVersion()).isEqualTo(2L);
+
     CaseworkerAssignRequest multipleApplicationsRequest =
         CaseworkerAssignRequest.builder()
             .caseworkerId(caseworkerId)
@@ -462,6 +510,13 @@ class PostgresAxonIntegrationTest {
             new HttpEntity<>(missingApplicationRequest, headers()),
             Void.class);
     assertThat(missingResponse.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+
+    ResponseEntity<Void> missingUnassignResponse =
+        restTemplate.postForEntity(
+            "http://localhost:" + port + "/api/v0/applications/" + UUID.randomUUID() + "/unassign",
+            new HttpEntity<>(unassignRequest, headers()),
+            Void.class);
+    assertThat(missingUnassignResponse.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     assertThat(awaitProjection(secondApplicationId).getApplicationVersion()).isZero();
   }
 

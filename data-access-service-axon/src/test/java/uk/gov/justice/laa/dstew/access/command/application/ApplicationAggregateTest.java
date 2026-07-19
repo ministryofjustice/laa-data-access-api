@@ -16,7 +16,9 @@ import org.axonframework.test.aggregate.AggregateTestFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
+import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.AssignCaseworkerToApplicationCommand;
+import uk.gov.justice.laa.dstew.access.command.application.assignment.UnassignCaseworkerFromApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
@@ -232,6 +234,42 @@ class ApplicationAggregateTest {
         .expectEvents(
             new ApplicationAssignedToCaseworkerEvent(
                 applicationId, 1L, 1L, caseworkerId, occurredAt));
+  }
+
+  @Test
+  void givenAssignedApplication_whenCaseworkerUnassigned_thenStoresAuditDataAndEmitsThinEvent() {
+    UUID applicationId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+    Instant assignedAt = Instant.parse("2026-07-19T11:00:00Z");
+    Instant unassignedAt = Instant.parse("2026-07-20T09:00:00Z");
+    ApplicationCreationDetails details = applicationCreationDetails(applicationId);
+    when(applicationDataStore.get(applicationId, 1L))
+        .thenReturn(ApplicationDataPayload.from(details).withAssignment("Assigned"));
+    when(applicationDataStore.append(any(), anyLong(), any(), any(), any())).thenReturn("hash");
+
+    fixture
+        .given(
+            applicationCreatedEvent(applicationId, details),
+            new ApplicationAssignedToCaseworkerEvent(
+                applicationId, 1L, 1L, caseworkerId, assignedAt))
+        .when(
+            new UnassignCaseworkerFromApplicationCommand(
+                applicationId, "{}", "Returned to queue", unassignedAt))
+        .expectEvents(
+            new ApplicationUnassignedFromCaseworkerEvent(applicationId, 2L, 2L, unassignedAt));
+  }
+
+  @Test
+  void givenUnassignedApplication_whenCaseworkerUnassigned_thenDoesNothing() {
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-20T09:00:00Z");
+
+    fixture
+        .given(applicationCreatedEvent(applicationId))
+        .when(
+            new UnassignCaseworkerFromApplicationCommand(
+                applicationId, "{}", "Already unassigned", occurredAt))
+        .expectNoEvents();
   }
 
   @Test

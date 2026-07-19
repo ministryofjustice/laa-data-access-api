@@ -16,6 +16,7 @@ import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
+import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
@@ -150,6 +151,21 @@ public class ApplicationProjection {
         .ifPresent(
             application -> {
               application.setCaseworkerId(event.caseworkerId());
+              application.setApplicationVersion(event.applicationVersion());
+              application.setApplicationDataVersion(event.applicationDataVersion());
+              application.setModifiedAt(event.occurredAt());
+              applicationReadRepository.save(application);
+            });
+  }
+
+  /** Clears the assigned caseworker and updates the referenced application-data version. */
+  @EventHandler
+  public void on(ApplicationUnassignedFromCaseworkerEvent event) {
+    applicationReadRepository
+        .findById(event.applicationId())
+        .ifPresent(
+            application -> {
+              application.setCaseworkerId(null);
               application.setApplicationVersion(event.applicationVersion());
               application.setApplicationDataVersion(event.applicationDataVersion());
               application.setModifiedAt(event.occurredAt());

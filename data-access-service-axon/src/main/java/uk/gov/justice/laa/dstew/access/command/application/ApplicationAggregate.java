@@ -18,7 +18,9 @@ import org.axonframework.modelling.command.CreationPolicy;
 import org.axonframework.spring.stereotype.Aggregate;
 import uk.gov.justice.laa.dstew.access.applicationcontent.LinkedApplication;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
+import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.AssignCaseworkerToApplicationCommand;
+import uk.gov.justice.laa.dstew.access.command.application.assignment.UnassignCaseworkerFromApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationMeritsDecision;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
@@ -233,6 +235,30 @@ public class ApplicationAggregate {
             command.occurredAt()));
   }
 
+  /** Removes the assigned caseworker and stores free-text audit data outside the event stream. */
+  @CommandHandler
+  void handle(
+      UnassignCaseworkerFromApplicationCommand command, ApplicationDataStore applicationDataStore) {
+    if (applicationId == null) {
+      throw new ResourceNotFoundException(
+          "No application found with id: " + command.applicationId());
+    }
+    if (caseworkerId == null) {
+      return;
+    }
+    var current = applicationDataStore.get(applicationId, applicationDataVersion);
+    long nextDataVersion = applicationDataVersion + 1;
+    applicationDataStore.append(
+        applicationId,
+        nextDataVersion,
+        current.withAssignment(command.eventDescription()),
+        command.serialisedRequest(),
+        command.occurredAt());
+    apply(
+        new ApplicationUnassignedFromCaseworkerEvent(
+            applicationId, applicationVersion + 1, nextDataVersion, command.occurredAt()));
+  }
+
   private void validateDecision(MakeApplicationDecisionCommand command) {
     List<String> errors = new ArrayList<>();
     if (command.proceedings().isEmpty()) {
@@ -288,6 +314,13 @@ public class ApplicationAggregate {
     applicationVersion = event.applicationVersion();
     applicationDataVersion = event.applicationDataVersion();
     caseworkerId = event.caseworkerId();
+  }
+
+  @EventSourcingHandler
+  void on(ApplicationUnassignedFromCaseworkerEvent event) {
+    applicationVersion = event.applicationVersion();
+    applicationDataVersion = event.applicationDataVersion();
+    caseworkerId = null;
   }
 
   @EventSourcingHandler

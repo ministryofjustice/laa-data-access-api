@@ -12,6 +12,7 @@ import org.axonframework.queryhandling.QueryHandler;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
+import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
@@ -121,6 +122,17 @@ public class ApplicationHistoryProjection {
         event.occurredAt());
   }
 
+  /** Appends a thin audit entry for a caseworker unassignment. */
+  @EventHandler
+  public void on(ApplicationUnassignedFromCaseworkerEvent event, EventMessage<?> message) {
+    append(
+        message,
+        event.applicationId(),
+        "UNASSIGN_APPLICATION_TO_CASEWORKER",
+        serialise(event),
+        event.occurredAt());
+  }
+
   /** Returns chronologically ordered history rows matching the requested public event types. */
   @QueryHandler
   public java.util.List<ApplicationHistoryReadModel> handle(FindApplicationHistoryQuery query) {
@@ -135,7 +147,8 @@ public class ApplicationHistoryProjection {
   private ApplicationHistoryReadModel hydrateEventDescription(ApplicationHistoryReadModel history) {
     boolean decision = history.getEventType().startsWith("APPLICATION_MAKE_DECISION_");
     boolean assignment = "ASSIGN_APPLICATION_TO_CASEWORKER".equals(history.getEventType());
-    if (!decision && !assignment) {
+    boolean unassignment = "UNASSIGN_APPLICATION_TO_CASEWORKER".equals(history.getEventType());
+    if (!decision && !assignment && !unassignment) {
       return history;
     }
     try {

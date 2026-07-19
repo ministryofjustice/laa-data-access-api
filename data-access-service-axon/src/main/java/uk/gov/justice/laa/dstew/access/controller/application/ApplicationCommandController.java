@@ -18,8 +18,10 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.AssignCaseworkerService;
+import uk.gov.justice.laa.dstew.access.command.application.assignment.UnassignCaseworkerService;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
+import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
@@ -37,6 +39,8 @@ public class ApplicationCommandController {
   private final MakeDecisionCommandMapper decisionCommandMapper;
   private final AssignCaseworkerService assignCaseworkerService;
   private final AssignCaseworkerRequestMapper assignCaseworkerRequestMapper;
+  private final UnassignCaseworkerService unassignCaseworkerService;
+  private final UnassignCaseworkerRequestMapper unassignCaseworkerRequestMapper;
 
   /** Creates the command adapter. */
   public ApplicationCommandController(
@@ -45,13 +49,17 @@ public class ApplicationCommandController {
       CreateApplicationCommandMapper commandMapper,
       MakeDecisionCommandMapper decisionCommandMapper,
       AssignCaseworkerService assignCaseworkerService,
-      AssignCaseworkerRequestMapper assignCaseworkerRequestMapper) {
+      AssignCaseworkerRequestMapper assignCaseworkerRequestMapper,
+      UnassignCaseworkerService unassignCaseworkerService,
+      UnassignCaseworkerRequestMapper unassignCaseworkerRequestMapper) {
     this.commandGateway = commandGateway;
     this.projectionGateway = projectionGateway;
     this.commandMapper = commandMapper;
     this.decisionCommandMapper = decisionCommandMapper;
     this.assignCaseworkerService = assignCaseworkerService;
     this.assignCaseworkerRequestMapper = assignCaseworkerRequestMapper;
+    this.unassignCaseworkerService = unassignCaseworkerService;
+    this.unassignCaseworkerRequestMapper = unassignCaseworkerRequestMapper;
   }
 
   /** Assigns a caseworker to one or more Applications after validating the complete batch. */
@@ -65,6 +73,19 @@ public class ApplicationCommandController {
         assignment.applicationId(),
         assignment.serialisedRequest(),
         assignment.eventDescription());
+    return ResponseEntity.ok().build();
+  }
+
+  /** Removes the current caseworker assignment from an Application. */
+  @PostMapping("/{id}/unassign")
+  public ResponseEntity<Void> unassignCaseworker(
+      @RequestHeader("X-Service-Name") ServiceName serviceName,
+      @PathVariable UUID id,
+      @Valid @RequestBody CaseworkerUnassignRequest request) {
+    unassignCaseworkerService.unassign(
+        id,
+        unassignCaseworkerRequestMapper.serialise(request),
+        request.getEventHistory() == null ? null : request.getEventHistory().getEventDescription());
     return ResponseEntity.ok().build();
   }
 
