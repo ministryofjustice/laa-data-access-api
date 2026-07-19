@@ -42,6 +42,33 @@ public class ApplicationDataStore {
   }
 
   /**
+   * Appends an already reconstructed application-data payload as a new immutable version.
+   *
+   * @param applicationId the application identifier
+   * @param version the new data version
+   * @param payload the complete payload for that version
+   * @param serialisedRequest the request responsible for the version
+   * @param occurredAt when the version was created
+   * @return the fingerprint of the request
+   */
+  public String append(
+      UUID applicationId,
+      long version,
+      ApplicationDataPayload payload,
+      String serialisedRequest,
+      java.time.Instant occurredAt) {
+    String fingerprint = fingerprint(serialisedRequest);
+    repository.saveAndFlush(
+        ApplicationData.builder()
+            .id(new ApplicationDataId(applicationId, version))
+            .payload(payload)
+            .payloadHash(fingerprint)
+            .createdAt(occurredAt)
+            .build());
+    return fingerprint;
+  }
+
+  /**
    * Retrieves a specific version of an application's sensitive data.
    *
    * @param applicationId the application identifier

@@ -30,6 +30,7 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -39,14 +40,21 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
+import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
+import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
 import uk.gov.justice.laa.dstew.access.model.IndividualCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.InvolvedChildResponse;
+import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceedingRequest;
+import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
+import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetailsRequest;
+import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.OpponentResponse;
 import uk.gov.justice.laa.dstew.access.model.ProviderResponse;
 import uk.gov.justice.laa.dstew.access.model.ScopeLimitationResponse;
@@ -270,6 +278,105 @@ class PostgresAxonIntegrationTest {
   }
 
   @Test
+  void givenApplication_whenMakeDecision_thenAppendsSensitiveVersionAndThinEvent()
+      throws Exception {
+    UUID applicationId = UUID.randomUUID();
+    UUID applyProceedingId = UUID.randomUUID();
+    applicationId(post(validCreateApplicationRequest(applicationId, applyProceedingId), headers()));
+    ApplicationReadModel created = awaitProjection(applicationId);
+    UUID proceedingId = created.getProceedings().getFirst().proceedingId();
+
+    MakeDecisionRequest request =
+        MakeDecisionRequest.builder()
+            .applicationVersion(0L)
+            .overallDecision(DecisionStatus.REFUSED)
+            .autoGranted(false)
+            .eventHistory(
+                EventHistoryRequest.builder().eventDescription("Decision recorded").build())
+            .proceedings(
+                List.of(
+                    MakeDecisionProceedingRequest.builder()
+                        .proceedingId(proceedingId)
+                        .meritsDecision(
+                            MeritsDecisionDetailsRequest.builder()
+                                .decision(MeritsDecisionStatus.REFUSED)
+                                .reason("Insufficient evidence")
+                                .justification("The evidence did not meet the test")
+                                .build())
+                        .build()))
+            .build();
+
+    ResponseEntity<Void> response =
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/applications/" + applicationId + "/decision",
+            HttpMethod.PATCH,
+            new HttpEntity<>(request, headers()),
+            Void.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    ApplicationReadModel decided = awaitProjectionVersion(applicationId, 1L);
+    assertThat(decided.getDecisionStatus()).isEqualTo("REFUSED");
+    assertThat(decided.getAutoGranted()).isFalse();
+    assertThat(decided.getMeritsDecisions().get(proceedingId).justification())
+        .isEqualTo("The evidence did not meet the test");
+
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT payload ->> 'overallDecision' FROM axon.application_data "
+                    + "WHERE application_id = ? AND version = 1",
+                String.class,
+                applicationId))
+        .isEqualTo("REFUSED");
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT convert_from(payload, 'UTF8') FROM axon.domain_event_entry "
+                    + "WHERE aggregate_identifier = ? AND sequence_number = 1",
+                String.class,
+                applicationId.toString()))
+        .contains("applicationDataVersion", "REFUSED")
+        .doesNotContain("Insufficient evidence", "The evidence did not meet the test");
+
+    assertThat(
+            awaitHistoryTypes(
+                applicationId, "APPLICATION_CREATED", "APPLICATION_MAKE_DECISION_REFUSED"))
+        .hasSize(2);
+    ResponseEntity<ApplicationHistoryResponse> historyResponse =
+        restTemplate.exchange(
+            "http://localhost:"
+                + port
+                + "/api/v0/applications/"
+                + applicationId
+                + "/history-search?eventType=APPLICATION_MAKE_DECISION_REFUSED",
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            ApplicationHistoryResponse.class);
+    assertThat(historyResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(historyResponse.getBody().getEvents())
+        .singleElement()
+        .satisfies(event -> assertThat(event.getEventDescription()).isEqualTo("Decision recorded"));
+    ApplicationResponse application = awaitGet(applicationId).getBody();
+    assertThat(application.getDecisionStatus()).isEqualTo(DecisionStatus.REFUSED);
+    assertThat(application.getAutoGrant()).isFalse();
+    assertThat(application.getVersion()).isEqualTo(1L);
+    assertThat(application.getProceedings().getFirst().getMeritsDecision())
+        .isEqualTo(MeritsDecisionStatus.REFUSED);
+
+    ResponseEntity<Void> staleResponse =
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/applications/" + applicationId + "/decision",
+            HttpMethod.PATCH,
+            new HttpEntity<>(request, headers()),
+            Void.class);
+    assertThat(staleResponse.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM axon.application_data WHERE application_id = ?",
+                Integer.class,
+                applicationId))
+        .isEqualTo(2);
+  }
+
+  @Test
   void givenCreatedApplication_whenGetApplication_thenReturnsCurrentStateProjection()
       throws Exception {
     UUID applyApplicationId = UUID.randomUUID();
@@ -336,6 +443,7 @@ class PostgresAxonIntegrationTest {
             .submittedAt(OffsetDateTime.parse("2026-07-14T12:30:00Z"))
             .isLead(true)
             .usedDelegatedFunctions(false)
+            .version(0L)
             .applicationType(ApplicationType.INITIAL)
             .provider(
                 new ProviderResponse().officeCode("1A001B").contactEmail("provider@example.com"))
@@ -738,6 +846,25 @@ class PostgresAxonIntegrationTest {
       Thread.sleep(100);
     }
     throw new AssertionError("Application projection was not populated for " + applicationId);
+  }
+
+  private ApplicationReadModel awaitProjectionVersion(UUID applicationId, long version)
+      throws Exception {
+    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(15);
+    while (System.nanoTime() < deadline) {
+      var projected =
+          queryGateway
+              .query(
+                  new FindApplicationByIdQuery(applicationId),
+                  ResponseTypes.optionalInstanceOf(ApplicationReadModel.class))
+              .join();
+      if (projected.isPresent() && projected.get().getApplicationDataVersion() == version) {
+        return projected.get();
+      }
+      Thread.sleep(100);
+    }
+    throw new AssertionError(
+        "Application projection did not reach version " + version + " for " + applicationId);
   }
 
   private java.util.List<

@@ -11,6 +11,8 @@ import org.axonframework.eventhandling.ResetHandler;
 import org.axonframework.queryhandling.QueryHandler;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
+import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
 import uk.gov.justice.laa.dstew.access.config.interceptor.ServiceNameMetadataDispatchInterceptor;
@@ -22,12 +24,16 @@ public class ApplicationHistoryProjection {
 
   private final ApplicationHistoryReadRepository applicationHistoryReadRepository;
   private final ObjectMapper objectMapper;
+  private final ApplicationDataStore applicationDataStore;
 
+  /** Creates the history projection with its persistence and reconstruction dependencies. */
   public ApplicationHistoryProjection(
       ApplicationHistoryReadRepository applicationHistoryReadRepository,
-      ObjectMapper objectMapper) {
+      ObjectMapper objectMapper,
+      ApplicationDataStore applicationDataStore) {
     this.applicationHistoryReadRepository = applicationHistoryReadRepository;
     this.objectMapper = objectMapper;
+    this.applicationDataStore = applicationDataStore;
   }
 
   /**
@@ -90,6 +96,19 @@ public class ApplicationHistoryProjection {
         groupHistoryId(message, event.memberId()));
   }
 
+  /** Appends a thin audit entry for an Application decision. */
+  @EventHandler
+  public void on(ApplicationDecisionMadeEvent event, EventMessage<?> message) {
+    append(
+        message,
+        event.applicationId(),
+        "GRANTED".equals(event.overallDecision())
+            ? "APPLICATION_MAKE_DECISION_GRANTED"
+            : "APPLICATION_MAKE_DECISION_REFUSED",
+        serialise(event),
+        event.occurredAt());
+  }
+
   /** Returns chronologically ordered history rows matching the requested public event types. */
   @QueryHandler
   public java.util.List<ApplicationHistoryReadModel> handle(FindApplicationHistoryQuery query) {
@@ -97,7 +116,33 @@ public class ApplicationHistoryProjection {
         .findAllByApplicationIdOrderByOccurredAtAsc(query.applicationId())
         .stream()
         .filter(history -> query.eventTypes().contains(history.getEventType()))
+        .map(this::hydrateDecisionDescription)
         .toList();
+  }
+
+  private ApplicationHistoryReadModel hydrateDecisionDescription(
+      ApplicationHistoryReadModel history) {
+    if (!history.getEventType().startsWith("APPLICATION_MAKE_DECISION_")) {
+      return history;
+    }
+    try {
+      long version =
+          objectMapper.readTree(history.getRequestPayload()).get("applicationDataVersion").asLong();
+      String description =
+          applicationDataStore.get(history.getApplicationId(), version).decisionEventDescription();
+      java.util.Map<String, Object> reconstructedPayload = new java.util.HashMap<>();
+      reconstructedPayload.put("eventDescription", description);
+      return ApplicationHistoryReadModel.builder()
+          .eventId(history.getEventId())
+          .applicationId(history.getApplicationId())
+          .eventType(history.getEventType())
+          .requestPayload(objectMapper.writeValueAsString(reconstructedPayload))
+          .serviceName(history.getServiceName())
+          .occurredAt(history.getOccurredAt())
+          .build();
+    } catch (Exception exception) {
+      return history;
+    }
   }
 
   @ResetHandler

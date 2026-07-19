@@ -7,6 +7,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -15,6 +16,7 @@ import lombok.NoArgsConstructor;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationIndividual;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationProceeding;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationMeritsDecision;
 
 /** Replayable current-state read model for an Application. */
 @Entity
@@ -33,6 +35,9 @@ public class ApplicationReadModel {
 
   @Column(name = "application_data_version", nullable = false)
   private long applicationDataVersion;
+
+  @Column(name = "application_version", nullable = false)
+  private long applicationVersion;
 
   @Transient private String laaReference;
 
@@ -63,6 +68,14 @@ public class ApplicationReadModel {
   @Transient private String matterType;
 
   @Transient private List<ApplicationProceeding> proceedings;
+
+  @Transient private String decisionStatus;
+
+  @Transient private Boolean autoGranted;
+
+  @Transient private Map<UUID, ApplicationMeritsDecision> meritsDecisions;
+
+  @Transient private Map<String, Object> certificate;
 
   @Column(name = "created_at")
   private Instant createdAt;

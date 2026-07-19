@@ -18,6 +18,7 @@ import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEven
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
+import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
 
@@ -95,6 +96,7 @@ public class ApplicationProjection {
                 .applicationId(event.applicationId())
                 .status(event.status())
                 .applicationDataVersion(event.applicationDataVersion())
+                .applicationVersion(0L)
                 .schemaVersion(event.schemaVersion())
                 .applicationType(event.applicationType())
                 .applyApplicationId(event.applyApplicationId())
@@ -118,6 +120,24 @@ public class ApplicationProjection {
               application.setLeadApplicationId(event.leadApplicationId());
               application.setModifiedAt(event.occurredAt());
               applicationReadRepository.save(application);
+            });
+  }
+
+  /** Advances the current-state row to the immutable data version containing the decision. */
+  @EventHandler
+  public void on(ApplicationDecisionMadeEvent event) {
+    applicationReadRepository
+        .findById(event.applicationId())
+        .ifPresent(
+            application -> {
+              application.setApplicationDataVersion(event.applicationDataVersion());
+              application.setApplicationVersion(event.applicationVersion());
+              application.setModifiedAt(event.occurredAt());
+              ApplicationReadModel saved = applicationReadRepository.save(application);
+              queryUpdateEmitter.emit(
+                  FindApplicationByIdQuery.class,
+                  query -> query.applicationId().equals(event.applicationId()),
+                  saved);
             });
   }
 
@@ -188,6 +208,10 @@ public class ApplicationProjection {
     application.setCategoryOfLaw(data.categoryOfLaw() == null ? null : data.categoryOfLaw().name());
     application.setMatterType(data.matterType() == null ? null : data.matterType().name());
     application.setProceedings(data.proceedings());
+    application.setDecisionStatus(data.overallDecision());
+    application.setAutoGranted(data.autoGranted());
+    application.setMeritsDecisions(data.meritsDecisions());
+    application.setCertificate(data.certificate());
     return application;
   }
 

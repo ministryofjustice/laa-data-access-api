@@ -8,13 +8,18 @@ import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventF
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationCreationDetails;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.axonframework.test.aggregate.AggregateTestFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
+import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
+import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
+import uk.gov.justice.laa.dstew.access.command.application.decision.MakeDecisionProceeding;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.CreateLinkedApplicationGroupCommand;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupRequested;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
@@ -142,6 +147,68 @@ class ApplicationAggregateTest {
   }
 
   @Test
+  void givenCurrentApplicationVersion_whenDecisionMade_thenStoresNextVersionAndEmitsThinEvent() {
+    UUID applicationId = UUID.randomUUID();
+    UUID proceedingId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-19T10:15:00Z");
+    ApplicationCreationDetails details = detailsWithProceeding(applicationId, proceedingId);
+    ApplicationCreatedEvent created = applicationCreatedEvent(applicationId, details);
+    ApplicationDataPayload current = ApplicationDataPayload.from(details);
+    when(applicationDataStore.get(applicationId, 0L)).thenReturn(current);
+    when(applicationDataStore.append(any(), anyLong(), any(), any(), any())).thenReturn("hash");
+
+    fixture
+        .given(created)
+        .when(
+            new MakeApplicationDecisionCommand(
+                applicationId,
+                0L,
+                "REFUSED",
+                false,
+                List.of(
+                    new MakeDecisionProceeding(proceedingId, "REFUSED", "reason", "justification")),
+                null,
+                "{\"overallDecision\":\"REFUSED\"}",
+                "Decision recorded",
+                occurredAt))
+        .expectEvents(
+            new ApplicationDecisionMadeEvent(applicationId, 1L, 1L, "REFUSED", false, occurredAt));
+  }
+
+  @Test
+  void givenPreviousDecision_whenDecisionMadeAgain_thenAutomaticallyIncrementsVersion() {
+    UUID applicationId = UUID.randomUUID();
+    UUID proceedingId = UUID.randomUUID();
+    Instant firstOccurredAt = Instant.parse("2026-07-19T10:00:00Z");
+    Instant secondOccurredAt = Instant.parse("2026-07-19T10:15:00Z");
+    ApplicationCreationDetails details = detailsWithProceeding(applicationId, proceedingId);
+    ApplicationDataPayload current = ApplicationDataPayload.from(details);
+    when(applicationDataStore.get(applicationId, 1L)).thenReturn(current);
+    when(applicationDataStore.append(any(), anyLong(), any(), any(), any())).thenReturn("hash");
+
+    fixture
+        .given(
+            applicationCreatedEvent(applicationId, details),
+            new ApplicationDecisionMadeEvent(
+                applicationId, 1L, 1L, "REFUSED", false, firstOccurredAt))
+        .when(
+            new MakeApplicationDecisionCommand(
+                applicationId,
+                1L,
+                "REFUSED",
+                false,
+                List.of(
+                    new MakeDecisionProceeding(proceedingId, "REFUSED", "reason", "justification")),
+                null,
+                "{}",
+                null,
+                secondOccurredAt))
+        .expectEvents(
+            new ApplicationDecisionMadeEvent(
+                applicationId, 2L, 2L, "REFUSED", false, secondOccurredAt));
+  }
+
+  @Test
   void givenExistingLeadApplication_whenCreateLinkedApplicationGroupCommand_thenEmitsRequested() {
     UUID leadApplicationId = UUID.randomUUID();
     ApplicationCreatedEvent leadCreated = applicationCreatedEvent(leadApplicationId);
@@ -256,6 +323,27 @@ class ApplicationAggregateTest {
 
   private CreateApplicationCommand createCommand(UUID applicationId, String serialisedRequest) {
     return createCommandWithSchema(applicationId, serialisedRequest, 1);
+  }
+
+  private ApplicationCreationDetails detailsWithProceeding(UUID applicationId, UUID proceedingId) {
+    ApplicationCreationDetails original = applicationCreationDetails(applicationId);
+    return new ApplicationCreationDetails(
+        original.status(),
+        original.laaReference(),
+        original.applicationContent(),
+        original.individuals(),
+        original.schemaVersion(),
+        original.applicationType(),
+        original.applyApplicationId(),
+        original.submittedAt(),
+        original.officeCode(),
+        original.usedDelegatedFunctions(),
+        original.categoryOfLaw(),
+        original.matterType(),
+        List.of(new ApplicationProceeding(proceedingId, proceedingId, "Proceeding", true, null)),
+        original.serialisedRequest(),
+        original.occurredAt(),
+        original.leadApplicationId());
   }
 
   private CreateApplicationCommand createCommandWithSchema(

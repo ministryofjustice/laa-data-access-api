@@ -17,6 +17,7 @@ import org.axonframework.eventhandling.GenericEventMessage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
 import uk.gov.justice.laa.dstew.access.config.interceptor.ServiceNameMetadataDispatchInterceptor;
@@ -31,7 +32,9 @@ class ApplicationHistoryProjectionTest {
   @BeforeEach
   void setUp() {
     repository = mock(ApplicationHistoryReadRepository.class);
-    projection = new ApplicationHistoryProjection(repository, objectMapper);
+    projection =
+        new ApplicationHistoryProjection(
+            repository, objectMapper, mock(ApplicationDataStore.class));
   }
 
   @Test

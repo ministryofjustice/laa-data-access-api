@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.command.application.data;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.applicationcontent.CategoryOfLaw;
@@ -22,7 +23,13 @@ public record ApplicationDataPayload(
     CategoryOfLaw categoryOfLaw,
     MatterType matterType,
     List<ApplicationProceeding> proceedings,
-    String serialisedRequest) {
+    String serialisedRequest,
+    String overallDecision,
+    Boolean autoGranted,
+    Map<UUID, ApplicationMeritsDecision> meritsDecisions,
+    Map<String, Object> certificate,
+    String decisionSerialisedRequest,
+    String decisionEventDescription) {
 
   /**
    * Creates an application-data payload from the details parsed from an application command.
@@ -42,6 +49,40 @@ public record ApplicationDataPayload(
         details.categoryOfLaw(),
         details.matterType(),
         details.proceedings(),
-        details.serialisedRequest());
+        details.serialisedRequest(),
+        null,
+        null,
+        Map.of(),
+        null,
+        null,
+        null);
+  }
+
+  /** Returns a complete new data version containing the supplied decision state. */
+  public ApplicationDataPayload withDecision(
+      String newOverallDecision,
+      Boolean newAutoGranted,
+      Map<UUID, ApplicationMeritsDecision> newMeritsDecisions,
+      Map<String, Object> newCertificate,
+      String newDecisionSerialisedRequest,
+      String newDecisionEventDescription) {
+    return new ApplicationDataPayload(
+        laaReference,
+        applicationContent,
+        individuals,
+        applyApplicationId,
+        submittedAt,
+        officeCode,
+        usedDelegatedFunctions,
+        categoryOfLaw,
+        matterType,
+        proceedings,
+        serialisedRequest,
+        newOverallDecision,
+        newAutoGranted,
+        Map.copyOf(newMeritsDecisions),
+        newCertificate == null ? null : Map.copyOf(newCertificate),
+        newDecisionSerialisedRequest,
+        newDecisionEventDescription);
   }
 }

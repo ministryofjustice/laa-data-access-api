@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationGroupInvariantException;
+import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
@@ -48,6 +49,14 @@ public class ApplicationExceptionHandler {
                 "Application ID "
                     + exception.getApplicationId()
                     + " already exists with different creation data"));
+  }
+
+  /** Returns a conflict when a decision was based on a stale Application version. */
+  @ExceptionHandler(ApplicationVersionConflictException.class)
+  ResponseEntity<ProblemDetail> handleApplicationVersionConflictException(
+      ApplicationVersionConflictException exception) {
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage()));
   }
 
   private ResponseEntity<ProblemDetail> validationError(List<String> errors) {

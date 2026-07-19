@@ -36,7 +36,8 @@ class ApplicationCommandControllerTest {
         new ApplicationCommandController(
             commandGateway,
             mock(SubscriptionProjectionGateway.class),
-            mock(CreateApplicationCommandMapper.class));
+            mock(CreateApplicationCommandMapper.class),
+            mock(MakeDecisionCommandMapper.class));
   }
 
   @Test

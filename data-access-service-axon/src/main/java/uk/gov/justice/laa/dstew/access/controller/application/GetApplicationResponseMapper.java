@@ -14,6 +14,7 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ProceedingLinkedChild;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ProceedingMerits;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationProceeding;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationMeritsDecision;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
@@ -21,6 +22,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.InvolvedChildResponse;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
+import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.OpponentResponse;
 import uk.gov.justice.laa.dstew.access.model.ProviderResponse;
 import uk.gov.justice.laa.dstew.access.model.ScopeLimitationResponse;
@@ -44,10 +46,18 @@ public class GetApplicationResponseMapper {
             : application.getSubmittedAt().atOffset(ZoneOffset.UTC));
     response.setIsLead(application.getLeadApplicationId() == null);
     response.setUsedDelegatedFunctions(application.getUsedDelegatedFunctions());
+    response.setAutoGrant(application.getAutoGranted());
+    response.setDecisionStatus(
+        application.getDecisionStatus() == null
+            ? null
+            : uk.gov.justice.laa.dstew.access.model.DecisionStatus.valueOf(
+                application.getDecisionStatus()));
+    response.setVersion(application.getApplicationVersion());
     response.setApplicationType(ApplicationType.INITIAL);
     response.setProvider(toProvider(application, content));
     response.setOpponents(toOpponents(content));
-    response.setProceedings(toProceedings(application.getProceedings(), content));
+    response.setProceedings(
+        toProceedings(application.getProceedings(), content, application.getMeritsDecisions()));
     return response;
   }
 
@@ -85,16 +95,24 @@ public class GetApplicationResponseMapper {
   }
 
   private List<ApplicationProceedingResponse> toProceedings(
-      List<ApplicationProceeding> proceedings, ApplicationContent content) {
+      List<ApplicationProceeding> proceedings,
+      ApplicationContent content,
+      Map<UUID, ApplicationMeritsDecision> meritsDecisions) {
     if (proceedings == null) {
       return Collections.emptyList();
     }
-    return proceedings.stream().map(proceeding -> toProceeding(proceeding, content)).toList();
+    return proceedings.stream()
+        .map(proceeding -> toProceeding(proceeding, content, meritsDecisions))
+        .toList();
   }
 
   private ApplicationProceedingResponse toProceeding(
-      ApplicationProceeding applicationProceeding, ApplicationContent content) {
+      ApplicationProceeding applicationProceeding,
+      ApplicationContent content,
+      Map<UUID, ApplicationMeritsDecision> meritsDecisions) {
     Proceeding proceeding = applicationProceeding.proceedingContent();
+    ApplicationMeritsDecision meritsDecision =
+        meritsDecisions == null ? null : meritsDecisions.get(applicationProceeding.proceedingId());
     return ApplicationProceedingResponse.builder()
         .proceedingId(applicationProceeding.proceedingId())
         .proceedingDescription(applicationProceeding.description())
@@ -104,6 +122,10 @@ public class GetApplicationResponseMapper {
         .matterType(toMatterType(proceeding.getMatterTypeEnum()))
         .levelOfService(proceeding.getSubstantiveLevelOfServiceNameEnum())
         .substantiveCostLimitation(proceeding.getSubstantiveCostLimitation())
+        .meritsDecision(
+            meritsDecision == null || meritsDecision.decision() == null
+                ? null
+                : MeritsDecisionStatus.valueOf(meritsDecision.decision()))
         .scopeLimitations(toScopeLimitations(proceeding.getScopeLimitations()))
         .involvedChildren(toInvolvedChildren(applicationProceeding.applyProceedingId(), content))
         .build();
