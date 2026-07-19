@@ -1,14 +1,12 @@
 package uk.gov.justice.laa.dstew.access.command.application.linkedgroup;
 
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import org.axonframework.commandhandling.gateway.CommandGateway;
 import org.axonframework.config.ProcessingGroup;
 import org.axonframework.eventhandling.EventHandler;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
-import uk.gov.justice.laa.dstew.access.applicationcontent.LinkedApplication;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 
 /**
@@ -70,11 +68,7 @@ public class ApplicationGroupEventRouter {
         .getObject()
         .sendAndWait(
             new CreateLinkedApplicationGroupCommand(
-                event.leadApplicationId(),
-                event.applicationId(),
-                members,
-                event.serialisedRequest(),
-                event.occurredAt()));
+                event.leadApplicationId(), event.applicationId(), members, event.occurredAt()));
   }
 
   /**
@@ -90,7 +84,6 @@ public class ApplicationGroupEventRouter {
                 event.groupId(),
                 event.leadApplicationId(),
                 event.memberApplicationIds(),
-                event.serialisedRequest(),
                 event.occurredAt()));
   }
 
@@ -100,13 +93,11 @@ public class ApplicationGroupEventRouter {
    * validated separately by targeting it with {@link CreateLinkedApplicationGroupCommand}).
    */
   private void validateOtherAssociatedApplications(ApplicationCreatedEvent event) {
-    var links = event.applicationContent().getAllLinkedApplications();
-    if (links == null || links.isEmpty()) {
+    var associatedApplicationIds = event.associatedApplicationIds();
+    if (associatedApplicationIds.isEmpty()) {
       return;
     }
-    links.stream()
-        .map(LinkedApplication::getAssociatedApplicationId)
-        .filter(Objects::nonNull)
+    associatedApplicationIds.stream()
         .filter(id -> !id.equals(event.applicationId()))
         .filter(id -> !id.equals(event.leadApplicationId()))
         .distinct()

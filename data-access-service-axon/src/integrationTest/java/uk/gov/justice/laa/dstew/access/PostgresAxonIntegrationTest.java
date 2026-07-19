@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validLinkedCreateApplicationRequest;
 
@@ -18,6 +19,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.axonframework.eventsourcing.eventstore.EventStorageEngine;
 import org.axonframework.eventsourcing.eventstore.jpa.JpaEventStorageEngine;
+import org.axonframework.messaging.responsetypes.ResponseTypes;
+import org.axonframework.queryhandling.QueryGateway;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
@@ -49,6 +52,7 @@ import uk.gov.justice.laa.dstew.access.model.ProviderResponse;
 import uk.gov.justice.laa.dstew.access.model.ScopeLimitationResponse;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadRepository;
+import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
@@ -78,6 +82,8 @@ class PostgresAxonIntegrationTest {
 
   @Autowired private LinkedApplicationGroupReadRepository groupReadRepository;
 
+  @Autowired private QueryGateway queryGateway;
+
   @Test
   void givenPostgresAxonStore_whenHealthRequested_thenReportsUp() {
     ResponseEntity<String> response =
@@ -103,6 +109,71 @@ class PostgresAxonIntegrationTest {
     assertThat(eventStorageEngine).isInstanceOf(JpaEventStorageEngine.class);
     assertThat(axonTables)
         .containsExactly("domain_event_entry", "snapshot_event_entry", "token_entry");
+  }
+
+  @Test
+  void givenApplicationData_whenMutated_thenOnlyControlledRetentionDeleteIsAllowed()
+      throws Exception {
+    UUID applicationId = UUID.randomUUID();
+    applicationId(post(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()));
+    awaitProjection(applicationId);
+
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM axon.application_data WHERE application_id = ? AND version = 0",
+                Integer.class,
+                applicationId))
+        .isEqualTo(1);
+
+    assertThatThrownBy(
+            () ->
+                jdbcTemplate.update(
+                    "UPDATE axon.application_data SET payload_hash = ? WHERE application_id = ?",
+                    "tampered",
+                    applicationId))
+        .hasStackTraceContaining("application_data is append-only; UPDATE is prohibited");
+    assertThatThrownBy(
+            () ->
+                jdbcTemplate.update(
+                    "DELETE FROM axon.application_data WHERE application_id = ?", applicationId))
+        .hasStackTraceContaining("application_data is append-only; DELETE is prohibited");
+
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT axon.delete_application_data_for_retention(?)", Long.class, applicationId))
+        .isEqualTo(1L);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM axon.application_data WHERE application_id = ?",
+                Integer.class,
+                applicationId))
+        .isZero();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM axon.application_current_state WHERE application_id = ?",
+                Integer.class,
+                applicationId))
+        .isEqualTo(1);
+
+    ResponseEntity<String> response =
+        restTemplate.getForEntity(
+            "http://localhost:" + port + "/api/v0/applications/" + applicationId, String.class);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+
+    List<String> currentStateColumns =
+        jdbcTemplate.queryForList(
+            "SELECT column_name FROM information_schema.columns "
+                + "WHERE table_schema = 'axon' AND table_name = 'application_current_state'",
+            String.class);
+    assertThat(currentStateColumns)
+        .contains("application_data_version")
+        .doesNotContain(
+            "laa_reference",
+            "application_content",
+            "individuals",
+            "submitted_at",
+            "office_code",
+            "proceedings");
   }
 
   @Test
@@ -168,9 +239,19 @@ class PostgresAxonIntegrationTest {
         .satisfies(
             history -> {
               assertThat(history.getEventType()).isEqualTo("APPLICATION_CREATED");
-              assertThat(history.getRequestPayload()).contains("\"laaReference\"", "\"LAA-123\"");
+              assertThat(history.getRequestPayload())
+                  .contains("\"applicationDataVersion\"", "\"requestFingerprint\"")
+                  .doesNotContain("LAA-123", "Ada", "Lovelace", "Care order");
               assertThat(history.getServiceName()).isEqualTo("CIVIL_APPLY");
             });
+
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT payload ->> 'laaReference' FROM axon.application_data "
+                    + "WHERE application_id = ? AND version = 0",
+                String.class,
+                applicationId))
+        .isEqualTo("LAA-123");
 
     List<Map<String, Object>> events =
         jdbcTemplate.queryForList(
@@ -645,7 +726,12 @@ class PostgresAxonIntegrationTest {
   private ApplicationReadModel awaitProjection(UUID applicationId) throws Exception {
     long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(15);
     while (System.nanoTime() < deadline) {
-      var projected = applicationReadRepository.findById(applicationId);
+      var projected =
+          queryGateway
+              .query(
+                  new FindApplicationByIdQuery(applicationId),
+                  ResponseTypes.optionalInstanceOf(ApplicationReadModel.class))
+              .join();
       if (projected.isPresent()) {
         return projected.get();
       }

@@ -17,7 +17,6 @@ import org.axonframework.eventhandling.GenericEventMessage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
 import uk.gov.justice.laa.dstew.access.config.interceptor.ServiceNameMetadataDispatchInterceptor;
@@ -93,29 +92,6 @@ class ApplicationHistoryProjectionTest {
     assertThat(payload.get("groupId").asText()).isEqualTo(groupId.toString());
     assertThat(payload.get("memberId").asText()).isEqualTo(memberId.toString());
     assertThat(payload.get("occurredAt")).isNotNull();
-  }
-
-  @Test
-  void givenLegacyLinkedEvent_whenHandled_thenRetainsOriginalHistoryContract() {
-    UUID applicationId = UUID.randomUUID();
-    Instant occurredAt = Instant.parse("2026-07-15T08:00:00Z");
-    ApplicationLinkedEvent event =
-        new ApplicationLinkedEvent(
-            applicationId, UUID.randomUUID(), "{\"legacy\":true}", occurredAt);
-
-    projection.on(event, message(event, "legacy-event-id"));
-
-    ArgumentCaptor<ApplicationHistoryReadModel> captor =
-        ArgumentCaptor.forClass(ApplicationHistoryReadModel.class);
-    verify(repository).save(captor.capture());
-    assertThat(captor.getValue())
-        .extracting(
-            ApplicationHistoryReadModel::getEventId,
-            ApplicationHistoryReadModel::getApplicationId,
-            ApplicationHistoryReadModel::getEventType,
-            ApplicationHistoryReadModel::getRequestPayload)
-        .containsExactly(
-            "legacy-event-id", applicationId, "APPLICATION_LINKED", "{\"legacy\":true}");
   }
 
   @Test

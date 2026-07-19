@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreationDetails;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 
 /** Builds compact Application events for aggregate and factory fixture tests. */
 public final class ApplicationCreatedEventFixture {
@@ -27,22 +28,15 @@ public final class ApplicationCreatedEventFixture {
       UUID applicationId, ApplicationCreationDetails details) {
     return new ApplicationCreatedEvent(
         applicationId,
+        0L,
+        ApplicationDataStore.fingerprint(details.serialisedRequest()),
         details.status(),
-        details.laaReference(),
-        details.applicationContent(),
-        details.individuals(),
         details.schemaVersion(),
         details.applicationType(),
         details.applyApplicationId(),
-        details.submittedAt(),
-        details.officeCode(),
-        details.usedDelegatedFunctions(),
-        details.categoryOfLaw(),
-        details.matterType(),
-        details.proceedings(),
-        details.serialisedRequest(),
         details.occurredAt(),
-        details.leadApplicationId());
+        details.leadApplicationId(),
+        List.of());
   }
 
   /** Creates minimal creation details with stable values and the supplied Apply identifier. */

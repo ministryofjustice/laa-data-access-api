@@ -4,8 +4,6 @@ import static org.axonframework.modelling.command.AggregateLifecycle.apply;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import java.nio.charset.StandardCharsets;
-import java.time.Instant;
-import java.util.List;
 import java.util.UUID;
 import org.axonframework.commandhandling.CommandHandler;
 import org.axonframework.eventsourcing.EventSourcingHandler;
@@ -13,9 +11,7 @@ import org.axonframework.modelling.command.AggregateCreationPolicy;
 import org.axonframework.modelling.command.AggregateIdentifier;
 import org.axonframework.modelling.command.CreationPolicy;
 import org.axonframework.spring.stereotype.Aggregate;
-import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationContent;
-import uk.gov.justice.laa.dstew.access.applicationcontent.CategoryOfLaw;
-import uk.gov.justice.laa.dstew.access.applicationcontent.MatterType;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.CreateLinkedApplicationGroupCommand;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupRequested;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.ValidateApplicationExistsCommand;
@@ -30,21 +26,8 @@ public class ApplicationAggregate {
 
   @AggregateIdentifier private UUID applicationId;
   private boolean isAssociatedMember;
-  private String status;
-  private String laaReference;
-  private ApplicationContent applicationContent;
-  private List<ApplicationIndividual> individuals;
   private int schemaVersion;
-  private String applicationType;
-  private UUID applyApplicationId;
-  private UUID leadApplicationId;
-  private Instant submittedAt;
-  private String officeCode;
-  private Boolean usedDelegatedFunctions;
-  private CategoryOfLaw categoryOfLaw;
-  private MatterType matterType;
-  private List<ApplicationProceeding> proceedings;
-  private String serialisedRequest;
+  private String requestFingerprint;
 
   /**
    * Creates or idempotently re-identifies an Application.
@@ -61,9 +44,12 @@ public class ApplicationAggregate {
    */
   @CommandHandler
   @CreationPolicy(AggregateCreationPolicy.CREATE_IF_MISSING)
-  UUID handle(CreateApplicationCommand command, ApplicationCreationDetailsFactory factory) {
+  UUID handle(
+      CreateApplicationCommand command,
+      ApplicationCreationDetailsFactory factory,
+      ApplicationDataStore applicationDataStore) {
     if (applicationId != null) {
-      if (serialisedRequest.equals(command.serialisedRequest())
+      if (requestFingerprint.equals(ApplicationDataStore.fingerprint(command.serialisedRequest()))
           && schemaVersion == command.schemaVersion()) {
         return applicationId;
       }
@@ -75,7 +61,12 @@ public class ApplicationAggregate {
       throw new ApplicationGroupInvariantException(
           "Application " + command.applicationId() + " cannot be its own lead");
     }
-    apply(applicationCreatedEvent(command.applicationId(), details));
+    long applicationDataVersion = 0L;
+    String fingerprint =
+        applicationDataStore.append(command.applicationId(), applicationDataVersion, details);
+    apply(
+        applicationCreatedEvent(
+            command.applicationId(), applicationDataVersion, fingerprint, details));
     return applicationId;
   }
 
@@ -113,7 +104,6 @@ public class ApplicationAggregate {
             groupId,
             applicationId, // leadApplicationId
             command.allMemberApplicationIds(),
-            command.serialisedRequest(),
             command.occurredAt()));
   }
 
@@ -146,47 +136,38 @@ public class ApplicationAggregate {
   void on(ApplicationCreatedEvent event) {
     applicationId = event.applicationId();
     isAssociatedMember = event.leadApplicationId() != null;
-    status = event.status();
-    laaReference = event.laaReference();
-    applicationContent = event.applicationContent();
-    individuals = List.copyOf(event.individuals());
     schemaVersion = event.schemaVersion();
-    applicationType = event.applicationType();
-    applyApplicationId = event.applyApplicationId();
-    submittedAt = event.submittedAt();
-    officeCode = event.officeCode();
-    usedDelegatedFunctions = event.usedDelegatedFunctions();
-    categoryOfLaw = event.categoryOfLaw();
-    matterType = event.matterType();
-    proceedings = List.copyOf(event.proceedings());
-    serialisedRequest = event.serialisedRequest();
+    requestFingerprint = event.requestFingerprint();
   }
 
   @EventSourcingHandler
   void on(ApplicationLinkedEvent event) {
-    leadApplicationId = event.leadApplicationId();
+    isAssociatedMember = true;
   }
 
   private ApplicationCreatedEvent applicationCreatedEvent(
-      UUID applicationId, ApplicationCreationDetails details) {
+      UUID applicationId,
+      long applicationDataVersion,
+      String fingerprint,
+      ApplicationCreationDetails details) {
     return new ApplicationCreatedEvent(
         applicationId,
+        applicationDataVersion,
+        fingerprint,
         details.status(),
-        details.laaReference(),
-        details.applicationContent(),
-        details.individuals(),
         details.schemaVersion(),
         details.applicationType(),
         details.applyApplicationId(),
-        details.submittedAt(),
-        details.officeCode(),
-        details.usedDelegatedFunctions(),
-        details.categoryOfLaw(),
-        details.matterType(),
-        details.proceedings(),
-        details.serialisedRequest(),
         details.occurredAt(),
-        details.leadApplicationId());
+        details.leadApplicationId(),
+        details.applicationContent() == null
+                || details.applicationContent().getAllLinkedApplications() == null
+            ? java.util.List.of()
+            : details.applicationContent().getAllLinkedApplications().stream()
+                .map(link -> link.getAssociatedApplicationId())
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList());
   }
 
   protected ApplicationAggregate() {

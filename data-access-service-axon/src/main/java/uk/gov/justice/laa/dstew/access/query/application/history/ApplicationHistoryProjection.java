@@ -42,7 +42,7 @@ public class ApplicationHistoryProjection {
         message,
         event.applicationId(),
         "APPLICATION_CREATED",
-        event.serialisedRequest(),
+        serialise(event),
         event.occurredAt());
   }
 

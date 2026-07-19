@@ -2,11 +2,13 @@ package uk.gov.justice.laa.dstew.access.query.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationCreatedEvent;
+import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationCreationDetails;
 
 import java.time.Instant;
 import java.util.Optional;
@@ -18,6 +20,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
 
 class ApplicationProjectionTest {
@@ -25,6 +29,7 @@ class ApplicationProjectionTest {
   private ApplicationReadRepository applicationReadRepository;
   private LinkedApplicationGroupReadRepository groupReadRepository;
   private QueryUpdateEmitter queryUpdateEmitter;
+  private ApplicationDataStore applicationDataStore;
   private ApplicationProjection projection;
 
   @BeforeEach
@@ -32,9 +37,17 @@ class ApplicationProjectionTest {
     applicationReadRepository = mock(ApplicationReadRepository.class);
     groupReadRepository = mock(LinkedApplicationGroupReadRepository.class);
     queryUpdateEmitter = mock(QueryUpdateEmitter.class);
+    applicationDataStore = mock(ApplicationDataStore.class);
+    when(applicationDataStore.get(any(), anyLong()))
+        .thenAnswer(
+            invocation ->
+                ApplicationDataPayload.from(applicationCreationDetails(invocation.getArgument(0))));
     projection =
         new ApplicationProjection(
-            applicationReadRepository, groupReadRepository, queryUpdateEmitter);
+            applicationReadRepository,
+            groupReadRepository,
+            queryUpdateEmitter,
+            applicationDataStore);
   }
 
   @Test
@@ -59,7 +72,7 @@ class ApplicationProjectionTest {
   @SuppressWarnings("unchecked")
   void givenCreatedEvent_whenHandled_thenEmittedPredicateMatchesApplicationId() {
     UUID applicationId = UUID.randomUUID();
-    UUID otherId = UUID.randomUUID();
+    final UUID otherId = UUID.randomUUID();
     ApplicationCreatedEvent event = applicationCreatedEvent(applicationId);
 
     final Predicate<?>[] capturedPredicate = new Predicate[1];
@@ -99,7 +112,7 @@ class ApplicationProjectionTest {
         ApplicationReadModel.builder().applicationId(applicationId).build();
     when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(existing));
     ApplicationLinkedEvent event =
-        new ApplicationLinkedEvent(applicationId, leadApplicationId, "{}", Instant.now());
+        new ApplicationLinkedEvent(applicationId, leadApplicationId, Instant.now());
 
     projection.on(event);
 

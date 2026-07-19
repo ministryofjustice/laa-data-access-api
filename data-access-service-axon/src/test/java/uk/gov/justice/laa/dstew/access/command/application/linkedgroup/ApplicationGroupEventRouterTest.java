@@ -19,9 +19,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.springframework.beans.factory.ObjectProvider;
-import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationContent;
-import uk.gov.justice.laa.dstew.access.applicationcontent.LinkedApplication;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 
 class ApplicationGroupEventRouterTest {
 
@@ -54,7 +53,6 @@ class ApplicationGroupEventRouterTest {
                 leadApplicationId,
                 applicationId,
                 List.of(leadApplicationId, applicationId),
-                "{}",
                 event.occurredAt()));
   }
 
@@ -76,14 +74,14 @@ class ApplicationGroupEventRouterTest {
     List<UUID> members = List.of(leadApplicationId, UUID.randomUUID());
     LinkedApplicationGroupRequested event =
         new LinkedApplicationGroupRequested(
-            groupId, leadApplicationId, members, "{}", Instant.parse("2026-07-15T08:00:00Z"));
+            groupId, leadApplicationId, members, Instant.parse("2026-07-15T08:00:00Z"));
 
     router.on(event);
 
     verify(commandGateway)
         .sendAndWait(
             new InitialiseLinkedApplicationGroupCommand(
-                groupId, leadApplicationId, members, "{}", event.occurredAt()));
+                groupId, leadApplicationId, members, event.occurredAt()));
   }
 
   @Test
@@ -91,17 +89,12 @@ class ApplicationGroupEventRouterTest {
     UUID applicationId = UUID.randomUUID();
     UUID leadApplicationId = UUID.randomUUID();
     UUID otherAssociatedId = UUID.randomUUID();
-    ApplicationContent content =
-        ApplicationContent.builder()
-            .allLinkedApplications(
-                List.of(
-                    linked(leadApplicationId, applicationId),
-                    linked(leadApplicationId, otherAssociatedId),
-                    linked(leadApplicationId, otherAssociatedId),
-                    linked(leadApplicationId, leadApplicationId)))
-            .build();
     ApplicationCreatedEvent event =
-        event(applicationId, leadApplicationId, content, Instant.parse("2026-07-15T08:00:00Z"));
+        event(
+            applicationId,
+            leadApplicationId,
+            List.of(applicationId, otherAssociatedId, otherAssociatedId, leadApplicationId),
+            Instant.parse("2026-07-15T08:00:00Z"));
 
     router.on(event);
 
@@ -116,7 +109,6 @@ class ApplicationGroupEventRouterTest {
                 leadApplicationId,
                 applicationId,
                 List.of(leadApplicationId, applicationId),
-                "{}",
                 event.occurredAt()));
     order.verifyNoMoreInteractions();
   }
@@ -126,12 +118,12 @@ class ApplicationGroupEventRouterTest {
     UUID applicationId = UUID.randomUUID();
     UUID leadApplicationId = UUID.randomUUID();
     UUID missingAssociatedId = UUID.randomUUID();
-    ApplicationContent content =
-        ApplicationContent.builder()
-            .allLinkedApplications(List.of(linked(leadApplicationId, missingAssociatedId)))
-            .build();
     ApplicationCreatedEvent event =
-        event(applicationId, leadApplicationId, content, Instant.parse("2026-07-15T08:00:00Z"));
+        event(
+            applicationId,
+            leadApplicationId,
+            List.of(missingAssociatedId),
+            Instant.parse("2026-07-15T08:00:00Z"));
     RuntimeException failure = new RuntimeException("missing associated application");
     when(commandGateway.sendAndWait(eq(new ValidateApplicationExistsCommand(missingAssociatedId))))
         .thenThrow(failure);
@@ -144,42 +136,29 @@ class ApplicationGroupEventRouterTest {
                 leadApplicationId,
                 applicationId,
                 List.of(leadApplicationId, applicationId),
-                "{}",
                 event.occurredAt()));
   }
 
   private ApplicationCreatedEvent minimalEvent(
       UUID applicationId, UUID leadApplicationId, Instant occurredAt) {
-    ApplicationContent content = ApplicationContent.builder().build(); // empty — no linked apps
-    return event(applicationId, leadApplicationId, content, occurredAt);
+    return event(applicationId, leadApplicationId, List.of(), occurredAt);
   }
 
   private ApplicationCreatedEvent event(
-      UUID applicationId, UUID leadApplicationId, ApplicationContent content, Instant occurredAt) {
+      UUID applicationId,
+      UUID leadApplicationId,
+      List<UUID> associatedApplicationIds,
+      Instant occurredAt) {
     return new ApplicationCreatedEvent(
         applicationId,
+        0L,
+        ApplicationDataStore.fingerprint("{}"),
         "APPLICATION_SUBMITTED",
-        "LAA-123",
-        content,
-        List.of(),
         1,
         "APPLY",
         applicationId,
         occurredAt,
-        null,
-        false,
-        null,
-        null,
-        List.of(),
-        "{}",
-        occurredAt,
-        leadApplicationId);
-  }
-
-  private LinkedApplication linked(UUID leadApplicationId, UUID associatedApplicationId) {
-    return LinkedApplication.builder()
-        .leadApplicationId(leadApplicationId)
-        .associatedApplicationId(associatedApplicationId)
-        .build();
+        leadApplicationId,
+        associatedApplicationIds);
   }
 }

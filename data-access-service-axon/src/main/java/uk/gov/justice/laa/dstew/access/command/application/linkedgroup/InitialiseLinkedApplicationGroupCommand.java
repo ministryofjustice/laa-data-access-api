@@ -13,5 +13,4 @@ public record InitialiseLinkedApplicationGroupCommand(
     @TargetAggregateIdentifier UUID groupId,
     UUID leadApplicationId,
     List<UUID> memberApplicationIds,
-    String serialisedRequest,
     Instant occurredAt) {}

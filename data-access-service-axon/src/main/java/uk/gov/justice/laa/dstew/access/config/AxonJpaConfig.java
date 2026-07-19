@@ -12,14 +12,13 @@ import org.axonframework.eventsourcing.eventstore.jpa.DomainEventEntry;
 import org.axonframework.eventsourcing.eventstore.jpa.JpaEventStorageEngine;
 import org.axonframework.eventsourcing.eventstore.jpa.SQLErrorCodesResolver;
 import org.axonframework.serialization.Serializer;
-import org.axonframework.spring.messaging.unitofwork.SpringTransactionManager;
 import org.axonframework.springboot.util.jpa.ContainerManagedEntityManagerProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.persistence.autoconfigure.EntityScan;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.transaction.PlatformTransactionManager;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationData;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 
 /** Configures Axon's event and token stores to use the application JPA transaction boundary. */
@@ -28,7 +27,8 @@ import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
     basePackageClasses = {
       DomainEventEntry.class,
       org.axonframework.eventhandling.tokenstore.jpa.TokenEntry.class,
-      ApplicationReadModel.class
+      ApplicationReadModel.class,
+      ApplicationData.class
     })
 @ConditionalOnProperty(
     name = "axon.eventstore.jpa.enabled",
@@ -40,12 +40,6 @@ public class AxonJpaConfig {
   @ConditionalOnMissingBean
   EntityManagerProvider entityManagerProvider() {
     return new ContainerManagedEntityManagerProvider();
-  }
-
-  @Bean
-  @ConditionalOnMissingBean(TransactionManager.class)
-  TransactionManager axonTransactionManager(PlatformTransactionManager transactionManager) {
-    return new SpringTransactionManager(transactionManager);
   }
 
   @Bean

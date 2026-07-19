@@ -4,6 +4,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -11,8 +12,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationIndividual;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationProceeding;
@@ -32,15 +31,14 @@ public class ApplicationReadModel {
 
   private String status;
 
-  @Column(name = "laa_reference")
-  private String laaReference;
+  @Column(name = "application_data_version", nullable = false)
+  private long applicationDataVersion;
 
-  @JdbcTypeCode(SqlTypes.JSON)
-  @Column(name = "application_content")
-  private ApplicationContent applicationContent;
+  @Transient private String laaReference;
 
-  @JdbcTypeCode(SqlTypes.JSON)
-  private List<ApplicationIndividual> individuals;
+  @Transient private ApplicationContent applicationContent;
+
+  @Transient private List<ApplicationIndividual> individuals;
 
   @Column(name = "schema_version")
   private int schemaVersion;
@@ -54,23 +52,17 @@ public class ApplicationReadModel {
   @Column(name = "lead_application_id")
   private UUID leadApplicationId;
 
-  @Column(name = "submitted_at")
-  private Instant submittedAt;
+  @Transient private Instant submittedAt;
 
-  @Column(name = "office_code")
-  private String officeCode;
+  @Transient private String officeCode;
 
-  @Column(name = "used_delegated_functions")
-  private Boolean usedDelegatedFunctions;
+  @Transient private Boolean usedDelegatedFunctions;
 
-  @Column(name = "category_of_law")
-  private String categoryOfLaw;
+  @Transient private String categoryOfLaw;
 
-  @Column(name = "matter_type")
-  private String matterType;
+  @Transient private String matterType;
 
-  @JdbcTypeCode(SqlTypes.JSON)
-  private List<ApplicationProceeding> proceedings;
+  @Transient private List<ApplicationProceeding> proceedings;
 
   @Column(name = "created_at")
   private Instant createdAt;

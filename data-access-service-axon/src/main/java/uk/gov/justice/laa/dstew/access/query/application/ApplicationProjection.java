@@ -1,9 +1,10 @@
 package uk.gov.justice.laa.dstew.access.query.application;
 
-import jakarta.persistence.criteria.Predicate;
-import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.axonframework.config.ProcessingGroup;
@@ -11,13 +12,12 @@ import org.axonframework.eventhandling.EventHandler;
 import org.axonframework.eventhandling.ResetHandler;
 import org.axonframework.queryhandling.QueryHandler;
 import org.axonframework.queryhandling.QueryUpdateEmitter;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
 
@@ -29,6 +29,7 @@ public class ApplicationProjection {
   private final ApplicationReadRepository applicationReadRepository;
   private final LinkedApplicationGroupReadRepository groupReadRepository;
   private final QueryUpdateEmitter queryUpdateEmitter;
+  private final ApplicationDataStore applicationDataStore;
 
   /**
    * Constructs the projection with its read repositories and query update emitter.
@@ -43,43 +44,46 @@ public class ApplicationProjection {
   public ApplicationProjection(
       ApplicationReadRepository applicationReadRepository,
       LinkedApplicationGroupReadRepository groupReadRepository,
-      QueryUpdateEmitter queryUpdateEmitter) {
+      QueryUpdateEmitter queryUpdateEmitter,
+      ApplicationDataStore applicationDataStore) {
     this.applicationReadRepository = applicationReadRepository;
     this.groupReadRepository = groupReadRepository;
     this.queryUpdateEmitter = queryUpdateEmitter;
+    this.applicationDataStore = applicationDataStore;
   }
 
   /** Returns the current-state projection for the requested Application. */
   @QueryHandler
   public java.util.Optional<ApplicationReadModel> handle(FindApplicationByIdQuery query) {
-    return applicationReadRepository.findById(query.applicationId());
+    return applicationReadRepository.findById(query.applicationId()).flatMap(this::hydrate);
   }
 
   /**
    * Returns a paginated, filtered list of Application projections.
    *
-   * <p>Filters on {@code status}, {@code laaReference}, and {@code matterType} are applied via JPA
-   * {@link Specification}. Client name / date-of-birth filters are accepted for API compatibility
-   * but not yet applied — those fields are stored in the {@code individuals} JSON column and
-   * require either a denormalisation migration or a JSONB path query to support.
+   * <p>The thin current-state rows are batch-hydrated from their referenced immutable data versions
+   * before filtering, sorting, and pagination. This keeps PII out of the disposable projection.
    *
    * <p>Group membership is batch-fetched for the result page and returned in the result so the
    * response mapper can populate {@code linkedApplications} without additional queries.
    */
   @QueryHandler
   public FindAllApplicationsResult handle(FindAllApplicationsQuery query) {
-    int page = Math.max(0, query.page() - 1); // convert 1-based to 0-based
+    int page = Math.max(0, query.page() - 1);
     int pageSize = query.pageSize() > 0 ? query.pageSize() : 20;
 
-    Sort sort = buildSort(query.sortBy(), query.orderBy());
-    Page<ApplicationReadModel> resultPage =
-        applicationReadRepository.findAll(buildSpec(query), PageRequest.of(page, pageSize, sort));
-
-    List<ApplicationReadModel> content = resultPage.getContent();
+    List<ApplicationReadModel> filtered =
+        hydrate(applicationReadRepository.findAll()).stream()
+            .filter(application -> matches(application, query))
+            .sorted(comparator(query.sortBy(), query.orderBy()))
+            .toList();
+    int fromIndex = Math.min(page * pageSize, filtered.size());
+    int toIndex = Math.min(fromIndex + pageSize, filtered.size());
+    List<ApplicationReadModel> content = filtered.subList(fromIndex, toIndex);
     Map<UUID, LinkedApplicationGroupReadModel> groupsByLeadId = fetchGroups(content);
 
     return new FindAllApplicationsResult(
-        content, groupsByLeadId, resultPage.getTotalElements(), query.page(), pageSize);
+        content, groupsByLeadId, filtered.size(), query.page(), pageSize);
   }
 
   /** Creates the current-state row from an Application's creation event. */
@@ -90,18 +94,10 @@ public class ApplicationProjection {
             ApplicationReadModel.builder()
                 .applicationId(event.applicationId())
                 .status(event.status())
-                .laaReference(event.laaReference())
-                .applicationContent(event.applicationContent())
-                .individuals(event.individuals())
+                .applicationDataVersion(event.applicationDataVersion())
                 .schemaVersion(event.schemaVersion())
                 .applicationType(event.applicationType())
                 .applyApplicationId(event.applyApplicationId())
-                .submittedAt(event.submittedAt())
-                .officeCode(event.officeCode())
-                .usedDelegatedFunctions(event.usedDelegatedFunctions())
-                .categoryOfLaw(event.categoryOfLaw() == null ? null : event.categoryOfLaw().name())
-                .matterType(event.matterType() == null ? null : event.matterType().name())
-                .proceedings(event.proceedings())
                 .createdAt(event.occurredAt())
                 .modifiedAt(event.occurredAt())
                 .leadApplicationId(event.leadApplicationId())
@@ -131,27 +127,68 @@ public class ApplicationProjection {
     applicationReadRepository.deleteAllInBatch();
   }
 
-  private Specification<ApplicationReadModel> buildSpec(FindAllApplicationsQuery query) {
-    return (root, cq, cb) -> {
-      List<Predicate> predicates = new ArrayList<>();
-      if (query.status() != null) {
-        predicates.add(cb.equal(root.get("status"), query.status()));
-      }
-      if (query.laaReference() != null) {
-        predicates.add(cb.equal(root.get("laaReference"), query.laaReference()));
-      }
-      if (query.matterType() != null) {
-        predicates.add(cb.equal(root.get("matterType"), query.matterType()));
-      }
-      return cb.and(predicates.toArray(new Predicate[0]));
-    };
+  private boolean matches(ApplicationReadModel application, FindAllApplicationsQuery query) {
+    return (query.status() == null || Objects.equals(application.getStatus(), query.status()))
+        && (query.laaReference() == null
+            || Objects.equals(application.getLaaReference(), query.laaReference()))
+        && (query.matterType() == null
+            || Objects.equals(application.getMatterType(), query.matterType()));
   }
 
-  private Sort buildSort(String sortBy, String orderBy) {
-    Sort.Direction direction =
-        "DESC".equalsIgnoreCase(orderBy) ? Sort.Direction.DESC : Sort.Direction.ASC;
-    String column = "LAST_UPDATED_DATE".equalsIgnoreCase(sortBy) ? "modifiedAt" : "submittedAt";
-    return Sort.by(direction, column);
+  private Comparator<ApplicationReadModel> comparator(String sortBy, String orderBy) {
+    Comparator<ApplicationReadModel> comparator =
+        "LAST_UPDATED_DATE".equalsIgnoreCase(sortBy)
+            ? Comparator.comparing(
+                ApplicationReadModel::getModifiedAt,
+                Comparator.nullsLast(Comparator.naturalOrder()))
+            : Comparator.comparing(
+                ApplicationReadModel::getSubmittedAt,
+                Comparator.nullsLast(Comparator.naturalOrder()));
+    return "DESC".equalsIgnoreCase(orderBy) ? comparator.reversed() : comparator;
+  }
+
+  private Optional<ApplicationReadModel> hydrate(ApplicationReadModel application) {
+    ApplicationDataId id =
+        new ApplicationDataId(
+            application.getApplicationId(), application.getApplicationDataVersion());
+    ApplicationDataPayload data = applicationDataStore.getAll(List.of(id)).get(id);
+    return data == null ? Optional.empty() : Optional.of(hydrate(application, data));
+  }
+
+  private List<ApplicationReadModel> hydrate(List<ApplicationReadModel> applications) {
+    List<ApplicationDataId> ids =
+        applications.stream()
+            .map(
+                application ->
+                    new ApplicationDataId(
+                        application.getApplicationId(), application.getApplicationDataVersion()))
+            .toList();
+    Map<ApplicationDataId, ApplicationDataPayload> dataById = applicationDataStore.getAll(ids);
+    return applications.stream()
+        .map(
+            application -> {
+              ApplicationDataId id =
+                  new ApplicationDataId(
+                      application.getApplicationId(), application.getApplicationDataVersion());
+              ApplicationDataPayload data = dataById.get(id);
+              return data == null ? null : hydrate(application, data);
+            })
+        .filter(Objects::nonNull)
+        .toList();
+  }
+
+  private ApplicationReadModel hydrate(
+      ApplicationReadModel application, ApplicationDataPayload data) {
+    application.setLaaReference(data.laaReference());
+    application.setApplicationContent(data.applicationContent());
+    application.setIndividuals(data.individuals());
+    application.setSubmittedAt(data.submittedAt());
+    application.setOfficeCode(data.officeCode());
+    application.setUsedDelegatedFunctions(data.usedDelegatedFunctions());
+    application.setCategoryOfLaw(data.categoryOfLaw() == null ? null : data.categoryOfLaw().name());
+    application.setMatterType(data.matterType() == null ? null : data.matterType().name());
+    application.setProceedings(data.proceedings());
+    return application;
   }
 
   /**

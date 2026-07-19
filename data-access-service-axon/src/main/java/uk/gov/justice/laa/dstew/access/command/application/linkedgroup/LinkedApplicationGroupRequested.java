@@ -9,8 +9,4 @@ import java.util.UUID;
  * An event handler picks this up and dispatches {@link InitialiseLinkedApplicationGroupCommand}.
  */
 public record LinkedApplicationGroupRequested(
-    UUID groupId,
-    UUID leadApplicationId,
-    List<UUID> memberApplicationIds,
-    String serialisedRequest,
-    Instant occurredAt) {}
+    UUID groupId, UUID leadApplicationId, List<UUID> memberApplicationIds, Instant occurredAt) {}

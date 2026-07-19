@@ -1,17 +1,35 @@
 package uk.gov.justice.laa.dstew.access.config;
 
+import org.axonframework.common.transaction.TransactionManager;
 import org.axonframework.config.ConfigurerModule;
 import org.axonframework.eventhandling.PropagatingErrorHandler;
 import org.axonframework.messaging.correlation.CorrelationDataProvider;
 import org.axonframework.messaging.correlation.SimpleCorrelationDataProvider;
+import org.axonframework.spring.messaging.unitofwork.SpringTransactionManager;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.transaction.PlatformTransactionManager;
 import uk.gov.justice.laa.dstew.access.config.interceptor.CreateApplicationSchemaValidationDispatchInterceptor;
 import uk.gov.justice.laa.dstew.access.config.interceptor.ServiceNameMetadataDispatchInterceptor;
 
 /** Configures the default Axon command bus with dispatch interceptors and metadata correlation. */
 @Configuration
 public class AxonCommandBusConfig {
+
+  /** Bridges Axon's unit of work to the Spring transaction used by JPA repositories. */
+  @Bean
+  @ConditionalOnMissingBean(TransactionManager.class)
+  TransactionManager axonTransactionManager(PlatformTransactionManager transactionManager) {
+    return new SpringTransactionManager(transactionManager);
+  }
+
+  /** Starts the Spring transaction before command handling and subscribing event processing. */
+  @Bean
+  ConfigurerModule commandTransactionManager(TransactionManager transactionManager) {
+    return configurer ->
+        configurer.configureTransactionManager(configuration -> transactionManager);
+  }
 
   /** Copies the request service name from commands onto the events they cause. */
   @Bean

@@ -12,6 +12,8 @@ import java.util.concurrent.TimeUnit;
 import org.axonframework.config.EventProcessingConfiguration;
 import org.axonframework.eventhandling.TrackingEventProcessor;
 import org.axonframework.eventsourcing.eventstore.EventStore;
+import org.axonframework.messaging.responsetypes.ResponseTypes;
+import org.axonframework.queryhandling.QueryGateway;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
@@ -24,6 +26,8 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.annotation.DirtiesContext;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataRepository;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
@@ -32,6 +36,7 @@ import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadRepository;
+import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
@@ -59,6 +64,8 @@ class CreateApplicationInMemoryTest {
   @Autowired private LinkedApplicationGroupReadRepository groupReadRepository;
   @Autowired private EventProcessingConfiguration eventProcessingConfiguration;
   @Autowired private EventStore eventStore;
+  @Autowired private QueryGateway queryGateway;
+  @Autowired private ApplicationDataRepository applicationDataRepository;
 
   @Test
   void givenAxonApplication_whenOpenApiRequested_thenDocumentsCreateApplication() {
@@ -199,8 +206,19 @@ class CreateApplicationInMemoryTest {
         .satisfies(
             history -> {
               assertThat(history.getEventType()).isEqualTo("APPLICATION_CREATED");
-              assertThat(history.getRequestPayload()).contains("\"laaReference\"", "\"LAA-123\"");
+              assertThat(history.getRequestPayload())
+                  .contains("\"applicationDataVersion\"", "\"requestFingerprint\"")
+                  .doesNotContain("LAA-123", "Ada", "Lovelace", "Care order");
               assertThat(history.getServiceName()).isEqualTo("CIVIL_APPLY");
+            });
+
+    assertThat(applicationDataRepository.findById(new ApplicationDataId(applicationId, 0L)))
+        .isPresent()
+        .hasValueSatisfying(
+            data -> {
+              assertThat(data.getPayload().laaReference()).isEqualTo("LAA-123");
+              assertThat(data.getPayload().individuals()).singleElement();
+              assertThat(data.getPayloadHash()).hasSize(64);
             });
 
     var processor = eventProcessingConfiguration.eventProcessor("application-projection");
@@ -586,7 +604,14 @@ class CreateApplicationInMemoryTest {
     return await()
         .atMost(10, TimeUnit.SECONDS)
         .pollInterval(50, TimeUnit.MILLISECONDS)
-        .until(() -> applicationReadRepository.findById(applicationId), Optional::isPresent)
+        .until(
+            () ->
+                queryGateway
+                    .query(
+                        new FindApplicationByIdQuery(applicationId),
+                        ResponseTypes.optionalInstanceOf(ApplicationReadModel.class))
+                    .join(),
+            Optional::isPresent)
         .get();
   }
 
@@ -622,6 +647,7 @@ class CreateApplicationInMemoryTest {
 
   private void assertRejectedApplicationWasRolledBack(UUID applicationId) {
     assertThat(eventStore.readEvents(applicationId.toString()).hasNext()).isFalse();
+    assertThat(applicationDataRepository.countByIdApplicationId(applicationId)).isZero();
     assertThat(applicationReadRepository.findById(applicationId)).isEmpty();
     assertThat(applicationHistoryReadRepository.countByApplicationId(applicationId)).isZero();
   }

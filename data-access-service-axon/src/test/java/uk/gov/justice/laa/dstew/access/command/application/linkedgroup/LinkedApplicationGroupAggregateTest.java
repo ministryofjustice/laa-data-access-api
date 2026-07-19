@@ -25,9 +25,7 @@ class LinkedApplicationGroupAggregateTest {
 
     fixture
         .givenNoPriorActivity()
-        .when(
-            new InitialiseLinkedApplicationGroupCommand(
-                groupId, groupId, members, "{}", occurredAt))
+        .when(new InitialiseLinkedApplicationGroupCommand(groupId, groupId, members, occurredAt))
         .expectEvents(
             new LinkedApplicationGroupCreatedEvent(groupId, groupId, members, occurredAt));
   }
@@ -43,9 +41,7 @@ class LinkedApplicationGroupAggregateTest {
 
     fixture
         .given(existing)
-        .when(
-            new InitialiseLinkedApplicationGroupCommand(
-                groupId, groupId, members, "{}", occurredAt))
+        .when(new InitialiseLinkedApplicationGroupCommand(groupId, groupId, members, occurredAt))
         .expectNoEvents();
   }
 
@@ -64,7 +60,7 @@ class LinkedApplicationGroupAggregateTest {
         .given(existing)
         .when(
             new InitialiseLinkedApplicationGroupCommand(
-                groupId, leadId, List.of(leadId, newMemberId), "{}", occurredAt))
+                groupId, leadId, List.of(leadId, newMemberId), occurredAt))
         .expectEvents(new MemberAddedToGroupEvent(groupId, newMemberId, occurredAt));
   }
 
@@ -82,7 +78,6 @@ class LinkedApplicationGroupAggregateTest {
                 groupId,
                 differentLeadId,
                 membersWithoutLead,
-                "{}",
                 Instant.parse("2026-07-15T08:00:00Z")))
         .expectException(IllegalArgumentException.class)
         .expectNoEvents();

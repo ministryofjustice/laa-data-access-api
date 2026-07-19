@@ -1,5 +1,9 @@
 package uk.gov.justice.laa.dstew.access.command.application;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationCreatedEvent;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationCreationDetails;
 
@@ -10,6 +14,7 @@ import java.util.UUID;
 import org.axonframework.test.aggregate.AggregateTestFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.CreateLinkedApplicationGroupCommand;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupRequested;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
@@ -20,6 +25,7 @@ class ApplicationAggregateTest {
 
   private AggregateTestFixture<ApplicationAggregate> fixture;
   private ApplicationCreationDetailsFactory factory;
+  private ApplicationDataStore applicationDataStore;
 
   @BeforeEach
   void setUp() {
@@ -32,6 +38,13 @@ class ApplicationAggregateTest {
           }
         };
     fixture.registerInjectableResource(factory);
+    applicationDataStore = mock(ApplicationDataStore.class);
+    when(applicationDataStore.append(any(), anyLong(), any()))
+        .thenAnswer(
+            invocation ->
+                ApplicationDataStore.fingerprint(
+                    invocation.<ApplicationCreationDetails>getArgument(2).serialisedRequest()));
+    fixture.registerInjectableResource(applicationDataStore);
   }
 
   @Test
@@ -79,6 +92,7 @@ class ApplicationAggregateTest {
         };
     fixture = new AggregateTestFixture<>(ApplicationAggregate.class);
     fixture.registerInjectableResource(factoryWithLead);
+    fixture.registerInjectableResource(applicationDataStore);
 
     ApplicationCreatedEvent createdEvent = applicationCreatedEvent(applicationId, detailsWithLead);
 
@@ -141,10 +155,10 @@ class ApplicationAggregateTest {
         .given(leadCreated)
         .when(
             new CreateLinkedApplicationGroupCommand(
-                leadApplicationId, members.get(1), members, "{}", occurredAt))
+                leadApplicationId, members.get(1), members, occurredAt))
         .expectEvents(
             new LinkedApplicationGroupRequested(
-                expectedGroupId, leadApplicationId, members, "{}", occurredAt));
+                expectedGroupId, leadApplicationId, members, occurredAt));
   }
 
   @Test
@@ -159,7 +173,6 @@ class ApplicationAggregateTest {
                 missingLeadId,
                 members.get(1),
                 members,
-                "{}",
                 java.time.Instant.parse("2026-07-15T08:00:00Z")))
         .expectException(ResourceNotFoundException.class)
         .expectNoEvents();
@@ -193,6 +206,7 @@ class ApplicationAggregateTest {
         };
     fixture = new AggregateTestFixture<>(ApplicationAggregate.class);
     fixture.registerInjectableResource(selfLeadFactory);
+    fixture.registerInjectableResource(applicationDataStore);
 
     fixture
         .givenNoPriorActivity()
@@ -235,7 +249,6 @@ class ApplicationAggregateTest {
                 applicationId,
                 UUID.randomUUID(),
                 List.of(applicationId, UUID.randomUUID()),
-                "{}",
                 java.time.Instant.parse("2026-07-15T08:00:00Z")))
         .expectException(ApplicationGroupInvariantException.class)
         .expectNoEvents();
