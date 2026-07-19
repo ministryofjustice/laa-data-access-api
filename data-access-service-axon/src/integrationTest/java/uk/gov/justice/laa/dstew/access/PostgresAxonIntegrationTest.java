@@ -917,6 +917,79 @@ class PostgresAxonIntegrationTest {
             });
   }
 
+  @Test
+  void givenConcurrentDecisionsAtSameVersion_whenPatched_thenOnlyOneDecisionIsCommitted()
+      throws Exception {
+    UUID applicationId = UUID.randomUUID();
+    applicationId(post(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()));
+    UUID proceedingId = awaitProjection(applicationId).getProceedings().getFirst().proceedingId();
+    MakeDecisionRequest request =
+        MakeDecisionRequest.builder()
+            .applicationVersion(0L)
+            .overallDecision(DecisionStatus.REFUSED)
+            .autoGranted(false)
+            .eventHistory(EventHistoryRequest.builder().eventDescription("Concurrent").build())
+            .proceedings(
+                List.of(
+                    MakeDecisionProceedingRequest.builder()
+                        .proceedingId(proceedingId)
+                        .meritsDecision(
+                            MeritsDecisionDetailsRequest.builder()
+                                .decision(MeritsDecisionStatus.REFUSED)
+                                .reason("Insufficient evidence")
+                                .justification("Concurrent decision")
+                                .build())
+                        .build()))
+            .build();
+    HttpEntity<MakeDecisionRequest> entity = new HttpEntity<>(request, headers());
+    String url = "http://localhost:" + port + "/api/v0/applications/" + applicationId + "/decision";
+    CyclicBarrier barrier = new CyclicBarrier(2);
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+    try {
+      CompletableFuture<ResponseEntity<Void>> first =
+          concurrentPatch(executor, barrier, url, entity);
+      CompletableFuture<ResponseEntity<Void>> second =
+          concurrentPatch(executor, barrier, url, entity);
+
+      assertThat(List.of(first.get(20, TimeUnit.SECONDS), second.get(20, TimeUnit.SECONDS)))
+          .extracting(ResponseEntity::getStatusCode)
+          .containsExactlyInAnyOrder(HttpStatus.NO_CONTENT, HttpStatus.CONFLICT);
+    } finally {
+      executor.shutdown();
+    }
+
+    assertThat(awaitProjectionVersion(applicationId, 1L).getApplicationVersion()).isEqualTo(1L);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM axon.application_data WHERE application_id = ?",
+                Integer.class,
+                applicationId))
+        .isEqualTo(2);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM axon.domain_event_entry WHERE aggregate_identifier = ?",
+                Integer.class,
+                applicationId.toString()))
+        .isEqualTo(2);
+  }
+
+  private CompletableFuture<ResponseEntity<Void>> concurrentPatch(
+      ExecutorService executor,
+      CyclicBarrier barrier,
+      String url,
+      HttpEntity<MakeDecisionRequest> entity) {
+    return CompletableFuture.supplyAsync(
+        () -> {
+          try {
+            barrier.await(10, TimeUnit.SECONDS);
+            return restTemplate.exchange(url, HttpMethod.PATCH, entity, Void.class);
+          } catch (Exception exception) {
+            throw new RuntimeException(exception);
+          }
+        },
+        executor);
+  }
+
   private ResponseEntity<Void> post(ApplicationCreateRequest request, HttpHeaders headers) {
     return restTemplate.postForEntity(
         "http://localhost:" + port + "/api/v0/applications",

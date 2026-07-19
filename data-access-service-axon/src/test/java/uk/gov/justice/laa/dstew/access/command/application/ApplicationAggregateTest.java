@@ -28,7 +28,9 @@ import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.CreateLin
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupRequested;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationGroupInvariantException;
+import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 class ApplicationAggregateTest {
 
@@ -180,6 +182,24 @@ class ApplicationAggregateTest {
   }
 
   @Test
+  void givenApplicationDataAppendFailure_whenDecisionMade_thenEmitsNoEvent() {
+    UUID applicationId = UUID.randomUUID();
+    UUID proceedingId = UUID.randomUUID();
+    ApplicationCreationDetails details = detailsWithProceeding(applicationId, proceedingId);
+    when(applicationDataStore.get(applicationId, 0L))
+        .thenReturn(ApplicationDataPayload.from(details));
+    when(applicationDataStore.append(any(), anyLong(), any(), any(), any()))
+        .thenThrow(new IllegalStateException("application data unavailable"));
+
+    fixture
+        .given(applicationCreatedEvent(applicationId, details))
+        .when(decisionCommand(applicationId, 0L, proceedingId, "REFUSED", "justification", null))
+        .expectException(IllegalStateException.class)
+        .expectExceptionMessage("application data unavailable")
+        .expectNoEvents();
+  }
+
+  @Test
   void givenPreviousDecision_whenDecisionMadeAgain_thenAutomaticallyIncrementsVersion() {
     UUID applicationId = UUID.randomUUID();
     UUID proceedingId = UUID.randomUUID();
@@ -210,6 +230,70 @@ class ApplicationAggregateTest {
         .expectEvents(
             new ApplicationDecisionMadeEvent(
                 applicationId, 2L, 2L, "REFUSED", false, secondOccurredAt));
+  }
+
+  @Test
+  void givenStaleApplicationVersion_whenDecisionMade_thenRejectsWithoutReadingData() {
+    UUID applicationId = UUID.randomUUID();
+    UUID proceedingId = UUID.randomUUID();
+    ApplicationCreationDetails details = detailsWithProceeding(applicationId, proceedingId);
+
+    fixture
+        .given(applicationCreatedEvent(applicationId, details))
+        .when(decisionCommand(applicationId, 1L, proceedingId, "REFUSED", "justification", null))
+        .expectException(ApplicationVersionConflictException.class)
+        .expectNoEvents();
+  }
+
+  @Test
+  void givenEmptyProceedingsAndMissingGrantedCertificate_whenDecisionMade_thenReportsBothErrors() {
+    UUID applicationId = UUID.randomUUID();
+
+    fixture
+        .given(applicationCreatedEvent(applicationId))
+        .when(
+            new MakeApplicationDecisionCommand(
+                applicationId, 0L, "GRANTED", false, List.of(), null, "{}", null, Instant.now()))
+        .expectException(ValidationException.class)
+        .expectNoEvents();
+  }
+
+  @Test
+  void givenRefusalWithoutJustification_whenDecisionMade_thenRejectsRequest() {
+    UUID applicationId = UUID.randomUUID();
+    UUID proceedingId = UUID.randomUUID();
+    ApplicationCreationDetails details = detailsWithProceeding(applicationId, proceedingId);
+
+    fixture
+        .given(applicationCreatedEvent(applicationId, details))
+        .when(decisionCommand(applicationId, 0L, proceedingId, "REFUSED", null, null))
+        .expectException(ValidationException.class)
+        .expectNoEvents();
+  }
+
+  @Test
+  void givenDuplicateProceedings_whenDecisionMade_thenRejectsRequest() {
+    UUID applicationId = UUID.randomUUID();
+    UUID proceedingId = UUID.randomUUID();
+    ApplicationCreationDetails details = detailsWithProceeding(applicationId, proceedingId);
+    MakeDecisionProceeding proceeding =
+        new MakeDecisionProceeding(proceedingId, "REFUSED", "reason", "justification");
+
+    fixture
+        .given(applicationCreatedEvent(applicationId, details))
+        .when(
+            new MakeApplicationDecisionCommand(
+                applicationId,
+                0L,
+                "REFUSED",
+                false,
+                List.of(proceeding, proceeding),
+                null,
+                "{}",
+                null,
+                Instant.now()))
+        .expectException(ValidationException.class)
+        .expectNoEvents();
   }
 
   @Test
@@ -387,6 +471,25 @@ class ApplicationAggregateTest {
 
   private CreateApplicationCommand createCommand(UUID applicationId, String serialisedRequest) {
     return createCommandWithSchema(applicationId, serialisedRequest, 1);
+  }
+
+  private MakeApplicationDecisionCommand decisionCommand(
+      UUID applicationId,
+      long expectedVersion,
+      UUID proceedingId,
+      String decision,
+      String justification,
+      Map<String, Object> certificate) {
+    return new MakeApplicationDecisionCommand(
+        applicationId,
+        expectedVersion,
+        decision,
+        false,
+        List.of(new MakeDecisionProceeding(proceedingId, decision, "reason", justification)),
+        certificate,
+        "{}",
+        null,
+        Instant.now());
   }
 
   private ApplicationCreationDetails detailsWithProceeding(UUID applicationId, UUID proceedingId) {

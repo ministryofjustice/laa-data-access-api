@@ -20,8 +20,11 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
+import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
+import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
 
 class ApplicationProjectionTest {
@@ -117,6 +120,64 @@ class ApplicationProjectionTest {
     projection.on(event);
 
     assertThat(existing.getLeadApplicationId()).isEqualTo(leadApplicationId);
+    verify(applicationReadRepository).save(existing);
+  }
+
+  @Test
+  void givenDecisionEvent_whenHandled_thenAdvancesVersionsAndEmitsUpdate() {
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-20T08:00:00Z");
+    ApplicationReadModel existing =
+        ApplicationReadModel.builder().applicationId(applicationId).build();
+    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(existing));
+    when(applicationReadRepository.save(existing)).thenReturn(existing);
+
+    projection.on(
+        new ApplicationDecisionMadeEvent(applicationId, 3L, 4L, "GRANTED", false, occurredAt));
+
+    assertThat(existing.getApplicationVersion()).isEqualTo(3L);
+    assertThat(existing.getApplicationDataVersion()).isEqualTo(4L);
+    assertThat(existing.getModifiedAt()).isEqualTo(occurredAt);
+    verify(queryUpdateEmitter)
+        .emit(any(Class.class), any(Predicate.class), any(ApplicationReadModel.class));
+  }
+
+  @Test
+  void givenAssignmentEvent_whenHandled_thenSetsCaseworkerAndVersions() {
+    UUID applicationId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-20T08:00:00Z");
+    ApplicationReadModel existing =
+        ApplicationReadModel.builder().applicationId(applicationId).build();
+    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(existing));
+
+    projection.on(
+        new ApplicationAssignedToCaseworkerEvent(applicationId, 1L, 2L, caseworkerId, occurredAt));
+
+    assertThat(existing.getCaseworkerId()).isEqualTo(caseworkerId);
+    assertThat(existing.getApplicationVersion()).isEqualTo(1L);
+    assertThat(existing.getApplicationDataVersion()).isEqualTo(2L);
+    assertThat(existing.getModifiedAt()).isEqualTo(occurredAt);
+    verify(applicationReadRepository).save(existing);
+  }
+
+  @Test
+  void givenUnassignmentEvent_whenHandled_thenClearsCaseworkerAndAdvancesVersions() {
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-20T09:00:00Z");
+    ApplicationReadModel existing =
+        ApplicationReadModel.builder()
+            .applicationId(applicationId)
+            .caseworkerId(UUID.randomUUID())
+            .build();
+    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(existing));
+
+    projection.on(new ApplicationUnassignedFromCaseworkerEvent(applicationId, 2L, 3L, occurredAt));
+
+    assertThat(existing.getCaseworkerId()).isNull();
+    assertThat(existing.getApplicationVersion()).isEqualTo(2L);
+    assertThat(existing.getApplicationDataVersion()).isEqualTo(3L);
+    assertThat(existing.getModifiedAt()).isEqualTo(occurredAt);
     verify(applicationReadRepository).save(existing);
   }
 }
