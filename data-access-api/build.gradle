@@ -52,6 +52,13 @@ openApiGenerate {
     ]
 }
 
+tasks.named('openApiGenerate') {
+    inputs.files(fileTree(projectDir) {
+        include '**/*.yml'
+        exclude 'build/**', 'generated/**'
+    }).withPathSensitivity(PathSensitivity.RELATIVE)
+}
+
 compileJava.dependsOn('openApiGenerate')
 
 clean {

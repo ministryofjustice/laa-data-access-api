@@ -11,6 +11,7 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import org.axonframework.config.EventProcessingConfiguration;
 import org.axonframework.eventhandling.TrackingEventProcessor;
+import org.axonframework.eventsourcing.eventstore.EventStore;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
@@ -19,12 +20,15 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.annotation.DirtiesContext;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
+import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadRepository;
@@ -54,6 +58,7 @@ class CreateApplicationInMemoryTest {
   @Autowired private ApplicationHistoryReadRepository applicationHistoryReadRepository;
   @Autowired private LinkedApplicationGroupReadRepository groupReadRepository;
   @Autowired private EventProcessingConfiguration eventProcessingConfiguration;
+  @Autowired private EventStore eventStore;
 
   @Test
   void givenAxonApplication_whenOpenApiRequested_thenDocumentsCreateApplication() {
@@ -74,6 +79,71 @@ class CreateApplicationInMemoryTest {
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     assertThat(response.getBody()).contains("No application found with ID: " + applicationId);
+  }
+
+  @Test
+  void givenCreatedApplication_whenGetApplicationHistory_thenReturnsApiVisibleEvents() {
+    UUID applicationId = UUID.randomUUID();
+    applicationId(
+        restTemplate.postForEntity(
+            "/api/v0/applications",
+            new HttpEntity<>(
+                validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()),
+            Void.class));
+    awaitHistoryTypes(applicationId, "APPLICATION_CREATED");
+
+    ResponseEntity<ApplicationHistoryResponse> response =
+        restTemplate.exchange(
+            "/api/v0/applications/" + applicationId + "/history-search",
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            ApplicationHistoryResponse.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(response.getBody()).isNotNull();
+    assertThat(response.getBody().getEvents())
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getApplicationId()).isEqualTo(applicationId);
+              assertThat(event.getDomainEventType()).isEqualTo(DomainEventType.APPLICATION_CREATED);
+              assertThat(event.getCreatedBy()).isEqualTo("CIVIL_APPLY");
+              assertThat(event.getCreatedAt()).isNotNull();
+            });
+  }
+
+  @Test
+  void givenNonMatchingEventType_whenGetApplicationHistory_thenReturnsEmptyEvents() {
+    UUID applicationId = UUID.randomUUID();
+    applicationId(
+        restTemplate.postForEntity(
+            "/api/v0/applications",
+            new HttpEntity<>(
+                validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()),
+            Void.class));
+    awaitHistoryTypes(applicationId, "APPLICATION_CREATED");
+
+    ResponseEntity<ApplicationHistoryResponse> response =
+        restTemplate.exchange(
+            "/api/v0/applications/"
+                + applicationId
+                + "/history-search?eventType=APPLICATION_UPDATED",
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            ApplicationHistoryResponse.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(response.getBody()).isNotNull();
+    assertThat(response.getBody().getEvents()).isEmpty();
+  }
+
+  @Test
+  void givenMissingServiceName_whenGetApplicationHistory_thenReturnsBadRequest() {
+    ResponseEntity<String> response =
+        restTemplate.getForEntity(
+            "/api/v0/applications/" + UUID.randomUUID() + "/history-search", String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
   }
 
   @Test
@@ -216,9 +286,10 @@ class CreateApplicationInMemoryTest {
   @Test
   void givenMissingLeadApplication_whenPostApplication_thenReturnsNotFound() {
     UUID missingApplyApplicationId = UUID.randomUUID();
+    UUID rejectedApplicationId = UUID.randomUUID();
     ApplicationCreateRequest request =
         validLinkedCreateApplicationRequest(
-            UUID.randomUUID(), UUID.randomUUID(), missingApplyApplicationId);
+            rejectedApplicationId, UUID.randomUUID(), missingApplyApplicationId);
 
     ResponseEntity<String> response =
         restTemplate.postForEntity(
@@ -226,6 +297,8 @@ class CreateApplicationInMemoryTest {
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     assertThat(response.getBody()).contains(missingApplyApplicationId.toString());
+    assertRejectedApplicationWasRolledBack(rejectedApplicationId);
+    assertThat(groupReadRepository.findByLeadApplicationId(missingApplyApplicationId)).isEmpty();
   }
 
   @Test
@@ -241,9 +314,10 @@ class CreateApplicationInMemoryTest {
     awaitProjection(applicationId(leadResponse));
 
     UUID missingAssociatedApplyApplicationId = UUID.randomUUID();
+    UUID rejectedApplicationId = UUID.randomUUID();
     ApplicationCreateRequest request =
         validLinkedCreateApplicationRequest(
-            UUID.randomUUID(),
+            rejectedApplicationId,
             UUID.randomUUID(),
             leadApplyApplicationId,
             missingAssociatedApplyApplicationId);
@@ -254,6 +328,8 @@ class CreateApplicationInMemoryTest {
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     assertThat(response.getBody()).contains(missingAssociatedApplyApplicationId.toString());
+    assertRejectedApplicationWasRolledBack(rejectedApplicationId);
+    assertThat(groupReadRepository.findByLeadApplicationId(leadApplyApplicationId)).isEmpty();
   }
 
   @Test
@@ -301,10 +377,35 @@ class CreateApplicationInMemoryTest {
                               .contains(leadApplicationId, linkedApplicationId);
                         }));
 
-    // History for the associated app contains only APPLICATION_CREATED (no APPLICATION_LINKED).
-    assertThat(awaitHistory(linkedApplicationId, 1))
+    assertThat(
+            awaitHistoryTypes(
+                linkedApplicationId, "APPLICATION_CREATED", "APPLICATION_GROUP_JOINED"))
+        .extracting(ApplicationHistoryReadModel::getEventType)
+        .containsExactlyInAnyOrder("APPLICATION_CREATED", "APPLICATION_GROUP_JOINED");
+    assertThat(
+            awaitHistoryTypes(
+                leadApplicationId, "APPLICATION_CREATED", "APPLICATION_GROUP_CREATED"))
+        .extracting(ApplicationHistoryReadModel::getEventType)
+        .containsExactlyInAnyOrder("APPLICATION_CREATED", "APPLICATION_GROUP_CREATED");
+
+    ResponseEntity<ApplicationHistoryResponse> linkedHistoryResponse =
+        getApplicationHistory(linkedApplicationId, null);
+    assertThat(linkedHistoryResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(linkedHistoryResponse.getBody()).isNotNull();
+    assertThat(linkedHistoryResponse.getBody().getEvents())
+        .extracting(event -> event.getDomainEventType())
+        .containsExactlyInAnyOrder(
+            DomainEventType.APPLICATION_CREATED, DomainEventType.APPLICATION_GROUP_JOINED);
+
+    ResponseEntity<ApplicationHistoryResponse> filteredGroupHistoryResponse =
+        getApplicationHistory(linkedApplicationId, DomainEventType.APPLICATION_GROUP_JOINED);
+    assertThat(filteredGroupHistoryResponse.getBody()).isNotNull();
+    assertThat(filteredGroupHistoryResponse.getBody().getEvents())
         .singleElement()
-        .satisfies(h -> assertThat(h.getEventType()).isEqualTo("APPLICATION_CREATED"));
+        .satisfies(
+            event ->
+                assertThat(event.getDomainEventType())
+                    .isEqualTo(DomainEventType.APPLICATION_GROUP_JOINED));
   }
 
   @Test
@@ -343,6 +444,12 @@ class CreateApplicationInMemoryTest {
                     headers()),
                 Void.class));
     awaitProjection(secondLinkedApplicationId);
+
+    assertThat(
+            awaitHistoryTypes(
+                secondLinkedApplicationId, "APPLICATION_CREATED", "APPLICATION_GROUP_JOINED"))
+        .extracting(ApplicationHistoryReadModel::getEventType)
+        .containsExactlyInAnyOrder("APPLICATION_CREATED", "APPLICATION_GROUP_JOINED");
 
     // All three should end up in the same group.
     await()
@@ -465,6 +572,16 @@ class CreateApplicationInMemoryTest {
         response.getHeaders().getLocation().getPath().replace("/api/v0/applications/", ""));
   }
 
+  private ResponseEntity<ApplicationHistoryResponse> getApplicationHistory(
+      UUID applicationId, DomainEventType eventType) {
+    String path = "/api/v0/applications/" + applicationId + "/history-search";
+    if (eventType != null) {
+      path += "?eventType=" + eventType.getValue();
+    }
+    return restTemplate.exchange(
+        path, HttpMethod.GET, new HttpEntity<>(headers()), ApplicationHistoryResponse.class);
+  }
+
   private ApplicationReadModel awaitProjection(UUID applicationId) {
     return await()
         .atMost(10, TimeUnit.SECONDS)
@@ -482,5 +599,30 @@ class CreateApplicationInMemoryTest {
                 applicationHistoryReadRepository.findAllByApplicationIdOrderByOccurredAtAsc(
                     applicationId),
             history -> history.size() == expectedCount);
+  }
+
+  private List<ApplicationHistoryReadModel> awaitHistoryTypes(
+      UUID applicationId, String... expectedEventTypes) {
+    List<String> expected = List.of(expectedEventTypes);
+    return await()
+        .atMost(10, TimeUnit.SECONDS)
+        .pollInterval(50, TimeUnit.MILLISECONDS)
+        .until(
+            () ->
+                applicationHistoryReadRepository.findAllByApplicationIdOrderByOccurredAtAsc(
+                    applicationId),
+            history ->
+                history.size() == expected.size()
+                    && new java.util.HashSet<>(
+                            history.stream()
+                                .map(ApplicationHistoryReadModel::getEventType)
+                                .toList())
+                        .equals(new java.util.HashSet<>(expected)));
+  }
+
+  private void assertRejectedApplicationWasRolledBack(UUID applicationId) {
+    assertThat(eventStore.readEvents(applicationId.toString()).hasNext()).isFalse();
+    assertThat(applicationReadRepository.findById(applicationId)).isEmpty();
+    assertThat(applicationHistoryReadRepository.countByApplicationId(applicationId)).isZero();
   }
 }

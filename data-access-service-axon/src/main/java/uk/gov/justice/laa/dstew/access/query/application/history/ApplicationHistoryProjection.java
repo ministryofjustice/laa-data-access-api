@@ -1,15 +1,18 @@
 package uk.gov.justice.laa.dstew.access.query.application.history;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.UUID;
 import org.axonframework.config.ProcessingGroup;
 import org.axonframework.eventhandling.EventHandler;
 import org.axonframework.eventhandling.EventMessage;
 import org.axonframework.eventhandling.ResetHandler;
+import org.axonframework.queryhandling.QueryHandler;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
 import uk.gov.justice.laa.dstew.access.config.interceptor.ServiceNameMetadataDispatchInterceptor;
 
 /** Independently replayable, append-only audit projection of Application events. */
@@ -18,10 +21,13 @@ import uk.gov.justice.laa.dstew.access.config.interceptor.ServiceNameMetadataDis
 public class ApplicationHistoryProjection {
 
   private final ApplicationHistoryReadRepository applicationHistoryReadRepository;
+  private final ObjectMapper objectMapper;
 
   public ApplicationHistoryProjection(
-      ApplicationHistoryReadRepository applicationHistoryReadRepository) {
+      ApplicationHistoryReadRepository applicationHistoryReadRepository,
+      ObjectMapper objectMapper) {
     this.applicationHistoryReadRepository = applicationHistoryReadRepository;
+    this.objectMapper = objectMapper;
   }
 
   /**
@@ -41,23 +47,6 @@ public class ApplicationHistoryProjection {
   }
 
   /**
-   * Appends an audit entry when an Application is linked (legacy event — retained for replay of
-   * existing event streams).
-   *
-   * @param event the Application linking event
-   * @param message the Axon message carrying event metadata
-   */
-  @EventHandler
-  public void on(ApplicationLinkedEvent event, EventMessage<?> message) {
-    append(
-        message,
-        event.applicationId(),
-        "APPLICATION_LINKED",
-        event.serialisedRequest(),
-        event.occurredAt());
-  }
-
-  /**
    * Appends an audit entry when a linked application group is created.
    *
    * <p>Records {@code APPLICATION_GROUP_CREATED} against the lead application and {@code
@@ -68,13 +57,47 @@ public class ApplicationHistoryProjection {
    */
   @EventHandler
   public void on(LinkedApplicationGroupCreatedEvent event, EventMessage<?> message) {
+    String requestPayload = serialise(event);
     append(
-        message, event.leadApplicationId(), "APPLICATION_GROUP_CREATED", null, event.occurredAt());
+        message,
+        event.leadApplicationId(),
+        "APPLICATION_GROUP_CREATED",
+        requestPayload,
+        event.occurredAt(),
+        groupHistoryId(message, event.leadApplicationId()));
     event.memberApplicationIds().stream()
         .filter(id -> !id.equals(event.leadApplicationId()))
         .forEach(
             memberId ->
-                append(message, memberId, "APPLICATION_GROUP_JOINED", null, event.occurredAt()));
+                append(
+                    message,
+                    memberId,
+                    "APPLICATION_GROUP_JOINED",
+                    requestPayload,
+                    event.occurredAt(),
+                    groupHistoryId(message, memberId)));
+  }
+
+  /** Appends an audit entry when an application joins an existing linked application group. */
+  @EventHandler
+  public void on(MemberAddedToGroupEvent event, EventMessage<?> message) {
+    append(
+        message,
+        event.memberId(),
+        "APPLICATION_GROUP_JOINED",
+        serialise(event),
+        event.occurredAt(),
+        groupHistoryId(message, event.memberId()));
+  }
+
+  /** Returns chronologically ordered history rows matching the requested public event types. */
+  @QueryHandler
+  public java.util.List<ApplicationHistoryReadModel> handle(FindApplicationHistoryQuery query) {
+    return applicationHistoryReadRepository
+        .findAllByApplicationIdOrderByOccurredAtAsc(query.applicationId())
+        .stream()
+        .filter(history -> query.eventTypes().contains(history.getEventType()))
+        .toList();
   }
 
   @ResetHandler
@@ -88,16 +111,39 @@ public class ApplicationHistoryProjection {
       String eventType,
       String requestPayload,
       Instant occurredAt) {
+    append(message, applicationId, eventType, requestPayload, occurredAt, message.getIdentifier());
+  }
+
+  private void append(
+      EventMessage<?> message,
+      UUID applicationId,
+      String eventType,
+      String requestPayload,
+      Instant occurredAt,
+      String historyId) {
     Object serviceName =
         message.getMetaData().get(ServiceNameMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY);
     applicationHistoryReadRepository.save(
         ApplicationHistoryReadModel.builder()
-            .eventId(message.getIdentifier())
+            .eventId(historyId)
             .applicationId(applicationId)
             .eventType(eventType)
             .requestPayload(requestPayload)
             .serviceName(serviceName == null ? null : serviceName.toString())
             .occurredAt(occurredAt)
             .build());
+  }
+
+  private String groupHistoryId(EventMessage<?> message, UUID applicationId) {
+    return message.getIdentifier() + ":" + applicationId;
+  }
+
+  private String serialise(Object event) {
+    try {
+      return objectMapper.writeValueAsString(event);
+    } catch (JsonProcessingException exception) {
+      throw new IllegalStateException(
+          "Unable to serialise linked application group event", exception);
+    }
   }
 }

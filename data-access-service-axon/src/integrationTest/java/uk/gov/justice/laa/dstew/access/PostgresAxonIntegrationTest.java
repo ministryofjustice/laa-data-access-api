@@ -49,7 +49,9 @@ import uk.gov.justice.laa.dstew.access.model.ProviderResponse;
 import uk.gov.justice.laa.dstew.access.model.ScopeLimitationResponse;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadRepository;
+import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadRepository;
+import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
 
 @Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -73,6 +75,8 @@ class PostgresAxonIntegrationTest {
   @Autowired private ApplicationReadRepository applicationReadRepository;
 
   @Autowired private ApplicationHistoryReadRepository applicationHistoryReadRepository;
+
+  @Autowired private LinkedApplicationGroupReadRepository groupReadRepository;
 
   @Test
   void givenPostgresAxonStore_whenHealthRequested_thenReportsUp() {
@@ -366,10 +370,16 @@ class PostgresAxonIntegrationTest {
             headers());
     UUID linkedApplicationId = applicationId(linkedResponse);
 
-    // Wait for both APPLICATION_CREATED and APPLICATION_LINKED before checking the read model
-    assertThat(awaitHistory(linkedApplicationId, 2))
-        .extracting(history -> history.getEventType())
-        .containsExactly("APPLICATION_CREATED", "APPLICATION_LINKED");
+    assertThat(
+            awaitHistoryTypes(
+                linkedApplicationId, "APPLICATION_CREATED", "APPLICATION_GROUP_JOINED"))
+        .extracting(ApplicationHistoryReadModel::getEventType)
+        .containsExactlyInAnyOrder("APPLICATION_CREATED", "APPLICATION_GROUP_JOINED");
+    assertThat(
+            awaitHistoryTypes(
+                leadApplicationId, "APPLICATION_CREATED", "APPLICATION_GROUP_CREATED"))
+        .extracting(ApplicationHistoryReadModel::getEventType)
+        .containsExactlyInAnyOrder("APPLICATION_CREATED", "APPLICATION_GROUP_CREATED");
     ApplicationReadModel projected =
         applicationReadRepository
             .findById(linkedApplicationId)
@@ -380,16 +390,20 @@ class PostgresAxonIntegrationTest {
   @Test
   void givenMissingLeadApplication_whenPostApplication_thenReturnsNotFound() {
     UUID missingLeadApplyApplicationId = UUID.randomUUID();
+    UUID rejectedApplicationId = UUID.randomUUID();
 
     ResponseEntity<String> response =
         post(
             validLinkedCreateApplicationRequest(
-                UUID.randomUUID(), UUID.randomUUID(), missingLeadApplyApplicationId),
+                rejectedApplicationId, UUID.randomUUID(), missingLeadApplyApplicationId),
             headers(),
             String.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     assertThat(response.getBody()).contains(missingLeadApplyApplicationId.toString());
+    assertRejectedApplicationWasRolledBack(rejectedApplicationId);
+    assertThat(groupReadRepository.findByLeadApplicationId(missingLeadApplyApplicationId))
+        .isEmpty();
   }
 
   @Test
@@ -404,10 +418,11 @@ class PostgresAxonIntegrationTest {
     awaitProjection(leadApplicationId);
 
     UUID missingAssociatedApplyApplicationId = UUID.randomUUID();
+    UUID rejectedApplicationId = UUID.randomUUID();
     ResponseEntity<String> response =
         post(
             validLinkedCreateApplicationRequest(
-                UUID.randomUUID(),
+                rejectedApplicationId,
                 UUID.randomUUID(),
                 leadApplyApplicationId,
                 missingAssociatedApplyApplicationId),
@@ -416,6 +431,8 @@ class PostgresAxonIntegrationTest {
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     assertThat(response.getBody()).contains(missingAssociatedApplyApplicationId.toString());
+    assertRejectedApplicationWasRolledBack(rejectedApplicationId);
+    assertThat(groupReadRepository.findByLeadApplicationId(leadApplicationId)).isEmpty();
   }
 
   @Test
@@ -652,5 +669,36 @@ class PostgresAxonIntegrationTest {
     }
     throw new AssertionError(
         "Application history projection was not populated for " + applicationId);
+  }
+
+  private List<ApplicationHistoryReadModel> awaitHistoryTypes(
+      UUID applicationId, String... expectedEventTypes) throws Exception {
+    List<String> expected = List.of(expectedEventTypes);
+    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+    while (System.nanoTime() < deadline) {
+      List<ApplicationHistoryReadModel> history =
+          applicationHistoryReadRepository.findAllByApplicationIdOrderByOccurredAtAsc(
+              applicationId);
+      List<String> actual =
+          history.stream().map(ApplicationHistoryReadModel::getEventType).toList();
+      if (actual.size() == expected.size()
+          && new java.util.HashSet<>(actual).equals(new java.util.HashSet<>(expected))) {
+        return history;
+      }
+      Thread.sleep(50);
+    }
+    throw new AssertionError(
+        "Application history projection did not contain " + expected + " for " + applicationId);
+  }
+
+  private void assertRejectedApplicationWasRolledBack(UUID applicationId) {
+    Integer eventCount =
+        jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM axon.domain_event_entry WHERE aggregate_identifier = ?",
+            Integer.class,
+            applicationId.toString());
+    assertThat(eventCount).isZero();
+    assertThat(applicationReadRepository.findById(applicationId)).isEmpty();
+    assertThat(applicationHistoryReadRepository.countByApplicationId(applicationId)).isZero();
   }
 }

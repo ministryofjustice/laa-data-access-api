@@ -1,6 +1,8 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
 import java.time.LocalDate;
+import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 import org.axonframework.messaging.responsetypes.ResponseTypes;
 import org.axonframework.queryhandling.QueryGateway;
@@ -8,20 +10,26 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationOrderBy;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSortBy;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
+import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
+import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsQuery;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsResult;
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
+import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadModel;
+import uk.gov.justice.laa.dstew.access.query.application.history.FindApplicationHistoryQuery;
 
 /** HTTP query adapter for Application reads. */
 @RestController
@@ -31,6 +39,7 @@ public class ApplicationQueryController {
   private final QueryGateway queryGateway;
   private final GetApplicationResponseMapper responseMapper;
   private final GetAllApplicationsResponseMapper getAllResponseMapper;
+  private final GetApplicationHistoryResponseMapper historyResponseMapper;
 
   /**
    * Constructs the controller with its query gateway and response mappers.
@@ -46,10 +55,12 @@ public class ApplicationQueryController {
   public ApplicationQueryController(
       QueryGateway queryGateway,
       GetApplicationResponseMapper responseMapper,
-      GetAllApplicationsResponseMapper getAllResponseMapper) {
+      GetAllApplicationsResponseMapper getAllResponseMapper,
+      GetApplicationHistoryResponseMapper historyResponseMapper) {
     this.queryGateway = queryGateway;
     this.responseMapper = responseMapper;
     this.getAllResponseMapper = getAllResponseMapper;
+    this.historyResponseMapper = historyResponseMapper;
   }
 
   /**
@@ -104,5 +115,24 @@ public class ApplicationQueryController {
             .orElseThrow(
                 () -> new ResourceNotFoundException("No application found with ID: " + id));
     return ResponseEntity.ok(responseMapper.toResponse(application));
+  }
+
+  /** Returns domain-event history for the requested Application. */
+  @GetMapping("/{id}/history-search")
+  public ResponseEntity<ApplicationHistoryResponse> getApplicationHistory(
+      @RequestHeader("X-Service-Name") ServiceName serviceName,
+      @PathVariable UUID id,
+      @RequestParam(required = false) List<DomainEventType> eventType) {
+    List<String> requestedTypes =
+        (eventType == null || eventType.isEmpty())
+            ? Arrays.stream(DomainEventType.values()).map(DomainEventType::getValue).toList()
+            : eventType.stream().map(DomainEventType::getValue).toList();
+    List<ApplicationHistoryReadModel> history =
+        queryGateway
+            .query(
+                new FindApplicationHistoryQuery(id, requestedTypes),
+                ResponseTypes.multipleInstancesOf(ApplicationHistoryReadModel.class))
+            .join();
+    return ResponseEntity.ok(historyResponseMapper.toResponse(history));
   }
 }
