@@ -34,6 +34,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
+import uk.gov.justice.laa.dstew.access.model.IndividualsResponse;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
@@ -151,6 +152,55 @@ class CreateApplicationInMemoryTest {
             "/api/v0/applications/" + UUID.randomUUID() + "/history-search", String.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+  }
+
+  @Test
+  void givenCreatedApplication_whenGetIndividualsForApplication_thenReturnsCurrentIndividual() {
+    UUID applicationId = UUID.randomUUID();
+    applicationId(
+        restTemplate.postForEntity(
+            "/api/v0/applications",
+            new HttpEntity<>(
+                validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()),
+            Void.class));
+    awaitProjection(applicationId);
+
+    ResponseEntity<IndividualsResponse> response =
+        restTemplate.exchange(
+            "/api/v0/individuals?applicationId=" + applicationId + "&individualType=CLIENT",
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            IndividualsResponse.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(response.getBody()).isNotNull();
+    assertThat(response.getBody().getIndividuals())
+        .singleElement()
+        .satisfies(
+            individual -> {
+              assertThat(individual.getFirstName()).isEqualTo("Ada");
+              assertThat(individual.getLastName()).isEqualTo("Lovelace");
+              assertThat(individual.getType()).isEqualTo(IndividualType.CLIENT);
+              assertThat(individual.getClientId()).isNull();
+            });
+    assertThat(response.getBody().getPaging().getPage()).isEqualTo(1);
+    assertThat(response.getBody().getPaging().getPageSize()).isEqualTo(20);
+    assertThat(response.getBody().getPaging().getTotalRecords()).isEqualTo(1);
+    assertThat(response.getBody().getPaging().getItemsReturned()).isEqualTo(1);
+  }
+
+  @Test
+  void givenClientDetailsWithoutApplicationId_whenGetIndividuals_thenReturnsBadRequest() {
+    ResponseEntity<String> response =
+        restTemplate.exchange(
+            "/api/v0/individuals?include=CLIENT_DETAILS",
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(response.getBody())
+        .contains("Application ID is required when included data is CLIENT_DETAILS");
   }
 
   @Test

@@ -30,6 +30,17 @@ class ApplicationExceptionHandlerTest {
   }
 
   @Test
+  void givenInvalidPagination_whenHandled_thenReturnsValidationResponse() {
+    var response =
+        handler.handleIllegalArgumentException(
+            new IllegalArgumentException("pageSize cannot be more than 100"));
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(response.getBody().getProperties())
+        .containsEntry("errors", List.of("pageSize cannot be more than 100"));
+  }
+
+  @Test
   void givenMissingResource_whenHandled_thenReturnsNotFoundWithoutImplementationDetails() {
     UUID applicationId = UUID.randomUUID();
 

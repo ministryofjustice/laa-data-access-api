@@ -23,6 +23,12 @@ public class ApplicationExceptionHandler {
     return validationError(exception.errors());
   }
 
+  /** Returns invalid shared query parameters using the standard bad-request response. */
+  @ExceptionHandler(IllegalArgumentException.class)
+  ResponseEntity<ProblemDetail> handleIllegalArgumentException(IllegalArgumentException exception) {
+    return validationError(List.of(exception.getMessage()));
+  }
+
   /** Returns a 400 when a command would violate an application-group invariant. */
   @ExceptionHandler(ApplicationGroupInvariantException.class)
   ResponseEntity<ProblemDetail> handleApplicationGroupInvariantException(
