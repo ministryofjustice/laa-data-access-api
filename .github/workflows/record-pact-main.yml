@@ -14,13 +14,21 @@ jobs:
     steps:
       - id: pact-broker-version
         shell: bash
+        # Secrets go through the environment rather than being interpolated into
+        # the command line: the broker password contains shell metacharacters,
+        # which broke parsing of the generated script.
+        env:
+          PACT_BROKER_BASE_URL: ${{ secrets.PACT_BROKER_URL }}
+          PACT_BROKER_USERNAME: ${{ secrets.PACT_BROKER_USERNAME }}
+          PACT_BROKER_PASSWORD: ${{ secrets.PACT_BROKER_PASSWORD }}
+          PROVIDER_VERSION: ${{ github.sha }}
         run: |
           docker run --rm \
-            -e PACT_BROKER_BASE_URL=${{ secrets.PACT_BROKER_URL }} \
-            -e PACT_BROKER_USERNAME=${{ secrets.PACT_BROKER_USERNAME }} \
-            -e PACT_BROKER_PASSWORD=${{ secrets.PACT_BROKER_PASSWORD }} \
+            -e PACT_BROKER_BASE_URL \
+            -e PACT_BROKER_USERNAME \
+            -e PACT_BROKER_PASSWORD \
             pactfoundation/pact-cli:latest \
             broker create-or-update-version \
             --pacticipant laa-data-access-api \
-            --version ${{ github.sha }} \
+            --version "$PROVIDER_VERSION" \
             --branch main
