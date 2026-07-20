@@ -4,6 +4,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import lombok.Builder;
+import uk.gov.justice.laa.dstew.access.domain.enums.CategoryOfLaw;
+import uk.gov.justice.laa.dstew.access.domain.enums.MatterType;
 
 /** Record representing extracted details from application content. */
 @Builder
