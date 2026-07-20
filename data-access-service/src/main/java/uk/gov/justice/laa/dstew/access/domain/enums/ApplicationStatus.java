@@ -1,6 +1,6 @@
-package uk.gov.justice.laa.dstew.access.usecase.shared.parser;
+package uk.gov.justice.laa.dstew.access.domain.enums;
 
-/** Usecase-level enum representing the status for a legal aid application. */
+/** Domain enum representing the status for a legal aid application. */
 public enum ApplicationStatus {
   APPLICATION_IN_PROGRESS("APPLICATION_IN_PROGRESS"),
 
