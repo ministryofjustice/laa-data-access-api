@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
+import uk.gov.justice.laa.dstew.access.model.ApplicationNotesResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationOrderBy;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSortBy;
@@ -24,10 +25,12 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
+import uk.gov.justice.laa.dstew.access.query.application.ApplicationNotesResult;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsQuery;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsResult;
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
+import uk.gov.justice.laa.dstew.access.query.application.FindNotesForApplicationQuery;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.history.FindApplicationHistoryQuery;
 
@@ -40,6 +43,7 @@ public class ApplicationQueryController {
   private final GetApplicationResponseMapper responseMapper;
   private final GetAllApplicationsResponseMapper getAllResponseMapper;
   private final GetApplicationHistoryResponseMapper historyResponseMapper;
+  private final GetAllNotesForApplicationResponseMapper notesResponseMapper;
 
   /**
    * Constructs the controller with its query gateway and response mappers.
@@ -51,16 +55,22 @@ public class ApplicationQueryController {
    * @param getAllResponseMapper maps a {@link
    *     uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsResult} to {@link
    *     uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse}
+   * @param historyResponseMapper maps a list of {@link
+   *     uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadModel} to
+   *     {@link uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse}
+   * @param notesResponseMapper maps notes to {@link ApplicationNotesResponse}
    */
   public ApplicationQueryController(
       QueryGateway queryGateway,
       GetApplicationResponseMapper responseMapper,
       GetAllApplicationsResponseMapper getAllResponseMapper,
-      GetApplicationHistoryResponseMapper historyResponseMapper) {
+      GetApplicationHistoryResponseMapper historyResponseMapper,
+      GetAllNotesForApplicationResponseMapper notesResponseMapper) {
     this.queryGateway = queryGateway;
     this.responseMapper = responseMapper;
     this.getAllResponseMapper = getAllResponseMapper;
     this.historyResponseMapper = historyResponseMapper;
+    this.notesResponseMapper = notesResponseMapper;
   }
 
   /**
@@ -134,5 +144,20 @@ public class ApplicationQueryController {
                 ResponseTypes.multipleInstancesOf(ApplicationHistoryReadModel.class))
             .join();
     return ResponseEntity.ok(historyResponseMapper.toResponse(history));
+  }
+
+  /** Returns all notes for the requested Application, ordered by creation time ascending. */
+  @GetMapping("/{id}/notes")
+  public ResponseEntity<ApplicationNotesResponse> getNotesForApplication(@PathVariable UUID id) {
+    ApplicationNotesResponse response =
+        queryGateway
+            .query(
+                new FindNotesForApplicationQuery(id),
+                ResponseTypes.optionalInstanceOf(ApplicationNotesResult.class))
+            .join()
+            .map(result -> notesResponseMapper.toResponse(result.notes()))
+            .orElseThrow(
+                () -> new ResourceNotFoundException("No application found with ID: " + id));
+    return ResponseEntity.ok(response);
   }
 }

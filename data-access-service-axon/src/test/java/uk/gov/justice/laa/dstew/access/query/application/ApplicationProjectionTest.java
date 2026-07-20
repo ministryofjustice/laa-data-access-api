@@ -24,6 +24,7 @@ import uk.gov.justice.laa.dstew.access.command.application.assignment.Applicatio
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationNote;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
 
@@ -202,5 +203,59 @@ class ApplicationProjectionTest {
     assertThat(existing.getApplicationVersion()).isEqualTo(0L);
     assertThat(existing.getModifiedAt()).isEqualTo(occurredAt);
     verify(applicationReadRepository).save(existing);
+  }
+
+  @Test
+  void givenExistingApplication_whenFindNotesQuery_thenReturnsNotesFromPayload() {
+    UUID applicationId = UUID.randomUUID();
+    Instant createdAt = Instant.parse("2026-07-20T10:00:00Z");
+    ApplicationNote note = new ApplicationNote("Test note", createdAt);
+    ApplicationReadModel existing =
+        ApplicationReadModel.builder()
+            .applicationId(applicationId)
+            .applicationDataVersion(1L)
+            .build();
+    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(existing));
+    ApplicationDataPayload payload =
+        ApplicationDataPayload.from(applicationCreationDetails(applicationId))
+            .withNote("Test note", createdAt);
+    when(applicationDataStore.get(applicationId, 1L)).thenReturn(payload);
+
+    Optional<ApplicationNotesResult> result =
+        projection.handle(new FindNotesForApplicationQuery(applicationId));
+
+    assertThat(result).isPresent();
+    assertThat(result.get().notes()).containsExactly(note);
+  }
+
+  @Test
+  void givenMissingApplication_whenFindNotesQuery_thenReturnsEmpty() {
+    UUID applicationId = UUID.randomUUID();
+    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.empty());
+
+    Optional<ApplicationNotesResult> result =
+        projection.handle(new FindNotesForApplicationQuery(applicationId));
+
+    assertThat(result).isEmpty();
+  }
+
+  @Test
+  void givenApplicationWithNoNotes_whenFindNotesQuery_thenReturnsEmptyNotesList() {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationReadModel existing =
+        ApplicationReadModel.builder()
+            .applicationId(applicationId)
+            .applicationDataVersion(0L)
+            .build();
+    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(existing));
+    ApplicationDataPayload payload =
+        ApplicationDataPayload.from(applicationCreationDetails(applicationId));
+    when(applicationDataStore.get(applicationId, 0L)).thenReturn(payload);
+
+    Optional<ApplicationNotesResult> result =
+        projection.handle(new FindNotesForApplicationQuery(applicationId));
+
+    assertThat(result).isPresent();
+    assertThat(result.get().notes()).isEmpty();
   }
 }

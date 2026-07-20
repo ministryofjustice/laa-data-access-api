@@ -1060,6 +1060,38 @@ class PostgresAxonIntegrationTest {
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
   }
 
+  @Test
+  void givenApplicationWithNote_whenGetNotes_thenReturnsNoteInResponse() throws Exception {
+    UUID applicationId = UUID.randomUUID();
+    applicationId(post(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()));
+    awaitProjection(applicationId);
+
+    restTemplate.exchange(
+        "http://localhost:" + port + "/api/v0/applications/" + applicationId + "/notes",
+        HttpMethod.POST,
+        new HttpEntity<>(new CreateNoteRequest("Hello from GET notes test"), headers()),
+        Void.class);
+    awaitProjectionVersion(applicationId, 1L);
+
+    ResponseEntity<String> response =
+        restTemplate.getForEntity(
+            "http://localhost:" + port + "/api/v0/applications/" + applicationId + "/notes",
+            String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(response.getBody()).contains("Hello from GET notes test");
+  }
+
+  @Test
+  void givenNoApplication_whenGetNotes_thenReturns404() {
+    ResponseEntity<Void> response =
+        restTemplate.getForEntity(
+            "http://localhost:" + port + "/api/v0/applications/" + UUID.randomUUID() + "/notes",
+            Void.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+  }
+
   private HttpHeaders headers() {
     return headers(2);
   }

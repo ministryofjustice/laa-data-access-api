@@ -20,6 +20,7 @@ import uk.gov.justice.laa.dstew.access.command.application.assignment.Applicatio
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationNote;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
@@ -60,6 +61,24 @@ public class ApplicationProjection {
   @QueryHandler
   public java.util.Optional<ApplicationReadModel> handle(FindApplicationByIdQuery query) {
     return applicationReadRepository.findById(query.applicationId()).flatMap(this::hydrate);
+  }
+
+  /**
+   * Returns all notes for the requested Application, ordered by creation time ascending, or {@link
+   * Optional#empty()} if no application with the given ID exists.
+   */
+  @QueryHandler
+  public Optional<ApplicationNotesResult> handle(FindNotesForApplicationQuery query) {
+    return applicationReadRepository
+        .findById(query.applicationId())
+        .map(
+            application -> {
+              ApplicationDataPayload data =
+                  applicationDataStore.get(
+                      application.getApplicationId(), application.getApplicationDataVersion());
+              return new ApplicationNotesResult(
+                  data == null ? List.<ApplicationNote>of() : data.notes());
+            });
   }
 
   /**
