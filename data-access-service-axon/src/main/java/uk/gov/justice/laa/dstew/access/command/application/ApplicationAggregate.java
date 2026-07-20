@@ -45,13 +45,12 @@ public class ApplicationAggregate {
   private boolean submitted;
 
   /**
-   * Submits an application. The aggregate may already be alive as a draft (genesis {@code
-   * ApplicationDraftedEvent}), in which case submission is a state transition; otherwise the
-   * aggregate is created directly. Re-submission of an already-submitted application is idempotent.
+   * Submits an existing draft application, transitioning it {@code DRAFT -> SUBMITTED}. The
+   * aggregate must already be alive as a draft (genesis {@link ApplicationDraftedEvent}); there is
+   * no one-shot create+submit. Re-submission of an already-submitted application is idempotent.
    */
   @CommandHandler
-  @CreationPolicy(AggregateCreationPolicy.CREATE_IF_MISSING)
-  UUID handle(CreateApplicationCommand command, Clock clock) {
+  UUID handle(SubmitApplicationCommand command, Clock clock) {
     if (submitted) {
       return applyApplicationId;
     }
@@ -91,25 +90,23 @@ public class ApplicationAggregate {
             applyApplicationId, command.priorAuthorityId(), Instant.now(clock)));
   }
 
-  /** Starts a new draft application, treating redelivery of the command as idempotent. */
+  /**
+   * Creates or overwrites an application draft. Idempotent create-or-update: a fresh id begins the
+   * draft (genesis {@link ApplicationDraftedEvent}); an existing draft is updated in place ({@link
+   * ApplicationDraftUpdatedEvent}). A submitted application can no longer be edited as a draft.
+   */
   @CommandHandler
   @CreationPolicy(AggregateCreationPolicy.CREATE_IF_MISSING)
-  UUID handle(CreateDraftApplicationCommand command, Clock clock) {
-    if (applyApplicationId != null) {
-      return applyApplicationId;
+  void handle(PutDraftApplicationCommand command, Clock clock) {
+    if (submitted) {
+      throw new ConflictException(
+          "Cannot edit application " + applyApplicationId + " as a draft; it is already submitted");
     }
-    apply(
-        new ApplicationDraftedEvent(
-            command.draftApplicationId(), command.content(), Instant.now(clock)));
-    return applyApplicationId;
-  }
-
-  /** Updates an existing draft application in place. */
-  @CommandHandler
-  void handle(UpdateDraftApplicationCommand command, Clock clock) {
-    apply(
-        new ApplicationDraftUpdatedEvent(
-            command.draftApplicationId(), command.content(), Instant.now(clock)));
+    if (applyApplicationId == null) {
+      apply(new ApplicationDraftedEvent(command.applyApplicationId(), Instant.now(clock)));
+    } else {
+      apply(new ApplicationDraftUpdatedEvent(command.applyApplicationId(), Instant.now(clock)));
+    }
   }
 
   @EventSourcingHandler
@@ -134,7 +131,7 @@ public class ApplicationAggregate {
 
   @EventSourcingHandler
   void on(ApplicationDraftedEvent event) {
-    applyApplicationId = event.draftApplicationId();
+    applyApplicationId = event.applyApplicationId();
   }
 
   protected ApplicationAggregate() {

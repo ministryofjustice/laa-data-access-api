@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import java.util.Map;
 import java.util.UUID;
 import org.axonframework.test.aggregate.AggregateTestFixture;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,13 +22,15 @@ class ApplicationAggregateTest {
     fixture.registerInjectableResource(clock);
   }
 
+  // ---- Submit ----------------------------------------------------------------------------------
+
   @Test
-  void givenNoApplication_whenCreated_thenPublishesCreatedEventAndReturnsApplyApplicationId() {
+  void givenDraftedApplication_whenSubmitted_thenTransitionsWithApplicationSubmittedEvent() {
     UUID applyApplicationId = UUID.randomUUID();
-    CreateApplicationCommand command = submitCommand(applyApplicationId);
+    SubmitApplicationCommand command = submitCommand(applyApplicationId);
 
     fixture
-        .givenNoPriorActivity()
+        .given(draftedEvent(applyApplicationId))
         .when(command)
         .expectResultMessagePayload(applyApplicationId)
         .expectEventsMatching(
@@ -50,55 +51,99 @@ class ApplicationAggregateTest {
 
               @Override
               public void describeTo(org.hamcrest.Description description) {
-                description.appendText("ApplicationSubmittedEvent with expected fields");
+                description.appendText("ApplicationSubmittedEvent transitioning from a draft");
               }
             });
   }
 
   @Test
-  void
-      givenApplicationAlreadyCreated_whenCommandRedelivered_thenReturnsIdempotentlyWithNoNewEvent() {
+  void givenNoApplication_whenSubmitted_thenRejectsWithAggregateNotFound() {
     UUID applyApplicationId = UUID.randomUUID();
 
     fixture
-        .given(createdEvent(applyApplicationId))
+        .givenNoPriorActivity()
+        .when(submitCommand(applyApplicationId))
+        .expectException(org.axonframework.modelling.command.AggregateNotFoundException.class);
+  }
+
+  @Test
+  void givenSubmittedApplication_whenSubmittedAgain_thenIdempotentWithNoNewEvent() {
+    UUID applyApplicationId = UUID.randomUUID();
+
+    fixture
+        .given(draftedEvent(applyApplicationId), submittedEvent(applyApplicationId))
         .when(submitCommand(applyApplicationId))
         .expectResultMessagePayload(applyApplicationId)
         .expectNoEvents();
   }
 
+  // ---- Draft (PUT create-or-overwrite) ---------------------------------------------------------
+
   @Test
-  void givenDraftedApplication_whenSubmitted_thenTransitionsWithApplicationSubmittedEvent() {
-    UUID applyApplicationId = UUID.randomUUID();
+  void givenNoActivity_whenPutDraft_thenPublishesApplicationDraftedEvent() {
+    UUID applicationId = UUID.randomUUID();
 
     fixture
-        .given(
-            new ApplicationDraftedEvent(
-                applyApplicationId,
-                Map.of("status", "DRAFT"),
-                Instant.parse("2026-07-15T08:00:00Z")))
-        .when(submitCommand(applyApplicationId))
-        .expectResultMessagePayload(applyApplicationId)
+        .givenNoPriorActivity()
+        .when(new PutDraftApplicationCommand(applicationId))
         .expectEventsMatching(
             new org.hamcrest.BaseMatcher<>() {
               @Override
               public boolean matches(Object o) {
                 var events = (java.util.List<?>) o;
                 assertThat(events).hasSize(1);
-                ApplicationSubmittedEvent event =
-                    (ApplicationSubmittedEvent)
+                ApplicationDraftedEvent event =
+                    (ApplicationDraftedEvent)
                         ((org.axonframework.messaging.Message<?>) events.getFirst()).getPayload();
-                assertThat(event.applyApplicationId()).isEqualTo(applyApplicationId);
-                assertThat(event.status()).isEqualTo("APPLICATION_SUBMITTED");
+                assertThat(event.applyApplicationId()).isEqualTo(applicationId);
                 return true;
               }
 
               @Override
               public void describeTo(org.hamcrest.Description description) {
-                description.appendText("ApplicationSubmittedEvent transitioning from a draft");
+                description.appendText("ApplicationDraftedEvent (genesis) with expected fields");
               }
             });
   }
+
+  @Test
+  void givenExistingDraft_whenPutDraft_thenPublishesApplicationDraftUpdatedEvent() {
+    UUID applicationId = UUID.randomUUID();
+
+    fixture
+        .given(draftedEvent(applicationId))
+        .when(new PutDraftApplicationCommand(applicationId))
+        .expectEventsMatching(
+            new org.hamcrest.BaseMatcher<>() {
+              @Override
+              public boolean matches(Object o) {
+                var events = (java.util.List<?>) o;
+                assertThat(events).hasSize(1);
+                ApplicationDraftUpdatedEvent event =
+                    (ApplicationDraftUpdatedEvent)
+                        ((org.axonframework.messaging.Message<?>) events.getFirst()).getPayload();
+                assertThat(event.applyApplicationId()).isEqualTo(applicationId);
+                return true;
+              }
+
+              @Override
+              public void describeTo(org.hamcrest.Description description) {
+                description.appendText("ApplicationDraftUpdatedEvent with expected fields");
+              }
+            });
+  }
+
+  @Test
+  void givenSubmittedApplication_whenPutDraft_thenRejectsWithConflict() {
+    UUID applicationId = UUID.randomUUID();
+
+    fixture
+        .given(draftedEvent(applicationId), submittedEvent(applicationId))
+        .when(new PutDraftApplicationCommand(applicationId))
+        .expectException(uk.gov.justice.laa.dstew.access.exception.ConflictException.class);
+  }
+
+  // ---- Prior authority (post-submission member) ------------------------------------------------
 
   @Test
   void
@@ -107,7 +152,7 @@ class ApplicationAggregateTest {
     UUID priorAuthorityId = UUID.randomUUID();
 
     fixture
-        .given(createdEvent(applyApplicationId))
+        .given(draftedEvent(applyApplicationId), submittedEvent(applyApplicationId))
         .when(new CreatePriorAuthorityDraftCommand(applyApplicationId, priorAuthorityId))
         .expectEventsMatching(
             new org.hamcrest.BaseMatcher<>() {
@@ -135,11 +180,7 @@ class ApplicationAggregateTest {
     UUID applyApplicationId = UUID.randomUUID();
 
     fixture
-        .given(
-            new ApplicationDraftedEvent(
-                applyApplicationId,
-                Map.of("status", "DRAFT"),
-                Instant.parse("2026-07-15T08:00:00Z")))
+        .given(draftedEvent(applyApplicationId))
         .when(new CreatePriorAuthorityDraftCommand(applyApplicationId, UUID.randomUUID()))
         .expectException(uk.gov.justice.laa.dstew.access.exception.ConflictException.class);
   }
@@ -161,7 +202,8 @@ class ApplicationAggregateTest {
 
     fixture
         .given(
-            createdEvent(applyApplicationId),
+            draftedEvent(applyApplicationId),
+            submittedEvent(applyApplicationId),
             new PriorAuthorityDraftedEvent(
                 applyApplicationId, priorAuthorityId, Instant.parse("2026-07-15T08:00:00Z")))
         .when(new UpdatePriorAuthorityDraftCommand(applyApplicationId, priorAuthorityId))
@@ -191,7 +233,7 @@ class ApplicationAggregateTest {
     UUID applyApplicationId = UUID.randomUUID();
 
     fixture
-        .given(createdEvent(applyApplicationId))
+        .given(draftedEvent(applyApplicationId), submittedEvent(applyApplicationId))
         .when(new UpdatePriorAuthorityDraftCommand(applyApplicationId, UUID.randomUUID()))
         .expectException(
             org.axonframework.modelling.command.AggregateEntityNotFoundException.class);
@@ -204,7 +246,8 @@ class ApplicationAggregateTest {
 
     fixture
         .given(
-            createdEvent(applyApplicationId),
+            draftedEvent(applyApplicationId),
+            submittedEvent(applyApplicationId),
             new PriorAuthorityDraftedEvent(
                 applyApplicationId, priorAuthorityId, Instant.parse("2026-07-15T08:00:00Z")))
         .when(new SubmitPriorAuthorityCommand(applyApplicationId, priorAuthorityId))
@@ -236,7 +279,8 @@ class ApplicationAggregateTest {
 
     fixture
         .given(
-            createdEvent(applyApplicationId),
+            draftedEvent(applyApplicationId),
+            submittedEvent(applyApplicationId),
             new PriorAuthorityDraftedEvent(
                 applyApplicationId, priorAuthorityId, Instant.parse("2026-07-15T08:00:00Z")),
             new PriorAuthoritySubmittedEvent(
@@ -245,96 +289,10 @@ class ApplicationAggregateTest {
         .expectException(uk.gov.justice.laa.dstew.access.exception.ConflictException.class);
   }
 
-  @Test
-  void givenNoActivity_whenCreateDraftApplication_thenPublishesApplicationDraftedEvent() {
-    UUID draftApplicationId = UUID.randomUUID();
-    Map<String, Object> content = Map.of("status", "DRAFT", "laaReference", "LAA-DRAFT-1");
+  // ---- helpers ---------------------------------------------------------------------------------
 
-    fixture
-        .givenNoPriorActivity()
-        .when(new CreateDraftApplicationCommand(draftApplicationId, content))
-        .expectResultMessagePayload(draftApplicationId)
-        .expectEventsMatching(
-            new org.hamcrest.BaseMatcher<>() {
-              @Override
-              public boolean matches(Object o) {
-                var events = (java.util.List<?>) o;
-                assertThat(events).hasSize(1);
-                ApplicationDraftedEvent event =
-                    (ApplicationDraftedEvent)
-                        ((org.axonframework.messaging.Message<?>) events.getFirst()).getPayload();
-                assertThat(event.draftApplicationId()).isEqualTo(draftApplicationId);
-                assertThat(event.content()).isEqualTo(content);
-                return true;
-              }
-
-              @Override
-              public void describeTo(org.hamcrest.Description description) {
-                description.appendText("ApplicationDraftedEvent with expected fields");
-              }
-            });
-  }
-
-  @Test
-  void givenDraftApplication_whenCreateRedelivered_thenIdempotentWithNoNewEvent() {
-    UUID draftApplicationId = UUID.randomUUID();
-
-    fixture
-        .given(
-            new ApplicationDraftedEvent(
-                draftApplicationId,
-                Map.of("status", "DRAFT"),
-                Instant.parse("2026-07-15T08:00:00Z")))
-        .when(new CreateDraftApplicationCommand(draftApplicationId, Map.of("status", "DRAFT")))
-        .expectResultMessagePayload(draftApplicationId)
-        .expectNoEvents();
-  }
-
-  @Test
-  void givenDraftApplication_whenUpdated_thenPublishesApplicationDraftUpdatedEvent() {
-    UUID draftApplicationId = UUID.randomUUID();
-    Map<String, Object> updatedContent = Map.of("status", "DRAFT", "laaReference", "LAA-DRAFT-2");
-
-    fixture
-        .given(
-            new ApplicationDraftedEvent(
-                draftApplicationId,
-                Map.of("status", "DRAFT"),
-                Instant.parse("2026-07-15T08:00:00Z")))
-        .when(new UpdateDraftApplicationCommand(draftApplicationId, updatedContent))
-        .expectEventsMatching(
-            new org.hamcrest.BaseMatcher<>() {
-              @Override
-              public boolean matches(Object o) {
-                var events = (java.util.List<?>) o;
-                assertThat(events).hasSize(1);
-                ApplicationDraftUpdatedEvent event =
-                    (ApplicationDraftUpdatedEvent)
-                        ((org.axonframework.messaging.Message<?>) events.getFirst()).getPayload();
-                assertThat(event.draftApplicationId()).isEqualTo(draftApplicationId);
-                assertThat(event.content()).isEqualTo(updatedContent);
-                return true;
-              }
-
-              @Override
-              public void describeTo(org.hamcrest.Description description) {
-                description.appendText("ApplicationDraftUpdatedEvent with expected fields");
-              }
-            });
-  }
-
-  @Test
-  void givenNoDraftApplication_whenUpdated_thenRejectsWithAggregateNotFound() {
-    UUID draftApplicationId = UUID.randomUUID();
-
-    fixture
-        .givenNoPriorActivity()
-        .when(new UpdateDraftApplicationCommand(draftApplicationId, Map.of("status", "DRAFT")))
-        .expectException(org.axonframework.modelling.command.AggregateNotFoundException.class);
-  }
-
-  private CreateApplicationCommand submitCommand(UUID applyApplicationId) {
-    return new CreateApplicationCommand(
+  private SubmitApplicationCommand submitCommand(UUID applyApplicationId) {
+    return new SubmitApplicationCommand(
         applyApplicationId,
         UUID.randomUUID(),
         "APPLICATION_SUBMITTED",
@@ -348,7 +306,11 @@ class ApplicationAggregateTest {
         null);
   }
 
-  private ApplicationSubmittedEvent createdEvent(UUID applyApplicationId) {
+  private ApplicationDraftedEvent draftedEvent(UUID applyApplicationId) {
+    return new ApplicationDraftedEvent(applyApplicationId, Instant.parse("2026-07-14T09:00:00Z"));
+  }
+
+  private ApplicationSubmittedEvent submittedEvent(UUID applyApplicationId) {
     return new ApplicationSubmittedEvent(
         applyApplicationId,
         UUID.randomUUID(),

@@ -3,7 +3,7 @@ package uk.gov.justice.laa.dstew.access.query.draft;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Instant;
-import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,7 +12,6 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.annotation.DirtiesContext;
 import uk.gov.justice.laa.dstew.access.AxonInMemoryConfig;
 import uk.gov.justice.laa.dstew.access.DataAccessServiceAxonApplication;
-import uk.gov.justice.laa.dstew.access.command.application.ApplicationIndividual;
 
 @SpringBootTest(
     classes = DataAccessServiceAxonApplication.class,
@@ -33,36 +32,24 @@ class DraftStoreInMemoryTest {
   @Test
   void givenStoredDraft_whenUpdatedInPlace_thenPersistsMutation() {
     UUID applyApplicationId = UUID.randomUUID();
-    UUID eventId = UUID.randomUUID();
     DraftRecord draft =
         DraftRecord.builder()
-            .eventId(eventId)
             .applyApplicationId(applyApplicationId)
-            .draftType(DraftType.CIVIL_APPLICATION)
-            .data(
-                new DraftData(
-                    null,
-                    List.of(
-                        new ApplicationIndividual(
-                            UUID.randomUUID(), "Ada", "Lovelace", null, null, "CLIENT")),
-                    List.of()))
+            .content(Map.of("laaReference", "LAA-DRAFT-1"))
             .createdAt(Instant.parse("2026-07-16T09:00:00Z"))
+            .updatedAt(Instant.parse("2026-07-16T09:00:00Z"))
             .build();
     draftRepository.saveAndFlush(draft);
 
-    DraftRecord stored = draftRepository.findById(eventId).orElseThrow();
-    stored.setData(
-        new DraftData(
-            null,
-            List.of(
-                new ApplicationIndividual(
-                    UUID.randomUUID(), "Grace", "Hopper", null, null, "CLIENT")),
-            List.of()));
+    DraftRecord stored = draftRepository.findById(applyApplicationId).orElseThrow();
+    stored.setContent(Map.of("laaReference", "LAA-DRAFT-2"));
+    stored.setUpdatedAt(Instant.parse("2026-07-16T10:00:00Z"));
     draftRepository.saveAndFlush(stored);
 
-    DraftRecord reloaded = draftRepository.findById(eventId).orElseThrow();
-    assertThat(reloaded.getData().individuals()).hasSize(1);
-    assertThat(reloaded.getData().individuals().get(0).firstName()).isEqualTo("Grace");
+    DraftRecord reloaded = draftRepository.findById(applyApplicationId).orElseThrow();
+    assertThat(reloaded.getContent()).containsEntry("laaReference", "LAA-DRAFT-2");
+    assertThat(reloaded.getCreatedAt()).isEqualTo(Instant.parse("2026-07-16T09:00:00Z"));
+    assertThat(reloaded.getUpdatedAt()).isEqualTo(Instant.parse("2026-07-16T10:00:00Z"));
     assertThat(draftRepository.count()).isEqualTo(1);
   }
 }

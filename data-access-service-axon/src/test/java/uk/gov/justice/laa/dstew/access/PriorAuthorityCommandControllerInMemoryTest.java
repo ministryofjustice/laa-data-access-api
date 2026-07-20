@@ -139,24 +139,28 @@ class PriorAuthorityCommandControllerInMemoryTest {
   }
 
   private UUID createDraftApplication() {
-    URI location =
-        restTemplate
-            .postForEntity(
-                "/api/v0/draft-applications",
-                new HttpEntity<>(Map.of("status", "DRAFT"), headers()),
-                Void.class)
-            .getHeaders()
-            .getLocation();
-    String path = location.getPath();
-    return UUID.fromString(path.substring(path.lastIndexOf('/') + 1));
+    UUID applicationId = UUID.randomUUID();
+    restTemplate.exchange(
+        "/api/v0/applications/" + applicationId,
+        HttpMethod.PUT,
+        new HttpEntity<>(Map.of("status", "DRAFT"), headers()),
+        Void.class);
+    return applicationId;
   }
 
   private UUID createApplication() {
     UUID applicationId = UUID.randomUUID();
     ApplicationCreateRequest request =
         validCreateApplicationRequest(applicationId, UUID.randomUUID());
+    restTemplate.exchange(
+        "/api/v0/applications/" + applicationId,
+        HttpMethod.PUT,
+        new HttpEntity<>(request, headers()),
+        Void.class);
     restTemplate.postForEntity(
-        "/api/v0/applications", new HttpEntity<>(request, headers()), Void.class);
+        "/api/v0/applications/" + applicationId + "/submit",
+        new HttpEntity<>(headers()),
+        Void.class);
     return applicationId;
   }
 

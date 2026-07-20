@@ -15,6 +15,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.annotation.DirtiesContext;
@@ -46,20 +47,17 @@ class CreateApplicationInMemoryTest {
   @Autowired private EventProcessingConfiguration eventProcessingConfiguration;
 
   @Test
-  void givenValidRequest_whenPostApplication_thenReturns201AndProjectsState() {
+  void givenStoredDraft_whenSubmitted_thenReturns204AndProjectsState() {
     UUID applyApplicationId = UUID.randomUUID();
     UUID applyProceedingId = UUID.randomUUID();
     ApplicationCreateRequest request =
         validCreateApplicationRequest(applyApplicationId, applyProceedingId);
 
-    ResponseEntity<Void> response =
-        restTemplate.postForEntity(
-            "/api/v0/applications", new HttpEntity<>(request, headers()), Void.class);
+    ResponseEntity<Void> putResponse = putDraft(applyApplicationId, request);
+    assertThat(putResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
 
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-    assertThat(response.getHeaders().getLocation()).isNotNull();
-    assertThat(response.getHeaders().getLocation().getPath())
-        .isEqualTo("/api/v0/applications/" + applyApplicationId);
+    ResponseEntity<Void> submitResponse = submit(applyApplicationId);
+    assertThat(submitResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
 
     // Projection is synchronous — immediately available
     Optional<ApplicationReadModel> projected =
@@ -79,33 +77,43 @@ class CreateApplicationInMemoryTest {
   }
 
   @Test
-  void givenDuplicateApplyApplicationId_whenPostAgain_thenReturnsIdempotent201() {
-    // With CREATE_IF_MISSING, sequential re-delivery is idempotent — both calls return 201.
-    // A 400 is only raised for truly concurrent collisions (AggregateStreamCreationException).
+  void givenSubmittedApplication_whenSubmittedAgain_thenIdempotent204() {
     UUID applyApplicationId = UUID.randomUUID();
     ApplicationCreateRequest request =
         validCreateApplicationRequest(applyApplicationId, UUID.randomUUID());
-    HttpEntity<ApplicationCreateRequest> entity = new HttpEntity<>(request, headers());
 
-    ResponseEntity<String> firstResponse =
-        restTemplate.postForEntity("/api/v0/applications", entity, String.class);
-    ResponseEntity<String> duplicateResponse =
-        restTemplate.postForEntity("/api/v0/applications", entity, String.class);
+    putDraft(applyApplicationId, request);
+    ResponseEntity<Void> first = submit(applyApplicationId);
+    ResponseEntity<Void> second = submit(applyApplicationId);
 
-    assertThat(firstResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-    assertThat(duplicateResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-    // Only one event was stored — no second event on idempotent re-delivery
+    assertThat(first.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    assertThat(second.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
     assertThat(applicationReadRepository.findById(applyApplicationId)).isPresent();
   }
 
   @Test
-  void givenCreatedApplication_whenGet_thenRebuildsRichDetailFromSubmissionsPayload() {
+  void givenNoDraft_whenSubmitted_thenReturns404() {
+    UUID unknownId = UUID.randomUUID();
+
+    ResponseEntity<String> response =
+        restTemplate.exchange(
+            "/api/v0/applications/" + unknownId + "/submit",
+            HttpMethod.POST,
+            new HttpEntity<>(null, headers()),
+            String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    assertThat(response.getBody()).contains("No draft application found with ID: " + unknownId);
+  }
+
+  @Test
+  void givenSubmittedApplication_whenGet_thenRebuildsRichDetailFromSubmissionsPayload() {
     UUID applyApplicationId = UUID.randomUUID();
     UUID applyProceedingId = UUID.randomUUID();
     ApplicationCreateRequest request =
         validCreateApplicationRequest(applyApplicationId, applyProceedingId);
-    restTemplate.postForEntity(
-        "/api/v0/applications", new HttpEntity<>(request, headers()), Void.class);
+    putDraft(applyApplicationId, request);
+    submit(applyApplicationId);
 
     ResponseEntity<ApplicationResponse> response =
         restTemplate.getForEntity(
@@ -116,7 +124,6 @@ class CreateApplicationInMemoryTest {
     assertThat(body).isNotNull();
     assertThat(body.getApplicationId()).isEqualTo(applyApplicationId);
     assertThat(body.getLaaReference()).isEqualTo("LAA-123");
-    // Metadata comes from the read model; rich content is rebuilt from the submissions payload.
     assertThat(body.getProvider().getOfficeCode()).isEqualTo("1A001B");
     assertThat(body.getProceedings()).isNotEmpty();
     assertThat(body.getProceedings().get(0).getProceedingDescription()).isEqualTo("Care order");
@@ -131,6 +138,22 @@ class CreateApplicationInMemoryTest {
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     assertThat(response.getBody()).contains("No application found with ID: " + unknownId);
+  }
+
+  private ResponseEntity<Void> putDraft(UUID id, ApplicationCreateRequest request) {
+    return restTemplate.exchange(
+        "/api/v0/applications/" + id,
+        HttpMethod.PUT,
+        new HttpEntity<>(request, headers()),
+        Void.class);
+  }
+
+  private ResponseEntity<Void> submit(UUID id) {
+    return restTemplate.exchange(
+        "/api/v0/applications/" + id + "/submit",
+        HttpMethod.POST,
+        new HttpEntity<>(null, headers()),
+        Void.class);
   }
 
   private HttpHeaders headers() {

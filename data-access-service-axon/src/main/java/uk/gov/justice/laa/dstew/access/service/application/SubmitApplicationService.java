@@ -5,50 +5,58 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.axonframework.commandhandling.gateway.CommandGateway;
-import org.axonframework.modelling.command.AggregateStreamCreationException;
-import org.axonframework.modelling.command.ConcurrencyException;
 import org.springframework.stereotype.Service;
+import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationContentParser;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ParsedAppContentDetails;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationIndividual;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationProceeding;
-import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationCommand;
+import uk.gov.justice.laa.dstew.access.command.application.SubmitApplicationCommand;
+import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.IndividualCreateRequest;
+import uk.gov.justice.laa.dstew.access.query.draft.DraftRecord;
+import uk.gov.justice.laa.dstew.access.query.draft.DraftRepository;
 import uk.gov.justice.laa.dstew.access.query.submission.SubmissionData;
 import uk.gov.justice.laa.dstew.access.query.submission.SubmissionRecord;
 import uk.gov.justice.laa.dstew.access.query.submission.SubmissionRepository;
 import uk.gov.justice.laa.dstew.access.query.submission.SubmissionType;
-import uk.gov.justice.laa.dstew.access.validation.DuplicateApplyApplicationIdException;
 import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
 
 /**
- * Application-layer entry point for submitting an application.
+ * Application-layer entry point for submitting a previously created draft application.
  *
- * <p>Keeps personal data out of the event stream: it validates and parses the raw content, persists
- * the submitted body to the deletable {@code submissions} table under a minted {@code contentId},
- * then dispatches a PII-free {@link CreateApplicationCommand} carrying only that pointer and
- * non-PII structural metadata. The aggregate therefore never sees personal data. If the command is
- * rejected as a duplicate, the orphaned body row is removed.
+ * <p>Submit takes no body: it seals the draft body already stored in the deletable {@code drafts}
+ * table. It reads that raw body, validates and parses it, persists the sealed payload to the
+ * immutable {@code submissions} table under a minted {@code contentId}, then dispatches a PII-free
+ * {@link SubmitApplicationCommand} carrying only that pointer and non-PII structural metadata. The
+ * aggregate transitions {@code DRAFT -> SUBMITTED} and never sees personal data. If the command is
+ * rejected, the orphaned submission row is removed.
  */
 @Service
 public class SubmitApplicationService {
 
+  private final DraftRepository draftRepository;
+  private final ObjectMapper objectMapper;
   private final ApplicationContentParser parser;
   private final JsonSchemaValidator jsonSchemaValidator;
   private final SubmissionRepository submissionRepository;
   private final CommandGateway commandGateway;
   private final Clock clock;
 
-  /** Wires the parsing, validation, payload store, command gateway and clock collaborators. */
+  /** Wires the draft store, mapper, parsing, validation, payload store, gateway and clock. */
   public SubmitApplicationService(
+      DraftRepository draftRepository,
+      ObjectMapper objectMapper,
       ApplicationContentParser parser,
       JsonSchemaValidator jsonSchemaValidator,
       SubmissionRepository submissionRepository,
       CommandGateway commandGateway,
       Clock clock) {
+    this.draftRepository = draftRepository;
+    this.objectMapper = objectMapper;
     this.parser = parser;
     this.jsonSchemaValidator = jsonSchemaValidator;
     this.submissionRepository = submissionRepository;
@@ -57,24 +65,34 @@ public class SubmitApplicationService {
   }
 
   /**
-   * Validates, persists the body and submits the application, returning the Apply Application id.
+   * Seals and submits the stored draft for the given application id.
    *
-   * @param request the create request whose content holds the personal data
-   * @param schemaVersion the JSON schema version to validate the content against
+   * @param applicationId the application whose draft is being submitted
+   * @param schemaVersion the JSON schema version to validate the draft content against
    * @return the Apply Application identifier of the submitted application
    */
-  public UUID submit(ApplicationCreateRequest request, int schemaVersion) {
+  public UUID submit(UUID applicationId, int schemaVersion) {
+    DraftRecord draft =
+        draftRepository
+            .findById(applicationId)
+            .orElseThrow(
+                () ->
+                    new ResourceNotFoundException(
+                        "No draft application found with ID: " + applicationId));
+
+    ApplicationCreateRequest request =
+        objectMapper.convertValue(draft.getContent(), ApplicationCreateRequest.class);
+
     jsonSchemaValidator.validate(
         request.getApplicationContent(), schemaName(request), schemaVersion);
     ParsedAppContentDetails parsed = parser.parse(request.getApplicationContent());
 
-    UUID applyApplicationId = parsed.applyApplicationId();
     UUID contentId = UUID.randomUUID();
 
     submissionRepository.save(
         SubmissionRecord.builder()
             .contentId(contentId)
-            .applyApplicationId(applyApplicationId)
+            .applyApplicationId(applicationId)
             .submissionType(SubmissionType.CIVIL_APPLICATION)
             .data(
                 new SubmissionData(
@@ -84,9 +102,9 @@ public class SubmitApplicationService {
             .createdAt(Instant.now(clock))
             .build());
 
-    CreateApplicationCommand command =
-        new CreateApplicationCommand(
-            applyApplicationId,
+    SubmitApplicationCommand command =
+        new SubmitApplicationCommand(
+            applicationId,
             contentId,
             request.getStatus() == null ? null : request.getStatus().name(),
             request.getLaaReference(),
@@ -102,12 +120,9 @@ public class SubmitApplicationService {
 
     try {
       return commandGateway.sendAndWait(command);
-    } catch (AggregateStreamCreationException | ConcurrencyException e) {
+    } catch (RuntimeException e) {
       submissionRepository.deleteById(contentId);
-      DuplicateApplyApplicationIdException ex =
-          new DuplicateApplyApplicationIdException(applyApplicationId);
-      ex.initCause(e);
-      throw ex;
+      throw e;
     }
   }
 

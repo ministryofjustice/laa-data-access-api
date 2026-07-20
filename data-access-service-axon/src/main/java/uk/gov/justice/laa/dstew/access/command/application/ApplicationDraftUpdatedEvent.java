@@ -1,9 +1,10 @@
 package uk.gov.justice.laa.dstew.access.command.application;
 
 import java.time.Instant;
-import java.util.Map;
 import java.util.UUID;
 
-/** Event recording that an existing draft application was updated in place. */
-public record ApplicationDraftUpdatedEvent(
-    UUID draftApplicationId, Map<String, Object> content, Instant occurredAt) {}
+/**
+ * Records that an existing application draft was edited. PII-free pointer — the latest draft body
+ * lives in the deletable {@code drafts} table, overwritten in place; the event carries no content.
+ */
+public record ApplicationDraftUpdatedEvent(UUID applyApplicationId, Instant occurredAt) {}

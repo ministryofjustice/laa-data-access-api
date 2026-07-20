@@ -13,6 +13,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.annotation.DirtiesContext;
@@ -20,6 +21,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.ObjectMapper;
+import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
@@ -41,21 +43,18 @@ class ApplicationPostgresIntegrationTest {
   @Autowired private ApplicationReadRepository applicationReadRepository;
 
   @Test
-  void givenValidRequest_whenPost_thenReturns201WithLocationAndProjectsState() {
+  void givenStoredDraft_whenSubmitted_thenReturns204AndProjectsState() {
     UUID applyApplicationId = UUID.randomUUID();
     UUID applyProceedingId = UUID.randomUUID();
 
-    ResponseEntity<Void> response =
-        restTemplate.postForEntity(
-            "/api/v0/applications",
-            new HttpEntity<>(
-                validCreateApplicationRequest(applyApplicationId, applyProceedingId), headers()),
-            Void.class);
+    ResponseEntity<Void> putResponse =
+        putDraft(
+            applyApplicationId,
+            validCreateApplicationRequest(applyApplicationId, applyProceedingId));
+    assertThat(putResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
 
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-    assertThat(response.getHeaders().getLocation()).isNotNull();
-    String locationPath = response.getHeaders().getLocation().getPath();
-    assertThat(locationPath).isEqualTo("/api/v0/applications/" + applyApplicationId);
+    ResponseEntity<Void> submitResponse = submit(applyApplicationId);
+    assertThat(submitResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
 
     // Projection is synchronous — available immediately
     ApplicationReadModel projected =
@@ -73,14 +72,12 @@ class ApplicationPostgresIntegrationTest {
   }
 
   @Test
-  void givenCreatedApplication_whenGet_thenReturns200WithBody() throws Exception {
+  void givenSubmittedApplication_whenGet_thenReturns200WithBody() throws Exception {
     UUID applyApplicationId = UUID.randomUUID();
     UUID applyProceedingId = UUID.randomUUID();
-    restTemplate.postForEntity(
-        "/api/v0/applications",
-        new HttpEntity<>(
-            validCreateApplicationRequest(applyApplicationId, applyProceedingId), headers()),
-        Void.class);
+    putDraft(
+        applyApplicationId, validCreateApplicationRequest(applyApplicationId, applyProceedingId));
+    submit(applyApplicationId);
 
     ResponseEntity<String> response =
         restTemplate.getForEntity("/api/v0/applications/" + applyApplicationId, String.class);
@@ -107,20 +104,33 @@ class ApplicationPostgresIntegrationTest {
   }
 
   @Test
-  void givenDuplicateApplyApplicationId_whenPostAgain_thenReturnsIdempotent201() {
-    // Sequential re-delivery is idempotent with CREATE_IF_MISSING — both calls return 201.
-    UUID applyApplicationId = UUID.randomUUID();
-    HttpEntity<?> request =
-        new HttpEntity<>(
-            validCreateApplicationRequest(applyApplicationId, UUID.randomUUID()), headers());
+  void givenNoDraft_whenSubmitted_thenReturnsNotFound() {
+    UUID unknownId = UUID.randomUUID();
 
-    ResponseEntity<String> firstResponse =
-        restTemplate.postForEntity("/api/v0/applications", request, String.class);
-    ResponseEntity<String> duplicateResponse =
-        restTemplate.postForEntity("/api/v0/applications", request, String.class);
+    ResponseEntity<String> response =
+        restTemplate.exchange(
+            "/api/v0/applications/" + unknownId + "/submit",
+            HttpMethod.POST,
+            new HttpEntity<>(null, headers()),
+            String.class);
 
-    assertThat(firstResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-    assertThat(duplicateResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+  }
+
+  private ResponseEntity<Void> putDraft(UUID id, ApplicationCreateRequest request) {
+    return restTemplate.exchange(
+        "/api/v0/applications/" + id,
+        HttpMethod.PUT,
+        new HttpEntity<>(request, headers()),
+        Void.class);
+  }
+
+  private ResponseEntity<Void> submit(UUID id) {
+    return restTemplate.exchange(
+        "/api/v0/applications/" + id + "/submit",
+        HttpMethod.POST,
+        new HttpEntity<>(null, headers()),
+        Void.class);
   }
 
   private HttpHeaders headers() {

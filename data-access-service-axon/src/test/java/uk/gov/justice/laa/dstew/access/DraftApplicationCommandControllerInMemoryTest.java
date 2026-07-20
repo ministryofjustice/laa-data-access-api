@@ -1,8 +1,8 @@
 package uk.gov.justice.laa.dstew.access;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
 
-import java.net.URI;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -17,6 +17,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.annotation.DirtiesContext;
+import uk.gov.justice.laa.dstew.access.query.draft.DraftRepository;
 
 @SpringBootTest(
     classes = DataAccessServiceAxonApplication.class,
@@ -33,57 +34,65 @@ import org.springframework.test.annotation.DirtiesContext;
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class DraftApplicationCommandControllerInMemoryTest {
 
-  private static final String DRAFT_APPLICATIONS = "/api/v0/draft-applications";
+  private static final String APPLICATIONS = "/api/v0/applications";
 
   @Autowired private TestRestTemplate restTemplate;
 
-  @Test
-  void givenValidBody_whenCreateDraftApplication_thenReturns201WithLocation() {
-    ResponseEntity<Void> response =
-        restTemplate.postForEntity(
-            DRAFT_APPLICATIONS,
-            new HttpEntity<>(Map.of("status", "DRAFT", "laaReference", "LAA-DRAFT-1"), headers()),
-            Void.class);
-
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-    assertThat(response.getHeaders().getLocation()).isNotNull();
-    assertThat(response.getHeaders().getLocation().getPath()).startsWith(DRAFT_APPLICATIONS + "/");
-  }
+  @Autowired private DraftRepository draftRepository;
 
   @Test
-  void givenExistingDraftApplication_whenUpdated_thenReturns204() {
-    URI created =
-        restTemplate
-            .postForEntity(
-                DRAFT_APPLICATIONS,
-                new HttpEntity<>(Map.of("status", "DRAFT"), headers()),
-                Void.class)
-            .getHeaders()
-            .getLocation();
+  void givenNewId_whenPutDraftApplication_thenReturns204AndStoresBody() {
+    UUID id = UUID.randomUUID();
 
     ResponseEntity<Void> response =
-        restTemplate.exchange(
-            created,
-            HttpMethod.PUT,
-            new HttpEntity<>(Map.of("status", "DRAFT", "laaReference", "LAA-DRAFT-2"), headers()),
-            Void.class);
+        putDraft(id, Map.of("status", "DRAFT", "laaReference", "LAA-DRAFT-1"));
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    assertThat(draftRepository.findById(id)).isPresent();
+    assertThat(draftRepository.findById(id).get().getContent())
+        .containsEntry("laaReference", "LAA-DRAFT-1");
   }
 
   @Test
-  void givenUnknownDraftApplication_whenUpdated_thenReturns404() {
-    UUID unknownId = UUID.randomUUID();
+  void givenExistingDraft_whenUpdated_thenReturns204AndOverwritesBody() {
+    UUID id = UUID.randomUUID();
+    putDraft(id, Map.of("status", "DRAFT", "laaReference", "LAA-DRAFT-1"));
+
+    ResponseEntity<Void> response =
+        putDraft(id, Map.of("status", "DRAFT", "laaReference", "LAA-DRAFT-2"));
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    assertThat(draftRepository.findById(id).get().getContent())
+        .containsEntry("laaReference", "LAA-DRAFT-2");
+  }
+
+  @Test
+  void givenSubmittedApplication_whenPutDraftAgain_thenReturns409() {
+    UUID id = UUID.randomUUID();
+    restTemplate.exchange(
+        APPLICATIONS + "/" + id,
+        HttpMethod.PUT,
+        new HttpEntity<>(validCreateApplicationRequest(id, UUID.randomUUID()), headers()),
+        Void.class);
+    restTemplate.exchange(
+        APPLICATIONS + "/" + id + "/submit",
+        HttpMethod.POST,
+        new HttpEntity<>(null, headers()),
+        Void.class);
 
     ResponseEntity<String> response =
         restTemplate.exchange(
-            DRAFT_APPLICATIONS + "/" + unknownId,
+            APPLICATIONS + "/" + id,
             HttpMethod.PUT,
             new HttpEntity<>(Map.of("status", "DRAFT"), headers()),
             String.class);
 
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-    assertThat(response.getBody()).contains("No draft application found with ID: " + unknownId);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+  }
+
+  private ResponseEntity<Void> putDraft(UUID id, Map<String, Object> body) {
+    return restTemplate.exchange(
+        APPLICATIONS + "/" + id, HttpMethod.PUT, new HttpEntity<>(body, headers()), Void.class);
   }
 
   private HttpHeaders headers() {
