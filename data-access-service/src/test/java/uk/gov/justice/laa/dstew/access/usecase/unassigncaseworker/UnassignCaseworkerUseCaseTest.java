@@ -24,6 +24,7 @@ import uk.gov.justice.laa.dstew.access.mapper.MapperUtil;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
 import uk.gov.justice.laa.dstew.access.service.domainevents.SaveDomainEventService;
+import uk.gov.justice.laa.dstew.access.usecase.shared.infrastructure.ApplicationGateway;
 import uk.gov.justice.laa.dstew.access.usecase.unassigncaseworker.infrastructure.UnassignCaseworkerApplicationGateway;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.unassigncaseworker.UnassignCaseworkerCommandGenerator;
@@ -31,7 +32,8 @@ import uk.gov.justice.laa.dstew.access.utils.generator.unassigncaseworker.Unassi
 @ExtendWith(MockitoExtension.class)
 class UnassignCaseworkerUseCaseTest {
 
-  @Mock private UnassignCaseworkerApplicationGateway applicationGateway;
+  @Mock private UnassignCaseworkerApplicationGateway unassignCaseworkerApplicationGateway;
+  @Mock private ApplicationGateway applicationGateway;
   @Mock private DomainEventRepository domainEventRepository;
   @Mock private ServiceNameContext serviceNameContext;
 
@@ -44,7 +46,9 @@ class UnassignCaseworkerUseCaseTest {
     SaveDomainEventService saveDomainEventService =
         new SaveDomainEventService(
             domainEventRepository, MapperUtil.getObjectMapper(), serviceNameContext);
-    useCase = new UnassignCaseworkerUseCase(applicationGateway, saveDomainEventService);
+    useCase =
+        new UnassignCaseworkerUseCase(
+            applicationGateway, unassignCaseworkerApplicationGateway, saveDomainEventService);
   }
 
   @Test
@@ -57,11 +61,11 @@ class UnassignCaseworkerUseCaseTest {
             builder -> builder.applicationId(applicationId).eventDescription("Unassigned"));
     ApplicationDomain domain =
         ApplicationDomain.builder().id(applicationId).caseworkerId(caseworkerId).build();
-    when(applicationGateway.findApplicationById(applicationId)).thenReturn(Optional.of(domain));
+    when(applicationGateway.findByApplicationId(applicationId)).thenReturn(Optional.of(domain));
 
     useCase.execute(command);
 
-    verify(applicationGateway, times(1)).saveApplication(domain);
+    verify(unassignCaseworkerApplicationGateway, times(1)).saveApplication(domain);
 
     ArgumentCaptor<DomainEventEntity> eventCaptor =
         ArgumentCaptor.forClass(DomainEventEntity.class);
@@ -83,11 +87,11 @@ class UnassignCaseworkerUseCaseTest {
             builder -> builder.applicationId(applicationId).eventDescription(null));
     ApplicationDomain domain =
         ApplicationDomain.builder().id(applicationId).caseworkerId(caseworkerId).build();
-    when(applicationGateway.findApplicationById(applicationId)).thenReturn(Optional.of(domain));
+    when(applicationGateway.findByApplicationId(applicationId)).thenReturn(Optional.of(domain));
 
     useCase.execute(command);
 
-    verify(applicationGateway, times(1)).saveApplication(domain);
+    verify(unassignCaseworkerApplicationGateway, times(1)).saveApplication(domain);
 
     ArgumentCaptor<DomainEventEntity> eventCaptor =
         ArgumentCaptor.forClass(DomainEventEntity.class);
@@ -108,11 +112,11 @@ class UnassignCaseworkerUseCaseTest {
             builder -> builder.applicationId(applicationId).eventDescription(""));
     ApplicationDomain domain =
         ApplicationDomain.builder().id(applicationId).caseworkerId(caseworkerId).build();
-    when(applicationGateway.findApplicationById(applicationId)).thenReturn(Optional.of(domain));
+    when(applicationGateway.findByApplicationId(applicationId)).thenReturn(Optional.of(domain));
 
     useCase.execute(command);
 
-    verify(applicationGateway, times(1)).saveApplication(domain);
+    verify(unassignCaseworkerApplicationGateway, times(1)).saveApplication(domain);
     verify(domainEventRepository, times(1)).save(any(DomainEventEntity.class));
   }
 
@@ -125,11 +129,12 @@ class UnassignCaseworkerUseCaseTest {
             builder -> builder.applicationId(applicationId));
     ApplicationDomain domain =
         ApplicationDomain.builder().id(applicationId).caseworkerId(null).build();
-    when(applicationGateway.findApplicationById(applicationId)).thenReturn(Optional.of(domain));
+    when(applicationGateway.findByApplicationId(applicationId)).thenReturn(Optional.of(domain));
 
     useCase.execute(command);
 
-    verify(applicationGateway, never()).saveApplication(any(ApplicationDomain.class));
+    verify(unassignCaseworkerApplicationGateway, never())
+        .saveApplication(any(ApplicationDomain.class));
     verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
   }
 
@@ -140,13 +145,14 @@ class UnassignCaseworkerUseCaseTest {
         DataGenerator.createDefault(
             UnassignCaseworkerCommandGenerator.class,
             builder -> builder.applicationId(applicationId));
-    when(applicationGateway.findApplicationById(applicationId)).thenReturn(Optional.empty());
+    when(applicationGateway.findByApplicationId(applicationId)).thenReturn(Optional.empty());
 
     assertThatExceptionOfType(ResourceNotFoundException.class)
         .isThrownBy(() -> useCase.execute(command))
         .withMessage("No application found with id: " + applicationId);
 
-    verify(applicationGateway, never()).saveApplication(any(ApplicationDomain.class));
+    verify(unassignCaseworkerApplicationGateway, never())
+        .saveApplication(any(ApplicationDomain.class));
     verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
   }
 
@@ -155,13 +161,14 @@ class UnassignCaseworkerUseCaseTest {
     UnassignCaseworkerCommand command =
         DataGenerator.createDefault(
             UnassignCaseworkerCommandGenerator.class, builder -> builder.applicationId(null));
-    when(applicationGateway.findApplicationById(null)).thenReturn(Optional.empty());
+    when(applicationGateway.findByApplicationId(null)).thenReturn(Optional.empty());
 
     assertThatExceptionOfType(ResourceNotFoundException.class)
         .isThrownBy(() -> useCase.execute(command))
         .withMessage("No application found with id: null");
 
-    verify(applicationGateway, never()).saveApplication(any(ApplicationDomain.class));
+    verify(unassignCaseworkerApplicationGateway, never())
+        .saveApplication(any(ApplicationDomain.class));
     verify(domainEventRepository, never()).save(any(DomainEventEntity.class));
   }
 }

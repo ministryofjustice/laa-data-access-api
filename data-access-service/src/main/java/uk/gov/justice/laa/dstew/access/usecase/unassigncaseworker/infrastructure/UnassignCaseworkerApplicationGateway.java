@@ -1,7 +1,5 @@
 package uk.gov.justice.laa.dstew.access.usecase.unassigncaseworker.infrastructure;
 
-import java.util.Optional;
-import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.domain.ApplicationDomain;
 
 /** Gateway interface for application read/write in the unassignCaseworker use case. */

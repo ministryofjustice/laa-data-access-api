@@ -8,6 +8,7 @@ import uk.gov.justice.laa.dstew.access.infrastructure.jpa.unassigncaseworker.Una
 import uk.gov.justice.laa.dstew.access.infrastructure.jpa.unassigncaseworker.UnassignCaseworkerGatewayMapper;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.service.domainevents.SaveDomainEventService;
+import uk.gov.justice.laa.dstew.access.usecase.shared.infrastructure.ApplicationGateway;
 import uk.gov.justice.laa.dstew.access.usecase.unassigncaseworker.UnassignCaseworkerUseCase;
 
 /** Spring configuration that wires all beans for the unassignCaseworker use case. */
@@ -40,12 +41,15 @@ public class UnassignCaseworkerConfig {
   /**
    * Creates the {@link UnassignCaseworkerUseCase} bean.
    *
-   * @param applicationJpaGateway the application gateway
+   * @param applicationGateway the application gateway
+   * @param unassignCaseworkerApplicationJpaGateway the unassign application gateway
    * @return a fully configured use case
    */
   @Bean
   public UnassignCaseworkerUseCase unassignCaseworkerUseCase(
-      UnassignCaseworkerApplicationJpaGateway applicationJpaGateway) {
-    return new UnassignCaseworkerUseCase(applicationJpaGateway, saveDomainEventService);
+      ApplicationGateway applicationGateway,
+      UnassignCaseworkerApplicationJpaGateway unassignCaseworkerApplicationJpaGateway) {
+    return new UnassignCaseworkerUseCase(
+        applicationGateway, unassignCaseworkerApplicationJpaGateway, saveDomainEventService);
   }
 }

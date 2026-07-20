@@ -29,8 +29,8 @@ public class UnassignCaseworkerUseCase {
   @AllowApiCaseworker
   public void execute(UnassignCaseworkerCommand command) {
     ApplicationDomain applicationDomain =
-            applicationGateway
-                    .findByApplicationId(command.applicationId())
+        applicationGateway
+            .findByApplicationId(command.applicationId())
             .orElseThrow(
                 () ->
                     new ResourceNotFoundException(

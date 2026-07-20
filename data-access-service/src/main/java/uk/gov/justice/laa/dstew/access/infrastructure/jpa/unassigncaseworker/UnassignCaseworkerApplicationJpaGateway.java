@@ -2,8 +2,6 @@ package uk.gov.justice.laa.dstew.access.infrastructure.jpa.unassigncaseworker;
 
 import java.time.Instant;
 import java.util.NoSuchElementException;
-import java.util.Optional;
-import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.domain.ApplicationDomain;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
@@ -14,7 +12,6 @@ public class UnassignCaseworkerApplicationJpaGateway
     implements UnassignCaseworkerApplicationGateway {
 
   private final ApplicationRepository applicationRepository;
-  private final UnassignCaseworkerGatewayMapper gatewayMapper;
 
   /**
    * Constructs the gateway.
@@ -25,7 +22,6 @@ public class UnassignCaseworkerApplicationJpaGateway
   public UnassignCaseworkerApplicationJpaGateway(
       ApplicationRepository applicationRepository, UnassignCaseworkerGatewayMapper gatewayMapper) {
     this.applicationRepository = applicationRepository;
-    this.gatewayMapper = gatewayMapper;
   }
 
   /**
