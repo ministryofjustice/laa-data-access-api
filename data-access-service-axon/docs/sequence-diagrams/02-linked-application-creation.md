@@ -3,6 +3,7 @@
 An application submitted with a `leadApplicationId` that has not yet formed a group.
 The entire command chain — from `ApplicationCreatedEvent` through to group initialisation — runs
 synchronously in a single Axon unit of work via the subscribing `ApplicationGroupEventRouter`.
+See [Linked applications](../linked-applications.md) for the rules and rationale.
 
 ```mermaid
 sequenceDiagram

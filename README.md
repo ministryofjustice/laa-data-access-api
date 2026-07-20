@@ -42,6 +42,9 @@ Includes the following subprojects:
   on Spring Web, but must not depend on Spring Data (nor any database code)
 - `data-access-api` - OpenAPI specification used for generating API stub interfaces and documentation.
 - `data-access-service` - example REST API service with CRUD operations interfacing a JPA repository with PostgreSQL.
+- `data-access-service-axon` - event-driven proof of concept using Axon aggregates and projections. See its
+  [developer guide](data-access-service-axon/docs/README.md) for the architecture, linking logic, sensitive-data
+  separation, and replay behaviour.
 
 ### To do items
 - Continue to update this `README.md` file to include information such as what this project does.
