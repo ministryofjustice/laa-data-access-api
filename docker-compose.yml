@@ -27,7 +27,7 @@ services:
     volumes:
       - ./infra/mock-oauth2/config.json:/etc/mock-oauth2/config.json:ro
   prometheus:
-    image: prom/prometheus:v3.2.1
+    image: prom/prometheus:v3.13.1
     container_name: laa-prometheus
     restart: unless-stopped
     ports:
