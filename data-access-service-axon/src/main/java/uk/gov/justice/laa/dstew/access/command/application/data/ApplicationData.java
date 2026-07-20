@@ -3,6 +3,8 @@ package uk.gov.justice.laa.dstew.access.command.application.data;
 import jakarta.persistence.Column;
 import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import lombok.AllArgsConstructor;
@@ -32,4 +34,17 @@ public class ApplicationData {
 
   @Column(name = "created_at", nullable = false)
   private Instant createdAt;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "pii_status", nullable = false)
+  private PiiStatus piiStatus;
+
+  @Column(name = "redacted_at")
+  private Instant redactedAt;
+
+  @Column(name = "redacted_by")
+  private String redactedBy;
+
+  @Column(name = "redaction_reason")
+  private String redactionReason;
 }

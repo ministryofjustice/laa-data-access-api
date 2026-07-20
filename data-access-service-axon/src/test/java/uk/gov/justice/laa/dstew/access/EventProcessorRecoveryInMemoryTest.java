@@ -28,6 +28,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.ActiveProfiles;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadRepository;
@@ -48,6 +49,7 @@ import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedAppli
 @AutoConfigureTestRestTemplate
 @Import({AxonInMemoryConfig.class, EventProcessorRecoveryInMemoryTest.RecoveryConfig.class})
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
+@ActiveProfiles("test")
 class EventProcessorRecoveryInMemoryTest {
 
   @Autowired private TestRestTemplate restTemplate;

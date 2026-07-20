@@ -1,20 +1,27 @@
 package uk.gov.justice.laa.dstew.access.command.application.data;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.applicationcontent.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.applicationcontent.MatterType;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreationDetails;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationIndividual;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationProceeding;
 
-/** Sensitive application data stored outside the Axon event stream. */
+/**
+ * Sensitive application data stored outside the Axon event stream.
+ *
+ * <p>{@code applicationContent} is stored as a raw JSON map. PII sections (applicant,
+ * applicationMerits, partner, etc.) are replaced inline with {@code "pii:<uuid>"} reference
+ * strings before persistence, and rehydrated on read.
+ */
 public record ApplicationDataPayload(
     String laaReference,
-    ApplicationContent applicationContent,
+    Map<String, Object> applicationContent,
     List<ApplicationIndividual> individuals,
     UUID applyApplicationId,
     Instant submittedAt,
@@ -32,16 +39,26 @@ public record ApplicationDataPayload(
     String decisionEventDescription,
     String assignmentEventDescription) {
 
+  private static final ObjectMapper MAPPER = new ObjectMapper().findAndRegisterModules();
+
   /**
-   * Creates an application-data payload from the details parsed from an application command.
+   * Creates a thin payload from creation details, converting {@code applicationContent} to a raw
+   * map. PII sections are NOT externalised here; call {@link
+   * ApplicationDataStore#append(java.util.UUID, long, ApplicationCreationDetails)} to externalise
+   * and persist in one step.
    *
    * @param details the parsed application creation details
-   * @return the sensitive data payload to persist
+   * @return a payload with applicationContent as a raw map
    */
   public static ApplicationDataPayload from(ApplicationCreationDetails details) {
+    Map<String, Object> contentMap =
+        details.applicationContent() == null
+            ? null
+            : MAPPER.convertValue(
+                details.applicationContent(), new TypeReference<Map<String, Object>>() {});
     return new ApplicationDataPayload(
         details.laaReference(),
-        details.applicationContent(),
+        contentMap,
         details.individuals(),
         details.applyApplicationId(),
         details.submittedAt(),

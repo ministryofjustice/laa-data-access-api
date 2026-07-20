@@ -133,7 +133,8 @@ class ApplicationHistoryProjectionTest {
     UUID caseworkerId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-07-20T08:00:00Z");
     ApplicationAssignedToCaseworkerEvent event =
-        new ApplicationAssignedToCaseworkerEvent(applicationId, 1L, 2L, caseworkerId, occurredAt);
+        new ApplicationAssignedToCaseworkerEvent(
+            applicationId, 1L, 2L, caseworkerId, occurredAt);
     projection.on(event, message(event, "assignment-event"));
     ArgumentCaptor<ApplicationHistoryReadModel> captor =
         ArgumentCaptor.forClass(ApplicationHistoryReadModel.class);
@@ -171,7 +172,8 @@ class ApplicationHistoryProjectionTest {
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-07-20T09:00:00Z");
     ApplicationUnassignedFromCaseworkerEvent event =
-        new ApplicationUnassignedFromCaseworkerEvent(applicationId, 2L, 3L, occurredAt);
+        new ApplicationUnassignedFromCaseworkerEvent(
+            applicationId, 2L, 3L, occurredAt);
     projection.on(event, message(event, "unassignment-event"));
     ArgumentCaptor<ApplicationHistoryReadModel> captor =
         ArgumentCaptor.forClass(ApplicationHistoryReadModel.class);
@@ -198,7 +200,8 @@ class ApplicationHistoryProjectionTest {
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-07-20T10:00:00Z");
     ApplicationDecisionMadeEvent event =
-        new ApplicationDecisionMadeEvent(applicationId, 1L, 4L, "GRANTED", false, occurredAt);
+        new ApplicationDecisionMadeEvent(
+            applicationId, 1L, 4L, "GRANTED", false, occurredAt);
     projection.on(event, message(event, "decision-event"));
     ArgumentCaptor<ApplicationHistoryReadModel> captor =
         ArgumentCaptor.forClass(ApplicationHistoryReadModel.class);

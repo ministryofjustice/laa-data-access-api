@@ -26,8 +26,10 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.ActiveProfiles;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataRepository;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
@@ -55,6 +57,7 @@ import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedAppli
 @AutoConfigureTestRestTemplate
 @Import(AxonInMemoryConfig.class)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
+@ActiveProfiles("test")
 class CreateApplicationInMemoryTest {
 
   @Autowired private TestRestTemplate restTemplate;
@@ -66,6 +69,7 @@ class CreateApplicationInMemoryTest {
   @Autowired private EventStore eventStore;
   @Autowired private QueryGateway queryGateway;
   @Autowired private ApplicationDataRepository applicationDataRepository;
+  @Autowired private ApplicationDataStore applicationDataStore;
 
   @Test
   void givenAxonApplication_whenOpenApiRequested_thenDocumentsCreateApplication() {
@@ -217,7 +221,9 @@ class CreateApplicationInMemoryTest {
         .hasValueSatisfying(
             data -> {
               assertThat(data.getPayload().laaReference()).isEqualTo("LAA-123");
-              assertThat(data.getPayload().individuals()).singleElement();
+              var hydratedPayload =
+                  applicationDataStore.hydrate(data.getPayload());
+              assertThat(hydratedPayload.individuals()).singleElement();
               assertThat(data.getPayloadHash()).hasSize(64);
             });
 

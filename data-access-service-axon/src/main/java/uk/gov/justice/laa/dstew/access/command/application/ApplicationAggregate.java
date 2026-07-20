@@ -12,6 +12,7 @@ import java.util.Set;
 import java.util.UUID;
 import org.axonframework.commandhandling.CommandHandler;
 import org.axonframework.eventsourcing.EventSourcingHandler;
+import org.axonframework.messaging.unitofwork.CurrentUnitOfWork;
 import org.axonframework.modelling.command.AggregateCreationPolicy;
 import org.axonframework.modelling.command.AggregateIdentifier;
 import org.axonframework.modelling.command.CreationPolicy;
@@ -23,6 +24,8 @@ import uk.gov.justice.laa.dstew.access.command.application.assignment.AssignCase
 import uk.gov.justice.laa.dstew.access.command.application.assignment.UnassignCaseworkerFromApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationMeritsDecision;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationPiiRepository;
+import uk.gov.justice.laa.dstew.access.command.application.data.PiiStatus;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeDecisionProceeding;
@@ -47,6 +50,7 @@ public class ApplicationAggregate {
   private long applicationDataVersion;
   private long applicationVersion;
   private UUID caseworkerId;
+  private PiiStatus piiStatus;
 
   /**
    * Creates or idempotently re-identifies an Application.
@@ -81,11 +85,8 @@ public class ApplicationAggregate {
           "Application " + command.applicationId() + " cannot be its own lead");
     }
     long applicationDataVersion = 0L;
-    String fingerprint =
-        applicationDataStore.append(command.applicationId(), applicationDataVersion, details);
-    apply(
-        applicationCreatedEvent(
-            command.applicationId(), applicationDataVersion, fingerprint, details));
+    String fingerprint = applicationDataStore.append(command.applicationId(), applicationDataVersion, details);
+    apply(applicationCreatedEvent(command.applicationId(), applicationDataVersion, fingerprint, details));
     return applicationId;
   }
 
@@ -121,7 +122,7 @@ public class ApplicationAggregate {
     apply(
         new LinkedApplicationGroupRequested(
             groupId,
-            applicationId, // leadApplicationId
+            applicationId,
             command.allMemberApplicationIds(),
             command.occurredAt()));
   }
@@ -143,7 +144,6 @@ public class ApplicationAggregate {
       throw new ResourceNotFoundException(
           "No linked application found with Application ID: " + command.applicationId());
     }
-    // Application exists — no events, no state change.
   }
 
   /** Validates and stores a decision as the next immutable application-data version. */
@@ -247,6 +247,29 @@ public class ApplicationAggregate {
             applicationId, applicationVersion + 1, nextDataVersion, command.occurredAt()));
   }
 
+  @CommandHandler
+  void handle(RedactApplicationPiiCommand command, ApplicationPiiRepository piiRepository) {
+    if (command.expectedApplicationVersion() != applicationVersion) {
+      throw new ApplicationVersionConflictException(
+          command.applicationId(), command.expectedApplicationVersion());
+    }
+    if (piiStatus == PiiStatus.REDACTED) {
+      return;
+    }
+    apply(
+        new ApplicationPiiRedactedEvent(
+            applicationId,
+            applicationVersion + 1,
+            command.reason(),
+            command.actor(),
+            command.occurredAt()));
+    CurrentUnitOfWork.get()
+        .afterCommit(
+            unitOfWork ->
+                piiRepository.redactAllForApplication(
+                    applicationId, command.reason(), command.actor()));
+  }
+
   private void validateDecision(MakeApplicationDecisionCommand command) {
     List<String> errors = new ArrayList<>();
     if (command.proceedings().isEmpty()) {
@@ -289,6 +312,7 @@ public class ApplicationAggregate {
     requestFingerprint = event.requestFingerprint();
     applicationDataVersion = event.applicationDataVersion();
     applicationVersion = 0L;
+    piiStatus = PiiStatus.PRESENT;
   }
 
   @EventSourcingHandler
@@ -309,6 +333,12 @@ public class ApplicationAggregate {
     applicationVersion = event.applicationVersion();
     applicationDataVersion = event.applicationDataVersion();
     caseworkerId = null;
+  }
+
+  @EventSourcingHandler
+  void on(ApplicationPiiRedactedEvent event) {
+    applicationVersion = event.applicationVersion();
+    piiStatus = PiiStatus.REDACTED;
   }
 
   @EventSourcingHandler

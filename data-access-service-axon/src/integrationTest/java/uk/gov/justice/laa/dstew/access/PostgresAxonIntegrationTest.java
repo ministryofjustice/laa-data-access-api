@@ -17,6 +17,7 @@ import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import org.axonframework.commandhandling.gateway.CommandGateway;
 import org.axonframework.eventsourcing.eventstore.EventStorageEngine;
 import org.axonframework.eventsourcing.eventstore.jpa.JpaEventStorageEngine;
 import org.axonframework.messaging.responsetypes.ResponseTypes;
@@ -35,10 +36,16 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.ActiveProfiles;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.ObjectMapper;
+import uk.gov.justice.laa.dstew.access.command.application.RedactApplicationPiiCommand;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataRepository;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationPiiRepository;
+import uk.gov.justice.laa.dstew.access.command.application.data.PiiStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
@@ -70,6 +77,7 @@ import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedAppli
 @Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureTestRestTemplate
+@ActiveProfiles("poc")
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class PostgresAxonIntegrationTest {
 
@@ -93,6 +101,11 @@ class PostgresAxonIntegrationTest {
   @Autowired private LinkedApplicationGroupReadRepository groupReadRepository;
 
   @Autowired private QueryGateway queryGateway;
+
+  @Autowired private CommandGateway commandGateway;
+
+  @Autowired private ApplicationPiiRepository applicationPiiRepository;
+  @Autowired private ApplicationDataRepository applicationDataRepository;
 
   @Test
   void givenPostgresAxonStore_whenHealthRequested_thenReportsUp() {
@@ -622,6 +635,63 @@ class PostgresAxonIntegrationTest {
   }
 
   @Test
+  void givenRedactedApplication_whenQueried_thenPiiFieldsShowRedacted() throws Exception {
+    UUID applyApplicationId = UUID.randomUUID();
+    UUID applyProceedingId = UUID.randomUUID();
+    ApplicationCreateRequest request =
+        validCreateApplicationRequest(applyApplicationId, applyProceedingId);
+    Map<String, Object> content = new HashMap<>(request.getApplicationContent());
+    content.put("submitterEmail", "provider@example.com");
+    content.put(
+        "applicationMerits",
+        Map.of(
+            "opponents",
+            List.of(
+                Map.of(
+                    "opposableType",
+                    "INDIVIDUAL",
+                    "opposable",
+                    Map.of("firstName", "Grace", "lastName", "Hopper")))));
+    request.setApplicationContent(content);
+
+    UUID applicationId = applicationId(post(request, headers()));
+    assertThat(awaitGet(applicationId).getBody().getProvider().getContactEmail())
+        .isEqualTo("provider@example.com");
+
+    Instant redactedAt = Instant.parse("2026-07-20T12:00:00Z");
+    commandGateway.sendAndWait(
+        new RedactApplicationPiiCommand(applicationId, 0L, "gdpr", "tester", redactedAt));
+
+    ApplicationReadModel projection = awaitProjectionState(applicationId, 1L, PiiStatus.REDACTED);
+    ResponseEntity<ApplicationResponse> response = awaitGet(applicationId);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(response.getBody().getLaaReference()).isEqualTo("[REDACTED]");
+    assertThat(response.getBody().getProvider().getOfficeCode()).isEqualTo("1A001B");
+    assertThat(response.getBody().getProvider().getContactEmail()).isNull();
+    assertThat(response.getBody().getOpponents()).isEmpty();
+    var embeddedRefs =
+        applicationDataRepository
+            .findById(new ApplicationDataId(applicationId, 0L))
+            .orElseThrow()
+            .getPayload()
+            .embeddedPiiRefs();
+    assertThat(applicationPiiRepository.findFragments(embeddedRefs)).isEmpty();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM axon.pii_records WHERE application_id = ?",
+                Integer.class,
+                applicationId))
+        .isGreaterThan(0);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM axon.pii_redaction_audit WHERE application_id = ?",
+                Integer.class,
+                applicationId))
+        .isEqualTo(1);
+  }
+
+  @Test
   void givenUnknownApplication_whenGetApplication_thenReturnsNotFound() {
     UUID applicationId = UUID.randomUUID();
 
@@ -1082,6 +1152,32 @@ class PostgresAxonIntegrationTest {
     }
     throw new AssertionError(
         "Application projection did not reach version " + version + " for " + applicationId);
+  }
+
+  private ApplicationReadModel awaitProjectionState(
+      UUID applicationId, long version, PiiStatus piiStatus) throws Exception {
+    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(15);
+    while (System.nanoTime() < deadline) {
+      var projected =
+          queryGateway
+              .query(
+                  new FindApplicationByIdQuery(applicationId),
+                  ResponseTypes.optionalInstanceOf(ApplicationReadModel.class))
+              .join();
+      if (projected.isPresent()
+          && projected.get().getApplicationVersion() == version
+          && projected.get().getPiiStatus() == piiStatus) {
+        return projected.get();
+      }
+      Thread.sleep(100);
+    }
+    throw new AssertionError(
+        "Application projection did not reach state "
+            + piiStatus
+            + " at version "
+            + version
+            + " for "
+            + applicationId);
   }
 
   private java.util.List<

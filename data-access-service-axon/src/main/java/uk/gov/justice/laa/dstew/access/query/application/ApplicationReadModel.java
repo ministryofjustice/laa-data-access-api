@@ -2,6 +2,8 @@ package uk.gov.justice.laa.dstew.access.query.application;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
@@ -17,6 +19,7 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationIndividual;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationProceeding;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationMeritsDecision;
+import uk.gov.justice.laa.dstew.access.command.application.data.PiiStatus;
 
 /** Replayable current-state read model for an Application. */
 @Entity
@@ -59,6 +62,10 @@ public class ApplicationReadModel {
 
   @Column(name = "caseworker_id")
   private UUID caseworkerId;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "pii_status")
+  private PiiStatus piiStatus;
 
   @Transient private Instant submittedAt;
 

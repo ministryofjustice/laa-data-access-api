@@ -50,7 +50,7 @@ class ApplicationAggregateTest {
         };
     fixture.registerInjectableResource(factory);
     applicationDataStore = mock(ApplicationDataStore.class);
-    when(applicationDataStore.append(any(), anyLong(), any()))
+    when(applicationDataStore.append(any(), anyLong(), any(ApplicationCreationDetails.class)))
         .thenAnswer(
             invocation ->
                 ApplicationDataStore.fingerprint(
@@ -105,7 +105,8 @@ class ApplicationAggregateTest {
     fixture.registerInjectableResource(factoryWithLead);
     fixture.registerInjectableResource(applicationDataStore);
 
-    ApplicationCreatedEvent createdEvent = applicationCreatedEvent(applicationId, detailsWithLead);
+    ApplicationCreatedEvent createdEvent =
+        applicationCreatedEvent(applicationId, detailsWithLead);
 
     // ApplicationLinkedEvent is no longer emitted; linking is initiated by
     // ApplicationGroupEventRouter after the projection picks up ApplicationCreatedEvent.
@@ -161,7 +162,8 @@ class ApplicationAggregateTest {
     ApplicationCreatedEvent created = applicationCreatedEvent(applicationId, details);
     ApplicationDataPayload current = ApplicationDataPayload.from(details);
     when(applicationDataStore.get(applicationId, 0L)).thenReturn(current);
-    when(applicationDataStore.append(any(), anyLong(), any(), any(), any())).thenReturn("hash");
+    when(applicationDataStore.append(any(), anyLong(), any(ApplicationDataPayload.class), any(), any()))
+        .thenReturn("hash");
 
     fixture
         .given(created)
@@ -178,7 +180,8 @@ class ApplicationAggregateTest {
                 "Decision recorded",
                 occurredAt))
         .expectEvents(
-            new ApplicationDecisionMadeEvent(applicationId, 1L, 1L, "REFUSED", false, occurredAt));
+            new ApplicationDecisionMadeEvent(
+                applicationId, 1L, 1L, "REFUSED", false, occurredAt));
   }
 
   @Test
@@ -188,7 +191,7 @@ class ApplicationAggregateTest {
     ApplicationCreationDetails details = detailsWithProceeding(applicationId, proceedingId);
     when(applicationDataStore.get(applicationId, 0L))
         .thenReturn(ApplicationDataPayload.from(details));
-    when(applicationDataStore.append(any(), anyLong(), any(), any(), any()))
+    when(applicationDataStore.append(any(), anyLong(), any(ApplicationDataPayload.class), any(), any()))
         .thenThrow(new IllegalStateException("application data unavailable"));
 
     fixture
@@ -208,7 +211,8 @@ class ApplicationAggregateTest {
     ApplicationCreationDetails details = detailsWithProceeding(applicationId, proceedingId);
     ApplicationDataPayload current = ApplicationDataPayload.from(details);
     when(applicationDataStore.get(applicationId, 1L)).thenReturn(current);
-    when(applicationDataStore.append(any(), anyLong(), any(), any(), any())).thenReturn("hash");
+    when(applicationDataStore.append(any(), anyLong(), any(ApplicationDataPayload.class), any(), any()))
+        .thenReturn("hash");
 
     fixture
         .given(
@@ -304,7 +308,8 @@ class ApplicationAggregateTest {
     ApplicationCreationDetails details = applicationCreationDetails(applicationId);
     when(applicationDataStore.get(applicationId, 0L))
         .thenReturn(ApplicationDataPayload.from(details));
-    when(applicationDataStore.append(any(), anyLong(), any(), any(), any())).thenReturn("hash");
+    when(applicationDataStore.append(any(), anyLong(), any(ApplicationDataPayload.class), any(), any()))
+        .thenReturn("hash");
 
     fixture
         .given(applicationCreatedEvent(applicationId, details))
@@ -329,7 +334,8 @@ class ApplicationAggregateTest {
     ApplicationCreationDetails details = applicationCreationDetails(applicationId);
     when(applicationDataStore.get(applicationId, 1L))
         .thenReturn(ApplicationDataPayload.from(details).withAssignment("Assigned"));
-    when(applicationDataStore.append(any(), anyLong(), any(), any(), any())).thenReturn("hash");
+    when(applicationDataStore.append(any(), anyLong(), any(ApplicationDataPayload.class), any(), any()))
+        .thenReturn("hash");
 
     fixture
         .given(
@@ -340,7 +346,8 @@ class ApplicationAggregateTest {
             new UnassignCaseworkerFromApplicationCommand(
                 applicationId, "{}", "Returned to queue", unassignedAt))
         .expectEvents(
-            new ApplicationUnassignedFromCaseworkerEvent(applicationId, 2L, 2L, unassignedAt));
+            new ApplicationUnassignedFromCaseworkerEvent(
+                applicationId, 2L, 2L, unassignedAt));
   }
 
   @Test

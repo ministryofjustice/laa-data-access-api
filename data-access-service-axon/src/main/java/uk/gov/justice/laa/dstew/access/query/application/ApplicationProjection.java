@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.query.application;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -13,13 +14,16 @@ import org.axonframework.eventhandling.ResetHandler;
 import org.axonframework.queryhandling.QueryHandler;
 import org.axonframework.queryhandling.QueryUpdateEmitter;
 import org.springframework.stereotype.Component;
+import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.ApplicationPiiRedactedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
+import uk.gov.justice.laa.dstew.access.command.application.data.PiiStatus;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
@@ -33,6 +37,7 @@ public class ApplicationProjection {
   private final LinkedApplicationGroupReadRepository groupReadRepository;
   private final QueryUpdateEmitter queryUpdateEmitter;
   private final ApplicationDataStore applicationDataStore;
+  private final ObjectMapper objectMapper;
 
   /**
    * Constructs the projection with its read repositories and query update emitter.
@@ -43,16 +48,20 @@ public class ApplicationProjection {
    *     batch-fetch group membership for the result page
    * @param queryUpdateEmitter used to push {@link ApplicationReadModel} updates to open
    *     subscription queries after {@code ApplicationCreatedEvent} is handled
+   * @param objectMapper used to convert the hydrated applicationContent map to {@link
+   *     ApplicationContent}
    */
   public ApplicationProjection(
       ApplicationReadRepository applicationReadRepository,
       LinkedApplicationGroupReadRepository groupReadRepository,
       QueryUpdateEmitter queryUpdateEmitter,
-      ApplicationDataStore applicationDataStore) {
+      ApplicationDataStore applicationDataStore,
+      ObjectMapper objectMapper) {
     this.applicationReadRepository = applicationReadRepository;
     this.groupReadRepository = groupReadRepository;
     this.queryUpdateEmitter = queryUpdateEmitter;
     this.applicationDataStore = applicationDataStore;
+    this.objectMapper = objectMapper;
   }
 
   /** Returns the current-state projection for the requested Application. */
@@ -105,6 +114,7 @@ public class ApplicationProjection {
                 .createdAt(event.occurredAt())
                 .modifiedAt(event.occurredAt())
                 .leadApplicationId(event.leadApplicationId())
+                .piiStatus(PiiStatus.PRESENT)
                 .build());
     queryUpdateEmitter.emit(
         FindApplicationByIdQuery.class,
@@ -173,6 +183,20 @@ public class ApplicationProjection {
             });
   }
 
+  /** Clears the current PII reference and marks the application as redacted. */
+  @EventHandler
+  public void on(ApplicationPiiRedactedEvent event) {
+    applicationReadRepository
+        .findById(event.applicationId())
+        .ifPresent(
+            application -> {
+              application.setApplicationVersion(event.applicationVersion());
+              application.setPiiStatus(PiiStatus.REDACTED);
+              application.setModifiedAt(event.occurredAt());
+              applicationReadRepository.save(application);
+            });
+  }
+
   /** Clears the disposable current-state table before replay. */
   @ResetHandler
   public void reset() {
@@ -231,9 +255,18 @@ public class ApplicationProjection {
 
   private ApplicationReadModel hydrate(
       ApplicationReadModel application, ApplicationDataPayload data) {
-    application.setLaaReference(data.laaReference());
-    application.setApplicationContent(data.applicationContent());
-    application.setIndividuals(data.individuals());
+    ApplicationDataPayload hydratedData =
+        shouldMaskPii(application) ? data : applicationDataStore.hydrate(data);
+    if (shouldMaskPii(application) || hydratedData.applicationContent() == null) {
+      application.setLaaReference("[REDACTED]");
+      application.setApplicationContent(null);
+      application.setIndividuals(List.of());
+    } else {
+      application.setLaaReference(hydratedData.laaReference());
+      application.setApplicationContent(
+          objectMapper.convertValue(hydratedData.applicationContent(), ApplicationContent.class));
+      application.setIndividuals(hydratedData.individuals());
+    }
     application.setSubmittedAt(data.submittedAt());
     application.setOfficeCode(data.officeCode());
     application.setUsedDelegatedFunctions(data.usedDelegatedFunctions());
@@ -245,6 +278,10 @@ public class ApplicationProjection {
     application.setMeritsDecisions(data.meritsDecisions());
     application.setCertificate(data.certificate());
     return application;
+  }
+
+  private boolean shouldMaskPii(ApplicationReadModel application) {
+    return application.getPiiStatus() == PiiStatus.REDACTED;
   }
 
   /**

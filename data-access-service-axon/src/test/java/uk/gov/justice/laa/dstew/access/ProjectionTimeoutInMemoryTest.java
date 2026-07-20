@@ -18,6 +18,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.ActiveProfiles;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 
 /**
@@ -44,6 +45,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 @AutoConfigureTestRestTemplate
 @Import(AxonInMemoryConfig.class)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
+@ActiveProfiles("test")
 class ProjectionTimeoutInMemoryTest {
 
   @Autowired private TestRestTemplate restTemplate;
