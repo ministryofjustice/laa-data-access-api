@@ -8,14 +8,6 @@ import uk.gov.justice.laa.dstew.access.domain.ApplicationDomain;
 public interface UnassignCaseworkerApplicationGateway {
 
   /**
-   * Returns the application domain for the given ID, or empty if not found.
-   *
-   * @param id the application UUID
-   * @return an {@link Optional} containing the domain record, or empty if not found
-   */
-  Optional<ApplicationDomain> findApplicationById(UUID id);
-
-  /**
    * Persists the updated application domain. Implementations must load the managed entity before
    * applying changes to preserve the {@code @Version} field.
    *

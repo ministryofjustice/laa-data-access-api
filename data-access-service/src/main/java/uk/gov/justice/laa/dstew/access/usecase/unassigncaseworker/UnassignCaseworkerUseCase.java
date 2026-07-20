@@ -6,12 +6,14 @@ import uk.gov.justice.laa.dstew.access.domain.ApplicationDomain;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 import uk.gov.justice.laa.dstew.access.service.domainevents.SaveDomainEventService;
+import uk.gov.justice.laa.dstew.access.usecase.shared.infrastructure.ApplicationGateway;
 import uk.gov.justice.laa.dstew.access.usecase.unassigncaseworker.infrastructure.UnassignCaseworkerApplicationGateway;
 
 /** Orchestrates unassigning a caseworker from an application. */
 @RequiredArgsConstructor
 public class UnassignCaseworkerUseCase {
 
+  private final ApplicationGateway applicationGateway;
   private final UnassignCaseworkerApplicationGateway unassignCaseworkerApplicationGateway;
   private final SaveDomainEventService saveDomainEventService;
 
@@ -27,8 +29,8 @@ public class UnassignCaseworkerUseCase {
   @AllowApiCaseworker
   public void execute(UnassignCaseworkerCommand command) {
     ApplicationDomain applicationDomain =
-        unassignCaseworkerApplicationGateway
-            .findApplicationById(command.applicationId())
+            applicationGateway
+                    .findByApplicationId(command.applicationId())
             .orElseThrow(
                 () ->
                     new ResourceNotFoundException(

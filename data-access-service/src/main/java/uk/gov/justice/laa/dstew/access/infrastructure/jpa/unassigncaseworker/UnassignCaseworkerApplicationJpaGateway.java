@@ -28,11 +28,6 @@ public class UnassignCaseworkerApplicationJpaGateway
     this.gatewayMapper = gatewayMapper;
   }
 
-  @Override
-  public Optional<ApplicationDomain> findApplicationById(UUID id) {
-    return applicationRepository.findById(id).map(gatewayMapper::toApplicationDomain);
-  }
-
   /**
    * Loads the managed entity from the repository before applying changes so the {@code @Version}
    * field is preserved and no {@code OptimisticLockException} is triggered.
