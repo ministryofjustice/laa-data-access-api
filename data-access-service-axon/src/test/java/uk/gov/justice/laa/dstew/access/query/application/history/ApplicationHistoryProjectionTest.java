@@ -219,6 +219,49 @@ class ApplicationHistoryProjectionTest {
     assertThat(payload.get("eventDescription").asText()).isEqualTo("Decision recorded");
   }
 
+  @Test
+  void givenNoteCreatedEvent_whenHandled_thenStoresNoteCreatedHistory() {
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-20T10:00:00Z");
+    uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent event =
+        new uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent(
+            applicationId, 1L, occurredAt);
+
+    projection.on(event, message(event, "note-event-id"));
+
+    ArgumentCaptor<ApplicationHistoryReadModel> captor =
+        ArgumentCaptor.forClass(ApplicationHistoryReadModel.class);
+    verify(repository).save(captor.capture());
+    assertThat(captor.getValue().getEventType()).isEqualTo("APPLICATION_NOTE_CREATED");
+    assertThat(captor.getValue().getApplicationId()).isEqualTo(applicationId);
+    assertThat(captor.getValue().getOccurredAt()).isEqualTo(occurredAt);
+  }
+
+  @Test
+  void givenNoteHistory_whenQueried_thenReconstructsNoteText() throws Exception {
+    UUID applicationId = UUID.randomUUID();
+    uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent event =
+        new uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent(
+            applicationId, 1L, Instant.now());
+    projection.on(event, message(event, "note-event-id"));
+    ArgumentCaptor<ApplicationHistoryReadModel> captor =
+        ArgumentCaptor.forClass(ApplicationHistoryReadModel.class);
+    verify(repository).save(captor.capture());
+    when(repository.findAllByApplicationIdOrderByOccurredAtAsc(applicationId))
+        .thenReturn(List.of(captor.getValue()));
+    ApplicationDataPayload payloadWithNote =
+        ApplicationDataPayload.from(applicationCreationDetails(applicationId))
+            .withNote("My note text", Instant.now());
+    when(applicationDataStore.get(applicationId, 1L)).thenReturn(payloadWithNote);
+
+    var result =
+        projection.handle(
+            new FindApplicationHistoryQuery(applicationId, List.of("APPLICATION_NOTE_CREATED")));
+
+    var payload = objectMapper.readTree(result.getFirst().getRequestPayload());
+    assertThat(payload.get("noteText").asText()).isEqualTo("My note text");
+  }
+
   private EventMessage<?> message(Object payload, String identifier) {
     return new GenericEventMessage<>(
         identifier,

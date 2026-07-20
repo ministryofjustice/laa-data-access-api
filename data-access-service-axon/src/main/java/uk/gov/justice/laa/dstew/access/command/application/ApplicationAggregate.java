@@ -29,6 +29,8 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.MakeDecision
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.CreateLinkedApplicationGroupCommand;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupRequested;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.ValidateApplicationExistsCommand;
+import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
+import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationGroupInvariantException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException;
@@ -247,6 +249,20 @@ public class ApplicationAggregate {
             applicationId, applicationVersion + 1, nextDataVersion, command.occurredAt()));
   }
 
+  /** Appends a note to the application's immutable data without advancing the decision version. */
+  @CommandHandler
+  void handle(CreateNoteCommand command, ApplicationDataStore applicationDataStore) {
+    var current = applicationDataStore.get(applicationId, applicationDataVersion);
+    long nextDataVersion = applicationDataVersion + 1;
+    applicationDataStore.append(
+        applicationId,
+        nextDataVersion,
+        current.withNote(command.noteText(), command.occurredAt()),
+        command.serialisedNoteRequest(),
+        command.occurredAt());
+    apply(new NoteCreatedEvent(applicationId, nextDataVersion, command.occurredAt()));
+  }
+
   private void validateDecision(MakeApplicationDecisionCommand command) {
     List<String> errors = new ArrayList<>();
     if (command.proceedings().isEmpty()) {
@@ -309,6 +325,12 @@ public class ApplicationAggregate {
     applicationVersion = event.applicationVersion();
     applicationDataVersion = event.applicationDataVersion();
     caseworkerId = null;
+  }
+
+  @EventSourcingHandler
+  void on(NoteCreatedEvent event) {
+    applicationDataVersion = event.applicationDataVersion();
+    // applicationVersion intentionally not updated — notes are decoupled from optimistic locking
   }
 
   @EventSourcingHandler

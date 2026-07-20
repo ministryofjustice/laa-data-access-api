@@ -41,7 +41,8 @@ class ApplicationCommandControllerTest {
             mock(MakeDecisionCommandMapper.class),
             mock(AssignCaseworkerService.class),
             mock(AssignCaseworkerRequestMapper.class),
-            mock(UnassignCaseworkerRequestMapper.class));
+            mock(UnassignCaseworkerRequestMapper.class),
+            mock(CreateNoteCommandMapper.class));
   }
 
   @Test

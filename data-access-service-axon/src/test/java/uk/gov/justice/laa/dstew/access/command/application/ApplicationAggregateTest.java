@@ -469,6 +469,39 @@ class ApplicationAggregateTest {
         .expectNoEvents();
   }
 
+  @Test
+  void givenExistingApplication_whenNoteCreated_thenAdvancesDataVersionAndEmitsEvent() {
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-20T10:00:00Z");
+    ApplicationCreatedEvent created =
+        applicationCreatedEvent(applicationId, applicationCreationDetails(applicationId));
+    ApplicationDataPayload currentPayload =
+        ApplicationDataPayload.from(applicationCreationDetails(applicationId));
+    when(applicationDataStore.get(applicationId, 0L)).thenReturn(currentPayload);
+    when(applicationDataStore.append(any(), anyLong(), any(), any(), any())).thenReturn("hash");
+
+    fixture
+        .given(created)
+        .when(
+            new uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand(
+                applicationId, "My note", "{}", occurredAt))
+        .expectSuccessfulHandlerExecution()
+        .expectEvents(
+            new uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent(
+                applicationId, 1L, occurredAt));
+  }
+
+  @Test
+  void givenNoApplication_whenCreateNote_thenThrowsAggregateNotFoundException() {
+    fixture
+        .givenNoPriorActivity()
+        .when(
+            new uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand(
+                UUID.randomUUID(), "My note", "{}", Instant.now()))
+        .expectException(org.axonframework.modelling.command.AggregateNotFoundException.class)
+        .expectNoEvents();
+  }
+
   private CreateApplicationCommand createCommand(UUID applicationId, String serialisedRequest) {
     return createCommandWithSchema(applicationId, serialisedRequest, 1);
   }

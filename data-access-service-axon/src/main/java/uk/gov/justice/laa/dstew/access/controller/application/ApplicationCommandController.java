@@ -21,6 +21,7 @@ import uk.gov.justice.laa.dstew.access.command.application.assignment.AssignCase
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
+import uk.gov.justice.laa.dstew.access.model.CreateNoteRequest;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
@@ -39,6 +40,7 @@ public class ApplicationCommandController {
   private final AssignCaseworkerService assignCaseworkerService;
   private final AssignCaseworkerRequestMapper assignCaseworkerRequestMapper;
   private final UnassignCaseworkerRequestMapper unassignCaseworkerRequestMapper;
+  private final CreateNoteCommandMapper createNoteCommandMapper;
 
   /** Creates the command adapter. */
   public ApplicationCommandController(
@@ -48,7 +50,8 @@ public class ApplicationCommandController {
       MakeDecisionCommandMapper decisionCommandMapper,
       AssignCaseworkerService assignCaseworkerService,
       AssignCaseworkerRequestMapper assignCaseworkerRequestMapper,
-      UnassignCaseworkerRequestMapper unassignCaseworkerRequestMapper) {
+      UnassignCaseworkerRequestMapper unassignCaseworkerRequestMapper,
+      CreateNoteCommandMapper createNoteCommandMapper) {
     this.commandGateway = commandGateway;
     this.projectionGateway = projectionGateway;
     this.commandMapper = commandMapper;
@@ -56,6 +59,7 @@ public class ApplicationCommandController {
     this.assignCaseworkerService = assignCaseworkerService;
     this.assignCaseworkerRequestMapper = assignCaseworkerRequestMapper;
     this.unassignCaseworkerRequestMapper = unassignCaseworkerRequestMapper;
+    this.createNoteCommandMapper = createNoteCommandMapper;
   }
 
   /** Assigns a caseworker to one or more Applications after validating the complete batch. */
@@ -89,6 +93,16 @@ public class ApplicationCommandController {
       @PathVariable UUID id,
       @Valid @RequestBody MakeDecisionRequest request) {
     commandGateway.sendAndWait(decisionCommandMapper.toCommand(id, request));
+    return ResponseEntity.noContent().build();
+  }
+
+  /** Appends a note to an existing Application. */
+  @PostMapping("/{id}/notes")
+  public ResponseEntity<Void> createNote(
+      @RequestHeader("X-Service-Name") ServiceName serviceName,
+      @PathVariable UUID id,
+      @Valid @RequestBody CreateNoteRequest request) {
+    commandGateway.sendAndWait(createNoteCommandMapper.toCommand(id, request));
     return ResponseEntity.noContent().build();
   }
 

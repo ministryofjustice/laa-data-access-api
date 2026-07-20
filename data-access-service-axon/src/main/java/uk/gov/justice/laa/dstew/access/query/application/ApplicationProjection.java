@@ -21,6 +21,7 @@ import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataI
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
+import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
 
@@ -167,6 +168,19 @@ public class ApplicationProjection {
             application -> {
               application.setCaseworkerId(null);
               application.setApplicationVersion(event.applicationVersion());
+              application.setApplicationDataVersion(event.applicationDataVersion());
+              application.setModifiedAt(event.occurredAt());
+              applicationReadRepository.save(application);
+            });
+  }
+
+  /** Advances the referenced application-data version when a note is created. */
+  @EventHandler
+  public void on(NoteCreatedEvent event) {
+    applicationReadRepository
+        .findById(event.applicationId())
+        .ifPresent(
+            application -> {
               application.setApplicationDataVersion(event.applicationDataVersion());
               application.setModifiedAt(event.occurredAt());
               applicationReadRepository.save(application);

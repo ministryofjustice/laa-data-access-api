@@ -17,6 +17,7 @@ import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataS
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
+import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.config.interceptor.ServiceNameMetadataDispatchInterceptor;
 
 /** Independently replayable, append-only audit projection of Application events. */
@@ -133,6 +134,17 @@ public class ApplicationHistoryProjection {
         event.occurredAt());
   }
 
+  /** Appends a thin audit entry for a note creation. */
+  @EventHandler
+  public void on(NoteCreatedEvent event, EventMessage<?> message) {
+    append(
+        message,
+        event.applicationId(),
+        "APPLICATION_NOTE_CREATED",
+        serialise(event),
+        event.occurredAt());
+  }
+
   /** Returns chronologically ordered history rows matching the requested public event types. */
   @QueryHandler
   public java.util.List<ApplicationHistoryReadModel> handle(FindApplicationHistoryQuery query) {
@@ -148,13 +160,26 @@ public class ApplicationHistoryProjection {
     boolean decision = history.getEventType().startsWith("APPLICATION_MAKE_DECISION_");
     boolean assignment = "ASSIGN_APPLICATION_TO_CASEWORKER".equals(history.getEventType());
     boolean unassignment = "UNASSIGN_APPLICATION_TO_CASEWORKER".equals(history.getEventType());
-    if (!decision && !assignment && !unassignment) {
+    boolean note = "APPLICATION_NOTE_CREATED".equals(history.getEventType());
+    if (!decision && !assignment && !unassignment && !note) {
       return history;
     }
     try {
       var thinPayload = objectMapper.readTree(history.getRequestPayload());
       long version = thinPayload.get("applicationDataVersion").asLong();
       var data = applicationDataStore.get(history.getApplicationId(), version);
+      if (note) {
+        var lastNote = data.notes().getLast();
+        return ApplicationHistoryReadModel.builder()
+            .eventId(history.getEventId())
+            .applicationId(history.getApplicationId())
+            .eventType(history.getEventType())
+            .requestPayload(
+                objectMapper.writeValueAsString(java.util.Map.of("noteText", lastNote.noteText())))
+            .serviceName(history.getServiceName())
+            .occurredAt(history.getOccurredAt())
+            .build();
+      }
       String description =
           decision ? data.decisionEventDescription() : data.assignmentEventDescription();
       java.util.Map<String, Object> reconstructedPayload = new java.util.HashMap<>();

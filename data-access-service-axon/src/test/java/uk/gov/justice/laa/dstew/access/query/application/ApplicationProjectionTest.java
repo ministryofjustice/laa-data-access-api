@@ -180,4 +180,27 @@ class ApplicationProjectionTest {
     assertThat(existing.getModifiedAt()).isEqualTo(occurredAt);
     verify(applicationReadRepository).save(existing);
   }
+
+  @Test
+  void
+      givenNoteCreatedEvent_whenHandled_thenAdvancesDataVersionWithoutChangingApplicationVersion() {
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-20T10:00:00Z");
+    ApplicationReadModel existing =
+        ApplicationReadModel.builder()
+            .applicationId(applicationId)
+            .applicationVersion(0L)
+            .applicationDataVersion(0L)
+            .build();
+    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(existing));
+
+    projection.on(
+        new uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent(
+            applicationId, 1L, occurredAt));
+
+    assertThat(existing.getApplicationDataVersion()).isEqualTo(1L);
+    assertThat(existing.getApplicationVersion()).isEqualTo(0L);
+    assertThat(existing.getModifiedAt()).isEqualTo(occurredAt);
+    verify(applicationReadRepository).save(existing);
+  }
 }

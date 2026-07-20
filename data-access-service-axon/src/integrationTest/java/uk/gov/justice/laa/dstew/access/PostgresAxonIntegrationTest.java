@@ -48,6 +48,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
+import uk.gov.justice.laa.dstew.access.model.CreateNoteRequest;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
 import uk.gov.justice.laa.dstew.access.model.IndividualCreateRequest;
@@ -1003,6 +1004,60 @@ class PostgresAxonIntegrationTest {
         "http://localhost:" + port + "/api/v0/applications",
         new HttpEntity<>(request, headers),
         responseType);
+  }
+
+  @Test
+  void givenExistingApplication_whenCreateNote_thenReturns204AndPersistsNoteInApplicationData()
+      throws Exception {
+    UUID applicationId = UUID.randomUUID();
+    applicationId(post(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()));
+    awaitProjection(applicationId);
+
+    ResponseEntity<Void> response =
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/applications/" + applicationId + "/notes",
+            HttpMethod.POST,
+            new HttpEntity<>(new CreateNoteRequest("Integration test note"), headers()),
+            Void.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+
+    // applicationDataVersion advances to 1; applicationVersion stays at 0
+    ApplicationReadModel model = awaitProjectionVersion(applicationId, 1L);
+    assertThat(model.getApplicationVersion()).isEqualTo(0L);
+
+    // Note text persisted in application_data JSONB at version 1
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT payload -> 'notes' -> 0 ->> 'noteText' FROM axon.application_data"
+                    + " WHERE application_id = ? AND version = 1",
+                String.class,
+                applicationId))
+        .isEqualTo("Integration test note");
+
+    // NoteCreatedEvent is thin — note text must not appear in the event stream
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT convert_from(payload, 'UTF8') FROM axon.domain_event_entry"
+                    + " WHERE aggregate_identifier = ? AND sequence_number = 1",
+                String.class,
+                applicationId.toString()))
+        .contains("applicationDataVersion")
+        .doesNotContain("Integration test note");
+
+    awaitHistoryTypes(applicationId, "APPLICATION_CREATED", "APPLICATION_NOTE_CREATED");
+  }
+
+  @Test
+  void givenNoApplication_whenCreateNote_thenReturns404() {
+    ResponseEntity<Void> response =
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/applications/" + UUID.randomUUID() + "/notes",
+            HttpMethod.POST,
+            new HttpEntity<>(new CreateNoteRequest("Should fail"), headers()),
+            Void.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
   }
 
   private HttpHeaders headers() {

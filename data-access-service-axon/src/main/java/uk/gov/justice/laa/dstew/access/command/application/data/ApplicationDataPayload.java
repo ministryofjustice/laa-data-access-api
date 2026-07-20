@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.command.application.data;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -30,7 +31,17 @@ public record ApplicationDataPayload(
     Map<String, Object> certificate,
     String decisionSerialisedRequest,
     String decisionEventDescription,
-    String assignmentEventDescription) {
+    String assignmentEventDescription,
+    List<ApplicationNote> notes) {
+
+  /**
+   * Normalises a null {@code notes} list to an empty list so that existing {@code application_data}
+   * JSONB rows (which pre-date this field) deserialise cleanly when Jackson passes {@code null} for
+   * the absent key.
+   */
+  public ApplicationDataPayload {
+    notes = notes == null ? List.of() : List.copyOf(notes);
+  }
 
   /**
    * Creates an application-data payload from the details parsed from an application command.
@@ -57,7 +68,8 @@ public record ApplicationDataPayload(
         null,
         null,
         null,
-        null);
+        null,
+        List.of());
   }
 
   /** Returns a complete new data version containing the supplied decision state. */
@@ -86,7 +98,8 @@ public record ApplicationDataPayload(
         newCertificate == null ? null : Map.copyOf(newCertificate),
         newDecisionSerialisedRequest,
         newDecisionEventDescription,
-        assignmentEventDescription);
+        assignmentEventDescription,
+        notes);
   }
 
   /** Returns a complete new data version containing assignment audit details. */
@@ -109,6 +122,33 @@ public record ApplicationDataPayload(
         certificate,
         decisionSerialisedRequest,
         decisionEventDescription,
-        newAssignmentEventDescription);
+        newAssignmentEventDescription,
+        notes);
+  }
+
+  /** Returns a complete new data version with the given note appended. */
+  public ApplicationDataPayload withNote(String noteText, Instant createdAt) {
+    List<ApplicationNote> updated = new ArrayList<>(notes);
+    updated.add(new ApplicationNote(noteText, createdAt));
+    return new ApplicationDataPayload(
+        laaReference,
+        applicationContent,
+        individuals,
+        applyApplicationId,
+        submittedAt,
+        officeCode,
+        usedDelegatedFunctions,
+        categoryOfLaw,
+        matterType,
+        proceedings,
+        serialisedRequest,
+        overallDecision,
+        autoGranted,
+        meritsDecisions,
+        certificate,
+        decisionSerialisedRequest,
+        decisionEventDescription,
+        assignmentEventDescription,
+        List.copyOf(updated));
   }
 }
