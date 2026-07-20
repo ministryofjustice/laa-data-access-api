@@ -94,8 +94,8 @@ public class ApplicationQueryController {
       @RequestParam(required = false) MatterType matterType,
       @RequestParam(required = false) ApplicationSortBy sortBy,
       @RequestParam(required = false) ApplicationOrderBy orderBy,
-      @RequestParam(defaultValue = "1") int page,
-      @RequestParam(defaultValue = "20") int pageSize) {
+      @RequestParam(required = false) Integer page,
+      @RequestParam(required = false) Integer pageSize) {
     FindAllApplicationsResult result =
         queryGateway
             .query(

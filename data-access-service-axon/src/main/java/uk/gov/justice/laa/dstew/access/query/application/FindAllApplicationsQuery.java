@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.query.application;
 
 import java.time.LocalDate;
+import uk.gov.justice.laa.dstew.access.query.PaginationHelper;
 
 /**
  * Query to retrieve a paginated, filtered list of Application current-state projections.
@@ -19,5 +20,12 @@ public record FindAllApplicationsQuery(
     LocalDate clientDateOfBirth,
     String sortBy,
     String orderBy,
-    int page,
-    int pageSize) {}
+    Integer page,
+    Integer pageSize) {
+
+  /** Resolves defaults and validates the shared pagination constraints. */
+  public FindAllApplicationsQuery {
+    page = PaginationHelper.validatePage(page);
+    pageSize = PaginationHelper.validatePageSize(pageSize);
+  }
+}
