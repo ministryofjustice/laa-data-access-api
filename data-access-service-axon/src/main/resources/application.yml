@@ -32,6 +32,8 @@ axon:
     processors:
       application-projection:
         mode: subscribing
+      workitem-projection:
+        mode: subscribing
 
 management:
   endpoints:

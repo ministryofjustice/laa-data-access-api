@@ -24,6 +24,7 @@ import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.draft.DraftRecord;
 import uk.gov.justice.laa.dstew.access.query.priorauthority.PriorAuthorityDraftRecord;
 import uk.gov.justice.laa.dstew.access.query.submission.SubmissionRecord;
+import uk.gov.justice.laa.dstew.access.query.workitem.WorkItemRecord;
 
 /** Configures Axon's event and token stores to use the application JPA transaction boundary. */
 @Configuration
@@ -34,7 +35,8 @@ import uk.gov.justice.laa.dstew.access.query.submission.SubmissionRecord;
       ApplicationReadModel.class,
       SubmissionRecord.class,
       DraftRecord.class,
-      PriorAuthorityDraftRecord.class
+      PriorAuthorityDraftRecord.class,
+      WorkItemRecord.class
     })
 @ConditionalOnProperty(
     name = "axon.eventstore.jpa.enabled",
