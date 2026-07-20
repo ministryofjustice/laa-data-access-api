@@ -3,6 +3,8 @@ package uk.gov.justice.laa.dstew.access.controller.application;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.axonframework.messaging.responsetypes.ResponseTypes;
 import org.axonframework.queryhandling.QueryGateway;
@@ -117,14 +119,24 @@ public class ApplicationQueryController {
   @GetMapping("/{id}")
   public ResponseEntity<ApplicationResponse> getApplicationById(@PathVariable UUID id) {
     ApplicationReadModel application =
-        queryGateway
-            .query(
-                new FindApplicationByIdQuery(id),
-                ResponseTypes.optionalInstanceOf(ApplicationReadModel.class))
-            .join()
+        findApplication(id)
             .orElseThrow(
                 () -> new ResourceNotFoundException("No application found with ID: " + id));
     return ResponseEntity.ok(responseMapper.toResponse(application));
+  }
+
+  /** Returns the certificate stored in the Application's current immutable data version. */
+  @GetMapping("/{id}/certificate")
+  public ResponseEntity<Map<String, Object>> getCertificate(
+      @RequestHeader("X-Service-Name") ServiceName serviceName, @PathVariable UUID id) {
+    ApplicationReadModel application =
+        findApplication(id)
+            .orElseThrow(
+                () -> new ResourceNotFoundException("No application found with id: " + id));
+    if (application.getCertificate() == null) {
+      throw new ResourceNotFoundException("No certificate found for application id: " + id);
+    }
+    return ResponseEntity.ok(application.getCertificate());
   }
 
   /** Returns domain-event history for the requested Application. */
@@ -159,5 +171,13 @@ public class ApplicationQueryController {
             .orElseThrow(
                 () -> new ResourceNotFoundException("No application found with ID: " + id));
     return ResponseEntity.ok(response);
+  }
+
+  private Optional<ApplicationReadModel> findApplication(UUID applicationId) {
+    return queryGateway
+        .query(
+            new FindApplicationByIdQuery(applicationId),
+            ResponseTypes.optionalInstanceOf(ApplicationReadModel.class))
+        .join();
   }
 }

@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.awaitility.Awaitility.await;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validLinkedCreateApplicationRequest;
 
@@ -28,6 +29,7 @@ import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRe
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -377,6 +379,93 @@ class PostgresAxonIntegrationTest {
                 Integer.class,
                 applicationId))
         .isEqualTo(2);
+  }
+
+  @Test
+  void givenApplicationCertificate_whenGetCertificate_thenReturnsCurrentCertificate()
+      throws Exception {
+    UUID applicationId = UUID.randomUUID();
+    UUID applyProceedingId = UUID.randomUUID();
+    applicationId(post(validCreateApplicationRequest(applicationId, applyProceedingId), headers()));
+    UUID proceedingId = awaitProjection(applicationId).getProceedings().getFirst().proceedingId();
+    Map<String, Object> certificate =
+        Map.of(
+            "certificateNumber", "TESTCERT001",
+            "issueDate", "2026-03-03",
+            "validUntil", "2027-03-03");
+    MakeDecisionRequest request =
+        MakeDecisionRequest.builder()
+            .applicationVersion(0L)
+            .overallDecision(DecisionStatus.GRANTED)
+            .autoGranted(false)
+            .certificate(certificate)
+            .eventHistory(
+                EventHistoryRequest.builder().eventDescription("Certificate granted").build())
+            .proceedings(
+                List.of(
+                    MakeDecisionProceedingRequest.builder()
+                        .proceedingId(proceedingId)
+                        .meritsDecision(
+                            MeritsDecisionDetailsRequest.builder()
+                                .decision(MeritsDecisionStatus.GRANTED)
+                                .justification("Decision approved")
+                                .build())
+                        .build()))
+            .build();
+
+    ResponseEntity<Void> decisionResponse =
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/applications/" + applicationId + "/decision",
+            HttpMethod.PATCH,
+            new HttpEntity<>(request, headers()),
+            Void.class);
+    assertThat(decisionResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    awaitProjectionVersion(applicationId, 1L);
+
+    ResponseEntity<Map<String, Object>> certificateResponse =
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/applications/" + applicationId + "/certificate",
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            new ParameterizedTypeReference<>() {});
+
+    assertThat(certificateResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(certificateResponse.getBody()).containsAllEntriesOf(certificate);
+
+    UUID applicationWithoutCertificate = UUID.randomUUID();
+    applicationId(
+        post(
+            validCreateApplicationRequest(applicationWithoutCertificate, UUID.randomUUID()),
+            headers()));
+    awaitProjection(applicationWithoutCertificate);
+    ResponseEntity<String> missingCertificateResponse =
+        restTemplate.exchange(
+            "http://localhost:"
+                + port
+                + "/api/v0/applications/"
+                + applicationWithoutCertificate
+                + "/certificate",
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            String.class);
+    assertThat(missingCertificateResponse.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    assertThat(missingCertificateResponse.getBody())
+        .contains("No certificate found for application id: " + applicationWithoutCertificate);
+
+    UUID missingApplicationId = UUID.randomUUID();
+    ResponseEntity<String> missingApplicationResponse =
+        restTemplate.exchange(
+            "http://localhost:"
+                + port
+                + "/api/v0/applications/"
+                + missingApplicationId
+                + "/certificate",
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            String.class);
+    assertThat(missingApplicationResponse.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    assertThat(missingApplicationResponse.getBody())
+        .contains("No application found with id: " + missingApplicationId);
   }
 
   @Test
@@ -1118,94 +1207,91 @@ class PostgresAxonIntegrationTest {
   }
 
   private ResponseEntity<ApplicationResponse> awaitGet(UUID applicationId) throws Exception {
-    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(15);
-    while (System.nanoTime() < deadline) {
-      ResponseEntity<String> response =
-          restTemplate.getForEntity(
-              "http://localhost:" + port + "/api/v0/applications/" + applicationId, String.class);
-      if (response.getStatusCode() == HttpStatus.OK) {
-        return new ResponseEntity<>(
-            objectMapper.readValue(response.getBody(), ApplicationResponse.class),
-            response.getHeaders(),
-            response.getStatusCode());
-      }
-      Thread.sleep(100);
-    }
-    throw new AssertionError(
-        "Application was not available from the query projection: " + applicationId);
+    ResponseEntity<String> response =
+        await()
+            .alias("application to be available from the query projection: " + applicationId)
+            .atMost(15, TimeUnit.SECONDS)
+            .pollInterval(100, TimeUnit.MILLISECONDS)
+            .until(
+                () ->
+                    restTemplate.getForEntity(
+                        "http://localhost:" + port + "/api/v0/applications/" + applicationId,
+                        String.class),
+                candidate -> candidate.getStatusCode() == HttpStatus.OK);
+    return new ResponseEntity<>(
+        objectMapper.readValue(response.getBody(), ApplicationResponse.class),
+        response.getHeaders(),
+        response.getStatusCode());
   }
 
-  private ApplicationReadModel awaitProjection(UUID applicationId) throws Exception {
-    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(15);
-    while (System.nanoTime() < deadline) {
-      var projected =
-          queryGateway
-              .query(
-                  new FindApplicationByIdQuery(applicationId),
-                  ResponseTypes.optionalInstanceOf(ApplicationReadModel.class))
-              .join();
-      if (projected.isPresent()) {
-        return projected.get();
-      }
-      Thread.sleep(100);
-    }
-    throw new AssertionError("Application projection was not populated for " + applicationId);
+  private ApplicationReadModel awaitProjection(UUID applicationId) {
+    return await()
+        .alias("application projection to be populated for " + applicationId)
+        .atMost(15, TimeUnit.SECONDS)
+        .pollInterval(100, TimeUnit.MILLISECONDS)
+        .until(
+            () ->
+                queryGateway
+                    .query(
+                        new FindApplicationByIdQuery(applicationId),
+                        ResponseTypes.optionalInstanceOf(ApplicationReadModel.class))
+                    .join(),
+            java.util.Optional::isPresent)
+        .orElseThrow();
   }
 
-  private ApplicationReadModel awaitProjectionVersion(UUID applicationId, long version)
-      throws Exception {
-    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(15);
-    while (System.nanoTime() < deadline) {
-      var projected =
-          queryGateway
-              .query(
-                  new FindApplicationByIdQuery(applicationId),
-                  ResponseTypes.optionalInstanceOf(ApplicationReadModel.class))
-              .join();
-      if (projected.isPresent() && projected.get().getApplicationDataVersion() == version) {
-        return projected.get();
-      }
-      Thread.sleep(100);
-    }
-    throw new AssertionError(
-        "Application projection did not reach version " + version + " for " + applicationId);
+  private ApplicationReadModel awaitProjectionVersion(UUID applicationId, long version) {
+    return await()
+        .alias("application projection to reach version " + version + " for " + applicationId)
+        .atMost(15, TimeUnit.SECONDS)
+        .pollInterval(100, TimeUnit.MILLISECONDS)
+        .until(
+            () ->
+                queryGateway
+                    .query(
+                        new FindApplicationByIdQuery(applicationId),
+                        ResponseTypes.optionalInstanceOf(ApplicationReadModel.class))
+                    .join(),
+            projected ->
+                projected.isPresent() && projected.get().getApplicationDataVersion() == version)
+        .orElseThrow();
   }
 
   private java.util.List<
           uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadModel>
-      awaitHistory(UUID applicationId, int expectedCount) throws Exception {
-    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
-    while (System.nanoTime() < deadline) {
-      var history =
-          applicationHistoryReadRepository.findAllByApplicationIdOrderByOccurredAtAsc(
-              applicationId);
-      if (history.size() == expectedCount) {
-        return history;
-      }
-      Thread.sleep(50);
-    }
-    throw new AssertionError(
-        "Application history projection was not populated for " + applicationId);
+      awaitHistory(UUID applicationId, int expectedCount) {
+    return await()
+        .alias(
+            "application history projection to contain "
+                + expectedCount
+                + " events for "
+                + applicationId)
+        .atMost(10, TimeUnit.SECONDS)
+        .pollInterval(50, TimeUnit.MILLISECONDS)
+        .until(
+            () ->
+                applicationHistoryReadRepository.findAllByApplicationIdOrderByOccurredAtAsc(
+                    applicationId),
+            history -> history.size() == expectedCount);
   }
 
   private List<ApplicationHistoryReadModel> awaitHistoryTypes(
-      UUID applicationId, String... expectedEventTypes) throws Exception {
+      UUID applicationId, String... expectedEventTypes) {
     List<String> expected = List.of(expectedEventTypes);
-    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
-    while (System.nanoTime() < deadline) {
-      List<ApplicationHistoryReadModel> history =
-          applicationHistoryReadRepository.findAllByApplicationIdOrderByOccurredAtAsc(
-              applicationId);
-      List<String> actual =
-          history.stream().map(ApplicationHistoryReadModel::getEventType).toList();
-      if (actual.size() == expected.size()
-          && new java.util.HashSet<>(actual).equals(new java.util.HashSet<>(expected))) {
-        return history;
-      }
-      Thread.sleep(50);
-    }
-    throw new AssertionError(
-        "Application history projection did not contain " + expected + " for " + applicationId);
+    return await()
+        .alias("application history projection to contain " + expected + " for " + applicationId)
+        .atMost(10, TimeUnit.SECONDS)
+        .pollInterval(50, TimeUnit.MILLISECONDS)
+        .until(
+            () ->
+                applicationHistoryReadRepository.findAllByApplicationIdOrderByOccurredAtAsc(
+                    applicationId),
+            history -> {
+              List<String> actual =
+                  history.stream().map(ApplicationHistoryReadModel::getEventType).toList();
+              return actual.size() == expected.size()
+                  && new java.util.HashSet<>(actual).equals(new java.util.HashSet<>(expected));
+            });
   }
 
   private void assertRejectedApplicationWasRolledBack(UUID applicationId) {
