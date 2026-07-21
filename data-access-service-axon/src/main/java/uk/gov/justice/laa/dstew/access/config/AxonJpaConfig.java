@@ -11,8 +11,6 @@ import org.axonframework.eventsourcing.eventstore.EventStorageEngine;
 import org.axonframework.eventsourcing.eventstore.jpa.DomainEventEntry;
 import org.axonframework.eventsourcing.eventstore.jpa.JpaEventStorageEngine;
 import org.axonframework.eventsourcing.eventstore.jpa.SQLErrorCodesResolver;
-import org.axonframework.modelling.saga.repository.jpa.AssociationValueEntry;
-import org.axonframework.modelling.saga.repository.jpa.SagaEntry;
 import org.axonframework.serialization.Serializer;
 import org.axonframework.spring.messaging.unitofwork.SpringTransactionManager;
 import org.axonframework.springboot.util.jpa.ContainerManagedEntityManagerProvider;
@@ -23,6 +21,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
+import uk.gov.justice.laa.dstew.access.query.draft.DraftRecord;
+import uk.gov.justice.laa.dstew.access.query.priorauthority.PriorAuthorityDraftRecord;
+import uk.gov.justice.laa.dstew.access.query.submission.SubmissionRecord;
+import uk.gov.justice.laa.dstew.access.query.workitem.WorkItemRecord;
 
 /** Configures Axon's event and token stores to use the application JPA transaction boundary. */
 @Configuration
@@ -30,9 +32,11 @@ import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
     basePackageClasses = {
       DomainEventEntry.class,
       org.axonframework.eventhandling.tokenstore.jpa.TokenEntry.class,
-      SagaEntry.class,
-      AssociationValueEntry.class,
-      ApplicationReadModel.class
+      ApplicationReadModel.class,
+      SubmissionRecord.class,
+      DraftRecord.class,
+      PriorAuthorityDraftRecord.class,
+      WorkItemRecord.class
     })
 @ConditionalOnProperty(
     name = "axon.eventstore.jpa.enabled",

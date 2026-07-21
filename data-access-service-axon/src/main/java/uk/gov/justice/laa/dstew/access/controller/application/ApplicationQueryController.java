@@ -12,6 +12,8 @@ import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
+import uk.gov.justice.laa.dstew.access.query.submission.FindSubmissionByApplicationIdQuery;
+import uk.gov.justice.laa.dstew.access.query.submission.SubmissionData;
 
 /** HTTP query adapter for Application reads. */
 @RestController
@@ -38,6 +40,13 @@ public class ApplicationQueryController {
             .join()
             .orElseThrow(
                 () -> new ResourceNotFoundException("No application found with ID: " + id));
-    return ResponseEntity.ok(responseMapper.toResponse(application));
+    SubmissionData payload =
+        queryGateway
+            .query(
+                new FindSubmissionByApplicationIdQuery(id),
+                ResponseTypes.optionalInstanceOf(SubmissionData.class))
+            .join()
+            .orElse(null);
+    return ResponseEntity.ok(responseMapper.toResponse(application, payload));
   }
 }

@@ -7,11 +7,11 @@ import org.axonframework.commandhandling.DuplicateCommandHandlerResolver;
 import org.axonframework.common.transaction.TransactionManager;
 import org.axonframework.config.Configuration;
 import org.axonframework.messaging.correlation.CorrelationDataProvider;
+import org.axonframework.messaging.correlation.MessageOriginProvider;
 import org.axonframework.messaging.correlation.SimpleCorrelationDataProvider;
 import org.axonframework.messaging.interceptors.CorrelationDataInterceptor;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
-import uk.gov.justice.laa.dstew.access.config.interceptor.CreateApplicationSchemaValidationDispatchInterceptor;
 import uk.gov.justice.laa.dstew.access.config.interceptor.ServiceNameMetadataDispatchInterceptor;
 
 /** Runs each command in its own worker unit of work, including commands dispatched by sagas. */
@@ -25,6 +25,12 @@ public class AxonCommandBusConfig {
         ServiceNameMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY);
   }
 
+  /** Propagates correlationId (root) and traceId (causation) metadata down the message chain. */
+  @Bean
+  CorrelationDataProvider messageOriginProvider() {
+    return new MessageOriginProvider();
+  }
+
   /**
    * Replaces Axon's synchronous local command bus while preserving its standard instrumentation.
    */
@@ -34,9 +40,7 @@ public class AxonCommandBusConfig {
       TransactionManager transactionManager,
       Configuration axonConfiguration,
       DuplicateCommandHandlerResolver duplicateCommandHandlerResolver,
-      ServiceNameMetadataDispatchInterceptor serviceNameMetadataDispatchInterceptor,
-      CreateApplicationSchemaValidationDispatchInterceptor
-          createApplicationSchemaValidationDispatchInterceptor) {
+      ServiceNameMetadataDispatchInterceptor serviceNameMetadataDispatchInterceptor) {
     AsynchronousCommandBus commandBus =
         AsynchronousCommandBus.builder()
             .transactionManager(transactionManager)
@@ -47,7 +51,6 @@ public class AxonCommandBusConfig {
     commandBus.registerHandlerInterceptor(
         new CorrelationDataInterceptor<>(axonConfiguration.correlationDataProviders()));
     commandBus.registerDispatchInterceptor(serviceNameMetadataDispatchInterceptor);
-    commandBus.registerDispatchInterceptor(createApplicationSchemaValidationDispatchInterceptor);
     return commandBus;
   }
 }

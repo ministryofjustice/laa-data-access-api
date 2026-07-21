@@ -31,11 +31,9 @@ axon:
   eventhandling:
     processors:
       application-projection:
-        mode: tracking
-      application-history-projection:
-        mode: tracking
-      create-application-saga:
-        mode: tracking
+        mode: subscribing
+      workitem-projection:
+        mode: subscribing
 
 management:
   endpoints:

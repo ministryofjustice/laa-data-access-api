@@ -25,29 +25,31 @@ import uk.gov.justice.laa.dstew.access.model.OpponentResponse;
 import uk.gov.justice.laa.dstew.access.model.ProviderResponse;
 import uk.gov.justice.laa.dstew.access.model.ScopeLimitationResponse;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
+import uk.gov.justice.laa.dstew.access.query.submission.SubmissionData;
 
-/** Maps the typed current-state projection to the public application response. */
+/** Maps the Application current-state projection to the public application response. */
 @Component
 public class GetApplicationResponseMapper {
 
-  /** Builds a response without reparsing content from JSON. */
-  public ApplicationResponse toResponse(ApplicationReadModel application) {
-    ApplicationContent content = application.getApplicationContent();
+  /** Builds a response from the read-model metadata and the raw submission payload. */
+  public ApplicationResponse toResponse(ApplicationReadModel application, SubmissionData payload) {
+    ApplicationContent content = payload == null ? null : payload.applicationContent();
+    List<ApplicationProceeding> proceedings = payload == null ? null : payload.proceedings();
     ApplicationResponse response = new ApplicationResponse();
-    response.setApplicationId(application.getApplicationId());
+    response.setApplicationId(application.getApplyApplicationId());
     response.setStatus(ApplicationStatus.valueOf(application.getStatus()));
     response.setLaaReference(application.getLaaReference());
-    response.setLastUpdated(application.getModifiedAt().atOffset(ZoneOffset.UTC));
+    response.setLastUpdated(application.getCreatedAt().atOffset(ZoneOffset.UTC));
     response.setSubmittedAt(
         application.getSubmittedAt() == null
             ? null
             : application.getSubmittedAt().atOffset(ZoneOffset.UTC));
-    response.setIsLead(application.getLeadApplicationId() == null);
+    response.setIsLead(true);
     response.setUsedDelegatedFunctions(application.getUsedDelegatedFunctions());
     response.setApplicationType(ApplicationType.INITIAL);
     response.setProvider(toProvider(application, content));
     response.setOpponents(toOpponents(content));
-    response.setProceedings(toProceedings(application.getProceedings(), content));
+    response.setProceedings(toProceedings(proceedings, content));
     return response;
   }
 
@@ -94,18 +96,27 @@ public class GetApplicationResponseMapper {
 
   private ApplicationProceedingResponse toProceeding(
       ApplicationProceeding applicationProceeding, ApplicationContent content) {
-    Proceeding proceeding = applicationProceeding.proceedingContent();
+    Proceeding proceeding = applicationProceeding.proceeding();
+    UUID applyProceedingId =
+        applicationProceeding.id() == null ? null : UUID.fromString(applicationProceeding.id());
     return ApplicationProceedingResponse.builder()
         .proceedingId(applicationProceeding.proceedingId())
         .proceedingDescription(applicationProceeding.description())
-        .proceedingType(proceeding.getMeaning())
-        .delegatedFunctionsDate(proceeding.getUsedDelegatedFunctionsOn())
-        .categoryOfLaw(toCategoryOfLaw(proceeding.getCategoryOfLawEnum()))
-        .matterType(toMatterType(proceeding.getMatterTypeEnum()))
-        .levelOfService(proceeding.getSubstantiveLevelOfServiceNameEnum())
-        .substantiveCostLimitation(proceeding.getSubstantiveCostLimitation())
-        .scopeLimitations(toScopeLimitations(proceeding.getScopeLimitations()))
-        .involvedChildren(toInvolvedChildren(applicationProceeding.applyProceedingId(), content))
+        .proceedingType(proceeding == null ? null : proceeding.getMeaning())
+        .delegatedFunctionsDate(
+            proceeding == null ? null : proceeding.getUsedDelegatedFunctionsOn())
+        .categoryOfLaw(
+            proceeding == null ? null : toCategoryOfLaw(proceeding.getCategoryOfLawEnum()))
+        .matterType(proceeding == null ? null : toMatterType(proceeding.getMatterTypeEnum()))
+        .levelOfService(
+            proceeding == null ? null : proceeding.getSubstantiveLevelOfServiceNameEnum())
+        .substantiveCostLimitation(
+            proceeding == null ? null : proceeding.getSubstantiveCostLimitation())
+        .scopeLimitations(
+            proceeding == null
+                ? Collections.emptyList()
+                : toScopeLimitations(proceeding.getScopeLimitations()))
+        .involvedChildren(toInvolvedChildren(applyProceedingId, content))
         .build();
   }
 
@@ -134,7 +145,7 @@ public class GetApplicationResponseMapper {
 
   private List<InvolvedChildResponse> toInvolvedChildren(
       UUID applyProceedingId, ApplicationContent content) {
-    if (content == null || content.getApplicationMerits() == null) {
+    if (applyProceedingId == null || content == null || content.getApplicationMerits() == null) {
       return Collections.emptyList();
     }
     List<ProceedingMerits> proceedingMerits = content.getProceedingMerits();
