@@ -1,0 +1,41 @@
+name: laa-data-access-axon
+
+services:
+  postgres-axon:
+    image: postgres:17
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: laa_data_access_api
+      POSTGRES_USER: laa_user
+      POSTGRES_PASSWORD: laa_password
+    volumes:
+      - pgdata-axon:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U laa_user -d laa_data_access_api"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  data-access-service-axon:
+    build:
+      context: .
+      dockerfile: Dockerfile.axon
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-axon:5432/laa_data_access_api?currentSchema=axon
+      SPRING_DATASOURCE_USERNAME: laa_user
+      SPRING_DATASOURCE_PASSWORD: laa_password
+    depends_on:
+      postgres-axon:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8082/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+volumes:
+  pgdata-axon:
