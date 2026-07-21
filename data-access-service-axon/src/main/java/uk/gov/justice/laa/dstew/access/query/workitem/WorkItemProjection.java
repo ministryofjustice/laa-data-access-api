@@ -15,9 +15,9 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationSubmittedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.CaseworkerAssignedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.CaseworkerUnassignedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.PriorAuthoritySubmittedEvent;
+import uk.gov.justice.laa.dstew.access.command.workallocation.CaseworkerAssignedEvent;
+import uk.gov.justice.laa.dstew.access.command.workallocation.CaseworkerUnassignedEvent;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadRepository;
 
 /**
@@ -76,17 +76,13 @@ public class WorkItemProjection {
   /** Reflects an assignment onto the work item. */
   @EventHandler
   public void on(CaseworkerAssignedEvent event) {
-    updateAssignee(
-        workItemId(event.applyApplicationId(), event.priorAuthorityId()),
-        event.caseworkerId(),
-        event.occurredAt());
+    updateAssignee(event.workItemId(), event.caseworkerId(), event.occurredAt());
   }
 
   /** Clears the assignment on the work item. */
   @EventHandler
   public void on(CaseworkerUnassignedEvent event) {
-    updateAssignee(
-        workItemId(event.applyApplicationId(), event.priorAuthorityId()), null, event.occurredAt());
+    updateAssignee(event.workItemId(), null, event.occurredAt());
   }
 
   /** Returns a filtered, paginated page of work items. */

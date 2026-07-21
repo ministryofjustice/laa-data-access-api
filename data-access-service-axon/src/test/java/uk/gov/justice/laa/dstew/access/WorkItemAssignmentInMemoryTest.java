@@ -124,6 +124,24 @@ class WorkItemAssignmentInMemoryTest {
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
   }
 
+  @Test
+  void givenTwoPriorAuthoritiesOnOneApplication_whenAssignedSeparately_thenIndependent() {
+    UUID applicationId = submitApplication();
+    UUID priorAuthorityA = submitPriorAuthority(applicationId);
+    UUID priorAuthorityB = submitPriorAuthority(applicationId);
+    UUID caseworkerA = UUID.randomUUID();
+    UUID caseworkerB = UUID.randomUUID();
+
+    assertThat(assign(priorAuthorityA, caseworkerA).getStatusCode())
+        .isEqualTo(HttpStatus.NO_CONTENT);
+    assertThat(assign(priorAuthorityB, caseworkerB).getStatusCode())
+        .isEqualTo(HttpStatus.NO_CONTENT);
+
+    assertThat(assigneeOf(priorAuthorityA)).isEqualTo(caseworkerA);
+    assertThat(assigneeOf(priorAuthorityB)).isEqualTo(caseworkerB);
+    assertThat(assigneeOf(applicationId)).isNull();
+  }
+
   private ResponseEntity<Void> assign(UUID workItemId, UUID caseworkerId) {
     return restTemplate.exchange(
         "/api/v0/work-items/" + workItemId + "/assign",

@@ -289,229 +289,29 @@ class ApplicationAggregateTest {
         .expectException(uk.gov.justice.laa.dstew.access.exception.ConflictException.class);
   }
 
-  // ---- Assign / unassign caseworker (application) ----------------------------------------------
+  // ---- Prior authority member routing (ForwardMatchingInstances) -----------------------------
 
   @Test
-  void givenSubmittedApplication_whenAssigned_thenPublishesCaseworkerAssignedEvent() {
-    UUID applicationId = UUID.randomUUID();
-    UUID caseworkerId = UUID.randomUUID();
-
-    fixture
-        .given(draftedEvent(applicationId), submittedEvent(applicationId))
-        .when(new AssignApplicationCaseworkerCommand(applicationId, caseworkerId))
-        .expectEvents(new CaseworkerAssignedEvent(applicationId, null, caseworkerId, FIXED_NOW));
-  }
-
-  @Test
-  void givenAssignedApplication_whenAssignedSameCaseworker_thenIdempotentWithNoEvent() {
-    UUID applicationId = UUID.randomUUID();
-    UUID caseworkerId = UUID.randomUUID();
-
-    fixture
-        .given(
-            draftedEvent(applicationId),
-            submittedEvent(applicationId),
-            new CaseworkerAssignedEvent(applicationId, null, caseworkerId, FIXED_NOW))
-        .when(new AssignApplicationCaseworkerCommand(applicationId, caseworkerId))
-        .expectNoEvents();
-  }
-
-  @Test
-  void givenAssignedApplication_whenAssignedDifferentCaseworker_thenRejectsWithConflict() {
-    UUID applicationId = UUID.randomUUID();
-
-    fixture
-        .given(
-            draftedEvent(applicationId),
-            submittedEvent(applicationId),
-            new CaseworkerAssignedEvent(applicationId, null, UUID.randomUUID(), FIXED_NOW))
-        .when(new AssignApplicationCaseworkerCommand(applicationId, UUID.randomUUID()))
-        .expectException(uk.gov.justice.laa.dstew.access.exception.ConflictException.class);
-  }
-
-  @Test
-  void givenDraftApplication_whenAssigned_thenRejectsWithConflict() {
-    UUID applicationId = UUID.randomUUID();
-
-    fixture
-        .given(draftedEvent(applicationId))
-        .when(new AssignApplicationCaseworkerCommand(applicationId, UUID.randomUUID()))
-        .expectException(uk.gov.justice.laa.dstew.access.exception.ConflictException.class);
-  }
-
-  @Test
-  void givenAssignedApplication_whenUnassigned_thenPublishesCaseworkerUnassignedEvent() {
-    UUID applicationId = UUID.randomUUID();
-
-    fixture
-        .given(
-            draftedEvent(applicationId),
-            submittedEvent(applicationId),
-            new CaseworkerAssignedEvent(applicationId, null, UUID.randomUUID(), FIXED_NOW))
-        .when(new UnassignApplicationCaseworkerCommand(applicationId))
-        .expectEvents(new CaseworkerUnassignedEvent(applicationId, null, FIXED_NOW));
-  }
-
-  @Test
-  void givenUnassignedApplication_whenUnassigned_thenRejectsWithConflict() {
-    UUID applicationId = UUID.randomUUID();
-
-    fixture
-        .given(draftedEvent(applicationId), submittedEvent(applicationId))
-        .when(new UnassignApplicationCaseworkerCommand(applicationId))
-        .expectException(uk.gov.justice.laa.dstew.access.exception.ConflictException.class);
-  }
-
-  // ---- Assign / unassign caseworker (prior authority member) -----------------------------------
-
-  @Test
-  void givenSubmittedPriorAuthority_whenAssigned_thenPublishesCaseworkerAssignedEvent() {
-    UUID applicationId = UUID.randomUUID();
-    UUID priorAuthorityId = UUID.randomUUID();
-    UUID caseworkerId = UUID.randomUUID();
-
-    fixture
-        .given(submittedPriorAuthority(applicationId, priorAuthorityId))
-        .when(
-            new AssignPriorAuthorityCaseworkerCommand(
-                applicationId, priorAuthorityId, caseworkerId))
-        .expectEvents(
-            new CaseworkerAssignedEvent(applicationId, priorAuthorityId, caseworkerId, FIXED_NOW));
-  }
-
-  @Test
-  void givenAssignedPriorAuthority_whenAssignedDifferentCaseworker_thenRejectsWithConflict() {
-    UUID applicationId = UUID.randomUUID();
-    UUID priorAuthorityId = UUID.randomUUID();
-
-    fixture
-        .given(appendAssigned(applicationId, priorAuthorityId, UUID.randomUUID()))
-        .when(
-            new AssignPriorAuthorityCaseworkerCommand(
-                applicationId, priorAuthorityId, UUID.randomUUID()))
-        .expectException(uk.gov.justice.laa.dstew.access.exception.ConflictException.class);
-  }
-
-  @Test
-  void givenDraftPriorAuthority_whenAssigned_thenRejectsWithConflict() {
-    UUID applicationId = UUID.randomUUID();
-    UUID priorAuthorityId = UUID.randomUUID();
-
-    fixture
-        .given(
-            draftedEvent(applicationId),
-            submittedEvent(applicationId),
-            new PriorAuthorityDraftedEvent(applicationId, priorAuthorityId, FIXED_NOW))
-        .when(
-            new AssignPriorAuthorityCaseworkerCommand(
-                applicationId, priorAuthorityId, UUID.randomUUID()))
-        .expectException(uk.gov.justice.laa.dstew.access.exception.ConflictException.class);
-  }
-
-  @Test
-  void givenAssignedPriorAuthority_whenUnassigned_thenPublishesCaseworkerUnassignedEvent() {
-    UUID applicationId = UUID.randomUUID();
-    UUID priorAuthorityId = UUID.randomUUID();
-
-    fixture
-        .given(appendAssigned(applicationId, priorAuthorityId, UUID.randomUUID()))
-        .when(new UnassignPriorAuthorityCaseworkerCommand(applicationId, priorAuthorityId))
-        .expectEvents(new CaseworkerUnassignedEvent(applicationId, priorAuthorityId, FIXED_NOW));
-  }
-
-  @Test
-  void givenTwoPriorAuthorities_whenAssignedSeparately_thenEachHoldsItsOwnCaseworker() {
+  void givenTwoPriorAuthorities_whenOneSubmitted_thenOnlyThatMemberTransitions() {
     UUID applicationId = UUID.randomUUID();
     UUID priorAuthorityA = UUID.randomUUID();
     UUID priorAuthorityB = UUID.randomUUID();
-    UUID caseworkerA = UUID.randomUUID();
-    UUID caseworkerB = UUID.randomUUID();
 
-    // A is already assigned to caseworker A; assigning B to a different caseworker must succeed
-    // (no cross-talk) and emit an event routed to member B only.
+    // Both members are draft; submitting A must route to A only. If member events forwarded to all
+    // members (the ForwardAll default bug), B would also be SUBMITTED and re-submitting B would
+    // conflict. We assert B is still in DRAFT by successfully submitting it.
     fixture
         .given(
             draftedEvent(applicationId),
             submittedEvent(applicationId),
             new PriorAuthorityDraftedEvent(applicationId, priorAuthorityA, FIXED_NOW),
-            new PriorAuthoritySubmittedEvent(applicationId, priorAuthorityA, FIXED_NOW),
             new PriorAuthorityDraftedEvent(applicationId, priorAuthorityB, FIXED_NOW),
-            new PriorAuthoritySubmittedEvent(applicationId, priorAuthorityB, FIXED_NOW),
-            new CaseworkerAssignedEvent(applicationId, priorAuthorityA, caseworkerA, FIXED_NOW))
-        .when(
-            new AssignPriorAuthorityCaseworkerCommand(applicationId, priorAuthorityB, caseworkerB))
-        .expectEvents(
-            new CaseworkerAssignedEvent(applicationId, priorAuthorityB, caseworkerB, FIXED_NOW));
+            new PriorAuthoritySubmittedEvent(applicationId, priorAuthorityA, FIXED_NOW))
+        .when(new SubmitPriorAuthorityCommand(applicationId, priorAuthorityB))
+        .expectEvents(new PriorAuthoritySubmittedEvent(applicationId, priorAuthorityB, FIXED_NOW));
   }
-
-  @Test
-  void givenPriorAuthorityAssignedToOne_whenAssignedToAnother_thenRejectsWithConflict() {
-    UUID applicationId = UUID.randomUUID();
-    UUID priorAuthorityA = UUID.randomUUID();
-    UUID priorAuthorityB = UUID.randomUUID();
-    UUID caseworkerA = UUID.randomUUID();
-
-    // Member A is held by caseworker A; re-assigning A to a different caseworker is a conflict,
-    // proving assignment state is per-member, not shared across prior authorities.
-    fixture
-        .given(
-            draftedEvent(applicationId),
-            submittedEvent(applicationId),
-            new PriorAuthorityDraftedEvent(applicationId, priorAuthorityA, FIXED_NOW),
-            new PriorAuthoritySubmittedEvent(applicationId, priorAuthorityA, FIXED_NOW),
-            new PriorAuthorityDraftedEvent(applicationId, priorAuthorityB, FIXED_NOW),
-            new PriorAuthoritySubmittedEvent(applicationId, priorAuthorityB, FIXED_NOW),
-            new CaseworkerAssignedEvent(applicationId, priorAuthorityA, caseworkerA, FIXED_NOW))
-        .when(
-            new AssignPriorAuthorityCaseworkerCommand(
-                applicationId, priorAuthorityA, UUID.randomUUID()))
-        .expectException(uk.gov.justice.laa.dstew.access.exception.ConflictException.class);
-  }
-
-  @Test
-  void givenApplicationAssigned_whenPriorAuthorityAssigned_thenAssignmentsAreIndependent() {
-    UUID applicationId = UUID.randomUUID();
-    UUID priorAuthorityId = UUID.randomUUID();
-    UUID applicationCaseworker = UUID.randomUUID();
-    UUID priorAuthorityCaseworker = UUID.randomUUID();
-
-    // The application root is already assigned; assigning the PA member to a *different* caseworker
-    // must succeed, proving the root assignee and the member assignee are separate state.
-    fixture
-        .given(
-            draftedEvent(applicationId),
-            submittedEvent(applicationId),
-            new CaseworkerAssignedEvent(applicationId, null, applicationCaseworker, FIXED_NOW),
-            new PriorAuthorityDraftedEvent(applicationId, priorAuthorityId, FIXED_NOW),
-            new PriorAuthoritySubmittedEvent(applicationId, priorAuthorityId, FIXED_NOW))
-        .when(
-            new AssignPriorAuthorityCaseworkerCommand(
-                applicationId, priorAuthorityId, priorAuthorityCaseworker))
-        .expectEvents(
-            new CaseworkerAssignedEvent(
-                applicationId, priorAuthorityId, priorAuthorityCaseworker, FIXED_NOW));
-  }
-
-  // ---- helpers ---------------------------------------------------------------------------------
 
   private static final Instant FIXED_NOW = Instant.parse("2026-07-15T08:00:00Z");
-
-  private Object[] submittedPriorAuthority(UUID applicationId, UUID priorAuthorityId) {
-    return new Object[] {
-      draftedEvent(applicationId),
-      submittedEvent(applicationId),
-      new PriorAuthorityDraftedEvent(applicationId, priorAuthorityId, FIXED_NOW),
-      new PriorAuthoritySubmittedEvent(applicationId, priorAuthorityId, FIXED_NOW)
-    };
-  }
-
-  private Object[] appendAssigned(UUID applicationId, UUID priorAuthorityId, UUID caseworkerId) {
-    Object[] base = submittedPriorAuthority(applicationId, priorAuthorityId);
-    Object[] all = java.util.Arrays.copyOf(base, base.length + 1);
-    all[base.length] =
-        new CaseworkerAssignedEvent(applicationId, priorAuthorityId, caseworkerId, FIXED_NOW);
-    return all;
-  }
 
   private SubmitApplicationCommand submitCommand(UUID applyApplicationId) {
     return new SubmitApplicationCommand(

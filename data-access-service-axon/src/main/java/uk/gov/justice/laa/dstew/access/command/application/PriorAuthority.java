@@ -22,7 +22,6 @@ class PriorAuthority {
 
   @EntityId private UUID priorAuthorityId;
   private String state;
-  private UUID assignedCaseworkerId;
 
   PriorAuthority(UUID priorAuthorityId) {
     this.priorAuthorityId = priorAuthorityId;
@@ -49,56 +48,9 @@ class PriorAuthority {
             command.applyApplicationId(), priorAuthorityId, Instant.now(clock)));
   }
 
-  /**
-   * Assigns a caseworker to this (submitted) prior authority. Idempotent when the same caseworker
-   * is assigned again; rejected with a conflict when a different caseworker already holds it.
-   */
-  @CommandHandler
-  void handle(AssignPriorAuthorityCaseworkerCommand command, Clock clock) {
-    requireSubmitted("assign a caseworker to");
-    if (assignedCaseworkerId != null) {
-      if (assignedCaseworkerId.equals(command.caseworkerId())) {
-        return;
-      }
-      throw new ConflictException(
-          "Prior authority " + priorAuthorityId + " is already assigned to a different caseworker");
-    }
-    apply(
-        new CaseworkerAssignedEvent(
-            command.applyApplicationId(),
-            priorAuthorityId,
-            command.caseworkerId(),
-            Instant.now(clock)));
-  }
-
-  /**
-   * Clears this prior authority's caseworker assignment. Rejected with a conflict when it is not
-   * currently assigned.
-   */
-  @CommandHandler
-  void handle(UnassignPriorAuthorityCaseworkerCommand command, Clock clock) {
-    if (assignedCaseworkerId == null) {
-      throw new ConflictException(
-          "Prior authority " + priorAuthorityId + " is not assigned to a caseworker");
-    }
-    apply(
-        new CaseworkerUnassignedEvent(
-            command.applyApplicationId(), priorAuthorityId, Instant.now(clock)));
-  }
-
   @EventSourcingHandler
   void on(PriorAuthoritySubmittedEvent event) {
     state = SUBMITTED;
-  }
-
-  @EventSourcingHandler
-  void on(CaseworkerAssignedEvent event) {
-    assignedCaseworkerId = event.caseworkerId();
-  }
-
-  @EventSourcingHandler
-  void on(CaseworkerUnassignedEvent event) {
-    assignedCaseworkerId = null;
   }
 
   @Override
@@ -122,13 +74,6 @@ class PriorAuthority {
     if (!DRAFT.equals(state)) {
       throw new ConflictException(
           "Cannot " + action + " prior authority " + priorAuthorityId + "; it is not in DRAFT");
-    }
-  }
-
-  private void requireSubmitted(String action) {
-    if (!SUBMITTED.equals(state)) {
-      throw new ConflictException(
-          "Cannot " + action + " prior authority " + priorAuthorityId + "; it is not submitted");
     }
   }
 }
