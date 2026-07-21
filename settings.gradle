@@ -22,5 +22,6 @@ rootProject.name = 'laa-data-access-api'
 
 include 'data-access-api'
 include 'data-access-service'
+include 'data-access-service-axon'
 include 'data-access-shared'
 include 'data-access-mass-generator'
