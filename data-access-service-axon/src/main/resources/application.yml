@@ -1,0 +1,46 @@
+server:
+  port: ${SERVER_PORT:8082}
+
+spring:
+  application:
+    name: data-access-service-axon
+  autoconfigure:
+    exclude: org.axonframework.springboot.autoconfig.XStreamAutoConfiguration
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/laa_data_access_api?currentSchema=axon}
+    username: ${SPRING_DATASOURCE_USERNAME:laa_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:laa_password}
+  flyway:
+    create-schemas: true
+    default-schema: axon
+    schemas: axon
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        default_schema: axon
+
+axon:
+  axonserver:
+    enabled: false
+  serializer:
+    general: jackson
+    events: jackson
+    messages: jackson
+  eventhandling:
+    processors:
+      application-projection:
+        mode: subscribing
+      workitem-projection:
+        mode: subscribing
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+springdoc:
+  api-docs:
+    version: openapi_3_1
