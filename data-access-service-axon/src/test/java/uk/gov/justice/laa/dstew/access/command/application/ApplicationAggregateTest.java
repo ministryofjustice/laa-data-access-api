@@ -289,7 +289,156 @@ class ApplicationAggregateTest {
         .expectException(uk.gov.justice.laa.dstew.access.exception.ConflictException.class);
   }
 
+  // ---- Assign / unassign caseworker (application) ----------------------------------------------
+
+  @Test
+  void givenSubmittedApplication_whenAssigned_thenPublishesCaseworkerAssignedEvent() {
+    UUID applicationId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+
+    fixture
+        .given(draftedEvent(applicationId), submittedEvent(applicationId))
+        .when(new AssignApplicationCaseworkerCommand(applicationId, caseworkerId))
+        .expectEvents(new CaseworkerAssignedEvent(applicationId, null, caseworkerId, FIXED_NOW));
+  }
+
+  @Test
+  void givenAssignedApplication_whenAssignedSameCaseworker_thenIdempotentWithNoEvent() {
+    UUID applicationId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+
+    fixture
+        .given(
+            draftedEvent(applicationId),
+            submittedEvent(applicationId),
+            new CaseworkerAssignedEvent(applicationId, null, caseworkerId, FIXED_NOW))
+        .when(new AssignApplicationCaseworkerCommand(applicationId, caseworkerId))
+        .expectNoEvents();
+  }
+
+  @Test
+  void givenAssignedApplication_whenAssignedDifferentCaseworker_thenRejectsWithConflict() {
+    UUID applicationId = UUID.randomUUID();
+
+    fixture
+        .given(
+            draftedEvent(applicationId),
+            submittedEvent(applicationId),
+            new CaseworkerAssignedEvent(applicationId, null, UUID.randomUUID(), FIXED_NOW))
+        .when(new AssignApplicationCaseworkerCommand(applicationId, UUID.randomUUID()))
+        .expectException(uk.gov.justice.laa.dstew.access.exception.ConflictException.class);
+  }
+
+  @Test
+  void givenDraftApplication_whenAssigned_thenRejectsWithConflict() {
+    UUID applicationId = UUID.randomUUID();
+
+    fixture
+        .given(draftedEvent(applicationId))
+        .when(new AssignApplicationCaseworkerCommand(applicationId, UUID.randomUUID()))
+        .expectException(uk.gov.justice.laa.dstew.access.exception.ConflictException.class);
+  }
+
+  @Test
+  void givenAssignedApplication_whenUnassigned_thenPublishesCaseworkerUnassignedEvent() {
+    UUID applicationId = UUID.randomUUID();
+
+    fixture
+        .given(
+            draftedEvent(applicationId),
+            submittedEvent(applicationId),
+            new CaseworkerAssignedEvent(applicationId, null, UUID.randomUUID(), FIXED_NOW))
+        .when(new UnassignApplicationCaseworkerCommand(applicationId))
+        .expectEvents(new CaseworkerUnassignedEvent(applicationId, null, FIXED_NOW));
+  }
+
+  @Test
+  void givenUnassignedApplication_whenUnassigned_thenRejectsWithConflict() {
+    UUID applicationId = UUID.randomUUID();
+
+    fixture
+        .given(draftedEvent(applicationId), submittedEvent(applicationId))
+        .when(new UnassignApplicationCaseworkerCommand(applicationId))
+        .expectException(uk.gov.justice.laa.dstew.access.exception.ConflictException.class);
+  }
+
+  // ---- Assign / unassign caseworker (prior authority member) -----------------------------------
+
+  @Test
+  void givenSubmittedPriorAuthority_whenAssigned_thenPublishesCaseworkerAssignedEvent() {
+    UUID applicationId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+
+    fixture
+        .given(submittedPriorAuthority(applicationId, priorAuthorityId))
+        .when(
+            new AssignPriorAuthorityCaseworkerCommand(
+                applicationId, priorAuthorityId, caseworkerId))
+        .expectEvents(
+            new CaseworkerAssignedEvent(applicationId, priorAuthorityId, caseworkerId, FIXED_NOW));
+  }
+
+  @Test
+  void givenAssignedPriorAuthority_whenAssignedDifferentCaseworker_thenRejectsWithConflict() {
+    UUID applicationId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
+
+    fixture
+        .given(appendAssigned(applicationId, priorAuthorityId, UUID.randomUUID()))
+        .when(
+            new AssignPriorAuthorityCaseworkerCommand(
+                applicationId, priorAuthorityId, UUID.randomUUID()))
+        .expectException(uk.gov.justice.laa.dstew.access.exception.ConflictException.class);
+  }
+
+  @Test
+  void givenDraftPriorAuthority_whenAssigned_thenRejectsWithConflict() {
+    UUID applicationId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
+
+    fixture
+        .given(
+            draftedEvent(applicationId),
+            submittedEvent(applicationId),
+            new PriorAuthorityDraftedEvent(applicationId, priorAuthorityId, FIXED_NOW))
+        .when(
+            new AssignPriorAuthorityCaseworkerCommand(
+                applicationId, priorAuthorityId, UUID.randomUUID()))
+        .expectException(uk.gov.justice.laa.dstew.access.exception.ConflictException.class);
+  }
+
+  @Test
+  void givenAssignedPriorAuthority_whenUnassigned_thenPublishesCaseworkerUnassignedEvent() {
+    UUID applicationId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
+
+    fixture
+        .given(appendAssigned(applicationId, priorAuthorityId, UUID.randomUUID()))
+        .when(new UnassignPriorAuthorityCaseworkerCommand(applicationId, priorAuthorityId))
+        .expectEvents(new CaseworkerUnassignedEvent(applicationId, priorAuthorityId, FIXED_NOW));
+  }
+
   // ---- helpers ---------------------------------------------------------------------------------
+
+  private static final Instant FIXED_NOW = Instant.parse("2026-07-15T08:00:00Z");
+
+  private Object[] submittedPriorAuthority(UUID applicationId, UUID priorAuthorityId) {
+    return new Object[] {
+      draftedEvent(applicationId),
+      submittedEvent(applicationId),
+      new PriorAuthorityDraftedEvent(applicationId, priorAuthorityId, FIXED_NOW),
+      new PriorAuthoritySubmittedEvent(applicationId, priorAuthorityId, FIXED_NOW)
+    };
+  }
+
+  private Object[] appendAssigned(UUID applicationId, UUID priorAuthorityId, UUID caseworkerId) {
+    Object[] base = submittedPriorAuthority(applicationId, priorAuthorityId);
+    Object[] all = java.util.Arrays.copyOf(base, base.length + 1);
+    all[base.length] =
+        new CaseworkerAssignedEvent(applicationId, priorAuthorityId, caseworkerId, FIXED_NOW);
+    return all;
+  }
 
   private SubmitApplicationCommand submitCommand(UUID applyApplicationId) {
     return new SubmitApplicationCommand(

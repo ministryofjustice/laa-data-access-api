@@ -4,6 +4,7 @@ import jakarta.persistence.criteria.Predicate;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import org.axonframework.config.ProcessingGroup;
 import org.axonframework.eventhandling.EventHandler;
 import org.axonframework.eventhandling.ResetHandler;
@@ -14,6 +15,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationSubmittedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.CaseworkerAssignedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.CaseworkerUnassignedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.PriorAuthoritySubmittedEvent;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadRepository;
 
@@ -70,6 +73,22 @@ public class WorkItemProjection {
         event.occurredAt());
   }
 
+  /** Reflects an assignment onto the work item. */
+  @EventHandler
+  public void on(CaseworkerAssignedEvent event) {
+    updateAssignee(
+        workItemId(event.applyApplicationId(), event.priorAuthorityId()),
+        event.caseworkerId(),
+        event.occurredAt());
+  }
+
+  /** Clears the assignment on the work item. */
+  @EventHandler
+  public void on(CaseworkerUnassignedEvent event) {
+    updateAssignee(
+        workItemId(event.applyApplicationId(), event.priorAuthorityId()), null, event.occurredAt());
+  }
+
   /** Returns a filtered, paginated page of work items. */
   @QueryHandler
   public WorkloadPage handle(GetWorkloadQuery query) {
@@ -91,10 +110,10 @@ public class WorkItemProjection {
   }
 
   private void upsert(
-      java.util.UUID workItemId,
+      UUID workItemId,
       WorkType workType,
-      java.util.UUID applicationId,
-      java.util.UUID priorAuthorityId,
+      UUID applicationId,
+      UUID priorAuthorityId,
       String laaReference,
       Instant occurredAt) {
     WorkItemRecord record =
@@ -109,6 +128,21 @@ public class WorkItemProjection {
     record.setLaaReference(laaReference);
     record.setUpdatedAt(occurredAt);
     repository.save(record);
+  }
+
+  private void updateAssignee(UUID workItemId, UUID caseworkerId, Instant occurredAt) {
+    repository
+        .findById(workItemId)
+        .ifPresent(
+            record -> {
+              record.setAssignedCaseworkerId(caseworkerId);
+              record.setUpdatedAt(occurredAt);
+              repository.save(record);
+            });
+  }
+
+  private static UUID workItemId(UUID applicationId, UUID priorAuthorityId) {
+    return priorAuthorityId != null ? priorAuthorityId : applicationId;
   }
 
   private Specification<WorkItemRecord> toSpecification(GetWorkloadQuery query) {

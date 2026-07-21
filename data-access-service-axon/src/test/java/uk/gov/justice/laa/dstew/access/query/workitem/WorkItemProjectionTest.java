@@ -11,6 +11,8 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import uk.gov.justice.laa.dstew.access.command.application.CaseworkerAssignedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.CaseworkerUnassignedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.PriorAuthoritySubmittedEvent;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadRepository;
@@ -80,6 +82,62 @@ class WorkItemProjectionTest {
     WorkItemRecord saved = capturedSave();
     assertThat(saved.getCreatedAt()).isEqualTo(Instant.parse("2020-01-01T00:00:00Z"));
     assertThat(saved.getUpdatedAt()).isEqualTo(event.occurredAt());
+  }
+
+  @Test
+  void givenExistingItem_whenCaseworkerAssigned_thenSetsAssigneeAndUpdatedAt() {
+    UUID applicationId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-19T10:00:00Z");
+    when(repository.findById(applicationId))
+        .thenReturn(
+            Optional.of(
+                WorkItemRecord.builder()
+                    .workItemId(applicationId)
+                    .createdAt(Instant.parse("2026-07-18T09:00:00Z"))
+                    .build()));
+
+    projection.on(new CaseworkerAssignedEvent(applicationId, null, caseworkerId, occurredAt));
+
+    WorkItemRecord saved = capturedSave();
+    assertThat(saved.getAssignedCaseworkerId()).isEqualTo(caseworkerId);
+    assertThat(saved.getUpdatedAt()).isEqualTo(occurredAt);
+  }
+
+  @Test
+  void givenPriorAuthorityItem_whenCaseworkerAssigned_thenResolvesByPriorAuthorityId() {
+    UUID applicationId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-19T10:00:00Z");
+    when(repository.findById(priorAuthorityId))
+        .thenReturn(Optional.of(WorkItemRecord.builder().workItemId(priorAuthorityId).build()));
+
+    projection.on(
+        new CaseworkerAssignedEvent(applicationId, priorAuthorityId, caseworkerId, occurredAt));
+
+    WorkItemRecord saved = capturedSave();
+    assertThat(saved.getWorkItemId()).isEqualTo(priorAuthorityId);
+    assertThat(saved.getAssignedCaseworkerId()).isEqualTo(caseworkerId);
+  }
+
+  @Test
+  void givenAssignedItem_whenCaseworkerUnassigned_thenClearsAssignee() {
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-19T11:00:00Z");
+    when(repository.findById(applicationId))
+        .thenReturn(
+            Optional.of(
+                WorkItemRecord.builder()
+                    .workItemId(applicationId)
+                    .assignedCaseworkerId(UUID.randomUUID())
+                    .build()));
+
+    projection.on(new CaseworkerUnassignedEvent(applicationId, null, occurredAt));
+
+    WorkItemRecord saved = capturedSave();
+    assertThat(saved.getAssignedCaseworkerId()).isNull();
+    assertThat(saved.getUpdatedAt()).isEqualTo(occurredAt);
   }
 
   private WorkItemRecord capturedSave() {

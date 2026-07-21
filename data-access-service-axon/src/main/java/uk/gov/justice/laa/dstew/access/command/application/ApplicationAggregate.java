@@ -43,6 +43,7 @@ public class ApplicationAggregate {
 
   @AggregateMember private final List<PriorAuthority> priorAuthorities = new ArrayList<>();
   private boolean submitted;
+  private UUID assignedCaseworkerId;
 
   /**
    * Submits an existing draft application, transitioning it {@code DRAFT -> SUBMITTED}. The
@@ -109,6 +110,38 @@ public class ApplicationAggregate {
     }
   }
 
+  /**
+   * Assigns a caseworker to this (submitted) application. Idempotent when the same caseworker is
+   * assigned again; rejected with a conflict when a different caseworker already holds it.
+   */
+  @CommandHandler
+  void handle(AssignApplicationCaseworkerCommand command, Clock clock) {
+    requireSubmitted("assign a caseworker to");
+    if (assignedCaseworkerId != null) {
+      if (assignedCaseworkerId.equals(command.caseworkerId())) {
+        return;
+      }
+      throw new ConflictException(
+          "Application " + applyApplicationId + " is already assigned to a different caseworker");
+    }
+    apply(
+        new CaseworkerAssignedEvent(
+            applyApplicationId, null, command.caseworkerId(), Instant.now(clock)));
+  }
+
+  /**
+   * Clears this application's caseworker assignment. Rejected with a conflict when it is not
+   * currently assigned.
+   */
+  @CommandHandler
+  void handle(UnassignApplicationCaseworkerCommand command, Clock clock) {
+    if (assignedCaseworkerId == null) {
+      throw new ConflictException(
+          "Application " + applyApplicationId + " is not assigned to a caseworker");
+    }
+    apply(new CaseworkerUnassignedEvent(applyApplicationId, null, Instant.now(clock)));
+  }
+
   @EventSourcingHandler
   void on(ApplicationSubmittedEvent event) {
     applyApplicationId = event.applyApplicationId();
@@ -132,6 +165,27 @@ public class ApplicationAggregate {
   @EventSourcingHandler
   void on(ApplicationDraftedEvent event) {
     applyApplicationId = event.applyApplicationId();
+  }
+
+  @EventSourcingHandler
+  void on(CaseworkerAssignedEvent event) {
+    if (event.priorAuthorityId() == null) {
+      assignedCaseworkerId = event.caseworkerId();
+    }
+  }
+
+  @EventSourcingHandler
+  void on(CaseworkerUnassignedEvent event) {
+    if (event.priorAuthorityId() == null) {
+      assignedCaseworkerId = null;
+    }
+  }
+
+  private void requireSubmitted(String action) {
+    if (!submitted) {
+      throw new ConflictException(
+          "Cannot " + action + " application " + applyApplicationId + "; it is not submitted");
+    }
   }
 
   protected ApplicationAggregate() {
