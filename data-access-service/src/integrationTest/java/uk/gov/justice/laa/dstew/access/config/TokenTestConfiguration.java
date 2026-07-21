@@ -26,7 +26,7 @@ public class TokenTestConfiguration {
             "test-bearer-token",
             Instant.now(),
             Instant.now().plusSeconds(3600));
-    Mockito.when(mock.getTokenFromProvider()).thenReturn(token);
+    Mockito.when().command(mock.getTokenFromProvider()).thenReturn(token);
     return mock;
   }
 }

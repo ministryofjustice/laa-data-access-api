@@ -2,7 +2,7 @@ package uk.gov.justice.laa.dstew.access.command.application.assignment;
 
 import java.time.Instant;
 import java.util.UUID;
-import org.axonframework.commandhandling.gateway.CommandGateway;
+import org.axonframework.messaging.commandhandling.gateway.CommandGateway;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import uk.gov.justice.laa.dstew.access.command.caseworker.CaseworkerRepository;

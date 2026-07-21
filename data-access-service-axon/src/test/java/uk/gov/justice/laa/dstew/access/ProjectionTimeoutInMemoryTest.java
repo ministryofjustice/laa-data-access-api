@@ -4,9 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
 
 import java.util.UUID;
-import org.axonframework.config.EventProcessingConfiguration;
-import org.axonframework.eventhandling.TrackingEventProcessor;
+import org.axonframework.common.configuration.EventProcessingConfiguration;
 import org.axonframework.eventsourcing.eventstore.EventStore;
+import org.axonframework.messaging.eventhandling.TrackingEventProcessor;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
@@ -57,7 +57,7 @@ class ProjectionTimeoutInMemoryTest {
     // Stop the projection processor so no QueryUpdateEmitter.emit can be called for this command.
     eventProcessingConfiguration
         .eventProcessor("application-projection", TrackingEventProcessor.class)
-        .ifPresent(TrackingEventProcessor::shutDown);
+        .ifPresent(TrackingEventProcessor::shutdown);
 
     UUID applyApplicationId = UUID.randomUUID();
     ApplicationCreateRequest request =
@@ -82,8 +82,7 @@ class ProjectionTimeoutInMemoryTest {
         .satisfies(
             event -> {
               assertThat(event.getSequenceNumber()).isZero();
-              assertThat(event.getPayloadType().getSimpleName())
-                  .isEqualTo("ApplicationCreatedEvent");
+              assertThat(event.payloadType().getSimpleName()).isEqualTo("ApplicationCreatedEvent");
             });
 
     // The test must complete well below the full 5-second default timeout.

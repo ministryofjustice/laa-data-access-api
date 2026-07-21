@@ -1,16 +1,13 @@
 package uk.gov.justice.laa.dstew.access.command.application.linkedgroup;
 
-import static org.axonframework.modelling.command.AggregateLifecycle.apply;
-
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import java.util.List;
 import java.util.UUID;
-import org.axonframework.commandhandling.CommandHandler;
-import org.axonframework.eventsourcing.EventSourcingHandler;
-import org.axonframework.modelling.command.AggregateCreationPolicy;
-import org.axonframework.modelling.command.AggregateIdentifier;
-import org.axonframework.modelling.command.CreationPolicy;
-import org.axonframework.spring.stereotype.Aggregate;
+import org.axonframework.eventsourcing.annotation.EventSourcingHandler;
+import org.axonframework.eventsourcing.annotation.reflection.EntityCreator;
+import org.axonframework.extension.spring.stereotype.EventSourced;
+import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
+import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 
 /**
  * Event-sourced consistency boundary that owns group identity, the "exactly one lead" invariant,
@@ -22,11 +19,11 @@ import org.axonframework.spring.stereotype.Aggregate;
  * Axon replaying the lead's event stream against this aggregate — {@code readEvents} queries by
  * identifier only, regardless of aggregate type).
  */
-@Aggregate
+@EventSourced(tagKey = "LinkedApplicationGroupAggregate", idType = UUID.class)
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 public class LinkedApplicationGroupAggregate {
 
-  @AggregateIdentifier private UUID groupId;
+  private UUID groupId;
   private UUID leadApplicationId;
   private List<UUID> memberApplicationIds;
 
@@ -41,13 +38,15 @@ public class LinkedApplicationGroupAggregate {
    * handles the case where a second (or later) application joins an existing group.
    */
   @CommandHandler
-  @CreationPolicy(AggregateCreationPolicy.CREATE_IF_MISSING)
-  void handle(InitialiseLinkedApplicationGroupCommand command) {
+  void handle(InitialiseLinkedApplicationGroupCommand command, EventAppender eventAppender) {
     if (groupId != null) {
       // Group already exists — add any members not yet in it.
       command.memberApplicationIds().stream()
           .filter(id -> !memberApplicationIds.contains(id))
-          .forEach(id -> apply(new MemberAddedToGroupEvent(groupId, id, command.occurredAt())));
+          .forEach(
+              id ->
+                  eventAppender.append(
+                      new MemberAddedToGroupEvent(groupId, id, command.occurredAt())));
       return;
     }
     if (!command.memberApplicationIds().contains(command.leadApplicationId())) {
@@ -56,7 +55,7 @@ public class LinkedApplicationGroupAggregate {
               + command.leadApplicationId()
               + " must be present in the member list");
     }
-    apply(
+    eventAppender.append(
         new LinkedApplicationGroupCreatedEvent(
             command.groupId(),
             command.leadApplicationId(),
@@ -76,6 +75,7 @@ public class LinkedApplicationGroupAggregate {
     memberApplicationIds.add(event.memberId());
   }
 
+  @EntityCreator
   protected LinkedApplicationGroupAggregate() {
     // Required by Axon when rebuilding the aggregate from its event stream.
   }

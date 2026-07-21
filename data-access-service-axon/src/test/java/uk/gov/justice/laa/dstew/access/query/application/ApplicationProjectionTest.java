@@ -14,7 +14,7 @@ import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Predicate;
-import org.axonframework.queryhandling.QueryUpdateEmitter;
+import org.axonframework.messaging.queryhandling.QueryUpdateEmitter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
@@ -86,7 +86,8 @@ class ApplicationProjectionTest {
               capturedPredicate[0] = (Predicate<?>) inv.getArgument(1);
               return null;
             })
-        .when(queryUpdateEmitter)
+        .when()
+        .command(queryUpdateEmitter)
         .emit(any(Class.class), any(Predicate.class), any(ApplicationReadModel.class));
 
     when(applicationReadRepository.save(any()))

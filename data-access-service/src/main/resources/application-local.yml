@@ -21,3 +21,13 @@ spring:
           jwk-set-uri: http://localhost:9999/entra/jwks
           audience: laa-data-access-api
 
+
+# Local profile configuration - overrides for local development
+logging:
+  # Override structured logging for local development
+  structured:
+    format:
+      console: # Disables structured logging for local development
+  pattern:
+    console: "%clr(%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX}){faint} %clr(%5p) %clr(${PID:- }){magenta} %clr{faint} %clr([%15.15t]){faint} %clr([correlationId=%X{correlationId}]){yellow} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n%wEx"
+

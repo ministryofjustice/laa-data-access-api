@@ -4,11 +4,13 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import org.axonframework.modelling.command.TargetAggregateIdentifier;
+import org.axonframework.messaging.commandhandling.annotation.Command;
+import org.axonframework.modelling.annotation.TargetEntityId;
 
 /** Requests a decision against the current version of an Application. */
+@Command(routingKey = "applicationId")
 public record MakeApplicationDecisionCommand(
-    @TargetAggregateIdentifier UUID applicationId,
+    @TargetEntityId UUID applicationId,
     long expectedApplicationVersion,
     String overallDecision,
     Boolean autoGranted,

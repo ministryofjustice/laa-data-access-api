@@ -7,7 +7,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import org.axonframework.commandhandling.GenericCommandMessage;
+import org.axonframework.messaging.commandhandling.GenericCommandMessage;
 import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationCommand;
 import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;

@@ -1,7 +1,7 @@
 package uk.gov.justice.laa.dstew.access.controller;
 
 import java.util.List;
-import org.axonframework.modelling.command.AggregateNotFoundException;
+import org.axonframework.modelling.entity.AggregateNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;

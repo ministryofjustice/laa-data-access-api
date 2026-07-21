@@ -8,14 +8,14 @@ import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequest
 import java.time.Duration;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.axonframework.config.ConfigurerModule;
-import org.axonframework.config.EventProcessingConfiguration;
-import org.axonframework.config.ProcessingGroup;
-import org.axonframework.eventhandling.EventHandler;
-import org.axonframework.eventhandling.GenericEventMessage;
-import org.axonframework.eventhandling.PropagatingErrorHandler;
-import org.axonframework.eventhandling.TrackingEventProcessor;
+import org.axonframework.common.configuration.ConfigurationEnhancer;
+import org.axonframework.common.configuration.EventProcessingConfiguration;
 import org.axonframework.eventsourcing.eventstore.EventStore;
+import org.axonframework.messaging.core.annotation.Namespace;
+import org.axonframework.messaging.eventhandling.GenericEventMessage;
+import org.axonframework.messaging.eventhandling.TrackingEventProcessor;
+import org.axonframework.messaging.eventhandling.annotation.EventHandler;
+import org.axonframework.messaging.eventhandling.processing.errorhandling.PropagatingErrorHandler;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
@@ -102,7 +102,7 @@ class EventProcessorRecoveryInMemoryTest {
             processor("application-projection"),
             processor("application-history-projection"),
             processor("linked-application-group-projection"));
-    processors.forEach(TrackingEventProcessor::shutDown);
+    processors.forEach(TrackingEventProcessor::shutdown);
     applicationReadRepository.deleteAllInBatch();
     applicationHistoryReadRepository.deleteAllInBatch();
     groupReadRepository.deleteAllInBatch();
@@ -178,7 +178,7 @@ class EventProcessorRecoveryInMemoryTest {
 
   record EventAfterPermanentFailure(UUID eventId) {}
 
-  @ProcessingGroup("recovering-projection")
+  @Namespace("recovering-projection")
   static class FailOnceProjection {
 
     private final AtomicInteger attempts = new AtomicInteger();
@@ -201,7 +201,7 @@ class EventProcessorRecoveryInMemoryTest {
     }
   }
 
-  @ProcessingGroup("permanently-failing-projection")
+  @Namespace("permanently-failing-projection")
   static class PermanentlyFailingProjection {
 
     private final AtomicInteger attempts = new AtomicInteger();
@@ -241,7 +241,7 @@ class EventProcessorRecoveryInMemoryTest {
     }
 
     @Bean
-    ConfigurerModule recoveringProjectionConfiguration() {
+    ConfigurationEnhancer recoveringProjectionConfiguration() {
       return configurer -> {
         var eventProcessing = configurer.eventProcessing();
         eventProcessing.registerTrackingEventProcessor("recovering-projection");

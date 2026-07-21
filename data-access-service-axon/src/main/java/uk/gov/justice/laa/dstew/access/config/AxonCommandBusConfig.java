@@ -1,11 +1,11 @@
 package uk.gov.justice.laa.dstew.access.config;
 
+import org.axonframework.common.configuration.ConfigurationEnhancer;
 import org.axonframework.common.transaction.TransactionManager;
-import org.axonframework.config.ConfigurerModule;
-import org.axonframework.eventhandling.PropagatingErrorHandler;
-import org.axonframework.messaging.correlation.CorrelationDataProvider;
-import org.axonframework.messaging.correlation.SimpleCorrelationDataProvider;
-import org.axonframework.spring.messaging.unitofwork.SpringTransactionManager;
+import org.axonframework.extension.spring.messaging.unitofwork.SpringTransactionManager;
+import org.axonframework.messaging.core.correlation.CorrelationDataProvider;
+import org.axonframework.messaging.core.correlation.SimpleCorrelationDataProvider;
+import org.axonframework.messaging.eventhandling.processing.errorhandling.PropagatingErrorHandler;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -26,7 +26,7 @@ public class AxonCommandBusConfig {
 
   /** Starts the Spring transaction before command handling and subscribing event processing. */
   @Bean
-  ConfigurerModule commandTransactionManager(TransactionManager transactionManager) {
+  ConfigurationEnhancer commandTransactionManager(TransactionManager transactionManager) {
     return configurer ->
         configurer.configureTransactionManager(configuration -> transactionManager);
   }
@@ -54,7 +54,7 @@ public class AxonCommandBusConfig {
    * so explicit registration via {@code ConfigurerModule} is required (guardrail G1).
    */
   @Bean
-  ConfigurerModule commandDispatchInterceptors(
+  ConfigurationEnhancer commandDispatchInterceptors(
       ServiceNameMetadataDispatchInterceptor serviceNameInterceptor,
       CreateApplicationSchemaValidationDispatchInterceptor schemaInterceptor) {
     return configurer ->
@@ -83,7 +83,7 @@ public class AxonCommandBusConfig {
    * <p>Registration is via {@code ConfigurerModule} (guardrail G1).
    */
   @Bean
-  ConfigurerModule linkedApplicationGroupRouterProcessingMode() {
+  ConfigurationEnhancer linkedApplicationGroupRouterProcessingMode() {
     return configurer -> {
       var ep = configurer.eventProcessing();
       ep.registerSubscribingEventProcessor("linked-application-group-router");

@@ -4,15 +4,15 @@ import javax.sql.DataSource;
 import org.axonframework.common.jdbc.PersistenceExceptionResolver;
 import org.axonframework.common.jpa.EntityManagerProvider;
 import org.axonframework.common.transaction.TransactionManager;
-import org.axonframework.eventhandling.tokenstore.TokenStore;
-import org.axonframework.eventhandling.tokenstore.jpa.JpaTokenStore;
+import org.axonframework.conversion.Serializer;
 import org.axonframework.eventsourcing.eventstore.EmbeddedEventStore;
 import org.axonframework.eventsourcing.eventstore.EventStorageEngine;
 import org.axonframework.eventsourcing.eventstore.jpa.DomainEventEntry;
 import org.axonframework.eventsourcing.eventstore.jpa.JpaEventStorageEngine;
 import org.axonframework.eventsourcing.eventstore.jpa.SQLErrorCodesResolver;
-import org.axonframework.serialization.Serializer;
-import org.axonframework.springboot.util.jpa.ContainerManagedEntityManagerProvider;
+import org.axonframework.extension.springboot.util.jpa.ContainerManagedEntityManagerProvider;
+import org.axonframework.messaging.eventhandling.processing.streaming.token.store.TokenStore;
+import org.axonframework.messaging.eventhandling.processing.streaming.token.store.jpa.JpaTokenStore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.persistence.autoconfigure.EntityScan;
@@ -27,7 +27,8 @@ import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 @EntityScan(
     basePackageClasses = {
       DomainEventEntry.class,
-      org.axonframework.eventhandling.tokenstore.jpa.TokenEntry.class,
+      org.axonframework.messaging.eventhandling.processing.streaming.token.store.jpa.TokenEntry
+          .class,
       ApplicationReadModel.class,
       ApplicationData.class,
       Caseworker.class

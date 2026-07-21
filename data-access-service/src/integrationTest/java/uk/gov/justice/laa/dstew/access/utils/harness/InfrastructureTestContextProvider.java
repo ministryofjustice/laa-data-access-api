@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -106,6 +107,7 @@ public class InfrastructureTestContextProvider implements TestContextProvider {
         "uk.gov.justice.laa.dstew.access.utils.harness",
         "uk.gov.justice.laa.dstew.access.controller.application.sharedAsserts"
       })
+  @Configuration
   static class InfrastructureJpaConfig {
 
     @Bean

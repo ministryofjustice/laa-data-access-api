@@ -312,7 +312,11 @@ public class ApplicationRepositoryImpl implements ApplicationSummaryRepositoryCu
             leadRoot.get(LinkedApplicationEntity_.leadApplicationId),
             root.get(ApplicationEntity_.id)));
 
-    return cb.selectCase().when(cb.exists(leadSubquery), true).otherwise(false).as(Boolean.class);
+    return cb.selectCase()
+        .when()
+        .command(cb.exists(leadSubquery), true)
+        .otherwise(false)
+        .as(Boolean.class);
   }
 
   /** Executes a separate count query to determine the total number of matching applications. */

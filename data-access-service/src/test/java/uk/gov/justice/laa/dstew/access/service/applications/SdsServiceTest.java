@@ -53,7 +53,7 @@ class SdsServiceTest {
   @BeforeEach
   void setUp() {
     ReflectionTestUtils.setField(sdsService, "bucketName", "test-bucket");
-    lenient().when(tokenService.getSdsAccessToken()).thenReturn("mock-token");
+    lenient().when().command(tokenService.getSdsAccessToken()).thenReturn("mock-token");
   }
 
   @Test

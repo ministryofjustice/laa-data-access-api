@@ -6,8 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import org.axonframework.messaging.responsetypes.ResponseTypes;
-import org.axonframework.queryhandling.QueryGateway;
+import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -110,7 +109,7 @@ public class ApplicationQueryController {
                     orderBy == null ? null : orderBy.name(),
                     page,
                     pageSize),
-                ResponseTypes.instanceOf(FindAllApplicationsResult.class))
+                FindAllApplicationsResult.class)
             .join();
     return getAllResponseMapper.toResponse(result);
   }
@@ -151,9 +150,9 @@ public class ApplicationQueryController {
             : eventType.stream().map(DomainEventType::getValue).toList();
     List<ApplicationHistoryReadModel> history =
         queryGateway
-            .query(
+            .queryMany(
                 new FindApplicationHistoryQuery(id, requestedTypes),
-                ResponseTypes.multipleInstancesOf(ApplicationHistoryReadModel.class))
+                ApplicationHistoryReadModel.class)
             .join();
     return ResponseEntity.ok(historyResponseMapper.toResponse(history));
   }
@@ -163,9 +162,7 @@ public class ApplicationQueryController {
   public ResponseEntity<ApplicationNotesResponse> getNotesForApplication(@PathVariable UUID id) {
     ApplicationNotesResponse response =
         queryGateway
-            .query(
-                new FindNotesForApplicationQuery(id),
-                ResponseTypes.optionalInstanceOf(ApplicationNotesResult.class))
+            .query(new FindNotesForApplicationQuery(id), ApplicationNotesResult.class)
             .join()
             .map(result -> notesResponseMapper.toResponse(result.notes()))
             .orElseThrow(
@@ -175,9 +172,7 @@ public class ApplicationQueryController {
 
   private Optional<ApplicationReadModel> findApplication(UUID applicationId) {
     return queryGateway
-        .query(
-            new FindApplicationByIdQuery(applicationId),
-            ResponseTypes.optionalInstanceOf(ApplicationReadModel.class))
+        .query(new FindApplicationByIdQuery(applicationId), ApplicationReadModel.class)
         .join();
   }
 }

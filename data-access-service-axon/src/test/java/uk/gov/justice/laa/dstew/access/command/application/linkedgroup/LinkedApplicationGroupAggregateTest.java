@@ -3,17 +3,25 @@ package uk.gov.justice.laa.dstew.access.command.application.linkedgroup;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
-import org.axonframework.test.aggregate.AggregateTestFixture;
+import org.axonframework.eventsourcing.configuration.EventSourcedEntityModule;
+import org.axonframework.eventsourcing.configuration.EventSourcingConfigurer;
+import org.axonframework.test.fixture.AxonTestFixture;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class LinkedApplicationGroupAggregateTest {
 
-  private AggregateTestFixture<LinkedApplicationGroupAggregate> fixture;
+  private AxonTestFixture fixture;
 
   @BeforeEach
   void setUp() {
-    fixture = new AggregateTestFixture<>(LinkedApplicationGroupAggregate.class);
+    fixture =
+        AxonTestFixture.with(
+            EventSourcingConfigurer.create()
+                .registerEntity(
+                    EventSourcedEntityModule.autodetected(
+                        UUID.class, LinkedApplicationGroupAggregate.class)));
   }
 
   @Test
@@ -24,10 +32,12 @@ class LinkedApplicationGroupAggregateTest {
     Instant occurredAt = Instant.parse("2026-07-15T08:00:00Z");
 
     fixture
-        .givenNoPriorActivity()
-        .when(new InitialiseLinkedApplicationGroupCommand(groupId, groupId, members, occurredAt))
-        .expectEvents(
-            new LinkedApplicationGroupCreatedEvent(groupId, groupId, members, occurredAt));
+        .given()
+        .noPriorActivity()
+        .when()
+        .command(new InitialiseLinkedApplicationGroupCommand(groupId, groupId, members, occurredAt))
+        .then()
+        .events(new LinkedApplicationGroupCreatedEvent(groupId, groupId, members, occurredAt));
   }
 
   @Test
@@ -40,9 +50,12 @@ class LinkedApplicationGroupAggregateTest {
         new LinkedApplicationGroupCreatedEvent(groupId, groupId, members, occurredAt);
 
     fixture
-        .given(existing)
-        .when(new InitialiseLinkedApplicationGroupCommand(groupId, groupId, members, occurredAt))
-        .expectNoEvents();
+        .given()
+        .events(existing)
+        .when()
+        .command(new InitialiseLinkedApplicationGroupCommand(groupId, groupId, members, occurredAt))
+        .then()
+        .noEvents();
   }
 
   @Test
@@ -57,11 +70,14 @@ class LinkedApplicationGroupAggregateTest {
         new LinkedApplicationGroupCreatedEvent(groupId, leadId, originalMembers, occurredAt);
 
     fixture
-        .given(existing)
-        .when(
+        .given()
+        .events(existing)
+        .when()
+        .command(
             new InitialiseLinkedApplicationGroupCommand(
                 groupId, leadId, List.of(leadId, newMemberId), occurredAt))
-        .expectEvents(new MemberAddedToGroupEvent(groupId, newMemberId, occurredAt));
+        .then()
+        .events(new MemberAddedToGroupEvent(groupId, newMemberId, occurredAt));
   }
 
   @Test
@@ -72,14 +88,22 @@ class LinkedApplicationGroupAggregateTest {
     List<UUID> membersWithoutLead = List.of(someOtherId);
 
     fixture
-        .givenNoPriorActivity()
-        .when(
+        .given()
+        .noPriorActivity()
+        .when()
+        .command(
             new InitialiseLinkedApplicationGroupCommand(
                 groupId,
                 differentLeadId,
                 membersWithoutLead,
                 Instant.parse("2026-07-15T08:00:00Z")))
-        .expectException(IllegalArgumentException.class)
-        .expectNoEvents();
+        .then()
+        .exception(IllegalArgumentException.class)
+        .noEvents();
+  }
+
+  @AfterEach
+  void tearDown() {
+    fixture.stop();
   }
 }

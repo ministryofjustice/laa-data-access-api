@@ -2,9 +2,9 @@ package uk.gov.justice.laa.dstew.access.query;
 
 import java.time.Duration;
 import java.util.Optional;
+import org.axonframework.messaging.queryhandling.SubscriptionQueryResult;
+import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.axonframework.messaging.responsetypes.ResponseTypes;
-import org.axonframework.queryhandling.QueryGateway;
-import org.axonframework.queryhandling.SubscriptionQueryResult;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;

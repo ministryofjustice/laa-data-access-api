@@ -1,7 +1,5 @@
 package uk.gov.justice.laa.dstew.access.command.application;
 
-import static org.axonframework.modelling.command.AggregateLifecycle.apply;
-
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -10,12 +8,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import org.axonframework.commandhandling.CommandHandler;
-import org.axonframework.eventsourcing.EventSourcingHandler;
-import org.axonframework.modelling.command.AggregateCreationPolicy;
-import org.axonframework.modelling.command.AggregateIdentifier;
-import org.axonframework.modelling.command.CreationPolicy;
-import org.axonframework.spring.stereotype.Aggregate;
+import org.axonframework.eventsourcing.annotation.EventSourcingHandler;
+import org.axonframework.eventsourcing.annotation.reflection.EntityCreator;
+import org.axonframework.extension.spring.stereotype.EventSourced;
+import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
+import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import uk.gov.justice.laa.dstew.access.applicationcontent.LinkedApplication;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
@@ -38,11 +35,11 @@ import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /** Event-sourced consistency boundary for an Application and its owned child state. */
-@Aggregate
+@EventSourced(tagKey = "ApplicationAggregate", idType = UUID.class)
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 public class ApplicationAggregate {
 
-  @AggregateIdentifier private UUID applicationId;
+  private UUID applicationId;
   private boolean isAssociatedMember;
   private int schemaVersion;
   private String requestFingerprint;
@@ -64,11 +61,10 @@ public class ApplicationAggregate {
    * emitted for new operations.
    */
   @CommandHandler
-  @CreationPolicy(AggregateCreationPolicy.CREATE_IF_MISSING)
   UUID handle(
       CreateApplicationCommand command,
       ApplicationCreationDetailsFactory factory,
-      ApplicationDataStore applicationDataStore) {
+      ApplicationDataStore applicationDataStore, EventAppender eventAppender) {
     if (applicationId != null) {
       if (requestFingerprint.equals(ApplicationDataStore.fingerprint(command.serialisedRequest()))
           && schemaVersion == command.schemaVersion()) {
@@ -85,9 +81,8 @@ public class ApplicationAggregate {
     long applicationDataVersion = 0L;
     String fingerprint =
         applicationDataStore.append(command.applicationId(), applicationDataVersion, details);
-    apply(
-        applicationCreatedEvent(
-            command.applicationId(), applicationDataVersion, fingerprint, details));
+    eventAppender.append(applicationCreatedEvent(
+        command.applicationId(), applicationDataVersion, fingerprint, details));
     return applicationId;
   }
 
@@ -106,8 +101,7 @@ public class ApplicationAggregate {
    * readEvents} queries by identifier only, regardless of aggregate type).
    */
   @CommandHandler
-  @CreationPolicy(AggregateCreationPolicy.CREATE_IF_MISSING)
-  void handle(CreateLinkedApplicationGroupCommand command) {
+  void handle(CreateLinkedApplicationGroupCommand command, EventAppender eventAppender) {
     if (applicationId == null) {
       throw new ResourceNotFoundException(
           "No linked application found with Application ID: " + command.leadApplicationId());
@@ -120,12 +114,11 @@ public class ApplicationAggregate {
     }
     UUID groupId =
         UUID.nameUUIDFromBytes(("linked-group:" + applicationId).getBytes(StandardCharsets.UTF_8));
-    apply(
-        new LinkedApplicationGroupRequested(
-            groupId,
-            applicationId, // leadApplicationId
-            command.allMemberApplicationIds(),
-            command.occurredAt()));
+    eventAppender.append(new LinkedApplicationGroupRequested(
+        groupId,
+        applicationId, // leadApplicationId
+        command.allMemberApplicationIds(),
+        command.occurredAt()));
   }
 
   /**
@@ -139,7 +132,6 @@ public class ApplicationAggregate {
    * the {@code applicationId == null} guard throws {@link ResourceNotFoundException}.
    */
   @CommandHandler
-  @CreationPolicy(AggregateCreationPolicy.CREATE_IF_MISSING)
   void handle(ValidateApplicationExistsCommand command) {
     if (applicationId == null) {
       throw new ResourceNotFoundException(
@@ -150,7 +142,7 @@ public class ApplicationAggregate {
 
   /** Validates and stores a decision as the next immutable application-data version. */
   @CommandHandler
-  void handle(MakeApplicationDecisionCommand command, ApplicationDataStore applicationDataStore) {
+  void handle(MakeApplicationDecisionCommand command,  ApplicationDataStore applicationDataStore, EventAppender eventAppender) {
     if (command.expectedApplicationVersion() != applicationVersion) {
       throw new ApplicationVersionConflictException(
           command.applicationId(), command.expectedApplicationVersion());
@@ -198,20 +190,19 @@ public class ApplicationAggregate {
             command.eventDescription());
     applicationDataStore.append(
         applicationId, nextVersion, updated, command.serialisedRequest(), command.occurredAt());
-    apply(
-        new ApplicationDecisionMadeEvent(
-            applicationId,
-            applicationVersion + 1,
-            nextVersion,
-            command.overallDecision(),
-            command.autoGranted(),
-            command.occurredAt()));
+    eventAppender.append(new ApplicationDecisionMadeEvent(
+        applicationId,
+        applicationVersion + 1,
+        nextVersion,
+        command.overallDecision(),
+        command.autoGranted(),
+        command.occurredAt()));
   }
 
   /** Assigns a caseworker and stores free-text audit data outside the event stream. */
   @CommandHandler
   void handle(
-      AssignCaseworkerToApplicationCommand command, ApplicationDataStore applicationDataStore) {
+      AssignCaseworkerToApplicationCommand command,  ApplicationDataStore applicationDataStore, EventAppender eventAppender) {
     var current = applicationDataStore.get(applicationId, applicationDataVersion);
     long nextDataVersion = applicationDataVersion + 1;
     applicationDataStore.append(
@@ -220,19 +211,18 @@ public class ApplicationAggregate {
         current.withAssignment(command.eventDescription()),
         command.serialisedRequest(),
         command.occurredAt());
-    apply(
-        new ApplicationAssignedToCaseworkerEvent(
-            applicationId,
-            applicationVersion + 1,
-            nextDataVersion,
-            command.caseworkerId(),
-            command.occurredAt()));
+    eventAppender.append(new ApplicationAssignedToCaseworkerEvent(
+        applicationId,
+        applicationVersion + 1,
+        nextDataVersion,
+        command.caseworkerId(),
+        command.occurredAt()));
   }
 
   /** Removes the assigned caseworker and stores free-text audit data outside the event stream. */
   @CommandHandler
   void handle(
-      UnassignCaseworkerFromApplicationCommand command, ApplicationDataStore applicationDataStore) {
+      UnassignCaseworkerFromApplicationCommand command,  ApplicationDataStore applicationDataStore, EventAppender eventAppender) {
     if (caseworkerId == null) {
       return;
     }
@@ -244,14 +234,13 @@ public class ApplicationAggregate {
         current.withAssignment(command.eventDescription()),
         command.serialisedRequest(),
         command.occurredAt());
-    apply(
-        new ApplicationUnassignedFromCaseworkerEvent(
-            applicationId, applicationVersion + 1, nextDataVersion, command.occurredAt()));
+    eventAppender.append(new ApplicationUnassignedFromCaseworkerEvent(
+        applicationId, applicationVersion + 1, nextDataVersion, command.occurredAt()));
   }
 
   /** Appends a note to the application's immutable data without advancing the decision version. */
   @CommandHandler
-  void handle(CreateNoteCommand command, ApplicationDataStore applicationDataStore) {
+  void handle(CreateNoteCommand command,  ApplicationDataStore applicationDataStore, EventAppender eventAppender) {
     var current = applicationDataStore.get(applicationId, applicationDataVersion);
     long nextDataVersion = applicationDataVersion + 1;
     applicationDataStore.append(
@@ -260,7 +249,7 @@ public class ApplicationAggregate {
         current.withNote(command.noteText(), command.occurredAt()),
         command.serialisedNoteRequest(),
         command.occurredAt());
-    apply(new NoteCreatedEvent(applicationId, nextDataVersion, command.occurredAt()));
+    eventAppender.append(new NoteCreatedEvent(applicationId, nextDataVersion, command.occurredAt()));
   }
 
   private void validateDecision(MakeApplicationDecisionCommand command) {
@@ -363,6 +352,7 @@ public class ApplicationAggregate {
                 .toList());
   }
 
+  @EntityCreator
   protected ApplicationAggregate() {
     // Required by Axon when rebuilding the aggregate from its event stream.
   }

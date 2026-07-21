@@ -2,11 +2,13 @@ package uk.gov.justice.laa.dstew.access.command.application.assignment;
 
 import java.time.Instant;
 import java.util.UUID;
-import org.axonframework.modelling.command.TargetAggregateIdentifier;
+import org.axonframework.messaging.commandhandling.annotation.Command;
+import org.axonframework.modelling.annotation.TargetEntityId;
 
 /** Assigns a caseworker to one Application aggregate. */
+@Command(routingKey = "applicationId")
 public record AssignCaseworkerToApplicationCommand(
-    @TargetAggregateIdentifier UUID applicationId,
+    @TargetEntityId UUID applicationId,
     UUID caseworkerId,
     String serialisedRequest,
     String eventDescription,

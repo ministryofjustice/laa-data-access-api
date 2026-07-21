@@ -47,7 +47,8 @@ configurations {
 }
 
 dependencies {
-    jacocoAnt "org.jacoco:org.jacoco.ant:0.8.14"
+    jacocoAnt "org.jacoco:org.jacoco.ant:0.8.15"
+    runtimeOnly "javax.xml.bind:jaxb-api:2.3.1"
     compileOnly 'org.projectlombok:lombok:1.18.46'
     annotationProcessor 'org.projectlombok:lombok:1.18.46'
     testCompileOnly 'org.projectlombok:lombok:1.18.46'
@@ -151,4 +152,7 @@ tasks.register('jacocoAggregatedReport', JacocoReport) {
         html.outputLocation = layout.buildDirectory.dir("reports/jacoco/html").get().asFile
         csv.required = false
     }
+}
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
 }

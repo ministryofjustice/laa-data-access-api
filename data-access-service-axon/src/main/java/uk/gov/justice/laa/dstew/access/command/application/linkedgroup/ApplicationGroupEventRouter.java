@@ -2,9 +2,9 @@ package uk.gov.justice.laa.dstew.access.command.application.linkedgroup;
 
 import java.util.List;
 import java.util.UUID;
-import org.axonframework.commandhandling.gateway.CommandGateway;
-import org.axonframework.config.ProcessingGroup;
-import org.axonframework.eventhandling.EventHandler;
+import org.axonframework.messaging.commandhandling.gateway.CommandGateway;
+import org.axonframework.messaging.core.annotation.Namespace;
+import org.axonframework.messaging.eventhandling.annotation.EventHandler;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
@@ -30,7 +30,7 @@ import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEve
  * <p>This component is not a saga: it holds no persistent state and dispatches commands directly.
  */
 @Component
-@ProcessingGroup("linked-application-group-router")
+@Namespace("linked-application-group-router")
 public class ApplicationGroupEventRouter {
 
   private final ObjectProvider<CommandGateway> commandGatewayProvider;

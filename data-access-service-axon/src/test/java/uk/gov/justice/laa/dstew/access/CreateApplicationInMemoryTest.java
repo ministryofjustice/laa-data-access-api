@@ -9,11 +9,10 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-import org.axonframework.config.EventProcessingConfiguration;
-import org.axonframework.eventhandling.TrackingEventProcessor;
+import org.axonframework.common.configuration.EventProcessingConfiguration;
 import org.axonframework.eventsourcing.eventstore.EventStore;
-import org.axonframework.messaging.responsetypes.ResponseTypes;
-import org.axonframework.queryhandling.QueryGateway;
+import org.axonframework.messaging.eventhandling.TrackingEventProcessor;
+import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
@@ -657,9 +656,7 @@ class CreateApplicationInMemoryTest {
         .until(
             () ->
                 queryGateway
-                    .query(
-                        new FindApplicationByIdQuery(applicationId),
-                        ResponseTypes.optionalInstanceOf(ApplicationReadModel.class))
+                    .query(new FindApplicationByIdQuery(applicationId), ApplicationReadModel.class)
                     .join(),
             Optional::isPresent)
         .get();

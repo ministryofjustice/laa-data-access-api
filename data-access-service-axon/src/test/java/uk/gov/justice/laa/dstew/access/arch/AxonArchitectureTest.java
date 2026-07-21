@@ -12,9 +12,9 @@ import com.tngtech.archunit.lang.ArchCondition;
 import com.tngtech.archunit.lang.ArchRule;
 import com.tngtech.archunit.lang.ConditionEvents;
 import com.tngtech.archunit.lang.SimpleConditionEvent;
-import org.axonframework.commandhandling.gateway.CommandGateway;
-import org.axonframework.queryhandling.QueryGateway;
-import org.axonframework.spring.stereotype.Aggregate;
+import org.axonframework.extension.spring.stereotype.EventSourced;
+import org.axonframework.messaging.commandhandling.gateway.CommandGateway;
+import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.junit.jupiter.api.Test;
 
 class AxonArchitectureTest {
@@ -70,7 +70,7 @@ class AxonArchitectureTest {
     ArchRule rule =
         noClasses()
             .that()
-            .areAnnotatedWith(Aggregate.class)
+            .areAnnotatedWith(EventSourced.class)
             .should()
             .dependOnClassesThat()
             .areAssignableTo(QueryGateway.class)
