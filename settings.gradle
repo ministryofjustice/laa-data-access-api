@@ -1,11 +1,10 @@
 pluginManagement {
     repositories {
         maven {
-            name = "gitHubPackages"
-            url = uri('https://maven.pkg.github.com/ministryofjustice/laa-spring-boot-common')
-            credentials {
-                username = System.getenv("GITHUB_ACTOR")?.trim() ?: settings.ext.find('project.ext.gitPackageUser')
-                password = System.getenv("GITHUB_TOKEN")?.trim() ?: settings.ext.find('project.ext.gitPackageKey')
+            name = "sonatypeSnapshots"
+            url = uri('https://central.sonatype.com/repository/maven-snapshots/')
+            mavenContent {
+                snapshotsOnly()
             }
         }
         maven { url = uri("https://plugins.gradle.org/m2/") }
@@ -13,7 +12,7 @@ pluginManagement {
     }
 
     plugins {
-        id 'uk.gov.laa.springboot.laa-spring-boot-gradle-plugin' version '2.3.0'
+        id 'uk.gov.justice.service.laa.laa-spring-boot-gradle-plugin' version '2.4.0-3e99c0c-SNAPSHOT'
         id 'org.openapi.generator' version '7.23.0'
     }
 }
