@@ -419,6 +419,79 @@ class ApplicationAggregateTest {
         .expectEvents(new CaseworkerUnassignedEvent(applicationId, priorAuthorityId, FIXED_NOW));
   }
 
+  @Test
+  void givenTwoPriorAuthorities_whenAssignedSeparately_thenEachHoldsItsOwnCaseworker() {
+    UUID applicationId = UUID.randomUUID();
+    UUID priorAuthorityA = UUID.randomUUID();
+    UUID priorAuthorityB = UUID.randomUUID();
+    UUID caseworkerA = UUID.randomUUID();
+    UUID caseworkerB = UUID.randomUUID();
+
+    // A is already assigned to caseworker A; assigning B to a different caseworker must succeed
+    // (no cross-talk) and emit an event routed to member B only.
+    fixture
+        .given(
+            draftedEvent(applicationId),
+            submittedEvent(applicationId),
+            new PriorAuthorityDraftedEvent(applicationId, priorAuthorityA, FIXED_NOW),
+            new PriorAuthoritySubmittedEvent(applicationId, priorAuthorityA, FIXED_NOW),
+            new PriorAuthorityDraftedEvent(applicationId, priorAuthorityB, FIXED_NOW),
+            new PriorAuthoritySubmittedEvent(applicationId, priorAuthorityB, FIXED_NOW),
+            new CaseworkerAssignedEvent(applicationId, priorAuthorityA, caseworkerA, FIXED_NOW))
+        .when(
+            new AssignPriorAuthorityCaseworkerCommand(applicationId, priorAuthorityB, caseworkerB))
+        .expectEvents(
+            new CaseworkerAssignedEvent(applicationId, priorAuthorityB, caseworkerB, FIXED_NOW));
+  }
+
+  @Test
+  void givenPriorAuthorityAssignedToOne_whenAssignedToAnother_thenRejectsWithConflict() {
+    UUID applicationId = UUID.randomUUID();
+    UUID priorAuthorityA = UUID.randomUUID();
+    UUID priorAuthorityB = UUID.randomUUID();
+    UUID caseworkerA = UUID.randomUUID();
+
+    // Member A is held by caseworker A; re-assigning A to a different caseworker is a conflict,
+    // proving assignment state is per-member, not shared across prior authorities.
+    fixture
+        .given(
+            draftedEvent(applicationId),
+            submittedEvent(applicationId),
+            new PriorAuthorityDraftedEvent(applicationId, priorAuthorityA, FIXED_NOW),
+            new PriorAuthoritySubmittedEvent(applicationId, priorAuthorityA, FIXED_NOW),
+            new PriorAuthorityDraftedEvent(applicationId, priorAuthorityB, FIXED_NOW),
+            new PriorAuthoritySubmittedEvent(applicationId, priorAuthorityB, FIXED_NOW),
+            new CaseworkerAssignedEvent(applicationId, priorAuthorityA, caseworkerA, FIXED_NOW))
+        .when(
+            new AssignPriorAuthorityCaseworkerCommand(
+                applicationId, priorAuthorityA, UUID.randomUUID()))
+        .expectException(uk.gov.justice.laa.dstew.access.exception.ConflictException.class);
+  }
+
+  @Test
+  void givenApplicationAssigned_whenPriorAuthorityAssigned_thenAssignmentsAreIndependent() {
+    UUID applicationId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationCaseworker = UUID.randomUUID();
+    UUID priorAuthorityCaseworker = UUID.randomUUID();
+
+    // The application root is already assigned; assigning the PA member to a *different* caseworker
+    // must succeed, proving the root assignee and the member assignee are separate state.
+    fixture
+        .given(
+            draftedEvent(applicationId),
+            submittedEvent(applicationId),
+            new CaseworkerAssignedEvent(applicationId, null, applicationCaseworker, FIXED_NOW),
+            new PriorAuthorityDraftedEvent(applicationId, priorAuthorityId, FIXED_NOW),
+            new PriorAuthoritySubmittedEvent(applicationId, priorAuthorityId, FIXED_NOW))
+        .when(
+            new AssignPriorAuthorityCaseworkerCommand(
+                applicationId, priorAuthorityId, priorAuthorityCaseworker))
+        .expectEvents(
+            new CaseworkerAssignedEvent(
+                applicationId, priorAuthorityId, priorAuthorityCaseworker, FIXED_NOW));
+  }
+
   // ---- helpers ---------------------------------------------------------------------------------
 
   private static final Instant FIXED_NOW = Instant.parse("2026-07-15T08:00:00Z");

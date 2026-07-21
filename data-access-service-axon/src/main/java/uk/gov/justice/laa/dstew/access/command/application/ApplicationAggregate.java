@@ -14,6 +14,7 @@ import org.axonframework.modelling.command.AggregateCreationPolicy;
 import org.axonframework.modelling.command.AggregateIdentifier;
 import org.axonframework.modelling.command.AggregateMember;
 import org.axonframework.modelling.command.CreationPolicy;
+import org.axonframework.modelling.command.ForwardMatchingInstances;
 import org.axonframework.spring.stereotype.Aggregate;
 import uk.gov.justice.laa.dstew.access.applicationcontent.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.applicationcontent.MatterType;
@@ -41,7 +42,9 @@ public class ApplicationAggregate {
   private CategoryOfLaw categoryOfLaw;
   private MatterType matterType;
 
-  @AggregateMember private final List<PriorAuthority> priorAuthorities = new ArrayList<>();
+  @AggregateMember(eventForwardingMode = ForwardMatchingInstances.class)
+  private final List<PriorAuthority> priorAuthorities = new ArrayList<>();
+
   private boolean submitted;
   private UUID assignedCaseworkerId;
 
