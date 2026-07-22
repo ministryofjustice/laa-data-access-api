@@ -11,6 +11,8 @@ import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventF
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationCreationDetails;
 
 import java.time.Instant;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Predicate;
@@ -18,15 +20,21 @@ import org.axonframework.queryhandling.QueryUpdateEmitter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationNote;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
+import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadModel;
+import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadRepository;
 
 class ApplicationProjectionTest {
 
@@ -34,6 +42,7 @@ class ApplicationProjectionTest {
   private LinkedApplicationGroupReadRepository groupReadRepository;
   private QueryUpdateEmitter queryUpdateEmitter;
   private ApplicationDataStore applicationDataStore;
+  private ApplicationListIndexReadRepository listIndexRepository;
   private ApplicationProjection projection;
 
   @BeforeEach
@@ -42,6 +51,7 @@ class ApplicationProjectionTest {
     groupReadRepository = mock(LinkedApplicationGroupReadRepository.class);
     queryUpdateEmitter = mock(QueryUpdateEmitter.class);
     applicationDataStore = mock(ApplicationDataStore.class);
+    listIndexRepository = mock(ApplicationListIndexReadRepository.class);
     when(applicationDataStore.get(any(), anyLong()))
         .thenAnswer(
             invocation ->
@@ -51,7 +61,8 @@ class ApplicationProjectionTest {
             applicationReadRepository,
             groupReadRepository,
             queryUpdateEmitter,
-            applicationDataStore);
+            applicationDataStore,
+            listIndexRepository);
   }
 
   @Test
@@ -66,7 +77,6 @@ class ApplicationProjectionTest {
 
     InOrder order = inOrder(applicationReadRepository, queryUpdateEmitter);
     order.verify(applicationReadRepository).save(any());
-    // The default emit(Class, Predicate, U) is called with ApplicationReadModel as U
     order
         .verify(queryUpdateEmitter)
         .emit(any(Class.class), any(Predicate.class), any(ApplicationReadModel.class));
@@ -80,7 +90,6 @@ class ApplicationProjectionTest {
     ApplicationCreatedEvent event = applicationCreatedEvent(applicationId);
 
     final Predicate<?>[] capturedPredicate = new Predicate[1];
-    // Stub the default emit(Class, Predicate, U) overload by matching ApplicationReadModel
     org.mockito.Mockito.doAnswer(
             inv -> {
               capturedPredicate[0] = (Predicate<?>) inv.getArgument(1);
@@ -257,5 +266,57 @@ class ApplicationProjectionTest {
 
     assertThat(result).isPresent();
     assertThat(result.get().notes()).isEmpty();
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void givenIndexReturnsPage_whenFindAllApplicationsQuery_thenBatchLoadsBothSourcesAndAssembles() {
+    UUID appId = UUID.randomUUID();
+    ApplicationListIndexReadModel indexRow =
+        ApplicationListIndexReadModel.builder().applicationId(appId).build();
+
+    when(listIndexRepository.findAll(any(Specification.class), any(Pageable.class)))
+        .thenReturn(new PageImpl<>(List.of(indexRow)));
+
+    ApplicationReadModel state =
+        ApplicationReadModel.builder()
+            .applicationId(appId)
+            .applicationDataVersion(0L)
+            .modifiedAt(Instant.EPOCH)
+            .build();
+    when(applicationReadRepository.findAllById(List.of(appId))).thenReturn(List.of(state));
+
+    ApplicationDataId dataId = new ApplicationDataId(appId, 0L);
+    ApplicationDataPayload payload = ApplicationDataPayload.from(applicationCreationDetails(appId));
+    when(applicationDataStore.getAll(List.of(dataId))).thenReturn(Map.of(dataId, payload));
+
+    when(groupReadRepository.findAllByLeadApplicationIdIn(any())).thenReturn(List.of());
+
+    FindAllApplicationsResult result =
+        projection.handle(
+            new FindAllApplicationsQuery(null, null, null, null, null, null, null, null, 1, 20));
+
+    assertThat(result.applications()).hasSize(1);
+    assertThat(result.applications().getFirst().getApplicationId()).isEqualTo(appId);
+    assertThat(result.totalElements()).isEqualTo(1L);
+
+    // Verify batch loads — not per-row findById calls
+    verify(applicationReadRepository).findAllById(List.of(appId));
+    verify(applicationDataStore).getAll(List.of(dataId));
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void givenEmptyIndexPage_whenFindAllApplicationsQuery_thenReturnsEmptyResult() {
+    when(listIndexRepository.findAll(any(Specification.class), any(Pageable.class)))
+        .thenReturn(new PageImpl<>(List.of()));
+    when(groupReadRepository.findAllByLeadApplicationIdIn(any())).thenReturn(List.of());
+
+    FindAllApplicationsResult result =
+        projection.handle(
+            new FindAllApplicationsQuery(null, null, null, null, null, null, null, null, 1, 20));
+
+    assertThat(result.applications()).isEmpty();
+    assertThat(result.totalElements()).isZero();
   }
 }

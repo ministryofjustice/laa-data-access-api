@@ -1,17 +1,21 @@
 package uk.gov.justice.laa.dstew.access.query.application;
 
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.axonframework.config.ProcessingGroup;
 import org.axonframework.eventhandling.EventHandler;
 import org.axonframework.eventhandling.ResetHandler;
 import org.axonframework.queryhandling.QueryHandler;
 import org.axonframework.queryhandling.QueryUpdateEmitter;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
@@ -25,6 +29,9 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationD
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
+import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadModel;
+import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadRepository;
+import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexSpecification;
 
 /** Independently replayable projection of the current state of each Application. */
 @Component
@@ -35,6 +42,7 @@ public class ApplicationProjection {
   private final LinkedApplicationGroupReadRepository groupReadRepository;
   private final QueryUpdateEmitter queryUpdateEmitter;
   private final ApplicationDataStore applicationDataStore;
+  private final ApplicationListIndexReadRepository listIndexRepository;
 
   /**
    * Constructs the projection with its read repositories and query update emitter.
@@ -45,21 +53,25 @@ public class ApplicationProjection {
    *     batch-fetch group membership for the result page
    * @param queryUpdateEmitter used to push {@link ApplicationReadModel} updates to open
    *     subscription queries after {@code ApplicationCreatedEvent} is handled
+   * @param listIndexRepository persistence interface for {@code application_list_index}; used by
+   *     {@link FindAllApplicationsQuery} for database-side filtering and paging
    */
   public ApplicationProjection(
       ApplicationReadRepository applicationReadRepository,
       LinkedApplicationGroupReadRepository groupReadRepository,
       QueryUpdateEmitter queryUpdateEmitter,
-      ApplicationDataStore applicationDataStore) {
+      ApplicationDataStore applicationDataStore,
+      ApplicationListIndexReadRepository listIndexRepository) {
     this.applicationReadRepository = applicationReadRepository;
     this.groupReadRepository = groupReadRepository;
     this.queryUpdateEmitter = queryUpdateEmitter;
     this.applicationDataStore = applicationDataStore;
+    this.listIndexRepository = listIndexRepository;
   }
 
   /** Returns the current-state projection for the requested Application. */
   @QueryHandler
-  public java.util.Optional<ApplicationReadModel> handle(FindApplicationByIdQuery query) {
+  public Optional<ApplicationReadModel> handle(FindApplicationByIdQuery query) {
     return applicationReadRepository.findById(query.applicationId()).flatMap(this::hydrate);
   }
 
@@ -84,29 +96,57 @@ public class ApplicationProjection {
   /**
    * Returns a paginated, filtered list of Application projections.
    *
-   * <p>The thin current-state rows are batch-hydrated from their referenced immutable data versions
-   * before filtering, sorting, and pagination. This keeps PII out of the disposable projection.
-   *
-   * <p>Group membership is batch-fetched for the result page and returned in the result so the
-   * response mapper can populate {@code linkedApplications} without additional queries.
+   * <p>Filtering, sorting, counting, and paging are pushed entirely to the database via {@code
+   * application_list_index}. After a page of index rows is returned, {@code application_data}
+   * payloads are bulk-loaded for only those application IDs, avoiding N+1 lookups. Group membership
+   * is similarly batch-fetched for the page and returned so the response mapper can populate {@code
+   * linkedApplications} without additional queries.
    */
   @QueryHandler
   public FindAllApplicationsResult handle(FindAllApplicationsQuery query) {
-    int page = Math.max(0, query.page() - 1);
-    int pageSize = query.pageSize() > 0 ? query.pageSize() : 20;
+    Sort sort = buildSort(query.sortBy(), query.orderBy());
+    Pageable pageable = PageRequest.of(Math.max(0, query.page() - 1), query.pageSize(), sort);
 
-    List<ApplicationReadModel> filtered =
-        hydrate(applicationReadRepository.findAll()).stream()
-            .filter(application -> matches(application, query))
-            .sorted(comparator(query.sortBy(), query.orderBy()))
+    Page<ApplicationListIndexReadModel> indexPage =
+        listIndexRepository.findAll(ApplicationListIndexSpecification.from(query), pageable);
+
+    List<UUID> pageIds =
+        indexPage.getContent().stream()
+            .map(ApplicationListIndexReadModel::getApplicationId)
             .toList();
-    int fromIndex = Math.min(page * pageSize, filtered.size());
-    int toIndex = Math.min(fromIndex + pageSize, filtered.size());
-    List<ApplicationReadModel> content = filtered.subList(fromIndex, toIndex);
+
+    // Single batch load of current-state rows for the page
+    Map<UUID, ApplicationReadModel> stateById =
+        applicationReadRepository.findAllById(pageIds).stream()
+            .collect(Collectors.toMap(ApplicationReadModel::getApplicationId, Function.identity()));
+
+    // Single batch load of application_data payloads for the page
+    List<ApplicationDataId> dataIds =
+        stateById.values().stream()
+            .map(s -> new ApplicationDataId(s.getApplicationId(), s.getApplicationDataVersion()))
+            .toList();
+    Map<ApplicationDataId, ApplicationDataPayload> dataById = applicationDataStore.getAll(dataIds);
+
+    // Assemble hydrated read models preserving the index ordering
+    List<ApplicationReadModel> content =
+        pageIds.stream()
+            .map(stateById::get)
+            .filter(Objects::nonNull)
+            .map(
+                state -> {
+                  ApplicationDataId id =
+                      new ApplicationDataId(
+                          state.getApplicationId(), state.getApplicationDataVersion());
+                  ApplicationDataPayload data = dataById.get(id);
+                  return data == null ? null : hydrate(state, data);
+                })
+            .filter(Objects::nonNull)
+            .toList();
+
     Map<UUID, LinkedApplicationGroupReadModel> groupsByLeadId = fetchGroups(content);
 
     return new FindAllApplicationsResult(
-        content, groupsByLeadId, filtered.size(), query.page(), pageSize);
+        content, groupsByLeadId, indexPage.getTotalElements(), query.page(), query.pageSize());
   }
 
   /** Creates the current-state row from an Application's creation event. */
@@ -212,24 +252,11 @@ public class ApplicationProjection {
     applicationReadRepository.deleteAllInBatch();
   }
 
-  private boolean matches(ApplicationReadModel application, FindAllApplicationsQuery query) {
-    return (query.status() == null || Objects.equals(application.getStatus(), query.status()))
-        && (query.laaReference() == null
-            || Objects.equals(application.getLaaReference(), query.laaReference()))
-        && (query.matterType() == null
-            || Objects.equals(application.getMatterType(), query.matterType()));
-  }
-
-  private Comparator<ApplicationReadModel> comparator(String sortBy, String orderBy) {
-    Comparator<ApplicationReadModel> comparator =
-        "LAST_UPDATED_DATE".equalsIgnoreCase(sortBy)
-            ? Comparator.comparing(
-                ApplicationReadModel::getModifiedAt,
-                Comparator.nullsLast(Comparator.naturalOrder()))
-            : Comparator.comparing(
-                ApplicationReadModel::getSubmittedAt,
-                Comparator.nullsLast(Comparator.naturalOrder()));
-    return "DESC".equalsIgnoreCase(orderBy) ? comparator.reversed() : comparator;
+  private Sort buildSort(String sortBy, String orderBy) {
+    String property = "LAST_UPDATED_DATE".equalsIgnoreCase(sortBy) ? "modifiedAt" : "submittedAt";
+    Sort.Direction direction =
+        "DESC".equalsIgnoreCase(orderBy) ? Sort.Direction.DESC : Sort.Direction.ASC;
+    return Sort.by(direction, property).and(Sort.by(Sort.Direction.ASC, "applicationId"));
   }
 
   private Optional<ApplicationReadModel> hydrate(ApplicationReadModel application) {
@@ -238,28 +265,6 @@ public class ApplicationProjection {
             application.getApplicationId(), application.getApplicationDataVersion());
     ApplicationDataPayload data = applicationDataStore.getAll(List.of(id)).get(id);
     return data == null ? Optional.empty() : Optional.of(hydrate(application, data));
-  }
-
-  private List<ApplicationReadModel> hydrate(List<ApplicationReadModel> applications) {
-    List<ApplicationDataId> ids =
-        applications.stream()
-            .map(
-                application ->
-                    new ApplicationDataId(
-                        application.getApplicationId(), application.getApplicationDataVersion()))
-            .toList();
-    Map<ApplicationDataId, ApplicationDataPayload> dataById = applicationDataStore.getAll(ids);
-    return applications.stream()
-        .map(
-            application -> {
-              ApplicationDataId id =
-                  new ApplicationDataId(
-                      application.getApplicationId(), application.getApplicationDataVersion());
-              ApplicationDataPayload data = dataById.get(id);
-              return data == null ? null : hydrate(application, data);
-            })
-        .filter(Objects::nonNull)
-        .toList();
   }
 
   private ApplicationReadModel hydrate(
@@ -299,6 +304,6 @@ public class ApplicationProjection {
     return groupReadRepository.findAllByLeadApplicationIdIn(leadIds).stream()
         .collect(
             Collectors.toMap(
-                LinkedApplicationGroupReadModel::getLeadApplicationId, g -> g, (a, b) -> a));
+                LinkedApplicationGroupReadModel::getLeadApplicationId, g -> g, (a, ignored) -> a));
   }
 }
