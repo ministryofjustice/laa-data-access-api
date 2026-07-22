@@ -87,6 +87,20 @@ subprojects {
 }
 
 allprojects {
+    repositories {
+        maven {
+            name = "sonatypeSnapshots"
+            url = uri('https://central.sonatype.com/repository/maven-snapshots/')
+            mavenContent {
+                snapshotsOnly()
+            }
+            content {
+                includeGroup('uk.gov.justice.service.laa')
+            }
+        }
+        mavenCentral()
+    }
+
     // Keep lockfile count low: lock only the configurations that are actually resolved in CI/dev.
     def lockedConfigs = [
             "compileClasspath",
