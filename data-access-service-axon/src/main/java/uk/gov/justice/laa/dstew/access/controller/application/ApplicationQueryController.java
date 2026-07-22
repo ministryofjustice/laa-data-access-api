@@ -78,10 +78,9 @@ public class ApplicationQueryController {
   /**
    * Returns a paginated, filtered list of Application summaries.
    *
-   * <p>Filters on {@code status}, {@code laaReference}, and {@code matterType} are applied. {@code
-   * clientFirstName}, {@code clientLastName}, {@code clientDateOfBirth}, and {@code userId} are
-   * accepted for API compatibility but not yet used as filters — a future migration will
-   * denormalise client fields from the {@code individuals} JSON column to enable them.
+   * <p>Filters on {@code status}, {@code laaReference}, {@code caseworkerId}, {@code matterType},
+   * and {@code isAutoGranted} are applied. {@code clientFirstName}, {@code clientLastName}, and
+   * {@code clientDateOfBirth} are accepted for API compatibility but not yet used as filters.
    */
   @GetMapping
   public ResponseEntity<ApplicationSummaryResponse> getApplications(
@@ -91,7 +90,9 @@ public class ApplicationQueryController {
       @RequestParam(required = false) String clientLastName,
       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
           LocalDate clientDateOfBirth,
+      @RequestParam(required = false) UUID caseworkerId,
       @RequestParam(required = false) MatterType matterType,
+      @RequestParam(required = false) Boolean isAutoGranted,
       @RequestParam(required = false) ApplicationSortBy sortBy,
       @RequestParam(required = false) ApplicationOrderBy orderBy,
       @RequestParam(required = false) Integer page,
@@ -102,7 +103,9 @@ public class ApplicationQueryController {
                 new FindAllApplicationsQuery(
                     status == null ? null : status.name(),
                     laaReference,
+                    caseworkerId == null ? null : caseworkerId.toString(),
                     matterType == null ? null : matterType.name(),
+                    isAutoGranted,
                     clientFirstName,
                     clientLastName,
                     clientDateOfBirth,

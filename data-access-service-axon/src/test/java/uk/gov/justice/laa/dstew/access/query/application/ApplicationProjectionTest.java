@@ -26,12 +26,10 @@ import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataP
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationNote;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
-import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
 
 class ApplicationProjectionTest {
 
   private ApplicationReadRepository applicationReadRepository;
-  private LinkedApplicationGroupReadRepository groupReadRepository;
   private QueryUpdateEmitter queryUpdateEmitter;
   private ApplicationDataStore applicationDataStore;
   private ApplicationProjection projection;
@@ -39,7 +37,6 @@ class ApplicationProjectionTest {
   @BeforeEach
   void setUp() {
     applicationReadRepository = mock(ApplicationReadRepository.class);
-    groupReadRepository = mock(LinkedApplicationGroupReadRepository.class);
     queryUpdateEmitter = mock(QueryUpdateEmitter.class);
     applicationDataStore = mock(ApplicationDataStore.class);
     when(applicationDataStore.get(any(), anyLong()))
@@ -48,10 +45,7 @@ class ApplicationProjectionTest {
                 ApplicationDataPayload.from(applicationCreationDetails(invocation.getArgument(0))));
     projection =
         new ApplicationProjection(
-            applicationReadRepository,
-            groupReadRepository,
-            queryUpdateEmitter,
-            applicationDataStore);
+            applicationReadRepository, queryUpdateEmitter, applicationDataStore);
   }
 
   @Test

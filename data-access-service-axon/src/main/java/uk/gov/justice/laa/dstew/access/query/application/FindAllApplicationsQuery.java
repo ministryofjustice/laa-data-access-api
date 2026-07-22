@@ -6,15 +6,16 @@ import uk.gov.justice.laa.dstew.access.query.PaginationHelper;
 /**
  * Query to retrieve a paginated, filtered list of Application current-state projections.
  *
- * <p>{@code clientFirstName}, {@code clientLastName}, and {@code clientDateOfBirth} are accepted
- * for API compatibility but are not yet applied as filters — client data is stored in the {@code
- * individuals} JSON column rather than as plain columns. A future migration can denormalise those
- * fields to enable filtering.
+ * <p>{@code status}, {@code laaReference}, {@code caseworkerId}, {@code matterType}, and {@code
+ * isAutoGranted} are applied as database filters. {@code clientFirstName}, {@code clientLastName},
+ * and {@code clientDateOfBirth} are accepted for API compatibility but are not yet applied.
  */
 public record FindAllApplicationsQuery(
     String status,
     String laaReference,
+    String caseworkerId,
     String matterType,
+    Boolean isAutoGranted,
     String clientFirstName,
     String clientLastName,
     LocalDate clientDateOfBirth,
