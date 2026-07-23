@@ -27,13 +27,13 @@ import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.service.applications.SdsService;
-import uk.gov.justice.laa.dstew.access.service.applications.UnassignCaseworkerService;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
 import uk.gov.justice.laa.dstew.access.usecase.assigncaseworker.AssignCaseworkerUseCase;
 import uk.gov.justice.laa.dstew.access.usecase.createapplication.CreateApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.usecase.createnote.CreateNoteUseCase;
 import uk.gov.justice.laa.dstew.access.usecase.makedecision.MakeDecisionUseCase;
+import uk.gov.justice.laa.dstew.access.usecase.unassigncaseworker.UnassignCaseworkerUseCase;
 import uk.gov.justice.laa.dstew.access.usecase.updateapplication.UpdateApplicationUseCase;
 
 /** Controller for handling /api/v0/applications command requests. */
@@ -49,7 +49,8 @@ public class ApplicationCommandController implements ApplicationCommandApi {
 
   private final AssignCaseworkerUseCase assignCaseworkerUseCase;
   private final AssignCaseworkerCommandMapper assignCaseworkerCommandMapper;
-  private final UnassignCaseworkerService unassignCaseworkerService;
+  private final UnassignCaseworkerUseCase unassignCaseworkerUseCase;
+  private final UnassignCaseworkerCommandMapper unassignCaseworkerCommandMapper;
   private final MakeDecisionUseCase makeDecisionUseCase;
   private final MakeDecisionCommandMapper makeDecisionCommandMapper;
 
@@ -102,9 +103,8 @@ public class ApplicationCommandController implements ApplicationCommandApi {
   @LogMethodResponse
   public ResponseEntity<Void> unassignCaseworker(
       @NotNull ServiceName serviceName, UUID id, @Valid CaseworkerUnassignRequest request) {
-
-    unassignCaseworkerService.unassignCaseworker(id, request.getEventHistory());
-
+    unassignCaseworkerUseCase.execute(
+        unassignCaseworkerCommandMapper.toUnassignCaseworkerCommand(id, request));
     return ResponseEntity.ok().build();
   }
 

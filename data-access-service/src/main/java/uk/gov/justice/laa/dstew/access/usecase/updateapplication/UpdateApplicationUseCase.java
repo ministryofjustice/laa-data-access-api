@@ -4,10 +4,10 @@ import jakarta.transaction.Transactional;
 import java.util.ArrayList;
 import java.util.List;
 import uk.gov.justice.laa.dstew.access.domain.ApplicationDomain;
+import uk.gov.justice.laa.dstew.access.domain.enums.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 import uk.gov.justice.laa.dstew.access.service.domainevents.SaveDomainEventService;
 import uk.gov.justice.laa.dstew.access.usecase.shared.infrastructure.ApplicationGateway;
-import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /** Use case for updating an existing application. */
