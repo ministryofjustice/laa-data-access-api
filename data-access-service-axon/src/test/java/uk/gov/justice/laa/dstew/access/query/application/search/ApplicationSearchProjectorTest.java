@@ -31,6 +31,7 @@ class ApplicationSearchProjectorTest {
   private LinkedApplicationGroupReadRepository groupReadRepository;
   private ApplicationDataStore applicationDataStore;
   private ApplicationSearchProjector projector;
+  private ApplicationSearchViewHydrator searchViewHydrator;
 
   @BeforeEach
   void setUp() {
@@ -38,9 +39,10 @@ class ApplicationSearchProjectorTest {
     linkRepository = mock(ApplicationLinkSearchRepository.class);
     groupReadRepository = mock(LinkedApplicationGroupReadRepository.class);
     applicationDataStore = mock(ApplicationDataStore.class);
+    searchViewHydrator = mock(ApplicationSearchViewHydrator.class);
     projector =
         new ApplicationSearchProjector(
-            repository, linkRepository, groupReadRepository, applicationDataStore);
+            repository, linkRepository, groupReadRepository, applicationDataStore, searchViewHydrator);
   }
 
   @Test
