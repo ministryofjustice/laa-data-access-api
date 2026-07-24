@@ -52,8 +52,7 @@ public class GetEventsTest extends BaseServiceTest {
 
     // then
     verify(domainEventRepository).findAll(any(Specification.class));
-    assertDomainEventsEqual(
-        orderedExpectedDomainEvents, actualDomainEvents);
+    assertDomainEventsEqual(orderedExpectedDomainEvents, actualDomainEvents);
   }
 
   @Test
@@ -173,8 +172,7 @@ public class GetEventsTest extends BaseServiceTest {
   }
 
   private void assertDomainEventsEqual(
-      List<DomainEventEntity> expected,
-      List<ApplicationDomainEventResponse> actual) {
+      List<DomainEventEntity> expected, List<ApplicationDomainEventResponse> actual) {
     assertThat(expected.size()).isEqualTo(actual.size());
     for (int i = 0; i < expected.size(); i++) {
       assertDomainEventEqual(expected.get(i), actual.get(i));
