@@ -52,7 +52,8 @@ public class GetEventsTest extends BaseServiceTest {
 
     // then
     verify(domainEventRepository).findAll(any(Specification.class));
-    assertDomainEventsEqual(orderedExpectedDomainEvents, actualDomainEvents);
+    assertDomainEventsEqual(
+        orderedExpectedDomainEvents, actualDomainEvents);
   }
 
   @Test
@@ -79,8 +80,101 @@ public class GetEventsTest extends BaseServiceTest {
     verify(applicationRepository, never()).findAll();
   }
 
+  @Test
+  void givenApplicationNotesWithNullRequest_whenMapEvent_thenReturnNullEventDescription() {
+    // given
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
+    DomainEventEntity eventWithNullRequest =
+        DataGenerator.createDefault(DomainEventGenerator.class).toBuilder()
+            .type(DomainEventType.APPLICATION_NOTES)
+            .data(null)
+            .build();
+
+    when(domainEventRepository.findAll(any(Specification.class)))
+        .thenReturn(List.of(eventWithNullRequest));
+
+    // when
+    List<ApplicationDomainEventResponse> actualDomainEvents =
+        serviceUnderTest.getEvents(UUID.randomUUID(), List.of(DomainEventType.APPLICATION_NOTES));
+
+    // then
+    assertThat(actualDomainEvents.size()).isEqualTo(1);
+    assertThat(actualDomainEvents.get(0).getEventDescription()).isNull();
+  }
+
+  @Test
+  void givenApplicationNotesWithValidRequest_whenMapEvent_thenReturnNullEventDescription() {
+    // given
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
+    String notesPayload =
+        """
+        {"request": "{\\"notes\\":\\"Test Note\\"}", "createdDate": "2026-07-23T11:15:58.464367Z", "applicationId": "3592f19b-69bc-4d36-86bb-5a5cffc6febd"}""";
+
+    DomainEventEntity eventWithNotesRequest =
+        DataGenerator.createDefault(DomainEventGenerator.class).toBuilder()
+            .type(DomainEventType.APPLICATION_NOTES)
+            .data(notesPayload)
+            .build();
+
+    when(domainEventRepository.findAll(any(Specification.class)))
+        .thenReturn(List.of(eventWithNotesRequest));
+
+    // when
+    List<ApplicationDomainEventResponse> actualDomainEvents =
+        serviceUnderTest.getEvents(UUID.randomUUID(), List.of(DomainEventType.APPLICATION_NOTES));
+
+    // then
+    assertThat(actualDomainEvents.size()).isEqualTo(1);
+    assertThat(actualDomainEvents.get(0).getEventDescription()).isEqualTo("Test Note");
+  }
+
+  @Test
+  void givenApplicationNotesWithBlankRequest_whenMapEvent_thenReturnNullEventDescription() {
+    // given
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
+    DomainEventEntity eventWithBlankRequest =
+        DataGenerator.createDefault(DomainEventGenerator.class).toBuilder()
+            .type(DomainEventType.APPLICATION_NOTES)
+            .data("   ")
+            .build();
+
+    when(domainEventRepository.findAll(any(Specification.class)))
+        .thenReturn(List.of(eventWithBlankRequest));
+
+    // when
+    List<ApplicationDomainEventResponse> actualDomainEvents =
+        serviceUnderTest.getEvents(UUID.randomUUID(), List.of(DomainEventType.APPLICATION_NOTES));
+
+    // then
+    assertThat(actualDomainEvents.size()).isEqualTo(1);
+    assertThat(actualDomainEvents.get(0).getEventDescription()).isNull();
+  }
+
+  @Test
+  void givenApplicationNotesWithInvalidJson_whenMapEvent_thenReturnNullEventDescription() {
+    // given
+    setSecurityContext(TestConstants.Roles.CASEWORKER);
+    DomainEventEntity eventWithInvalidJson =
+        DataGenerator.createDefault(DomainEventGenerator.class).toBuilder()
+            .type(DomainEventType.APPLICATION_NOTES)
+            .data("invalid json data")
+            .build();
+
+    when(domainEventRepository.findAll(any(Specification.class)))
+        .thenReturn(List.of(eventWithInvalidJson));
+
+    // when
+    List<ApplicationDomainEventResponse> actualDomainEvents =
+        serviceUnderTest.getEvents(UUID.randomUUID(), List.of(DomainEventType.APPLICATION_NOTES));
+
+    // then
+    assertThat(actualDomainEvents.size()).isEqualTo(1);
+    assertThat(actualDomainEvents.getFirst().getEventDescription()).isNull();
+  }
+
   private void assertDomainEventsEqual(
-      List<DomainEventEntity> expected, List<ApplicationDomainEventResponse> actual) {
+      List<DomainEventEntity> expected,
+      List<ApplicationDomainEventResponse> actual) {
     assertThat(expected.size()).isEqualTo(actual.size());
     for (int i = 0; i < expected.size(); i++) {
       assertDomainEventEqual(expected.get(i), actual.get(i));

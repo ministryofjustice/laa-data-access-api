@@ -6,9 +6,11 @@ import org.mapstruct.Mapper;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEventResponse;
 import uk.gov.justice.laa.dstew.access.model.AssignApplicationDomainEventDetails;
+import uk.gov.justice.laa.dstew.access.model.CreateApplicationNoteDomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.DomainEventDetails;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionDomainEventDetails;
+import uk.gov.justice.laa.dstew.access.model.NoteRequest;
 import uk.gov.justice.laa.dstew.access.model.UnassignApplicationDomainEventDetails;
 
 /** Maps between domain event entity and domain event API model. */
@@ -59,8 +61,29 @@ public interface DomainEventMapper {
           getEventDescription(data, UnassignApplicationDomainEventDetails.class);
       case APPLICATION_MAKE_DECISION_GRANTED, APPLICATION_MAKE_DECISION_REFUSED ->
           getEventDescription(data, MakeDecisionDomainEventDetails.class);
+      case APPLICATION_NOTES -> getNotesDescription(data);
       default -> null;
     };
+  }
+
+  /**
+   * Notes domain events have a nested structure, so we need to deserialize the data twice to get
+   * the note text.
+   *
+   * @param data payload of notes domain event.
+   * @return The note text in the payload.
+   */
+  private String getNotesDescription(String data) {
+    try {
+      CreateApplicationNoteDomainEventDetails details =
+          MapperUtil.getObjectMapper()
+              .readValue(data, CreateApplicationNoteDomainEventDetails.class);
+      NoteRequest noteRequest =
+          MapperUtil.getObjectMapper().readValue(details.getRequest(), NoteRequest.class);
+      return noteRequest.getNotes();
+    } catch (Exception e) {
+      return null;
+    }
   }
 
   private static String getEventDescription(
