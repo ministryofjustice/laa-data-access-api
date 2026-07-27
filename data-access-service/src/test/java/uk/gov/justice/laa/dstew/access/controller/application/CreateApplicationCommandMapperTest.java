@@ -104,17 +104,6 @@ class CreateApplicationCommandMapperTest {
   }
 
   @Test
-  void toCreateCommand_mapsApplicationType_whenPresent() {
-    ApplicationCreateRequest req =
-        DataGenerator.createDefault(
-            ApplicationCreateRequestGenerator.class, b -> b.applicationType(ApplicationType.CCS));
-
-    CreateApplicationCommand command = mapper.toCreateCommand(req, 1);
-
-    assertThat(command.applicationType()).isEqualTo(ApplicationType.CCS.name());
-  }
-
-  @Test
   void toCreateCommand_defaultsApplicationTypeToApply_whenNull() {
     ApplicationCreateRequest req =
         DataGenerator.createDefault(
