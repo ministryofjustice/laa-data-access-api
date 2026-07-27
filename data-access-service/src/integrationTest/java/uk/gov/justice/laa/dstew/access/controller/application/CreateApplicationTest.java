@@ -31,7 +31,6 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
-import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ApplicationContent;
@@ -93,28 +92,6 @@ public class CreateApplicationTest extends BaseHarnessTest {
     ApplicationCreateRequest request =
         DataGenerator.createDefault(
             ApplicationCreateRequestGenerator.class, builder -> builder.applicationType(null));
-
-    // when
-    HarnessResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
-
-    // then
-    assertSecurityHeaders(result);
-    assertCreated(result);
-    UUID createdId = HeaderUtils.GetUUIDFromLocation(result.getResponse().getHeader("Location"));
-    persistedDataGenerator.trackExistingApplication(createdId);
-  }
-
-  @Test
-  public void givenCcsApplicationType_whenCreateApplication_thenReturnCreated() throws Exception {
-    // given - CCS application type; schema requires id, submittedAt and laaReference in content
-    ApplicationContent content = DataGenerator.createDefault(ApplicationContentGenerator.class);
-    Map<String, Object> contentMap = new HashMap<>(objectMapper.convertValue(content, Map.class));
-    contentMap.put("laaReference", "LAA-CSS-001");
-
-    ApplicationCreateRequest request =
-        DataGenerator.createDefault(
-            ApplicationCreateRequestGenerator.class,
-            builder -> builder.applicationType(ApplicationType.CCS).applicationContent(contentMap));
 
     // when
     HarnessResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);

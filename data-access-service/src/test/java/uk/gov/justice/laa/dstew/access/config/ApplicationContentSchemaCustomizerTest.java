@@ -34,14 +34,13 @@ class ApplicationContentSchemaCustomizerTest {
             "Proceeding",
             "Applicant",
             "ProviderV2",
-            "ClientV2",
+            "Client",
             "ProceedingsV2",
             "OpponentsV2",
             "ScopeLimitationV2",
             "CorrespondenceAddressV2",
             "ApplyApplicationContentV1",
-            "ApplyApplicationContentV2",
-            "CssApplicationContent");
+            "ApplyApplicationContentV2");
   }
 
   @Test
@@ -194,13 +193,11 @@ class ApplicationContentSchemaCustomizerTest {
                 .getProperties()
                 .get("applicationContent");
     assertThat(applicationContent.getOneOf()).isNotNull();
-    assertThat(applicationContent.getOneOf()).hasSize(3);
+    assertThat(applicationContent.getOneOf()).hasSize(2);
     assertThat(applicationContent.getOneOf().get(0).get$ref())
         .isEqualTo("#/components/schemas/ApplyApplicationContentV1");
     assertThat(applicationContent.getOneOf().get(1).get$ref())
         .isEqualTo("#/components/schemas/ApplyApplicationContentV2");
-    assertThat(applicationContent.getOneOf().get(2).get$ref())
-        .isEqualTo("#/components/schemas/CssApplicationContent");
     assertThat(applicationContent.getDescription())
         .isEqualTo("Application content conforming to one of the versioned schemas");
   }

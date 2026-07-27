@@ -7,7 +7,11 @@
   "required": [
     "id",
     "createdAt",
-    "submittedAt"
+    "submittedAt",
+    "proceedings",
+    "provider",
+    "allLinkedApplications",
+    "applicant"
   ],
   "properties": {
     "id": {
@@ -28,7 +32,7 @@
     "provider": {
       "$ref": "../common/2/Provider.json"
     },
-    "client": {
+    "applicant": {
       "$ref": "../common/2/Client.json"
     },
     "proceedings": {
@@ -48,6 +52,20 @@
         "$ref": "../common/2/Opponents.json"
       },
       "description": "Opponents associated with the application"
+    },
+    "status": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Current status of the application"
+    },
+    "allLinkedApplications": {
+      "type": ["array", "null"],
+      "items": {
+        "$ref": "../common/2/LinkedApplication2.json"
+      },
+      "description": "All linked applications"
     }
   },
   "additionalProperties": true

@@ -39,9 +39,9 @@ public class CreateApplicationUseCase {
   public ApplicationDomain execute(CreateApplicationCommand command) {
 
     // 1. Validate against JSON schema
+    // Currently only one schema defined should be updated when others added
     String formType =
         switch (command.applicationType()) {
-          case "CCS" -> "CssApplication.json";
           default -> "ApplyApplication.json";
         };
     jsonSchemaValidator.validate(command.applicationContent(), formType, command.schemaVersion());
