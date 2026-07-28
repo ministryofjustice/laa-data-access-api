@@ -3,7 +3,6 @@ package uk.gov.justice.laa.dstew.access.command.application.linkedgroup;
 import static org.axonframework.modelling.command.AggregateLifecycle.apply;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
-import java.util.List;
 import java.util.UUID;
 import org.axonframework.commandhandling.CommandHandler;
 import org.axonframework.eventsourcing.EventSourcingHandler;
@@ -27,53 +26,24 @@ import org.axonframework.spring.stereotype.Aggregate;
 public class LinkedApplicationGroupAggregate {
 
   @AggregateIdentifier private UUID groupId;
-  private UUID leadApplicationId;
-  private List<UUID> memberApplicationIds;
+  private final LinkedApplicationGroupState state = new LinkedApplicationGroupState();
 
-  /**
-   * Initialises the group, or adds new members idempotently if it already exists.
-   *
-   * <p>On first call: validates the lead is in the member list, then emits {@link
-   * LinkedApplicationGroupCreatedEvent}.
-   *
-   * <p>On subsequent calls: diffs {@code command.memberApplicationIds()} against the current member
-   * list and emits {@link MemberAddedToGroupEvent} for each member not already present. This
-   * handles the case where a second (or later) application joins an existing group.
-   */
+  /** Initialises the group, or adds new members idempotently if it already exists. */
   @CommandHandler
   @CreationPolicy(AggregateCreationPolicy.CREATE_IF_MISSING)
   void handle(InitialiseLinkedApplicationGroupCommand command) {
-    if (groupId != null) {
-      // Group already exists — add any members not yet in it.
-      command.memberApplicationIds().stream()
-          .filter(id -> !memberApplicationIds.contains(id))
-          .forEach(id -> apply(new MemberAddedToGroupEvent(groupId, id, command.occurredAt())));
-      return;
-    }
-    if (!command.memberApplicationIds().contains(command.leadApplicationId())) {
-      throw new IllegalArgumentException(
-          "Lead application "
-              + command.leadApplicationId()
-              + " must be present in the member list");
-    }
-    apply(
-        new LinkedApplicationGroupCreatedEvent(
-            command.groupId(),
-            command.leadApplicationId(),
-            List.copyOf(command.memberApplicationIds()),
-            command.occurredAt()));
+    LinkedApplicationGroupDecider.decideInitialise(state, command).forEach(e -> apply(e));
   }
 
   @EventSourcingHandler
   void on(LinkedApplicationGroupCreatedEvent event) {
-    groupId = event.groupId();
-    leadApplicationId = event.leadApplicationId();
-    memberApplicationIds = new java.util.ArrayList<>(event.memberApplicationIds());
+    LinkedApplicationGroupEvolve.apply(state, event);
+    this.groupId = state.groupId;
   }
 
   @EventSourcingHandler
   void on(MemberAddedToGroupEvent event) {
-    memberApplicationIds.add(event.memberId());
+    LinkedApplicationGroupEvolve.apply(state, event);
   }
 
   protected LinkedApplicationGroupAggregate() {

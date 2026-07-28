@@ -99,4 +99,21 @@ class AxonArchitectureTest {
             .allowEmptyShould(true);
     rule.check(classes);
   }
+
+  @Test
+  void decidersAndStateClassesMustNotDependOnAxon() {
+    ArchRule rule =
+        noClasses()
+            .that()
+            .haveSimpleNameEndingWith("Decider")
+            .or()
+            .haveSimpleNameEndingWith("State")
+            .or()
+            .haveSimpleNameEndingWith("Evolve")
+            .should()
+            .dependOnClassesThat()
+            .resideInAPackage("org.axonframework..")
+            .allowEmptyShould(true);
+    rule.check(classes);
+  }
 }

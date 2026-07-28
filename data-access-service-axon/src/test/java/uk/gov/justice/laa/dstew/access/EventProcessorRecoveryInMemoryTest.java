@@ -62,7 +62,7 @@ class EventProcessorRecoveryInMemoryTest {
   @Test
   void givenDeletedProjections_whenProcessorsReset_thenReplayRebuildsAllReadModels() {
     UUID applicationId = UUID.randomUUID();
-    UUID linkedApplicationId = UUID.randomUUID();
+    final UUID linkedApplicationId = UUID.randomUUID();
     ApplicationCreateRequest request =
         validCreateApplicationRequest(applicationId, UUID.randomUUID());
     HttpHeaders headers = new HttpHeaders();
