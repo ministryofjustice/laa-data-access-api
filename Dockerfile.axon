@@ -1,0 +1,19 @@
+FROM amazoncorretto:25-alpine
+
+WORKDIR /data-access-service-axon
+VOLUME /tmp
+
+COPY data-access-service-axon/build/libs/data-access-service-axon-0.0.0-SNAPSHOT.jar app.jar
+
+RUN addgroup --system --gid 100001 customgroup \
+    && adduser --system --uid 100001 --ingroup customgroup --shell /bin/sh customuser \
+    && chown customuser:customgroup app.jar
+
+USER 100001
+
+EXPOSE 8082
+
+ENV TZ=Europe/London
+ENV JAVA_TOOL_OPTIONS="-XX:InitialRAMPercentage=50.0 -XX:MaxRAMPercentage=80.0"
+
+CMD ["java", "-jar", "app.jar"]

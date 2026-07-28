@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ApplicationStatus.json",
+  "title": "ApplicationStatus",
+  "description": "Application statuses",
+  "type": "string",
+  "enum": [
+    "APPLICATION_IN_PROGRESS",
+    "APPLICATION_SUBMITTED"
+  ]
+}

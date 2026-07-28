@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ApplicationOffice.json",
+  "title": "ApplicationOffice",
+  "description": "Represents an office in the application",
+  "type": "object",
+  "properties": {
+    "code": {
+      "type": ["string", "null"],
+      "description": "Office code"
+    }
+  },
+  "additionalProperties": true
+}
