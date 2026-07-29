@@ -1,8 +1,8 @@
 package uk.gov.justice.laa.dstew.access.query.application.linkedgroup;
 
-import org.axonframework.config.ProcessingGroup;
-import org.axonframework.eventhandling.EventHandler;
-import org.axonframework.eventhandling.ResetHandler;
+import org.axonframework.messaging.core.annotation.Namespace;
+import org.axonframework.messaging.eventhandling.annotation.EventHandler;
+import org.axonframework.messaging.eventhandling.replay.annotation.ResetHandler;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
@@ -15,7 +15,7 @@ import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAdd
  * denormalised onto {@code application_current_state}.
  */
 @Component
-@ProcessingGroup("linked-application-group-projection")
+@Namespace("linked-application-group-projection")
 public class LinkedApplicationGroupProjection {
 
   private final LinkedApplicationGroupReadRepository groupReadRepository;

@@ -12,7 +12,10 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import org.axonframework.test.aggregate.AggregateTestFixture;
+import org.axonframework.eventsourcing.configuration.EventSourcedEntityModule;
+import org.axonframework.eventsourcing.configuration.EventSourcingConfigurer;
+import org.axonframework.test.fixture.AxonTestFixture;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
@@ -34,13 +37,17 @@ import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 class ApplicationAggregateTest {
 
-  private AggregateTestFixture<ApplicationAggregate> fixture;
+  private AxonTestFixture fixture;
   private ApplicationCreationDetailsFactory factory;
   private ApplicationDataStore applicationDataStore;
 
   @BeforeEach
   void setUp() {
-    fixture = new AggregateTestFixture<>(ApplicationAggregate.class);
+    fixture =
+        AxonTestFixture.with(
+            EventSourcingConfigurer.create()
+                .registerEntity(
+                    EventSourcedEntityModule.autodetected(UUID.class, ApplicationAggregate.class)));
     factory =
         new ApplicationCreationDetailsFactory(null, null) {
           @Override
@@ -65,10 +72,13 @@ class ApplicationAggregateTest {
     ApplicationCreatedEvent expected = applicationCreatedEvent(applicationId, details);
 
     fixture
-        .givenNoPriorActivity()
-        .when(createCommand(applicationId, "{}"))
-        .expectResultMessagePayload(applicationId)
-        .expectEvents(expected);
+        .given()
+        .noPriorActivity()
+        .when()
+        .command(createCommand(applicationId, "{}"))
+        .then()
+        .resultMessagePayload(applicationId)
+        .events(expected);
   }
 
   @Test
@@ -101,7 +111,11 @@ class ApplicationAggregateTest {
             return detailsWithLead;
           }
         };
-    fixture = new AggregateTestFixture<>(ApplicationAggregate.class);
+    fixture =
+        AxonTestFixture.with(
+            EventSourcingConfigurer.create()
+                .registerEntity(
+                    EventSourcedEntityModule.autodetected(UUID.class, ApplicationAggregate.class)));
     fixture.registerInjectableResource(factoryWithLead);
     fixture.registerInjectableResource(applicationDataStore);
 
@@ -110,10 +124,13 @@ class ApplicationAggregateTest {
     // ApplicationLinkedEvent is no longer emitted; linking is initiated by
     // ApplicationGroupEventRouter after the projection picks up ApplicationCreatedEvent.
     fixture
-        .givenNoPriorActivity()
-        .when(createCommand(applicationId, "{}"))
-        .expectResultMessagePayload(applicationId)
-        .expectEvents(createdEvent);
+        .given()
+        .noPriorActivity()
+        .when()
+        .command(createCommand(applicationId, "{}"))
+        .then()
+        .resultMessagePayload(applicationId)
+        .events(createdEvent);
   }
 
   @Test
@@ -122,10 +139,13 @@ class ApplicationAggregateTest {
     ApplicationCreatedEvent existing = applicationCreatedEvent(applicationId);
 
     fixture
-        .given(existing)
-        .when(createCommand(applicationId, "{}"))
-        .expectResultMessagePayload(applicationId)
-        .expectNoEvents();
+        .given()
+        .events(existing)
+        .when()
+        .command(createCommand(applicationId, "{}"))
+        .then()
+        .resultMessagePayload(applicationId)
+        .noEvents();
   }
 
   @Test
@@ -134,10 +154,13 @@ class ApplicationAggregateTest {
     ApplicationCreatedEvent existing = applicationCreatedEvent(applicationId);
 
     fixture
-        .given(existing)
-        .when(createCommand(applicationId, "{\"different\":true}"))
-        .expectException(ApplicationCreationConflictException.class)
-        .expectNoEvents();
+        .given()
+        .events(existing)
+        .when()
+        .command(createCommand(applicationId, "{\"different\":true}"))
+        .then()
+        .exception(ApplicationCreationConflictException.class)
+        .noEvents();
   }
 
   @Test
@@ -146,10 +169,13 @@ class ApplicationAggregateTest {
     ApplicationCreatedEvent existing = applicationCreatedEvent(applicationId);
 
     fixture
-        .given(existing)
-        .when(createCommandWithSchema(applicationId, "{}", 2))
-        .expectException(ApplicationCreationConflictException.class)
-        .expectNoEvents();
+        .given()
+        .events(existing)
+        .when()
+        .command(createCommandWithSchema(applicationId, "{}", 2))
+        .then()
+        .exception(ApplicationCreationConflictException.class)
+        .noEvents();
   }
 
   @Test
@@ -164,8 +190,10 @@ class ApplicationAggregateTest {
     when(applicationDataStore.append(any(), anyLong(), any(), any(), any())).thenReturn("hash");
 
     fixture
-        .given(created)
-        .when(
+        .given()
+        .events(created)
+        .when()
+        .command(
             new MakeApplicationDecisionCommand(
                 applicationId,
                 0L,
@@ -177,7 +205,8 @@ class ApplicationAggregateTest {
                 "{\"overallDecision\":\"REFUSED\"}",
                 "Decision recorded",
                 occurredAt))
-        .expectEvents(
+        .then()
+        .events(
             new ApplicationDecisionMadeEvent(applicationId, 1L, 1L, "REFUSED", false, occurredAt));
   }
 
@@ -192,11 +221,13 @@ class ApplicationAggregateTest {
         .thenThrow(new IllegalStateException("application data unavailable"));
 
     fixture
-        .given(applicationCreatedEvent(applicationId, details))
-        .when(decisionCommand(applicationId, 0L, proceedingId, "REFUSED", "justification", null))
-        .expectException(IllegalStateException.class)
-        .expectExceptionMessage("application data unavailable")
-        .expectNoEvents();
+        .given()
+        .events(applicationCreatedEvent(applicationId, details))
+        .when()
+        .command(decisionCommand(applicationId, 0L, proceedingId, "REFUSED", "justification", null))
+        .then()
+        .exception(IllegalStateException.class, "application data unavailable")
+        .noEvents();
   }
 
   @Test
@@ -211,11 +242,13 @@ class ApplicationAggregateTest {
     when(applicationDataStore.append(any(), anyLong(), any(), any(), any())).thenReturn("hash");
 
     fixture
-        .given(
+        .given()
+        .events(
             applicationCreatedEvent(applicationId, details),
             new ApplicationDecisionMadeEvent(
                 applicationId, 1L, 1L, "REFUSED", false, firstOccurredAt))
-        .when(
+        .when()
+        .command(
             new MakeApplicationDecisionCommand(
                 applicationId,
                 1L,
@@ -227,7 +260,8 @@ class ApplicationAggregateTest {
                 "{}",
                 null,
                 secondOccurredAt))
-        .expectEvents(
+        .then()
+        .events(
             new ApplicationDecisionMadeEvent(
                 applicationId, 2L, 2L, "REFUSED", false, secondOccurredAt));
   }
@@ -239,10 +273,13 @@ class ApplicationAggregateTest {
     ApplicationCreationDetails details = detailsWithProceeding(applicationId, proceedingId);
 
     fixture
-        .given(applicationCreatedEvent(applicationId, details))
-        .when(decisionCommand(applicationId, 1L, proceedingId, "REFUSED", "justification", null))
-        .expectException(ApplicationVersionConflictException.class)
-        .expectNoEvents();
+        .given()
+        .events(applicationCreatedEvent(applicationId, details))
+        .when()
+        .command(decisionCommand(applicationId, 1L, proceedingId, "REFUSED", "justification", null))
+        .then()
+        .exception(ApplicationVersionConflictException.class)
+        .noEvents();
   }
 
   @Test
@@ -250,12 +287,15 @@ class ApplicationAggregateTest {
     UUID applicationId = UUID.randomUUID();
 
     fixture
-        .given(applicationCreatedEvent(applicationId))
-        .when(
+        .given()
+        .events(applicationCreatedEvent(applicationId))
+        .when()
+        .command(
             new MakeApplicationDecisionCommand(
                 applicationId, 0L, "GRANTED", false, List.of(), null, "{}", null, Instant.now()))
-        .expectException(ValidationException.class)
-        .expectNoEvents();
+        .then()
+        .exception(ValidationException.class)
+        .noEvents();
   }
 
   @Test
@@ -265,10 +305,13 @@ class ApplicationAggregateTest {
     ApplicationCreationDetails details = detailsWithProceeding(applicationId, proceedingId);
 
     fixture
-        .given(applicationCreatedEvent(applicationId, details))
-        .when(decisionCommand(applicationId, 0L, proceedingId, "REFUSED", null, null))
-        .expectException(ValidationException.class)
-        .expectNoEvents();
+        .given()
+        .events(applicationCreatedEvent(applicationId, details))
+        .when()
+        .command(decisionCommand(applicationId, 0L, proceedingId, "REFUSED", null, null))
+        .then()
+        .exception(ValidationException.class)
+        .noEvents();
   }
 
   @Test
@@ -280,8 +323,10 @@ class ApplicationAggregateTest {
         new MakeDecisionProceeding(proceedingId, "REFUSED", "reason", "justification");
 
     fixture
-        .given(applicationCreatedEvent(applicationId, details))
-        .when(
+        .given()
+        .events(applicationCreatedEvent(applicationId, details))
+        .when()
+        .command(
             new MakeApplicationDecisionCommand(
                 applicationId,
                 0L,
@@ -292,8 +337,9 @@ class ApplicationAggregateTest {
                 "{}",
                 null,
                 Instant.now()))
-        .expectException(ValidationException.class)
-        .expectNoEvents();
+        .then()
+        .exception(ValidationException.class)
+        .noEvents();
   }
 
   @Test
@@ -307,15 +353,18 @@ class ApplicationAggregateTest {
     when(applicationDataStore.append(any(), anyLong(), any(), any(), any())).thenReturn("hash");
 
     fixture
-        .given(applicationCreatedEvent(applicationId, details))
-        .when(
+        .given()
+        .events(applicationCreatedEvent(applicationId, details))
+        .when()
+        .command(
             new AssignCaseworkerToApplicationCommand(
                 applicationId,
                 caseworkerId,
                 "{\"caseworkerId\":\"" + caseworkerId + "\"}",
                 "Assigned for assessment",
                 occurredAt))
-        .expectEvents(
+        .then()
+        .events(
             new ApplicationAssignedToCaseworkerEvent(
                 applicationId, 1L, 1L, caseworkerId, occurredAt));
   }
@@ -332,15 +381,17 @@ class ApplicationAggregateTest {
     when(applicationDataStore.append(any(), anyLong(), any(), any(), any())).thenReturn("hash");
 
     fixture
-        .given(
+        .given()
+        .events(
             applicationCreatedEvent(applicationId, details),
             new ApplicationAssignedToCaseworkerEvent(
                 applicationId, 1L, 1L, caseworkerId, assignedAt))
-        .when(
+        .when()
+        .command(
             new UnassignCaseworkerFromApplicationCommand(
                 applicationId, "{}", "Returned to queue", unassignedAt))
-        .expectEvents(
-            new ApplicationUnassignedFromCaseworkerEvent(applicationId, 2L, 2L, unassignedAt));
+        .then()
+        .events(new ApplicationUnassignedFromCaseworkerEvent(applicationId, 2L, 2L, unassignedAt));
   }
 
   @Test
@@ -349,11 +400,14 @@ class ApplicationAggregateTest {
     Instant occurredAt = Instant.parse("2026-07-20T09:00:00Z");
 
     fixture
-        .given(applicationCreatedEvent(applicationId))
-        .when(
+        .given()
+        .events(applicationCreatedEvent(applicationId))
+        .when()
+        .command(
             new UnassignCaseworkerFromApplicationCommand(
                 applicationId, "{}", "Already unassigned", occurredAt))
-        .expectNoEvents();
+        .then()
+        .noEvents();
   }
 
   @Test
@@ -367,11 +421,14 @@ class ApplicationAggregateTest {
             ("linked-group:" + leadApplicationId).getBytes(StandardCharsets.UTF_8));
 
     fixture
-        .given(leadCreated)
-        .when(
+        .given()
+        .events(leadCreated)
+        .when()
+        .command(
             new CreateLinkedApplicationGroupCommand(
                 leadApplicationId, members.get(1), members, occurredAt))
-        .expectEvents(
+        .then()
+        .events(
             new LinkedApplicationGroupRequested(
                 expectedGroupId, leadApplicationId, members, occurredAt));
   }
@@ -382,15 +439,18 @@ class ApplicationAggregateTest {
     List<UUID> members = List.of(missingLeadId, UUID.randomUUID());
 
     fixture
-        .givenNoPriorActivity()
-        .when(
+        .given()
+        .noPriorActivity()
+        .when()
+        .command(
             new CreateLinkedApplicationGroupCommand(
                 missingLeadId,
                 members.get(1),
                 members,
                 java.time.Instant.parse("2026-07-15T08:00:00Z")))
-        .expectException(ResourceNotFoundException.class)
-        .expectNoEvents();
+        .then()
+        .exception(ResourceNotFoundException.class)
+        .noEvents();
   }
 
   @Test
@@ -419,15 +479,22 @@ class ApplicationAggregateTest {
                 applicationId); // leadApplicationId == self
           }
         };
-    fixture = new AggregateTestFixture<>(ApplicationAggregate.class);
+    fixture =
+        AxonTestFixture.with(
+            EventSourcingConfigurer.create()
+                .registerEntity(
+                    EventSourcedEntityModule.autodetected(UUID.class, ApplicationAggregate.class)));
     fixture.registerInjectableResource(selfLeadFactory);
     fixture.registerInjectableResource(applicationDataStore);
 
     fixture
-        .givenNoPriorActivity()
-        .when(createCommand(applicationId, "{}"))
-        .expectException(ApplicationGroupInvariantException.class)
-        .expectNoEvents();
+        .given()
+        .noPriorActivity()
+        .when()
+        .command(createCommand(applicationId, "{}"))
+        .then()
+        .exception(ApplicationGroupInvariantException.class)
+        .noEvents();
   }
 
   @Test
@@ -458,15 +525,18 @@ class ApplicationAggregateTest {
         applicationCreatedEvent(applicationId, associatedDetails);
 
     fixture
-        .given(associatedCreated)
-        .when(
+        .given()
+        .events(associatedCreated)
+        .when()
+        .command(
             new CreateLinkedApplicationGroupCommand(
                 applicationId,
                 UUID.randomUUID(),
                 List.of(applicationId, UUID.randomUUID()),
                 java.time.Instant.parse("2026-07-15T08:00:00Z")))
-        .expectException(ApplicationGroupInvariantException.class)
-        .expectNoEvents();
+        .then()
+        .exception(ApplicationGroupInvariantException.class)
+        .noEvents();
   }
 
   @Test
@@ -481,12 +551,15 @@ class ApplicationAggregateTest {
     when(applicationDataStore.append(any(), anyLong(), any(), any(), any())).thenReturn("hash");
 
     fixture
-        .given(created)
-        .when(
+        .given()
+        .events(created)
+        .when()
+        .command(
             new uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand(
                 applicationId, "My note", "{}", occurredAt))
-        .expectSuccessfulHandlerExecution()
-        .expectEvents(
+        .then()
+        .success()
+        .events(
             new uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent(
                 applicationId, 1L, occurredAt));
   }
@@ -494,12 +567,15 @@ class ApplicationAggregateTest {
   @Test
   void givenNoApplication_whenCreateNote_thenThrowsAggregateNotFoundException() {
     fixture
-        .givenNoPriorActivity()
-        .when(
+        .given()
+        .noPriorActivity()
+        .when()
+        .command(
             new uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand(
                 UUID.randomUUID(), "My note", "{}", Instant.now()))
-        .expectException(org.axonframework.modelling.command.AggregateNotFoundException.class)
-        .expectNoEvents();
+        .then()
+        .exception(org.axonframework.modelling.entity.AggregateNotFoundException.class)
+        .noEvents();
   }
 
   private CreateApplicationCommand createCommand(UUID applicationId, String serialisedRequest) {
@@ -558,5 +634,10 @@ class ApplicationAggregateTest {
         schemaVersion,
         "ApplyApplication.json",
         "APPLY");
+  }
+
+  @AfterEach
+  void tearDown() {
+    fixture.stop();
   }
 }

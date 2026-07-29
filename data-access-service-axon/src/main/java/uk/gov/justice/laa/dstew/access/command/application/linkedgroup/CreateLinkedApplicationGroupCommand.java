@@ -3,7 +3,8 @@ package uk.gov.justice.laa.dstew.access.command.application.linkedgroup;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
-import org.axonframework.modelling.command.TargetAggregateIdentifier;
+import org.axonframework.messaging.commandhandling.annotation.Command;
+import org.axonframework.modelling.annotation.TargetEntityId;
 
 /**
  * Targets the lead {@code ApplicationAggregate} to prove it exists before forming the group.
@@ -13,8 +14,9 @@ import org.axonframework.modelling.command.TargetAggregateIdentifier;
  * == null} guard detects this and throws {@link
  * uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException}.
  */
+@Command(routingKey = "leadApplicationId")
 public record CreateLinkedApplicationGroupCommand(
-    @TargetAggregateIdentifier UUID leadApplicationId,
+    @TargetEntityId UUID leadApplicationId,
     UUID associatedApplicationId,
     List<UUID> allMemberApplicationIds,
     Instant occurredAt) {}

@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.NativeQuery;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -32,23 +33,21 @@ public interface ApplicationRepository
    * @param applicationPageIds the IDs of applications on the current page
    * @return list of linked application summary DTOs for all applications in the same link groups
    */
-  @Query(
-      value =
-          "WITH lead_ids AS ( "
-              + "  SELECT lead_application_id AS id "
-              + "  FROM linked_applications "
-              + "  WHERE lead_application_id IN :applicationPageIds "
-              + "     OR associated_application_id IN :applicationPageIds "
-              + ") "
-              + "SELECT a.id, a.laa_reference, false AS is_lead, la.lead_application_id "
-              + "FROM lead_ids lIds "
-              + "JOIN linked_applications la ON la.lead_application_id = lIds.id "
-              + "JOIN applications a ON a.id = la.associated_application_id "
-              + "UNION ALL "
-              + "SELECT a.id, a.laa_reference, true AS is_lead, a.id "
-              + "FROM lead_ids lIds "
-              + "JOIN applications a ON a.id = lIds.id",
-      nativeQuery = true)
+  @NativeQuery(
+      "WITH lead_ids AS ( "
+          + "  SELECT lead_application_id AS id "
+          + "  FROM linked_applications "
+          + "  WHERE lead_application_id IN :applicationPageIds "
+          + "     OR associated_application_id IN :applicationPageIds "
+          + ") "
+          + "SELECT a.id, a.laa_reference, false AS is_lead, la.lead_application_id "
+          + "FROM lead_ids lIds "
+          + "JOIN linked_applications la ON la.lead_application_id = lIds.id "
+          + "JOIN applications a ON a.id = la.associated_application_id "
+          + "UNION ALL "
+          + "SELECT a.id, a.laa_reference, true AS is_lead, a.id "
+          + "FROM lead_ids lIds "
+          + "JOIN applications a ON a.id = lIds.id")
   List<LinkedApplicationSummaryDto> findAllLinkedApplicationsForPageIds(
       @Param("applicationPageIds") List<UUID> applicationPageIds);
 }

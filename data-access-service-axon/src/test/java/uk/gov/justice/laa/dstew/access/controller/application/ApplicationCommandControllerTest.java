@@ -10,15 +10,14 @@ import static org.mockito.Mockito.when;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import org.axonframework.commandhandling.gateway.CommandGateway;
-import org.axonframework.modelling.command.AggregateStreamCreationException;
-import org.axonframework.modelling.command.ConcurrencyException;
+import org.axonframework.messaging.commandhandling.gateway.CommandGateway;
+import org.axonframework.modelling.entity.AggregateStreamCreationException;
+import org.axonframework.modelling.entity.ConcurrencyException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.AssignCaseworkerService;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
-import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
 
 /**
  * Focused unit coverage for {@link ApplicationCommandController#dispatchWithRetry}.

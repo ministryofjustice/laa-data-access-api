@@ -18,6 +18,8 @@ java {
 ext['postgresql.version'] = '42.7.12'
 
 dependencies {
+  annotationProcessor "org.projectlombok:lombok-mapstruct-binding:0.2.0"
+
     implementation project(':data-access-service')
     implementation project(path: ':data-access-service', configuration: 'testUtilitiesRuntimeElements')
 
@@ -51,4 +53,7 @@ jar {
 // Mass-generator is a standalone utility with generated-style source that does not fit the
 // repository-wide Checkstyle rules, so exclude it from Checkstyle enforcement.
 checkstyleMain.exclude("*")
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
+}
 

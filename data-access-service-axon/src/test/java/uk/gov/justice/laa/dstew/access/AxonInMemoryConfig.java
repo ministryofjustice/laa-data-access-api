@@ -1,14 +1,14 @@
 package uk.gov.justice.laa.dstew.access;
 
 import java.util.List;
-import org.axonframework.eventhandling.DomainEventMessage;
-import org.axonframework.eventhandling.EventMessage;
-import org.axonframework.eventhandling.tokenstore.TokenStore;
-import org.axonframework.eventhandling.tokenstore.inmemory.InMemoryTokenStore;
 import org.axonframework.eventsourcing.eventstore.EmbeddedEventStore;
 import org.axonframework.eventsourcing.eventstore.EventStore;
 import org.axonframework.eventsourcing.eventstore.inmemory.InMemoryEventStorageEngine;
-import org.axonframework.modelling.command.AggregateStreamCreationException;
+import org.axonframework.messaging.eventhandling.DomainEventMessage;
+import org.axonframework.messaging.eventhandling.EventMessage;
+import org.axonframework.messaging.eventhandling.processing.streaming.token.store.TokenStore;
+import org.axonframework.messaging.eventhandling.processing.streaming.token.store.inmemory.InMemoryTokenStore;
+import org.axonframework.modelling.entity.AggregateStreamCreationException;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
@@ -35,7 +35,7 @@ public class AxonInMemoryConfig {
       extends InMemoryEventStorageEngine {
 
     @Override
-    public synchronized void appendEvents(List<? extends EventMessage<?>> events) {
+    public synchronized void appendEvents(List<? extends EventMessage> events) {
       events.stream()
           .filter(DomainEventMessage.class::isInstance)
           .map(DomainEventMessage.class::cast)

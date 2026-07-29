@@ -4,11 +4,11 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.UUID;
-import org.axonframework.config.ProcessingGroup;
-import org.axonframework.eventhandling.EventHandler;
-import org.axonframework.eventhandling.EventMessage;
-import org.axonframework.eventhandling.ResetHandler;
-import org.axonframework.queryhandling.QueryHandler;
+import org.axonframework.messaging.core.annotation.Namespace;
+import org.axonframework.messaging.eventhandling.EventMessage;
+import org.axonframework.messaging.eventhandling.annotation.EventHandler;
+import org.axonframework.messaging.eventhandling.replay.annotation.ResetHandler;
+import org.axonframework.messaging.queryhandling.annotation.QueryHandler;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
@@ -22,7 +22,7 @@ import uk.gov.justice.laa.dstew.access.config.interceptor.ServiceNameMetadataDis
 
 /** Independently replayable, append-only audit projection of Application events. */
 @Component
-@ProcessingGroup("application-history-projection")
+@Namespace("application-history-projection")
 public class ApplicationHistoryProjection {
 
   private final ApplicationHistoryReadRepository applicationHistoryReadRepository;
@@ -46,7 +46,7 @@ public class ApplicationHistoryProjection {
    * @param message the Axon message carrying event metadata
    */
   @EventHandler
-  public void on(ApplicationCreatedEvent event, EventMessage<?> message) {
+  public void on(ApplicationCreatedEvent event, EventMessage message) {
     append(
         message,
         event.applicationId(),
@@ -65,7 +65,7 @@ public class ApplicationHistoryProjection {
    * @param message the Axon message carrying event metadata
    */
   @EventHandler
-  public void on(LinkedApplicationGroupCreatedEvent event, EventMessage<?> message) {
+  public void on(LinkedApplicationGroupCreatedEvent event, EventMessage message) {
     String requestPayload = serialise(event);
     append(
         message,
@@ -89,7 +89,7 @@ public class ApplicationHistoryProjection {
 
   /** Appends an audit entry when an application joins an existing linked application group. */
   @EventHandler
-  public void on(MemberAddedToGroupEvent event, EventMessage<?> message) {
+  public void on(MemberAddedToGroupEvent event, EventMessage message) {
     append(
         message,
         event.memberId(),
@@ -101,7 +101,7 @@ public class ApplicationHistoryProjection {
 
   /** Appends a thin audit entry for an Application decision. */
   @EventHandler
-  public void on(ApplicationDecisionMadeEvent event, EventMessage<?> message) {
+  public void on(ApplicationDecisionMadeEvent event, EventMessage message) {
     append(
         message,
         event.applicationId(),
@@ -114,7 +114,7 @@ public class ApplicationHistoryProjection {
 
   /** Appends a thin audit entry for a caseworker assignment. */
   @EventHandler
-  public void on(ApplicationAssignedToCaseworkerEvent event, EventMessage<?> message) {
+  public void on(ApplicationAssignedToCaseworkerEvent event, EventMessage message) {
     append(
         message,
         event.applicationId(),
@@ -125,7 +125,7 @@ public class ApplicationHistoryProjection {
 
   /** Appends a thin audit entry for a caseworker unassignment. */
   @EventHandler
-  public void on(ApplicationUnassignedFromCaseworkerEvent event, EventMessage<?> message) {
+  public void on(ApplicationUnassignedFromCaseworkerEvent event, EventMessage message) {
     append(
         message,
         event.applicationId(),
@@ -136,7 +136,7 @@ public class ApplicationHistoryProjection {
 
   /** Appends a thin audit entry for a note creation. */
   @EventHandler
-  public void on(NoteCreatedEvent event, EventMessage<?> message) {
+  public void on(NoteCreatedEvent event, EventMessage message) {
     append(
         message,
         event.applicationId(),
@@ -206,23 +206,23 @@ public class ApplicationHistoryProjection {
   }
 
   private void append(
-      EventMessage<?> message,
+      EventMessage message,
       UUID applicationId,
       String eventType,
       String requestPayload,
       Instant occurredAt) {
-    append(message, applicationId, eventType, requestPayload, occurredAt, message.getIdentifier());
+    append(message, applicationId, eventType, requestPayload, occurredAt, message.identifier());
   }
 
   private void append(
-      EventMessage<?> message,
+      EventMessage message,
       UUID applicationId,
       String eventType,
       String requestPayload,
       Instant occurredAt,
       String historyId) {
     Object serviceName =
-        message.getMetaData().get(ServiceNameMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY);
+        message.metadata().get(ServiceNameMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY);
     applicationHistoryReadRepository.save(
         ApplicationHistoryReadModel.builder()
             .eventId(historyId)
@@ -234,8 +234,8 @@ public class ApplicationHistoryProjection {
             .build());
   }
 
-  private String groupHistoryId(EventMessage<?> message, UUID applicationId) {
-    return message.getIdentifier() + ":" + applicationId;
+  private String groupHistoryId(EventMessage message, UUID applicationId) {
+    return message.identifier() + ":" + applicationId;
   }
 
   private String serialise(Object event) {

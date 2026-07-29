@@ -1,8 +1,7 @@
 package uk.gov.justice.laa.dstew.access.controller.individual;
 
 import java.util.UUID;
-import org.axonframework.messaging.responsetypes.ResponseTypes;
-import org.axonframework.queryhandling.QueryGateway;
+import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -48,7 +47,7 @@ public class IndividualsController {
                     include == IncludedAdditionalData.CLIENT_DETAILS,
                     page,
                     pageSize),
-                ResponseTypes.instanceOf(FindIndividualsResult.class))
+                FindIndividualsResult.class)
             .join();
     return ResponseEntity.ok(responseMapper.toResponse(result));
   }

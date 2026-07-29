@@ -20,8 +20,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.axonframework.eventsourcing.eventstore.EventStorageEngine;
 import org.axonframework.eventsourcing.eventstore.jpa.JpaEventStorageEngine;
-import org.axonframework.messaging.responsetypes.ResponseTypes;
-import org.axonframework.queryhandling.QueryGateway;
+import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
@@ -1232,9 +1231,7 @@ class PostgresAxonIntegrationTest {
         .until(
             () ->
                 queryGateway
-                    .query(
-                        new FindApplicationByIdQuery(applicationId),
-                        ResponseTypes.optionalInstanceOf(ApplicationReadModel.class))
+                    .query(new FindApplicationByIdQuery(applicationId), ApplicationReadModel.class)
                     .join(),
             java.util.Optional::isPresent)
         .orElseThrow();
@@ -1248,9 +1245,7 @@ class PostgresAxonIntegrationTest {
         .until(
             () ->
                 queryGateway
-                    .query(
-                        new FindApplicationByIdQuery(applicationId),
-                        ResponseTypes.optionalInstanceOf(ApplicationReadModel.class))
+                    .query(new FindApplicationByIdQuery(applicationId), ApplicationReadModel.class)
                     .join(),
             projected ->
                 projected.isPresent() && projected.get().getApplicationDataVersion() == version)

@@ -4,9 +4,8 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import java.net.URI;
 import java.util.UUID;
-import org.axonframework.commandhandling.gateway.CommandGateway;
-import org.axonframework.modelling.command.AggregateStreamCreationException;
-import org.axonframework.modelling.command.ConcurrencyException;
+import org.axonframework.messaging.commandhandling.gateway.CommandGateway;
+import org.axonframework.modelling.ConcurrencyException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -24,7 +23,6 @@ import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
 import uk.gov.justice.laa.dstew.access.model.CreateNoteRequest;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
-import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
 
@@ -135,7 +133,7 @@ public class ApplicationCommandController {
   void dispatchWithRetry(CreateApplicationCommand command) {
     try {
       commandGateway.sendAndWait(command);
-    } catch (ConcurrencyException | AggregateStreamCreationException first) {
+    } catch (ConcurrencyException  first) {
       try {
         commandGateway.sendAndWait(command);
       } catch (RuntimeException retry) {

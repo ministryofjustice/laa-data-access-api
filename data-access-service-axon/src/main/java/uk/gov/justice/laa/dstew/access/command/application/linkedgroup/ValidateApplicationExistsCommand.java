@@ -1,7 +1,8 @@
 package uk.gov.justice.laa.dstew.access.command.application.linkedgroup;
 
 import java.util.UUID;
-import org.axonframework.modelling.command.TargetAggregateIdentifier;
+import org.axonframework.messaging.commandhandling.annotation.Command;
+import org.axonframework.modelling.annotation.TargetEntityId;
 
 /**
  * Lightweight command that proves an {@code ApplicationAggregate} stream exists.
@@ -13,4 +14,5 @@ import org.axonframework.modelling.command.TargetAggregateIdentifier;
  * uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException}, which propagates back
  * through the subscribing processor to the HTTP caller as a 404.
  */
-public record ValidateApplicationExistsCommand(@TargetAggregateIdentifier UUID applicationId) {}
+@Command(routingKey = "applicationId")
+public record ValidateApplicationExistsCommand(@TargetEntityId UUID applicationId) {}

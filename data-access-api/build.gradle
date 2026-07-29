@@ -13,7 +13,7 @@ dependencies {
     }
 
     implementation 'org.springframework.security:spring-security-core'
-    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.8'
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.17'
     implementation 'org.openapitools:jackson-databind-nullable:0.2.6'
 
 }
@@ -76,4 +76,7 @@ tasks.named('bootRun') {
 
 tasks.named('bootBuildImage') {
     enabled = false
+}
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
 }

@@ -1,15 +1,12 @@
 package uk.gov.justice.laa.dstew.access.command.application.linkedgroup;
 
-import static org.axonframework.modelling.command.AggregateLifecycle.apply;
-
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import java.util.UUID;
-import org.axonframework.commandhandling.CommandHandler;
-import org.axonframework.eventsourcing.EventSourcingHandler;
-import org.axonframework.modelling.command.AggregateCreationPolicy;
-import org.axonframework.modelling.command.AggregateIdentifier;
-import org.axonframework.modelling.command.CreationPolicy;
-import org.axonframework.spring.stereotype.Aggregate;
+import org.axonframework.eventsourcing.annotation.EventSourcingHandler;
+import org.axonframework.eventsourcing.annotation.reflection.EntityCreator;
+import org.axonframework.extension.spring.stereotype.EventSourced;
+import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
+import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 
 /**
  * Event-sourced consistency boundary that owns group identity, the "exactly one lead" invariant,
@@ -21,18 +18,18 @@ import org.axonframework.spring.stereotype.Aggregate;
  * Axon replaying the lead's event stream against this aggregate — {@code readEvents} queries by
  * identifier only, regardless of aggregate type).
  */
-@Aggregate
+@EventSourced(tagKey = "LinkedApplicationGroupAggregate", idType = UUID.class)
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 public class LinkedApplicationGroupAggregate {
 
-  @AggregateIdentifier private UUID groupId;
+  private UUID groupId;
   private final LinkedApplicationGroupState state = new LinkedApplicationGroupState();
 
   /** Initialises the group, or adds new members idempotently if it already exists. */
   @CommandHandler
-  @CreationPolicy(AggregateCreationPolicy.CREATE_IF_MISSING)
-  void handle(InitialiseLinkedApplicationGroupCommand command) {
-    LinkedApplicationGroupDecider.decideInitialise(state, command).forEach(e -> apply(e));
+  void handle(InitialiseLinkedApplicationGroupCommand command, EventAppender eventAppender) {
+    LinkedApplicationGroupDecider.decideInitialise(state, command)
+        .forEach(e -> eventAppender.append(e));
   }
 
   @EventSourcingHandler
@@ -46,6 +43,7 @@ public class LinkedApplicationGroupAggregate {
     LinkedApplicationGroupEvolve.apply(state, event);
   }
 
+  @EntityCreator
   protected LinkedApplicationGroupAggregate() {
     // Required by Axon when rebuilding the aggregate from its event stream.
   }

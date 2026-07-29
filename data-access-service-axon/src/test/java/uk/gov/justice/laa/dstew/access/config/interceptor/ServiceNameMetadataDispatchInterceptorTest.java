@@ -3,7 +3,7 @@ package uk.gov.justice.laa.dstew.access.config.interceptor;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
-import org.axonframework.commandhandling.GenericCommandMessage;
+import org.axonframework.messaging.commandhandling.GenericCommandMessage;
 import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.config.ServiceNameContext;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
@@ -20,7 +20,7 @@ class ServiceNameMetadataDispatchInterceptorTest {
 
     var intercepted = interceptor.handle(List.of(command)).apply(0, command);
 
-    assertThat(intercepted.getMetaData())
+    assertThat(intercepted.metadata())
         .containsEntry(
             ServiceNameMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY,
             ServiceName.fromValue("CIVIL_APPLY"));
@@ -34,6 +34,6 @@ class ServiceNameMetadataDispatchInterceptorTest {
 
     var intercepted = interceptor.handle(List.of(command)).apply(0, command);
 
-    assertThat(intercepted.getMetaData()).isEmpty();
+    assertThat(intercepted.metadata()).isEmpty();
   }
 }

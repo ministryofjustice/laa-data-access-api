@@ -680,6 +680,6 @@ public class GetApplicationTest extends BaseHarnessTest {
       return null;
     }
     Object submitterEmail = content.get("submitterEmail");
-    return submitterEmail instanceof String ? (String) submitterEmail : null;
+    return submitterEmail instanceof String s ? s : null;
   }
 }

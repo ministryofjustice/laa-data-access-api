@@ -13,8 +13,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import org.axonframework.eventhandling.EventMessage;
-import org.axonframework.eventhandling.GenericEventMessage;
+import org.axonframework.messaging.eventhandling.EventMessage;
+import org.axonframework.messaging.eventhandling.GenericEventMessage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -51,7 +51,7 @@ class ApplicationHistoryProjectionTest {
     LinkedApplicationGroupCreatedEvent event =
         new LinkedApplicationGroupCreatedEvent(
             leadId, leadId, List.of(leadId, memberId), occurredAt);
-    EventMessage<?> message = message(event, "group-event-id");
+    EventMessage message = message(event, "group-event-id");
 
     projection.on(event, message);
 
@@ -262,7 +262,7 @@ class ApplicationHistoryProjectionTest {
     assertThat(payload.get("noteText").asText()).isEqualTo("My note text");
   }
 
-  private EventMessage<?> message(Object payload, String identifier) {
+  private EventMessage message(Object payload, String identifier) {
     return new GenericEventMessage<>(
         identifier,
         payload,

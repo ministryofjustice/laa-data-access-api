@@ -36,7 +36,9 @@ class ApplicationCreationDetailsFactoryTest {
     UUID applyApplicationId = UUID.randomUUID();
     CreateApplicationCommand command = command(applicationId);
     ParsedAppContentDetails parsed = parsedDetails(applyApplicationId);
-    Mockito.when(applicationContentParser.parse(command.applicationContent())).thenReturn(parsed);
+    Mockito.when()
+        .command(applicationContentParser.parse(command.applicationContent()))
+        .thenReturn(parsed);
 
     ApplicationCreationDetails details = factory.prepare(command);
 
@@ -53,7 +55,8 @@ class ApplicationCreationDetailsFactoryTest {
   void givenIndividuals_whenPrepared_thenGeneratesIndividualIds() {
     UUID applicationId = UUID.randomUUID();
     CreateApplicationCommand command = commandWithIndividuals(applicationId);
-    Mockito.when(applicationContentParser.parse(command.applicationContent()))
+    Mockito.when()
+        .command(applicationContentParser.parse(command.applicationContent()))
         .thenReturn(parsedDetails(UUID.randomUUID()));
 
     ApplicationCreationDetails details = factory.prepare(command);
@@ -67,7 +70,8 @@ class ApplicationCreationDetailsFactoryTest {
   void givenNoLinkedApplications_whenPrepared_thenReturnsNullLeadApplicationId() {
     UUID applicationId = UUID.randomUUID();
     CreateApplicationCommand command = command(applicationId);
-    Mockito.when(applicationContentParser.parse(command.applicationContent()))
+    Mockito.when()
+        .command(applicationContentParser.parse(command.applicationContent()))
         .thenReturn(parsedDetailsWithNoLinks(applicationId));
 
     ApplicationCreationDetails details = factory.prepare(command);
@@ -81,7 +85,9 @@ class ApplicationCreationDetailsFactoryTest {
     UUID leadApplicationId = UUID.randomUUID();
     CreateApplicationCommand command = command(applicationId);
     ParsedAppContentDetails parsed = parsedDetailsWithLead(applicationId, leadApplicationId);
-    Mockito.when(applicationContentParser.parse(command.applicationContent())).thenReturn(parsed);
+    Mockito.when()
+        .command(applicationContentParser.parse(command.applicationContent()))
+        .thenReturn(parsed);
 
     // No repository lookup — factory simply extracts from parsed content.
     ApplicationCreationDetails details = factory.prepare(command);
@@ -94,7 +100,8 @@ class ApplicationCreationDetailsFactoryTest {
     UUID applicationId = UUID.randomUUID();
     UUID applyProceedingId = UUID.randomUUID();
     CreateApplicationCommand command = command(applicationId);
-    Mockito.when(applicationContentParser.parse(command.applicationContent()))
+    Mockito.when()
+        .command(applicationContentParser.parse(command.applicationContent()))
         .thenReturn(parsedDetailsWithProceedings(applicationId, applyProceedingId));
 
     ApplicationCreationDetails details = factory.prepare(command);
@@ -116,7 +123,9 @@ class ApplicationCreationDetailsFactoryTest {
     CreateApplicationCommand command = command(applicationId);
     ParsedAppContentDetails parsed =
         parsedDetailsWithMultipleLinked(applicationId, leadId, anotherAssociatedId);
-    Mockito.when(applicationContentParser.parse(command.applicationContent())).thenReturn(parsed);
+    Mockito.when()
+        .command(applicationContentParser.parse(command.applicationContent()))
+        .thenReturn(parsed);
 
     ApplicationCreationDetails details = factory.prepare(command);
 
