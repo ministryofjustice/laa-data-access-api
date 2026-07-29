@@ -194,6 +194,37 @@ public class GetDomainEventTest extends BaseHarnessTest {
         Arguments.of("{\"otherField\": \"someValue\"}", null));
   }
 
+  @Test
+  public void givenNotesEvent_whenApplicationHistorySearch_thenEventDescriptionMatchesNoteText()
+      throws Exception {
+    var appId = persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class).getId();
+    String noteText = "Test note about the application";
+    String notesPayload =
+        "{\"request\": \"{\\\"notes\\\":\\\""
+            + noteText
+            + "\\\"}\", \"createdDate\": \"2026-07-24T10:00:00.000000Z\", \"applicationId\": \""
+            + appId
+            + "\"}";
+
+    persistedDataGenerator.createAndPersist(
+        DomainEventGenerator.class,
+        builder ->
+            builder
+                .applicationId(appId)
+                .caseworkerId(CaseworkerJohnDoe.getId())
+                .createdAt(DateTimeHelper.GetSystemInstanceWithoutNanoseconds())
+                .data(notesPayload)
+                .type(DomainEventType.APPLICATION_NOTES));
+
+    HarnessResult result = getUri(TestConstants.URIs.APPLICATION_HISTORY_SEARCH, appId);
+    ApplicationHistoryResponse actualResponse =
+        deserialise(result, ApplicationHistoryResponse.class);
+
+    assertOK(result);
+    assertThat(actualResponse).isNotNull();
+    assertThat(actualResponse.getEvents().getFirst().getEventDescription()).isEqualTo(noteText);
+  }
+
   @SmokeTest
   @Test
   public void givenNoUser_whenApplicationHistorySearch_thenReturnUnauthorised() throws Exception {

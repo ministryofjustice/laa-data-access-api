@@ -6,10 +6,13 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.EmptySource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
@@ -195,5 +198,49 @@ public class DomainEventMapperTest extends BaseMapperTest {
     ApplicationDomainEventResponse result = mapper.toDomainEvent(entity);
 
     assertThat(result.getEventDescription()).isEqualTo(expectedDescription);
+  }
+
+  @ParameterizedTest
+  @MethodSource("notesEventTypeTestCases")
+  void givenNotesEventType_whenToDomainEvent_thenEventDescriptionHandledCorrectly(
+      String notesPayload, String expectedDescription) {
+    DomainEventEntity entity =
+        DataGenerator.createDefault(
+            DomainEventGenerator.class,
+            builder -> builder.data(notesPayload).type(DomainEventType.APPLICATION_NOTES));
+
+    ApplicationDomainEventResponse result = mapper.toDomainEvent(entity);
+
+    assertThat(result.getEventDescription()).isEqualTo(expectedDescription);
+  }
+
+  private static Stream<Arguments> notesEventTypeTestCases() {
+    return Stream.of(
+        Arguments.of(
+            """
+            {"request": "{\\"notes\\":\\"Test Note\\"}", "createdDate": "2026-07-23T11:15:58.464367Z", "applicationId": "3592f19b-69bc-4d36-86bb-5a5cffc6febd"}""",
+            "Test Note"),
+        Arguments.of(
+            """
+            {"request": "{"createdDate": "2026-07-23T11:15:58.464367Z", "applicationId": "3592f19b-69bc-4d36-86bb-5a5cffc6febd"}""",
+            null));
+  }
+
+  @ParameterizedTest
+  @MethodSource("notesEventTypeNullOrBlankDataTestCases")
+  void givenNotesEventTypeWithNullOrBlankData_whenToDomainEvent_thenEventDescriptionIsNull(
+      String data) {
+    DomainEventEntity entity =
+        DataGenerator.createDefault(
+            DomainEventGenerator.class,
+            builder -> builder.data(data).type(DomainEventType.APPLICATION_NOTES));
+
+    ApplicationDomainEventResponse result = mapper.toDomainEvent(entity);
+
+    assertThat(result.getEventDescription()).isNull();
+  }
+
+  private static Stream<Arguments> notesEventTypeNullOrBlankDataTestCases() {
+    return Stream.of(Arguments.of((String) null), Arguments.of(""));
   }
 }
