@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationSearchView;
 
+/** Repository for the application search projection entity. */
 @Repository
 public interface ApplicationSearchRepository
     extends JpaRepository<ApplicationSearchView, UUID>,

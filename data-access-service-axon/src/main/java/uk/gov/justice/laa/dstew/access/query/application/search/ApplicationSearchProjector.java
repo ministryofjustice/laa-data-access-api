@@ -43,6 +43,7 @@ public class ApplicationSearchProjector {
   private final LinkedApplicationGroupReadRepository groupReadRepository;
   private final ApplicationDataStore applicationDataStore;
 
+  /** Creates the projector with dependencies required to maintain and query search views. */
   public ApplicationSearchProjector(
       ApplicationSearchRepository repository,
       ApplicationLinkSearchRepository linkRepository,
@@ -54,6 +55,7 @@ public class ApplicationSearchProjector {
     this.applicationDataStore = applicationDataStore;
   }
 
+  /** Handles creation events and initializes the corresponding search projection row. */
   @EventHandler
   public void on(ApplicationCreatedEvent event, @SequenceNumber Long sequenceNumber) {
     ApplicationSearchView existing = repository.findById(event.applicationId()).orElse(null);
@@ -78,6 +80,7 @@ public class ApplicationSearchProjector {
     repository.save(view);
   }
 
+  /** Handles caseworker assignment events and updates assignment data in the projection. */
   @EventHandler
   public void on(ApplicationAssignedToCaseworkerEvent event, @SequenceNumber Long sequenceNumber) {
     updateSearchView(
@@ -91,6 +94,7 @@ public class ApplicationSearchProjector {
         });
   }
 
+  /** Handles caseworker unassignment events and clears assignment data in the projection. */
   @EventHandler
   public void on(
       ApplicationUnassignedFromCaseworkerEvent event, @SequenceNumber Long sequenceNumber) {
@@ -104,6 +108,7 @@ public class ApplicationSearchProjector {
         });
   }
 
+  /** Handles decision events and updates decision-related fields in the projection. */
   @EventHandler
   public void on(ApplicationDecisionMadeEvent event, @SequenceNumber Long sequenceNumber) {
     updateSearchView(
@@ -117,6 +122,7 @@ public class ApplicationSearchProjector {
         });
   }
 
+  /** Handles direct application linking events and records lead/member relationships. */
   @EventHandler
   public void on(ApplicationLinkedEvent event, @SequenceNumber Long sequenceNumber) {
     updateSearchView(
@@ -130,6 +136,7 @@ public class ApplicationSearchProjector {
     createLinkSearchView(event.leadApplicationId(), event.applicationId(), sequenceNumber);
   }
 
+  /** Handles linked-group creation and projects lead/member mappings for all members. */
   @EventHandler
   public void on(LinkedApplicationGroupCreatedEvent event, @SequenceNumber Long sequenceNumber) {
     for (UUID memberId : event.memberApplicationIds()) {
@@ -145,6 +152,7 @@ public class ApplicationSearchProjector {
     }
   }
 
+  /** Handles additions to a linked group and projects the new member relationship. */
   @EventHandler
   public void on(MemberAddedToGroupEvent event, @SequenceNumber Long sequenceNumber) {
     groupReadRepository
@@ -164,6 +172,7 @@ public class ApplicationSearchProjector {
             });
   }
 
+  /** Executes the application search query with filters, sorting and pagination. */
   @QueryHandler
   public FindAllApplicationsResult handle(FindAllApplicationsQuery query) {
     int pageNum = Math.max(0, query.page() - 1);

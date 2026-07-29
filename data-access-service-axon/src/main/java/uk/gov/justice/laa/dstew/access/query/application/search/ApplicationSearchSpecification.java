@@ -5,16 +5,20 @@ import java.util.List;
 import org.springframework.data.jpa.domain.Specification;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationSearchView;
 
+/** Utility class for composing JPA specifications for application search filters. */
 public final class ApplicationSearchSpecification {
 
   private ApplicationSearchSpecification() {}
 
+  /** Builds a specification from optional API search filter values. */
   public static Specification<ApplicationSearchView> withFilters(
       String status,
       String laaReference,
       String caseworkerId,
       String matterType,
-      Boolean isAutoGranted, String clientFirstName, String clientLastName) {
+      Boolean isAutoGranted,
+      String clientFirstName,
+      String clientLastName) {
 
     return (root, query, cb) -> {
       List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
@@ -35,14 +39,16 @@ public final class ApplicationSearchSpecification {
         predicates.add(cb.equal(root.get("isAutoGranted"), isAutoGranted));
       }
       if (clientFirstName != null && !clientFirstName.isBlank()) {
-        predicates.add(cb.like(
-            cb.lower(root.get("clientFirstName"))
-            , cb.literal("%" + clientFirstName.toLowerCase() + "%")));
+        predicates.add(
+            cb.like(
+                cb.lower(root.get("clientFirstName")),
+                cb.literal("%" + clientFirstName.toLowerCase() + "%")));
       }
       if (clientLastName != null && !clientLastName.isBlank()) {
-        predicates.add(cb.like(
-            cb.lower(root.get("clientLastName"))
-            , cb.literal("%" + clientLastName.toLowerCase() + "%")));
+        predicates.add(
+            cb.like(
+                cb.lower(root.get("clientLastName")),
+                cb.literal("%" + clientLastName.toLowerCase() + "%")));
       }
 
       return predicates.isEmpty()

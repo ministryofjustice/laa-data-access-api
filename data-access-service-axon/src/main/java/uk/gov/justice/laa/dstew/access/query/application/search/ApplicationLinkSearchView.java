@@ -37,6 +37,7 @@ public class ApplicationLinkSearchView {
     return id == null ? null : id.applicationId;
   }
 
+  /** Composite key for a lead/member application relationship. */
   @Embeddable
   @Data
   @NoArgsConstructor

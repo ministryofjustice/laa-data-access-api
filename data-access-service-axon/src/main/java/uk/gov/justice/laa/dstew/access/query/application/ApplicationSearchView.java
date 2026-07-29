@@ -12,6 +12,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/** Projection row used for filtering and paginating application search results. */
 @Entity
 @Table(name = "application_search_view")
 @Data
