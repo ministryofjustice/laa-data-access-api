@@ -1,0 +1,22 @@
+spring:
+  jpa:
+    open-in-view: false
+  data:
+    jpa:
+      repositories:
+        enabled: false
+  flyway:
+    enabled: false
+  sql:
+    init:
+      mode: never
+
+# Bypass the OAuth2 / Entra filter chain during Pact verification.
+# Activates NoSecurityConfig (see data-access-service/src/main/java/.../config/NoSecurityConfig.java).
+feature:
+  disable-security: true
+  enable-dev-token: false
+  # Skip JpaAuditingConfig (and its @EnableJpaAuditing) — JPA infra is mocked in
+  # AbstractProviderPactTests, so the JpaMappingContext metamodel is null and the
+  # auditing wiring would fail Spring startup.
+  disable-jpa-auditing: true

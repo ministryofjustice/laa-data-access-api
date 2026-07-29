@@ -1,0 +1,26 @@
+name: Pact triggered workflow
+run-name: Pact tests triggered by `${{ github.event.inputs.consumer }}`/`${{ github.event.inputs.consumerBranch }}`
+
+on:
+  workflow_dispatch:
+    inputs:
+      consumer:       { required: true, description: "Consumer name (e.g., laa-civil-decide-api)" }
+      consumerBranch: { required: true, description: "Consumer branch (e.g., main)" }
+
+jobs:
+  pact-test:
+    uses: ministryofjustice/laa-ccms-common-workflows/.github/workflows/pact-provider-webhook.yml@dc4173bfc12f714d7e8cbdd9f524d00ef02e25c4 # v2
+    permissions:
+      contents: write
+      packages: write
+    with:
+      pact_test_task: ":data-access-service:pactTest"
+      provider_name: 'laa-data-access-api'
+      consumer_name: ${{ github.event.inputs.consumer }}
+      consumer_branch: ${{ github.event.inputs.consumerBranch }}
+      java_version: 25
+    secrets:
+      gh_token: ${{ secrets.GITHUB_TOKEN }}
+      pact_broker_url: ${{ secrets.PACT_BROKER_URL }}
+      pact_broker_username: ${{ secrets.PACT_BROKER_USERNAME }}
+      pact_broker_password: ${{ secrets.PACT_BROKER_PASSWORD }}

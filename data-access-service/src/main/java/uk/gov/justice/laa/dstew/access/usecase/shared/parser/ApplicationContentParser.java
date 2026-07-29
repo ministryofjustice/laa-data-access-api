@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import uk.gov.justice.laa.dstew.access.convertors.GenericEnumConvertor;
+import uk.gov.justice.laa.dstew.access.domain.enums.CategoryOfLaw;
+import uk.gov.justice.laa.dstew.access.domain.enums.MatterType;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /**
