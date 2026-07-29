@@ -21,7 +21,6 @@ import uk.gov.justice.laa.dstew.access.command.application.ApplicationIndividual
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationData;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
@@ -38,23 +37,21 @@ import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedAppli
 @Component
 @ProcessingGroup("application-search-projection")
 public class ApplicationSearchProjector {
+
   private final ApplicationSearchRepository repository;
   private final ApplicationLinkSearchRepository linkRepository;
   private final LinkedApplicationGroupReadRepository groupReadRepository;
   private final ApplicationDataStore applicationDataStore;
-  private final ApplicationSearchViewHydrator searchViewHydrator;
 
   public ApplicationSearchProjector(
       ApplicationSearchRepository repository,
       ApplicationLinkSearchRepository linkRepository,
       LinkedApplicationGroupReadRepository groupReadRepository,
-      ApplicationDataStore applicationDataStore,
-      ApplicationSearchViewHydrator searchViewHydrator) {
+      ApplicationDataStore applicationDataStore) {
     this.repository = repository;
     this.linkRepository = linkRepository;
     this.groupReadRepository = groupReadRepository;
     this.applicationDataStore = applicationDataStore;
-    this.searchViewHydrator = searchViewHydrator;
   }
 
   @EventHandler
@@ -226,13 +223,29 @@ public class ApplicationSearchProjector {
         ApplicationLinkSearchView.builder().id(id).streamVersion(streamVersion).build());
   }
 
-   private void hydrate(ApplicationSearchView view, long dataVersion) {
+  private void hydrate(ApplicationSearchView view, long dataVersion) {
     ApplicationDataPayload data = applicationDataStore.get(view.getApplicationId(), dataVersion);
-    searchViewHydrator.hydrate(view, data);
+    view.setLaaReference(data.laaReference());
+    view.setSubmittedAt(data.submittedAt());
+    view.setMatterType(data.matterType() == null ? null : data.matterType().name());
+    view.setCategoryOfLaw(data.categoryOfLaw() == null ? null : data.categoryOfLaw().name());
+    view.setIsAutoGranted(data.autoGranted());
+    primaryClient(data)
+        .ifPresent(
+            client -> {
+              view.setClientFirstName(client.firstName());
+              view.setClientLastName(client.lastName());
+              view.setClientDateOfBirth(client.dateOfBirth());
+            });
   }
 
-  public void hydrateSearchView(ApplicationData applicationData, ApplicationSearchView view, long dataVersion) {
-    searchViewHydrator.hydrate(view, applicationData.getPayload());
+  private java.util.Optional<ApplicationIndividual> primaryClient(ApplicationDataPayload data) {
+    if (data.individuals() == null) {
+      return java.util.Optional.empty();
+    }
+    return data.individuals().stream()
+        .filter(individual -> "CLIENT".equals(individual.type()))
+        .findFirst();
   }
 
   private Map<UUID, LinkedApplicationGroupReadModel> fetchGroupsFromLinkView(

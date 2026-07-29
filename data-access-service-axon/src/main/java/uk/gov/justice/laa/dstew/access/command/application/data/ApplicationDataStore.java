@@ -10,25 +10,15 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreationDetails;
-import uk.gov.justice.laa.dstew.access.query.application.ApplicationSearchView;
-import uk.gov.justice.laa.dstew.access.query.application.search.ApplicationSearchRepository;
-import uk.gov.justice.laa.dstew.access.query.application.search.ApplicationSearchViewHydrator;
 
 /** Writes and retrieves immutable application-data versions. */
 @Component
 public class ApplicationDataStore {
 
   private final ApplicationDataRepository repository;
-  private final ApplicationSearchRepository searchViewRepository;
-  private final ApplicationSearchViewHydrator searchViewHydrator;
 
-  public ApplicationDataStore(
-      ApplicationDataRepository repository,
-      ApplicationSearchRepository searchViewRepository,
-      ApplicationSearchViewHydrator searchViewHydrator) {
+  public ApplicationDataStore(ApplicationDataRepository repository) {
     this.repository = repository;
-    this.searchViewRepository = searchViewRepository;
-    this.searchViewHydrator = searchViewHydrator;
   }
 
   /**
@@ -41,16 +31,13 @@ public class ApplicationDataStore {
    */
   public String append(UUID applicationId, long version, ApplicationCreationDetails details) {
     String fingerprint = fingerprint(details.serialisedRequest());
-    ApplicationData applicationData = ApplicationData.builder()
-        .id(new ApplicationDataId(applicationId, version))
-        .payload(ApplicationDataPayload.from(details))
-        .payloadHash(fingerprint)
-        .createdAt(details.occurredAt())
-        .build();
-    ApplicationSearchView searchView = ApplicationSearchView.builder().applicationId(applicationId).build();
-    searchViewHydrator.hydrate(searchView, applicationData.getPayload());
-    repository.saveAndFlush(applicationData);
-    searchViewRepository.saveAndFlush(searchView);
+    repository.saveAndFlush(
+        ApplicationData.builder()
+            .id(new ApplicationDataId(applicationId, version))
+            .payload(ApplicationDataPayload.from(details))
+            .payloadHash(fingerprint)
+            .createdAt(details.occurredAt())
+            .build());
     return fingerprint;
   }
 
@@ -71,16 +58,13 @@ public class ApplicationDataStore {
       String serialisedRequest,
       java.time.Instant occurredAt) {
     String fingerprint = fingerprint(serialisedRequest);
-    ApplicationData applicationData = ApplicationData.builder()
-        .id(new ApplicationDataId(applicationId, version))
-        .payload(payload)
-        .payloadHash(fingerprint)
-        .createdAt(occurredAt)
-        .build();
-    ApplicationSearchView searchView = ApplicationSearchView.builder().applicationId(applicationId).build();
-    searchViewHydrator.hydrate(searchView, payload);
-    repository.saveAndFlush(applicationData);
-    searchViewRepository.saveAndFlush(searchView);
+    repository.saveAndFlush(
+        ApplicationData.builder()
+            .id(new ApplicationDataId(applicationId, version))
+            .payload(payload)
+            .payloadHash(fingerprint)
+            .createdAt(occurredAt)
+            .build());
     return fingerprint;
   }
 
