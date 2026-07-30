@@ -6,18 +6,18 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationCreationDetails;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.json.JsonMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.axonframework.messaging.core.MessageType;
 import org.axonframework.messaging.eventhandling.EventMessage;
 import org.axonframework.messaging.eventhandling.GenericEventMessage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
@@ -29,8 +29,7 @@ import uk.gov.justice.laa.dstew.access.config.interceptor.ServiceNameMetadataDis
 
 class ApplicationHistoryProjectionTest {
 
-  private final ObjectMapper objectMapper =
-      JsonMapper.builder().addModule(new JavaTimeModule()).build();
+  private final ObjectMapper objectMapper = JsonMapper.builder().build();
   private ApplicationHistoryReadRepository repository;
   private ApplicationDataStore applicationDataStore;
   private ApplicationHistoryProjection projection;
@@ -263,8 +262,9 @@ class ApplicationHistoryProjectionTest {
   }
 
   private EventMessage message(Object payload, String identifier) {
-    return new GenericEventMessage<>(
+    return new GenericEventMessage(
         identifier,
+        new MessageType(payload.getClass()),
         payload,
         Map.of(ServiceNameMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY, "CIVIL_APPLY"),
         Instant.parse("2026-07-15T08:00:00Z"));

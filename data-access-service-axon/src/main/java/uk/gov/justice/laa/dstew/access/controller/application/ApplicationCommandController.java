@@ -3,9 +3,12 @@ package uk.gov.justice.laa.dstew.access.controller.application;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import java.net.URI;
+import java.sql.SQLException;
 import java.util.UUID;
+import org.axonframework.eventsourcing.eventstore.AppendEventsTransactionRejectedException;
 import org.axonframework.messaging.commandhandling.gateway.CommandGateway;
 import org.axonframework.modelling.ConcurrencyException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -23,6 +26,7 @@ import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
 import uk.gov.justice.laa.dstew.access.model.CreateNoteRequest;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
+import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
 
@@ -80,7 +84,7 @@ public class ApplicationCommandController {
       @RequestHeader("X-Service-Name") ServiceName serviceName,
       @PathVariable UUID id,
       @Valid @RequestBody CaseworkerUnassignRequest request) {
-    commandGateway.sendAndWait(unassignCaseworkerRequestMapper.toCommand(id, request));
+    dispatchWithRetry(unassignCaseworkerRequestMapper.toCommand(id, request));
     return ResponseEntity.ok().build();
   }
 
@@ -90,7 +94,7 @@ public class ApplicationCommandController {
       @RequestHeader("X-Service-Name") ServiceName serviceName,
       @PathVariable UUID id,
       @Valid @RequestBody MakeDecisionRequest request) {
-    commandGateway.sendAndWait(decisionCommandMapper.toCommand(id, request));
+    dispatchWithRetry(decisionCommandMapper.toCommand(id, request));
     return ResponseEntity.noContent().build();
   }
 
@@ -100,7 +104,7 @@ public class ApplicationCommandController {
       @RequestHeader("X-Service-Name") ServiceName serviceName,
       @PathVariable UUID id,
       @Valid @RequestBody CreateNoteRequest request) {
-    commandGateway.sendAndWait(createNoteCommandMapper.toCommand(id, request));
+    dispatchWithRetry(createNoteCommandMapper.toCommand(id, request));
     return ResponseEntity.noContent().build();
   }
 
@@ -130,10 +134,13 @@ public class ApplicationCommandController {
         : ResponseEntity.accepted().location(location).build();
   }
 
-  void dispatchWithRetry(CreateApplicationCommand command) {
+  void dispatchWithRetry(Object command) {
     try {
       commandGateway.sendAndWait(command);
-    } catch (ConcurrencyException  first) {
+    } catch (RuntimeException first) {
+      if (!isRetryableConcurrentWrite(first)) {
+        throw first;
+      }
       try {
         commandGateway.sendAndWait(command);
       } catch (RuntimeException retry) {
@@ -141,5 +148,24 @@ public class ApplicationCommandController {
         throw retry;
       }
     }
+  }
+
+  private boolean isRetryableConcurrentWrite(RuntimeException exception) {
+    return exception instanceof ConcurrencyException
+        || exception instanceof AppendEventsTransactionRejectedException
+        || exception instanceof DataIntegrityViolationException
+            && hasUniqueConstraintViolation(exception);
+  }
+
+  private boolean hasUniqueConstraintViolation(Throwable exception) {
+    Throwable cause = exception;
+    while (cause != null) {
+      if (cause instanceof SQLException sqlException
+          && "23505".equals(sqlException.getSQLState())) {
+        return true;
+      }
+      cause = cause.getCause();
+    }
+    return false;
   }
 }

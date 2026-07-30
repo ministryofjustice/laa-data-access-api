@@ -8,7 +8,6 @@ import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
@@ -16,13 +15,12 @@ import org.springframework.http.ResponseEntity;
     classes = DataAccessServiceAxonApplication.class,
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
     properties = {
-      "axon.eventstore.jpa.enabled=false",
       "spring.flyway.enabled=false",
-      "spring.jpa.hibernate.ddl-auto=none",
+      "spring.jpa.hibernate.ddl-auto=create-drop",
+      "spring.jpa.properties.hibernate.default_schema=PUBLIC",
       "spring.datasource.url=jdbc:h2:mem:axon-health;DB_CLOSE_DELAY=-1"
     })
 @AutoConfigureTestRestTemplate
-@Import(AxonInMemoryConfig.class)
 class InMemoryHealthTest {
 
   @LocalServerPort private int port;

@@ -83,8 +83,10 @@ overwriting a decision based on stale state. The aggregate chooses the next
 - The command bus uses Spring's transaction manager, so application-data appends and event writes
   participate in command processing.
 - Normal projections use tracking processors. They may lag and can be reset and replayed.
-- The linking router uses a subscribing processor with propagating errors. This is deliberate:
-  linking must succeed or fail as part of the originating request.
+- The linking router uses a subscribing processor with propagating errors so referenced
+  applications are validated in the originating request.
+- Group initialisation uses a pooled streaming processor after the request event commits, avoiding
+  the re-entrant event-store write that Axon 5 rejects.
 
 See [Linked applications](linked-applications.md) and
 [Projections and replay](projections-and-replay.md) for the detailed consequences.

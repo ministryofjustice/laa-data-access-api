@@ -1,9 +1,7 @@
 package uk.gov.justice.laa.dstew.access.query;
 
 import java.time.Duration;
-import java.util.Optional;
-
-
+import java.util.concurrent.CompletableFuture;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -44,28 +42,21 @@ public class SubscriptionProjectionGateway {
    *     restored when Reactor wraps an {@link InterruptedException}.
    */
   public <R> boolean awaitProjection(Object query, Class<R> projectionType, Runnable action) {
-    try (SubscriptionQueryResult<Optional<R>, R> subscription =
-        queryGateway.subscriptionQuery(
-            query,
-            ResponseTypes.optionalInstanceOf(projectionType),
-            ResponseTypes.instanceOf(projectionType))) {
+    CompletableFuture<R> firstResult =
+        Mono.from(queryGateway.subscriptionQuery(query, projectionType)).toFuture();
+    try {
       action.run();
-      return doAwait(subscription);
+      return doAwait(firstResult);
+    } finally {
+      firstResult.cancel(true);
     }
   }
 
-  private <R> boolean doAwait(SubscriptionQueryResult<Optional<R>, R> subscription) {
+  private <R> boolean doAwait(CompletableFuture<R> firstResult) {
     try {
       Boolean result =
-          Mono.from(subscription.initialResult())
-              .flatMap(
-                  initial -> {
-                    if (initial.isPresent()) {
-                      return Mono.just(true);
-                    }
-                    return Mono.from(subscription.updates()).map(u -> true);
-                  })
-              .defaultIfEmpty(false)
+          Mono.fromFuture(firstResult)
+              .map(ignored -> true)
               .timeout(timeout, Mono.just(false))
               .block();
       return Boolean.TRUE.equals(result);

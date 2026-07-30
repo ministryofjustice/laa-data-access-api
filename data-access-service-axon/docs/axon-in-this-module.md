@@ -1,7 +1,7 @@
 # Axon in This Module
 
 This guide provides the minimum execution model needed to work safely in the Axon module. It uses
-Axon Framework 4.11.2 and the terminology defined in the [glossary](glossary.md).
+Axon Framework 5.2.0 and the terminology defined in the [glossary](glossary.md).
 
 ## The central idea
 
@@ -92,8 +92,9 @@ The annotations look similar but serve different purposes:
 | Code | Runs where | Purpose | External I/O? |
 |---|---|---|---:|
 | Aggregate `@EventSourcingHandler` | During initial apply and aggregate replay | Rebuild command-side state | No |
-| Projection `@EventHandler` on tracking processor | Independently after event commit | Update query tables | Yes |
-| Router `@EventHandler` on subscribing processor | In publishing command thread/unit of work | Dispatch the next linking command | Only deliberately, with synchronous failure semantics |
+| Projection `@EventHandler` on pooled streaming processor | Independently after event commit | Update query tables | Yes |
+| Router `@EventHandler` on subscribing processor | In publishing command thread/unit of work | Validate links and request group formation | Only deliberately, with synchronous failure semantics |
+| Initializer `@EventHandler` on pooled streaming processor | Independently after the request event commits | Create or extend the linked group | Yes; it must be idempotent and retryable |
 
 Confusing projection handlers with event-sourcing handlers is one of the most damaging Axon
 mistakes. Both consume events, but only one rebuilds aggregate state.
@@ -101,7 +102,7 @@ mistakes. Both consume events, but only one rebuilds aggregate state.
 ## Commit and projection timing
 
 The command bus is connected to Spring transaction management. A successful command commits its
-event and any `application_data` append together. The normal projections are tracking processors,
+event and any `application_data` append together. The normal projections are streaming processors,
 so they update after the command and can temporarily lag.
 
 ```text
@@ -113,9 +114,11 @@ sendAndWait completed
 Application creation uses a subscription query to wait briefly for its projection. It returns
 `202 Accepted` if the durable write succeeds but the projection is not visible within the timeout.
 
-The linking router deliberately uses a subscribing processor. Its nested commands run before the
-originating unit of work completes, and its errors propagate back to the original request. See
-[ADR 0001](adr/0001-use-a-subscribing-event-router-for-application-linking.md).
+The linking router deliberately uses a subscribing processor so reference-validation errors
+propagate back to the original request. Axon 5 rejects re-entrant event-store writes, so
+`LinkedApplicationGroupInitializer` creates or extends the group on a pooled streaming processor
+after the request event commits. See
+[ADR 0004](adr/0004-split-linked-group-initialisation-after-commit.md).
 
 ## Command state versus query state
 

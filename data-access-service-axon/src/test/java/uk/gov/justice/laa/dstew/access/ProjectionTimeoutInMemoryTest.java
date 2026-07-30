@@ -4,19 +4,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
 
 import java.util.UUID;
-import org.axonframework.common.configuration.EventProcessingConfiguration;
-import org.axonframework.eventsourcing.eventstore.EventStore;
-import org.axonframework.messaging.eventhandling.TrackingEventProcessor;
+import org.axonframework.common.configuration.AxonConfiguration;
+import org.axonframework.messaging.eventhandling.processing.streaming.StreamingEventProcessor;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.annotation.DirtiesContext;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 
@@ -33,7 +32,6 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
     classes = DataAccessServiceAxonApplication.class,
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
     properties = {
-      "axon.eventstore.jpa.enabled=false",
       "spring.flyway.enabled=false",
       "spring.jpa.hibernate.ddl-auto=create-drop",
       "spring.jpa.properties.hibernate.default_schema=PUBLIC",
@@ -42,22 +40,23 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
       "application.projection.timeout=200ms"
     })
 @AutoConfigureTestRestTemplate
-@Import(AxonInMemoryConfig.class)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class ProjectionTimeoutInMemoryTest {
 
   @Autowired private TestRestTemplate restTemplate;
 
-  @Autowired private EventProcessingConfiguration eventProcessingConfiguration;
+  @Autowired private AxonConfiguration axonConfiguration;
 
-  @Autowired private EventStore eventStore;
+  @Autowired private JdbcTemplate jdbcTemplate;
 
   @Test
   void givenStoppedProjectionProcessor_whenPostApplication_thenReturnsAcceptedWithLocation() {
     // Stop the projection processor so no QueryUpdateEmitter.emit can be called for this command.
-    eventProcessingConfiguration
-        .eventProcessor("application-projection", TrackingEventProcessor.class)
-        .ifPresent(TrackingEventProcessor::shutdown);
+    axonConfiguration
+        .getComponents(StreamingEventProcessor.class)
+        .get("application-projection")
+        .shutdown()
+        .join();
 
     UUID applyApplicationId = UUID.randomUUID();
     ApplicationCreateRequest request =
@@ -77,13 +76,13 @@ class ProjectionTimeoutInMemoryTest {
     assertThat(response.getHeaders().getLocation()).isNotNull();
     assertThat(response.getHeaders().getLocation().getPath())
         .isEqualTo("/api/v0/applications/" + applyApplicationId);
-    assertThat(eventStore.readEvents(applyApplicationId.toString()).asStream())
-        .singleElement()
-        .satisfies(
-            event -> {
-              assertThat(event.getSequenceNumber()).isZero();
-              assertThat(event.payloadType().getSimpleName()).isEqualTo("ApplicationCreatedEvent");
-            });
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM domain_event_entry "
+                    + "WHERE aggregate_identifier = ? AND sequence_number = 0",
+                Integer.class,
+                applyApplicationId.toString()))
+        .isEqualTo(1);
 
     // The test must complete well below the full 5-second default timeout.
     assertThat(elapsedMs).isLessThan(3_000L);

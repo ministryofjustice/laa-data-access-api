@@ -1,8 +1,8 @@
 # Linked Application Creation (First Member Joining a New Group)
 
 An application submitted with a `leadApplicationId` that has not yet formed a group.
-The entire command chain — from `ApplicationCreatedEvent` through to group initialisation — runs
-synchronously in a single Axon unit of work via the subscribing `ApplicationGroupEventRouter`.
+Reference validation runs synchronously through `ApplicationGroupEventRouter`. Group initialisation
+runs after the request event commits through `LinkedApplicationGroupInitializer`.
 See [Linked applications](../linked-applications.md) for the rules and rationale.
 
 ```mermaid
@@ -14,6 +14,7 @@ sequenceDiagram
     participant AssocAggregate as ApplicationAggregate<br/>(associated app)
     participant Factory as ApplicationCreationDetailsFactory
     participant Router as ApplicationGroupEventRouter<br/>(subscribing)
+    participant Initializer as LinkedApplicationGroupInitializer<br/>(pooled streaming)
     participant LeadAggregate as ApplicationAggregate<br/>(lead app)
     participant GroupAggregate as LinkedApplicationGroupAggregate
     participant AppProjection as ApplicationProjection<br/>(tracking)
@@ -50,16 +51,16 @@ sequenceDiagram
     Note over LeadAggregate: groupId = nameUUIDFromBytes("linked-group:" + leadId)
     LeadAggregate->>LeadAggregate: apply(LinkedApplicationGroupRequested)
 
-    LeadAggregate->>Router: on(LinkedApplicationGroupRequested) [same thread/UoW]
-    Router->>CmdGateway: sendAndWait(InitialiseLinkedApplicationGroupCommand → groupId)
+    LeadAggregate-->>CmdGateway: (void; request event commits)
+    Initializer->>Initializer: on(LinkedApplicationGroupRequested) [async]
+    Initializer->>CmdGateway: sendAndWait(InitialiseLinkedApplicationGroupCommand → groupId)
     CmdGateway->>GroupAggregate: handle(InitialiseLinkedApplicationGroupCommand) [CREATE_IF_MISSING]
     Note over GroupAggregate: First call — groupId == null
     Note over GroupAggregate: Validates lead is in member list
     GroupAggregate->>GroupAggregate: apply(LinkedApplicationGroupCreatedEvent)
 
     GroupAggregate-->>CmdGateway: (void)
-    CmdGateway-->>Router: (void)
-    Router-->>LeadAggregate: (void)
+    CmdGateway-->>Initializer: (void)
     LeadAggregate-->>CmdGateway: (void)
     CmdGateway-->>Router: (void)
     Router-->>AssocAggregate: (void)

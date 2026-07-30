@@ -3,7 +3,7 @@
 This directory explains the design of `data-access-service-axon`. Start here when changing command
 handling, application linking, projections, or the storage of sensitive application data.
 
-The module currently uses **Axon Framework 4.11.2**. Developers with only introductory Axon
+The module currently uses **Axon Framework 5.2.0**. Developers with only introductory Axon
 experience should follow the learning path below before using the documents as a reference.
 
 ## Suggested learning path
@@ -26,7 +26,7 @@ experience should follow the learning path below before using the documents as a
 | [Event evolution](event-evolution.md) | How to change persisted event contracts without breaking replay |
 | [Onboarding exercise](onboarding-exercise.md) | A practical application, event, data-version, and projection walkthrough |
 | [Architecture overview](architecture.md) | The main components, command/query paths, consistency boundaries, and version numbers |
-| [Linked applications](linked-applications.md) | How applications form groups, why the event router is synchronous, and where linking rules live |
+| [Linked applications](linked-applications.md) | How synchronous validation and post-commit group initialisation work |
 | [Events and sensitive data](events-and-sensitive-data.md) | Why events are thin, how `application_data` versions are connected to events, and what retention means |
 | [Projections and replay](projections-and-replay.md) | Which read models exist, how they are hydrated, and how reset/replay behaves |
 | [Storage model](storage-model.md) | Which tables are authoritative or disposable and how their identifiers and versions relate |
@@ -41,7 +41,8 @@ experience should follow the learning path below before using the documents as a
 - `ApplicationCommandController` accepts write requests and dispatches commands.
 - `ApplicationAggregate` owns the state and rules of one application.
 - `LinkedApplicationGroupAggregate` owns the lead and membership of a linked group.
-- `ApplicationGroupEventRouter` coordinates group creation synchronously.
+- `ApplicationGroupEventRouter` validates linked applications synchronously.
+- `LinkedApplicationGroupInitializer` creates or extends the group after the request event commits.
 - `ApplicationDataStore` reads and appends immutable sensitive-data versions.
 - `ApplicationProjection` and `ApplicationHistoryProjection` build query-side views.
 

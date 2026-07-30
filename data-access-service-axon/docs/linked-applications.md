@@ -37,32 +37,31 @@ event store looks up a stream by aggregate identifier, not by Java aggregate cla
 3. The router sends `CreateLinkedApplicationGroupCommand` to the lead application.
 4. The lead verifies that it exists and is not already an associated member of another group. It
    then emits `LinkedApplicationGroupRequested` with the deterministic group ID.
-5. The router sends `InitialiseLinkedApplicationGroupCommand` to that group.
+5. After the request event commits, `LinkedApplicationGroupInitializer` sends
+   `InitialiseLinkedApplicationGroupCommand` to that group.
 6. A new group emits `LinkedApplicationGroupCreatedEvent`. An existing group emits one
    `MemberAddedToGroupEvent` for each genuinely new member.
 
 The detailed message order is shown in the [sequence diagrams](sequence-diagrams/README.md).
 
-## Why the router is subscribing
+## Why linking uses two processors
 
 `ApplicationGroupEventRouter` is a stateless event handler, not a saga. Its processing group is
-explicitly registered as subscribing in `AxonCommandBusConfig`, with errors configured to
-propagate.
+explicitly registered as subscribing in `AxonEventProcessingConfig`, with errors configured to
+propagate. This preserves synchronous validation of the lead and other referenced applications.
 
-That choice gives the API synchronous behaviour:
+Axon 5 rejects re-entrant event-store writes, so the requested group cannot safely be initialised
+from the handler that is still publishing the lead application's event. A separate pooled streaming
+processor invokes `LinkedApplicationGroupInitializer` after that transaction commits.
 
-- the lead and other referenced applications are checked before creation returns;
+The resulting behaviour is:
+
+- reference validation completes before application creation returns;
 - a missing reference produces a 404 on the original request;
-- a group invariant failure rejects the original request;
-- a failure rolls back the command's unit of work instead of leaving a partially completed
-  workflow for later recovery.
+- group creation or extension is retried by Axon's streaming processor if it fails;
+- both stages remain stateless and idempotent, so no saga state is required.
 
-A saga would be more suitable if linking became long-running, crossed service boundaries, needed
-timeouts or compensation, or was allowed to complete after the HTTP request. It would also change
-the API semantics if it used asynchronous processing: initial creation could succeed while linking
-later failed. A saga can use a subscribing processor too, but that would add persistent saga state
-without benefiting this currently stateless flow. The full rationale and revisit criteria are in
-[ADR 0001](adr/0001-use-a-subscribing-event-router-for-application-linking.md).
+The rationale is recorded in [ADR 0004](adr/0004-split-linked-group-initialisation-after-commit.md).
 
 ## Important rules
 

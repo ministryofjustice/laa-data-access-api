@@ -43,11 +43,6 @@ class ApplicationAggregateTest {
 
   @BeforeEach
   void setUp() {
-    fixture =
-        AxonTestFixture.with(
-            EventSourcingConfigurer.create()
-                .registerEntity(
-                    EventSourcedEntityModule.autodetected(UUID.class, ApplicationAggregate.class)));
     factory =
         new ApplicationCreationDetailsFactory(null, null) {
           @Override
@@ -55,14 +50,13 @@ class ApplicationAggregateTest {
             return applicationCreationDetails(command.applicationId());
           }
         };
-    fixture.registerInjectableResource(factory);
     applicationDataStore = mock(ApplicationDataStore.class);
     when(applicationDataStore.append(any(), anyLong(), any()))
         .thenAnswer(
             invocation ->
                 ApplicationDataStore.fingerprint(
                     invocation.<ApplicationCreationDetails>getArgument(2).serialisedRequest()));
-    fixture.registerInjectableResource(applicationDataStore);
+    fixture = fixtureWith(factory);
   }
 
   @Test
@@ -111,13 +105,8 @@ class ApplicationAggregateTest {
             return detailsWithLead;
           }
         };
-    fixture =
-        AxonTestFixture.with(
-            EventSourcingConfigurer.create()
-                .registerEntity(
-                    EventSourcedEntityModule.autodetected(UUID.class, ApplicationAggregate.class)));
-    fixture.registerInjectableResource(factoryWithLead);
-    fixture.registerInjectableResource(applicationDataStore);
+    fixture.stop();
+    fixture = fixtureWith(factoryWithLead);
 
     ApplicationCreatedEvent createdEvent = applicationCreatedEvent(applicationId, detailsWithLead);
 
@@ -479,13 +468,8 @@ class ApplicationAggregateTest {
                 applicationId); // leadApplicationId == self
           }
         };
-    fixture =
-        AxonTestFixture.with(
-            EventSourcingConfigurer.create()
-                .registerEntity(
-                    EventSourcedEntityModule.autodetected(UUID.class, ApplicationAggregate.class)));
-    fixture.registerInjectableResource(selfLeadFactory);
-    fixture.registerInjectableResource(applicationDataStore);
+    fixture.stop();
+    fixture = fixtureWith(selfLeadFactory);
 
     fixture
         .given()
@@ -565,7 +549,7 @@ class ApplicationAggregateTest {
   }
 
   @Test
-  void givenNoApplication_whenCreateNote_thenThrowsAggregateNotFoundException() {
+  void givenNoApplication_whenCreateNote_thenThrowsResourceNotFoundException() {
     fixture
         .given()
         .noPriorActivity()
@@ -574,8 +558,23 @@ class ApplicationAggregateTest {
             new uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand(
                 UUID.randomUUID(), "My note", "{}", Instant.now()))
         .then()
-        .exception(org.axonframework.modelling.entity.AggregateNotFoundException.class)
+        .exception(ResourceNotFoundException.class)
         .noEvents();
+  }
+
+  private AxonTestFixture fixtureWith(ApplicationCreationDetailsFactory creationDetailsFactory) {
+    return AxonTestFixture.with(
+        EventSourcingConfigurer.create()
+            .registerEntity(
+                EventSourcedEntityModule.autodetected(UUID.class, ApplicationAggregate.class))
+            .componentRegistry(
+                registry ->
+                    registry
+                        .registerComponent(
+                            ApplicationCreationDetailsFactory.class,
+                            configuration -> creationDetailsFactory)
+                        .registerComponent(
+                            ApplicationDataStore.class, configuration -> applicationDataStore)));
   }
 
   private CreateApplicationCommand createCommand(UUID applicationId, String serialisedRequest) {

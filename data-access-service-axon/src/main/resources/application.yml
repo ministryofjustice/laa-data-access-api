@@ -10,10 +10,6 @@ spring:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/laa_data_access_api?currentSchema=axon}
     username: ${SPRING_DATASOURCE_USERNAME:laa_user}
     password: ${SPRING_DATASOURCE_PASSWORD:laa_password}
-  flyway:
-    create-schemas: true
-    default-schema: axon
-    schemas: axon
   jpa:
     database-platform: uk.gov.justice.laa.dstew.access.config.ByteaEnforcedPostgresSqlDialect
     hibernate:
@@ -29,14 +25,6 @@ axon:
     general: jackson
     events: jackson
     messages: jackson
-  eventhandling:
-    processors:
-      application-projection:
-        mode: tracking
-      application-history-projection:
-        mode: tracking
-      linked-application-group-projection:
-        mode: tracking
 
 application:
   projection:

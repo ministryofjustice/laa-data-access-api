@@ -8,14 +8,15 @@ import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequest
 import java.time.Duration;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.axonframework.common.configuration.ConfigurationEnhancer;
-import org.axonframework.common.configuration.EventProcessingConfiguration;
+import org.axonframework.common.configuration.AxonConfiguration;
 import org.axonframework.eventsourcing.eventstore.EventStore;
+import org.axonframework.extension.spring.config.EventProcessorDefinition;
+import org.axonframework.messaging.core.MessageType;
 import org.axonframework.messaging.core.annotation.Namespace;
 import org.axonframework.messaging.eventhandling.GenericEventMessage;
-import org.axonframework.messaging.eventhandling.TrackingEventProcessor;
 import org.axonframework.messaging.eventhandling.annotation.EventHandler;
 import org.axonframework.messaging.eventhandling.processing.errorhandling.PropagatingErrorHandler;
+import org.axonframework.messaging.eventhandling.processing.streaming.StreamingEventProcessor;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
@@ -38,7 +39,6 @@ import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedAppli
     classes = DataAccessServiceAxonApplication.class,
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
     properties = {
-      "axon.eventstore.jpa.enabled=false",
       "spring.flyway.enabled=false",
       "spring.jpa.hibernate.ddl-auto=create-drop",
       "spring.jpa.properties.hibernate.default_schema=PUBLIC",
@@ -46,12 +46,12 @@ import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedAppli
       "spring.datasource.url=jdbc:h2:mem:axon-recovery;DB_CLOSE_DELAY=-1"
     })
 @AutoConfigureTestRestTemplate
-@Import({AxonInMemoryConfig.class, EventProcessorRecoveryInMemoryTest.RecoveryConfig.class})
+@Import(EventProcessorRecoveryInMemoryTest.RecoveryConfig.class)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class EventProcessorRecoveryInMemoryTest {
 
   @Autowired private TestRestTemplate restTemplate;
-  @Autowired private EventProcessingConfiguration eventProcessingConfiguration;
+  @Autowired private AxonConfiguration axonConfiguration;
   @Autowired private EventStore eventStore;
   @Autowired private ApplicationReadRepository applicationReadRepository;
   @Autowired private ApplicationHistoryReadRepository applicationHistoryReadRepository;
@@ -102,7 +102,7 @@ class EventProcessorRecoveryInMemoryTest {
             processor("application-projection"),
             processor("application-history-projection"),
             processor("linked-application-group-projection"));
-    processors.forEach(TrackingEventProcessor::shutdown);
+    processors.forEach(processor -> processor.shutdown().join());
     applicationReadRepository.deleteAllInBatch();
     applicationHistoryReadRepository.deleteAllInBatch();
     groupReadRepository.deleteAllInBatch();
@@ -110,8 +110,8 @@ class EventProcessorRecoveryInMemoryTest {
     assertThat(applicationHistoryReadRepository.count()).isZero();
     assertThat(groupReadRepository.count()).isZero();
 
-    processors.forEach(TrackingEventProcessor::resetTokens);
-    processors.forEach(TrackingEventProcessor::start);
+    processors.forEach(processor -> processor.resetTokens().join());
+    processors.forEach(processor -> processor.start().join());
 
     await()
         .atMost(Duration.ofSeconds(5))
@@ -136,7 +136,12 @@ class EventProcessorRecoveryInMemoryTest {
   void givenTransientHandlerFailure_whenEventRetried_thenProcessorRecoversWithoutEventLoss() {
     UUID eventId = UUID.randomUUID();
 
-    eventStore.publish(GenericEventMessage.asEventMessage(new RecoveryTestEvent(eventId)));
+    eventStore
+        .publish(
+            null,
+            new GenericEventMessage(
+                new MessageType(RecoveryTestEvent.class), new RecoveryTestEvent(eventId)))
+        .join();
 
     await()
         .atMost(Duration.ofSeconds(10))
@@ -145,7 +150,7 @@ class EventProcessorRecoveryInMemoryTest {
               assertThat(failOnceProjection.attempts()).isGreaterThanOrEqualTo(2);
               assertThat(failOnceProjection.successfulEventId()).isEqualTo(eventId);
             });
-    TrackingEventProcessor processor = processor("recovering-projection");
+    StreamingEventProcessor processor = processor("recovering-projection");
     assertThat(processor.isRunning()).isTrue();
     assertThat(processor.isError()).isFalse();
   }
@@ -155,21 +160,31 @@ class EventProcessorRecoveryInMemoryTest {
     UUID failedEventId = UUID.randomUUID();
     UUID laterEventId = UUID.randomUUID();
 
-    eventStore.publish(
-        GenericEventMessage.asEventMessage(new PermanentFailureTestEvent(failedEventId)),
-        GenericEventMessage.asEventMessage(new EventAfterPermanentFailure(laterEventId)));
+    eventStore
+        .publish(
+            null,
+            new GenericEventMessage(
+                new MessageType(PermanentFailureTestEvent.class),
+                new PermanentFailureTestEvent(failedEventId)),
+            new GenericEventMessage(
+                new MessageType(EventAfterPermanentFailure.class),
+                new EventAfterPermanentFailure(laterEventId)))
+        .join();
 
     await()
         .atMost(Duration.ofSeconds(10))
         .until(() -> permanentlyFailingProjection.attempts() >= 2);
     assertThat(permanentlyFailingProjection.successfulEventId()).isNull();
-    processor("permanently-failing-projection").shutDown();
+    processor("permanently-failing-projection").shutdown().join();
   }
 
-  private TrackingEventProcessor processor(String name) {
-    return eventProcessingConfiguration
-        .eventProcessor(name, TrackingEventProcessor.class)
-        .orElseThrow(() -> new AssertionError("Missing tracking processor: " + name));
+  private StreamingEventProcessor processor(String name) {
+    StreamingEventProcessor processor =
+        axonConfiguration.getComponents(StreamingEventProcessor.class).get(name);
+    if (processor == null) {
+      throw new AssertionError("Missing streaming processor: " + name);
+    }
+    return processor;
   }
 
   record RecoveryTestEvent(UUID eventId) {}
@@ -241,16 +256,22 @@ class EventProcessorRecoveryInMemoryTest {
     }
 
     @Bean
-    ConfigurationEnhancer recoveringProjectionConfiguration() {
-      return configurer -> {
-        var eventProcessing = configurer.eventProcessing();
-        eventProcessing.registerTrackingEventProcessor("recovering-projection");
-        eventProcessing.registerListenerInvocationErrorHandler(
-            "recovering-projection", config -> PropagatingErrorHandler.instance());
-        eventProcessing.registerTrackingEventProcessor("permanently-failing-projection");
-        eventProcessing.registerListenerInvocationErrorHandler(
-            "permanently-failing-projection", config -> PropagatingErrorHandler.instance());
-      };
+    EventProcessorDefinition recoveringProjectionProcessor() {
+      return EventProcessorDefinition.pooledStreamingMatching("recovering-projection")
+          .customized(
+              configuration -> configuration.errorHandler(PropagatingErrorHandler.instance()));
+    }
+
+    @Bean
+    EventProcessorDefinition permanentlyFailingProjectionProcessor() {
+      return EventProcessorDefinition.pooledStreamingMatching("permanently-failing-projection")
+          .customized(
+              configuration ->
+                  configuration
+                      .initialSegmentCount(1)
+                      .maxClaimedSegments(1)
+                      .batchSize(1)
+                      .errorHandler(PropagatingErrorHandler.instance()));
     }
   }
 }

@@ -7,14 +7,15 @@ rebuilt without changing aggregate event streams or immutable application-data v
 
 | Processing group | Mode | Builds |
 |---|---|---|
-| `application-projection` | Tracking | `application_current_state` |
-| `application-history-projection` | Tracking | `application_history` |
-| `linked-application-group-projection` | Tracking | `linked_application_group_current_state` |
-| `linked-application-group-router` | Subscribing | No read model; synchronously coordinates linking |
+| `application-projection` | Pooled streaming | `application_current_state` |
+| `application-history-projection` | Pooled streaming | `application_history` |
+| `linked-application-group-projection` | Pooled streaming | `linked_application_group_current_state` |
+| `linked-application-group-router` | Subscribing | No read model; synchronously validates links |
+| `linked-application-group-initializer` | Pooled streaming | No read model; creates or extends groups after commit |
 
 Tracking processors maintain tokens and run independently of the command thread. A failure stops
 token progress past the failing event, allowing recovery without silently skipping it. The linking
-router is intentionally different and is described in [Linked applications](linked-applications.md).
+router and initializer are described in [Linked applications](linked-applications.md).
 
 ## Current application projection
 

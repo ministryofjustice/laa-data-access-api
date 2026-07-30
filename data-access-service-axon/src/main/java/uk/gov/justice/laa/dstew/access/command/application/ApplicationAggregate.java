@@ -110,6 +110,7 @@ public class ApplicationAggregate {
       MakeApplicationDecisionCommand command,
       ApplicationDataStore applicationDataStore,
       EventAppender eventAppender) {
+    requireApplicationExists(command.applicationId());
     if (command.expectedApplicationVersion() != state.applicationVersion) {
       throw new uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException(
           command.applicationId(), command.expectedApplicationVersion());
@@ -149,6 +150,7 @@ public class ApplicationAggregate {
       AssignCaseworkerToApplicationCommand command,
       ApplicationDataStore applicationDataStore,
       EventAppender eventAppender) {
+    requireApplicationExists(command.applicationId());
     ApplicationAssignedToCaseworkerEvent event = ApplicationDecider.decideAssign(state, command);
     var current = applicationDataStore.get(applicationId, state.applicationDataVersion);
     long nextDataVersion = state.applicationDataVersion + 1;
@@ -167,6 +169,10 @@ public class ApplicationAggregate {
       UnassignCaseworkerFromApplicationCommand command,
       ApplicationDataStore applicationDataStore,
       EventAppender eventAppender) {
+    requireApplicationExists(command.applicationId());
+    if (state.caseworkerId == null) {
+      return;
+    }
     ApplicationUnassignedFromCaseworkerEvent event =
         ApplicationDecider.decideUnassign(state, command);
     var current = applicationDataStore.get(applicationId, state.applicationDataVersion);
@@ -186,6 +192,7 @@ public class ApplicationAggregate {
       CreateNoteCommand command,
       ApplicationDataStore applicationDataStore,
       EventAppender eventAppender) {
+    requireApplicationExists(command.applicationId());
     NoteCreatedEvent event = ApplicationDecider.decideNote(state, command);
     var current = applicationDataStore.get(applicationId, state.applicationDataVersion);
     applicationDataStore.append(
@@ -195,6 +202,13 @@ public class ApplicationAggregate {
         command.serialisedNoteRequest(),
         command.occurredAt());
     eventAppender.append(event);
+  }
+
+  private void requireApplicationExists(UUID requestedApplicationId) {
+    if (applicationId == null) {
+      throw new ResourceNotFoundException(
+          "No application found with Application ID: " + requestedApplicationId);
+    }
   }
 
   @EventSourcingHandler

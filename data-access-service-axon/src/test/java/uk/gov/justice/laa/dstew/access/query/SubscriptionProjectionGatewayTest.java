@@ -3,21 +3,20 @@ package uk.gov.justice.laa.dstew.access.query;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Duration;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-
-
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.Sinks;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
 
@@ -27,7 +26,6 @@ class SubscriptionProjectionGatewayTest {
   private SubscriptionProjectionGateway gateway;
 
   @BeforeEach
-  @SuppressWarnings("unchecked")
   void setUp() {
     queryGateway = mock(QueryGateway.class);
     gateway = new SubscriptionProjectionGateway(queryGateway, Duration.ofMillis(100));
@@ -36,11 +34,9 @@ class SubscriptionProjectionGatewayTest {
   // ── awaitProjection: initial-result paths ────────────────────────────────
 
   @Test
-  @SuppressWarnings("unchecked")
   void givenPresentInitialResult_whenAwaitProjection_thenReturnsTrueImmediately() {
     ApplicationReadModel readModel = mock(ApplicationReadModel.class);
-    SubscriptionQueryResult<Optional<ApplicationReadModel>, ApplicationReadModel> subscription =
-        subscription(Mono.just(Optional.of(readModel)), Flux.never());
+    subscription(Mono.just(readModel));
 
     boolean result = gateway.awaitProjection(query(), ApplicationReadModel.class, () -> {});
 
@@ -48,21 +44,21 @@ class SubscriptionProjectionGatewayTest {
   }
 
   @Test
-  @SuppressWarnings("unchecked")
   void givenEmptyInitialResultAndFirstUpdate_whenAwaitProjection_thenReturnsTrue() {
     ApplicationReadModel readModel = mock(ApplicationReadModel.class);
-    SubscriptionQueryResult<Optional<ApplicationReadModel>, ApplicationReadModel> subscription =
-        subscription(Mono.just(Optional.empty()), Flux.just(readModel));
+    Sinks.One<ApplicationReadModel> update = Sinks.one();
+    subscription(update.asMono());
 
-    boolean result = gateway.awaitProjection(query(), ApplicationReadModel.class, () -> {});
+    boolean result =
+        gateway.awaitProjection(
+            query(), ApplicationReadModel.class, () -> update.tryEmitValue(readModel));
 
     assertThat(result).isTrue();
   }
 
   @Test
-  @SuppressWarnings("unchecked")
   void givenNeverCompletingInitialResult_whenAwaitProjection_thenReturnsFalseWithinTimeout() {
-    subscription(Mono.never(), Flux.never());
+    subscription(Mono.never());
 
     long startNs = System.nanoTime();
     boolean result = gateway.awaitProjection(query(), ApplicationReadModel.class, () -> {});
@@ -75,9 +71,8 @@ class SubscriptionProjectionGatewayTest {
   // ── awaitProjection: error and interrupt paths ───────────────────────────
 
   @Test
-  @SuppressWarnings("unchecked")
   void givenInitialResultError_whenAwaitProjection_thenPropagatesError() {
-    subscription(Mono.error(new RuntimeException("query bus failure")), Flux.never());
+    subscription(Mono.error(new RuntimeException("query bus failure")));
 
     assertThatThrownBy(() -> gateway.awaitProjection(query(), ApplicationReadModel.class, () -> {}))
         .isInstanceOf(RuntimeException.class)
@@ -85,11 +80,10 @@ class SubscriptionProjectionGatewayTest {
   }
 
   @Test
-  @SuppressWarnings("unchecked")
   void givenInterruptedBlock_whenAwaitProjection_thenRestoresInterruptFlagAndRethrows() {
     RuntimeException wrappedInterrupt =
         new RuntimeException(new InterruptedException("interrupted"));
-    subscription(Mono.error(wrappedInterrupt), Flux.never());
+    subscription(Mono.error(wrappedInterrupt));
 
     try {
       assertThatThrownBy(
@@ -106,9 +100,8 @@ class SubscriptionProjectionGatewayTest {
   }
 
   @Test
-  @SuppressWarnings("unchecked")
   void givenNonInterruptRuntimeException_whenAwaitProjection_thenDoesNotSetInterruptFlag() {
-    subscription(Mono.error(new RuntimeException("other failure")), Flux.never());
+    subscription(Mono.error(new RuntimeException("other failure")));
 
     assertThatThrownBy(() -> gateway.awaitProjection(query(), ApplicationReadModel.class, () -> {}))
         .isInstanceOf(RuntimeException.class);
@@ -119,10 +112,9 @@ class SubscriptionProjectionGatewayTest {
   // ── awaitProjection: action lifecycle ────────────────────────────────────
 
   @Test
-  @SuppressWarnings("unchecked")
   void givenActionThrows_whenAwaitProjection_thenPropagatesAndClosesSubscription() {
-    SubscriptionQueryResult<Optional<ApplicationReadModel>, ApplicationReadModel> subscription =
-        subscription(Mono.just(Optional.empty()), Flux.never());
+    AtomicBoolean cancelled = new AtomicBoolean();
+    subscription(Flux.<ApplicationReadModel>never().doOnCancel(() -> cancelled.set(true)));
 
     assertThatThrownBy(
             () ->
@@ -135,19 +127,19 @@ class SubscriptionProjectionGatewayTest {
         .isInstanceOf(RuntimeException.class)
         .hasMessage("dispatch failed");
 
-    verify(subscription).close();
+    assertThat(cancelled).isTrue();
   }
 
   @Test
-  @SuppressWarnings("unchecked")
   void givenSuccessfulAction_whenAwaitProjection_thenSubscriptionIsClosed() {
     ApplicationReadModel readModel = mock(ApplicationReadModel.class);
-    SubscriptionQueryResult<Optional<ApplicationReadModel>, ApplicationReadModel> subscription =
-        subscription(Mono.just(Optional.of(readModel)), Flux.never());
+    AtomicBoolean cancelled = new AtomicBoolean();
+    subscription(
+        Flux.just(readModel).concatWith(Flux.never()).doOnCancel(() -> cancelled.set(true)));
 
     gateway.awaitProjection(query(), ApplicationReadModel.class, () -> {});
 
-    verify(subscription).close();
+    assertThat(cancelled).isTrue();
   }
 
   // ── helpers ───────────────────────────────────────────────────────────────
@@ -156,16 +148,7 @@ class SubscriptionProjectionGatewayTest {
     return new FindApplicationByIdQuery(UUID.randomUUID());
   }
 
-  @SuppressWarnings("unchecked")
-  private SubscriptionQueryResult<Optional<ApplicationReadModel>, ApplicationReadModel>
-      subscription(
-          Mono<Optional<ApplicationReadModel>> initialResult, Flux<ApplicationReadModel> updates) {
-    SubscriptionQueryResult<Optional<ApplicationReadModel>, ApplicationReadModel> subscription =
-        mock(SubscriptionQueryResult.class);
-    when(subscription.initialResult()).thenReturn(initialResult);
-    when(subscription.updates()).thenReturn(updates);
-    when(queryGateway.subscriptionQuery(any(), any(ResponseType.class), any(ResponseType.class)))
-        .thenReturn(subscription);
-    return subscription;
+  private void subscription(org.reactivestreams.Publisher<ApplicationReadModel> results) {
+    when(queryGateway.subscriptionQuery(any(), eq(ApplicationReadModel.class))).thenReturn(results);
   }
 }

@@ -161,9 +161,10 @@ public class ApplicationQueryController {
   @GetMapping("/{id}/notes")
   public ResponseEntity<ApplicationNotesResponse> getNotesForApplication(@PathVariable UUID id) {
     ApplicationNotesResponse response =
-        queryGateway
-            .query(new FindNotesForApplicationQuery(id), ApplicationNotesResult.class)
-            .join()
+        Optional.ofNullable(
+                queryGateway
+                    .query(new FindNotesForApplicationQuery(id), ApplicationNotesResult.class)
+                    .join())
             .map(result -> notesResponseMapper.toResponse(result.notes()))
             .orElseThrow(
                 () -> new ResourceNotFoundException("No application found with ID: " + id));
@@ -171,8 +172,9 @@ public class ApplicationQueryController {
   }
 
   private Optional<ApplicationReadModel> findApplication(UUID applicationId) {
-    return queryGateway
-        .query(new FindApplicationByIdQuery(applicationId), ApplicationReadModel.class)
-        .join();
+    return Optional.ofNullable(
+        queryGateway
+            .query(new FindApplicationByIdQuery(applicationId), ApplicationReadModel.class)
+            .join());
   }
 }

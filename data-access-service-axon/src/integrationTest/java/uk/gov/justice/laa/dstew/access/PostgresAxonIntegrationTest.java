@@ -19,7 +19,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.axonframework.eventsourcing.eventstore.EventStorageEngine;
-import org.axonframework.eventsourcing.eventstore.jpa.JpaEventStorageEngine;
+import org.axonframework.eventsourcing.eventstore.jpa.AggregateBasedJpaEventStorageEngine;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +29,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -96,6 +97,8 @@ class PostgresAxonIntegrationTest {
 
   @Autowired private QueryGateway queryGateway;
 
+  @Autowired private Environment environment;
+
   @Test
   void givenPostgresAxonStore_whenHealthRequested_thenReportsUp() {
     ResponseEntity<String> response =
@@ -109,7 +112,6 @@ class PostgresAxonIntegrationTest {
             WHERE table_schema = 'axon'
               AND table_name IN (
                 'domain_event_entry',
-                'snapshot_event_entry',
                 'token_entry'
               )
             ORDER BY table_name
@@ -118,9 +120,67 @@ class PostgresAxonIntegrationTest {
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(response.getBody()).contains("\"status\":\"UP\"");
-    assertThat(eventStorageEngine).isInstanceOf(JpaEventStorageEngine.class);
-    assertThat(axonTables)
-        .containsExactly("domain_event_entry", "snapshot_event_entry", "token_entry");
+    assertThat(
+            environment.getProperty("spring.main.allow-circular-references", Boolean.class, false))
+        .isFalse();
+    assertThat(eventStorageEngine).isInstanceOf(AggregateBasedJpaEventStorageEngine.class);
+    assertThat(axonTables).containsExactly("domain_event_entry", "token_entry");
+  }
+
+  @Test
+  void givenFreshDatabase_whenFlywayRuns_thenCreatesOnlyTheCurrentSchema() {
+    List<String> appliedVersions =
+        jdbcTemplate.queryForList(
+            """
+            SELECT version
+            FROM axon.flyway_schema_history
+            WHERE success
+              AND version IS NOT NULL
+            ORDER BY installed_rank
+            """,
+            String.class);
+    List<String> tables =
+        jdbcTemplate.queryForList(
+            """
+            SELECT table_name
+            FROM information_schema.tables
+            WHERE table_schema = 'axon'
+            ORDER BY table_name
+            """,
+            String.class);
+    List<String> sequences =
+        jdbcTemplate.queryForList(
+            """
+            SELECT sequence_name
+            FROM information_schema.sequences
+            WHERE sequence_schema = 'axon'
+            ORDER BY sequence_name
+            """,
+            String.class);
+
+    assertThat(appliedVersions).containsExactly("1", "2");
+    assertThat(tables)
+        .containsExactly(
+            "application_current_state",
+            "application_data",
+            "application_history",
+            "caseworkers",
+            "domain_event_entry",
+            "flyway_schema_history",
+            "linked_application_group_current_state",
+            "token_entry");
+    assertThat(sequences).containsExactly("aggregate-event-global-index-sequence");
+    assertThat(
+            jdbcTemplate.queryForObject(
+                """
+                SELECT is_nullable
+                FROM information_schema.columns
+                WHERE table_schema = 'axon'
+                  AND table_name = 'token_entry'
+                  AND column_name = 'mask'
+                """,
+                String.class))
+        .isEqualTo("NO");
   }
 
   @Test
@@ -1233,8 +1293,7 @@ class PostgresAxonIntegrationTest {
                 queryGateway
                     .query(new FindApplicationByIdQuery(applicationId), ApplicationReadModel.class)
                     .join(),
-            java.util.Optional::isPresent)
-        .orElseThrow();
+            java.util.Objects::nonNull);
   }
 
   private ApplicationReadModel awaitProjectionVersion(UUID applicationId, long version) {
@@ -1247,9 +1306,7 @@ class PostgresAxonIntegrationTest {
                 queryGateway
                     .query(new FindApplicationByIdQuery(applicationId), ApplicationReadModel.class)
                     .join(),
-            projected ->
-                projected.isPresent() && projected.get().getApplicationDataVersion() == version)
-        .orElseThrow();
+            projected -> projected != null && projected.getApplicationDataVersion() == version);
   }
 
   private java.util.List<

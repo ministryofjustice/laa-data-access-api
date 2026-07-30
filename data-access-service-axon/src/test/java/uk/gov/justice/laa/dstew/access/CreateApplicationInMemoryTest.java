@@ -6,24 +6,24 @@ import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequest
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validLinkedCreateApplicationRequest;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-import org.axonframework.common.configuration.EventProcessingConfiguration;
-import org.axonframework.eventsourcing.eventstore.EventStore;
-import org.axonframework.messaging.eventhandling.TrackingEventProcessor;
+import org.axonframework.common.configuration.AxonConfiguration;
+import org.axonframework.messaging.eventhandling.processing.streaming.StreamingEventProcessor;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.annotation.DirtiesContext;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataRepository;
@@ -45,7 +45,6 @@ import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedAppli
     classes = DataAccessServiceAxonApplication.class,
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
     properties = {
-      "axon.eventstore.jpa.enabled=false",
       "spring.flyway.enabled=false",
       "spring.jpa.hibernate.ddl-auto=create-drop",
       "spring.jpa.properties.hibernate.default_schema=PUBLIC",
@@ -53,7 +52,6 @@ import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedAppli
       "spring.datasource.url=jdbc:h2:mem:axon-create;DB_CLOSE_DELAY=-1"
     })
 @AutoConfigureTestRestTemplate
-@Import(AxonInMemoryConfig.class)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class CreateApplicationInMemoryTest {
 
@@ -62,8 +60,8 @@ class CreateApplicationInMemoryTest {
   @Autowired private ApplicationReadRepository applicationReadRepository;
   @Autowired private ApplicationHistoryReadRepository applicationHistoryReadRepository;
   @Autowired private LinkedApplicationGroupReadRepository groupReadRepository;
-  @Autowired private EventProcessingConfiguration eventProcessingConfiguration;
-  @Autowired private EventStore eventStore;
+  @Autowired private AxonConfiguration axonConfiguration;
+  @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private QueryGateway queryGateway;
   @Autowired private ApplicationDataRepository applicationDataRepository;
 
@@ -270,11 +268,9 @@ class CreateApplicationInMemoryTest {
               assertThat(data.getPayloadHash()).hasSize(64);
             });
 
-    var processor = eventProcessingConfiguration.eventProcessor("application-projection");
-    assertThat(processor).isPresent();
-    assertThat(processor.get()).isInstanceOf(TrackingEventProcessor.class);
-    assertThat(eventProcessingConfiguration.eventProcessor("application-history-projection"))
-        .containsInstanceOf(TrackingEventProcessor.class);
+    var processors = axonConfiguration.getComponents(StreamingEventProcessor.class);
+    assertThat(processors.get("application-projection")).isNotNull();
+    assertThat(processors.get("application-history-projection")).isNotNull();
   }
 
   @Test
@@ -658,8 +654,7 @@ class CreateApplicationInMemoryTest {
                 queryGateway
                     .query(new FindApplicationByIdQuery(applicationId), ApplicationReadModel.class)
                     .join(),
-            Optional::isPresent)
-        .get();
+            Objects::nonNull);
   }
 
   private List<ApplicationHistoryReadModel> awaitHistory(UUID applicationId, int expectedCount) {
@@ -693,7 +688,12 @@ class CreateApplicationInMemoryTest {
   }
 
   private void assertRejectedApplicationWasRolledBack(UUID applicationId) {
-    assertThat(eventStore.readEvents(applicationId.toString()).hasNext()).isFalse();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM domain_event_entry WHERE aggregate_identifier = ?",
+                Integer.class,
+                applicationId.toString()))
+        .isZero();
     assertThat(applicationDataRepository.countByIdApplicationId(applicationId)).isZero();
     assertThat(applicationReadRepository.findById(applicationId)).isEmpty();
     assertThat(applicationHistoryReadRepository.countByApplicationId(applicationId)).isZero();

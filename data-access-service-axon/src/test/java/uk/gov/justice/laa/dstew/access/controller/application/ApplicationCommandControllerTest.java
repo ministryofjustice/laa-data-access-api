@@ -7,17 +7,19 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.axonframework.messaging.commandhandling.gateway.CommandGateway;
-import org.axonframework.modelling.entity.AggregateStreamCreationException;
-import org.axonframework.modelling.entity.ConcurrencyException;
+import org.axonframework.modelling.ConcurrencyException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.AssignCaseworkerService;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
 
 /**
  * Focused unit coverage for {@link ApplicationCommandController#dispatchWithRetry}.
@@ -66,15 +68,29 @@ class ApplicationCommandControllerTest {
   }
 
   @Test
-  void givenAggregateStreamCreationException_whenDispatchWithRetry_thenRetriesOnce() {
+  void givenUniqueConstraintViolation_whenDispatchWithRetry_thenRetriesOnce() {
     CreateApplicationCommand command = stubCommand();
     when(commandGateway.sendAndWait(command))
-        .thenThrow(new AggregateStreamCreationException("stream already exists"))
+        .thenThrow(
+            new DataIntegrityViolationException(
+                "concurrent data version", new SQLException("duplicate key", "23505")))
         .thenReturn(null);
 
     controller.dispatchWithRetry(command);
 
     verify(commandGateway, times(2)).sendAndWait(command);
+  }
+
+  @Test
+  void givenOtherDataIntegrityViolation_whenDispatchWithRetry_thenPropagatesWithoutRetry() {
+    CreateApplicationCommand command = stubCommand();
+    DataIntegrityViolationException failure =
+        new DataIntegrityViolationException(
+            "foreign key violation", new SQLException("missing reference", "23503"));
+    when(commandGateway.sendAndWait(command)).thenThrow(failure);
+
+    assertThatThrownBy(() -> controller.dispatchWithRetry(command)).isSameAs(failure);
+    verify(commandGateway).sendAndWait(command);
   }
 
   @Test

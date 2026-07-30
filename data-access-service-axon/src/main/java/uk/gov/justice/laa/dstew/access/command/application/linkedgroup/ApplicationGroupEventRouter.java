@@ -14,9 +14,9 @@ import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEve
  * saga.
  *
  * <p>This component uses the {@code linked-application-group-router} processing group, which is
- * configured as a <em>subscribing</em> processor in {@code application.yml}. Subscribing processors
- * run synchronously in the same thread and Axon unit-of-work as the originating command. This
- * means:
+ * configured as a <em>subscribing</em> processor by {@code AxonEventProcessingConfig}. Subscribing
+ * processors run synchronously in the same thread and Axon unit-of-work as the originating command.
+ * This means:
  *
  * <ul>
  *   <li>If the lead application does not exist, {@link CreateLinkedApplicationGroupCommand} throws
@@ -24,7 +24,8 @@ import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEve
  *       work rolls back, and the caller receives a 404 — preserving the current synchronous
  *       validation contract.
  *   <li>If the lead exists, {@link LinkedApplicationGroupRequested} is emitted on the lead's event
- *       stream and the group is initialised in the same transaction.
+ *       stream. {@link LinkedApplicationGroupInitializer} initializes the group after that
+ *       transaction commits, avoiding nested event-store appends.
  * </ul>
  *
  * <p>This component is not a saga: it holds no persistent state and dispatches commands directly.
@@ -69,22 +70,6 @@ public class ApplicationGroupEventRouter {
         .sendAndWait(
             new CreateLinkedApplicationGroupCommand(
                 event.leadApplicationId(), event.applicationId(), members, event.occurredAt()));
-  }
-
-  /**
-   * When the lead aggregate acknowledges a group-formation request, dispatches the initialisation
-   * command to the {@link LinkedApplicationGroupAggregate}.
-   */
-  @EventHandler
-  public void on(LinkedApplicationGroupRequested event) {
-    commandGatewayProvider
-        .getObject()
-        .sendAndWait(
-            new InitialiseLinkedApplicationGroupCommand(
-                event.groupId(),
-                event.leadApplicationId(),
-                event.memberApplicationIds(),
-                event.occurredAt()));
   }
 
   /**

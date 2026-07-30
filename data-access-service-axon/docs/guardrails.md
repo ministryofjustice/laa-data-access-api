@@ -74,10 +74,13 @@ It waits for command completion. Tracking processors can still lag. Use subscrip
 the API explicitly needs read-your-write behaviour, or return an asynchronous result such as the
 creation endpoint's `202 Accepted`.
 
-### Understand subscribing failure semantics
+### Understand the split linking failure semantics
 
-The linking router is in the command unit of work. A slow handler slows the request, and a propagated
-failure rolls it back. Do not add external or unreliable calls to that router.
+The subscribing linking router validates referenced applications in the originating command unit
+of work. A slow handler slows the request, and a propagated validation failure rolls it back. Group
+initialisation runs later on a pooled streaming processor because Axon 5 rejects re-entrant event
+store writes. Keep the asynchronous initializer idempotent and replayable, and do not add external
+or unreliable calls to either handler.
 
 ### Make tracking handlers replayable
 

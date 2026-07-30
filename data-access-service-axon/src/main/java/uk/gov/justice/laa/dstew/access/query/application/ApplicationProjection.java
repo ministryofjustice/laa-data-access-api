@@ -12,6 +12,7 @@ import org.axonframework.messaging.eventhandling.annotation.EventHandler;
 import org.axonframework.messaging.eventhandling.replay.annotation.ResetHandler;
 import org.axonframework.messaging.queryhandling.QueryUpdateEmitter;
 import org.axonframework.messaging.queryhandling.annotation.QueryHandler;
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
@@ -33,42 +34,40 @@ public class ApplicationProjection {
 
   private final ApplicationReadRepository applicationReadRepository;
   private final LinkedApplicationGroupReadRepository groupReadRepository;
-  private final QueryUpdateEmitter queryUpdateEmitter;
   private final ApplicationDataStore applicationDataStore;
 
   /**
-   * Constructs the projection with its read repositories and query update emitter.
+   * Constructs the projection with its read repositories and application data store.
    *
    * @param applicationReadRepository persistence interface for {@code application_current_state}
    * @param groupReadRepository persistence interface for {@code
    *     linked_application_group_current_state}; used by {@link FindAllApplicationsQuery} to
    *     batch-fetch group membership for the result page
-   * @param queryUpdateEmitter used to push {@link ApplicationReadModel} updates to open
-   *     subscription queries after {@code ApplicationCreatedEvent} is handled
    */
   public ApplicationProjection(
       ApplicationReadRepository applicationReadRepository,
       LinkedApplicationGroupReadRepository groupReadRepository,
-      QueryUpdateEmitter queryUpdateEmitter,
       ApplicationDataStore applicationDataStore) {
     this.applicationReadRepository = applicationReadRepository;
     this.groupReadRepository = groupReadRepository;
-    this.queryUpdateEmitter = queryUpdateEmitter;
     this.applicationDataStore = applicationDataStore;
   }
 
   /** Returns the current-state projection for the requested Application. */
   @QueryHandler
-  public java.util.Optional<ApplicationReadModel> handle(FindApplicationByIdQuery query) {
-    return applicationReadRepository.findById(query.applicationId()).flatMap(this::hydrate);
+  public @Nullable ApplicationReadModel handle(FindApplicationByIdQuery query) {
+    return applicationReadRepository
+        .findById(query.applicationId())
+        .flatMap(this::hydrate)
+        .orElse(null);
   }
 
   /**
-   * Returns all notes for the requested Application, ordered by creation time ascending, or {@link
-   * Optional#empty()} if no application with the given ID exists.
+   * Returns all notes for the requested Application, ordered by creation time ascending, or {@code
+   * null} if no application with the given ID exists.
    */
   @QueryHandler
-  public Optional<ApplicationNotesResult> handle(FindNotesForApplicationQuery query) {
+  public @Nullable ApplicationNotesResult handle(FindNotesForApplicationQuery query) {
     return applicationReadRepository
         .findById(query.applicationId())
         .map(
@@ -78,7 +77,8 @@ public class ApplicationProjection {
                       application.getApplicationId(), application.getApplicationDataVersion());
               return new ApplicationNotesResult(
                   data == null ? List.<ApplicationNote>of() : data.notes());
-            });
+            })
+        .orElse(null);
   }
 
   /**
@@ -111,7 +111,7 @@ public class ApplicationProjection {
 
   /** Creates the current-state row from an Application's creation event. */
   @EventHandler
-  public void on(ApplicationCreatedEvent event) {
+  public void on(ApplicationCreatedEvent event, QueryUpdateEmitter queryUpdateEmitter) {
     ApplicationReadModel saved =
         applicationReadRepository.save(
             ApplicationReadModel.builder()
@@ -147,7 +147,7 @@ public class ApplicationProjection {
 
   /** Advances the current-state row to the immutable data version containing the decision. */
   @EventHandler
-  public void on(ApplicationDecisionMadeEvent event) {
+  public void on(ApplicationDecisionMadeEvent event, QueryUpdateEmitter queryUpdateEmitter) {
     applicationReadRepository
         .findById(event.applicationId())
         .ifPresent(

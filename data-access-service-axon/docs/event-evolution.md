@@ -1,7 +1,7 @@
 # Event Evolution and Compatibility
 
 Events in Axon's store are long-lived serialized contracts. The module currently uses Axon
-Framework 4.11.2 with Jackson serialization. PostgreSQL stores the payload type, optional revision,
+Framework 5.2.0 with Jackson serialization. PostgreSQL stores the payload type, optional revision,
 and serialized bytes in `domain_event_entry`.
 
 Changing a Java event record does not change events already stored in the database.

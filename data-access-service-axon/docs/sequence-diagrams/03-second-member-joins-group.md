@@ -15,6 +15,7 @@ sequenceDiagram
     participant AssocAggregate as ApplicationAggregate<br/>(second associated app)
     participant Factory as ApplicationCreationDetailsFactory
     participant Router as ApplicationGroupEventRouter<br/>(subscribing)
+    participant Initializer as LinkedApplicationGroupInitializer<br/>(pooled streaming)
     participant LeadAggregate as ApplicationAggregate<br/>(lead app)
     participant GroupAggregate as LinkedApplicationGroupAggregate<br/>(already exists)
     participant AppProjection as ApplicationProjection<br/>(tracking)
@@ -41,8 +42,9 @@ sequenceDiagram
     Note over LeadAggregate: groupId = nameUUIDFromBytes("linked-group:" + leadId)<br/>← same groupId as before
     LeadAggregate->>LeadAggregate: apply(LinkedApplicationGroupRequested)
 
-    LeadAggregate->>Router: on(LinkedApplicationGroupRequested) [same thread/UoW]
-    Router->>CmdGateway: sendAndWait(InitialiseLinkedApplicationGroupCommand → groupId)
+    LeadAggregate-->>CmdGateway: (void; request event commits)
+    Initializer->>Initializer: on(LinkedApplicationGroupRequested) [async]
+    Initializer->>CmdGateway: sendAndWait(InitialiseLinkedApplicationGroupCommand → groupId)
     CmdGateway->>GroupAggregate: handle(InitialiseLinkedApplicationGroupCommand) [CREATE_IF_MISSING]
     Note over GroupAggregate: groupId != null → group already exists
     Note over GroupAggregate: Diffs incoming members against current list:<br/>secondMemberId not present → emit MemberAddedToGroupEvent
@@ -50,8 +52,7 @@ sequenceDiagram
     GroupAggregate->>GroupAggregate: apply(MemberAddedToGroupEvent { memberId: secondMemberId })
 
     GroupAggregate-->>CmdGateway: (void)
-    CmdGateway-->>Router: (void)
-    Router-->>LeadAggregate: (void)
+    CmdGateway-->>Initializer: (void)
     LeadAggregate-->>CmdGateway: (void)
     CmdGateway-->>Router: (void)
     Router-->>AssocAggregate: (void)

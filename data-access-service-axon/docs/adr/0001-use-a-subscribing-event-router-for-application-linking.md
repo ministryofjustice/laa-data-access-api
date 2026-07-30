@@ -1,6 +1,6 @@
 # ADR 0001: Use a Subscribing Event Router for Application Linking
 
-- Status: Accepted
+- Status: Superseded by [ADR 0004](0004-split-linked-group-initialisation-after-commit.md)
 - Date: 2026-07-20
 - Scope: `data-access-service-axon`
 

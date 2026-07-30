@@ -68,23 +68,6 @@ class ApplicationGroupEventRouterTest {
   }
 
   @Test
-  void givenLinkedApplicationGroupRequested_whenHandled_thenDispatchesInitialiseCommand() {
-    UUID groupId = UUID.randomUUID();
-    UUID leadApplicationId = UUID.randomUUID();
-    List<UUID> members = List.of(leadApplicationId, UUID.randomUUID());
-    LinkedApplicationGroupRequested event =
-        new LinkedApplicationGroupRequested(
-            groupId, leadApplicationId, members, Instant.parse("2026-07-15T08:00:00Z"));
-
-    router.on(event);
-
-    verify(commandGateway)
-        .sendAndWait(
-            new InitialiseLinkedApplicationGroupCommand(
-                groupId, leadApplicationId, members, event.occurredAt()));
-  }
-
-  @Test
   void givenOtherAssociatedApplications_whenHandled_thenValidatesDistinctIdsBeforeCreatingGroup() {
     UUID applicationId = UUID.randomUUID();
     UUID leadApplicationId = UUID.randomUUID();

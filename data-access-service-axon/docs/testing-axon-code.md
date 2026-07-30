@@ -77,17 +77,15 @@ updates, and hydration fallbacks where relevant.
 
 ## In-memory Spring tests
 
-`AxonInMemoryConfig` replaces the JPA event and token stores with in-memory implementations while
-retaining Spring/Axon wiring. Use these tests for behaviour that a fixture cannot demonstrate:
+The Spring tests use Axon 5's JPA event and token stores with an in-memory H2 database, retaining
+the production Spring/Axon wiring while keeping the tests local. Use these tests for behaviour that
+a fixture cannot demonstrate:
 
 - the complete HTTP command and query flow;
 - subscription query timing;
 - tracking processor token progress;
 - transient and permanent handler failures;
 - projection reset and replay.
-
-The custom in-memory storage engine enforces aggregate sequence uniqueness so concurrency behaviour
-is closer to the PostgreSQL event store.
 
 These tests are fast but cannot prove PostgreSQL JSON/`bytea` serialization, Flyway triggers, or
 transaction rollback across JPA repositories.

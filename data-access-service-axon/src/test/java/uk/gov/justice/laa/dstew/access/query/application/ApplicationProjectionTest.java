@@ -48,10 +48,7 @@ class ApplicationProjectionTest {
                 ApplicationDataPayload.from(applicationCreationDetails(invocation.getArgument(0))));
     projection =
         new ApplicationProjection(
-            applicationReadRepository,
-            groupReadRepository,
-            queryUpdateEmitter,
-            applicationDataStore);
+            applicationReadRepository, groupReadRepository, applicationDataStore);
   }
 
   @Test
@@ -62,7 +59,7 @@ class ApplicationProjectionTest {
         ApplicationReadModel.builder().applicationId(applicationId).build();
     when(applicationReadRepository.save(any())).thenReturn(saved);
 
-    projection.on(event);
+    projection.on(event, queryUpdateEmitter);
 
     InOrder order = inOrder(applicationReadRepository, queryUpdateEmitter);
     order.verify(applicationReadRepository).save(any());
@@ -86,14 +83,13 @@ class ApplicationProjectionTest {
               capturedPredicate[0] = (Predicate<?>) inv.getArgument(1);
               return null;
             })
-        .when()
-        .command(queryUpdateEmitter)
+        .when(queryUpdateEmitter)
         .emit(any(Class.class), any(Predicate.class), any(ApplicationReadModel.class));
 
     when(applicationReadRepository.save(any()))
         .thenReturn(ApplicationReadModel.builder().applicationId(applicationId).build());
 
-    projection.on(event);
+    projection.on(event, queryUpdateEmitter);
 
     assertThat(capturedPredicate[0]).isNotNull();
     Predicate<FindApplicationByIdQuery> predicate =
@@ -135,7 +131,8 @@ class ApplicationProjectionTest {
     when(applicationReadRepository.save(existing)).thenReturn(existing);
 
     projection.on(
-        new ApplicationDecisionMadeEvent(applicationId, 3L, 4L, "GRANTED", false, occurredAt));
+        new ApplicationDecisionMadeEvent(applicationId, 3L, 4L, "GRANTED", false, occurredAt),
+        queryUpdateEmitter);
 
     assertThat(existing.getApplicationVersion()).isEqualTo(3L);
     assertThat(existing.getApplicationDataVersion()).isEqualTo(4L);
@@ -222,11 +219,11 @@ class ApplicationProjectionTest {
             .withNote("Test note", createdAt);
     when(applicationDataStore.get(applicationId, 1L)).thenReturn(payload);
 
-    Optional<ApplicationNotesResult> result =
+    ApplicationNotesResult result =
         projection.handle(new FindNotesForApplicationQuery(applicationId));
 
-    assertThat(result).isPresent();
-    assertThat(result.get().notes()).containsExactly(note);
+    assertThat(result).isNotNull();
+    assertThat(result.notes()).containsExactly(note);
   }
 
   @Test
@@ -234,10 +231,10 @@ class ApplicationProjectionTest {
     UUID applicationId = UUID.randomUUID();
     when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.empty());
 
-    Optional<ApplicationNotesResult> result =
+    ApplicationNotesResult result =
         projection.handle(new FindNotesForApplicationQuery(applicationId));
 
-    assertThat(result).isEmpty();
+    assertThat(result).isNull();
   }
 
   @Test
@@ -253,10 +250,10 @@ class ApplicationProjectionTest {
         ApplicationDataPayload.from(applicationCreationDetails(applicationId));
     when(applicationDataStore.get(applicationId, 0L)).thenReturn(payload);
 
-    Optional<ApplicationNotesResult> result =
+    ApplicationNotesResult result =
         projection.handle(new FindNotesForApplicationQuery(applicationId));
 
-    assertThat(result).isPresent();
-    assertThat(result.get().notes()).isEmpty();
+    assertThat(result).isNotNull();
+    assertThat(result.notes()).isEmpty();
   }
 }

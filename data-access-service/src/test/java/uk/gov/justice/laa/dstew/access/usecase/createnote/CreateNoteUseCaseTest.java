@@ -48,8 +48,7 @@ class CreateNoteUseCaseTest {
         new SaveDomainEventService(domainEventRepository, new ObjectMapper(), serviceNameContext);
     useCase = new CreateNoteUseCase(applicationGateway, noteGateway, saveDomainEventService);
     Mockito.lenient()
-        .when()
-        .command(serviceNameContext.getServiceName())
+        .when(serviceNameContext.getServiceName())
         .thenReturn(ServiceName.CIVIL_APPLY);
   }
 

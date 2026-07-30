@@ -33,8 +33,6 @@ dependencies {
 
     implementation 'io.projectreactor:reactor-core'
     implementation 'org.axonframework.extensions.spring:axon-spring-boot-starter:5.2.0'
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.21.5'
-    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.21.5'
     implementation 'com.networknt:json-schema-validator:3.0.0'
     implementation 'io.swagger.core.v3:swagger-annotations-jakarta:2.2.43'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'

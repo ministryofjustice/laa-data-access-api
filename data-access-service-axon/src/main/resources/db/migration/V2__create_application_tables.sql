@@ -1,3 +1,9 @@
+CREATE TABLE caseworkers (
+    id UUID PRIMARY KEY,
+    username VARCHAR(255) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE application_data (
     application_id UUID NOT NULL,
     version BIGINT NOT NULL,
@@ -6,6 +12,42 @@ CREATE TABLE application_data (
     created_at TIMESTAMPTZ NOT NULL,
     PRIMARY KEY (application_id, version)
 );
+
+CREATE TABLE application_current_state (
+    application_id UUID PRIMARY KEY,
+    status VARCHAR(255) NOT NULL,
+    application_data_version BIGINT NOT NULL,
+    application_version BIGINT NOT NULL,
+    schema_version INTEGER NOT NULL,
+    application_type VARCHAR(255) NOT NULL,
+    apply_application_id UUID NOT NULL,
+    lead_application_id UUID,
+    caseworker_id UUID,
+    created_at TIMESTAMPTZ NOT NULL,
+    modified_at TIMESTAMPTZ NOT NULL,
+    CONSTRAINT fk_application_current_state_caseworker
+        FOREIGN KEY (caseworker_id) REFERENCES caseworkers(id)
+);
+
+CREATE TABLE linked_application_group_current_state (
+    group_id UUID PRIMARY KEY,
+    lead_application_id UUID NOT NULL,
+    member_ids JSONB NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL,
+    modified_at TIMESTAMPTZ NOT NULL
+);
+
+CREATE TABLE application_history (
+    event_id VARCHAR(255) PRIMARY KEY,
+    application_id UUID NOT NULL,
+    event_type VARCHAR(255) NOT NULL,
+    request_payload JSONB NOT NULL,
+    service_name VARCHAR(255),
+    occurred_at TIMESTAMPTZ NOT NULL
+);
+
+CREATE INDEX application_history_application_id_idx
+    ON application_history (application_id);
 
 CREATE FUNCTION reject_application_data_mutation()
 RETURNS trigger
