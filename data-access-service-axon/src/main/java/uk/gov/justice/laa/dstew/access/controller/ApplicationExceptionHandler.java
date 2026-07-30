@@ -44,14 +44,14 @@ public class ApplicationExceptionHandler {
         .body(ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, exception.getMessage()));
   }
 
-//  /** Returns Axon's missing aggregate failure as a stable Application not-found response. */
-//  @ExceptionHandler(AggregateNotFoundException.class)
-//  ResponseEntity<ProblemDetail> handleAggregateNotFoundException() {
-//    return ResponseEntity.status(HttpStatus.NOT_FOUND)
-//        .body(
-//            ProblemDetail.forStatusAndDetail(
-//                HttpStatus.NOT_FOUND, "The requested application was not found"));
-//  }
+  //  /** Returns Axon's missing aggregate failure as a stable Application not-found response. */
+  //  @ExceptionHandler(AggregateNotFoundException.class)
+  //  ResponseEntity<ProblemDetail> handleAggregateNotFoundException() {
+  //    return ResponseEntity.status(HttpStatus.NOT_FOUND)
+  //        .body(
+  //            ProblemDetail.forStatusAndDetail(
+  //                HttpStatus.NOT_FOUND, "The requested application was not found"));
+  //  }
 
   /** Returns a conflict when an application ID is reused with different creation data. */
   @ExceptionHandler(ApplicationCreationConflictException.class)

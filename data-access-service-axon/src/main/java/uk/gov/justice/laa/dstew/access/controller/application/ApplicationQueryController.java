@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import org.axonframework.common.configuration.AxonConfiguration;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -49,8 +50,6 @@ public class ApplicationQueryController {
   /**
    * Constructs the controller with its query gateway and response mappers.
    *
-   * @param queryGateway Axon query gateway used to dispatch {@link FindApplicationByIdQuery} and
-   *     {@link FindAllApplicationsQuery}
    * @param responseMapper maps a single {@link ApplicationReadModel} to {@link
    *     uk.gov.justice.laa.dstew.access.model.ApplicationResponse}
    * @param getAllResponseMapper maps a {@link
@@ -72,6 +71,7 @@ public class ApplicationQueryController {
     this.getAllResponseMapper = getAllResponseMapper;
     this.historyResponseMapper = historyResponseMapper;
     this.notesResponseMapper = notesResponseMapper;
+
   }
 
   /**
@@ -161,18 +161,18 @@ public class ApplicationQueryController {
   @GetMapping("/{id}/notes")
   public ResponseEntity<ApplicationNotesResponse> getNotesForApplication(@PathVariable UUID id) {
     ApplicationNotesResponse response =
-        queryGateway
-            .query(new FindNotesForApplicationQuery(id), ApplicationNotesResult.class)
-            .join()
-            .map(result -> notesResponseMapper.toResponse(result.notes()))
-            .orElseThrow(
-                () -> new ResourceNotFoundException("No application found with ID: " + id));
+        notesResponseMapper.toResponse(
+            queryGateway
+                .query(new FindNotesForApplicationQuery(id), ApplicationNotesResult.class)
+                .join()
+                .notes());
     return ResponseEntity.ok(response);
   }
 
   private Optional<ApplicationReadModel> findApplication(UUID applicationId) {
-    return queryGateway
-        .query(new FindApplicationByIdQuery(applicationId), ApplicationReadModel.class)
-        .join();
+    return Optional.ofNullable(
+        queryGateway
+            .query(new FindApplicationByIdQuery(applicationId), ApplicationReadModel.class)
+            .join());
   }
 }

@@ -1,6 +1,5 @@
 package uk.gov.justice.laa.dstew.access.config.interceptor;
 
-import java.util.Map;
 import org.axonframework.messaging.commandhandling.CommandMessage;
 import org.axonframework.messaging.core.MessageDispatchInterceptor;
 import org.axonframework.messaging.core.MessageDispatchInterceptorChain;
@@ -40,6 +39,5 @@ public class CreateApplicationSchemaValidationDispatchInterceptor
 
     // Continue chain with modified message
     return chain.proceed(message, context);
-
   }
 }

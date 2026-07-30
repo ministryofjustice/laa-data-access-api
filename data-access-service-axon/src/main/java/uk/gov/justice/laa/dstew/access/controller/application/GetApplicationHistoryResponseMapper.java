@@ -1,10 +1,10 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.ZoneOffset;
 import java.util.List;
 import org.springframework.stereotype.Component;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEventResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
@@ -42,7 +42,7 @@ public class GetApplicationHistoryResponseMapper {
       return null;
     }
     try {
-      JsonNode description = objectMapper.readTree(requestPayload).get("eventDescription");
+      tools.jackson.databind.JsonNode description = objectMapper.readTree(requestPayload).get("eventDescription");
       return description == null || description.isNull() ? null : description.asText();
     } catch (Exception exception) {
       return null;

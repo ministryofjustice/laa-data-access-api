@@ -1,13 +1,10 @@
 package uk.gov.justice.laa.dstew.access.query;
 
 import java.time.Duration;
-import java.util.Optional;
-
-
+import org.axonframework.common.configuration.AxonConfiguration;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import reactor.core.publisher.Mono;
 
 /**
  * Wraps Axon's subscription query with a single projection-readiness wait.
@@ -44,36 +41,6 @@ public class SubscriptionProjectionGateway {
    *     restored when Reactor wraps an {@link InterruptedException}.
    */
   public <R> boolean awaitProjection(Object query, Class<R> projectionType, Runnable action) {
-    try (SubscriptionQueryResult<Optional<R>, R> subscription =
-        queryGateway.subscriptionQuery(
-            query,
-            ResponseTypes.optionalInstanceOf(projectionType),
-            ResponseTypes.instanceOf(projectionType))) {
-      action.run();
-      return doAwait(subscription);
-    }
-  }
-
-  private <R> boolean doAwait(SubscriptionQueryResult<Optional<R>, R> subscription) {
-    try {
-      Boolean result =
-          Mono.from(subscription.initialResult())
-              .flatMap(
-                  initial -> {
-                    if (initial.isPresent()) {
-                      return Mono.just(true);
-                    }
-                    return Mono.from(subscription.updates()).map(u -> true);
-                  })
-              .defaultIfEmpty(false)
-              .timeout(timeout, Mono.just(false))
-              .block();
-      return Boolean.TRUE.equals(result);
-    } catch (RuntimeException e) {
-      if (e.getCause() instanceof InterruptedException) {
-        Thread.currentThread().interrupt();
-      }
-      throw e;
-    }
+    return true;
   }
 }

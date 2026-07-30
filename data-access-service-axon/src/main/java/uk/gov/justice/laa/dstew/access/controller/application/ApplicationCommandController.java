@@ -23,6 +23,7 @@ import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
 import uk.gov.justice.laa.dstew.access.model.CreateNoteRequest;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
+import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
 
@@ -133,7 +134,7 @@ public class ApplicationCommandController {
   void dispatchWithRetry(CreateApplicationCommand command) {
     try {
       commandGateway.sendAndWait(command);
-    } catch (ConcurrencyException  first) {
+    } catch (ConcurrencyException first) {
       try {
         commandGateway.sendAndWait(command);
       } catch (RuntimeException retry) {

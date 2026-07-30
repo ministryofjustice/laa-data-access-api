@@ -1,7 +1,5 @@
 package uk.gov.justice.laa.dstew.access.config.interceptor;
 
-import java.time.Instant;
-import java.util.Collections;
 import java.util.Map;
 import org.axonframework.messaging.commandhandling.CommandMessage;
 import org.axonframework.messaging.core.MessageDispatchInterceptor;
@@ -31,27 +29,24 @@ public class ServiceNameMetadataDispatchInterceptor
     this.serviceNameContext = serviceNameContext;
   }
 
+  @Override
+  public MessageStream<?> interceptOnDispatch(
+      CommandMessage message,
+      @Nullable ProcessingContext context,
+      MessageDispatchInterceptorChain<CommandMessage> chain) {
+    @Nullable String serviceName = String.valueOf(currentServiceName());
 
-
-    @Override
-    public MessageStream<?> interceptOnDispatch(CommandMessage message,
-                                                @Nullable ProcessingContext context,
-                                                MessageDispatchInterceptorChain<CommandMessage> chain) {
-      @Nullable String serviceName = String.valueOf(currentServiceName());
-
-      if (serviceName == null) {
-        return chain.proceed(message, context);
-      }
-
-      // Modify or enrich message
-      CommandMessage enrichedMessage = message.andMetadata(Map.of(SERVICE_NAME_METADATA_KEY, serviceName));
-
-
-      // Continue chain with modified message
-      return chain.proceed(enrichedMessage, context);
+    if (serviceName == null) {
+      return chain.proceed(message, context);
     }
 
+    // Modify or enrich message
+    CommandMessage enrichedMessage =
+        message.andMetadata(Map.of(SERVICE_NAME_METADATA_KEY, serviceName));
 
+    // Continue chain with modified message
+    return chain.proceed(enrichedMessage, context);
+  }
 
   private ServiceName currentServiceName() {
     try {
