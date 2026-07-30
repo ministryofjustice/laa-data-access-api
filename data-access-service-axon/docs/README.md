@@ -35,6 +35,7 @@ experience should follow the learning path below before using the documents as a
 | [Glossary](glossary.md) | Axon and module-specific terminology used throughout these guides |
 | [Sequence diagrams](sequence-diagrams/README.md) | Step-by-step application creation and linking flows |
 | [Architecture decisions](adr/README.md) | Why significant design choices were made and when they should be revisited |
+| [Example payloads](example-payloads.md) | Worked request/response examples for every endpoint |
 
 ## Useful code entry points
 
