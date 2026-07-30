@@ -63,9 +63,7 @@ public class BaseServiceTest {
 
   @BeforeEach
   void setUp() {
-    Mockito.lenient()
-        .when(serviceNameContext.getServiceName())
-        .thenReturn(ServiceName.CIVIL_APPLY);
+    Mockito.lenient().when(serviceNameContext.getServiceName()).thenReturn(ServiceName.CIVIL_APPLY);
   }
 
   @AfterEach

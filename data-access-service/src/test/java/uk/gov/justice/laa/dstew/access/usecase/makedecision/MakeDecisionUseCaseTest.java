@@ -67,9 +67,7 @@ class MakeDecisionUseCaseTest {
             certificateGateway,
             proceedingGateway,
             saveDomainEventService);
-    Mockito.lenient()
-        .when(serviceNameContext.getServiceName())
-        .thenReturn(ServiceName.CIVIL_APPLY);
+    Mockito.lenient().when(serviceNameContext.getServiceName()).thenReturn(ServiceName.CIVIL_APPLY);
   }
 
   // ── helper ───────────────────────────────────────────────────────────────
