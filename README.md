@@ -7,22 +7,6 @@ Source code for LAA Digital's Access Data Stewardship API, owned by the Access D
 This API will provide a trusted API source of truth for the Civil Applications and Civil Decide projects for data
 related to applications, proceedings, delegated functions, scope limitations, cost limitations and level of service.
 
-### Add GitHub Token
-Generate a Github PAT (Personal Access Token) to access the required plugin, via https://github.com/settings/tokens
-
-Specify the Note field, e.g. “Token to allow access to LAA Gradle plugin”.
-
-If you don't already have one, create a `gradle.properties` file in your home directory at `~/.gradle/gradle.properties`.
-
-Add the following properties to `~/.gradle/gradle.properties` and replace the placeholder values as follows:
-
-```
-project.ext.gitPackageUser = YOUR_GITHUB_USERNAME
-project.ext.gitPackageKey = PAT_CREATED_ABOVE
-```
-
-Go back to Github to authorize MOJ for SSO
-
 ### Monitoring (Prometheus & Grafana)
 
 See `docs/monitoring.md` for details on how application metrics are collected, scraped by Prometheus, and visualised in Grafana dashboards.
@@ -116,9 +100,6 @@ To update to Java 25:
 Execute
 
 `./gradlew clean build`
-
-Note that completing the build and unit tests currently requires:
-- GitHub token with `read:packages` access - used by [`laa-ccms-spring-boot-gradle-plugin`](#gradle-plugin-used)
 
 ### Run integration tests
 Execute

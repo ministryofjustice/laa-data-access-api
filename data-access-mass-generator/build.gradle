@@ -1,7 +1,7 @@
 plugins {
     id 'java'
     id 'io.freefair.lombok' version '9.4.0'
-    id 'uk.gov.laa.springboot.laa-spring-boot-gradle-plugin'
+    id 'uk.gov.justice.service.laa.laa-spring-boot-gradle-plugin'
 }
 
 repositories {
@@ -51,4 +51,3 @@ jar {
 // Mass-generator is a standalone utility with generated-style source that does not fit the
 // repository-wide Checkstyle rules, so exclude it from Checkstyle enforcement.
 checkstyleMain.exclude("*")
-
