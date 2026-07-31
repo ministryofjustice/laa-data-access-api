@@ -1,7 +1,7 @@
 plugins {
     id 'java'
     id 'checkstyle'
-    id 'uk.gov.laa.springboot.laa-spring-boot-gradle-plugin'
+    id 'uk.gov.justice.service.laa.laa-spring-boot-gradle-plugin'
 }
 
 sourceSets {
