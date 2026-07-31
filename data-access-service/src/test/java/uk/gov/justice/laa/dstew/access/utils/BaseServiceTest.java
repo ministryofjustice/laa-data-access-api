@@ -20,7 +20,14 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.config.ServiceNameContext;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
-import uk.gov.justice.laa.dstew.access.repository.*;
+import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
+import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
+import uk.gov.justice.laa.dstew.access.repository.CertificateRepository;
+import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
+import uk.gov.justice.laa.dstew.access.repository.IndividualRepository;
+import uk.gov.justice.laa.dstew.access.repository.LinkedApplicationRepository;
+import uk.gov.justice.laa.dstew.access.repository.NoteRepository;
+import uk.gov.justice.laa.dstew.access.repository.ProceedingRepository;
 
 @SpringBootTest(properties = {"feature.disable-jpa-auditing=true"})
 @ImportAutoConfiguration(

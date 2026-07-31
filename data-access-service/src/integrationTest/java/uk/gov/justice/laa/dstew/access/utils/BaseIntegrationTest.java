@@ -10,14 +10,12 @@ import jakarta.transaction.Transactional;
 import java.net.URI;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
-import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import tools.jackson.databind.ObjectMapper;
@@ -25,11 +23,11 @@ import uk.gov.justice.laa.dstew.access.AccessApp;
 import uk.gov.justice.laa.dstew.access.controller.application.sharedAsserts.ApplicationAsserts;
 import uk.gov.justice.laa.dstew.access.controller.application.sharedAsserts.DomainEventAsserts;
 import uk.gov.justice.laa.dstew.access.entity.CaseworkerEntity;
-import uk.gov.justice.laa.dstew.access.repository.*;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.repository.CertificateRepository;
 import uk.gov.justice.laa.dstew.access.repository.DomainEventRepository;
+import uk.gov.justice.laa.dstew.access.repository.NoteRepository;
 import uk.gov.justice.laa.dstew.access.utils.builders.HttpHeadersBuilder;
 import uk.gov.justice.laa.dstew.access.utils.generator.PersistedDataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerGenerator;
@@ -40,7 +38,6 @@ import uk.gov.justice.laa.dstew.access.utils.generator.caseworker.CaseworkerGene
     classes = AccessApp.class,
     properties = {"feature.disable-security=false"})
 @ContextConfiguration(initializers = PostgresContainerInitializer.class)
-@ExtendWith(SpringExtension.class)
 @Transactional
 public abstract class BaseIntegrationTest {
 
