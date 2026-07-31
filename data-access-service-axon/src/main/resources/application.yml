@@ -7,7 +7,7 @@ spring:
   autoconfigure:
     exclude: org.axonframework.springboot.autoconfig.XStreamAutoConfiguration
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/laa_data_access_api?currentSchema=axon}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/laa_data_access_api?currentSchema=${AXON_DB_SCHEMA:axon}}
     username: ${SPRING_DATASOURCE_USERNAME:laa_user}
     password: ${SPRING_DATASOURCE_PASSWORD:laa_password}
   jpa:
@@ -16,7 +16,7 @@ spring:
       ddl-auto: validate
     properties:
       hibernate:
-        default_schema: axon
+        default_schema: ${AXON_DB_SCHEMA:axon}
 
 axon:
   axonserver:
@@ -25,6 +25,11 @@ axon:
     general: jackson
     events: jackson
     messages: jackson
+  db:
+    # Schema and Flyway history table are env-overridable so Helm-injected values
+    # (e.g. data_access_axon / flyway_schema_history_axon) take effect at runtime.
+    schema: ${AXON_DB_SCHEMA:axon}
+    flyway-table: ${AXON_FLYWAY_TABLE:flyway_schema_history}
 
 application:
   projection:

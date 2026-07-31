@@ -1,0 +1,22 @@
+replicaCount: 1
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1G
+  requests:
+    cpu: 25m
+    memory: 1G
+
+autoscaling:
+  enabled: false
+
+sentry:
+  enabled: true
+  environment: uat
+  tracesSampleRate: 1
+
+axon:
+  schema: data_access_axon
+  flywayTable: flyway_schema_history_axon
+

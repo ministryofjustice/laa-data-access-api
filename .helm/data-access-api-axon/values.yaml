@@ -1,0 +1,54 @@
+# Default values for data-access-api-axon.
+
+replicaCount: 1
+
+image:
+  repository: null
+  tag: null
+
+service_account:
+  name: laa-data-access-uat-service-account
+
+service:
+  type: ClusterIP
+  port: 8082
+
+ingress:
+  enabled: true
+  className: modsec-non-prod
+  annotations:
+    external-dns.alpha.kubernetes.io/aws-weight: "100"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+  hosts: []
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1G
+  requests:
+    cpu: 25m
+    memory: 1G
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+spring:
+  profile: uat
+
+aws:
+  region: eu-west-2
+
+# Axon-specific schema/flyway isolation (shared DB instance, separate schema)
+axon:
+  schema: data_access_axon
+  flywayTable: flyway_schema_history_axon
+
+sentry:
+  enabled: false
+  environment: uat
+  tracesSampleRate: 1
+
