@@ -59,8 +59,9 @@ public class CreateApplicationCommandMapper {
   }
 
   private String schemaName(ApplicationCreateRequest request) {
-    return request.getApplicationType() == ApplicationType.CCS
-        ? "CssApplication.json"
+    // TODO update this if new application type added
+    return request.getApplicationType() == ApplicationType.APPLY
+        ? "ApplyApplication.json"
         : "ApplyApplication.json";
   }
 

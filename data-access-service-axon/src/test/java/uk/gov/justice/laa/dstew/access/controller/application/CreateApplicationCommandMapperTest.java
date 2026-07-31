@@ -18,14 +18,6 @@ class CreateApplicationCommandMapperTest {
       new CreateApplicationCommandMapper(JsonMapper.builder().build());
 
   @Test
-  void givenCcsApplication_whenMapped_thenSelectsCssSchema() {
-    UUID id = UUID.randomUUID();
-    var command = mapper.toCommand(request(ApplicationType.CCS, id), 1);
-
-    assertThat(command.schemaName()).isEqualTo("CssApplication.json");
-  }
-
-  @Test
   void givenAnyOtherApplicationType_whenMapped_thenSelectsApplySchema() {
     UUID id = UUID.randomUUID();
     var command = mapper.toCommand(request(ApplicationType.APPLY, id), 2);
