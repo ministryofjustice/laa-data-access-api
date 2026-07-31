@@ -166,7 +166,6 @@ jobs:
           app-environment: uat
           pr-number: ${{ github.event.pull_request.number }}
           image-tag: ${{ needs.compute-snapshot-version.outputs.snapshot_version }}
-          deploy-axon: 'true'
           axon-image-tag: ${{ format('{0}-axon', needs.compute-snapshot-version.outputs.snapshot_version) }}
 
   ephemeral-smoke-test:

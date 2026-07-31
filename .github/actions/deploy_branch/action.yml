@@ -32,12 +32,8 @@ inputs:
     description: "Docker image tag to deploy. Defaults to the git SHA."
     required: false
     default: ${{ github.sha }}
-  deploy-axon:
-    description: "Whether to also deploy the Axon (CQRS) service as a separate Helm release. Non-prod only."
-    required: false
-    default: "false"
   axon-image-tag:
-    description: "Docker image tag for the Axon service (e.g. <version>-axon). Required when deploy-axon is true."
+    description: "Docker image tag for the Axon service (e.g. <version>-axon). When provided, the Axon (CQRS) service is also deployed as a separate Helm release. Non-prod only."
     required: false
     default: ""
 
@@ -155,7 +151,7 @@ runs:
     # TODO(axon-smoke-gate): once Axon smoke tests exist, gate this step on their pass/fail
     # in addition to the deploy-axon input.
     - name: Verify Axon image exists
-      if: ${{ inputs.deploy-axon == 'true' }}
+      if: ${{ inputs.axon-image-tag != '' }}
       shell: bash
       env:
         ECR_REPOSITORY: ${{ inputs.ecr-repository }}
@@ -174,7 +170,7 @@ runs:
           --region "${ECR_REGION}" >/dev/null
 
     - name: Helm deployment of Axon service
-      if: ${{ inputs.deploy-axon == 'true' }}
+      if: ${{ inputs.axon-image-tag != '' }}
       shell: bash
       env:
         ECR_REPOSITORY: ${{ inputs.ecr-repository }}

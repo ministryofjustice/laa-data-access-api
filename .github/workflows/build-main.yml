@@ -134,7 +134,6 @@ jobs:
           kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
           app-environment: uat
           image-tag: ${{ needs.release.outputs.published_artifact_version }}
-          deploy-axon: 'true'
           axon-image-tag: ${{ format('{0}-axon', needs.release.outputs.published_artifact_version) }}
 
 
