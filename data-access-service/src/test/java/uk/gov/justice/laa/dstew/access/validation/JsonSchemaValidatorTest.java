@@ -148,7 +148,7 @@ class JsonSchemaValidatorTest {
                 "2024-03-21T09:00:00Z",
                 "confirmLink",
                 true)),
-        "applicant",
+        "client",
         Map.of(
             "firstName",
             "Alex",
