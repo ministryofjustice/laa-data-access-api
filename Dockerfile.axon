@@ -15,5 +15,8 @@ EXPOSE 8082
 
 ENV TZ=Europe/London
 ENV JAVA_TOOL_OPTIONS="-XX:InitialRAMPercentage=50.0 -XX:MaxRAMPercentage=80.0"
+# Disable AxonIQ anonymous usage/update-checker telemetry (avoids NPE warning from axon-update
+# when the sandboxed container has no outbound internet access to report usage data).
+ENV AXONIQ_UPDATE_CHECKER_DISABLED="true"
 
 CMD ["java", "-jar", "app.jar"]

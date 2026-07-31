@@ -29,6 +29,10 @@ inputs:
     description: "Docker image tag to deploy. Defaults to the git SHA."
     required: false
     default: ${{ github.sha }}
+  axon-image-tag:
+    description: "Docker image tag for the Axon service (e.g. <version>-axon). When provided, the Axon (CQRS) service is also deployed as a separate Helm release. Non-prod only."
+    required: false
+    default: ""
 
 runs:
   using: "composite"
@@ -86,3 +90,56 @@ runs:
           --values ${VALUES_FILE} \
           --install \
           --wait
+
+    # TODO(axon-smoke-gate): enable deploy-axon for staging/production only once
+    # Axon-specific smoke tests exist and pass.
+    - name: Verify Axon image exists
+      if: ${{ inputs.deploy-axon == 'true' }}
+      shell: bash
+      env:
+        ECR_REPOSITORY: ${{ inputs.ecr-repository }}
+        ECR_REGION: ${{ inputs.ecr-region }}
+        AXON_IMAGE_TAG: ${{ inputs.axon-image-tag }}
+      run: |
+        set -euo pipefail
+        if [ -z "${AXON_IMAGE_TAG}" ]; then
+          echo "[axon] axon-image-tag input is required when deploy-axon is true."
+          exit 1
+        fi
+        echo "[axon] Verifying image ${ECR_REPOSITORY}:${AXON_IMAGE_TAG} exists in ECR..."
+        aws ecr describe-images \
+          --repository-name "${ECR_REPOSITORY}" \
+          --image-ids imageTag="${AXON_IMAGE_TAG}" \
+          --region "${ECR_REGION}" >/dev/null
+
+    - name: Helm deployment of Axon service
+      if: ${{ inputs.deploy-axon == 'true' }}
+      shell: bash
+      env:
+        ECR_REPOSITORY: ${{ inputs.ecr-repository }}
+        ECR_REGION: ${{ inputs.ecr-region }}
+        ECR_REGISTRY: ${{ steps.deploy_prerequisites.outputs.ecr-registry }}
+        AXON_IMAGE_TAG: ${{ inputs.axon-image-tag }}
+        KUBE_NAMESPACE: ${{ inputs.kube-namespace }}
+        APP_ENVIRONMENT: ${{ inputs.app-environment }}
+        VALUES_FILE: .helm/data-access-api-axon/values/${{ inputs.app-environment }}.yaml
+      run: |
+        set -euo pipefail
+
+        axon_host="laa-data-access-api-axon-${KUBE_NAMESPACE}.cloud-platform.service.justice.gov.uk"
+        echo "[axon] Deploying image tag: ${AXON_IMAGE_TAG} to ${axon_host}..."
+
+        if ! helm upgrade laa-data-access-api-axon .helm/data-access-api-axon \
+          --namespace "${KUBE_NAMESPACE}" \
+          --set image.repository="${ECR_REGISTRY}/${ECR_REPOSITORY}" \
+          --set image.tag="${AXON_IMAGE_TAG}" \
+          --set ingress.hosts="{${axon_host}}" \
+          --set spring.profile="${APP_ENVIRONMENT}" \
+          --set aws.region="${ECR_REGION}" \
+          --values "${VALUES_FILE}" \
+          --install \
+          --wait; then
+          echo "[axon] Helm deployment failed for release laa-data-access-api-axon."
+          exit 1
+        fi
+

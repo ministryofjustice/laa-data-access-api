@@ -1,0 +1,24 @@
+replicaCount: 1
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1G
+  requests:
+    cpu: 50m
+    memory: 1G
+
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 3
+
+sentry:
+  enabled: true
+  environment: staging
+  tracesSampleRate: 1
+
+axon:
+  schema: data_access_axon
+  flywayTable: flyway_schema_history_axon
+
