@@ -61,3 +61,13 @@ runs:
         KUBE_NAMESPACE: ${{ inputs.kube-namespace }}
       run: helm uninstall "${RELEASE_NAME}-mass-generator" --namespace "$KUBE_NAMESPACE"
 
+    - name: Delete preview release's Axon service
+      shell: bash
+      env:
+        RELEASE_NAME: ${{ steps.extract_release_name_to_delete.outputs.release-name-to-delete }}
+        KUBE_NAMESPACE: ${{ inputs.kube-namespace }}
+      # helm uninstall has no --ignore-not-found flag; tolerate a missing Axon release
+      # (e.g. environments predating the Axon rollout) without failing the teardown.
+      run: helm uninstall "${RELEASE_NAME}-axon" --namespace "$KUBE_NAMESPACE" || echo "[axon] No Axon release ${RELEASE_NAME}-axon found; skipping."
+
+
