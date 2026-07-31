@@ -189,7 +189,9 @@ runs:
         set -euo pipefail
 
         AXON_RELEASE_NAME="${RELEASE_NAME}-axon"
+        axon_ingress_name="${AXON_RELEASE_NAME}-data-access-api-axon"
         axon_host="${AXON_RELEASE_NAME}-${KUBE_NAMESPACE}.cloud-platform.service.justice.gov.uk"
+        axon_identifier="${axon_ingress_name}-${KUBE_NAMESPACE}-green"
 
         echo "[axon] Deploying image tag: ${AXON_IMAGE_TAG} under release name: ${AXON_RELEASE_NAME} to ${axon_host}..."
 
@@ -197,6 +199,7 @@ runs:
           --namespace "${KUBE_NAMESPACE}" \
           --set image.repository="${ECR_REGISTRY}/${ECR_REPOSITORY}" \
           --set image.tag="${AXON_IMAGE_TAG}" \
+          --set ingress.annotations."external-dns\.alpha\.kubernetes\.io/set-identifier"="${axon_identifier}" \
           --set ingress.hosts="{${axon_host}}" \
           --set spring.profile="${APP_ENVIRONMENT}" \
           --set aws.region="${ECR_REGION}" \
