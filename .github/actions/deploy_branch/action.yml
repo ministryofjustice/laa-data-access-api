@@ -32,6 +32,14 @@ inputs:
     description: "Docker image tag to deploy. Defaults to the git SHA."
     required: false
     default: ${{ github.sha }}
+  deploy-axon:
+    description: "Whether to also deploy the Axon (CQRS) service as a separate Helm release. Non-prod only."
+    required: false
+    default: "false"
+  axon-image-tag:
+    description: "Docker image tag for the Axon service (e.g. <version>-axon). Required when deploy-axon is true."
+    required: false
+    default: ""
 
 outputs:
   branch-name:
@@ -144,3 +152,57 @@ runs:
           --install \
           --wait
 
+    # TODO(axon-smoke-gate): once Axon smoke tests exist, gate this step on their pass/fail
+    # in addition to the deploy-axon input.
+    - name: Verify Axon image exists
+      if: ${{ inputs.deploy-axon == 'true' }}
+      shell: bash
+      env:
+        ECR_REPOSITORY: ${{ inputs.ecr-repository }}
+        ECR_REGION: ${{ inputs.ecr-region }}
+        AXON_IMAGE_TAG: ${{ inputs.axon-image-tag }}
+      run: |
+        set -euo pipefail
+        if [ -z "${AXON_IMAGE_TAG}" ]; then
+          echo "[axon] axon-image-tag input is required when deploy-axon is true."
+          exit 1
+        fi
+        echo "[axon] Verifying image ${ECR_REPOSITORY}:${AXON_IMAGE_TAG} exists in ECR..."
+        aws ecr describe-images \
+          --repository-name "${ECR_REPOSITORY}" \
+          --image-ids imageTag="${AXON_IMAGE_TAG}" \
+          --region "${ECR_REGION}" >/dev/null
+
+    - name: Helm deployment of Axon service
+      if: ${{ inputs.deploy-axon == 'true' }}
+      shell: bash
+      env:
+        ECR_REPOSITORY: ${{ inputs.ecr-repository }}
+        ECR_REGION: ${{ inputs.ecr-region }}
+        ECR_REGISTRY: ${{ steps.deploy_prerequisites.outputs.ecr-registry }}
+        AXON_IMAGE_TAG: ${{ inputs.axon-image-tag }}
+        KUBE_NAMESPACE: ${{ inputs.kube-namespace }}
+        VALUES_FILE: .helm/data-access-api-axon/values/${{ inputs.app-environment }}.yaml
+        RELEASE_NAME: ${{ steps.extract_release_name.outputs.release-name }}
+        APP_ENVIRONMENT: ${{ inputs.app-environment }}
+      run: |
+        set -euo pipefail
+
+        AXON_RELEASE_NAME="${RELEASE_NAME}-axon"
+        axon_host="${AXON_RELEASE_NAME}-${KUBE_NAMESPACE}.cloud-platform.service.justice.gov.uk"
+
+        echo "[axon] Deploying image tag: ${AXON_IMAGE_TAG} under release name: ${AXON_RELEASE_NAME} to ${axon_host}..."
+
+        if ! helm upgrade "${AXON_RELEASE_NAME}" .helm/data-access-api-axon \
+          --namespace "${KUBE_NAMESPACE}" \
+          --set image.repository="${ECR_REGISTRY}/${ECR_REPOSITORY}" \
+          --set image.tag="${AXON_IMAGE_TAG}" \
+          --set ingress.hosts="{${axon_host}}" \
+          --set spring.profile="${APP_ENVIRONMENT}" \
+          --set aws.region="${ECR_REGION}" \
+          --values "${VALUES_FILE}" \
+          --install \
+          --wait; then
+          echo "[axon] Helm deployment failed for release ${AXON_RELEASE_NAME}."
+          exit 1
+        fi

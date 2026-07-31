@@ -121,9 +121,28 @@ jobs:
       ecr_region: ${{ vars.ECR_REGION }}
       ecr_role_to_assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
 
+  ecr-publish-axon-image:
+    needs: [ build-and-test, compute-snapshot-version ]
+    uses: ministryofjustice/laa-ccms-common-workflows/.github/workflows/ecr-publish-image.yml@4daa796eff475c7a107e17daf4e4882b8a1b949b # v2.3.0
+    permissions:
+      contents: read
+      id-token: write
+      security-events: write
+    with:
+      java_distribution: *JDK_DISTRIBUTION
+      dockerfile_path: Dockerfile.axon
+      image_version: ${{ format('{0}-axon', needs.compute-snapshot-version.outputs.snapshot_version) }}
+      image_scan: 'false'
+    secrets:
+      gh_token: ${{ secrets.GITHUB_TOKEN }}
+      ecr_repository: ${{ vars.ECR_REPOSITORY }}
+      ecr_region: ${{ vars.ECR_REGION }}
+      ecr_role_to_assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
+
   deploy-ephemeral:
     runs-on: ubuntu-latest
-    needs: [ ecr-publish-service-image, ecr-publish-mass-generator-image, vulnerability-scan-app, compute-snapshot-version ]
+    needs: [ ecr-publish-service-image, ecr-publish-mass-generator-image, ecr-publish-axon-image, vulnerability-scan-app, compute-snapshot-version ]
+
     environment: uat
     permissions:
       id-token: write
@@ -147,6 +166,8 @@ jobs:
           app-environment: uat
           pr-number: ${{ github.event.pull_request.number }}
           image-tag: ${{ needs.compute-snapshot-version.outputs.snapshot_version }}
+          deploy-axon: 'true'
+          axon-image-tag: ${{ format('{0}-axon', needs.compute-snapshot-version.outputs.snapshot_version) }}
 
   ephemeral-smoke-test:
     if: startsWith(github.head_ref || github.ref_name, 'openapi/') == false

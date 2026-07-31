@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.config;
 
 import javax.sql.DataSource;
 import org.flywaydb.core.Flyway;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.flyway.autoconfigure.FlywayMigrationInitializer;
 import org.springframework.boot.sql.init.dependency.DatabaseInitializationDependencyConfigurer;
@@ -22,13 +23,20 @@ import org.springframework.context.annotation.Import;
 @Import(DatabaseInitializationDependencyConfigurer.class)
 public class ApplicationFlywayConfig {
 
+  @Value("${axon.db.schema:axon}")
+  private String schema;
+
+  @Value("${axon.db.flyway-table:flyway_schema_history}")
+  private String flywayTable;
+
   @Bean
   Flyway flyway(DataSource dataSource) {
     return Flyway.configure()
         .dataSource(dataSource)
         .createSchemas(true)
-        .defaultSchema("axon")
-        .schemas("axon")
+        .defaultSchema(schema)
+        .schemas(schema)
+        .table(flywayTable)
         .locations("classpath:db/migration")
         .load();
   }

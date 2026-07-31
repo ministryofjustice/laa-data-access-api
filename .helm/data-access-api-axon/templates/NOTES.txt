@@ -1,0 +1,5 @@
+Axon service {{ .Release.Name }} deployed.
+
+Schema: {{ .Values.axon.schema }}
+Flyway table: {{ .Values.axon.flywayTable }}
+
