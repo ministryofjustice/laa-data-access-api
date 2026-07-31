@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "Client.json",
+  "title": "Client",
+  "description": "Client information for the application",
+  "type": "object",
+  "required": [
+    "firstName",
+    "lastName",
+    "dateOfBirth",
+    "appliedPreviously",
+    "correspondenceAddress"
+  ],
+  "properties": {
+    "firstName": {
+      "type": "string",
+      "description": "Client first name"
+    },
+    "lastName": {
+      "type": "string",
+      "description": "Client last name"
+    },
+    "lastNameAtBirth": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Client last name at birth"
+    },
+    "dateOfBirth": {
+      "type": "string",
+      "format": "date",
+      "description": "Client date of birth"
+    },
+    "hasNationalInsuranceNumber": {
+      "type": [
+        "boolean",
+        "null"
+      ],
+      "description": "Whether the client has a National Insurance number"
+    },
+    "nationalInsuranceNumber": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Client National Insurance number"
+    },
+    "appliedPreviously": {
+      "type": "boolean",
+      "description": "Whether the client has applied previously"
+    },
+    "previousApplicationId": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Reference to the previous application"
+    },
+    "correspondenceAddress": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "CorrespondenceAddress.json"
+      },
+      "description": "Client correspondence address history"
+    },
+    "relationshipToInvolvedChildren": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Client relationship to involved children"
+    }
+  },
+  "additionalProperties": true
+}

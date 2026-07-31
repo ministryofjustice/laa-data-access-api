@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "Provider.json",
+  "title": "Provider",
+  "description": "Provider information for the application",
+  "type": "object",
+  "required": [
+    "officeCode",
+    "contactEmail"
+  ],
+  "properties": {
+    "officeCode": {
+      "type": "string",
+      "description": "Provider office code"
+    },
+    "contactEmail": {
+      "type": "string",
+      "format": "email",
+      "description": "Provider contact email"
+    }
+  },
+  "additionalProperties": true
+}

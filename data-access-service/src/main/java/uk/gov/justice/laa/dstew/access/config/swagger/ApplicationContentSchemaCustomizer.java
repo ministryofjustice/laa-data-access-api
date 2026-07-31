@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.config;
+package uk.gov.justice.laa.dstew.access.config.swagger;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -28,12 +28,19 @@ public class ApplicationContentSchemaCustomizer implements OpenApiCustomizer {
    * before shorter ones if there is any risk of overlap.
    */
   private static final Map<String, String> REF_TRANSLATIONS =
-      Map.of(
-          "Proceeding.json", "#/components/schemas/Proceeding",
-          "ApplicationOffice.json", "#/components/schemas/ApplicationOffice",
-          "LinkedApplication.json", "#/components/schemas/LinkedApplication",
-          "Address.json", "#/components/schemas/Address",
-          "Applicant.json", "#/components/schemas/Applicant");
+      Map.ofEntries(
+          Map.entry("Proceedings.json", "#/components/schemas/ProceedingsV2"),
+          Map.entry("Proceeding.json", "#/components/schemas/Proceeding"),
+          Map.entry("ApplicationOffice.json", "#/components/schemas/ApplicationOffice"),
+          Map.entry("LinkedApplication.json", "#/components/schemas/LinkedApplication"),
+          Map.entry("LinkedApplication2.json", "#/components/schemas/LinkedApplicationV2"),
+          Map.entry("CorrespondenceAddress.json", "#/components/schemas/CorrespondenceAddressV2"),
+          Map.entry("Address.json", "#/components/schemas/Address"),
+          Map.entry("Applicant.json", "#/components/schemas/Applicant"),
+          Map.entry("Provider.json", "#/components/schemas/ProviderV2"),
+          Map.entry("Client.json", "#/components/schemas/Client"),
+          Map.entry("Opponents.json", "#/components/schemas/OpponentsV2"),
+          Map.entry("ScopeLimitation.json", "#/components/schemas/ScopeLimitationV2"));
 
   private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -48,12 +55,21 @@ public class ApplicationContentSchemaCustomizer implements OpenApiCustomizer {
     addSchemaFromClasspath(components, "Proceeding", "schema/common/Proceeding.json");
     addSchemaFromClasspath(components, "Applicant", "schema/common/Applicant.json");
 
+    // Register common/2 sub-schemas used by version 2 schemas
+    addSchemaFromClasspath(components, "ProviderV2", "schema/common/2/Provider.json");
+    addSchemaFromClasspath(components, "Client", "schema/common/2/Client.json");
+    addSchemaFromClasspath(components, "ProceedingsV2", "schema/common/2/Proceedings.json");
+    addSchemaFromClasspath(components, "OpponentsV2", "schema/common/2/Opponents.json");
+    addSchemaFromClasspath(components, "ScopeLimitationV2", "schema/common/2/ScopeLimitation.json");
+    addSchemaFromClasspath(
+        components, "CorrespondenceAddressV2", "schema/common/2/CorrespondenceAddress.json");
+    addSchemaFromClasspath(
+        components, "LinkedApplicationV2", "schema/common/2/LinkedApplication2.json");
     // Register versioned application-content schemas.
     addSchemaFromClasspath(
         components, "ApplyApplicationContentV1", "schema/1/ApplyApplication.json");
     addSchemaFromClasspath(
         components, "ApplyApplicationContentV2", "schema/2/ApplyApplication.json");
-    addSchemaFromClasspath(components, "CssApplicationContent", "schema/1/CssApplication.json");
 
     var schemas = components.getSchemas();
     if (schemas == null) {
@@ -65,11 +81,22 @@ public class ApplicationContentSchemaCustomizer implements OpenApiCustomizer {
       return;
     }
 
-    // TODO: update ref to the appropriate versioned schema once the applicationContent structure is
-    // confirmed (e.g. ApplyApplicationContentV2 or CssApplicationContent).
-    Schema<?> contentRef = new Schema<>();
-    contentRef.set$ref("#/components/schemas/ApplyApplicationContentV1");
-    appCreateRequest.getProperties().put("applicationContent", contentRef);
+    // Use oneOf to show all possible application content schema versions in Swagger UI
+    @SuppressWarnings("rawtypes")
+    List<Schema> oneOfSchemas = new ArrayList<>();
+    oneOfSchemas.add(buildSchema("#/components/schemas/ApplyApplicationContentV1"));
+    oneOfSchemas.add(buildSchema("#/components/schemas/ApplyApplicationContentV2"));
+
+    Schema<?> contentSchema = new Schema<>();
+    contentSchema.setOneOf(oneOfSchemas);
+    contentSchema.setDescription("Application content conforming to one of the versioned schemas");
+    appCreateRequest.getProperties().put("applicationContent", contentSchema);
+  }
+
+  private static Schema<?> buildSchema(String ref) {
+    Schema<?> objectSchema = new Schema<>();
+    objectSchema.set$ref(ref);
+    return objectSchema;
   }
 
   private void addSchemaFromClasspath(

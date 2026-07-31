@@ -20,5 +20,5 @@
       "description": "ID of the associated application"
     }
   },
-  "additionalProperties": false
+  "additionalProperties": true
 }
