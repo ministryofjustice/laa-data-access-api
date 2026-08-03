@@ -44,6 +44,11 @@ dependencies {
         exclude group: 'tools.jackson.core'
     }
     implementation 'org.flywaydb:flyway-database-postgresql'
+    // Match the Cloud Platform IRSA/default-credentials pattern.
+    implementation platform('io.awspring.cloud:spring-cloud-aws:4.0.2')
+    implementation 'io.awspring.cloud:spring-cloud-aws-starter'
+    implementation 'software.amazon.awssdk:sns'
+    implementation 'software.amazon.awssdk:sts:2.33.7'
     compileOnly 'org.projectlombok:lombok:1.18.46'
     annotationProcessor 'org.projectlombok:lombok:1.18.46'
     runtimeOnly 'org.postgresql:postgresql'
@@ -62,6 +67,7 @@ dependencies {
     integrationTestImplementation 'org.springframework.boot:spring-boot-testcontainers'
     integrationTestImplementation 'org.testcontainers:testcontainers-junit-jupiter:2.0.5'
     integrationTestImplementation 'org.testcontainers:testcontainers-postgresql:2.0.5'
+    integrationTestImplementation 'software.amazon.awssdk:sqs'
 }
 
 test {

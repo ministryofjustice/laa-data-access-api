@@ -150,6 +150,39 @@ public record ApplicationDataPayload(
         notes);
   }
 
+  /** Returns a complete new data version containing replacement Application content. */
+  public ApplicationDataPayload withApplicationUpdate(
+      ApplicationContent newApplicationContent,
+      Instant newSubmittedAt,
+      String newOfficeCode,
+      Boolean newUsedDelegatedFunctions,
+      CategoryOfLaw newCategoryOfLaw,
+      MatterType newMatterType,
+      List<ApplicationProceeding> newProceedings,
+      String newSerialisedRequest,
+      boolean resetAssessment) {
+    return new ApplicationDataPayload(
+        laaReference,
+        newApplicationContent,
+        individuals,
+        applyApplicationId,
+        newSubmittedAt,
+        newOfficeCode,
+        newUsedDelegatedFunctions,
+        newCategoryOfLaw,
+        newMatterType,
+        List.copyOf(newProceedings),
+        newSerialisedRequest,
+        resetAssessment ? null : overallDecision,
+        resetAssessment ? null : autoGranted,
+        resetAssessment ? Map.of() : meritsDecisions,
+        resetAssessment ? null : certificate,
+        resetAssessment ? null : decisionSerialisedRequest,
+        resetAssessment ? null : decisionEventDescription,
+        assignmentEventDescription,
+        notes);
+  }
+
   /** Returns a complete new data version with the given note appended. */
   public ApplicationDataPayload withNote(String noteText, Instant createdAt) {
     List<ApplicationNote> updated = new ArrayList<>(notes);

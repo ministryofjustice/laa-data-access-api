@@ -24,6 +24,8 @@ import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteComman
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ReadyApplicationResult;
+import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationCommand;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationGroupInvariantException;
@@ -173,6 +175,23 @@ public final class ApplicationDecider {
           command.applicationId(), command.expectedApplicationVersion());
     }
     return ReadyApplicationResult.RECORDED;
+  }
+
+  /** Returns the next replayable state transition for an Application update. */
+  public static ApplicationUpdatedEvent decideUpdate(
+      ApplicationState state,
+      UpdateApplicationCommand command,
+      ApplicationDataPayload updatedData) {
+    String nextStatus = command.status() == null ? state.status : command.status();
+    return new ApplicationUpdatedEvent(
+        state.applicationId,
+        state.applicationVersion + 1,
+        state.applicationDataVersion + 1,
+        state.status,
+        nextStatus,
+        state.applicationType,
+        updatedData.applyApplicationId(),
+        command.occurredAt());
   }
 
   private static void validateDecision(MakeApplicationDecisionCommand command) {

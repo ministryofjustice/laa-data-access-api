@@ -71,7 +71,7 @@ These versions solve different problems and should not be combined:
 
 | Field | Meaning | Changes when |
 |---|---|---|
-| `applicationVersion` | Public optimistic-lock version for application changes | A decision, manual-ready outcome, assignment, or unassignment succeeds |
+| `applicationVersion` | Public optimistic-lock version for application changes | An Application update, decision, manual-ready outcome, assignment, or unassignment succeeds |
 | `applicationDataVersion` | Internal pointer to an immutable `application_data` row | Sensitive/audit payload changes, including notes |
 
 Decision requests supply the expected `applicationVersion` to prevent one caller silently
@@ -104,6 +104,9 @@ and advances the disposable projection to the same immutable data version.
   applications are validated in the originating request.
 - Group initialisation uses a pooled streaming processor after the request event commits, avoiding
   the re-entrant event-store write that Axon 5 rejects.
+- `ApplicationSubmittedEventRouter` uses a subscribing processor only for live submission events
+  and registers SNS publication in Axon's `AFTER_COMMIT` phase. It is excluded from tracking replay,
+  and a transport failure is observable without rolling back committed Application state.
 
 See [Linked applications](linked-applications.md) and
 [Projections and replay](projections-and-replay.md) for the detailed consequences.

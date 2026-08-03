@@ -32,6 +32,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
+import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
@@ -72,6 +73,44 @@ class CreateApplicationInMemoryTest {
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private QueryGateway queryGateway;
   @Autowired private ApplicationDataRepository applicationDataRepository;
+
+  @Test
+  void givenApplicationInProgress_whenUpdatedToSubmitted_thenCurrentStateAdvancesVersion() {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationCreateRequest submitted =
+        validCreateApplicationRequest(applicationId, UUID.randomUUID());
+    ApplicationCreateRequest inProgress =
+        ApplicationCreateRequest.builder()
+            .applicationType(submitted.getApplicationType())
+            .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
+            .applicationContent(submitted.getApplicationContent())
+            .laaReference(submitted.getLaaReference())
+            .individuals(submitted.getIndividuals())
+            .build();
+    applicationId(
+        restTemplate.postForEntity(
+            "/api/v0/applications", new HttpEntity<>(inProgress, headers()), Void.class));
+    awaitProjection(applicationId);
+    ApplicationUpdateRequest update =
+        new ApplicationUpdateRequest()
+            .status(ApplicationStatus.APPLICATION_SUBMITTED)
+            .applicationContent(submitted.getApplicationContent());
+
+    ResponseEntity<Void> updateResponse =
+        restTemplate.exchange(
+            "/api/v0/applications/" + applicationId,
+            HttpMethod.PATCH,
+            new HttpEntity<>(update, headers()),
+            Void.class);
+
+    assertThat(updateResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    ApplicationReadModel current = awaitApplicationVersion(applicationId, 1L);
+    assertThat(current.getStatus()).isEqualTo("APPLICATION_SUBMITTED");
+    assertThat(current.getAutoGranted()).isNull();
+    assertThat(current.getApplicationDataVersion()).isEqualTo(1L);
+    assertThat(awaitHistoryTypes(applicationId, "APPLICATION_CREATED", "APPLICATION_UPDATED"))
+        .hasSize(2);
+  }
 
   @Test
   void givenAxonApplication_whenOpenApiRequested_thenDocumentsCreateApplication() {

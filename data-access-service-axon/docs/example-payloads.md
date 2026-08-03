@@ -60,6 +60,57 @@ projection is readable, or `202 Accepted` (same header) if the projection has no
 Verified against a running instance: `HTTP/1.1 201` with
 `Location: http://localhost:8082/api/v0/applications/8c9e6c2e-4f1a-4e3a-9c2b-1a2b3c4d5e6f`.
 
+### Update an application and trigger submission
+
+`PATCH /api/v0/applications/{id}` replaces `applicationContent` as a new immutable data version.
+The following transition from in progress to submitted returns `204 No Content`, advances the
+public Application version, keeps `autoGrant=null`, and publishes one `ApplicationSubmitted` event
+after commit:
+
+```bash
+curl -i -X PATCH \
+  http://localhost:8082/api/v0/applications/8c9e6c2e-4f1a-4e3a-9c2b-1a2b3c4d5e6f \
+  -H "Content-Type: application/json" \
+  -H "X-Service-Name: CIVIL_APPLY" \
+  -H "X-Correlation-Id: manual-dstew-2096" \
+  -d '{
+    "status": "APPLICATION_SUBMITTED",
+    "applicationContent": {
+      "id": "8c9e6c2e-4f1a-4e3a-9c2b-1a2b3c4d5e6f",
+      "submittedAt": "2026-08-03T09:30:00Z",
+      "status": "APPLICATION_SUBMITTED",
+      "laaReference": "LAA-2026-000123",
+      "proceedings": [{
+        "id": "1e2d3c4b-5a69-4f78-8091-a2b3c4d5e6f7",
+        "leadProceeding": true,
+        "description": "Care order proceedings"
+      }]
+    }
+  }'
+```
+
+When this repository's Axon and LocalStack Compose files are running, inspect the SNS-wrapped event
+on its private producer verification queue:
+
+```bash
+AWS_ACCESS_KEY_ID=local-access-key AWS_SECRET_ACCESS_KEY=local-secret-key \
+aws --region eu-west-2 --endpoint-url http://localhost:4566 sqs receive-message \
+  --queue-url http://sqs.eu-west-2.localhost.localstack.cloud:4566/000000000000/data-access-events-producer-smoke-test-queue \
+  --message-attribute-names All
+```
+
+In the parent Decide + Access workbench, use the shared consumer queue instead:
+
+```bash
+AWS_ACCESS_KEY_ID=local-access-key AWS_SECRET_ACCESS_KEY=local-secret-key \
+aws --region eu-west-2 --endpoint-url http://localhost:4566 sqs receive-message \
+  --queue-url http://sqs.eu-west-2.localhost.localstack.cloud:4566/000000000000/application-submitted-queue \
+  --message-attribute-names All
+```
+
+Creating directly in `APPLICATION_SUBMITTED` also publishes. Creating in progress, an update that
+remains submitted, a Decision write, or a ready write does not.
+
 ### Get applications (list, filtered and paginated)
 
 `GET /api/v0/applications`

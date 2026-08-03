@@ -350,6 +350,12 @@ AWS_REGION=eu-west-2 AWS_ACCESS_KEY_ID=local-access-key AWS_SECRET_ACCESS_KEY=lo
 See `scripts/localstack/init-localstack.sh` for the full resource shape and cross-repo integration
 notes.
 
+`data-access-service-axon` publishes to this topic when
+`APPLICATION_INTEGRATION_EVENTS_TOPIC_ARN` is set. The Axon Compose service supplies the local ARN,
+endpoint, region, and dummy credentials automatically. Deployed environments leave
+`AWS_ENDPOINT_URL` and static credentials unset so the AWS SDK default credentials provider uses
+the pod's IRSA service account, matching `laa-data-claims-event-service`.
+
 ---
 
 ### Troubleshooting Authentication

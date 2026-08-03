@@ -57,6 +57,34 @@ Flyway creates and validates the `axon` schema during startup. Swagger UI is ava
 module's Springdoc configuration at `http://localhost:8082/swagger-ui/index.html` once the service
 is healthy.
 
+To run the Axon service with its local SNS topic and verification queue, include LocalStack and
+explicitly enable the optional publisher:
+
+```bash
+DATA_ACCESS_EVENTS_TOPIC_ARN=arn:aws:sns:eu-west-2:000000000000:data-access-events \
+AWS_ENDPOINT_URL=http://localstack:4566 \
+docker compose -f docker-compose.axon.yml -f docker-compose.localstack.yml up -d --build
+```
+
+The publisher remains disabled when no topic ARN is supplied, so the Axon-only Compose stack does
+not depend on a LocalStack hostname. In UAT, where the Cloud Platform resources currently exist,
+the chart reads the topic ARN from the `data-access-events-sns-topic` secret and runs as the
+`laa-data-access-uat-irsa` service account. `AWS_ENDPOINT_URL` and static credentials remain unset,
+so the AWS SDK default credentials provider uses web-identity credentials. Enable the same chart
+switch in later environments only after their equivalent topic, secret, policy, and IRSA service
+account have been provisioned.
+
+Run the producer delivery test with Docker available:
+
+```bash
+./gradlew :data-access-service-axon:integrationTest \
+  --tests '*ApplicationSubmittedLocalStackIntegrationTest'
+```
+
+An SNS failure after commit is logged as `Failed to publish ApplicationSubmitted event after
+commit` with the event, Application, and correlation identifiers. This is an accepted missed-
+trigger risk: the Application remains committed and later reconciliation must detect it.
+
 ## Build and test
 
 The normal repository build runs compilation, packaging, standard unit/in-memory tests, Checkstyle,

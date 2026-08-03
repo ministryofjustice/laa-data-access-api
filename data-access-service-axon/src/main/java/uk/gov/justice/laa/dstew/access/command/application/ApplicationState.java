@@ -15,6 +15,7 @@ public class ApplicationState {
   int schemaVersion;
   String requestFingerprint;
   String status;
+  String applicationType;
   Boolean autoGranted;
   long applicationDataVersion;
   long applicationVersion;

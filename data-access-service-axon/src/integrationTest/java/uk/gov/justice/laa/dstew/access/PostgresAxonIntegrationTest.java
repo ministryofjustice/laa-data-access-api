@@ -47,6 +47,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationType;
+import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
@@ -340,6 +341,102 @@ class PostgresAxonIntegrationTest {
                       "uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent");
               assertThat(event.get("sequence_number")).isEqualTo(0L);
             });
+  }
+
+  @Test
+  void givenApplicationInProgress_whenUpdatedToSubmitted_thenPersistsThinEventAndDataAtomically()
+      throws Exception {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationCreateRequest submitted =
+        validCreateApplicationRequest(applicationId, UUID.randomUUID());
+    applicationId(post(inProgress(submitted), headers()));
+    awaitProjection(applicationId);
+
+    ResponseEntity<Void> response = patchSubmitted(applicationId, submitted);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    ApplicationReadModel projected = awaitProjectionVersion(applicationId, 1L);
+    assertThat(projected.getStatus()).isEqualTo("APPLICATION_SUBMITTED");
+    assertThat(projected.getAutoGranted()).isNull();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM axon.application_data WHERE application_id = ?",
+                Integer.class,
+                applicationId))
+        .isEqualTo(2);
+    assertThat(
+            jdbcTemplate.queryForMap(
+                "SELECT payload_type, convert_from(payload, 'UTF8') AS payload "
+                    + "FROM axon.domain_event_entry "
+                    + "WHERE aggregate_identifier = ? AND sequence_number = 1",
+                applicationId.toString()))
+        .satisfies(
+            event -> {
+              assertThat(event.get("payload_type").toString()).endsWith("ApplicationUpdatedEvent");
+              assertThat(event.get("payload").toString())
+                  .contains("applicationDataVersion", "APPLICATION_SUBMITTED")
+                  .doesNotContain(
+                      "applicationContent", "proceedings", "individuals", "LAA-123", "Ada");
+            });
+  }
+
+  @Test
+  void givenEventAppendFails_whenApplicationUpdated_thenImmutableDataAppendRollsBack()
+      throws Exception {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationCreateRequest submitted =
+        validCreateApplicationRequest(applicationId, UUID.randomUUID());
+    applicationId(post(inProgress(submitted), headers()));
+    awaitProjection(applicationId);
+    jdbcTemplate.execute(
+        """
+        CREATE OR REPLACE FUNCTION axon.reject_test_application_update()
+        RETURNS trigger AS $$
+        BEGIN
+          IF NEW.aggregate_identifier = '%s' AND NEW.sequence_number = 1 THEN
+            RAISE EXCEPTION 'forced ApplicationUpdatedEvent append failure';
+          END IF;
+          RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql
+        """
+            .formatted(applicationId));
+    jdbcTemplate.execute(
+        """
+        CREATE TRIGGER reject_test_application_update
+        BEFORE INSERT ON axon.domain_event_entry
+        FOR EACH ROW EXECUTE FUNCTION axon.reject_test_application_update()
+        """);
+
+    ResponseEntity<String> response;
+    try {
+      ApplicationUpdateRequest update = submittedUpdate(submitted);
+      response =
+          restTemplate.exchange(
+              "http://localhost:" + port + "/api/v0/applications/" + applicationId,
+              HttpMethod.PATCH,
+              new HttpEntity<>(update, headers()),
+              String.class);
+    } finally {
+      jdbcTemplate.execute(
+          "DROP TRIGGER IF EXISTS reject_test_application_update ON axon.domain_event_entry");
+      jdbcTemplate.execute("DROP FUNCTION IF EXISTS axon.reject_test_application_update()");
+    }
+
+    assertThat(response.getStatusCode().is5xxServerError()).isTrue();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM axon.application_data WHERE application_id = ?",
+                Integer.class,
+                applicationId))
+        .isEqualTo(1);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM axon.domain_event_entry WHERE aggregate_identifier = ?",
+                Integer.class,
+                applicationId.toString()))
+        .isEqualTo(1);
+    assertThat(awaitProjection(applicationId).getApplicationVersion()).isZero();
   }
 
   @Test
@@ -1196,6 +1293,31 @@ class PostgresAxonIntegrationTest {
         "http://localhost:" + port + "/api/v0/applications",
         new HttpEntity<>(request, headers),
         responseType);
+  }
+
+  private ApplicationCreateRequest inProgress(ApplicationCreateRequest submitted) {
+    return ApplicationCreateRequest.builder()
+        .applicationType(submitted.getApplicationType())
+        .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
+        .applicationContent(submitted.getApplicationContent())
+        .laaReference(submitted.getLaaReference())
+        .individuals(submitted.getIndividuals())
+        .build();
+  }
+
+  private ApplicationUpdateRequest submittedUpdate(ApplicationCreateRequest submitted) {
+    return new ApplicationUpdateRequest()
+        .status(ApplicationStatus.APPLICATION_SUBMITTED)
+        .applicationContent(submitted.getApplicationContent());
+  }
+
+  private ResponseEntity<Void> patchSubmitted(
+      UUID applicationId, ApplicationCreateRequest submitted) {
+    return restTemplate.exchange(
+        "http://localhost:" + port + "/api/v0/applications/" + applicationId,
+        HttpMethod.PATCH,
+        new HttpEntity<>(submittedUpdate(submitted), headers()),
+        Void.class);
   }
 
   @Test

@@ -25,6 +25,7 @@ import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationNote;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
+import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
 
@@ -167,6 +168,25 @@ public class ApplicationProjection {
         event.applicationDataVersion(),
         event.occurredAt(),
         queryUpdateEmitter);
+  }
+
+  /** Advances current state to the updated immutable data and status. */
+  @EventHandler
+  public void on(ApplicationUpdatedEvent event, QueryUpdateEmitter queryUpdateEmitter) {
+    applicationReadRepository
+        .findById(event.applicationId())
+        .ifPresent(
+            application -> {
+              application.setStatus(event.status());
+              application.setApplicationVersion(event.applicationVersion());
+              application.setApplicationDataVersion(event.applicationDataVersion());
+              application.setModifiedAt(event.occurredAt());
+              ApplicationReadModel saved = applicationReadRepository.save(application);
+              queryUpdateEmitter.emit(
+                  FindApplicationByIdQuery.class,
+                  query -> query.applicationId().equals(event.applicationId()),
+                  saved);
+            });
   }
 
   /** Updates the assigned caseworker and referenced application-data version. */

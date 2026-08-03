@@ -17,6 +17,11 @@ spring:
     properties:
       hibernate:
         default_schema: ${AXON_DB_SCHEMA:axon}
+  cloud:
+    aws:
+      region:
+        static: ${AWS_REGION:eu-west-2}
+      endpoint: ${AWS_ENDPOINT_URL:}
 
 axon:
   axonserver:

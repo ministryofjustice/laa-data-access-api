@@ -8,6 +8,7 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationD
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupRequested;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
+import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
 
 /** Event-fold functions for {@link ApplicationState}. */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
@@ -20,9 +21,18 @@ public final class ApplicationEvolve {
     state.schemaVersion = event.schemaVersion();
     state.requestFingerprint = event.requestFingerprint();
     state.status = event.status();
+    state.applicationType = event.applicationType();
     state.autoGranted = null;
     state.applicationDataVersion = event.applicationDataVersion();
     state.applicationVersion = 0L;
+  }
+
+  /** Applies an {@link ApplicationUpdatedEvent} to the given state. */
+  public static void apply(ApplicationState state, ApplicationUpdatedEvent event) {
+    state.status = event.status();
+    state.applicationVersion = event.applicationVersion();
+    state.applicationDataVersion = event.applicationDataVersion();
+    state.autoGranted = event.enteredSubmitted() ? null : state.autoGranted;
   }
 
   /** Applies an {@link ApplicationDecisionMadeEvent} to the given state. */

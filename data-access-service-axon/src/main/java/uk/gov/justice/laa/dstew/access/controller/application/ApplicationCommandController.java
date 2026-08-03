@@ -23,6 +23,7 @@ import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationComm
 import uk.gov.justice.laa.dstew.access.command.application.assignment.AssignCaseworkerService;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ReadyApplicationResult;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
 import uk.gov.justice.laa.dstew.access.model.CreateNoteRequest;
@@ -47,6 +48,7 @@ public class ApplicationCommandController {
   private final UnassignCaseworkerRequestMapper unassignCaseworkerRequestMapper;
   private final CreateNoteCommandMapper createNoteCommandMapper;
   private final ReadyApplicationCommandMapper readyApplicationCommandMapper;
+  private final UpdateApplicationCommandMapper updateApplicationCommandMapper;
 
   /** Creates the command adapter. */
   public ApplicationCommandController(
@@ -58,7 +60,8 @@ public class ApplicationCommandController {
       AssignCaseworkerRequestMapper assignCaseworkerRequestMapper,
       UnassignCaseworkerRequestMapper unassignCaseworkerRequestMapper,
       CreateNoteCommandMapper createNoteCommandMapper,
-      ReadyApplicationCommandMapper readyApplicationCommandMapper) {
+      ReadyApplicationCommandMapper readyApplicationCommandMapper,
+      UpdateApplicationCommandMapper updateApplicationCommandMapper) {
     this.commandGateway = commandGateway;
     this.projectionGateway = projectionGateway;
     this.commandMapper = commandMapper;
@@ -68,6 +71,7 @@ public class ApplicationCommandController {
     this.unassignCaseworkerRequestMapper = unassignCaseworkerRequestMapper;
     this.createNoteCommandMapper = createNoteCommandMapper;
     this.readyApplicationCommandMapper = readyApplicationCommandMapper;
+    this.updateApplicationCommandMapper = updateApplicationCommandMapper;
   }
 
   /** Assigns a caseworker to one or more Applications after validating the complete batch. */
@@ -152,6 +156,16 @@ public class ApplicationCommandController {
     return projected
         ? ResponseEntity.created(location).build()
         : ResponseEntity.accepted().location(location).build();
+  }
+
+  /** Replaces an existing Application's content and optional status. */
+  @PatchMapping("/{id}")
+  public ResponseEntity<Void> updateApplication(
+      @RequestHeader("X-Service-Name") ServiceName serviceName,
+      @PathVariable UUID id,
+      @Valid @RequestBody ApplicationUpdateRequest request) {
+    dispatchWithRetry(updateApplicationCommandMapper.toCommand(id, request));
+    return ResponseEntity.noContent().build();
   }
 
   void dispatchWithRetry(Object command) {
