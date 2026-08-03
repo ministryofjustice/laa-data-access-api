@@ -1,0 +1,27 @@
+name: laa-data-access-api-localstack
+
+services:
+  localstack:
+    container_name: data-access-api-localstack
+    image: localstack/localstack:4.14.0
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=sns,sqs
+      - DEBUG=1
+      - AWS_DEFAULT_REGION=${AWS_REGION:-eu-west-2}
+      - DATA_ACCESS_EVENTS_TOPIC_NAME=${DATA_ACCESS_EVENTS_TOPIC_NAME:-data-access-events}
+      - DATA_ACCESS_EVENTS_SMOKE_TEST_QUEUE_NAME=${DATA_ACCESS_EVENTS_SMOKE_TEST_QUEUE_NAME:-data-access-events-producer-smoke-test-queue}
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "awslocal sqs get-queue-url --queue-name ${DATA_ACCESS_EVENTS_SMOKE_TEST_QUEUE_NAME:-data-access-events-producer-smoke-test-queue} > /dev/null 2>&1",
+        ]
+      interval: 5s
+      retries: 20
+      timeout: 5s
+    volumes:
+      - "./scripts/localstack/init-localstack.sh:/etc/localstack/init/ready.d/init-localstack.sh"
+      - "${LOCALSTACK_VOLUME_DIR:-./volume/localstack}:/var/lib/localstack"
+      - "/var/run/docker.sock:/var/run/docker.sock"
