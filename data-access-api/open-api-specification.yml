@@ -21,6 +21,8 @@ paths:
     $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1{id}~1history-search"
   /api/v0/applications/{id}/decision:
     $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1{id}~1decision"
+  /api/v0/applications/{id}/ready:
+    $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1{id}~1ready"
   /api/v0/applications/{id}/certificate:
     $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1{id}~1certificate"
   /api/v0/individuals:
@@ -67,6 +69,8 @@ components:
       $ref: "./open-api-common/components.yml#/components/schemas/PagingResponse"
     MakeDecisionRequest:
       $ref: "./open-api-applications/components.yml#/components/schemas/MakeDecisionRequest"
+    ReadyApplicationRequest:
+      $ref: "./open-api-applications/components.yml#/components/schemas/ReadyApplicationRequest"
     IndividualResponse:
       $ref: "./open-api-individuals/components.yml#/components/schemas/IndividualResponse"
     IndividualsResponse:

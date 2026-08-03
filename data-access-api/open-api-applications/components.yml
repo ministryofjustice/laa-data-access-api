@@ -64,6 +64,8 @@ components:
           type: boolean
         autoGrant:
           type: boolean
+          nullable: true
+          description: Null while automatic assessment is pending, false for manual work, true when automatically granted
         decisionStatus:
           $ref: "#/components/schemas/DecisionStatus"
         applicationType:
@@ -154,6 +156,8 @@ components:
           format: uuid
         autoGrant:
           type: boolean
+          nullable: true
+          description: Null while automatic assessment is pending, false for manual work, true when automatically granted
         clientFirstName:
           type: string
         clientLastName:
@@ -292,6 +296,17 @@ components:
           type: integer
           format: int64
           description: Version of application being decided, used for concurrency control
+
+    ReadyApplicationRequest:
+      type: object
+      required:
+        - applicationVersion
+      properties:
+        applicationVersion:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Current Application version, used for optimistic concurrency control
 
     ApplicationProceedingsResponse:
       type: array

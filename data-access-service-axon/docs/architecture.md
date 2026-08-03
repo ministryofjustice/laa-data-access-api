@@ -71,12 +71,29 @@ These versions solve different problems and should not be combined:
 
 | Field | Meaning | Changes when |
 |---|---|---|
-| `applicationVersion` | Public optimistic-lock version for application changes | A decision, assignment, or unassignment succeeds |
+| `applicationVersion` | Public optimistic-lock version for application changes | A decision, manual-ready outcome, assignment, or unassignment succeeds |
 | `applicationDataVersion` | Internal pointer to an immutable `application_data` row | Sensitive/audit payload changes, including notes |
 
 Decision requests supply the expected `applicationVersion` to prevent one caller silently
 overwriting a decision based on stale state. The aggregate chooses the next
 `applicationDataVersion`; callers never manage this internal storage detail.
+
+## Automatic-assessment outcome and manual visibility
+
+`autoGrant` is a tri-state outcome independent of Application Status:
+
+- `null` means automatic assessment has not recorded an outcome, so the submitted Application is
+  excluded from manual-task queries;
+- `false` means assessment completed without an automatic grant, so the Application can be
+  selected with `isAutoGranted=false` for manual work;
+- `true` means an automatically granted Decision was recorded, so the Application remains outside
+  manual work.
+
+`PATCH /api/v0/applications/{id}/ready` records the false outcome without changing
+`APPLICATION_SUBMITTED`. The aggregate appends a new immutable `application_data` version and then
+emits `ApplicationReadyForManualAssessmentEvent`, which carries only the Application identifier,
+public and data versions, and occurrence time. Replaying the event restores the aggregate outcome
+and advances the disposable projection to the same immutable data version.
 
 ## Transaction and processing choices
 

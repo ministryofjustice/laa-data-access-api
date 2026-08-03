@@ -22,6 +22,9 @@ import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApp
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.ValidateApplicationExistsCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
+import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand;
+import uk.gov.justice.laa.dstew.access.command.application.ready.ReadyApplicationResult;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 
 /** Event-sourced consistency boundary for an Application and its owned child state. */
@@ -204,6 +207,33 @@ public class ApplicationAggregate {
     eventAppender.append(event);
   }
 
+  /** Stores {@code autoGrant=false} as the next immutable Application-data version. */
+  @CommandHandler
+  ReadyApplicationResult handle(
+      MarkApplicationReadyCommand command,
+      ApplicationDataStore applicationDataStore,
+      EventAppender eventAppender) {
+    requireApplicationExists(command.applicationId());
+    ReadyApplicationResult result = ApplicationDecider.decideReady(state, command);
+    if (result == ReadyApplicationResult.ALREADY_RECORDED) {
+      return result;
+    }
+
+    var current = applicationDataStore.get(applicationId, state.applicationDataVersion);
+    long nextApplicationVersion = state.applicationVersion + 1;
+    long nextDataVersion = state.applicationDataVersion + 1;
+    applicationDataStore.append(
+        applicationId,
+        nextDataVersion,
+        current.withManualAssessmentRequired(),
+        command.serialisedRequest(),
+        command.occurredAt());
+    eventAppender.append(
+        new ApplicationReadyForManualAssessmentEvent(
+            applicationId, nextApplicationVersion, nextDataVersion, command.occurredAt()));
+    return result;
+  }
+
   private void requireApplicationExists(UUID requestedApplicationId) {
     if (applicationId == null) {
       throw new ResourceNotFoundException(
@@ -239,6 +269,11 @@ public class ApplicationAggregate {
 
   @EventSourcingHandler
   void on(NoteCreatedEvent event) {
+    ApplicationEvolve.apply(state, event);
+  }
+
+  @EventSourcingHandler
+  void on(ApplicationReadyForManualAssessmentEvent event) {
     ApplicationEvolve.apply(state, event);
   }
 

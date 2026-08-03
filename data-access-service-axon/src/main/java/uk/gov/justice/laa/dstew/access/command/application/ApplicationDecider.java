@@ -22,9 +22,13 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.MakeDecision
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupRequested;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand;
+import uk.gov.justice.laa.dstew.access.command.application.ready.ReadyApplicationResult;
+import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationGroupInvariantException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException;
+import uk.gov.justice.laa.dstew.access.exception.InvalidApplicationStateException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
@@ -150,6 +154,25 @@ public final class ApplicationDecider {
   public static NoteCreatedEvent decideNote(ApplicationState state, CreateNoteCommand command) {
     return new NoteCreatedEvent(
         state.applicationId, state.applicationDataVersion + 1, command.occurredAt());
+  }
+
+  /** Validates an idempotent transition to manual-assessment readiness. */
+  public static ReadyApplicationResult decideReady(
+      ApplicationState state, MarkApplicationReadyCommand command) {
+    if (Boolean.FALSE.equals(state.autoGranted)) {
+      return ReadyApplicationResult.ALREADY_RECORDED;
+    }
+    if (Boolean.TRUE.equals(state.autoGranted)) {
+      throw new ApplicationAutoGrantOutcomeConflictException(command.applicationId());
+    }
+    if (!"APPLICATION_SUBMITTED".equals(state.status)) {
+      throw new InvalidApplicationStateException(command.applicationId(), state.status);
+    }
+    if (command.expectedApplicationVersion() != state.applicationVersion) {
+      throw new ApplicationVersionConflictException(
+          command.applicationId(), command.expectedApplicationVersion());
+    }
+    return ReadyApplicationResult.RECORDED;
   }
 
   private static void validateDecision(MakeApplicationDecisionCommand command) {

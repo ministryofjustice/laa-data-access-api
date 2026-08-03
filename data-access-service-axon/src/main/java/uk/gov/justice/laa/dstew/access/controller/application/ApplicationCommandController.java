@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Min;
 import java.net.URI;
 import java.sql.SQLException;
 import java.util.UUID;
+import java.util.function.Supplier;
 import org.axonframework.eventsourcing.eventstore.AppendEventsTransactionRejectedException;
 import org.axonframework.messaging.commandhandling.gateway.CommandGateway;
 import org.axonframework.modelling.ConcurrencyException;
@@ -20,11 +21,13 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.AssignCaseworkerService;
+import uk.gov.justice.laa.dstew.access.command.application.ready.ReadyApplicationResult;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
 import uk.gov.justice.laa.dstew.access.model.CreateNoteRequest;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
+import uk.gov.justice.laa.dstew.access.model.ReadyApplicationRequest;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
@@ -43,6 +46,7 @@ public class ApplicationCommandController {
   private final AssignCaseworkerRequestMapper assignCaseworkerRequestMapper;
   private final UnassignCaseworkerRequestMapper unassignCaseworkerRequestMapper;
   private final CreateNoteCommandMapper createNoteCommandMapper;
+  private final ReadyApplicationCommandMapper readyApplicationCommandMapper;
 
   /** Creates the command adapter. */
   public ApplicationCommandController(
@@ -53,7 +57,8 @@ public class ApplicationCommandController {
       AssignCaseworkerService assignCaseworkerService,
       AssignCaseworkerRequestMapper assignCaseworkerRequestMapper,
       UnassignCaseworkerRequestMapper unassignCaseworkerRequestMapper,
-      CreateNoteCommandMapper createNoteCommandMapper) {
+      CreateNoteCommandMapper createNoteCommandMapper,
+      ReadyApplicationCommandMapper readyApplicationCommandMapper) {
     this.commandGateway = commandGateway;
     this.projectionGateway = projectionGateway;
     this.commandMapper = commandMapper;
@@ -62,6 +67,7 @@ public class ApplicationCommandController {
     this.assignCaseworkerRequestMapper = assignCaseworkerRequestMapper;
     this.unassignCaseworkerRequestMapper = unassignCaseworkerRequestMapper;
     this.createNoteCommandMapper = createNoteCommandMapper;
+    this.readyApplicationCommandMapper = readyApplicationCommandMapper;
   }
 
   /** Assigns a caseworker to one or more Applications after validating the complete batch. */
@@ -96,6 +102,20 @@ public class ApplicationCommandController {
       @Valid @RequestBody MakeDecisionRequest request) {
     dispatchWithRetry(decisionCommandMapper.toCommand(id, request));
     return ResponseEntity.noContent().build();
+  }
+
+  /** Records that a submitted Application is ready for manual assessment. */
+  @PatchMapping("/{id}/ready")
+  public ResponseEntity<Void> markApplicationReady(
+      @RequestHeader("X-Service-Name") ServiceName serviceName,
+      @PathVariable UUID id,
+      @Valid @RequestBody ReadyApplicationRequest request) {
+    ReadyApplicationResult result =
+        dispatchWithRetry(
+            readyApplicationCommandMapper.toCommand(id, request), ReadyApplicationResult.class);
+    return result == ReadyApplicationResult.RECORDED
+        ? ResponseEntity.noContent().build()
+        : ResponseEntity.ok().build();
   }
 
   /** Appends a note to an existing Application. */
@@ -135,14 +155,22 @@ public class ApplicationCommandController {
   }
 
   void dispatchWithRetry(Object command) {
+    dispatchWithRetry(() -> commandGateway.sendAndWait(command));
+  }
+
+  private <R> R dispatchWithRetry(Object command, Class<R> responseType) {
+    return dispatchWithRetry(() -> commandGateway.sendAndWait(command, responseType));
+  }
+
+  private <R> R dispatchWithRetry(Supplier<R> dispatch) {
     try {
-      commandGateway.sendAndWait(command);
+      return dispatch.get();
     } catch (RuntimeException first) {
       if (!isRetryableConcurrentWrite(first)) {
         throw first;
       }
       try {
-        commandGateway.sendAndWait(command);
+        return dispatch.get();
       } catch (RuntimeException retry) {
         retry.addSuppressed(first);
         throw retry;

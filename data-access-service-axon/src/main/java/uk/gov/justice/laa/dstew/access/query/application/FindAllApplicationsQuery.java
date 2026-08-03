@@ -18,6 +18,7 @@ public record FindAllApplicationsQuery(
     String clientFirstName,
     String clientLastName,
     LocalDate clientDateOfBirth,
+    Boolean isAutoGranted,
     String sortBy,
     String orderBy,
     Integer page,

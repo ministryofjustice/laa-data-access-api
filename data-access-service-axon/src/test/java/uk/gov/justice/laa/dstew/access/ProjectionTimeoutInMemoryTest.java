@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
 
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import org.axonframework.common.configuration.AxonConfiguration;
 import org.axonframework.messaging.eventhandling.processing.streaming.StreamingEventProcessor;
 import org.junit.jupiter.api.Test;
@@ -13,11 +15,13 @@ import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRe
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.annotation.DirtiesContext;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 
 /**
  * Verifies that when the application-projection tracking processor is stopped the controller
@@ -52,11 +56,11 @@ class ProjectionTimeoutInMemoryTest {
   @Test
   void givenStoppedProjectionProcessor_whenPostApplication_thenReturnsAcceptedWithLocation() {
     // Stop the projection processor so no QueryUpdateEmitter.emit can be called for this command.
-    axonConfiguration
-        .getComponents(StreamingEventProcessor.class)
-        .get("application-projection")
-        .shutdown()
-        .join();
+    StreamingEventProcessor processor =
+        axonConfiguration
+            .getComponents(StreamingEventProcessor.class)
+            .get("application-projection");
+    processor.shutdown().join();
 
     UUID applyApplicationId = UUID.randomUUID();
     ApplicationCreateRequest request =
@@ -86,5 +90,21 @@ class ProjectionTimeoutInMemoryTest {
 
     // The test must complete well below the full 5-second default timeout.
     assertThat(elapsedMs).isLessThan(3_000L);
+
+    CompletableFuture<Void> restart =
+        CompletableFuture.runAsync(
+            () -> processor.start().join(),
+            CompletableFuture.delayedExecutor(50, TimeUnit.MILLISECONDS));
+    ResponseEntity<ApplicationResponse> directRead =
+        restTemplate.exchange(
+            "/api/v0/applications/" + applyApplicationId,
+            HttpMethod.GET,
+            new HttpEntity<>(headers),
+            ApplicationResponse.class);
+
+    restart.join();
+    assertThat(directRead.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(directRead.getBody()).isNotNull();
+    assertThat(directRead.getBody().getApplicationId()).isEqualTo(applyApplicationId);
   }
 }

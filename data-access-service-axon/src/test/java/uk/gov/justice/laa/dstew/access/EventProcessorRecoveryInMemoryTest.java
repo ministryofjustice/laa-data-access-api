@@ -27,9 +27,12 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.annotation.DirtiesContext;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
+import uk.gov.justice.laa.dstew.access.model.ReadyApplicationRequest;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
@@ -97,6 +100,30 @@ class EventProcessorRecoveryInMemoryTest {
                             .size()
                         >= 2);
 
+    assertThat(
+            restTemplate
+                .exchange(
+                    "/api/v0/applications/" + applicationId + "/ready",
+                    HttpMethod.PATCH,
+                    new HttpEntity<>(new ReadyApplicationRequest().applicationVersion(0L), headers),
+                    Void.class)
+                .getStatusCode())
+        .isEqualTo(HttpStatus.NO_CONTENT);
+    await()
+        .atMost(Duration.ofSeconds(5))
+        .untilAsserted(
+            () ->
+                assertThat(
+                        restTemplate
+                            .exchange(
+                                "/api/v0/applications/" + applicationId,
+                                HttpMethod.GET,
+                                new HttpEntity<>(headers),
+                                ApplicationResponse.class)
+                            .getBody()
+                            .getAutoGrant())
+                    .isFalse());
+
     var processors =
         java.util.List.of(
             processor("application-projection"),
@@ -124,6 +151,16 @@ class EventProcessorRecoveryInMemoryTest {
                             .findAllByApplicationIdOrderByOccurredAtAsc(linkedApplicationId)
                             .size()
                         >= 2);
+    assertThat(
+            restTemplate
+                .exchange(
+                    "/api/v0/applications/" + applicationId,
+                    HttpMethod.GET,
+                    new HttpEntity<>(headers),
+                    ApplicationResponse.class)
+                .getBody()
+                .getAutoGrant())
+        .isFalse();
     assertThat(processors)
         .allSatisfy(
             processor -> {

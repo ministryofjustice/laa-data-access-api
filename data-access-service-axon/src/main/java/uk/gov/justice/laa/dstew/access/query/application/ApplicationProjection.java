@@ -24,6 +24,7 @@ import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataS
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationNote;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
 
@@ -148,19 +149,24 @@ public class ApplicationProjection {
   /** Advances the current-state row to the immutable data version containing the decision. */
   @EventHandler
   public void on(ApplicationDecisionMadeEvent event, QueryUpdateEmitter queryUpdateEmitter) {
-    applicationReadRepository
-        .findById(event.applicationId())
-        .ifPresent(
-            application -> {
-              application.setApplicationDataVersion(event.applicationDataVersion());
-              application.setApplicationVersion(event.applicationVersion());
-              application.setModifiedAt(event.occurredAt());
-              ApplicationReadModel saved = applicationReadRepository.save(application);
-              queryUpdateEmitter.emit(
-                  FindApplicationByIdQuery.class,
-                  query -> query.applicationId().equals(event.applicationId()),
-                  saved);
-            });
+    advanceCurrentState(
+        event.applicationId(),
+        event.applicationVersion(),
+        event.applicationDataVersion(),
+        event.occurredAt(),
+        queryUpdateEmitter);
+  }
+
+  /** Advances the current-state row to the immutable data version containing manual readiness. */
+  @EventHandler
+  public void on(
+      ApplicationReadyForManualAssessmentEvent event, QueryUpdateEmitter queryUpdateEmitter) {
+    advanceCurrentState(
+        event.applicationId(),
+        event.applicationVersion(),
+        event.applicationDataVersion(),
+        event.occurredAt(),
+        queryUpdateEmitter);
   }
 
   /** Updates the assigned caseworker and referenced application-data version. */
@@ -206,6 +212,27 @@ public class ApplicationProjection {
             });
   }
 
+  private void advanceCurrentState(
+      UUID applicationId,
+      long applicationVersion,
+      long applicationDataVersion,
+      java.time.Instant occurredAt,
+      QueryUpdateEmitter queryUpdateEmitter) {
+    applicationReadRepository
+        .findById(applicationId)
+        .ifPresent(
+            application -> {
+              application.setApplicationDataVersion(applicationDataVersion);
+              application.setApplicationVersion(applicationVersion);
+              application.setModifiedAt(occurredAt);
+              ApplicationReadModel saved = applicationReadRepository.save(application);
+              queryUpdateEmitter.emit(
+                  FindApplicationByIdQuery.class,
+                  query -> query.applicationId().equals(applicationId),
+                  saved);
+            });
+  }
+
   /** Clears the disposable current-state table before replay. */
   @ResetHandler
   public void reset() {
@@ -217,7 +244,9 @@ public class ApplicationProjection {
         && (query.laaReference() == null
             || Objects.equals(application.getLaaReference(), query.laaReference()))
         && (query.matterType() == null
-            || Objects.equals(application.getMatterType(), query.matterType()));
+            || Objects.equals(application.getMatterType(), query.matterType()))
+        && (query.isAutoGranted() == null
+            || Objects.equals(application.getAutoGranted(), query.isAutoGranted()));
   }
 
   private Comparator<ApplicationReadModel> comparator(String sortBy, String orderBy) {

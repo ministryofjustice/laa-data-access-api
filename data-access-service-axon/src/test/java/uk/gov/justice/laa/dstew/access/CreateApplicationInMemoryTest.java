@@ -29,11 +29,19 @@ import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataI
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataRepository;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
+import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
+import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
+import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.model.IndividualsResponse;
+import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceedingRequest;
+import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
+import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetailsRequest;
+import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
+import uk.gov.justice.laa.dstew.access.model.ReadyApplicationRequest;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
@@ -228,6 +236,7 @@ class CreateApplicationInMemoryTest {
     assertThat(projected.getApplicationId()).isEqualTo(applicationId);
     assertThat(projected.getApplyApplicationId()).isEqualTo(applyApplicationId);
     assertThat(projected.getStatus()).isEqualTo(ApplicationStatus.APPLICATION_SUBMITTED.name());
+    assertThat(projected.getAutoGranted()).isNull();
     assertThat(projected.getLaaReference()).isEqualTo("LAA-123");
     assertThat(projected.getOfficeCode()).isEqualTo("1A001B");
     assertThat(projected.getSchemaVersion()).isEqualTo(2);
@@ -271,6 +280,175 @@ class CreateApplicationInMemoryTest {
     var processors = axonConfiguration.getComponents(StreamingEventProcessor.class);
     assertThat(processors.get("application-projection")).isNotNull();
     assertThat(processors.get("application-history-projection")).isNotNull();
+  }
+
+  @Test
+  void givenSubmittedApplication_whenMarkedReady_thenOnlyFalseOutcomeEntersManualList() {
+    UUID applicationId = UUID.randomUUID();
+    applicationId(
+        restTemplate.postForEntity(
+            "/api/v0/applications",
+            new HttpEntity<>(
+                validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()),
+            Void.class));
+    awaitProjection(applicationId);
+
+    ResponseEntity<ApplicationResponse> directBeforeReady =
+        restTemplate.exchange(
+            "/api/v0/applications/" + applicationId,
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            ApplicationResponse.class);
+    assertThat(directBeforeReady.getBody()).isNotNull();
+    assertThat(directBeforeReady.getBody().getAutoGrant()).isNull();
+
+    ResponseEntity<ApplicationSummaryResponse> before =
+        restTemplate.exchange(
+            "/api/v0/applications?status=APPLICATION_SUBMITTED&isAutoGranted=false",
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            ApplicationSummaryResponse.class);
+    assertThat(before.getBody()).isNotNull();
+    assertThat(before.getBody().getApplications())
+        .extracting(application -> application.getApplicationId())
+        .doesNotContain(applicationId);
+
+    ReadyApplicationRequest request = new ReadyApplicationRequest().applicationVersion(0L);
+    ResponseEntity<Void> ready =
+        restTemplate.exchange(
+            "/api/v0/applications/" + applicationId + "/ready",
+            HttpMethod.PATCH,
+            new HttpEntity<>(request, headers()),
+            Void.class);
+    assertThat(ready.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+
+    ApplicationReadModel projected = awaitApplicationVersion(applicationId, 1L);
+    assertThat(projected.getStatus()).isEqualTo(ApplicationStatus.APPLICATION_SUBMITTED.name());
+    assertThat(projected.getAutoGranted()).isFalse();
+
+    ResponseEntity<ApplicationResponse> direct =
+        restTemplate.exchange(
+            "/api/v0/applications/" + applicationId,
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            ApplicationResponse.class);
+    assertThat(direct.getBody()).isNotNull();
+    assertThat(direct.getBody().getStatus()).isEqualTo(ApplicationStatus.APPLICATION_SUBMITTED);
+    assertThat(direct.getBody().getAutoGrant()).isFalse();
+
+    ResponseEntity<ApplicationSummaryResponse> after =
+        restTemplate.exchange(
+            "/api/v0/applications?status=APPLICATION_SUBMITTED&isAutoGranted=false",
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            ApplicationSummaryResponse.class);
+    assertThat(after.getBody()).isNotNull();
+    assertThat(after.getBody().getApplications())
+        .filteredOn(application -> application.getApplicationId().equals(applicationId))
+        .singleElement()
+        .satisfies(application -> assertThat(application.getAutoGrant()).isFalse());
+
+    ResponseEntity<Void> replay =
+        restTemplate.exchange(
+            "/api/v0/applications/" + applicationId + "/ready",
+            HttpMethod.PATCH,
+            new HttpEntity<>(request, headers()),
+            Void.class);
+    assertThat(replay.getStatusCode()).isEqualTo(HttpStatus.OK);
+  }
+
+  @Test
+  void givenStaleVersion_whenMarkedReady_thenReturnsConflict() {
+    UUID applicationId = UUID.randomUUID();
+    applicationId(
+        restTemplate.postForEntity(
+            "/api/v0/applications",
+            new HttpEntity<>(
+                validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()),
+            Void.class));
+
+    ResponseEntity<String> response =
+        restTemplate.exchange(
+            "/api/v0/applications/" + applicationId + "/ready",
+            HttpMethod.PATCH,
+            new HttpEntity<>(new ReadyApplicationRequest().applicationVersion(9L), headers()),
+            String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+    assertThat(response.getBody()).contains("version 9 not found");
+  }
+
+  @Test
+  void givenApplicationInProgress_whenMarkedReady_thenReturnsUnprocessableEntity() {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationCreateRequest submitted =
+        validCreateApplicationRequest(applicationId, UUID.randomUUID());
+    ApplicationCreateRequest inProgress =
+        ApplicationCreateRequest.builder()
+            .applicationType(submitted.getApplicationType())
+            .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
+            .applicationContent(submitted.getApplicationContent())
+            .laaReference(submitted.getLaaReference())
+            .individuals(submitted.getIndividuals())
+            .build();
+    applicationId(
+        restTemplate.postForEntity(
+            "/api/v0/applications", new HttpEntity<>(inProgress, headers()), Void.class));
+
+    ResponseEntity<String> response =
+        restTemplate.exchange(
+            "/api/v0/applications/" + applicationId + "/ready",
+            HttpMethod.PATCH,
+            new HttpEntity<>(new ReadyApplicationRequest().applicationVersion(0L), headers()),
+            String.class);
+
+    assertThat(response.getStatusCode().value()).isEqualTo(422);
+    assertThat(response.getBody()).contains("APPLICATION_IN_PROGRESS");
+  }
+
+  @Test
+  void givenAutomaticallyGrantedApplication_whenMarkedReady_thenReturnsConflict() {
+    UUID applicationId = UUID.randomUUID();
+    applicationId(
+        restTemplate.postForEntity(
+            "/api/v0/applications",
+            new HttpEntity<>(
+                validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()),
+            Void.class));
+    UUID proceedingId = awaitProjection(applicationId).getProceedings().getFirst().proceedingId();
+    MakeDecisionRequest decision =
+        MakeDecisionRequest.builder()
+            .applicationVersion(0L)
+            .overallDecision(DecisionStatus.GRANTED)
+            .autoGranted(true)
+            .certificate(java.util.Map.of("certificateNumber", "AUTO-1"))
+            .eventHistory(EventHistoryRequest.builder().eventDescription("Auto-granted").build())
+            .proceedings(
+                List.of(
+                    MakeDecisionProceedingRequest.builder()
+                        .proceedingId(proceedingId)
+                        .meritsDecision(
+                            MeritsDecisionDetailsRequest.builder()
+                                .decision(MeritsDecisionStatus.GRANTED)
+                                .justification("All automatic checks passed")
+                                .build())
+                        .build()))
+            .build();
+    restTemplate.exchange(
+        "/api/v0/applications/" + applicationId + "/decision",
+        HttpMethod.PATCH,
+        new HttpEntity<>(decision, headers()),
+        Void.class);
+
+    ResponseEntity<String> response =
+        restTemplate.exchange(
+            "/api/v0/applications/" + applicationId + "/ready",
+            HttpMethod.PATCH,
+            new HttpEntity<>(new ReadyApplicationRequest().applicationVersion(1L), headers()),
+            String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+    assertThat(response.getBody()).contains("incompatible auto-grant outcome");
   }
 
   @Test
@@ -655,6 +833,18 @@ class CreateApplicationInMemoryTest {
                     .query(new FindApplicationByIdQuery(applicationId), ApplicationReadModel.class)
                     .join(),
             Objects::nonNull);
+  }
+
+  private ApplicationReadModel awaitApplicationVersion(UUID applicationId, long version) {
+    return await()
+        .atMost(10, TimeUnit.SECONDS)
+        .pollInterval(50, TimeUnit.MILLISECONDS)
+        .until(
+            () ->
+                queryGateway
+                    .query(new FindApplicationByIdQuery(applicationId), ApplicationReadModel.class)
+                    .join(),
+            application -> application != null && application.getApplicationVersion() == version);
   }
 
   private List<ApplicationHistoryReadModel> awaitHistory(UUID applicationId, int expectedCount) {

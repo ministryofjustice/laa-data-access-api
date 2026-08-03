@@ -62,6 +62,7 @@ import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetailsRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.OpponentResponse;
 import uk.gov.justice.laa.dstew.access.model.ProviderResponse;
+import uk.gov.justice.laa.dstew.access.model.ReadyApplicationRequest;
 import uk.gov.justice.laa.dstew.access.model.ScopeLimitationResponse;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadRepository;
@@ -438,6 +439,49 @@ class PostgresAxonIntegrationTest {
                 Integer.class,
                 applicationId))
         .isEqualTo(2);
+  }
+
+  @Test
+  void givenSubmittedApplication_whenMarkedReady_thenPersistsFalseOutcomeAndThinEvent()
+      throws Exception {
+    UUID applicationId = UUID.randomUUID();
+    applicationId(post(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()));
+    awaitProjection(applicationId);
+    ReadyApplicationRequest request =
+        ReadyApplicationRequest.builder().applicationVersion(0L).build();
+
+    ResponseEntity<Void> response =
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/applications/" + applicationId + "/ready",
+            HttpMethod.PATCH,
+            new HttpEntity<>(request, headers()),
+            Void.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    ApplicationReadModel ready = awaitProjectionVersion(applicationId, 1L);
+    assertThat(ready.getStatus()).isEqualTo("APPLICATION_SUBMITTED");
+    assertThat(ready.getAutoGranted()).isFalse();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT payload ->> 'autoGranted' FROM axon.application_data "
+                    + "WHERE application_id = ? AND version = 1",
+                String.class,
+                applicationId))
+        .isEqualTo("false");
+    assertThat(
+            jdbcTemplate.queryForMap(
+                "SELECT payload_type, convert_from(payload, 'UTF8') AS payload "
+                    + "FROM axon.domain_event_entry "
+                    + "WHERE aggregate_identifier = ? AND sequence_number = 1",
+                applicationId.toString()))
+        .satisfies(
+            event -> {
+              assertThat(event.get("payload_type").toString())
+                  .endsWith("ApplicationReadyForManualAssessmentEvent");
+              assertThat(event.get("payload").toString())
+                  .contains("applicationDataVersion")
+                  .doesNotContain("applicationContent", "LAA-123");
+            });
   }
 
   @Test

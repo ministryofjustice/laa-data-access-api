@@ -11,6 +11,8 @@ import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventF
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationCreationDetails;
 
 import java.time.Instant;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Predicate;
@@ -26,6 +28,7 @@ import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataP
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationNote;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
+import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
 
 class ApplicationProjectionTest {
@@ -142,6 +145,25 @@ class ApplicationProjectionTest {
   }
 
   @Test
+  void givenReadyEvent_whenHandled_thenAdvancesReferencedDataVersion() {
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-21T09:30:00Z");
+    ApplicationReadModel existing =
+        ApplicationReadModel.builder().applicationId(applicationId).build();
+    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(existing));
+    when(applicationReadRepository.save(existing)).thenReturn(existing);
+
+    projection.on(
+        new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, 1L, occurredAt),
+        queryUpdateEmitter);
+
+    assertThat(existing.getStatus()).isNull();
+    assertThat(existing.getApplicationVersion()).isEqualTo(1L);
+    assertThat(existing.getApplicationDataVersion()).isEqualTo(1L);
+    assertThat(existing.getModifiedAt()).isEqualTo(occurredAt);
+  }
+
+  @Test
   void givenAssignmentEvent_whenHandled_thenSetsCaseworkerAndVersions() {
     UUID applicationId = UUID.randomUUID();
     UUID caseworkerId = UUID.randomUUID();
@@ -255,5 +277,57 @@ class ApplicationProjectionTest {
 
     assertThat(result).isNotNull();
     assertThat(result.notes()).isEmpty();
+  }
+
+  @Test
+  void givenSubmittedApplications_whenManualOutcomeRequested_thenExcludesUnassessedApplication() {
+    UUID unassessedId = UUID.randomUUID();
+    UUID manualId = UUID.randomUUID();
+    ApplicationReadModel unassessed = readModel(unassessedId);
+    ApplicationReadModel manual = readModel(manualId);
+    ApplicationDataPayload unassessedData =
+        ApplicationDataPayload.from(applicationCreationDetails(unassessedId));
+    ApplicationDataPayload manualData =
+        ApplicationDataPayload.from(applicationCreationDetails(manualId))
+            .withManualAssessmentRequired();
+    when(applicationReadRepository.findAll()).thenReturn(List.of(unassessed, manual));
+    when(applicationDataStore.getAll(any()))
+        .thenReturn(
+            Map.of(
+                new uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId(
+                    unassessedId, 0L),
+                unassessedData,
+                new uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId(
+                    manualId, 0L),
+                manualData));
+
+    FindAllApplicationsResult result =
+        projection.handle(
+            new FindAllApplicationsQuery(
+                "APPLICATION_SUBMITTED",
+                null,
+                null,
+                null,
+                null,
+                null,
+                false,
+                "SUBMITTED_DATE",
+                "ASC",
+                1,
+                20));
+
+    assertThat(result.applications())
+        .extracting(ApplicationReadModel::getApplicationId)
+        .containsExactly(manualId);
+  }
+
+  private ApplicationReadModel readModel(UUID applicationId) {
+    return ApplicationReadModel.builder()
+        .applicationId(applicationId)
+        .status("APPLICATION_SUBMITTED")
+        .applicationDataVersion(0L)
+        .applicationVersion(0L)
+        .modifiedAt(Instant.parse("2026-07-21T09:00:00Z"))
+        .build();
   }
 }

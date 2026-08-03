@@ -126,6 +126,30 @@ public record ApplicationDataPayload(
         notes);
   }
 
+  /** Returns a complete new data version marked as requiring manual assessment. */
+  public ApplicationDataPayload withManualAssessmentRequired() {
+    return new ApplicationDataPayload(
+        laaReference,
+        applicationContent,
+        individuals,
+        applyApplicationId,
+        submittedAt,
+        officeCode,
+        usedDelegatedFunctions,
+        categoryOfLaw,
+        matterType,
+        proceedings,
+        serialisedRequest,
+        overallDecision,
+        false,
+        meritsDecisions,
+        certificate,
+        decisionSerialisedRequest,
+        decisionEventDescription,
+        assignmentEventDescription,
+        notes);
+  }
+
   /** Returns a complete new data version with the given note appended. */
   public ApplicationDataPayload withNote(String noteText, Instant createdAt) {
     List<ApplicationNote> updated = new ArrayList<>(notes);

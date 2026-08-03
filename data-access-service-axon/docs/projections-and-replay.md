@@ -22,6 +22,12 @@ router and initializer are described in [Linked applications](linked-application
 `ApplicationProjection` stores thin, searchable control state and the current
 `applicationDataVersion`. Query handlers hydrate detailed fields from `application_data`.
 
+Decision and manual-ready events both advance the public and data versions. A replay of
+`ApplicationReadyForManualAssessmentEvent` therefore restores the pointer to the immutable payload
+containing `autoGrant=false`; no command handler or external side effect is invoked during replay.
+List queries can filter that hydrated value with `isAutoGranted=false`, which deliberately excludes
+null outcomes, while identifier lookup remains unfiltered.
+
 For a single application, a missing referenced payload means no hydrated application is returned.
 For list queries, payloads are batch-loaded to avoid one lookup per row. Linked-group rows are also
 batch-loaded for the result page.

@@ -6,9 +6,11 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
+import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationGroupInvariantException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException;
+import uk.gov.justice.laa.dstew.access.exception.InvalidApplicationStateException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
@@ -99,5 +101,35 @@ class ApplicationExceptionHandlerTest {
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     assertThat(response.getBody().getDetail()).isEqualTo("Application cannot be its own lead");
+  }
+
+  @Test
+  void givenIncompatibleAutoGrantOutcome_whenHandled_thenReturnsConflict() {
+    UUID applicationId = UUID.randomUUID();
+
+    var response =
+        handler.handleApplicationAutoGrantOutcomeConflictException(
+            new ApplicationAutoGrantOutcomeConflictException(applicationId));
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+    assertThat(response.getBody().getDetail())
+        .isEqualTo(
+            "Application " + applicationId + " already has an incompatible auto-grant outcome");
+  }
+
+  @Test
+  void givenInvalidLifecycleState_whenHandled_thenReturnsUnprocessableEntity() {
+    UUID applicationId = UUID.randomUUID();
+
+    var response =
+        handler.handleInvalidApplicationStateException(
+            new InvalidApplicationStateException(applicationId, "APPLICATION_IN_PROGRESS"));
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT);
+    assertThat(response.getBody().getDetail())
+        .isEqualTo(
+            "Application "
+                + applicationId
+                + " cannot be made ready from status APPLICATION_IN_PROGRESS");
   }
 }
