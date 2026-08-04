@@ -334,6 +334,24 @@ curl -X GET "http://localhost:9000/api/v0/caseworkers" \
 
 ---
 
+### Local SNS-to-SQS seam (event-driven auto-grant)
+
+This repo owns the `data-access-events` SNS topic used by the event-driven auto-grant design
+(mirrors the deployed `laa-data-access-api-uat/resources/sns.tf`). The consumer's queue is owned
+by `laa-civil-decide-api`, so this repo's local stack also creates a private verification queue,
+purely so the producer side can be proven independently without checking out that other repo.
+
+```bash
+docker compose -f docker-compose.localstack.yml up -d
+AWS_REGION=eu-west-2 AWS_ACCESS_KEY_ID=local-access-key AWS_SECRET_ACCESS_KEY=local-secret-key \
+  AWS_ENDPOINT_URL=http://localhost:4566 scripts/localstack/smoke-test.sh
+```
+
+See `scripts/localstack/init-localstack.sh` for the full resource shape and cross-repo integration
+notes.
+
+---
+
 ### Troubleshooting Authentication
 
 **Problem: "401 Unauthorized"**
