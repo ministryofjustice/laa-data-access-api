@@ -26,6 +26,7 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationD
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
 
@@ -109,6 +110,27 @@ public class ApplicationProjection {
 
     return new FindAllApplicationsResult(
         content, groupsByLeadId, filtered.size(), query.page(), pageSize);
+  }
+
+  /** Returns old submitted Applications that still have no automatic-assessment outcome. */
+  @QueryHandler
+  public StalledAssessments handle(FindStalledAssessmentsQuery query) {
+    return new StalledAssessments(
+        hydrate(
+                applicationReadRepository.findAllByStatus(
+                    ApplicationStatus.APPLICATION_SUBMITTED.name()))
+            .stream()
+            .filter(application -> application.getAutoGranted() == null)
+            .filter(application -> application.getSubmittedAt() != null)
+            .filter(application -> application.getSubmittedAt().isBefore(query.submittedBefore()))
+            .map(
+                application ->
+                    new StalledAssessment(
+                        application.getApplicationId(),
+                        application.getApplyApplicationId(),
+                        application.getApplicationVersion(),
+                        application.getSubmittedAt()))
+            .toList());
   }
 
   /** Creates the current-state row from an Application's creation event. */

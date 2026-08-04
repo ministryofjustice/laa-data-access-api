@@ -39,12 +39,16 @@ axon:
 application:
   projection:
     timeout: 5s
+  assessment:
+    reconciliation:
+      threshold: ${ASSESSMENT_RECONCILIATION_THRESHOLD:15m}
+      interval: ${ASSESSMENT_RECONCILIATION_INTERVAL:5m}
 
 management:
   endpoints:
     web:
       exposure:
-        include: health
+        include: health,info,metrics,prometheus
 
 springdoc:
   api-docs:

@@ -11,6 +11,7 @@ import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventF
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationCreationDetails;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -24,6 +25,7 @@ import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEve
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationNote;
@@ -106,6 +108,38 @@ class ApplicationProjectionTest {
     projection.reset();
 
     verify(applicationReadRepository).deleteAllInBatch();
+  }
+
+  @Test
+  void givenSubmittedApplications_whenReconciliationQueries_thenReturnsOnlyOldUnassessedOnes() {
+    Instant threshold = Instant.parse("2026-08-04T09:45:00Z");
+    UUID stalledId = UUID.randomUUID();
+    UUID assessedId = UUID.randomUUID();
+    UUID recentId = UUID.randomUUID();
+    ApplicationReadModel stalled = reconciliationReadModel(stalledId);
+    ApplicationReadModel assessed = reconciliationReadModel(assessedId);
+    ApplicationReadModel recent = reconciliationReadModel(recentId);
+    when(applicationReadRepository.findAllByStatus("APPLICATION_SUBMITTED"))
+        .thenReturn(List.of(stalled, assessed, recent));
+    ApplicationDataPayload stalledData =
+        reconciliationData(stalledId, threshold.minus(15, ChronoUnit.MINUTES), null);
+    ApplicationDataPayload assessedData =
+        reconciliationData(assessedId, threshold.minus(20, ChronoUnit.MINUTES), false);
+    ApplicationDataPayload recentData =
+        reconciliationData(recentId, threshold.plusSeconds(1), null);
+    when(applicationDataStore.getAll(any()))
+        .thenReturn(
+            Map.of(
+                dataId(stalled), stalledData,
+                dataId(assessed), assessedData,
+                dataId(recent), recentData));
+
+    StalledAssessments result = projection.handle(new FindStalledAssessmentsQuery(threshold));
+
+    assertThat(result.applications())
+        .containsExactly(
+            new StalledAssessment(
+                stalledId, stalledId, 3L, threshold.minus(15, ChronoUnit.MINUTES)));
   }
 
   @Test
@@ -329,5 +363,29 @@ class ApplicationProjectionTest {
         .applicationVersion(0L)
         .modifiedAt(Instant.parse("2026-07-21T09:00:00Z"))
         .build();
+  }
+
+  private ApplicationReadModel reconciliationReadModel(UUID applicationId) {
+    return ApplicationReadModel.builder()
+        .applicationId(applicationId)
+        .status("APPLICATION_SUBMITTED")
+        .applicationDataVersion(2L)
+        .applicationVersion(3L)
+        .applyApplicationId(applicationId)
+        .build();
+  }
+
+  private ApplicationDataId dataId(ApplicationReadModel application) {
+    return new ApplicationDataId(
+        application.getApplicationId(), application.getApplicationDataVersion());
+  }
+
+  private ApplicationDataPayload reconciliationData(
+      UUID applyApplicationId, Instant submittedAt, Boolean autoGranted) {
+    ApplicationDataPayload data = mock(ApplicationDataPayload.class);
+    when(data.applyApplicationId()).thenReturn(applyApplicationId);
+    when(data.submittedAt()).thenReturn(submittedAt);
+    when(data.autoGranted()).thenReturn(autoGranted);
+    return data;
   }
 }

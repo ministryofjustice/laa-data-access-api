@@ -85,6 +85,24 @@ An SNS failure after commit is logged as `Failed to publish ApplicationSubmitted
 commit` with the event, Application, and correlation identifiers. This is an accepted missed-
 trigger risk: the Application remains committed and later reconciliation must detect it.
 
+The read-only reconciliation runs every five minutes by default and reports submitted Applications
+whose `autoGrant` remains null after 15 minutes. Override these independently with
+`ASSESSMENT_RECONCILIATION_INTERVAL` and `ASSESSMENT_RECONCILIATION_THRESHOLD`. It queries the
+replayable Application projection through Axon's query gateway; it never publishes, assesses, or
+updates an Application. Inspect:
+
+- `application_assessment_stalled` and `application_assessment_oldest_age_seconds` for genuine
+  unassessed-Application backlog;
+- `application_assessment_reconciliation_fresh` to confirm those reconciliation gauges came from
+  the latest scheduled query;
+- `axon_event_processor_running`, `axon_event_processor_error`, and
+  `axon_event_processor_caught_up` for projection health;
+- `application_submitted_publication_total{outcome="success|failure"}` for direct SNS publication.
+
+These metrics are exposed at `/actuator/prometheus`. Treat a lagging or failed
+`application-projection` processor as a stale reconciliation source before investigating a
+reported Application as a missed publication.
+
 ## Build and test
 
 The normal repository build runs compilation, packaging, standard unit/in-memory tests, Checkstyle,

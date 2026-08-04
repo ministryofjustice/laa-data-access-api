@@ -1,5 +1,7 @@
 package uk.gov.justice.laa.dstew.access.integrationevent;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Metrics;
 import java.time.Clock;
 import java.util.UUID;
 import org.axonframework.messaging.core.annotation.Namespace;
@@ -26,16 +28,24 @@ public class ApplicationSubmittedEventRouter {
 
   private final ApplicationSubmittedPublisher publisher;
   private final Clock clock;
+  private final MeterRegistry meterRegistry;
 
   /** Creates the after-commit router using the system UTC clock. */
   @Autowired
-  public ApplicationSubmittedEventRouter(ApplicationSubmittedPublisher publisher) {
-    this(publisher, Clock.systemUTC());
+  public ApplicationSubmittedEventRouter(
+      ApplicationSubmittedPublisher publisher, MeterRegistry meterRegistry) {
+    this(publisher, Clock.systemUTC(), meterRegistry);
   }
 
   ApplicationSubmittedEventRouter(ApplicationSubmittedPublisher publisher, Clock clock) {
+    this(publisher, clock, Metrics.globalRegistry);
+  }
+
+  ApplicationSubmittedEventRouter(
+      ApplicationSubmittedPublisher publisher, Clock clock, MeterRegistry meterRegistry) {
     this.publisher = publisher;
     this.clock = clock;
+    this.meterRegistry = meterRegistry;
   }
 
   /** Schedules publication only for Applications created directly in submitted state. */
@@ -94,18 +104,36 @@ public class ApplicationSubmittedEventRouter {
   private void publishSafely(ApplicationSubmittedEvent event, String applicationType) {
     try {
       publisher.publish(event, applicationType);
+      recordPublication("success");
       LOG.info(
-          "Published ApplicationSubmitted event: eventId={}, applicationId={}, correlationId={}",
+          "Published ApplicationSubmitted event: eventId={}, applicationId={},"
+              + " applyApplicationId={}, applicationVersion={}, correlationId={}, eventAgeSeconds={}",
           event.eventId(),
           event.data().applicationId(),
-          event.correlationId());
-    } catch (RuntimeException exception) {
-      LOG.error(
-          "Failed to publish ApplicationSubmitted event after commit: eventId={}, applicationId={}, correlationId={}",
-          event.eventId(),
-          event.data().applicationId(),
+          event.data().applyApplicationId(),
+          event.data().applicationVersion(),
           event.correlationId(),
+          eventAgeSeconds(event));
+    } catch (RuntimeException exception) {
+      recordPublication("failure");
+      LOG.error(
+          "Failed to publish ApplicationSubmitted event after commit: eventId={}, applicationId={},"
+              + " applyApplicationId={}, applicationVersion={}, correlationId={}, eventAgeSeconds={}",
+          event.eventId(),
+          event.data().applicationId(),
+          event.data().applyApplicationId(),
+          event.data().applicationVersion(),
+          event.correlationId(),
+          eventAgeSeconds(event),
           exception);
     }
+  }
+
+  private void recordPublication(String outcome) {
+    meterRegistry.counter("application.submitted.publication", "outcome", outcome).increment();
+  }
+
+  private long eventAgeSeconds(ApplicationSubmittedEvent event) {
+    return Math.max(0, java.time.Duration.between(event.occurredAt(), clock.instant()).toSeconds());
   }
 }

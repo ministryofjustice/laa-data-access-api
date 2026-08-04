@@ -7,6 +7,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -143,7 +144,8 @@ class ApplicationSubmittedEventRouterTest {
         .when(publisher)
         .publish(any(), any());
     ApplicationSubmittedEventRouter router =
-        new ApplicationSubmittedEventRouter(publisher, Clock.fixed(COMMITTED_AT, ZoneOffset.UTC));
+        new ApplicationSubmittedEventRouter(
+            publisher, Clock.fixed(COMMITTED_AT, ZoneOffset.UTC), new SimpleMeterRegistry());
     ProcessingLifecycle lifecycle = mock(ProcessingLifecycle.class);
     router.on(createdEvent("APPLICATION_SUBMITTED"), eventMessage(Map.of()), lifecycle);
     ArgumentCaptor<Consumer<ProcessingContext>> callback = consumerCaptor();
@@ -154,6 +156,31 @@ class ApplicationSubmittedEventRouterTest {
     assertThat(output)
         .contains("Failed to publish ApplicationSubmitted event after commit")
         .contains("SNS unavailable");
+  }
+
+  @Test
+  void givenPublicationCompletes_whenCallbackRuns_thenRecordsTheAttemptOutcome() {
+    SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
+    ApplicationSubmittedEventRouter router =
+        new ApplicationSubmittedEventRouter(
+            new RecordingPublisher(), Clock.fixed(COMMITTED_AT, ZoneOffset.UTC), meterRegistry);
+    ProcessingLifecycle lifecycle = mock(ProcessingLifecycle.class);
+    router.on(
+        createdEvent("APPLICATION_SUBMITTED"),
+        eventMessage(Map.of("correlationId", "corr-2100")),
+        lifecycle);
+    ArgumentCaptor<Consumer<ProcessingContext>> callback = consumerCaptor();
+    verify(lifecycle).runOnAfterCommit(callback.capture());
+
+    callback.getValue().accept(mock(ProcessingContext.class));
+
+    assertThat(
+            meterRegistry
+                .get("application.submitted.publication")
+                .tag("outcome", "success")
+                .counter()
+                .count())
+        .isEqualTo(1);
   }
 
   private ApplicationCreatedEvent createdEvent(String status) {
