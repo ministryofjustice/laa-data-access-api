@@ -1,3 +1,6 @@
+[![Ministry of Justice Repository Compliance Badge](https://github-community.service.justice.gov.uk/repository-standards/api/laa-data-access-api/badge)](https://github-community.service.justice.gov.uk/repository-standards/laa-data-access-api)
+
+
 # laa-data-access-api
 
 ## Overview
