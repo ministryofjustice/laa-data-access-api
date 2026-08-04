@@ -1,8 +1,12 @@
 package uk.gov.justice.laa.dstew.access;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
 
+import java.time.Duration;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -22,6 +26,13 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.annotation.DirtiesContext;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
+import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
+import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
+import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceedingRequest;
+import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
+import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetailsRequest;
+import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
+import uk.gov.justice.laa.dstew.access.model.ReadyApplicationRequest;
 
 /**
  * Verifies that when the application-projection tracking processor is stopped the controller
@@ -44,7 +55,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
       "application.projection.timeout=200ms"
     })
 @AutoConfigureTestRestTemplate
-@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
+@DirtiesContext(methodMode = DirtiesContext.MethodMode.AFTER_METHOD)
 class ProjectionTimeoutInMemoryTest {
 
   @Autowired private TestRestTemplate restTemplate;
@@ -106,5 +117,179 @@ class ProjectionTimeoutInMemoryTest {
     assertThat(directRead.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(directRead.getBody()).isNotNull();
     assertThat(directRead.getBody().getApplicationId()).isEqualTo(applyApplicationId);
+  }
+
+  @Test
+  void givenProjectionLagAfterManualReadiness_whenDeliveryIsRepeated_thenNoSecondEventIsAppended() {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationCreateRequest createRequest =
+        validCreateApplicationRequest(applicationId, UUID.randomUUID());
+    HttpHeaders headers = headers();
+    assertThat(
+            restTemplate
+                .postForEntity(
+                    "/api/v0/applications", new HttpEntity<>(createRequest, headers), Void.class)
+                .getStatusCode())
+        .isEqualTo(HttpStatus.CREATED);
+
+    StreamingEventProcessor processor =
+        axonConfiguration
+            .getComponents(StreamingEventProcessor.class)
+            .get("application-projection");
+    processor.shutdown().join();
+    ReadyApplicationRequest readyRequest = new ReadyApplicationRequest().applicationVersion(0L);
+    HttpEntity<ReadyApplicationRequest> readyEntity = new HttpEntity<>(readyRequest, headers);
+
+    ResponseEntity<Void> first =
+        restTemplate.exchange(
+            "/api/v0/applications/" + applicationId + "/ready",
+            HttpMethod.PATCH,
+            readyEntity,
+            Void.class);
+    ResponseEntity<ApplicationResponse> staleRead =
+        restTemplate.exchange(
+            "/api/v0/applications/" + applicationId,
+            HttpMethod.GET,
+            new HttpEntity<>(headers),
+            ApplicationResponse.class);
+    ResponseEntity<Void> repeated =
+        restTemplate.exchange(
+            "/api/v0/applications/" + applicationId + "/ready",
+            HttpMethod.PATCH,
+            readyEntity,
+            Void.class);
+
+    assertThat(first.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    assertThat(staleRead.getBody()).isNotNull();
+    assertThat(staleRead.getBody().getAutoGrant()).isNull();
+    assertThat(repeated.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM domain_event_entry WHERE aggregate_identifier = ?",
+                Integer.class,
+                applicationId.toString()))
+        .isEqualTo(2);
+
+    processor.start().join();
+    await()
+        .atMost(Duration.ofSeconds(5))
+        .untilAsserted(
+            () -> {
+              ResponseEntity<ApplicationResponse> currentRead =
+                  restTemplate.exchange(
+                      "/api/v0/applications/" + applicationId,
+                      HttpMethod.GET,
+                      new HttpEntity<>(headers),
+                      ApplicationResponse.class);
+              assertThat(currentRead.getBody()).isNotNull();
+              assertThat(currentRead.getBody().getAutoGrant()).isFalse();
+              assertThat(currentRead.getBody().getVersion()).isEqualTo(1L);
+            });
+  }
+
+  @Test
+  void givenProjectionLagAfterDecision_whenDeliveryIsRepeated_thenConflictDoesNotAppendAnEvent() {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationCreateRequest createRequest =
+        validCreateApplicationRequest(applicationId, UUID.randomUUID());
+    HttpHeaders headers = headers();
+    assertThat(
+            restTemplate
+                .postForEntity(
+                    "/api/v0/applications", new HttpEntity<>(createRequest, headers), Void.class)
+                .getStatusCode())
+        .isEqualTo(HttpStatus.CREATED);
+    ApplicationResponse created =
+        restTemplate
+            .exchange(
+                "/api/v0/applications/" + applicationId,
+                HttpMethod.GET,
+                new HttpEntity<>(headers),
+                ApplicationResponse.class)
+            .getBody();
+    assertThat(created).isNotNull();
+    UUID proceedingId = created.getProceedings().getFirst().getProceedingId();
+
+    StreamingEventProcessor processor =
+        axonConfiguration
+            .getComponents(StreamingEventProcessor.class)
+            .get("application-projection");
+    processor.shutdown().join();
+    MakeDecisionRequest decisionRequest =
+        MakeDecisionRequest.builder()
+            .applicationVersion(0L)
+            .overallDecision(DecisionStatus.GRANTED)
+            .autoGranted(true)
+            .certificate(
+                Map.of(
+                    "certificateNumber", "AUTO-2099",
+                    "issueDate", "2026-08-04",
+                    "validUntil", "2027-08-04"))
+            .eventHistory(EventHistoryRequest.builder().eventDescription("Auto-granted").build())
+            .proceedings(
+                List.of(
+                    MakeDecisionProceedingRequest.builder()
+                        .proceedingId(proceedingId)
+                        .meritsDecision(
+                            MeritsDecisionDetailsRequest.builder()
+                                .decision(MeritsDecisionStatus.GRANTED)
+                                .justification("Passed automatic assessment")
+                                .build())
+                        .build()))
+            .build();
+    HttpEntity<MakeDecisionRequest> decisionEntity = new HttpEntity<>(decisionRequest, headers);
+
+    ResponseEntity<Void> first =
+        restTemplate.exchange(
+            "/api/v0/applications/" + applicationId + "/decision",
+            HttpMethod.PATCH,
+            decisionEntity,
+            Void.class);
+    ResponseEntity<ApplicationResponse> staleRead =
+        restTemplate.exchange(
+            "/api/v0/applications/" + applicationId,
+            HttpMethod.GET,
+            new HttpEntity<>(headers),
+            ApplicationResponse.class);
+    ResponseEntity<Void> repeated =
+        restTemplate.exchange(
+            "/api/v0/applications/" + applicationId + "/decision",
+            HttpMethod.PATCH,
+            decisionEntity,
+            Void.class);
+
+    assertThat(first.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    assertThat(staleRead.getBody()).isNotNull();
+    assertThat(staleRead.getBody().getAutoGrant()).isNull();
+    assertThat(repeated.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM domain_event_entry WHERE aggregate_identifier = ?",
+                Integer.class,
+                applicationId.toString()))
+        .isEqualTo(2);
+
+    processor.start().join();
+    await()
+        .atMost(Duration.ofSeconds(5))
+        .untilAsserted(
+            () -> {
+              ResponseEntity<ApplicationResponse> currentRead =
+                  restTemplate.exchange(
+                      "/api/v0/applications/" + applicationId,
+                      HttpMethod.GET,
+                      new HttpEntity<>(headers),
+                      ApplicationResponse.class);
+              assertThat(currentRead.getBody()).isNotNull();
+              assertThat(currentRead.getBody().getAutoGrant()).isTrue();
+              assertThat(currentRead.getBody().getVersion()).isEqualTo(1L);
+            });
+  }
+
+  private HttpHeaders headers() {
+    HttpHeaders headers = new HttpHeaders();
+    headers.set("X-Service-Name", "CIVIL_APPLY");
+    headers.set("X-Schema-Version", "2");
+    return headers;
   }
 }

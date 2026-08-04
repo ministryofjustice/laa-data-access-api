@@ -1263,11 +1263,48 @@ class PostgresAxonIntegrationTest {
         .isEqualTo(2);
   }
 
-  private CompletableFuture<ResponseEntity<Void>> concurrentPatch(
-      ExecutorService executor,
-      CyclicBarrier barrier,
-      String url,
-      HttpEntity<MakeDecisionRequest> entity) {
+  @Test
+  void givenConcurrentManualReadinessAtSameVersion_whenPatched_thenOnlyOneOutcomeIsCommitted()
+      throws Exception {
+    UUID applicationId = UUID.randomUUID();
+    applicationId(post(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()));
+    awaitProjection(applicationId);
+    ReadyApplicationRequest request =
+        ReadyApplicationRequest.builder().applicationVersion(0L).build();
+    HttpEntity<ReadyApplicationRequest> entity = new HttpEntity<>(request, headers());
+    String url = "http://localhost:" + port + "/api/v0/applications/" + applicationId + "/ready";
+    CyclicBarrier barrier = new CyclicBarrier(2);
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+    try {
+      CompletableFuture<ResponseEntity<Void>> first =
+          concurrentPatch(executor, barrier, url, entity);
+      CompletableFuture<ResponseEntity<Void>> second =
+          concurrentPatch(executor, barrier, url, entity);
+
+      assertThat(List.of(first.get(20, TimeUnit.SECONDS), second.get(20, TimeUnit.SECONDS)))
+          .extracting(ResponseEntity::getStatusCode)
+          .containsExactlyInAnyOrder(HttpStatus.NO_CONTENT, HttpStatus.OK);
+    } finally {
+      executor.shutdown();
+    }
+
+    assertThat(awaitProjectionVersion(applicationId, 1L).getAutoGranted()).isFalse();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM axon.application_data WHERE application_id = ?",
+                Integer.class,
+                applicationId))
+        .isEqualTo(2);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM axon.domain_event_entry WHERE aggregate_identifier = ?",
+                Integer.class,
+                applicationId.toString()))
+        .isEqualTo(2);
+  }
+
+  private <T> CompletableFuture<ResponseEntity<Void>> concurrentPatch(
+      ExecutorService executor, CyclicBarrier barrier, String url, HttpEntity<T> entity) {
     return CompletableFuture.supplyAsync(
         () -> {
           try {
