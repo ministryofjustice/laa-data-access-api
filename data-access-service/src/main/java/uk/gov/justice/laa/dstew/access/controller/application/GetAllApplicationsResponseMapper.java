@@ -6,7 +6,6 @@ import org.springframework.http.ResponseEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
-import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
@@ -72,7 +71,6 @@ public class GetAllApplicationsResponseMapper {
     app.setClientFirstName(summaryReadModel.clientFirstName());
     app.setClientLastName(summaryReadModel.clientLastName());
     app.setClientDateOfBirth(summaryReadModel.clientDateOfBirth());
-    app.setApplicationType(ApplicationType.INITIAL);
     app.setLastUpdated(summaryReadModel.modifiedAt().atOffset(ZoneOffset.UTC));
     app.setIsLead(summaryReadModel.isLead());
     app.setLinkedApplications(

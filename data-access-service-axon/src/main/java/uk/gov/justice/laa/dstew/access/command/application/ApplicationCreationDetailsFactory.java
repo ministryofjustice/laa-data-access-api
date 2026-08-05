@@ -63,7 +63,6 @@ public class ApplicationCreationDetailsFactory {
         parsed.applicationContent(),
         toIndividuals(command.individuals()),
         command.schemaVersion(),
-        command.applicationType(),
         parsed.applyApplicationId(),
         parsed.submittedAt(),
         parsed.officeCode(),

@@ -12,13 +12,6 @@ components:
         - ASC
         - DESC
 
-    ApplicationType:
-      type: string
-      enum:
-        - INITIAL
-        - APPLY
-      default: INITIAL
-
     OpponentResponse:
       type: object
       properties:
@@ -65,8 +58,6 @@ components:
           type: boolean
         decisionStatus:
           $ref: "#/components/schemas/DecisionStatus"
-        applicationType:
-          $ref: "#/components/schemas/ApplicationType"
         opponents:
           type: array
           items:
@@ -95,8 +86,6 @@ components:
         - laaReference
         - individuals
       properties:
-        applicationType:
-          $ref: "#/components/schemas/ApplicationType"
         status:
           $ref: "../open-api-common/components.yml#/components/schemas/ApplicationStatus"
         applicationContent:
@@ -164,8 +153,6 @@ components:
           type: string
         officeCode:
           type: string
-        applicationType:
-          $ref: "#/components/schemas/ApplicationType"
         isLead:
           type: boolean
         linkedApplications:

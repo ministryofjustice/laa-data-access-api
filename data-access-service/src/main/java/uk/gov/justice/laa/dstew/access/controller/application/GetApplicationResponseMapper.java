@@ -8,7 +8,6 @@ import org.springframework.http.ResponseEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
-import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.InvolvedChildResponse;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
@@ -55,8 +54,6 @@ public class GetApplicationResponseMapper {
         applicationReadModel.decisionStatus() != null
             ? DecisionStatus.valueOf(applicationReadModel.decisionStatus())
             : null);
-    applicationResponse.setApplicationType(
-        ApplicationType.valueOf(applicationReadModel.applicationType()));
     applicationResponse.setOpponents(toOpponentResponses(applicationReadModel.opponents()));
     applicationResponse.setProvider(toProviderResponse(applicationReadModel.provider()));
     applicationResponse.setProceedings(

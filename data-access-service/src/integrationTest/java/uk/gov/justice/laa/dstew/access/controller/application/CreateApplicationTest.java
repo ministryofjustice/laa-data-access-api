@@ -86,25 +86,6 @@ public class CreateApplicationTest extends BaseHarnessTest {
 
   @Test
   public void
-      givenNullApplicationType_whenCreateApplication_thenDefaultsToApplyBehaviourAndReturnsCreated()
-          throws Exception {
-    // given - no applicationType provided; service defaults to APPLY
-    ApplicationCreateRequest request =
-        DataGenerator.createDefault(
-            ApplicationCreateRequestGenerator.class, builder -> builder.applicationType(null));
-
-    // when
-    HarnessResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
-
-    // then
-    assertSecurityHeaders(result);
-    assertCreated(result);
-    UUID createdId = HeaderUtils.GetUUIDFromLocation(result.getResponse().getHeader("Location"));
-    persistedDataGenerator.trackExistingApplication(createdId);
-  }
-
-  @Test
-  public void
       givenEmptyLinkedApplicationsList_whenCreateApplication_thenReturnsCreatedWithNoLinking()
           throws Exception {
     // given - applicationContent with an explicit empty allLinkedApplications list (non-null)

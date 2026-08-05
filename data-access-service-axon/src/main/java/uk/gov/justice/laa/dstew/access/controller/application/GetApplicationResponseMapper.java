@@ -18,7 +18,6 @@ import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationMerit
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
-import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.InvolvedChildResponse;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
@@ -54,7 +53,6 @@ public class GetApplicationResponseMapper {
             : uk.gov.justice.laa.dstew.access.model.DecisionStatus.valueOf(
                 application.getDecisionStatus()));
     response.setVersion(application.getApplicationVersion());
-    response.setApplicationType(ApplicationType.INITIAL);
     response.setProvider(toProvider(application, content));
     response.setOpponents(toOpponents(content));
     response.setProceedings(

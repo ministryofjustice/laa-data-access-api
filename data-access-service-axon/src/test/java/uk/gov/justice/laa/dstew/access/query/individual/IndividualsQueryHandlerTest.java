@@ -162,7 +162,6 @@ class IndividualsQueryHandlerTest {
             content,
             List.of(individuals),
             base.schemaVersion(),
-            base.applicationType(),
             base.applyApplicationId(),
             base.submittedAt(),
             base.officeCode(),

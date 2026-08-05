@@ -11,7 +11,6 @@ import uk.gov.justice.laa.dstew.access.command.application.ApplicationIndividual
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
-import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
@@ -57,7 +56,6 @@ public class GetAllApplicationsResponseMapper {
     summary.setSubmittedAt(
         app.getSubmittedAt() != null ? app.getSubmittedAt().atOffset(ZoneOffset.UTC) : null);
     summary.setLastUpdated(app.getModifiedAt().atOffset(ZoneOffset.UTC));
-    summary.setApplicationType(ApplicationType.INITIAL);
     summary.setIsLead(app.getLeadApplicationId() == null);
     summary.setAssignedTo(app.getCaseworkerId());
 

@@ -86,7 +86,6 @@ class ApplicationAggregateTest {
             null,
             List.of(),
             1,
-            "APPLY",
             applicationId,
             java.time.Instant.parse("2026-07-14T12:30:00Z"),
             "1A001B",
@@ -455,7 +454,6 @@ class ApplicationAggregateTest {
                 null,
                 List.of(),
                 1,
-                "APPLY",
                 applicationId,
                 java.time.Instant.parse("2026-07-14T12:30:00Z"),
                 "1A001B",
@@ -494,7 +492,6 @@ class ApplicationAggregateTest {
             null,
             List.of(),
             1,
-            "APPLY",
             applicationId,
             java.time.Instant.parse("2026-07-14T12:30:00Z"),
             "1A001B",
@@ -608,7 +605,6 @@ class ApplicationAggregateTest {
         original.applicationContent(),
         original.individuals(),
         original.schemaVersion(),
-        original.applicationType(),
         original.applyApplicationId(),
         original.submittedAt(),
         original.officeCode(),
@@ -631,8 +627,7 @@ class ApplicationAggregateTest {
         List.of(),
         serialisedRequest,
         schemaVersion,
-        "ApplyApplication.json",
-        "APPLY");
+        "ApplyApplication.json");
   }
 
   @AfterEach

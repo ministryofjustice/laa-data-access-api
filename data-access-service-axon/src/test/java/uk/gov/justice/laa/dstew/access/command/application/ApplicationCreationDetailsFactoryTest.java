@@ -43,7 +43,6 @@ class ApplicationCreationDetailsFactoryTest {
     assertThat(details.status()).isEqualTo("APPLICATION_SUBMITTED");
     assertThat(details.laaReference()).isEqualTo("LAA-123");
     assertThat(details.schemaVersion()).isEqualTo(1);
-    assertThat(details.applicationType()).isEqualTo("APPLY");
     assertThat(details.applyApplicationId()).isEqualTo(applyApplicationId);
     assertThat(details.occurredAt()).isEqualTo(FIXED_NOW);
     assertThat(details.leadApplicationId()).isNull();
@@ -160,8 +159,7 @@ class ApplicationCreationDetailsFactoryTest {
         List.of(),
         "{}",
         1,
-        "ApplyApplication.json",
-        "APPLY");
+        "ApplyApplication.json");
   }
 
   private CreateApplicationCommand commandWithIndividuals(UUID applicationId) {
@@ -175,8 +173,7 @@ class ApplicationCreationDetailsFactoryTest {
                 "Ada", "Lovelace", java.time.LocalDate.of(1815, 12, 10), Map.of(), "CLIENT")),
         "{}",
         1,
-        "ApplyApplication.json",
-        "APPLY");
+        "ApplyApplication.json");
   }
 
   private ParsedAppContentDetails parsedDetails(UUID applyApplicationId) {

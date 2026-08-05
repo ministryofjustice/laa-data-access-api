@@ -27,7 +27,7 @@ class CreateApplicationSchemaValidationDispatchInterceptorTest {
     CreateApplicationSchemaValidationDispatchInterceptor interceptor =
         new CreateApplicationSchemaValidationDispatchInterceptor(validator);
     UUID id = UUID.randomUUID();
-    CreateApplicationCommand command = createCommand(id, "CssApplication.json", "CCS");
+    CreateApplicationCommand command = createCommand(id, "CssApplication.json");
     var commandMessage =
         new GenericCommandMessage(new MessageType(CreateApplicationCommand.class), command);
     MessageDispatchInterceptorChain<CommandMessage> chain = chain();
@@ -61,8 +61,7 @@ class CreateApplicationSchemaValidationDispatchInterceptorTest {
     return chain;
   }
 
-  private CreateApplicationCommand createCommand(
-      UUID id, String schemaName, String applicationType) {
+  private CreateApplicationCommand createCommand(UUID id, String schemaName) {
     return new CreateApplicationCommand(
         id,
         "APPLICATION_SUBMITTED",
@@ -71,7 +70,6 @@ class CreateApplicationSchemaValidationDispatchInterceptorTest {
         List.of(),
         "{}",
         1,
-        schemaName,
-        applicationType);
+        schemaName);
   }
 }

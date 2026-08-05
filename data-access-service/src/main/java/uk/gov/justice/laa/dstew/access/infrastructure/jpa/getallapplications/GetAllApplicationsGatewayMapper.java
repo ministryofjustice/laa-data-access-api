@@ -11,8 +11,6 @@ import uk.gov.justice.laa.dstew.access.usecase.getallapplications.model.LinkedAp
 /** Maps JPA DTOs to read models for the getAllApplications use case. */
 public class GetAllApplicationsGatewayMapper {
 
-  private static final String APPLICATION_TYPE_INITIAL = "INITIAL";
-
   /**
    * Maps a {@link ApplicationSummaryDto} to an {@link ApplicationSummaryReadModel}.
    *
@@ -54,7 +52,6 @@ public class GetAllApplicationsGatewayMapper {
                     ? applicationSummaryDto.getStatus().name()
                     : null)
             .caseworkerId(applicationSummaryDto.getCaseworkerId())
-            .applicationType(APPLICATION_TYPE_INITIAL)
             .modifiedAt(applicationSummaryDto.getModifiedAt())
             .isLead(applicationSummaryDto.isLead())
             .linkedApplications(List.of());

@@ -9,7 +9,6 @@ import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationIndividual;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
-import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.IndividualCreateRequest;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
@@ -33,10 +32,7 @@ public class CreateApplicationCommandMapper {
         toIndividuals(request.getIndividuals()),
         serialise(request),
         schemaVersion,
-        schemaName(request),
-        request.getApplicationType() == null
-            ? ApplicationType.APPLY.name()
-            : request.getApplicationType().name());
+        "ApplyApplication.json");
   }
 
   private UUID extractApplicationId(Map<String, Object> applicationContent) {
@@ -56,13 +52,6 @@ public class CreateApplicationCommandMapper {
       throw new ValidationException(
           List.of("applicationContent.id: must be a valid UUID, got: " + idValue));
     }
-  }
-
-  private String schemaName(ApplicationCreateRequest request) {
-    // TODO update this if new application type added
-    return request.getApplicationType() == ApplicationType.APPLY
-        ? "ApplyApplication.json"
-        : "ApplyApplication.json";
   }
 
   private List<CreateApplicationIndividual> toIndividuals(

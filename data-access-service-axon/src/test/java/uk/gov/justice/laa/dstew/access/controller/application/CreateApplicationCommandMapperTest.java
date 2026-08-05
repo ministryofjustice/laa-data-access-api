@@ -9,7 +9,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.json.JsonMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
-import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 class CreateApplicationCommandMapperTest {
@@ -18,9 +17,9 @@ class CreateApplicationCommandMapperTest {
       new CreateApplicationCommandMapper(JsonMapper.builder().build());
 
   @Test
-  void givenAnyOtherApplicationType_whenMapped_thenSelectsApplySchema() {
+  void givenRequest_whenMapped_thenSelectsApplySchema() {
     UUID id = UUID.randomUUID();
-    var command = mapper.toCommand(request(ApplicationType.APPLY, id), 2);
+    var command = mapper.toCommand(request(id), 2);
 
     assertThat(command.schemaName()).isEqualTo("ApplyApplication.json");
   }
@@ -28,7 +27,7 @@ class CreateApplicationCommandMapperTest {
   @Test
   void givenValidContentId_whenMapped_thenApplicationIdEqualsContentId() {
     UUID id = UUID.randomUUID();
-    var command = mapper.toCommand(request(ApplicationType.APPLY, id), 1);
+    var command = mapper.toCommand(request(id), 1);
 
     assertThat(command.applicationId()).isEqualTo(id);
     assertThat(command.applyApplicationId()).isEqualTo(id);
@@ -37,10 +36,7 @@ class CreateApplicationCommandMapperTest {
   @Test
   void givenMissingContentId_whenMapped_thenThrowsValidationException() {
     ApplicationCreateRequest request =
-        ApplicationCreateRequest.builder()
-            .applicationType(ApplicationType.APPLY)
-            .applicationContent(Map.of())
-            .build();
+        ApplicationCreateRequest.builder().applicationContent(Map.of()).build();
 
     assertThatThrownBy(() -> mapper.toCommand(request, 1)).isInstanceOf(ValidationException.class);
   }
@@ -48,10 +44,7 @@ class CreateApplicationCommandMapperTest {
   @Test
   void givenMalformedContentId_whenMapped_thenThrowsValidationException() {
     ApplicationCreateRequest request =
-        ApplicationCreateRequest.builder()
-            .applicationType(ApplicationType.APPLY)
-            .applicationContent(Map.of("id", "not-a-uuid"))
-            .build();
+        ApplicationCreateRequest.builder().applicationContent(Map.of("id", "not-a-uuid")).build();
 
     assertThatThrownBy(() -> mapper.toCommand(request, 1)).isInstanceOf(ValidationException.class);
   }
@@ -61,17 +54,13 @@ class CreateApplicationCommandMapperTest {
     Map<String, Object> content = new HashMap<>();
     content.put("id", null);
     ApplicationCreateRequest request =
-        ApplicationCreateRequest.builder()
-            .applicationType(ApplicationType.APPLY)
-            .applicationContent(content)
-            .build();
+        ApplicationCreateRequest.builder().applicationContent(content).build();
 
     assertThatThrownBy(() -> mapper.toCommand(request, 1)).isInstanceOf(ValidationException.class);
   }
 
-  private ApplicationCreateRequest request(ApplicationType applicationType, UUID contentId) {
+  private ApplicationCreateRequest request(UUID contentId) {
     return ApplicationCreateRequest.builder()
-        .applicationType(applicationType)
         .applicationContent(Map.of("id", contentId.toString()))
         .build();
   }

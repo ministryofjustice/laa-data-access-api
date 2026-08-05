@@ -40,11 +40,8 @@ public class CreateApplicationUseCase {
 
     // 1. Validate against JSON schema
     // Currently only one schema defined should be updated when others added
-    String formType =
-        switch (command.applicationType()) {
-          default -> "ApplyApplication.json";
-        };
-    jsonSchemaValidator.validate(command.applicationContent(), formType, command.schemaVersion());
+    jsonSchemaValidator.validate(
+        command.applicationContent(), "ApplyApplication.json", command.schemaVersion());
 
     // 3. Validate and parse application content
     ParsedAppContentDetails parsed = applicationContentParser.parse(command.applicationContent());

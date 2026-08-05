@@ -10,7 +10,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
-import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
@@ -54,8 +53,6 @@ class GetApplicationResponseMapperTest {
     assertThat(response.getAutoGrant()).isEqualTo(readModel.autoGrant());
     assertThat(response.getDecisionStatus())
         .isEqualTo(DecisionStatus.valueOf(readModel.decisionStatus()));
-    assertThat(response.getApplicationType())
-        .isEqualTo(ApplicationType.valueOf(readModel.applicationType()));
     assertThat(response.getVersion()).isEqualTo(readModel.version());
     assertThat(response.getOpponents()).hasSize(1);
     assertThat(response.getProvider().getOfficeCode()).isEqualTo(readModel.provider().officeCode());

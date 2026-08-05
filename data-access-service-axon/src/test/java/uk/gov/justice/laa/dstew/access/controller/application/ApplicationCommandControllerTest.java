@@ -166,7 +166,6 @@ class ApplicationCommandControllerTest {
         List.of(),
         "{}",
         1,
-        "ApplyApplication.json",
-        "APPLY");
+        "ApplyApplication.json");
   }
 }

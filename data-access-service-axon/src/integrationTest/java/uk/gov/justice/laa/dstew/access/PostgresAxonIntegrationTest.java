@@ -46,7 +46,6 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
-import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
@@ -274,7 +273,6 @@ class PostgresAxonIntegrationTest {
     assertThat(projected.getStatus()).isEqualTo("APPLICATION_SUBMITTED");
     assertThat(projected.getLaaReference()).isEqualTo("LAA-123");
     assertThat(projected.getSchemaVersion()).isEqualTo(2);
-    assertThat(projected.getApplicationType()).isEqualTo("APPLY");
     assertThat(projected.getApplyApplicationId()).isEqualTo(applyApplicationId);
     assertThat(projected.getSubmittedAt()).isEqualTo(Instant.parse("2026-07-14T12:30:00Z"));
     assertThat(projected.getOfficeCode()).isEqualTo("1A001B");
@@ -738,7 +736,6 @@ class PostgresAxonIntegrationTest {
             .isLead(true)
             .usedDelegatedFunctions(false)
             .version(0L)
-            .applicationType(ApplicationType.INITIAL)
             .provider(
                 new ProviderResponse().officeCode("1A001B").contactEmail("provider@example.com"))
             .opponents(

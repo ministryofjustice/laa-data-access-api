@@ -12,5 +12,4 @@ public record CreateApplicationCommand(
     Map<String, Object> applicationContent,
     List<IndividualCommand> individuals,
     String serialisedRequest,
-    int schemaVersion,
-    String applicationType) {}
+    int schemaVersion) {}

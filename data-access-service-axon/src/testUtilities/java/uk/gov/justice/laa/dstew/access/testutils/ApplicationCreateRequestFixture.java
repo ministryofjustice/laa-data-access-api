@@ -7,7 +7,6 @@ import java.util.Map;
 import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
-import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.IndividualCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
 
@@ -59,7 +58,6 @@ public final class ApplicationCreateRequestFixture {
             .build();
 
     return ApplicationCreateRequest.builder()
-        .applicationType(ApplicationType.APPLY)
         .status(ApplicationStatus.APPLICATION_SUBMITTED)
         .applicationContent(content)
         .laaReference("LAA-123")
@@ -89,9 +87,7 @@ public final class ApplicationCreateRequestFixture {
             Map.of(
                 "leadApplicationId", leadApplyApplicationId.toString(),
                 "associatedApplicationId", associatedApplyApplicationId.toString())));
-
     return ApplicationCreateRequest.builder()
-        .applicationType(request.getApplicationType())
         .status(request.getStatus())
         .applicationContent(content)
         .laaReference(request.getLaaReference())

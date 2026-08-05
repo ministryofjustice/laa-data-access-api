@@ -23,7 +23,6 @@ curl -i -X POST http://localhost:8082/api/v0/applications \
   -H "X-Service-Name: CIVIL_APPLY" \
   -H "X-Schema-Version: 1" \
   -d '{
-    "applicationType": "INITIAL",
     "status": "APPLICATION_IN_PROGRESS",
     "laaReference": "LAA-2026-000123",
     "applicationContent": {
@@ -94,7 +93,6 @@ Example response (verified against a running instance, after creating the applic
       "clientDateOfBirth": "1990-04-12",
       "laaReference": "LAA-2026-000123",
       "officeCode": null,
-      "applicationType": "INITIAL",
       "isLead": true,
       "linkedApplications": []
     }
@@ -124,7 +122,6 @@ Example response (verified against a running instance):
   "usedDelegatedFunctions": null,
   "autoGrant": null,
   "decisionStatus": null,
-  "applicationType": "INITIAL",
   "opponents": [],
   "proceedings": [
     {

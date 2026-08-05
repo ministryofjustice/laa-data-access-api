@@ -14,7 +14,6 @@ public record ApplicationCreationDetails(
     ApplicationContent applicationContent,
     List<ApplicationIndividual> individuals,
     int schemaVersion,
-    String applicationType,
     UUID applyApplicationId,
     Instant submittedAt,
     String officeCode,
