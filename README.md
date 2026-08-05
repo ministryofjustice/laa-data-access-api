@@ -356,6 +356,25 @@ endpoint, region, and dummy credentials automatically. Deployed environments lea
 `AWS_ENDPOINT_URL` and static credentials unset so the AWS SDK default credentials provider uses
 the pod's IRSA service account, matching `laa-data-claims-event-service`.
 
+#### Deployed topic configuration
+
+The Axon Helm chart enables publication only where Cloud Platform has provisioned the SNS topic.
+Its `aws.topicArnSecret` values select the `data-access-events-sns-topic` Kubernetes secret and
+`topic_arn` key created by `laa-data-access-api-<environment>/resources/sns.tf`. Branch deployments
+explicitly disable publication so ephemeral Application identifiers are not sent into the shared
+UAT event path.
+
+If Terraform recreates the topic, apply the Cloud Platform namespace resources before redeploying
+Data Access. Terraform updates `topic_arn` in the existing secret, so no application code change
+is required. Render the chart and confirm the topic environment variable before deployment:
+
+```bash
+helm template data-access-api-axon .helm/data-access-api-axon \
+  --values .helm/data-access-api-axon/values/uat.yaml \
+  --set image.repository=test --set image.tag=test |
+  grep -A6 APPLICATION_INTEGRATION_EVENTS_TOPIC_ARN
+```
+
 ---
 
 ### Troubleshooting Authentication

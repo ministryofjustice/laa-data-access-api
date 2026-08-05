@@ -181,6 +181,7 @@ runs:
         VALUES_FILE: .helm/data-access-api-axon/values/${{ inputs.app-environment }}.yaml
         RELEASE_NAME: ${{ steps.extract_release_name.outputs.release-name }}
         APP_ENVIRONMENT: ${{ inputs.app-environment }}
+        INTEGRATION_EVENTS_ENABLED: ${{ steps.extract_release_name.outputs.branch-name == 'main' }}
       run: |
         set -euo pipefail
 
@@ -199,6 +200,7 @@ runs:
           --set ingress.hosts="{${axon_host}}" \
           --set spring.profile="${APP_ENVIRONMENT}" \
           --set aws.region="${ECR_REGION}" \
+          --set aws.integrationEvents.enabled="${INTEGRATION_EVENTS_ENABLED}" \
           --values "${VALUES_FILE}" \
           --install \
           --wait; then
