@@ -63,7 +63,7 @@ class ProjectionTimeoutInMemoryTest {
         validCreateApplicationRequest(applyApplicationId, UUID.randomUUID());
     HttpHeaders headers = new HttpHeaders();
     headers.set("X-Service-Name", "CIVIL_APPLY");
-    headers.set("X-Schema-Version", "2");
+    headers.set("X-Schema-Version", "1");
 
     long startMs = System.currentTimeMillis();
     ResponseEntity<Void> response =

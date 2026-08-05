@@ -208,7 +208,7 @@ class CreateApplicationInMemoryTest {
         validCreateApplicationRequest(applyApplicationId, applyProceedingId);
     HttpHeaders headers = new HttpHeaders();
     headers.set("X-Service-Name", "CIVIL_APPLY");
-    headers.set("X-Schema-Version", "2");
+    headers.set("X-Schema-Version", "1");
 
     ResponseEntity<Void> response =
         restTemplate.postForEntity(
@@ -230,7 +230,7 @@ class CreateApplicationInMemoryTest {
     assertThat(projected.getStatus()).isEqualTo(ApplicationStatus.APPLICATION_SUBMITTED.name());
     assertThat(projected.getLaaReference()).isEqualTo("LAA-123");
     assertThat(projected.getOfficeCode()).isEqualTo("1A001B");
-    assertThat(projected.getSchemaVersion()).isEqualTo(2);
+    assertThat(projected.getSchemaVersion()).isEqualTo(1);
     assertThat(projected.getIndividuals())
         .singleElement()
         .satisfies(
@@ -296,7 +296,7 @@ class CreateApplicationInMemoryTest {
     UUID applyApplicationId = UUID.randomUUID();
     HttpHeaders headers = new HttpHeaders();
     headers.set("X-Service-Name", "CIVIL_APPLY");
-    headers.set("X-Schema-Version", "2");
+    headers.set("X-Schema-Version", "1");
     HttpEntity<ApplicationCreateRequest> request =
         new HttpEntity<>(
             validCreateApplicationRequest(applyApplicationId, UUID.randomUUID()), headers);
@@ -324,7 +324,7 @@ class CreateApplicationInMemoryTest {
     UUID applyProceedingId = UUID.randomUUID();
     HttpHeaders headers = new HttpHeaders();
     headers.set("X-Service-Name", "CIVIL_APPLY");
-    headers.set("X-Schema-Version", "2");
+    headers.set("X-Schema-Version", "1");
 
     ResponseEntity<Void> firstResponse =
         restTemplate.postForEntity(
@@ -624,7 +624,7 @@ class CreateApplicationInMemoryTest {
   private HttpHeaders headers() {
     HttpHeaders headers = new HttpHeaders();
     headers.set("X-Service-Name", "CIVIL_APPLY");
-    headers.set("X-Schema-Version", "2");
+    headers.set("X-Schema-Version", "1");
     return headers;
   }
 

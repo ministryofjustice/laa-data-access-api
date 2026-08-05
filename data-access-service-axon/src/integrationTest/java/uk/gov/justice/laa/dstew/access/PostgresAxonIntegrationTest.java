@@ -255,7 +255,7 @@ class PostgresAxonIntegrationTest {
     UUID applyProceedingId = UUID.randomUUID();
     HttpHeaders headers = new HttpHeaders();
     headers.set("X-Service-Name", "CIVIL_APPLY");
-    headers.set("X-Schema-Version", "2");
+    headers.set("X-Schema-Version", "1");
 
     ResponseEntity<Void> response =
         restTemplate.postForEntity(
@@ -272,7 +272,7 @@ class PostgresAxonIntegrationTest {
     assertThat(projected.getApplicationId()).isEqualTo(applicationId);
     assertThat(projected.getStatus()).isEqualTo("APPLICATION_SUBMITTED");
     assertThat(projected.getLaaReference()).isEqualTo("LAA-123");
-    assertThat(projected.getSchemaVersion()).isEqualTo(2);
+    assertThat(projected.getSchemaVersion()).isEqualTo(1);
     assertThat(projected.getApplyApplicationId()).isEqualTo(applyApplicationId);
     assertThat(projected.getSubmittedAt()).isEqualTo(Instant.parse("2026-07-14T12:30:00Z"));
     assertThat(projected.getOfficeCode()).isEqualTo("1A001B");
@@ -682,7 +682,15 @@ class PostgresAxonIntegrationTest {
     proceeding.put("substantiveLevelOfServiceNameEnum", "FULL_REPRESENTATION");
     proceeding.put("substantiveCostLimitation", 2_500.0);
     proceeding.put(
-        "scopeLimitations", List.of(Map.of("meaning", "LIMITED", "description", "Limited scope")));
+        "scopeLimitations",
+        List.of(
+            Map.ofEntries(
+                Map.entry("id", UUID.randomUUID().toString()),
+                Map.entry("scopeType", "LIMITATION"),
+                Map.entry("scopeLimitation", "CV117"),
+                Map.entry("scopeDescription", "Final hearing"),
+                Map.entry("meaning", "LIMITED"),
+                Map.entry("description", "Limited scope"))));
     content.put("proceedings", List.of(proceeding));
     content.put("submitterEmail", "provider@example.com");
     content.put(
@@ -970,7 +978,9 @@ class PostgresAxonIntegrationTest {
     ResponseEntity<String> response = post(request, headers(), String.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-    assertThat(response.getBody()).contains("submittedAt: must be an ISO-8601 instant");
+    assertThat(response.getBody())
+        .contains("submittedAt")
+        .contains("must be a valid RFC 3339 date-time");
   }
 
   @Test
@@ -1271,7 +1281,7 @@ class PostgresAxonIntegrationTest {
   }
 
   private HttpHeaders headers() {
-    return headers(2);
+    return headers(1);
   }
 
   private HttpHeaders headers(int schemaVersion) {

@@ -1,42 +1,64 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "ApplyApplication.json",
-  "title": "ApplicationContent",
-  "description": "Schema for validating ApplicationContent",
+  "$id": "BaseCivilApplication.json",
+  "title": "CivilApplyV2",
+  "description": "Base civil application schema for data common across Civil Apply matter types",
   "type": "object",
-  "required": ["id", "submittedAt"],
-
+  "required": [
+    "id",
+    "createdAt",
+    "submittedAt",
+    "proceedings",
+    "provider",
+    "allLinkedApplications",
+    "client"
+  ],
   "properties": {
     "id": {
       "type": "string",
-      "format": "uuid",
-      "description": "Unique identifier for the application"
+        "format": "uuid",
+      "description": "ID from Apply application system"
     },
-    "proceedings": {
-      "type": "array",
-      "items": {
-        "$ref": "../common/Proceeding.json"
-      },
-      "description": "List of proceedings associated with the application"
+    "createdAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp when the application was created"
     },
     "submittedAt": {
       "type": "string",
+      "format": "date-time",
       "description": "Timestamp when the application was submitted"
     },
-    "status": {
-      "type": ["string", "null"],
-      "description": "Current status of the application"
+    "provider": {
+      "$ref": "../common/Provider.json"
     },
-    "laaReference": {
-      "type": ["string", "null"],
-      "description": "LAA reference number"
+    "client": {
+      "$ref": "../common/Client.json"
     },
-    "office": {
-      "oneOf": [
-        { "$ref": "../common/ApplicationOffice.json"},
-        { "type": "null" }
+    "proceedings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "../common/Proceedings.json"
+      },
+      "description": "Proceedings associated with the application"
+    },
+    "opponents": {
+      "type": [
+        "array",
+        "null"
       ],
-      "description": "Office associated with the application"
+      "items": {
+        "$ref": "../common/Opponents.json"
+      },
+      "description": "Opponents associated with the application"
+    },
+    "status": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Current status of the application"
     },
     "allLinkedApplications": {
       "type": ["array", "null"],

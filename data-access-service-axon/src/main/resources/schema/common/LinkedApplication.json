@@ -1,14 +1,25 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "LinkedApplication.json",
-  "title": "LinkedApplication",
+  "title": "LinkedApplicationV2",
   "description": "Represents a linked application",
   "type": "object",
   "required": [
+    "id",
     "leadApplicationId",
-    "associatedApplicationId"
+    "associatedApplicationId",
+    "targetApplicationId",
+    "linkTypeCode",
+    "createdAt",
+    "updatedAt",
+    "confirmLink"
   ],
   "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for the linked application"
+    },
     "leadApplicationId": {
       "type": "string",
       "format": "uuid",
@@ -18,7 +29,30 @@
       "type": "string",
       "format": "uuid",
       "description": "ID of the associated application"
+    },
+    "targetApplicationId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "ID of the target application"
+    },
+    "linkTypeCode": {
+      "type": "string",
+      "description": "Code representing the type of link between applications"
+    },
+    "createdAt": {
+        "type": "string",
+        "format": "date-time",
+        "description": "Timestamp when the linked application was created"
+    },
+    "updatedAt": {
+        "type": "string",
+        "format": "date-time",
+        "description": "Timestamp when the linked application was last updated"
+    },
+    "confirmLink": {
+        "type": "boolean",
+        "description": "Indicates whether the link has been confirmed"
     }
   },
-  "additionalProperties": false
+  "additionalProperties": true
 }

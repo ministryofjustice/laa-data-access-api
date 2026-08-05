@@ -19,34 +19,61 @@ public final class ApplicationCreateRequestFixture {
   public static ApplicationCreateRequest validCreateApplicationRequest(
       UUID applyApplicationId, UUID applyProceedingId) {
     Map<String, Object> content =
-        Map.of(
-            "id",
-            applyApplicationId.toString(),
-            "submittedAt",
-            "2026-07-14T12:30:00Z",
-            "office",
-            Map.of("code", "1A001B"),
-            "applicant",
-            Map.of(
-                "id",
-                UUID.randomUUID().toString(),
-                "addresses",
-                List.of(Map.of("id", UUID.randomUUID().toString()))),
-            "proceedings",
-            List.of(
+        Map.ofEntries(
+            Map.entry("id", applyApplicationId.toString()),
+            Map.entry("createdAt", "2026-07-14T12:00:00Z"),
+            Map.entry("submittedAt", "2026-07-14T12:30:00Z"),
+            Map.entry("office", Map.of("code", "1A001B")),
+            Map.entry(
+                "provider", Map.of("officeCode", "1A001B", "contactEmail", "provider@example.com")),
+            Map.entry(
+                "applicant",
                 Map.of(
-                    "id",
-                    applyProceedingId.toString(),
-                    "leadProceeding",
-                    true,
-                    "description",
-                    "Care order",
-                    "categoryOfLawEnum",
-                    "FAMILY",
-                    "matterTypeEnum",
-                    "SPECIAL_CHILDREN_ACT",
-                    "usedDelegatedFunctions",
-                    false)));
+                    "id", UUID.randomUUID().toString(),
+                    "appliedPreviously", false,
+                    "addresses", List.of(Map.of("id", UUID.randomUUID().toString())))),
+            Map.entry(
+                "client",
+                Map.ofEntries(
+                    Map.entry("firstName", "Ada"),
+                    Map.entry("lastName", "Lovelace"),
+                    Map.entry("dateOfBirth", "1815-12-10"),
+                    Map.entry("appliedPreviously", false),
+                    Map.entry(
+                        "correspondenceAddress",
+                        List.of(
+                            Map.ofEntries(
+                                Map.entry("location", "HOME"),
+                                Map.entry("addressLineOne", "1 Analytical Engine Way"),
+                                Map.entry("city", "London"),
+                                Map.entry("postcode", "SW1A 1AA")))))),
+            Map.entry("allLinkedApplications", List.of()),
+            Map.entry(
+                "proceedings",
+                List.of(
+                    Map.ofEntries(
+                        Map.entry("id", applyProceedingId.toString()),
+                        Map.entry("leadProceeding", true),
+                        Map.entry("ccmsCode", "SE003"),
+                        Map.entry("meaning", "Care order"),
+                        Map.entry("description", "Care order"),
+                        Map.entry("matterType", "SPECIAL_CHILDREN_ACT"),
+                        Map.entry("matterTypeEnum", "SPECIAL_CHILDREN_ACT"),
+                        Map.entry("categoryOfLaw", "FAMILY"),
+                        Map.entry("categoryOfLawEnum", "FAMILY"),
+                        Map.entry("clientInvolvementType", "A"),
+                        Map.entry("usedDelegatedFunctions", false),
+                        Map.entry("delegatedFunctionsCostLimitation", 0),
+                        Map.entry("substantiveCostLimitation", 2500),
+                        Map.entry("levelOfService", "FULL"),
+                        Map.entry(
+                            "scopeLimitations",
+                            List.of(
+                                Map.of(
+                                    "id", UUID.randomUUID().toString(),
+                                    "scopeType", "LIMITATION",
+                                    "scopeLimitation", "CV117",
+                                    "scopeDescription", "Final hearing")))))));
 
     IndividualCreateRequest individual =
         IndividualCreateRequest.builder()
@@ -84,9 +111,15 @@ public final class ApplicationCreateRequestFixture {
     content.put(
         "allLinkedApplications",
         List.of(
-            Map.of(
-                "leadApplicationId", leadApplyApplicationId.toString(),
-                "associatedApplicationId", associatedApplyApplicationId.toString())));
+            Map.ofEntries(
+                Map.entry("id", UUID.randomUUID().toString()),
+                Map.entry("leadApplicationId", leadApplyApplicationId.toString()),
+                Map.entry("associatedApplicationId", associatedApplyApplicationId.toString()),
+                Map.entry("targetApplicationId", applyApplicationId.toString()),
+                Map.entry("linkTypeCode", "ASSOCIATED"),
+                Map.entry("createdAt", "2026-07-14T12:00:00Z"),
+                Map.entry("updatedAt", "2026-07-14T12:30:00Z"),
+                Map.entry("confirmLink", true))));
     return ApplicationCreateRequest.builder()
         .status(request.getStatus())
         .applicationContent(content)
