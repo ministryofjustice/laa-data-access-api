@@ -78,7 +78,7 @@ Decision requests supply the expected `applicationVersion` to prevent one caller
 overwriting a decision based on stale state. The aggregate chooses the next
 `applicationDataVersion`; callers never manage this internal storage detail.
 
-## Automatic-assessment outcome and manual visibility
+## Auto-grant outcome and manual visibility
 
 `autoGrant` is a tri-state outcome independent of Application Status:
 
@@ -89,11 +89,12 @@ overwriting a decision based on stale state. The aggregate chooses the next
 - `true` means an automatically granted Decision was recorded, so the Application remains outside
   manual work.
 
-`PATCH /api/v0/applications/{id}/ready` records the false outcome without changing
-`APPLICATION_SUBMITTED`. The aggregate appends a new immutable `application_data` version and then
-emits `ApplicationReadyForManualAssessmentEvent`, which carries only the Application identifier,
-public and data versions, and occurrence time. Replaying the event restores the aggregate outcome
-and advances the disposable projection to the same immutable data version.
+`PATCH /api/v0/applications/{id}/auto-grant-outcome` records either terminal outcome. The
+`MANUAL` variant records the false outcome without changing `APPLICATION_SUBMITTED`; the
+`AUTOGRANTED` variant records the complete granted Decision and sets the true outcome. Both require
+the current Application version and reject a conflicting terminal outcome. Replaying their thin
+events restores the aggregate outcome and advances the disposable projection to the referenced
+immutable data version.
 
 ## Transaction and processing choices
 

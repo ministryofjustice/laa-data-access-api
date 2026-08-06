@@ -114,6 +114,20 @@ public final class ApplicationDecider {
           "No proceeding found with id: "
               + unknownProceedingIds.stream().map(UUID::toString).collect(Collectors.joining(",")));
     }
+    if (command.fromAutoGrantOutcome()) {
+      if (!"GRANTED".equals(command.overallDecision())) {
+        throw new ValidationException(
+            List.of("An AUTOGRANTED outcome must have overallDecision GRANTED"));
+      }
+      Set<UUID> decidedProceedingIds =
+          command.proceedings().stream()
+              .map(MakeDecisionProceeding::proceedingId)
+              .collect(Collectors.toSet());
+      if (!decidedProceedingIds.equals(linkedProceedingIds)) {
+        throw new ValidationException(
+            List.of("An AUTOGRANTED outcome must decide every Application proceeding"));
+      }
+    }
 
     return new ApplicationDecisionMadeEvent(
         state.applicationId,

@@ -24,11 +24,11 @@ import uk.gov.justice.laa.dstew.access.command.application.assignment.AssignCase
 import uk.gov.justice.laa.dstew.access.command.application.ready.ReadyApplicationResult;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
+import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
 import uk.gov.justice.laa.dstew.access.model.CreateNoteRequest;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
-import uk.gov.justice.laa.dstew.access.model.ReadyApplicationRequest;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
@@ -47,7 +47,7 @@ public class ApplicationCommandController {
   private final AssignCaseworkerRequestMapper assignCaseworkerRequestMapper;
   private final UnassignCaseworkerRequestMapper unassignCaseworkerRequestMapper;
   private final CreateNoteCommandMapper createNoteCommandMapper;
-  private final ReadyApplicationCommandMapper readyApplicationCommandMapper;
+  private final AutoGrantOutcomeCommandMapper autoGrantOutcomeCommandMapper;
   private final UpdateApplicationCommandMapper updateApplicationCommandMapper;
 
   /** Creates the command adapter. */
@@ -60,7 +60,7 @@ public class ApplicationCommandController {
       AssignCaseworkerRequestMapper assignCaseworkerRequestMapper,
       UnassignCaseworkerRequestMapper unassignCaseworkerRequestMapper,
       CreateNoteCommandMapper createNoteCommandMapper,
-      ReadyApplicationCommandMapper readyApplicationCommandMapper,
+      AutoGrantOutcomeCommandMapper autoGrantOutcomeCommandMapper,
       UpdateApplicationCommandMapper updateApplicationCommandMapper) {
     this.commandGateway = commandGateway;
     this.projectionGateway = projectionGateway;
@@ -70,7 +70,7 @@ public class ApplicationCommandController {
     this.assignCaseworkerRequestMapper = assignCaseworkerRequestMapper;
     this.unassignCaseworkerRequestMapper = unassignCaseworkerRequestMapper;
     this.createNoteCommandMapper = createNoteCommandMapper;
-    this.readyApplicationCommandMapper = readyApplicationCommandMapper;
+    this.autoGrantOutcomeCommandMapper = autoGrantOutcomeCommandMapper;
     this.updateApplicationCommandMapper = updateApplicationCommandMapper;
   }
 
@@ -108,18 +108,23 @@ public class ApplicationCommandController {
     return ResponseEntity.noContent().build();
   }
 
-  /** Records that a submitted Application is ready for manual assessment. */
-  @PatchMapping("/{id}/ready")
-  public ResponseEntity<Void> markApplicationReady(
+  /** Records either terminal outcome of deciding whether an Application can be auto-granted. */
+  @PatchMapping("/{id}/auto-grant-outcome")
+  public ResponseEntity<Void> recordAutoGrantOutcome(
       @RequestHeader("X-Service-Name") ServiceName serviceName,
       @PathVariable UUID id,
-      @Valid @RequestBody ReadyApplicationRequest request) {
-    ReadyApplicationResult result =
-        dispatchWithRetry(
-            readyApplicationCommandMapper.toCommand(id, request), ReadyApplicationResult.class);
-    return result == ReadyApplicationResult.RECORDED
-        ? ResponseEntity.noContent().build()
-        : ResponseEntity.ok().build();
+      @Valid @RequestBody AutoGrantOutcomeRequest request) {
+    Object command = autoGrantOutcomeCommandMapper.toCommand(id, request);
+    if (command
+        instanceof
+        uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand) {
+      ReadyApplicationResult result = dispatchWithRetry(command, ReadyApplicationResult.class);
+      return result == ReadyApplicationResult.RECORDED
+          ? ResponseEntity.noContent().build()
+          : ResponseEntity.ok().build();
+    }
+    dispatchWithRetry(command);
+    return ResponseEntity.noContent().build();
   }
 
   /** Appends a note to an existing Application. */

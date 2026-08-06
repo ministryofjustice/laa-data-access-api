@@ -141,24 +141,29 @@ Related tests cover:
 
 Use [Testing Axon code](testing-axon-code.md) to decide where a new scenario belongs.
 
-## Related example: routing to manual assessment
+## Related example: recording an auto-grant outcome
 
-`PATCH /api/v0/applications/{id}/ready` follows the same thin-event and immutable-data pattern but
-does not create a Decision. `ReadyApplicationCommandMapper` maps the current public Application
-version into `MarkApplicationReadyCommand`. The aggregate reconstructs the current Status and
-`autoGrant` outcome from its stream, then returns one of these outcomes:
+`PATCH /api/v0/applications/{id}/auto-grant-outcome` accepts a discriminated `AUTOGRANTED` or
+`MANUAL` request. Both variants require the current public Application version. `AUTOGRANTED`
+requires a complete granted Decision (all proceedings, merits justifications, event history, and
+certificate) and follows the existing event-sourced Decision path. `MANUAL` contains no Decision
+fields and follows the manual-readiness path, recording only `autoGrant=false`.
 
 | Existing state | Result |
 |---|---|
+| `APPLICATION_SUBMITTED`, `autoGrant=null`, valid complete `AUTOGRANTED` request | Record one granted Decision and `autoGrant=true`, return `204` |
 | `APPLICATION_SUBMITTED`, `autoGrant=null`, current version | Append `autoGrant=false`, emit `ApplicationReadyForManualAssessmentEvent`, return `204` |
-| `autoGrant=false` | Idempotent success with no data append or event, return `200` |
-| `autoGrant=true` | Reject the incompatible outcome with `409` |
+| Equivalent terminal outcome | Idempotent success with no data append or event |
+| Incompatible terminal outcome | Reject with `409` |
 | Pending outcome but stale version | Reject with `409` |
 | Status other than `APPLICATION_SUBMITTED` | Reject with `422` |
 
-The ready event contains only `applicationId`, `applicationVersion`, `applicationDataVersion`, and
+The manual-readiness event contains only `applicationId`, `applicationVersion`, `applicationDataVersion`, and
 `occurredAt`. `ApplicationProjection` advances its version pointer when handling or replaying that
 event. Hydration then reads `autoGrant=false` from the referenced payload, allowing
 `GET /api/v0/applications?status=APPLICATION_SUBMITTED&isAutoGranted=false` to return only work
 explicitly routed to a caseworker. Direct lookup by identifier continues to return a submitted
 Application while its outcome is still null.
+
+The general `PATCH /api/v0/applications/{id}/decision` operation remains available for caseworker
+Decisions; it is not the auto-grant outcome contract.

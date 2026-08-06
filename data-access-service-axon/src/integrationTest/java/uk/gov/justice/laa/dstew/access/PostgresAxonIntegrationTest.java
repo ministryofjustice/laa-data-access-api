@@ -48,6 +48,8 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
+import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
+import uk.gov.justice.laa.dstew.access.model.AutograntedOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
@@ -58,12 +60,12 @@ import uk.gov.justice.laa.dstew.access.model.IndividualCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.InvolvedChildResponse;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceedingRequest;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
+import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetailsRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.OpponentResponse;
 import uk.gov.justice.laa.dstew.access.model.ProviderResponse;
-import uk.gov.justice.laa.dstew.access.model.ReadyApplicationRequest;
 import uk.gov.justice.laa.dstew.access.model.ScopeLimitationResponse;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadRepository;
@@ -539,17 +541,63 @@ class PostgresAxonIntegrationTest {
   }
 
   @Test
+  void givenSubmittedApplication_whenAutomaticallyGranted_thenPersistsCompleteDecision()
+      throws Exception {
+    UUID applicationId = UUID.randomUUID();
+    applicationId(post(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()));
+    UUID proceedingId = awaitProjection(applicationId).getProceedings().getFirst().proceedingId();
+    var request =
+        new AutograntedOutcomeRequest(
+            AutoGrantOutcome.AUTOGRANTED,
+            0L,
+            AutograntedOutcomeRequest.OverallDecisionEnum.GRANTED,
+            List.of(
+                new MakeDecisionProceedingRequest(
+                    proceedingId,
+                    new MeritsDecisionDetailsRequest(MeritsDecisionStatus.GRANTED, "Autogranted"))),
+            new EventHistoryRequest().eventDescription("Automatic assessment passed"),
+            Map.of("certificateNumber", "AUTO-2126"));
+
+    ResponseEntity<Void> response =
+        restTemplate.exchange(
+            "http://localhost:"
+                + port
+                + "/api/v0/applications/"
+                + applicationId
+                + "/auto-grant-outcome",
+            HttpMethod.PATCH,
+            new HttpEntity<>(request, headers()),
+            Void.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    ApplicationReadModel granted = awaitProjectionVersion(applicationId, 1L);
+    assertThat(granted.getAutoGranted()).isTrue();
+    assertThat(granted.getDecisionStatus()).isEqualTo("GRANTED");
+    assertThat(granted.getMeritsDecisions()).containsKey(proceedingId);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT payload -> 'certificate' ->> 'certificateNumber' "
+                    + "FROM axon.application_data WHERE application_id = ? AND version = 1",
+                String.class,
+                applicationId))
+        .isEqualTo("AUTO-2126");
+  }
+
+  @Test
   void givenSubmittedApplication_whenMarkedReady_thenPersistsFalseOutcomeAndThinEvent()
       throws Exception {
     UUID applicationId = UUID.randomUUID();
     applicationId(post(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()));
     awaitProjection(applicationId);
-    ReadyApplicationRequest request =
-        ReadyApplicationRequest.builder().applicationVersion(0L).build();
+    ManualOutcomeRequest request = new ManualOutcomeRequest(AutoGrantOutcome.MANUAL, 0L);
 
     ResponseEntity<Void> response =
         restTemplate.exchange(
-            "http://localhost:" + port + "/api/v0/applications/" + applicationId + "/ready",
+            "http://localhost:"
+                + port
+                + "/api/v0/applications/"
+                + applicationId
+                + "/auto-grant-outcome",
             HttpMethod.PATCH,
             new HttpEntity<>(request, headers()),
             Void.class);
@@ -1269,10 +1317,14 @@ class PostgresAxonIntegrationTest {
     UUID applicationId = UUID.randomUUID();
     applicationId(post(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()));
     awaitProjection(applicationId);
-    ReadyApplicationRequest request =
-        ReadyApplicationRequest.builder().applicationVersion(0L).build();
-    HttpEntity<ReadyApplicationRequest> entity = new HttpEntity<>(request, headers());
-    String url = "http://localhost:" + port + "/api/v0/applications/" + applicationId + "/ready";
+    ManualOutcomeRequest request = new ManualOutcomeRequest(AutoGrantOutcome.MANUAL, 0L);
+    HttpEntity<ManualOutcomeRequest> entity = new HttpEntity<>(request, headers());
+    String url =
+        "http://localhost:"
+            + port
+            + "/api/v0/applications/"
+            + applicationId
+            + "/auto-grant-outcome";
     CyclicBarrier barrier = new CyclicBarrier(2);
     ExecutorService executor = Executors.newFixedThreadPool(2);
     try {

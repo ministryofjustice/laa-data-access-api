@@ -26,13 +26,14 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.annotation.DirtiesContext;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
+import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceedingRequest;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
+import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetailsRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
-import uk.gov.justice.laa.dstew.access.model.ReadyApplicationRequest;
 
 /**
  * Verifies that when the application-projection tracking processor is stopped the controller
@@ -137,12 +138,12 @@ class ProjectionTimeoutInMemoryTest {
             .getComponents(StreamingEventProcessor.class)
             .get("application-projection");
     processor.shutdown().join();
-    ReadyApplicationRequest readyRequest = new ReadyApplicationRequest().applicationVersion(0L);
-    HttpEntity<ReadyApplicationRequest> readyEntity = new HttpEntity<>(readyRequest, headers);
+    ManualOutcomeRequest readyRequest = new ManualOutcomeRequest(AutoGrantOutcome.MANUAL, 0L);
+    HttpEntity<ManualOutcomeRequest> readyEntity = new HttpEntity<>(readyRequest, headers);
 
     ResponseEntity<Void> first =
         restTemplate.exchange(
-            "/api/v0/applications/" + applicationId + "/ready",
+            "/api/v0/applications/" + applicationId + "/auto-grant-outcome",
             HttpMethod.PATCH,
             readyEntity,
             Void.class);
@@ -154,7 +155,7 @@ class ProjectionTimeoutInMemoryTest {
             ApplicationResponse.class);
     ResponseEntity<Void> repeated =
         restTemplate.exchange(
-            "/api/v0/applications/" + applicationId + "/ready",
+            "/api/v0/applications/" + applicationId + "/auto-grant-outcome",
             HttpMethod.PATCH,
             readyEntity,
             Void.class);

@@ -22,7 +22,8 @@ import uk.gov.justice.laa.dstew.access.command.application.assignment.AssignCase
 import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ReadyApplicationResult;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
-import uk.gov.justice.laa.dstew.access.model.ReadyApplicationRequest;
+import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
+import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
 
 /**
@@ -33,13 +34,13 @@ import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
 class ApplicationCommandControllerTest {
 
   private CommandGateway commandGateway;
-  private ReadyApplicationCommandMapper readyApplicationCommandMapper;
+  private AutoGrantOutcomeCommandMapper autoGrantOutcomeCommandMapper;
   private ApplicationCommandController controller;
 
   @BeforeEach
   void setUp() {
     commandGateway = mock(CommandGateway.class);
-    readyApplicationCommandMapper = mock(ReadyApplicationCommandMapper.class);
+    autoGrantOutcomeCommandMapper = mock(AutoGrantOutcomeCommandMapper.class);
     controller =
         new ApplicationCommandController(
             commandGateway,
@@ -50,21 +51,21 @@ class ApplicationCommandControllerTest {
             mock(AssignCaseworkerRequestMapper.class),
             mock(UnassignCaseworkerRequestMapper.class),
             mock(CreateNoteCommandMapper.class),
-            readyApplicationCommandMapper,
+            autoGrantOutcomeCommandMapper,
             mock(UpdateApplicationCommandMapper.class));
   }
 
   @Test
   void givenReadinessRecorded_whenMarkApplicationReady_thenReturnsNoContent() {
     UUID applicationId = UUID.randomUUID();
-    ReadyApplicationRequest request = new ReadyApplicationRequest().applicationVersion(2L);
+    ManualOutcomeRequest request = new ManualOutcomeRequest(AutoGrantOutcome.MANUAL, 2L);
     MarkApplicationReadyCommand command =
         new MarkApplicationReadyCommand(applicationId, 2L, "{}", Instant.now());
-    when(readyApplicationCommandMapper.toCommand(applicationId, request)).thenReturn(command);
+    when(autoGrantOutcomeCommandMapper.toCommand(applicationId, request)).thenReturn(command);
     when(commandGateway.sendAndWait(command, ReadyApplicationResult.class))
         .thenReturn(ReadyApplicationResult.RECORDED);
 
-    var response = controller.markApplicationReady(null, applicationId, request);
+    var response = controller.recordAutoGrantOutcome(null, applicationId, request);
 
     assertThat(response.getStatusCode().value()).isEqualTo(204);
   }
@@ -72,14 +73,14 @@ class ApplicationCommandControllerTest {
   @Test
   void givenReadinessAlreadyRecorded_whenMarkApplicationReady_thenReturnsOk() {
     UUID applicationId = UUID.randomUUID();
-    ReadyApplicationRequest request = new ReadyApplicationRequest().applicationVersion(2L);
+    ManualOutcomeRequest request = new ManualOutcomeRequest(AutoGrantOutcome.MANUAL, 2L);
     MarkApplicationReadyCommand command =
         new MarkApplicationReadyCommand(applicationId, 2L, "{}", Instant.now());
-    when(readyApplicationCommandMapper.toCommand(applicationId, request)).thenReturn(command);
+    when(autoGrantOutcomeCommandMapper.toCommand(applicationId, request)).thenReturn(command);
     when(commandGateway.sendAndWait(command, ReadyApplicationResult.class))
         .thenReturn(ReadyApplicationResult.ALREADY_RECORDED);
 
-    var response = controller.markApplicationReady(null, applicationId, request);
+    var response = controller.recordAutoGrantOutcome(null, applicationId, request);
 
     assertThat(response.getStatusCode().value()).isEqualTo(200);
   }

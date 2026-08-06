@@ -41,7 +41,7 @@ paths:
             format: uuid
         - in: query
           name: isAutoGranted
-          description: Filter by the recorded automatic-assessment outcome; false selects manual work and excludes null outcomes
+          description: Filter by the recorded auto-grant outcome; false selects manual work and excludes null outcomes
           schema:
             type: boolean
         - in: query
@@ -330,12 +330,12 @@ paths:
         '404': { description: Not found }
         '500': { description: Internal server error }
 
-  /api/v0/applications/{id}/ready:
+  /api/v0/applications/{id}/auto-grant-outcome:
     patch:
       tags:
-        - application-ready-command
-      operationId: markApplicationReady
-      summary: Route a submitted Application to manual assessment
+        - application-auto-grant-outcome-command
+      operationId: recordAutoGrantOutcome
+      summary: Record the outcome of deciding whether an Application can be auto-granted
       parameters:
         - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
         - name: id
@@ -349,15 +349,15 @@ paths:
         content:
           application/json:
             schema:
-              $ref: './components.yml#/components/schemas/ReadyApplicationRequest'
+              $ref: './components.yml#/components/schemas/AutoGrantOutcomeRequest'
       responses:
-        '200': { description: Manual readiness was already recorded }
-        '204': { description: Manual readiness recorded }
+        '200': { description: An equivalent terminal outcome was already recorded }
+        '204': { description: Auto-grant outcome recorded }
         '400': { description: Bad request }
         '401': { description: Unauthorized }
         '403': { description: Forbidden }
         '404': { description: Application not found }
-        '409': { description: Stale version or incompatible auto-grant outcome }
+        '409': { description: Stale version or incompatible terminal outcome }
         '422': { description: Application is not submitted }
         '500': { description: Internal server error }
 

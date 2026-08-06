@@ -32,7 +32,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.test.annotation.DirtiesContext;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
-import uk.gov.justice.laa.dstew.access.model.ReadyApplicationRequest;
+import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
+import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
@@ -103,9 +104,10 @@ class EventProcessorRecoveryInMemoryTest {
     assertThat(
             restTemplate
                 .exchange(
-                    "/api/v0/applications/" + applicationId + "/ready",
+                    "/api/v0/applications/" + applicationId + "/auto-grant-outcome",
                     HttpMethod.PATCH,
-                    new HttpEntity<>(new ReadyApplicationRequest().applicationVersion(0L), headers),
+                    new HttpEntity<>(
+                        new ManualOutcomeRequest(AutoGrantOutcome.MANUAL, 0L), headers),
                     Void.class)
                 .getStatusCode())
         .isEqualTo(HttpStatus.NO_CONTENT);

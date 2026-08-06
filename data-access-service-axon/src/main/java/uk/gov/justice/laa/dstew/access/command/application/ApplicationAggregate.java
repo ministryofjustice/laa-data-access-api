@@ -117,6 +117,23 @@ public class ApplicationAggregate {
       ApplicationDataStore applicationDataStore,
       EventAppender eventAppender) {
     requireApplicationExists(command.applicationId());
+    if (command.fromAutoGrantOutcome() && Boolean.FALSE.equals(state.autoGranted)) {
+      throw new uk.gov.justice.laa.dstew.access.exception
+          .ApplicationAutoGrantOutcomeConflictException(command.applicationId());
+    }
+    if (command.fromAutoGrantOutcome() && !"APPLICATION_SUBMITTED".equals(state.status)) {
+      throw new uk.gov.justice.laa.dstew.access.exception.InvalidApplicationStateException(
+          command.applicationId(), state.status);
+    }
+    if (command.fromAutoGrantOutcome() && Boolean.TRUE.equals(state.autoGranted)) {
+      var recorded = applicationDataStore.get(applicationId, state.applicationDataVersion);
+      if (java.util.Objects.equals(
+          recorded.decisionSerialisedRequest(), command.serialisedRequest())) {
+        return;
+      }
+      throw new uk.gov.justice.laa.dstew.access.exception
+          .ApplicationAutoGrantOutcomeConflictException(command.applicationId());
+    }
     if (command.expectedApplicationVersion() != state.applicationVersion) {
       throw new uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException(
           command.applicationId(), command.expectedApplicationVersion());

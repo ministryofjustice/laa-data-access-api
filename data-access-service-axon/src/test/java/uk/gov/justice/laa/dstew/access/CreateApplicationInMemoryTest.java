@@ -6,6 +6,7 @@ import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequest
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validLinkedCreateApplicationRequest;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -33,6 +34,8 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
+import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
+import uk.gov.justice.laa.dstew.access.model.AutograntedOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
@@ -40,9 +43,9 @@ import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.model.IndividualsResponse;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceedingRequest;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
+import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetailsRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
-import uk.gov.justice.laa.dstew.access.model.ReadyApplicationRequest;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
@@ -352,10 +355,10 @@ class CreateApplicationInMemoryTest {
         .extracting(application -> application.getApplicationId())
         .doesNotContain(applicationId);
 
-    ReadyApplicationRequest request = new ReadyApplicationRequest().applicationVersion(0L);
+    ManualOutcomeRequest request = new ManualOutcomeRequest(AutoGrantOutcome.MANUAL, 0L);
     ResponseEntity<Void> ready =
         restTemplate.exchange(
-            "/api/v0/applications/" + applicationId + "/ready",
+            "/api/v0/applications/" + applicationId + "/auto-grant-outcome",
             HttpMethod.PATCH,
             new HttpEntity<>(request, headers()),
             Void.class);
@@ -389,11 +392,82 @@ class CreateApplicationInMemoryTest {
 
     ResponseEntity<Void> replay =
         restTemplate.exchange(
-            "/api/v0/applications/" + applicationId + "/ready",
+            "/api/v0/applications/" + applicationId + "/auto-grant-outcome",
             HttpMethod.PATCH,
             new HttpEntity<>(request, headers()),
             Void.class);
     assertThat(replay.getStatusCode()).isEqualTo(HttpStatus.OK);
+  }
+
+  @Test
+  void givenSubmittedApplication_whenAutomaticallyGranted_thenCompleteDecisionIsRecorded() {
+    UUID applicationId = UUID.randomUUID();
+    applicationId(
+        restTemplate.postForEntity(
+            "/api/v0/applications",
+            new HttpEntity<>(
+                validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()),
+            Void.class));
+    ApplicationResponse created =
+        restTemplate
+            .exchange(
+                "/api/v0/applications/" + applicationId,
+                HttpMethod.GET,
+                new HttpEntity<>(headers()),
+                ApplicationResponse.class)
+            .getBody();
+    assertThat(created).isNotNull();
+    UUID proceedingId = created.getProceedings().getFirst().getProceedingId();
+    var request =
+        new AutograntedOutcomeRequest(
+            AutoGrantOutcome.AUTOGRANTED,
+            0L,
+            AutograntedOutcomeRequest.OverallDecisionEnum.GRANTED,
+            List.of(
+                new MakeDecisionProceedingRequest(
+                    proceedingId,
+                    new MeritsDecisionDetailsRequest(MeritsDecisionStatus.GRANTED, "Autogranted"))),
+            new EventHistoryRequest().eventDescription("Automatic assessment passed"),
+            Map.of("certificateNumber", "AUTO-2126"));
+
+    ResponseEntity<Void> response =
+        restTemplate.exchange(
+            "/api/v0/applications/" + applicationId + "/auto-grant-outcome",
+            HttpMethod.PATCH,
+            new HttpEntity<>(request, headers()),
+            Void.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    awaitApplicationVersion(applicationId, 1L);
+    ApplicationResponse granted =
+        restTemplate
+            .exchange(
+                "/api/v0/applications/" + applicationId,
+                HttpMethod.GET,
+                new HttpEntity<>(headers()),
+                ApplicationResponse.class)
+            .getBody();
+    assertThat(granted).isNotNull();
+    assertThat(granted.getAutoGrant()).isTrue();
+    assertThat(granted.getDecisionStatus()).isEqualTo(DecisionStatus.GRANTED);
+    assertThat(granted.getProceedings())
+        .singleElement()
+        .satisfies(
+            proceeding ->
+                assertThat(proceeding.getMeritsDecision()).isEqualTo(MeritsDecisionStatus.GRANTED));
+    assertThat(applicationDataRepository.findById(new ApplicationDataId(applicationId, 1L)))
+        .get()
+        .extracting(data -> data.getPayload().certificate())
+        .isEqualTo(Map.of("certificateNumber", "AUTO-2126"));
+
+    ResponseEntity<Void> repeated =
+        restTemplate.exchange(
+            "/api/v0/applications/" + applicationId + "/auto-grant-outcome",
+            HttpMethod.PATCH,
+            new HttpEntity<>(request, headers()),
+            Void.class);
+    assertThat(repeated.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    assertThat(applicationDataRepository.countByIdApplicationId(applicationId)).isEqualTo(2L);
   }
 
   @Test
@@ -408,9 +482,9 @@ class CreateApplicationInMemoryTest {
 
     ResponseEntity<String> response =
         restTemplate.exchange(
-            "/api/v0/applications/" + applicationId + "/ready",
+            "/api/v0/applications/" + applicationId + "/auto-grant-outcome",
             HttpMethod.PATCH,
-            new HttpEntity<>(new ReadyApplicationRequest().applicationVersion(9L), headers()),
+            new HttpEntity<>(new ManualOutcomeRequest(AutoGrantOutcome.MANUAL, 9L), headers()),
             String.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
@@ -436,9 +510,9 @@ class CreateApplicationInMemoryTest {
 
     ResponseEntity<String> response =
         restTemplate.exchange(
-            "/api/v0/applications/" + applicationId + "/ready",
+            "/api/v0/applications/" + applicationId + "/auto-grant-outcome",
             HttpMethod.PATCH,
-            new HttpEntity<>(new ReadyApplicationRequest().applicationVersion(0L), headers()),
+            new HttpEntity<>(new ManualOutcomeRequest(AutoGrantOutcome.MANUAL, 0L), headers()),
             String.class);
 
     assertThat(response.getStatusCode().value()).isEqualTo(422);
@@ -481,9 +555,9 @@ class CreateApplicationInMemoryTest {
 
     ResponseEntity<String> response =
         restTemplate.exchange(
-            "/api/v0/applications/" + applicationId + "/ready",
+            "/api/v0/applications/" + applicationId + "/auto-grant-outcome",
             HttpMethod.PATCH,
-            new HttpEntity<>(new ReadyApplicationRequest().applicationVersion(1L), headers()),
+            new HttpEntity<>(new ManualOutcomeRequest(AutoGrantOutcome.MANUAL, 1L), headers()),
             String.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
