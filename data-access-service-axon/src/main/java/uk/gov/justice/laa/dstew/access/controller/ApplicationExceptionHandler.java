@@ -11,6 +11,7 @@ import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictExce
 import uk.gov.justice.laa.dstew.access.exception.ApplicationGroupInvariantException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.exception.NotAssignedCaseworkerException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /** Translates command-side failures to the existing HTTP validation contract. */
@@ -71,6 +72,13 @@ public class ApplicationExceptionHandler {
   @ExceptionHandler(ApplicationVersionConflictException.class)
   ResponseEntity<ProblemDetail> handleApplicationVersionConflictException(
       ApplicationVersionConflictException exception) {
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage()));
+  }
+
+  @ExceptionHandler(NotAssignedCaseworkerException.class)
+  ResponseEntity<ProblemDetail> handleNotAssignedCaseworkerException(
+      NotAssignedCaseworkerException exception) {
     return ResponseEntity.status(HttpStatus.CONFLICT)
         .body(ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage()));
   }

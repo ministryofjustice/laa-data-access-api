@@ -18,13 +18,14 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
+import uk.gov.justice.laa.dstew.access.command.workitem.WorkItemAssigned;
+import uk.gov.justice.laa.dstew.access.command.workitem.WorkItemId;
+import uk.gov.justice.laa.dstew.access.command.workitem.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.config.interceptor.ServiceNameMetadataDispatchInterceptor;
 
 class ApplicationHistoryProjectionTest {
@@ -131,19 +132,20 @@ class ApplicationHistoryProjectionTest {
     UUID applicationId = UUID.randomUUID();
     UUID caseworkerId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-07-20T08:00:00Z");
-    ApplicationAssignedToCaseworkerEvent event =
-        new ApplicationAssignedToCaseworkerEvent(applicationId, 1L, 2L, caseworkerId, occurredAt);
+    WorkItemAssigned event =
+        new WorkItemAssigned(
+            WorkItemId.toAggregateId(applicationId),
+            caseworkerId,
+            "{}",
+            "Assigned for assessment",
+            occurredAt,
+            false);
     projection.on(event, message(event, "assignment-event"));
     ArgumentCaptor<ApplicationHistoryReadModel> captor =
         ArgumentCaptor.forClass(ApplicationHistoryReadModel.class);
     verify(repository).save(captor.capture());
     when(repository.findAllByApplicationIdOrderByOccurredAtAsc(applicationId))
         .thenReturn(List.of(captor.getValue()));
-    when(applicationDataStore.get(applicationId, 2L))
-        .thenReturn(
-            ApplicationDataPayload.from(applicationCreationDetails(applicationId))
-                .withAssignment("Assigned for assessment"));
-
     var result =
         projection.handle(
             new FindApplicationHistoryQuery(
@@ -169,18 +171,15 @@ class ApplicationHistoryProjectionTest {
       throws Exception {
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-07-20T09:00:00Z");
-    ApplicationUnassignedFromCaseworkerEvent event =
-        new ApplicationUnassignedFromCaseworkerEvent(applicationId, 2L, 3L, occurredAt);
+    WorkItemUnassigned event =
+        new WorkItemUnassigned(
+            WorkItemId.toAggregateId(applicationId), "{}", "Returned to queue", occurredAt);
     projection.on(event, message(event, "unassignment-event"));
     ArgumentCaptor<ApplicationHistoryReadModel> captor =
         ArgumentCaptor.forClass(ApplicationHistoryReadModel.class);
     verify(repository).save(captor.capture());
     when(repository.findAllByApplicationIdOrderByOccurredAtAsc(applicationId))
         .thenReturn(List.of(captor.getValue()));
-    when(applicationDataStore.get(applicationId, 3L))
-        .thenReturn(
-            ApplicationDataPayload.from(applicationCreationDetails(applicationId))
-                .withAssignment("Returned to queue"));
 
     var result =
         projection.handle(

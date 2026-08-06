@@ -16,14 +16,15 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationNote;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.workitem.WorkItemAssigned;
+import uk.gov.justice.laa.dstew.access.command.workitem.WorkItemId;
+import uk.gov.justice.laa.dstew.access.command.workitem.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
 
@@ -163,31 +164,29 @@ public class ApplicationProjection {
             });
   }
 
-  /** Updates the assigned caseworker and referenced application-data version. */
+  /** Updates the displayed caseworker from the separate WorkItem assignment boundary. */
   @EventHandler
-  public void on(ApplicationAssignedToCaseworkerEvent event) {
+  public void on(WorkItemAssigned event) {
+    UUID applicationId = WorkItemId.toItemId(event.workItemId());
     applicationReadRepository
-        .findById(event.applicationId())
+        .findById(applicationId)
         .ifPresent(
             application -> {
               application.setCaseworkerId(event.caseworkerId());
-              application.setApplicationVersion(event.applicationVersion());
-              application.setApplicationDataVersion(event.applicationDataVersion());
               application.setModifiedAt(event.occurredAt());
               applicationReadRepository.save(application);
             });
   }
 
-  /** Clears the assigned caseworker and updates the referenced application-data version. */
+  /** Clears the displayed caseworker from the separate WorkItem assignment boundary. */
   @EventHandler
-  public void on(ApplicationUnassignedFromCaseworkerEvent event) {
+  public void on(WorkItemUnassigned event) {
+    UUID applicationId = WorkItemId.toItemId(event.workItemId());
     applicationReadRepository
-        .findById(event.applicationId())
+        .findById(applicationId)
         .ifPresent(
             application -> {
               application.setCaseworkerId(null);
-              application.setApplicationVersion(event.applicationVersion());
-              application.setApplicationDataVersion(event.applicationDataVersion());
               application.setModifiedAt(event.occurredAt());
               applicationReadRepository.save(application);
             });

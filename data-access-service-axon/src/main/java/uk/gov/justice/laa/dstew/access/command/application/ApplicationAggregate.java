@@ -11,12 +11,10 @@ import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.AssignCaseworkerToApplicationCommand;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.UnassignCaseworkerFromApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationMeritsDecision;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
-import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
+import uk.gov.justice.laa.dstew.access.command.application.decision.ExecuteApplicationDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.CreateLinkedApplicationGroupCommand;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupRequested;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.ValidateApplicationExistsCommand;
@@ -97,17 +95,14 @@ public class ApplicationAggregate {
   /** Proves that the targeted application exists. */
   @CommandHandler
   void handle(ValidateApplicationExistsCommand command) {
-    if (applicationId == null) {
-      throw new ResourceNotFoundException(
-          "No linked application found with Application ID: " + command.applicationId());
-    }
+    requireApplicationExists(command.applicationId());
     // Application exists — no events, no state change.
   }
 
   /** Validates and stores a decision as the next immutable application-data version. */
   @CommandHandler
   void handle(
-      MakeApplicationDecisionCommand command,
+      ExecuteApplicationDecisionCommand command,
       ApplicationDataStore applicationDataStore,
       EventAppender eventAppender) {
     requireApplicationExists(command.applicationId());
@@ -141,48 +136,6 @@ public class ApplicationAggregate {
     applicationDataStore.append(
         applicationId, nextVersion, updated, command.serialisedRequest(), command.occurredAt());
 
-    eventAppender.append(event);
-  }
-
-  /** Assigns a caseworker and stores free-text audit data outside the event stream. */
-  @CommandHandler
-  void handle(
-      AssignCaseworkerToApplicationCommand command,
-      ApplicationDataStore applicationDataStore,
-      EventAppender eventAppender) {
-    requireApplicationExists(command.applicationId());
-    ApplicationAssignedToCaseworkerEvent event = ApplicationDecider.decideAssign(state, command);
-    var current = applicationDataStore.get(applicationId, state.applicationDataVersion);
-    long nextDataVersion = state.applicationDataVersion + 1;
-    applicationDataStore.append(
-        applicationId,
-        nextDataVersion,
-        current.withAssignment(command.eventDescription()),
-        command.serialisedRequest(),
-        command.occurredAt());
-    eventAppender.append(event);
-  }
-
-  /** Removes the assigned caseworker and stores free-text audit data outside the event stream. */
-  @CommandHandler
-  void handle(
-      UnassignCaseworkerFromApplicationCommand command,
-      ApplicationDataStore applicationDataStore,
-      EventAppender eventAppender) {
-    requireApplicationExists(command.applicationId());
-    if (state.caseworkerId == null) {
-      return;
-    }
-    ApplicationUnassignedFromCaseworkerEvent event =
-        ApplicationDecider.decideUnassign(state, command);
-    var current = applicationDataStore.get(applicationId, state.applicationDataVersion);
-    long nextDataVersion = state.applicationDataVersion + 1;
-    applicationDataStore.append(
-        applicationId,
-        nextDataVersion,
-        current.withAssignment(command.eventDescription()),
-        command.serialisedRequest(),
-        command.occurredAt());
     eventAppender.append(event);
   }
 
@@ -227,11 +180,13 @@ public class ApplicationAggregate {
     ApplicationEvolve.apply(state, event);
   }
 
+  /** Replays assignment events emitted before assignment moved to WorkItemAggregate. */
   @EventSourcingHandler
   void on(ApplicationAssignedToCaseworkerEvent event) {
     ApplicationEvolve.apply(state, event);
   }
 
+  /** Replays unassignment events emitted before assignment moved to WorkItemAggregate. */
   @EventSourcingHandler
   void on(ApplicationUnassignedFromCaseworkerEvent event) {
     ApplicationEvolve.apply(state, event);

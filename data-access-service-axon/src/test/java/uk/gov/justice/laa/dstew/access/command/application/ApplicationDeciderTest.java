@@ -7,14 +7,10 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.AssignCaseworkerToApplicationCommand;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.UnassignCaseworkerFromApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
-import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
+import uk.gov.justice.laa.dstew.access.command.application.decision.ExecuteApplicationDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeDecisionProceeding;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupRequested;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
@@ -148,7 +144,7 @@ class ApplicationDeciderTest {
     ApplicationDecisionMadeEvent event =
         ApplicationDecider.decideDecision(
             state,
-            new MakeApplicationDecisionCommand(
+            new ExecuteApplicationDecisionCommand(
                 applicationId,
                 0L,
                 "REFUSED",
@@ -157,7 +153,8 @@ class ApplicationDeciderTest {
                 null,
                 "{}",
                 "desc",
-                occurredAt),
+                occurredAt,
+                null),
             current);
 
     assertThat(event.applicationId()).isEqualTo(applicationId);
@@ -172,8 +169,8 @@ class ApplicationDeciderTest {
     UUID applicationId = UUID.randomUUID();
     ApplicationState state = stateAfterCreate(applicationId, "fp", 1);
     state.applicationVersion = 0L;
-    MakeApplicationDecisionCommand command =
-        new MakeApplicationDecisionCommand(
+    ExecuteApplicationDecisionCommand command =
+        new ExecuteApplicationDecisionCommand(
             applicationId,
             1L, // stale: actual is 0
             "REFUSED",
@@ -182,7 +179,8 @@ class ApplicationDeciderTest {
             null,
             "{}",
             null,
-            TIMESTAMP);
+            TIMESTAMP,
+            null);
     ApplicationDataPayload current = payloadWithProceeding(applicationId, UUID.randomUUID());
 
     assertThatThrownBy(() -> ApplicationDecider.decideDecision(state, command, current))
@@ -193,9 +191,9 @@ class ApplicationDeciderTest {
   void givenEmptyProceedings_whenDecideDecision_thenThrowsValidationException() {
     UUID applicationId = UUID.randomUUID();
     ApplicationState state = stateAfterCreate(applicationId, "fp", 1);
-    MakeApplicationDecisionCommand command =
-        new MakeApplicationDecisionCommand(
-            applicationId, 0L, "REFUSED", false, List.of(), null, "{}", null, TIMESTAMP);
+    ExecuteApplicationDecisionCommand command =
+        new ExecuteApplicationDecisionCommand(
+            applicationId, 0L, "REFUSED", false, List.of(), null, "{}", null, TIMESTAMP, null);
     ApplicationDataPayload current = payloadWithProceeding(applicationId, UUID.randomUUID());
 
     assertThatThrownBy(() -> ApplicationDecider.decideDecision(state, command, current))
@@ -207,8 +205,8 @@ class ApplicationDeciderTest {
     UUID applicationId = UUID.randomUUID();
     UUID proceedingId = UUID.randomUUID();
     ApplicationState state = stateAfterCreate(applicationId, "fp", 1);
-    MakeApplicationDecisionCommand command =
-        new MakeApplicationDecisionCommand(
+    ExecuteApplicationDecisionCommand command =
+        new ExecuteApplicationDecisionCommand(
             applicationId,
             0L,
             "GRANTED",
@@ -217,7 +215,8 @@ class ApplicationDeciderTest {
             null, // missing certificate
             "{}",
             null,
-            TIMESTAMP);
+            TIMESTAMP,
+            null);
     ApplicationDataPayload current = payloadWithProceeding(applicationId, proceedingId);
 
     assertThatThrownBy(() -> ApplicationDecider.decideDecision(state, command, current))
@@ -230,8 +229,8 @@ class ApplicationDeciderTest {
     UUID knownProceedingId = UUID.randomUUID();
     UUID unknownProceedingId = UUID.randomUUID();
     ApplicationState state = stateAfterCreate(applicationId, "fp", 1);
-    MakeApplicationDecisionCommand command =
-        new MakeApplicationDecisionCommand(
+    ExecuteApplicationDecisionCommand command =
+        new ExecuteApplicationDecisionCommand(
             applicationId,
             0L,
             "REFUSED",
@@ -240,7 +239,8 @@ class ApplicationDeciderTest {
             null,
             "{}",
             null,
-            TIMESTAMP);
+            TIMESTAMP,
+            null);
     ApplicationDataPayload current = payloadWithProceeding(applicationId, knownProceedingId);
 
     assertThatThrownBy(() -> ApplicationDecider.decideDecision(state, command, current))
@@ -254,8 +254,8 @@ class ApplicationDeciderTest {
     ApplicationState state = stateAfterCreate(applicationId, "fp", 1);
     MakeDecisionProceeding proceeding =
         new MakeDecisionProceeding(proceedingId, "REFUSED", "reason", "just");
-    MakeApplicationDecisionCommand command =
-        new MakeApplicationDecisionCommand(
+    ExecuteApplicationDecisionCommand command =
+        new ExecuteApplicationDecisionCommand(
             applicationId,
             0L,
             "REFUSED",
@@ -264,66 +264,12 @@ class ApplicationDeciderTest {
             null,
             "{}",
             null,
-            TIMESTAMP);
+            TIMESTAMP,
+            null);
     ApplicationDataPayload current = payloadWithProceeding(applicationId, proceedingId);
 
     assertThatThrownBy(() -> ApplicationDecider.decideDecision(state, command, current))
         .isInstanceOf(ValidationException.class);
-  }
-
-  // ── decideAssign ───────────────────────────────────────────────────────────────
-
-  @Test
-  void givenApplication_whenDecideAssign_thenReturnsAssignedEvent() {
-    UUID applicationId = UUID.randomUUID();
-    UUID caseworkerId = UUID.randomUUID();
-    ApplicationState state = stateAfterCreate(applicationId, "fp", 1);
-
-    ApplicationAssignedToCaseworkerEvent event =
-        ApplicationDecider.decideAssign(
-            state,
-            new AssignCaseworkerToApplicationCommand(
-                applicationId, caseworkerId, "{}", "desc", TIMESTAMP));
-
-    assertThat(event.applicationId()).isEqualTo(applicationId);
-    assertThat(event.caseworkerId()).isEqualTo(caseworkerId);
-    assertThat(event.applicationVersion()).isEqualTo(1L);
-    assertThat(event.applicationDataVersion()).isEqualTo(1L);
-    assertThat(event.occurredAt()).isEqualTo(TIMESTAMP);
-  }
-
-  // ── decideUnassign ─────────────────────────────────────────────────────────────
-
-  @Test
-  void givenNoCaseworker_whenDecideUnassign_thenThrowsValidationException() {
-    UUID applicationId = UUID.randomUUID();
-    ApplicationState state = stateAfterCreate(applicationId, "fp", 1);
-    UnassignCaseworkerFromApplicationCommand command =
-        new UnassignCaseworkerFromApplicationCommand(applicationId, "{}", "no-op", TIMESTAMP);
-
-    assertThatThrownBy(() -> ApplicationDecider.decideUnassign(state, command))
-        .isInstanceOf(ValidationException.class);
-  }
-
-  @Test
-  void givenAssignedCaseworker_whenDecideUnassign_thenReturnsUnassignedEvent() {
-    UUID applicationId = UUID.randomUUID();
-    UUID caseworkerId = UUID.randomUUID();
-    ApplicationState state = stateAfterCreate(applicationId, "fp", 1);
-    state.caseworkerId = caseworkerId;
-    state.applicationVersion = 1L;
-    state.applicationDataVersion = 1L;
-
-    ApplicationUnassignedFromCaseworkerEvent event =
-        ApplicationDecider.decideUnassign(
-            state,
-            new UnassignCaseworkerFromApplicationCommand(
-                applicationId, "{}", "removed", TIMESTAMP));
-
-    assertThat(event.applicationId()).isEqualTo(applicationId);
-    assertThat(event.applicationVersion()).isEqualTo(2L);
-    assertThat(event.applicationDataVersion()).isEqualTo(2L);
-    assertThat(event.occurredAt()).isEqualTo(TIMESTAMP);
   }
 
   // ── decideNote ─────────────────────────────────────────────────────────────────

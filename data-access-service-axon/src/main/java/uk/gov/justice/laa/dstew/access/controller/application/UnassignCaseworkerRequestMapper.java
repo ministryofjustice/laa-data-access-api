@@ -5,7 +5,8 @@ import java.util.UUID;
 import org.springframework.stereotype.Component;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.UnassignCaseworkerFromApplicationCommand;
+import uk.gov.justice.laa.dstew.access.command.workitem.UnassignWorkItemCommand;
+import uk.gov.justice.laa.dstew.access.command.workitem.WorkItemId;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
 
 /** Maps and serialises generated caseworker-unassignment requests. */
@@ -19,12 +20,12 @@ public class UnassignCaseworkerRequestMapper {
   }
 
   /** Maps an unassignment request to its aggregate command and audit data. */
-  public UnassignCaseworkerFromApplicationCommand toCommand(
+  public UnassignWorkItemCommand toCommand(
       UUID applicationId, CaseworkerUnassignRequest request) {
     String eventDescription =
         request.getEventHistory() == null ? null : request.getEventHistory().getEventDescription();
-    return new UnassignCaseworkerFromApplicationCommand(
-        applicationId, serialise(request), eventDescription, Instant.now());
+    return new UnassignWorkItemCommand(
+        WorkItemId.toAggregateId(applicationId), serialise(request), eventDescription, Instant.now());
   }
 
   private String serialise(CaseworkerUnassignRequest request) {

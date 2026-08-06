@@ -23,6 +23,7 @@ class MakeDecisionCommandMapperTest {
   @Test
   void givenCompleteRequest_whenMapped_thenMapsCommandAndAuditData() {
     UUID applicationId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
     UUID proceedingId = UUID.randomUUID();
     MakeDecisionRequest request =
         MakeDecisionRequest.builder()
@@ -46,9 +47,10 @@ class MakeDecisionCommandMapperTest {
             .build();
     Instant before = Instant.now();
 
-    var command = mapper.toCommand(applicationId, request);
+    var command = mapper.toCommand(applicationId, caseworkerId, request);
 
     assertThat(command.applicationId()).isEqualTo(applicationId);
+    assertThat(command.caseworkerId()).isEqualTo(caseworkerId);
     assertThat(command.expectedApplicationVersion()).isEqualTo(3L);
     assertThat(command.overallDecision()).isEqualTo("REFUSED");
     assertThat(command.autoGranted()).isFalse();
@@ -79,7 +81,7 @@ class MakeDecisionCommandMapperTest {
             .proceedings(null)
             .build();
 
-    var command = mapper.toCommand(applicationId, request);
+    var command = mapper.toCommand(applicationId, UUID.randomUUID(), request);
 
     assertThat(command.proceedings()).isEmpty();
     assertThat(command.eventDescription()).isNull();
@@ -99,7 +101,7 @@ class MakeDecisionCommandMapperTest {
                         .build()))
             .build();
 
-    var proceeding = mapper.toCommand(UUID.randomUUID(), request).proceedings().getFirst();
+    var proceeding = mapper.toCommand(UUID.randomUUID(), UUID.randomUUID(), request).proceedings().getFirst();
 
     assertThat(proceeding.decision()).isNull();
     assertThat(proceeding.reason()).isNull();

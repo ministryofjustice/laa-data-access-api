@@ -22,7 +22,8 @@ public class MakeDecisionCommandMapper {
   }
 
   /** Maps a request for the supplied Application identifier. */
-  public MakeApplicationDecisionCommand toCommand(UUID applicationId, MakeDecisionRequest request) {
+  public MakeApplicationDecisionCommand toCommand(
+      UUID applicationId, UUID caseworkerId, MakeDecisionRequest request) {
     return new MakeApplicationDecisionCommand(
         applicationId,
         request.getApplicationVersion(),
@@ -32,7 +33,8 @@ public class MakeDecisionCommandMapper {
         request.getCertificate(),
         serialise(request),
         request.getEventHistory() == null ? null : request.getEventHistory().getEventDescription(),
-        Instant.now());
+        Instant.now(),
+        caseworkerId);
   }
 
   private List<MakeDecisionProceeding> proceedings(

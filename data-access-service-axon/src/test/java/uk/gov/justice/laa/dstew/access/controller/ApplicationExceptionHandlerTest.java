@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationGroupInvariantException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException;
+import uk.gov.justice.laa.dstew.access.exception.NotAssignedCaseworkerException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
@@ -99,5 +100,18 @@ class ApplicationExceptionHandlerTest {
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     assertThat(response.getBody().getDetail()).isEqualTo("Application cannot be its own lead");
+  }
+
+  @Test
+  void givenNotAssignedCaseworker_whenHandled_thenReturnsConflict() {
+    UUID applicationId = UUID.randomUUID();
+
+    var response =
+        handler.handleNotAssignedCaseworkerException(
+            new NotAssignedCaseworkerException(applicationId));
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+    assertThat(response.getBody().getDetail())
+        .isEqualTo("The caseworker is not assigned to application: " + applicationId);
   }
 }

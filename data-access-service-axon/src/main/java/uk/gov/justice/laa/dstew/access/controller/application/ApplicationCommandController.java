@@ -29,6 +29,7 @@ import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
+import uk.gov.justice.laa.dstew.access.query.workqueue.AwaitWorkQueueRemovalQuery;
 
 /** HTTP command adapter for Application writes. */
 @RestController
@@ -92,9 +93,14 @@ public class ApplicationCommandController {
   @PatchMapping("/{id}/decision")
   public ResponseEntity<Void> makeDecision(
       @RequestHeader("X-Service-Name") ServiceName serviceName,
+      @RequestHeader("X-Caseworker-ID") UUID caseworkerId,
       @PathVariable UUID id,
       @Valid @RequestBody MakeDecisionRequest request) {
-    dispatchWithRetry(decisionCommandMapper.toCommand(id, request));
+    projectionGateway.awaitProjectionMatching(
+        new AwaitWorkQueueRemovalQuery(id),
+        Boolean.class,
+        Boolean.TRUE::equals,
+        () -> dispatchWithRetry(decisionCommandMapper.toCommand(id, caseworkerId, request)));
     return ResponseEntity.noContent().build();
   }
 

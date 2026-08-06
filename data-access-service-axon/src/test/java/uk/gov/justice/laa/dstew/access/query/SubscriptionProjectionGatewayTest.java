@@ -57,6 +57,19 @@ class SubscriptionProjectionGatewayTest {
   }
 
   @Test
+  void givenNonReadyInitialResultAndMatchingUpdate_whenAwaitProjectionMatching_thenReturnsTrue() {
+    Sinks.One<Boolean> update = Sinks.one();
+    when(queryGateway.subscriptionQuery(any(), eq(Boolean.class)))
+        .thenReturn(Flux.just(false).concatWith(update.asMono()));
+
+    boolean result =
+        gateway.awaitProjectionMatching(
+            new Object(), Boolean.class, Boolean.TRUE::equals, () -> update.tryEmitValue(true));
+
+    assertThat(result).isTrue();
+  }
+
+  @Test
   void givenNeverCompletingInitialResult_whenAwaitProjection_thenReturnsFalseWithinTimeout() {
     subscription(Mono.never());
 

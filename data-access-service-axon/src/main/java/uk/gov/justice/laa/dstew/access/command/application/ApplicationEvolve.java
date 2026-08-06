@@ -28,18 +28,16 @@ public final class ApplicationEvolve {
     state.applicationDataVersion = event.applicationDataVersion();
   }
 
-  /** Applies an {@link ApplicationAssignedToCaseworkerEvent} to the given state. */
+  /** Replays an assignment event emitted before assignment moved to WorkItemAggregate. */
   public static void apply(ApplicationState state, ApplicationAssignedToCaseworkerEvent event) {
     state.applicationVersion = event.applicationVersion();
     state.applicationDataVersion = event.applicationDataVersion();
-    state.caseworkerId = event.caseworkerId();
   }
 
-  /** Applies an {@link ApplicationUnassignedFromCaseworkerEvent} to the given state. */
+  /** Replays an unassignment event emitted before assignment moved to WorkItemAggregate. */
   public static void apply(ApplicationState state, ApplicationUnassignedFromCaseworkerEvent event) {
     state.applicationVersion = event.applicationVersion();
     state.applicationDataVersion = event.applicationDataVersion();
-    state.caseworkerId = null;
   }
 
   /** Applies a {@link NoteCreatedEvent} to the given state. */

@@ -11,13 +11,14 @@ import org.springframework.stereotype.Component;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.workitem.WorkItemAssigned;
+import uk.gov.justice.laa.dstew.access.command.workitem.WorkItemId;
+import uk.gov.justice.laa.dstew.access.command.workitem.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.config.interceptor.ServiceNameMetadataDispatchInterceptor;
 
 /** Independently replayable, append-only audit projection of Application events. */
@@ -112,23 +113,23 @@ public class ApplicationHistoryProjection {
         event.occurredAt());
   }
 
-  /** Appends a thin audit entry for a caseworker assignment. */
+  /** Appends an audit entry for a WorkItem caseworker assignment. */
   @EventHandler
-  public void on(ApplicationAssignedToCaseworkerEvent event, EventMessage message) {
+  public void on(WorkItemAssigned event, EventMessage message) {
     append(
         message,
-        event.applicationId(),
+        WorkItemId.toItemId(event.workItemId()),
         "ASSIGN_APPLICATION_TO_CASEWORKER",
         serialise(event),
         event.occurredAt());
   }
 
-  /** Appends a thin audit entry for a caseworker unassignment. */
+  /** Appends an audit entry for a WorkItem caseworker unassignment. */
   @EventHandler
-  public void on(ApplicationUnassignedFromCaseworkerEvent event, EventMessage message) {
+  public void on(WorkItemUnassigned event, EventMessage message) {
     append(
         message,
-        event.applicationId(),
+        WorkItemId.toItemId(event.workItemId()),
         "UNASSIGN_APPLICATION_TO_CASEWORKER",
         serialise(event),
         event.occurredAt());
@@ -158,10 +159,8 @@ public class ApplicationHistoryProjection {
 
   private ApplicationHistoryReadModel hydrateEventDescription(ApplicationHistoryReadModel history) {
     boolean decision = history.getEventType().startsWith("APPLICATION_MAKE_DECISION_");
-    boolean assignment = "ASSIGN_APPLICATION_TO_CASEWORKER".equals(history.getEventType());
-    boolean unassignment = "UNASSIGN_APPLICATION_TO_CASEWORKER".equals(history.getEventType());
     boolean note = "APPLICATION_NOTE_CREATED".equals(history.getEventType());
-    if (!decision && !assignment && !unassignment && !note) {
+    if (!decision && !note) {
       return history;
     }
     try {
@@ -180,13 +179,9 @@ public class ApplicationHistoryProjection {
             .occurredAt(history.getOccurredAt())
             .build();
       }
-      String description =
-          decision ? data.decisionEventDescription() : data.assignmentEventDescription();
+      String description = data.decisionEventDescription();
       java.util.Map<String, Object> reconstructedPayload = new java.util.HashMap<>();
       reconstructedPayload.put("eventDescription", description);
-      if (assignment && thinPayload.get("caseworkerId") != null) {
-        reconstructedPayload.put("caseworkerId", thinPayload.get("caseworkerId").asText());
-      }
       return ApplicationHistoryReadModel.builder()
           .eventId(history.getEventId())
           .applicationId(history.getApplicationId())

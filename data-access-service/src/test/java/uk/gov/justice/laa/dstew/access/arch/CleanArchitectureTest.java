@@ -377,6 +377,56 @@ class CleanArchitectureTest {
   }
 
   @Test
+  void assignCaseworkerUseCaseMustNotImportApiModels() {
+    ArchRule rule =
+        noClasses()
+            .that()
+            .resideInAPackage("..usecase.assigncaseworker..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAPackage("uk.gov.justice.laa.dstew.access.model")
+            .allowEmptyShould(true);
+    rule.check(classes);
+  }
+
+  @Test
+  void assignCaseworkerUseCaseMustNotImportJpaEntities() {
+    ArchRule rule =
+        noClasses()
+            .that()
+            .resideInAPackage("..usecase.assigncaseworker..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAPackage("..entity..")
+            .allowEmptyShould(true);
+    rule.check(classes);
+  }
+
+  @Test
+  void assignCaseworkerJpaGatewayMustNotBeAnnotatedWithComponent() {
+    ArchRule rule =
+        noClasses()
+            .that()
+            .resideInAPackage("..infrastructure.jpa.assigncaseworker..")
+            .should()
+            .beAnnotatedWith(org.springframework.stereotype.Component.class)
+            .allowEmptyShould(true);
+    rule.check(classes);
+  }
+
+  @Test
+  void assignCaseworkerJpaGatewayMustNotBeAnnotatedWithTransactional() {
+    ArchRule rule =
+        noClasses()
+            .that()
+            .resideInAPackage("..infrastructure.jpa.assigncaseworker..")
+            .should()
+            .beAnnotatedWith(jakarta.transaction.Transactional.class)
+            .allowEmptyShould(true);
+    rule.check(classes);
+  }
+
+  @Test
   void unassignCaseworkerUseCaseMustNotImportApiModels() {
     ArchRule rule =
         noClasses()

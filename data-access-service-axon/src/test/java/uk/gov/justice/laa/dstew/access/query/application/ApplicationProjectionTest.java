@@ -20,12 +20,13 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationNote;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
+import uk.gov.justice.laa.dstew.access.command.workitem.WorkItemAssigned;
+import uk.gov.justice.laa.dstew.access.command.workitem.WorkItemId;
+import uk.gov.justice.laa.dstew.access.command.workitem.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
 
 class ApplicationProjectionTest {
@@ -142,40 +143,49 @@ class ApplicationProjectionTest {
   }
 
   @Test
-  void givenAssignmentEvent_whenHandled_thenSetsCaseworkerAndVersions() {
+  void givenWorkItemAssignment_whenHandled_thenSetsCaseworkerWithoutChangingVersions() {
     UUID applicationId = UUID.randomUUID();
     UUID caseworkerId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-07-20T08:00:00Z");
     ApplicationReadModel existing =
-        ApplicationReadModel.builder().applicationId(applicationId).build();
+        ApplicationReadModel.builder()
+            .applicationId(applicationId)
+            .applicationVersion(4L)
+            .applicationDataVersion(5L)
+            .build();
     when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(existing));
 
     projection.on(
-        new ApplicationAssignedToCaseworkerEvent(applicationId, 1L, 2L, caseworkerId, occurredAt));
+        new WorkItemAssigned(
+            WorkItemId.toAggregateId(applicationId), caseworkerId, "{}", "Assigned", occurredAt, false));
 
     assertThat(existing.getCaseworkerId()).isEqualTo(caseworkerId);
-    assertThat(existing.getApplicationVersion()).isEqualTo(1L);
-    assertThat(existing.getApplicationDataVersion()).isEqualTo(2L);
+    assertThat(existing.getApplicationVersion()).isEqualTo(4L);
+    assertThat(existing.getApplicationDataVersion()).isEqualTo(5L);
     assertThat(existing.getModifiedAt()).isEqualTo(occurredAt);
     verify(applicationReadRepository).save(existing);
   }
 
   @Test
-  void givenUnassignmentEvent_whenHandled_thenClearsCaseworkerAndAdvancesVersions() {
+  void givenWorkItemUnassignment_whenHandled_thenClearsCaseworkerWithoutChangingVersions() {
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-07-20T09:00:00Z");
     ApplicationReadModel existing =
         ApplicationReadModel.builder()
             .applicationId(applicationId)
             .caseworkerId(UUID.randomUUID())
+            .applicationVersion(4L)
+            .applicationDataVersion(5L)
             .build();
     when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(existing));
 
-    projection.on(new ApplicationUnassignedFromCaseworkerEvent(applicationId, 2L, 3L, occurredAt));
+    projection.on(
+        new WorkItemUnassigned(
+            WorkItemId.toAggregateId(applicationId), "{}", "Unassigned", occurredAt));
 
     assertThat(existing.getCaseworkerId()).isNull();
-    assertThat(existing.getApplicationVersion()).isEqualTo(2L);
-    assertThat(existing.getApplicationDataVersion()).isEqualTo(3L);
+    assertThat(existing.getApplicationVersion()).isEqualTo(4L);
+    assertThat(existing.getApplicationDataVersion()).isEqualTo(5L);
     assertThat(existing.getModifiedAt()).isEqualTo(occurredAt);
     verify(applicationReadRepository).save(existing);
   }

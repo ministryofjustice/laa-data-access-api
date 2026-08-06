@@ -2,9 +2,11 @@ package uk.gov.justice.laa.dstew.access.query;
 
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Predicate;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 /**
@@ -44,6 +46,21 @@ public class SubscriptionProjectionGateway {
   public <R> boolean awaitProjection(Object query, Class<R> projectionType, Runnable action) {
     CompletableFuture<R> firstResult =
         Mono.from(queryGateway.subscriptionQuery(query, projectionType)).toFuture();
+    return await(firstResult, action);
+  }
+
+  /**
+   * Opens a subscription, runs {@code action}, then waits for the first result matching {@code
+   * readiness}. Non-matching initial results are ignored.
+   */
+  public <R> boolean awaitProjectionMatching(
+      Object query, Class<R> projectionType, Predicate<R> readiness, Runnable action) {
+    CompletableFuture<R> firstMatchingResult =
+        Flux.from(queryGateway.subscriptionQuery(query, projectionType)).filter(readiness).next().toFuture();
+    return await(firstMatchingResult, action);
+  }
+
+  private <R> boolean await(CompletableFuture<R> firstResult, Runnable action) {
     try {
       action.run();
       return doAwait(firstResult);

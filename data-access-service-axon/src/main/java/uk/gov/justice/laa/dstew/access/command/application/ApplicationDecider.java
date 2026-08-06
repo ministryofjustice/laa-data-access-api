@@ -11,13 +11,9 @@ import java.util.stream.Collectors;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import uk.gov.justice.laa.dstew.access.applicationcontent.LinkedApplication;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.AssignCaseworkerToApplicationCommand;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.UnassignCaseworkerFromApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
-import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
+import uk.gov.justice.laa.dstew.access.command.application.decision.ExecuteApplicationDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeDecisionProceeding;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupRequested;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
@@ -84,7 +80,7 @@ public final class ApplicationDecider {
    */
   public static ApplicationDecisionMadeEvent decideDecision(
       ApplicationState state,
-      MakeApplicationDecisionCommand command,
+      ExecuteApplicationDecisionCommand command,
       ApplicationDataPayload current) {
 
     if (command.expectedApplicationVersion() != state.applicationVersion) {
@@ -118,41 +114,13 @@ public final class ApplicationDecider {
         command.occurredAt());
   }
 
-  /** Returns an {@link ApplicationAssignedToCaseworkerEvent}. */
-  public static ApplicationAssignedToCaseworkerEvent decideAssign(
-      ApplicationState state, AssignCaseworkerToApplicationCommand command) {
-    return new ApplicationAssignedToCaseworkerEvent(
-        state.applicationId,
-        state.applicationVersion + 1,
-        state.applicationDataVersion + 1,
-        command.caseworkerId(),
-        command.occurredAt());
-  }
-
-  /**
-   * Returns an {@link ApplicationUnassignedFromCaseworkerEvent}, or throws if no caseworker is
-   * assigned.
-   */
-  public static ApplicationUnassignedFromCaseworkerEvent decideUnassign(
-      ApplicationState state, UnassignCaseworkerFromApplicationCommand command) {
-    if (state.caseworkerId == null) {
-      throw new ValidationException(
-          List.of("The request cannot be completed: no caseworker is assigned"));
-    }
-    return new ApplicationUnassignedFromCaseworkerEvent(
-        state.applicationId,
-        state.applicationVersion + 1,
-        state.applicationDataVersion + 1,
-        command.occurredAt());
-  }
-
   /** Returns a {@link NoteCreatedEvent}. */
   public static NoteCreatedEvent decideNote(ApplicationState state, CreateNoteCommand command) {
     return new NoteCreatedEvent(
         state.applicationId, state.applicationDataVersion + 1, command.occurredAt());
   }
 
-  private static void validateDecision(MakeApplicationDecisionCommand command) {
+  private static void validateDecision(ExecuteApplicationDecisionCommand command) {
     List<String> errors = new ArrayList<>();
     if (command.proceedings().isEmpty()) {
       errors.add("The request must contain at least one proceeding");

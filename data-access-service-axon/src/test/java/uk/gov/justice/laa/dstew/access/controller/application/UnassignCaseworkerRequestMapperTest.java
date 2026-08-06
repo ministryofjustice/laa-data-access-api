@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.json.JsonMapper;
+import uk.gov.justice.laa.dstew.access.command.workitem.WorkItemId;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
 import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
 
@@ -26,7 +27,7 @@ class UnassignCaseworkerRequestMapperTest {
 
     var command = mapper.toCommand(applicationId, request);
 
-    assertThat(command.applicationId()).isEqualTo(applicationId);
+    assertThat(command.workItemId()).isEqualTo(WorkItemId.toAggregateId(applicationId));
     assertThat(command.serialisedRequest()).contains("eventHistory", "Returned");
     assertThat(command.eventDescription()).isEqualTo("Returned");
     assertThat(command.occurredAt()).isBetween(before, Instant.now());

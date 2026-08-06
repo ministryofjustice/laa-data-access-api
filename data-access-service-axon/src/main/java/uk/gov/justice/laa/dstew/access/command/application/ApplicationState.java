@@ -16,5 +16,4 @@ public class ApplicationState {
   String requestFingerprint;
   long applicationDataVersion;
   long applicationVersion;
-  UUID caseworkerId;
 }

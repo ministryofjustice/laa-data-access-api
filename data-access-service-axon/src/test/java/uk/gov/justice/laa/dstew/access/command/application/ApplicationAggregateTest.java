@@ -18,14 +18,10 @@ import org.axonframework.test.fixture.AxonTestFixture;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.AssignCaseworkerToApplicationCommand;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.UnassignCaseworkerFromApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
-import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
+import uk.gov.justice.laa.dstew.access.command.application.decision.ExecuteApplicationDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeDecisionProceeding;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.CreateLinkedApplicationGroupCommand;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupRequested;
@@ -183,7 +179,7 @@ class ApplicationAggregateTest {
         .events(created)
         .when()
         .command(
-            new MakeApplicationDecisionCommand(
+            new ExecuteApplicationDecisionCommand(
                 applicationId,
                 0L,
                 "REFUSED",
@@ -193,7 +189,8 @@ class ApplicationAggregateTest {
                 null,
                 "{\"overallDecision\":\"REFUSED\"}",
                 "Decision recorded",
-                occurredAt))
+                occurredAt,
+                null))
         .then()
         .events(
             new ApplicationDecisionMadeEvent(applicationId, 1L, 1L, "REFUSED", false, occurredAt));
@@ -238,7 +235,7 @@ class ApplicationAggregateTest {
                 applicationId, 1L, 1L, "REFUSED", false, firstOccurredAt))
         .when()
         .command(
-            new MakeApplicationDecisionCommand(
+            new ExecuteApplicationDecisionCommand(
                 applicationId,
                 1L,
                 "REFUSED",
@@ -248,7 +245,8 @@ class ApplicationAggregateTest {
                 null,
                 "{}",
                 null,
-                secondOccurredAt))
+                secondOccurredAt,
+                null))
         .then()
         .events(
             new ApplicationDecisionMadeEvent(
@@ -280,8 +278,8 @@ class ApplicationAggregateTest {
         .events(applicationCreatedEvent(applicationId))
         .when()
         .command(
-            new MakeApplicationDecisionCommand(
-                applicationId, 0L, "GRANTED", false, List.of(), null, "{}", null, Instant.now()))
+            new ExecuteApplicationDecisionCommand(
+                applicationId, 0L, "GRANTED", false, List.of(), null, "{}", null, Instant.now(), null))
         .then()
         .exception(ValidationException.class)
         .noEvents();
@@ -316,7 +314,7 @@ class ApplicationAggregateTest {
         .events(applicationCreatedEvent(applicationId, details))
         .when()
         .command(
-            new MakeApplicationDecisionCommand(
+            new ExecuteApplicationDecisionCommand(
                 applicationId,
                 0L,
                 "REFUSED",
@@ -325,79 +323,12 @@ class ApplicationAggregateTest {
                 null,
                 "{}",
                 null,
-                Instant.now()))
+                Instant.now(), null))
         .then()
         .exception(ValidationException.class)
         .noEvents();
   }
 
-  @Test
-  void givenApplication_whenCaseworkerAssigned_thenStoresAuditDataAndEmitsThinEvent() {
-    UUID applicationId = UUID.randomUUID();
-    UUID caseworkerId = UUID.randomUUID();
-    Instant occurredAt = Instant.parse("2026-07-19T11:00:00Z");
-    ApplicationCreationDetails details = applicationCreationDetails(applicationId);
-    when(applicationDataStore.get(applicationId, 0L))
-        .thenReturn(ApplicationDataPayload.from(details));
-    when(applicationDataStore.append(any(), anyLong(), any(), any(), any())).thenReturn("hash");
-
-    fixture
-        .given()
-        .events(applicationCreatedEvent(applicationId, details))
-        .when()
-        .command(
-            new AssignCaseworkerToApplicationCommand(
-                applicationId,
-                caseworkerId,
-                "{\"caseworkerId\":\"" + caseworkerId + "\"}",
-                "Assigned for assessment",
-                occurredAt))
-        .then()
-        .events(
-            new ApplicationAssignedToCaseworkerEvent(
-                applicationId, 1L, 1L, caseworkerId, occurredAt));
-  }
-
-  @Test
-  void givenAssignedApplication_whenCaseworkerUnassigned_thenStoresAuditDataAndEmitsThinEvent() {
-    UUID applicationId = UUID.randomUUID();
-    UUID caseworkerId = UUID.randomUUID();
-    Instant assignedAt = Instant.parse("2026-07-19T11:00:00Z");
-    Instant unassignedAt = Instant.parse("2026-07-20T09:00:00Z");
-    ApplicationCreationDetails details = applicationCreationDetails(applicationId);
-    when(applicationDataStore.get(applicationId, 1L))
-        .thenReturn(ApplicationDataPayload.from(details).withAssignment("Assigned"));
-    when(applicationDataStore.append(any(), anyLong(), any(), any(), any())).thenReturn("hash");
-
-    fixture
-        .given()
-        .events(
-            applicationCreatedEvent(applicationId, details),
-            new ApplicationAssignedToCaseworkerEvent(
-                applicationId, 1L, 1L, caseworkerId, assignedAt))
-        .when()
-        .command(
-            new UnassignCaseworkerFromApplicationCommand(
-                applicationId, "{}", "Returned to queue", unassignedAt))
-        .then()
-        .events(new ApplicationUnassignedFromCaseworkerEvent(applicationId, 2L, 2L, unassignedAt));
-  }
-
-  @Test
-  void givenUnassignedApplication_whenCaseworkerUnassigned_thenDoesNothing() {
-    UUID applicationId = UUID.randomUUID();
-    Instant occurredAt = Instant.parse("2026-07-20T09:00:00Z");
-
-    fixture
-        .given()
-        .events(applicationCreatedEvent(applicationId))
-        .when()
-        .command(
-            new UnassignCaseworkerFromApplicationCommand(
-                applicationId, "{}", "Already unassigned", occurredAt))
-        .then()
-        .noEvents();
-  }
 
   @Test
   void givenExistingLeadApplication_whenCreateLinkedApplicationGroupCommand_thenEmitsRequested() {
@@ -581,14 +512,14 @@ class ApplicationAggregateTest {
     return createCommandWithSchema(applicationId, serialisedRequest, 1);
   }
 
-  private MakeApplicationDecisionCommand decisionCommand(
+  private ExecuteApplicationDecisionCommand decisionCommand(
       UUID applicationId,
       long expectedVersion,
       UUID proceedingId,
       String decision,
       String justification,
       Map<String, Object> certificate) {
-    return new MakeApplicationDecisionCommand(
+    return new ExecuteApplicationDecisionCommand(
         applicationId,
         expectedVersion,
         decision,
@@ -597,7 +528,7 @@ class ApplicationAggregateTest {
         certificate,
         "{}",
         null,
-        Instant.now());
+        Instant.now(), null);
   }
 
   private ApplicationCreationDetails detailsWithProceeding(UUID applicationId, UUID proceedingId) {

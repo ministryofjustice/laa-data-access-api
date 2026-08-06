@@ -29,6 +29,12 @@ public class AxonEventProcessingConfig {
     return pooledStreamingProcessor("linked-application-group-initializer");
   }
 
+
+  @Bean
+  EventProcessorDefinition workItemGroupFanOutProcessor() {
+    return pooledStreamingProcessor("work-item-group-fan-out");
+  }
+
   @Bean
   EventProcessorDefinition linkedApplicationGroupRouterProcessor() {
     return EventProcessorDefinition.subscribingMatching("linked-application-group-router")
