@@ -274,8 +274,8 @@ public class ApplicationProjection {
     application.setSubmittedAt(data.submittedAt());
     application.setOfficeCode(data.officeCode());
     application.setUsedDelegatedFunctions(data.usedDelegatedFunctions());
-    application.setCategoryOfLaw(data.categoryOfLaw() == null ? null : data.categoryOfLaw().name());
-    application.setMatterType(data.matterType() == null ? null : data.matterType().name());
+    application.setCategoryOfLaw(data.categoryOfLaw());
+    application.setMatterType(data.matterType());
     application.setProceedings(data.proceedings());
     application.setDecisionStatus(data.overallDecision());
     application.setAutoGranted(data.autoGranted());

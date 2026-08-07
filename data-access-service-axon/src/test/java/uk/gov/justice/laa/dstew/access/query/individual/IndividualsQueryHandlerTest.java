@@ -14,7 +14,8 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationApplicant;
+import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationAddress;
+import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreationDetails;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationIndividual;
@@ -76,14 +77,20 @@ class IndividualsQueryHandlerTest {
     ApplicationIndividual client = individual(UUID.randomUUID(), "Ada", "CLIENT");
     ApplicationContent content =
         ApplicationContent.builder()
-            .lastNameAtBirth("Byron")
-            .previousApplicationId("previous-id")
-            .correspondenceAddressType("HOME")
-            .applicant(
-                ApplicationApplicant.builder()
+            .client(
+                ApplicationClient.builder()
+                    .lastNameAtBirth("Byron")
+                    .previousApplicationId("previous-id")
                     .relationshipToInvolvedChildren("MOTHER")
                     .appliedPreviously(true)
-                    .addresses(List.of(Map.of("line1", "1 Main Street")))
+                    .addresses(
+                        List.of(
+                            ApplicationAddress.builder()
+                                .addressLineOne("1 Main Street")
+                                .postcode("SW1A 1AA")
+                                .countryCode("GBR")
+                                .countryName("United Kingdom")
+                                .build()))
                     .build())
             .build();
     when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(application));
@@ -100,7 +107,10 @@ class IndividualsQueryHandlerTest {
     assertThat(result.clientDetails().lastNameAtBirth()).isEqualTo("Byron");
     assertThat(result.clientDetails().relationshipToInvolvedChildren()).isEqualTo("MOTHER");
     assertThat(result.clientDetails().correspondenceAddress())
-        .containsExactly(Map.of("line1", "1 Main Street"));
+        .hasSize(1)
+        .first()
+        .extracting(ApplicationAddress::getAddressLineOne)
+        .isEqualTo("1 Main Street");
   }
 
   @Test

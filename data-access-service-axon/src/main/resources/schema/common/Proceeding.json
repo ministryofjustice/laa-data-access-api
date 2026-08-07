@@ -1,13 +1,28 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "Proceeding.json",
+  "$id": "Proceedings.json",
   "title": "Proceeding",
-  "description": "A proceeding within the application",
+  "description": "Proceeding information for the application",
   "type": "object",
   "required": [
     "id",
     "leadProceeding",
-    "description"
+    "code",
+    "meaning",
+    "description",
+    "matterType",
+    "matterTypeCode",
+    "categoryOfLaw",
+    "categoryOfLawCode",
+    "clientInvolvementType",
+    "usedDelegatedFunctions",
+    "delegatedFunctionsCostLimitation",
+    "substantiveCostLimitation",
+    "substantiveLevelOfService",
+    "substantiveLevelOfServiceName",
+    "emergencyLevelOfService",
+    "emergencyLevelOfServiceName",
+    "scopeLimitations"
   ],
   "properties": {
     "id": {
@@ -15,26 +30,93 @@
       "format": "uuid",
       "description": "Unique identifier for the proceeding"
     },
-    "categoryOfLaw": {
-      "type": ["string", "null"],
-      "description": "Category of law for this proceeding"
-    },
-    "matterType": {
-      "type": ["string", "null"],
-      "description": "Matter type for this proceeding"
-    },
-    "usedDelegatedFunctions": {
-      "type": ["boolean", "null"],
-      "description": "Whether delegated functions were used"
-    },
     "leadProceeding": {
       "type": "boolean",
       "description": "Whether this is the lead proceeding"
     },
+    "code": {
+      "type": "string",
+      "description": "CCMS proceeding code"
+    },
+    "meaning": {
+      "type": "string",
+      "description": "Proceeding meaning"
+    },
     "description": {
       "type": "string",
-      "description": "Description of the proceeding"
+      "description": "Proceeding description"
+    },
+    "matterType": {
+      "type": "string",
+      "description": "Matter type for the proceeding"
+    },
+    "matterTypeCode": {
+      "type": "string",
+      "description": "Matter type code for the proceeding"
+    },
+    "categoryOfLaw": {
+      "type": "string",
+      "description": "Category of law for the proceeding"
+    },
+    "categoryOfLawCode": {
+      "type": "string",
+      "description": "Category of law code for the proceeding"
+    },
+    "clientInvolvementType": {
+      "type": "string",
+      "description": "Client involvement type"
+    },
+    "usedDelegatedFunctions": {
+      "type": "boolean",
+      "description": "Whether delegated functions were used"
+    },
+    "delegatedFunctionsDate": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date",
+      "description": "Date delegated functions were used"
+    },
+    "delegatedFunctionsCostLimitation": {
+      "type": "number",
+      "description": "Delegated functions cost limitation"
+    },
+    "substantiveCostLimitation": {
+      "type": "number",
+      "description": "Substantive cost limitation"
+    },
+    "substantiveLevelOfService": {
+      "type": "integer",
+      "description": "Substantive level of service"
+    },
+    "substantiveLevelOfServiceName": {
+      "type": "string",
+      "description": "Substantive level of service name"
+    },
+    "emergencyLevelOfService": {
+      "type": "integer",
+      "description": "Emergency level of service"
+    },
+    "emergencyLevelOfServiceName": {
+      "type": "string",
+      "description": "Emergency level of service name"
+    },
+    "scopeLimitations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "ScopeLimitation.json"
+      },
+      "description": "Scope limitations for the proceeding"
+    },
+    "involvedChildren": {
+      "type": "array",
+      "items": {
+        "$ref": "Child.json"
+      },
+      "description": "Children involved in the proceeding"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": false
 }

@@ -30,8 +30,8 @@ class ApplicationContentParserTest {
             applyApplicationId.toString(),
             "submittedAt",
             "2026-01-15T10:20:30Z",
-            "office",
-            Map.of("code", "OFF1"),
+            "provider",
+            Map.of("officeCode", "OFF1", "contactEmail", "test@example.com"),
             "proceedings",
             List.of(
                 Map.of(
@@ -39,12 +39,16 @@ class ApplicationContentParserTest {
                     proceedingId.toString(),
                     "leadProceeding",
                     true,
+                    "code",
+                    "SE003",
+                    "meaning",
+                    "Care order",
                     "description",
                     "Test proceeding",
-                    "matterTypeEnum",
-                    " special_children_act ",
-                    "categoryOfLawEnum",
-                    "family",
+                    "matterType",
+                    "SPECIAL_CHILDREN_ACT",
+                    "categoryOfLaw",
+                    "Family",
                     "usedDelegatedFunctions",
                     true)),
             "allLinkedApplications",
@@ -58,8 +62,8 @@ class ApplicationContentParserTest {
     ParsedAppContentDetails result = parser.parse(rawContent);
 
     assertThat(result.applyApplicationId()).isEqualTo(applyApplicationId);
-    assertThat(result.categoryOfLaw()).isEqualTo(CategoryOfLaw.FAMILY);
-    assertThat(result.matterType()).isEqualTo(MatterType.SPECIAL_CHILDREN_ACT);
+    assertThat(result.categoryOfLaw()).isEqualTo("Family");
+    assertThat(result.matterType()).isEqualTo("SPECIAL_CHILDREN_ACT");
     assertThat(result.submittedAt()).isEqualTo(Instant.parse("2026-01-15T10:20:30Z"));
     assertThat(result.officeCode()).isEqualTo("OFF1");
     assertThat(result.usedDelegatedFunctions()).isTrue();
@@ -88,6 +92,8 @@ class ApplicationContentParserTest {
                     UUID.randomUUID().toString(),
                     "leadProceeding",
                     false,
+                    "code",
+                    "SE003",
                     "description",
                     "Test proceeding")));
 
@@ -106,29 +112,5 @@ class ApplicationContentParserTest {
         .isInstanceOf(ValidationException.class)
         .extracting("errors")
         .isEqualTo(List.of("submittedAt: must be an ISO-8601 instant"));
-  }
-
-  @Test
-  void givenUndeclaredApplicationAndNestedFields_whenParse_thenPreservesAdditionalContent() {
-    Map<String, Object> rawContent =
-        Map.of(
-            "id",
-            UUID.randomUUID().toString(),
-            "submittedAt",
-            "2026-01-15T10:20:30Z",
-            "futureApplicationField",
-            "application-value",
-            "applicant",
-            Map.of("futureApplicantField", "applicant-value"));
-
-    ApplicationContent content =
-        new PayloadValidator(
-                new ObjectMapper(), Validation.buildDefaultValidatorFactory().getValidator())
-            .convertAndValidate(rawContent, ApplicationContent.class);
-
-    assertThat(content.getAdditionalApplicationContent())
-        .containsEntry("futureApplicationField", "application-value");
-    assertThat(content.getApplicant().getAdditionalContent())
-        .containsEntry("futureApplicantField", "applicant-value");
   }
 }

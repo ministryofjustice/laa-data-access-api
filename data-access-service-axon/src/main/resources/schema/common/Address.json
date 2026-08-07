@@ -2,16 +2,93 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "Address.json",
   "title": "Address",
-  "description": "An address associated with the application",
+  "description": "Client address",
   "type": "object",
   "required": [
-    "id"
+    "location",
+    "postcode",
+    "countryCode",
+    "countryName"
   ],
   "properties": {
-    "id": {
+    "addressLineOne": {
       "type": "string",
-      "format": "uuid",
-      "description": "Unique identifier for the proceeding"
+      "description": "First line of the address"
+    },
+    "addressLineTwo": {
+      "type": "string",
+      "description": "Second line of the address"
+    },
+    "addressLineThree": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Third line of the address"
+    },
+    "city": {
+      "type": "string",
+      "description": "Town or city"
+    },
+    "county": {
+      "type": "string",
+      "description": "County"
+    },
+    "postcode": {
+      "type": "string",
+      "description": "Postcode"
+    },
+    "organisation": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Organisation name for the address"
+    },
+    "buildingNumberName": {
+      "type": "string",
+      "description": "Building number or name"
+    },
+    "countryCode": {
+      "type": "string",
+      "description": "ISO country code"
+    },
+    "countryName": {
+      "type": "string",
+      "description": "Country name"
+    },
+    "location": {
+      "type": "string",
+      "description": "Address location type"
+    },
+    "lookupUsed": {
+      "type": "boolean",
+      "description": "Indicates if address lookup was used"
+    },
+    "careOf": {
+      "type": "string",
+      "description": "Care-of type"
+    },
+    "careOfFirstName": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Care-of first name"
+    },
+    "careOfLastName": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Care-of last name"
+    },
+    "careOfOrganisationName": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Care-of organisation name"
     }
   },
   "additionalProperties": true

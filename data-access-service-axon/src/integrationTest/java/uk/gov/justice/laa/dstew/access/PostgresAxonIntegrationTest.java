@@ -277,11 +277,12 @@ class PostgresAxonIntegrationTest {
     assertThat(projected.getSubmittedAt()).isEqualTo(Instant.parse("2026-07-14T12:30:00Z"));
     assertThat(projected.getOfficeCode()).isEqualTo("1A001B");
     assertThat(projected.getUsedDelegatedFunctions()).isFalse();
-    assertThat(projected.getCategoryOfLaw()).isEqualTo("FAMILY");
+    assertThat(projected.getCategoryOfLaw()).isEqualTo("Family");
     assertThat(projected.getMatterType()).isEqualTo("SPECIAL_CHILDREN_ACT");
     assertThat(projected.getCreatedAt()).isNotNull().isEqualTo(projected.getModifiedAt());
     assertThat(projected.getApplicationContent().getId()).isEqualTo(applyApplicationId);
-    assertThat(projected.getApplicationContent().getOffice().getCode()).isEqualTo("1A001B");
+    assertThat(projected.getApplicationContent().getProvider()).isNotNull();
+    assertThat(projected.getApplicationContent().getProvider().getOfficeCode()).isEqualTo("1A001B");
     assertThat(projected.getIndividuals())
         .singleElement()
         .satisfies(
@@ -679,47 +680,31 @@ class PostgresAxonIntegrationTest {
     Map<String, Object> content = new HashMap<>(request.getApplicationContent());
     Map<String, Object> proceeding = firstProceeding(content);
     proceeding.put("meaning", "Care proceedings");
-    proceeding.put("substantiveLevelOfServiceNameEnum", "FULL_REPRESENTATION");
+    proceeding.put("substantiveLevelOfServiceName", "FULL_REPRESENTATION");
     proceeding.put("substantiveCostLimitation", 2_500.0);
+    proceeding.put(
+        "involvedChildren",
+        List.of(
+            Map.of(
+                "id",
+                involvedChildId.toString(),
+                "fullName",
+                "Child Example",
+                "dateOfBirth",
+                "2015-01-02")));
     proceeding.put(
         "scopeLimitations",
         List.of(
             Map.ofEntries(
                 Map.entry("id", UUID.randomUUID().toString()),
-                Map.entry("scopeType", "LIMITATION"),
-                Map.entry("scopeLimitation", "CV117"),
-                Map.entry("scopeDescription", "Final hearing"),
+                Map.entry("type", "LIMITATION"),
+                Map.entry("code", "CV117"),
                 Map.entry("meaning", "LIMITED"),
                 Map.entry("description", "Limited scope"))));
     content.put("proceedings", List.of(proceeding));
-    content.put("submitterEmail", "provider@example.com");
     content.put(
-        "applicationMerits",
-        Map.of(
-            "opponents",
-            List.of(
-                Map.of(
-                    "opposableType",
-                    "INDIVIDUAL",
-                    "opposable",
-                    Map.of("firstName", "Grace", "lastName", "Hopper"))),
-            "involvedChildren",
-            List.of(
-                Map.of(
-                    "id",
-                    involvedChildId.toString(),
-                    "fullName",
-                    "Child Example",
-                    "dateOfBirth",
-                    "2015-01-02"))));
-    content.put(
-        "proceedingMerits",
-        List.of(
-            Map.of(
-                "proceedingId",
-                applyProceedingId.toString(),
-                "proceedingLinkedChildren",
-                List.of(Map.of("involvedChildId", involvedChildId.toString())))));
+        "opponents",
+        List.of(Map.of("opponentType", "INDIVIDUAL", "firstName", "Grace", "lastName", "Hopper")));
     request.setApplicationContent(content);
 
     UUID applicationId = applicationId(post(request, headers()));
@@ -745,7 +730,10 @@ class PostgresAxonIntegrationTest {
             .usedDelegatedFunctions(false)
             .version(0L)
             .provider(
-                new ProviderResponse().officeCode("1A001B").contactEmail("provider@example.com"))
+                ProviderResponse.builder()
+                    .officeCode("1A001B")
+                    .contactEmail("provider@example.com")
+                    .build())
             .opponents(
                 List.of(
                     new OpponentResponse()
@@ -771,7 +759,7 @@ class PostgresAxonIntegrationTest {
                             List.of(
                                 new InvolvedChildResponse()
                                     .fullName("Child Example")
-                                    .dateOfBirth(LocalDate.parse("2015-01-02"))))));
+                                    .dateOfBirth(LocalDate.of(2015, 1, 2))))));
 
     assertThat(actual).usingRecursiveComparison().isEqualTo(expected);
   }

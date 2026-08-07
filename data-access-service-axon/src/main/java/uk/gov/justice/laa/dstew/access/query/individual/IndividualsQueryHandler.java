@@ -9,7 +9,7 @@ import java.util.Objects;
 import java.util.UUID;
 import org.axonframework.messaging.queryhandling.annotation.QueryHandler;
 import org.springframework.stereotype.Component;
-import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationApplicant;
+import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationIndividual;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
@@ -82,16 +82,15 @@ public class IndividualsQueryHandler {
   private ApplicationClientDetails clientDetails(Collection<ApplicationDataPayload> payloads) {
     ApplicationContent content =
         payloads.stream().findFirst().map(ApplicationDataPayload::applicationContent).orElse(null);
-    if (content == null) {
-      return new ApplicationClientDetails(null, null, null, null, null, null);
+    if (content == null || content.getClient() == null) {
+      return new ApplicationClientDetails(null, null, null, null, null);
     }
-    ApplicationApplicant applicant = content.getApplicant();
+    ApplicationClient client = content.getClient();
     return new ApplicationClientDetails(
-        content.getLastNameAtBirth(),
-        content.getPreviousApplicationId(),
-        applicant == null ? null : applicant.getRelationshipToInvolvedChildren(),
-        content.getCorrespondenceAddressType(),
-        applicant == null ? null : applicant.getAppliedPreviously(),
-        applicant == null ? null : applicant.getAddresses());
+        client.getLastNameAtBirth(),
+        client.getPreviousApplicationId(),
+        client.getRelationshipToInvolvedChildren(),
+        client.getAppliedPreviously(),
+        client.getAddresses());
   }
 }

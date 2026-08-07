@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationAddress;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationIndividual;
 import uk.gov.justice.laa.dstew.access.model.IndividualResponse;
 import uk.gov.justice.laa.dstew.access.model.IndividualsResponse;
@@ -30,7 +31,12 @@ class GetIndividualsResponseMapperTest {
             "CLIENT");
     ApplicationClientDetails clientDetails =
         new ApplicationClientDetails(
-            "Byron", "previous-id", "MOTHER", "HOME", true, List.of(Map.of("line1", "London")));
+            "Byron",
+            "previous-id",
+            "MOTHER",
+            true,
+            List.of(
+                ApplicationAddress.builder().addressLineOne("London").countryCode("GBR").build()));
 
     IndividualsResponse response =
         mapper.toResponse(new FindIndividualsResult(List.of(individual), 2, 5, 7, clientDetails));

@@ -14,11 +14,6 @@ import uk.gov.justice.laa.dstew.access.validation.ValidationException;
  */
 public class ApplicationContentParser {
 
-  private static final GenericEnumConvertor<MatterType> matterTypeConvertor =
-      new GenericEnumConvertor<>(MatterType.class);
-  private static final GenericEnumConvertor<CategoryOfLaw> categoryOfLawConvertor =
-      new GenericEnumConvertor<>(CategoryOfLaw.class);
-
   private final PayloadValidator payloadValidator;
 
   /**
@@ -71,8 +66,7 @@ public class ApplicationContentParser {
       }
     }
 
-    String officeCode =
-        (applicationContent.getOffice() == null) ? null : applicationContent.getOffice().getCode();
+    String officeCode = extractOfficeCode(applicationContent);
 
     List<Proceeding> proceedings =
         applicationContent.getProceedings() != null
@@ -97,6 +91,14 @@ public class ApplicationContentParser {
         .build();
   }
 
+  private String extractOfficeCode(ApplicationContent applicationContent) {
+    if (applicationContent.getProvider() != null
+        && applicationContent.getProvider().getOfficeCode() != null) {
+      return applicationContent.getProvider().getOfficeCode();
+    }
+    return null;
+  }
+
   private Instant parseSubmittedAt(String submittedAt) {
     try {
       return Instant.parse(submittedAt);
@@ -105,17 +107,17 @@ public class ApplicationContentParser {
     }
   }
 
-  private MatterType getMatterType(Proceeding leadProceeding) {
+  private String getMatterType(Proceeding leadProceeding) {
     if (leadProceeding == null) {
       return null;
     }
-    return matterTypeConvertor.lenientEnumConversion(leadProceeding.getMatterTypeEnum());
+    return leadProceeding.getMatterType();
   }
 
-  private CategoryOfLaw getCategoryOfLaw(Proceeding leadProceeding) {
+  private String getCategoryOfLaw(Proceeding leadProceeding) {
     if (leadProceeding == null) {
       return null;
     }
-    return categoryOfLawConvertor.lenientEnumConversion(leadProceeding.getCategoryOfLawEnum());
+    return leadProceeding.getCategoryOfLaw();
   }
 }

@@ -34,5 +34,5 @@
       "description": "Opponent organisation name"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": false
 }

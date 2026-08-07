@@ -1,7 +1,5 @@
 package uk.gov.justice.laa.dstew.access.applicationcontent;
 
-import com.fasterxml.jackson.annotation.JsonAnyGetter;
-import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
@@ -9,9 +7,7 @@ import jakarta.validation.constraints.NotNull;
 import java.io.Serial;
 import java.io.Serializable;
 import java.time.LocalDate;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -20,9 +16,7 @@ import lombok.NoArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
-/**
- * Proceeding. Using the same format as the OpenAPI generator to enable switch when schema stable
- */
+/** Proceeding. Matches schema/common/Proceeding.json. */
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
@@ -38,46 +32,55 @@ public class Proceeding implements Serializable {
   @JsonProperty("id")
   private UUID id;
 
-  private @Nullable String categoryOfLawEnum;
-
-  private @Nullable String matterTypeEnum;
-
-  private @Nullable Boolean usedDelegatedFunctions;
-
   @NotNull
   @Schema(name = "leadProceeding", requiredMode = Schema.RequiredMode.REQUIRED)
   private Boolean leadProceeding;
 
   @NotNull
-  @Schema(name = "description", requiredMode = Schema.RequiredMode.REQUIRED)
-  private String description;
+  @Schema(name = "code", requiredMode = Schema.RequiredMode.REQUIRED)
+  private String code;
 
   @Nullable private String meaning;
 
-  @Nullable private LocalDate usedDelegatedFunctionsOn;
+  @NotNull
+  @Schema(name = "description", requiredMode = Schema.RequiredMode.REQUIRED)
+  private String description;
 
-  @Nullable private String substantiveLevelOfServiceNameEnum;
+  @Nullable private String matterType;
 
-  @Nullable private Double substantiveCostLimitation;
+  @Nullable private String matterTypeCode;
 
-  @Nullable private List<Map<String, Object>> scopeLimitations;
+  @Nullable private String categoryOfLaw;
 
-  /**
-   * A container for additional, undeclared properties. This is a holder for any undeclared
-   * properties as specified with the 'additionalProperties' keyword in the OAS document.
-   */
-  @JsonAnyGetter private Map<String, Object> additionalProceedingsData;
+  @Nullable private String categoryOfLawCode;
 
-  /**
-   * Set the additional (undeclared) property with the specified name and value. If the property
-   * does not already exist, create it otherwise replace it.
-   */
-  @JsonAnySetter
-  public Proceeding putAdditionalProperty(String key, Object value) {
-    if (this.additionalProceedingsData == null) {
-      this.additionalProceedingsData = new HashMap<>();
-    }
-    this.additionalProceedingsData.put(key, value);
-    return this;
-  }
+  @Nullable private String clientInvolvementType;
+
+  private @Nullable Boolean usedDelegatedFunctions;
+
+  @Nullable private LocalDate delegatedFunctionsDate;
+
+  @Nullable private Number delegatedFunctionsCostLimitation;
+
+  @Nullable private Number substantiveCostLimitation;
+
+  @Nullable private Integer substantiveLevelOfService;
+
+  @Nullable private String substantiveLevelOfServiceName;
+
+  @Nullable private Integer emergencyLevelOfService;
+
+  @Nullable private String emergencyLevelOfServiceName;
+
+  @Nullable
+  @Valid
+  @Schema(name = "scopeLimitations", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+  @JsonProperty("scopeLimitations")
+  private List<ScopeLimitation> scopeLimitations;
+
+  @Nullable
+  @Valid
+  @Schema(name = "involvedChildren", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+  @JsonProperty("involvedChildren")
+  private List<InvolvedChild> involvedChildren;
 }

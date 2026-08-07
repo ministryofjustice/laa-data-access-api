@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.command.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validApplicationContent;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -12,8 +13,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationContentParser;
-import uk.gov.justice.laa.dstew.access.applicationcontent.CategoryOfLaw;
-import uk.gov.justice.laa.dstew.access.applicationcontent.MatterType;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ParsedAppContentDetails;
 
 class ApplicationCreationDetailsFactoryTest {
@@ -155,7 +154,7 @@ class ApplicationCreationDetailsFactoryTest {
         applicationId,
         "APPLICATION_SUBMITTED",
         "LAA-123",
-        Map.of("id", applicationId.toString()),
+        validApplicationContent(applicationId, proceedingIdFor(applicationId)),
         List.of(),
         "{}",
         1,
@@ -167,7 +166,7 @@ class ApplicationCreationDetailsFactoryTest {
         applicationId,
         "APPLICATION_SUBMITTED",
         "LAA-123",
-        Map.of("id", applicationId.toString()),
+        validApplicationContent(applicationId, proceedingIdFor(applicationId)),
         List.of(
             new CreateApplicationIndividual(
                 "Ada", "Lovelace", java.time.LocalDate.of(1815, 12, 10), Map.of(), "CLIENT")),
@@ -180,8 +179,8 @@ class ApplicationCreationDetailsFactoryTest {
     return new ParsedAppContentDetails(
         null,
         applyApplicationId,
-        CategoryOfLaw.FAMILY,
-        MatterType.SPECIAL_CHILDREN_ACT,
+        "Family",
+        "SPECIAL_CHILDREN_ACT",
         Instant.parse("2026-07-14T12:30:00Z"),
         "1A001B",
         false,
@@ -203,5 +202,9 @@ class ApplicationCreationDetailsFactoryTest {
             .build();
     return new ParsedAppContentDetails(
         null, applyApplicationId, null, null, null, null, null, List.of(), List.of(linkedApp));
+  }
+
+  private UUID proceedingIdFor(UUID applicationId) {
+    return UUID.nameUUIDFromBytes(("proceeding-" + applicationId).getBytes());
   }
 }

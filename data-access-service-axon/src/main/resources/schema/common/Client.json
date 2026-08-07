@@ -9,7 +9,7 @@
     "lastName",
     "dateOfBirth",
     "appliedPreviously",
-    "correspondenceAddress"
+    "addresses"
   ],
   "properties": {
     "firstName": {
@@ -57,11 +57,11 @@
       ],
       "description": "Reference to the previous application"
     },
-    "correspondenceAddress": {
+    "addresses": {
       "type": "array",
       "minItems": 1,
       "items": {
-        "$ref": "CorrespondenceAddress.json"
+        "$ref": "Address.json"
       },
       "description": "Client correspondence address history"
     },
@@ -73,5 +73,5 @@
       "description": "Client relationship to involved children"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": false
 }

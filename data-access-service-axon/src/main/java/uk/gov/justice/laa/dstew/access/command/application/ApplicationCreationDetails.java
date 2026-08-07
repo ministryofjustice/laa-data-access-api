@@ -4,8 +4,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationContent;
-import uk.gov.justice.laa.dstew.access.applicationcontent.CategoryOfLaw;
-import uk.gov.justice.laa.dstew.access.applicationcontent.MatterType;
 
 /** Values needed by the Application aggregate to establish its initial state. */
 public record ApplicationCreationDetails(
@@ -18,8 +16,8 @@ public record ApplicationCreationDetails(
     Instant submittedAt,
     String officeCode,
     Boolean usedDelegatedFunctions,
-    CategoryOfLaw categoryOfLaw,
-    MatterType matterType,
+    String categoryOfLaw,
+    String matterType,
     List<ApplicationProceeding> proceedings,
     String serialisedRequest,
     Instant occurredAt,

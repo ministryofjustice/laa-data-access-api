@@ -49,10 +49,8 @@ public class GetAllApplicationsResponseMapper {
     summary.setLaaReference(app.getLaaReference());
     summary.setOfficeCode(app.getOfficeCode());
     summary.setUsedDelegatedFunctions(app.getUsedDelegatedFunctions());
-    summary.setCategoryOfLaw(
-        app.getCategoryOfLaw() != null ? CategoryOfLaw.valueOf(app.getCategoryOfLaw()) : null);
-    summary.setMatterType(
-        app.getMatterType() != null ? MatterType.valueOf(app.getMatterType()) : null);
+    summary.setCategoryOfLaw(toCategoryOfLaw(app.getCategoryOfLaw()));
+    summary.setMatterType(toMatterType(app.getMatterType()));
     summary.setSubmittedAt(
         app.getSubmittedAt() != null ? app.getSubmittedAt().atOffset(ZoneOffset.UTC) : null);
     summary.setLastUpdated(app.getModifiedAt().atOffset(ZoneOffset.UTC));
@@ -68,6 +66,28 @@ public class GetAllApplicationsResponseMapper {
 
     summary.setLinkedApplications(toLinkedSummaries(app, groupsByLeadId));
     return summary;
+  }
+
+  private CategoryOfLaw toCategoryOfLaw(String categoryOfLaw) {
+    if (categoryOfLaw == null) {
+      return null;
+    }
+    try {
+      return CategoryOfLaw.valueOf(categoryOfLaw.toUpperCase().replace(" ", "_"));
+    } catch (IllegalArgumentException e) {
+      return null;
+    }
+  }
+
+  private MatterType toMatterType(String matterType) {
+    if (matterType == null) {
+      return null;
+    }
+    try {
+      return MatterType.valueOf(matterType.toUpperCase().replace(" ", "_"));
+    } catch (IllegalArgumentException e) {
+      return null;
+    }
   }
 
   private ApplicationIndividual primaryClient(ApplicationReadModel app) {

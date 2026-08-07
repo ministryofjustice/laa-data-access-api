@@ -1,7 +1,10 @@
 package uk.gov.justice.laa.dstew.access.controller.individual;
 
 import java.util.List;
+import java.util.Map;
 import org.springframework.stereotype.Component;
+import tools.jackson.databind.ObjectMapper;
+import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationAddress;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationIndividual;
 import uk.gov.justice.laa.dstew.access.model.IndividualResponse;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
@@ -13,6 +16,8 @@ import uk.gov.justice.laa.dstew.access.query.individual.FindIndividualsResult;
 /** Maps Axon individual query results to the public API response. */
 @Component
 public class GetIndividualsResponseMapper {
+
+  private final ObjectMapper objectMapper = new ObjectMapper();
 
   /** Maps a query result and its paging metadata to the generated response model. */
   public IndividualsResponse toResponse(FindIndividualsResult result) {
@@ -45,10 +50,19 @@ public class GetIndividualsResponseMapper {
           .lastNameAtBirth(clientDetails.lastNameAtBirth())
           .previousApplicationId(clientDetails.previousApplicationId())
           .relationshipToInvolvedChildren(clientDetails.relationshipToInvolvedChildren())
-          .correspondenceAddressType(clientDetails.correspondenceAddressType())
           .appliedPreviously(clientDetails.appliedPreviously())
-          .correspondenceAddress(clientDetails.correspondenceAddress());
+          .correspondenceAddress(toAddressMaps(clientDetails.correspondenceAddress()));
     }
     return response;
+  }
+
+  @SuppressWarnings("unchecked")
+  private List<Map<String, Object>> toAddressMaps(List<ApplicationAddress> addresses) {
+    if (addresses == null) {
+      return null;
+    }
+    return addresses.stream()
+        .map(addr -> (Map<String, Object>) objectMapper.convertValue(addr, Map.class))
+        .toList();
   }
 }

@@ -4,6 +4,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validApplicationContent;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationCreatedEvent;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationCreationDetails;
 
@@ -623,11 +624,15 @@ class ApplicationAggregateTest {
         applicationId,
         "APPLICATION_SUBMITTED",
         "LAA-123",
-        Map.of("id", applicationId.toString()),
+        validApplicationContent(applicationId, proceedingIdFor(applicationId)),
         List.of(),
         serialisedRequest,
         schemaVersion,
         "ApplyApplication.json");
+  }
+
+  private UUID proceedingIdFor(UUID applicationId) {
+    return UUID.nameUUIDFromBytes(("proceeding-" + applicationId).getBytes(StandardCharsets.UTF_8));
   }
 
   @AfterEach

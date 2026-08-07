@@ -6,9 +6,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validApplicationContent;
 
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import org.axonframework.messaging.commandhandling.CommandMessage;
 import org.axonframework.messaging.commandhandling.GenericCommandMessage;
@@ -66,7 +66,7 @@ class CreateApplicationSchemaValidationDispatchInterceptorTest {
         id,
         "APPLICATION_SUBMITTED",
         "LAA-123",
-        Map.of("id", id.toString()),
+        validApplicationContent(id, UUID.randomUUID()),
         List.of(),
         "{}",
         1,

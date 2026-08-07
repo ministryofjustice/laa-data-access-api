@@ -1,7 +1,6 @@
 package uk.gov.justice.laa.dstew.access.applicationcontent;
 
 import java.io.Serializable;
-import java.time.LocalDate;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -10,15 +9,17 @@ import lombok.NoArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
-/** Involved child. Matches schema/common/Child.json. */
-@Builder(toBuilder = true)
-@NoArgsConstructor
+/** Scope limitation for a proceeding. Matches schema/common/ScopeLimitation.json. */
 @AllArgsConstructor
+@NoArgsConstructor
 @Data
+@Builder(toBuilder = true)
 @ExcludeFromGeneratedCodeCoverage
-public class InvolvedChild implements Serializable {
+public class ScopeLimitation implements Serializable {
 
   @Nullable private UUID id;
-  @Nullable private String fullName;
-  @Nullable private LocalDate dateOfBirth;
+  @Nullable private String code;
+  @Nullable private String type;
+  @Nullable private String meaning;
+  @Nullable private String description;
 }

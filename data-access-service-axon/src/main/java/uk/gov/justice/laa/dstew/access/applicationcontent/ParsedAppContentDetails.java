@@ -10,8 +10,8 @@ import lombok.Builder;
 public record ParsedAppContentDetails(
     ApplicationContent applicationContent,
     UUID applyApplicationId,
-    CategoryOfLaw categoryOfLaw,
-    MatterType matterType,
+    String categoryOfLaw,
+    String matterType,
     Instant submittedAt,
     String officeCode,
     Boolean usedDelegatedFunctions,

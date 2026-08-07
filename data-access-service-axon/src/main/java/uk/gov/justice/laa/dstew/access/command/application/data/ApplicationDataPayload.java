@@ -6,8 +6,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationContent;
-import uk.gov.justice.laa.dstew.access.applicationcontent.CategoryOfLaw;
-import uk.gov.justice.laa.dstew.access.applicationcontent.MatterType;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreationDetails;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationIndividual;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationProceeding;
@@ -21,8 +19,8 @@ public record ApplicationDataPayload(
     Instant submittedAt,
     String officeCode,
     Boolean usedDelegatedFunctions,
-    CategoryOfLaw categoryOfLaw,
-    MatterType matterType,
+    String categoryOfLaw,
+    String matterType,
     List<ApplicationProceeding> proceedings,
     String serialisedRequest,
     String overallDecision,

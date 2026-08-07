@@ -15,66 +15,53 @@ public final class ApplicationCreateRequestFixture {
 
   private ApplicationCreateRequestFixture() {}
 
+  /** Creates valid applicationContent using the supplied Apply identifiers. */
+  public static Map<String, Object> validApplicationContent(
+      UUID applyApplicationId, UUID applyProceedingId) {
+    return Map.ofEntries(
+        Map.entry("id", applyApplicationId.toString()),
+        Map.entry("createdAt", "2026-07-14T12:00:00Z"),
+        Map.entry("submittedAt", "2026-07-14T12:30:00Z"),
+        Map.entry(
+            "provider", Map.of("officeCode", "1A001B", "contactEmail", "provider@example.com")),
+        Map.entry(
+            "client",
+            Map.ofEntries(
+                Map.entry("firstName", "Ada"),
+                Map.entry("lastName", "Lovelace"),
+                Map.entry("dateOfBirth", "1815-12-10"),
+                Map.entry("appliedPreviously", false),
+                Map.entry("addresses", List.of(validAddressContent())))),
+        Map.entry("allLinkedApplications", List.of()),
+        Map.entry("proceedings", List.of(validProceedingContent(applyProceedingId))));
+  }
+
+  /** Creates valid proceeding content using the supplied Apply identifier. */
+  public static Map<String, Object> validProceedingContent(UUID proceedingId) {
+    return Map.ofEntries(
+        Map.entry("id", proceedingId.toString()),
+        Map.entry("leadProceeding", true),
+        Map.entry("code", "SE003"),
+        Map.entry("meaning", "Care order"),
+        Map.entry("description", "Care order"),
+        Map.entry("matterType", "SPECIAL_CHILDREN_ACT"),
+        Map.entry("matterTypeCode", "KPBLW"),
+        Map.entry("categoryOfLaw", "Family"),
+        Map.entry("categoryOfLawCode", "MAT"),
+        Map.entry("clientInvolvementType", "A"),
+        Map.entry("usedDelegatedFunctions", false),
+        Map.entry("delegatedFunctionsCostLimitation", 0),
+        Map.entry("substantiveCostLimitation", 2500),
+        Map.entry("substantiveLevelOfService", 3),
+        Map.entry("substantiveLevelOfServiceName", "Full Representation"),
+        Map.entry("emergencyLevelOfService", 3),
+        Map.entry("emergencyLevelOfServiceName", "Full Representation"),
+        Map.entry("scopeLimitations", List.of(validScopeLimitationContent())));
+  }
+
   /** Creates a valid request using the supplied Apply identifiers. */
   public static ApplicationCreateRequest validCreateApplicationRequest(
       UUID applyApplicationId, UUID applyProceedingId) {
-    Map<String, Object> content =
-        Map.ofEntries(
-            Map.entry("id", applyApplicationId.toString()),
-            Map.entry("createdAt", "2026-07-14T12:00:00Z"),
-            Map.entry("submittedAt", "2026-07-14T12:30:00Z"),
-            Map.entry("office", Map.of("code", "1A001B")),
-            Map.entry(
-                "provider", Map.of("officeCode", "1A001B", "contactEmail", "provider@example.com")),
-            Map.entry(
-                "applicant",
-                Map.of(
-                    "id", UUID.randomUUID().toString(),
-                    "appliedPreviously", false,
-                    "addresses", List.of(Map.of("id", UUID.randomUUID().toString())))),
-            Map.entry(
-                "client",
-                Map.ofEntries(
-                    Map.entry("firstName", "Ada"),
-                    Map.entry("lastName", "Lovelace"),
-                    Map.entry("dateOfBirth", "1815-12-10"),
-                    Map.entry("appliedPreviously", false),
-                    Map.entry(
-                        "correspondenceAddress",
-                        List.of(
-                            Map.ofEntries(
-                                Map.entry("location", "HOME"),
-                                Map.entry("addressLineOne", "1 Analytical Engine Way"),
-                                Map.entry("city", "London"),
-                                Map.entry("postcode", "SW1A 1AA")))))),
-            Map.entry("allLinkedApplications", List.of()),
-            Map.entry(
-                "proceedings",
-                List.of(
-                    Map.ofEntries(
-                        Map.entry("id", applyProceedingId.toString()),
-                        Map.entry("leadProceeding", true),
-                        Map.entry("ccmsCode", "SE003"),
-                        Map.entry("meaning", "Care order"),
-                        Map.entry("description", "Care order"),
-                        Map.entry("matterType", "SPECIAL_CHILDREN_ACT"),
-                        Map.entry("matterTypeEnum", "SPECIAL_CHILDREN_ACT"),
-                        Map.entry("categoryOfLaw", "FAMILY"),
-                        Map.entry("categoryOfLawEnum", "FAMILY"),
-                        Map.entry("clientInvolvementType", "A"),
-                        Map.entry("usedDelegatedFunctions", false),
-                        Map.entry("delegatedFunctionsCostLimitation", 0),
-                        Map.entry("substantiveCostLimitation", 2500),
-                        Map.entry("levelOfService", "FULL"),
-                        Map.entry(
-                            "scopeLimitations",
-                            List.of(
-                                Map.of(
-                                    "id", UUID.randomUUID().toString(),
-                                    "scopeType", "LIMITATION",
-                                    "scopeLimitation", "CV117",
-                                    "scopeDescription", "Final hearing")))))));
-
     IndividualCreateRequest individual =
         IndividualCreateRequest.builder()
             .firstName("Ada")
@@ -86,7 +73,7 @@ public final class ApplicationCreateRequestFixture {
 
     return ApplicationCreateRequest.builder()
         .status(ApplicationStatus.APPLICATION_SUBMITTED)
-        .applicationContent(content)
+        .applicationContent(validApplicationContent(applyApplicationId, applyProceedingId))
         .laaReference("LAA-123")
         .individuals(List.of(individual))
         .build();
@@ -126,5 +113,24 @@ public final class ApplicationCreateRequestFixture {
         .laaReference(request.getLaaReference())
         .individuals(request.getIndividuals())
         .build();
+  }
+
+  private static Map<String, Object> validAddressContent() {
+    return Map.ofEntries(
+        Map.entry("location", "home"),
+        Map.entry("addressLineOne", "1 Analytical Engine Way"),
+        Map.entry("city", "London"),
+        Map.entry("postcode", "SW1A 1AA"),
+        Map.entry("countryCode", "GBR"),
+        Map.entry("countryName", "United Kingdom"));
+  }
+
+  private static Map<String, Object> validScopeLimitationContent() {
+    return Map.ofEntries(
+        Map.entry("id", UUID.randomUUID().toString()),
+        Map.entry("type", "SUBSTANTIVE"),
+        Map.entry("code", "FM062"),
+        Map.entry("meaning", "Final hearing"),
+        Map.entry("description", "Limited to all steps up to and including the final hearing"));
   }
 }

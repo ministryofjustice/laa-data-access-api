@@ -19,5 +19,5 @@
       "description": "Provider contact email"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": false
 }
