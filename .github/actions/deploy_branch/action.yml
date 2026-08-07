@@ -180,6 +180,8 @@ runs:
         KUBE_NAMESPACE: ${{ inputs.kube-namespace }}
         VALUES_FILE: .helm/data-access-api-axon/values/${{ inputs.app-environment }}.yaml
         RELEASE_NAME: ${{ steps.extract_release_name.outputs.release-name }}
+        BRANCH_NAME: ${{ steps.extract_release_name.outputs.branch-name }}
+        LAA_IPS: ${{ steps.get_laa_ips.outputs.laa-ips }}
         APP_ENVIRONMENT: ${{ inputs.app-environment }}
       run: |
         set -euo pipefail
@@ -188,17 +190,20 @@ runs:
         axon_ingress_name="${AXON_RELEASE_NAME}-data-access-api-axon"
         axon_host="${AXON_RELEASE_NAME}-${KUBE_NAMESPACE}.cloud-platform.service.justice.gov.uk"
         axon_identifier="${axon_ingress_name}-${KUBE_NAMESPACE}-green"
+        SPRING_PROFILE="$(scripts/select-axon-spring-profile.sh "${BRANCH_NAME}" "${APP_ENVIRONMENT}")"
 
-        echo "[axon] Deploying image tag: ${AXON_IMAGE_TAG} under release name: ${AXON_RELEASE_NAME} to ${axon_host}..."
+        echo "[axon] Deploying image tag: ${AXON_IMAGE_TAG} under release name: ${AXON_RELEASE_NAME} to ${axon_host} with Spring profile ${SPRING_PROFILE}..."
 
         if ! helm upgrade "${AXON_RELEASE_NAME}" .helm/data-access-api-axon \
           --namespace "${KUBE_NAMESPACE}" \
           --set image.repository="${ECR_REGISTRY}/${ECR_REPOSITORY}" \
           --set image.tag="${AXON_IMAGE_TAG}" \
           --set ingress.annotations."external-dns\.alpha\.kubernetes\.io/set-identifier"="${axon_identifier}" \
+          --set ingress.annotations."nginx\.ingress\.kubernetes\.io/whitelist-source-range"="$LAA_IPS" \
           --set ingress.hosts="{${axon_host}}" \
-          --set spring.profile="${APP_ENVIRONMENT}" \
+          --set spring.profile="${SPRING_PROFILE}" \
           --set aws.region="${ECR_REGION}" \
+          --set db.postgresqlReleaseName="${RELEASE_NAME}-postgresql" \
           --values "${VALUES_FILE}" \
           --install \
           --wait; then

@@ -60,11 +60,27 @@ build-test
 
 ## Environment types
 
+### Axon Spring profiles
+
+The Axon service uses a separate Helm release, but its Spring profile follows the deployment
+lifecycle rather than blindly inheriting the Helm values environment:
+
+| Deployment source | Environment type | Axon `SPRING_PROFILES_ACTIVE` |
+|---|---|---|
+| Non-`main` branch or pull request | Ephemeral | `preview` |
+| `main` | UAT | `uat` |
+| `main` | Staging | `staging` |
+| `main` | Production | `production` |
+
+The deploy action makes this selection before rendering the Axon chart. Access API profile
+selection is independent and remains as documented in each environment section below.
+
 ### 1. Pull request (ephemeral)
 
 - **Triggered by:** `pull_request` events
 - **Helm values:** `.helm/data-access-api/values/uat.yaml`
 - **Spring profile:** `preview`
+- **Axon Spring profile:** `preview`
 - **Release name:** derived from the branch name (sanitised for Kubernetes)
 - **Database:** ephemeral Bitnami PostgreSQL deployed alongside the application, cleaned up with it
 - **Hostname pattern:** `<release-name>-<namespace>.cloud-platform.service.justice.gov.uk`
@@ -77,6 +93,7 @@ build-test
 - **Triggered by:** push to `main`
 - **Helm values:** `.helm/data-access-api/values/uat.yaml`
 - **Spring profile:** `unsecured`
+- **Axon Spring profile:** `uat`
 - **Release name:** `laa-data-access-api` (fixed, not branch-derived)
 - **Database:** shared RDS instance, accessed via an in-cluster port-forward pod (`run=port-forward-pod`)
 - **Hostname:** set by the deploy action; external and internal ingresses both active
@@ -89,6 +106,7 @@ build-test
 - **Approval gate:** required before `deploy-matrix-rc-feature` runs
 - **Helm values:** `.helm/data-access-api/values/rc-feature.yaml`
 - **Spring profile:** `preview`
+- **Axon Spring profile:** not currently deployed by this release path
 - **Release names:** derived from the preset catalog (see below)
 - **Database:** one ephemeral Bitnami PostgreSQL per environment (isolated per release)
 - **Autoscaling:** disabled
@@ -100,6 +118,7 @@ build-test
 - **Approval gate:** required before `deploy-staging` runs
 - **Helm values:** `.helm/data-access-api/values/staging.yaml`
 - **Spring profile:** `unsecured`
+- **Axon Spring profile:** `staging`
 - **Release name:** `laa-data-access-api` (fixed)
 - **Replicas:** 2 (autoscaling 2–8)
 - **Sentry environment:** `staging`
@@ -110,6 +129,7 @@ build-test
 - **Approval gate:** required before `deploy-production` runs
 - **Helm values:** `.helm/data-access-api/values/production.yaml`
 - **Spring profile:** `main`
+- **Axon Spring profile:** `production` when Axon rollout is enabled
 - **Release name:** `laa-data-access-api` (fixed)
 - **Replicas:** 2 (autoscaling 2–8)
 - **External ingress:** disabled — internal ingress only (`internal.cloud-platform.service.justice.gov.uk`)

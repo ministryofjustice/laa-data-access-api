@@ -6,6 +6,9 @@ image:
   repository: null
   tag: null
 
+db:
+  postgresqlReleaseName: null
+
 service_account:
   name: laa-data-access-uat-service-account
 
@@ -51,4 +54,3 @@ sentry:
   enabled: false
   environment: uat
   tracesSampleRate: 1
-

@@ -2,9 +2,25 @@
   Define environment variables that can be "included" in deployment.yaml
 */}}
 {{- define "axonDbConnectionDetails" }}
+{{- if eq .Values.spring.profile "preview" }}
 {{/*
-Shared RDS PostgreSQL instance, isolated via a dedicated Axon schema.
-Reuses the same secret as the API (temporary risk - see docs/axon-option-a-ai-execution-task-plan.md Task 5).
+Preview releases use the same ephemeral PostgreSQL instance as the main API,
+with Axon isolated in its own schema.
+*/}}
+- name: DB_NAME
+  value: "postgres"
+- name: DB_PASSWORD
+  valueFrom:
+    secretKeyRef:
+      name: {{ required "db.postgresqlReleaseName is required for the preview profile" .Values.db.postgresqlReleaseName }}
+      key: postgres-password
+- name: DB_HOST
+  value: {{ required "db.postgresqlReleaseName is required for the preview profile" .Values.db.postgresqlReleaseName }}
+- name: DB_URL
+  value: "jdbc:postgresql://$(DB_HOST):5432/$(DB_NAME)?currentSchema={{ .Values.axon.schema }}"
+{{- else }}
+{{/*
+Persistent environments use shared RDS, isolated via a dedicated Axon schema.
 */}}
 - name: DB_NAME
   valueFrom:
@@ -26,12 +42,13 @@ Reuses the same secret as the API (temporary risk - see docs/axon-option-a-ai-ex
     secretKeyRef:
       name: rds-postgresql-instance-output
       key: rds_instance_address
+- name: SPRING_DATASOURCE_URL
+  value: "jdbc:postgresql://$(DB_HOST):5432/$(DB_NAME)?currentSchema={{ .Values.axon.schema }}"
+{{- end }}
 - name: AXON_DB_SCHEMA
   value: {{ .Values.axon.schema | quote }}
 - name: AXON_FLYWAY_TABLE
   value: {{ .Values.axon.flywayTable | quote }}
-- name: SPRING_DATASOURCE_URL
-  value: "jdbc:postgresql://$(DB_HOST):5432/$(DB_NAME)?currentSchema={{ .Values.axon.schema }}"
 {{- end }}
 
 {{/*
@@ -55,4 +72,3 @@ Reuses the same secret as the API (temporary risk - see docs/axon-option-a-ai-ex
   value: "false"
 {{- end }}
 {{- end }}
-
