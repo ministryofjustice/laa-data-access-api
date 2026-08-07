@@ -40,6 +40,7 @@ openApiGenerate {
     configOptions = [
             generateBuilders    : "true",
             interfaceOnly       : "true", // This will only generate interfaces, not implementations
+            openApiNullable     : "false", // Keep nullable scalar properties as boxed Java types
             serializableModel   : "true",
             skipDefaultInterface: "true",
             useJakartaEe        : "true",

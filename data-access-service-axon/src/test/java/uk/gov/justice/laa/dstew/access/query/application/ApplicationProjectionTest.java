@@ -11,6 +11,9 @@ import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventF
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationCreationDetails;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Predicate;
@@ -22,10 +25,12 @@ import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEve
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationNote;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
+import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
 
 class ApplicationProjectionTest {
@@ -106,6 +111,38 @@ class ApplicationProjectionTest {
   }
 
   @Test
+  void givenSubmittedApplications_whenReconciliationQueries_thenReturnsOnlyOldUnassessedOnes() {
+    Instant threshold = Instant.parse("2026-08-04T09:45:00Z");
+    UUID stalledId = UUID.randomUUID();
+    UUID assessedId = UUID.randomUUID();
+    UUID recentId = UUID.randomUUID();
+    ApplicationReadModel stalled = reconciliationReadModel(stalledId);
+    ApplicationReadModel assessed = reconciliationReadModel(assessedId);
+    ApplicationReadModel recent = reconciliationReadModel(recentId);
+    when(applicationReadRepository.findAllByStatus("APPLICATION_SUBMITTED"))
+        .thenReturn(List.of(stalled, assessed, recent));
+    ApplicationDataPayload stalledData =
+        reconciliationData(stalledId, threshold.minus(15, ChronoUnit.MINUTES), null);
+    ApplicationDataPayload assessedData =
+        reconciliationData(assessedId, threshold.minus(20, ChronoUnit.MINUTES), false);
+    ApplicationDataPayload recentData =
+        reconciliationData(recentId, threshold.plusSeconds(1), null);
+    when(applicationDataStore.getAll(any()))
+        .thenReturn(
+            Map.of(
+                dataId(stalled), stalledData,
+                dataId(assessed), assessedData,
+                dataId(recent), recentData));
+
+    StalledAssessments result = projection.handle(new FindStalledAssessmentsQuery(threshold));
+
+    assertThat(result.applications())
+        .containsExactly(
+            new StalledAssessment(
+                stalledId, stalledId, 3L, threshold.minus(15, ChronoUnit.MINUTES)));
+  }
+
+  @Test
   void givenLinkedEvent_whenHandled_thenUpdatesLeadApplicationId() {
     UUID applicationId = UUID.randomUUID();
     UUID leadApplicationId = UUID.randomUUID();
@@ -139,6 +176,25 @@ class ApplicationProjectionTest {
     assertThat(existing.getModifiedAt()).isEqualTo(occurredAt);
     verify(queryUpdateEmitter)
         .emit(any(Class.class), any(Predicate.class), any(ApplicationReadModel.class));
+  }
+
+  @Test
+  void givenReadyEvent_whenHandled_thenAdvancesReferencedDataVersion() {
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-21T09:30:00Z");
+    ApplicationReadModel existing =
+        ApplicationReadModel.builder().applicationId(applicationId).build();
+    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(existing));
+    when(applicationReadRepository.save(existing)).thenReturn(existing);
+
+    projection.on(
+        new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, 1L, occurredAt),
+        queryUpdateEmitter);
+
+    assertThat(existing.getStatus()).isNull();
+    assertThat(existing.getApplicationVersion()).isEqualTo(1L);
+    assertThat(existing.getApplicationDataVersion()).isEqualTo(1L);
+    assertThat(existing.getModifiedAt()).isEqualTo(occurredAt);
   }
 
   @Test
@@ -255,5 +311,81 @@ class ApplicationProjectionTest {
 
     assertThat(result).isNotNull();
     assertThat(result.notes()).isEmpty();
+  }
+
+  @Test
+  void givenSubmittedApplications_whenManualOutcomeRequested_thenExcludesUnassessedApplication() {
+    UUID unassessedId = UUID.randomUUID();
+    UUID manualId = UUID.randomUUID();
+    ApplicationReadModel unassessed = readModel(unassessedId);
+    ApplicationReadModel manual = readModel(manualId);
+    ApplicationDataPayload unassessedData =
+        ApplicationDataPayload.from(applicationCreationDetails(unassessedId));
+    ApplicationDataPayload manualData =
+        ApplicationDataPayload.from(applicationCreationDetails(manualId))
+            .withManualAssessmentRequired();
+    when(applicationReadRepository.findAll()).thenReturn(List.of(unassessed, manual));
+    when(applicationDataStore.getAll(any()))
+        .thenReturn(
+            Map.of(
+                new uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId(
+                    unassessedId, 0L),
+                unassessedData,
+                new uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId(
+                    manualId, 0L),
+                manualData));
+
+    FindAllApplicationsResult result =
+        projection.handle(
+            new FindAllApplicationsQuery(
+                "APPLICATION_SUBMITTED",
+                null,
+                null,
+                null,
+                null,
+                null,
+                false,
+                "SUBMITTED_DATE",
+                "ASC",
+                1,
+                20));
+
+    assertThat(result.applications())
+        .extracting(ApplicationReadModel::getApplicationId)
+        .containsExactly(manualId);
+  }
+
+  private ApplicationReadModel readModel(UUID applicationId) {
+    return ApplicationReadModel.builder()
+        .applicationId(applicationId)
+        .status("APPLICATION_SUBMITTED")
+        .applicationDataVersion(0L)
+        .applicationVersion(0L)
+        .modifiedAt(Instant.parse("2026-07-21T09:00:00Z"))
+        .build();
+  }
+
+  private ApplicationReadModel reconciliationReadModel(UUID applicationId) {
+    return ApplicationReadModel.builder()
+        .applicationId(applicationId)
+        .status("APPLICATION_SUBMITTED")
+        .applicationDataVersion(2L)
+        .applicationVersion(3L)
+        .applyApplicationId(applicationId)
+        .build();
+  }
+
+  private ApplicationDataId dataId(ApplicationReadModel application) {
+    return new ApplicationDataId(
+        application.getApplicationId(), application.getApplicationDataVersion());
+  }
+
+  private ApplicationDataPayload reconciliationData(
+      UUID applyApplicationId, Instant submittedAt, Boolean autoGranted) {
+    ApplicationDataPayload data = mock(ApplicationDataPayload.class);
+    when(data.applyApplicationId()).thenReturn(applyApplicationId);
+    when(data.submittedAt()).thenReturn(submittedAt);
+    when(data.autoGranted()).thenReturn(autoGranted);
+    return data;
   }
 }

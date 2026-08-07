@@ -36,6 +36,16 @@ public class AxonEventProcessingConfig {
             configuration -> configuration.errorHandler(PropagatingErrorHandler.instance()));
   }
 
+  /**
+   * Handles live submission events synchronously so publication can attach to their unit of work.
+   */
+  @Bean
+  EventProcessorDefinition applicationSubmittedPublisherProcessor() {
+    return EventProcessorDefinition.subscribingMatching("application-submitted-publisher")
+        .customized(
+            configuration -> configuration.errorHandler(PropagatingErrorHandler.instance()));
+  }
+
   private EventProcessorDefinition pooledStreamingProcessor(String processingGroup) {
     return EventProcessorDefinition.pooledStreamingMatching(processingGroup)
         .customized(

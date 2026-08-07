@@ -16,7 +16,8 @@ public class AxonCommandBusConfig {
   @Bean
   CorrelationDataProvider serviceNameCorrelationDataProvider() {
     return new SimpleCorrelationDataProvider(
-        ServiceNameMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY);
+        ServiceNameMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY,
+        ServiceNameMetadataDispatchInterceptor.CORRELATION_ID_METADATA_KEY);
   }
 
   @Bean

@@ -22,6 +22,12 @@ import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApp
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.ValidateApplicationExistsCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
+import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand;
+import uk.gov.justice.laa.dstew.access.command.application.ready.ReadyApplicationResult;
+import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdateDetailsFactory;
+import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationCommand;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 
 /** Event-sourced consistency boundary for an Application and its owned child state. */
@@ -111,6 +117,23 @@ public class ApplicationAggregate {
       ApplicationDataStore applicationDataStore,
       EventAppender eventAppender) {
     requireApplicationExists(command.applicationId());
+    if (command.fromAutoGrantOutcome() && Boolean.FALSE.equals(state.autoGranted)) {
+      throw new uk.gov.justice.laa.dstew.access.exception
+          .ApplicationAutoGrantOutcomeConflictException(command.applicationId());
+    }
+    if (command.fromAutoGrantOutcome() && !"APPLICATION_SUBMITTED".equals(state.status)) {
+      throw new uk.gov.justice.laa.dstew.access.exception.InvalidApplicationStateException(
+          command.applicationId(), state.status);
+    }
+    if (command.fromAutoGrantOutcome() && Boolean.TRUE.equals(state.autoGranted)) {
+      var recorded = applicationDataStore.get(applicationId, state.applicationDataVersion);
+      if (java.util.Objects.equals(
+          recorded.decisionSerialisedRequest(), command.serialisedRequest())) {
+        return;
+      }
+      throw new uk.gov.justice.laa.dstew.access.exception
+          .ApplicationAutoGrantOutcomeConflictException(command.applicationId());
+    }
     if (command.expectedApplicationVersion() != state.applicationVersion) {
       throw new uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException(
           command.applicationId(), command.expectedApplicationVersion());
@@ -204,6 +227,56 @@ public class ApplicationAggregate {
     eventAppender.append(event);
   }
 
+  /** Stores {@code autoGrant=false} as the next immutable Application-data version. */
+  @CommandHandler
+  ReadyApplicationResult handle(
+      MarkApplicationReadyCommand command,
+      ApplicationDataStore applicationDataStore,
+      EventAppender eventAppender) {
+    requireApplicationExists(command.applicationId());
+    ReadyApplicationResult result = ApplicationDecider.decideReady(state, command);
+    if (result == ReadyApplicationResult.ALREADY_RECORDED) {
+      return result;
+    }
+
+    var current = applicationDataStore.get(applicationId, state.applicationDataVersion);
+    long nextApplicationVersion = state.applicationVersion + 1;
+    long nextDataVersion = state.applicationDataVersion + 1;
+    applicationDataStore.append(
+        applicationId,
+        nextDataVersion,
+        current.withManualAssessmentRequired(),
+        command.serialisedRequest(),
+        command.occurredAt());
+    eventAppender.append(
+        new ApplicationReadyForManualAssessmentEvent(
+            applicationId, nextApplicationVersion, nextDataVersion, command.occurredAt()));
+    return result;
+  }
+
+  /** Replaces Application content and appends a thin, replayable update event. */
+  @CommandHandler
+  void handle(
+      UpdateApplicationCommand command,
+      ApplicationDataStore applicationDataStore,
+      ApplicationUpdateDetailsFactory detailsFactory,
+      EventAppender eventAppender) {
+    requireApplicationExists(command.applicationId());
+    var current = applicationDataStore.get(applicationId, state.applicationDataVersion);
+    String nextStatus = command.status() == null ? state.status : command.status();
+    boolean enteringSubmitted =
+        !"APPLICATION_SUBMITTED".equals(state.status) && "APPLICATION_SUBMITTED".equals(nextStatus);
+    var updated = detailsFactory.prepare(command, current, enteringSubmitted);
+    ApplicationUpdatedEvent event = ApplicationDecider.decideUpdate(state, command, updated);
+    applicationDataStore.append(
+        applicationId,
+        event.applicationDataVersion(),
+        updated,
+        command.serialisedRequest(),
+        command.occurredAt());
+    eventAppender.append(event);
+  }
+
   private void requireApplicationExists(UUID requestedApplicationId) {
     if (applicationId == null) {
       throw new ResourceNotFoundException(
@@ -239,6 +312,16 @@ public class ApplicationAggregate {
 
   @EventSourcingHandler
   void on(NoteCreatedEvent event) {
+    ApplicationEvolve.apply(state, event);
+  }
+
+  @EventSourcingHandler
+  void on(ApplicationReadyForManualAssessmentEvent event) {
+    ApplicationEvolve.apply(state, event);
+  }
+
+  @EventSourcingHandler
+  void on(ApplicationUpdatedEvent event) {
     ApplicationEvolve.apply(state, event);
   }
 

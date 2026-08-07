@@ -71,12 +71,30 @@ These versions solve different problems and should not be combined:
 
 | Field | Meaning | Changes when |
 |---|---|---|
-| `applicationVersion` | Public optimistic-lock version for application changes | A decision, assignment, or unassignment succeeds |
+| `applicationVersion` | Public optimistic-lock version for application changes | An Application update, decision, manual-ready outcome, assignment, or unassignment succeeds |
 | `applicationDataVersion` | Internal pointer to an immutable `application_data` row | Sensitive/audit payload changes, including notes |
 
 Decision requests supply the expected `applicationVersion` to prevent one caller silently
 overwriting a decision based on stale state. The aggregate chooses the next
 `applicationDataVersion`; callers never manage this internal storage detail.
+
+## Auto-grant outcome and manual visibility
+
+`autoGrant` is a tri-state outcome independent of Application Status:
+
+- `null` means automatic assessment has not recorded an outcome, so the submitted Application is
+  excluded from manual-task queries;
+- `false` means assessment completed without an automatic grant, so the Application can be
+  selected with `isAutoGranted=false` for manual work;
+- `true` means an automatically granted Decision was recorded, so the Application remains outside
+  manual work.
+
+`PATCH /api/v0/applications/{id}/auto-grant-outcome` records either terminal outcome. The
+`MANUAL` variant records the false outcome without changing `APPLICATION_SUBMITTED`; the
+`AUTOGRANTED` variant records the complete granted Decision and sets the true outcome. Both require
+the current Application version and reject a conflicting terminal outcome. Replaying their thin
+events restores the aggregate outcome and advances the disposable projection to the referenced
+immutable data version.
 
 ## Transaction and processing choices
 
@@ -87,6 +105,9 @@ overwriting a decision based on stale state. The aggregate chooses the next
   applications are validated in the originating request.
 - Group initialisation uses a pooled streaming processor after the request event commits, avoiding
   the re-entrant event-store write that Axon 5 rejects.
+- `ApplicationSubmittedEventRouter` uses a subscribing processor only for live submission events
+  and registers SNS publication in Axon's `AFTER_COMMIT` phase. It is excluded from tracking replay,
+  and a transport failure is observable without rolling back committed Application state.
 
 See [Linked applications](linked-applications.md) and
 [Projections and replay](projections-and-replay.md) for the detailed consequences.

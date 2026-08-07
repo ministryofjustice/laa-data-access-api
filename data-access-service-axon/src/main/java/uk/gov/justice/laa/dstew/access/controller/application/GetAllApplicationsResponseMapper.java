@@ -60,6 +60,7 @@ public class GetAllApplicationsResponseMapper {
     summary.setApplicationType(ApplicationType.INITIAL);
     summary.setIsLead(app.getLeadApplicationId() == null);
     summary.setAssignedTo(app.getCaseworkerId());
+    summary.setAutoGrant(app.getAutoGranted());
 
     ApplicationIndividual client = primaryClient(app);
     if (client != null) {

@@ -14,6 +14,9 @@ public class ApplicationState {
   boolean isAssociatedMember;
   int schemaVersion;
   String requestFingerprint;
+  String status;
+  String applicationType;
+  Boolean autoGranted;
   long applicationDataVersion;
   long applicationVersion;
   UUID caseworkerId;

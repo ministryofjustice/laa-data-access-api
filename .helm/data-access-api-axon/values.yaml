@@ -44,6 +44,11 @@ spring:
 
 aws:
   region: eu-west-2
+  integrationEvents:
+    enabled: false
+  topicArnSecret:
+    name: data-access-events-sns-topic
+    key: topic_arn
 
 # Axon-specific schema/flyway isolation (shared DB instance, separate schema)
 axon:

@@ -47,6 +47,9 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationType;
+import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
+import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
+import uk.gov.justice.laa.dstew.access.model.AutograntedOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
@@ -57,6 +60,7 @@ import uk.gov.justice.laa.dstew.access.model.IndividualCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.InvolvedChildResponse;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceedingRequest;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
+import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetailsRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
@@ -342,6 +346,102 @@ class PostgresAxonIntegrationTest {
   }
 
   @Test
+  void givenApplicationInProgress_whenUpdatedToSubmitted_thenPersistsThinEventAndDataAtomically()
+      throws Exception {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationCreateRequest submitted =
+        validCreateApplicationRequest(applicationId, UUID.randomUUID());
+    applicationId(post(inProgress(submitted), headers()));
+    awaitProjection(applicationId);
+
+    ResponseEntity<Void> response = patchSubmitted(applicationId, submitted);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    ApplicationReadModel projected = awaitProjectionVersion(applicationId, 1L);
+    assertThat(projected.getStatus()).isEqualTo("APPLICATION_SUBMITTED");
+    assertThat(projected.getAutoGranted()).isNull();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM axon.application_data WHERE application_id = ?",
+                Integer.class,
+                applicationId))
+        .isEqualTo(2);
+    assertThat(
+            jdbcTemplate.queryForMap(
+                "SELECT payload_type, convert_from(payload, 'UTF8') AS payload "
+                    + "FROM axon.domain_event_entry "
+                    + "WHERE aggregate_identifier = ? AND sequence_number = 1",
+                applicationId.toString()))
+        .satisfies(
+            event -> {
+              assertThat(event.get("payload_type").toString()).endsWith("ApplicationUpdatedEvent");
+              assertThat(event.get("payload").toString())
+                  .contains("applicationDataVersion", "APPLICATION_SUBMITTED")
+                  .doesNotContain(
+                      "applicationContent", "proceedings", "individuals", "LAA-123", "Ada");
+            });
+  }
+
+  @Test
+  void givenEventAppendFails_whenApplicationUpdated_thenImmutableDataAppendRollsBack()
+      throws Exception {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationCreateRequest submitted =
+        validCreateApplicationRequest(applicationId, UUID.randomUUID());
+    applicationId(post(inProgress(submitted), headers()));
+    awaitProjection(applicationId);
+    jdbcTemplate.execute(
+        """
+        CREATE OR REPLACE FUNCTION axon.reject_test_application_update()
+        RETURNS trigger AS $$
+        BEGIN
+          IF NEW.aggregate_identifier = '%s' AND NEW.sequence_number = 1 THEN
+            RAISE EXCEPTION 'forced ApplicationUpdatedEvent append failure';
+          END IF;
+          RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql
+        """
+            .formatted(applicationId));
+    jdbcTemplate.execute(
+        """
+        CREATE TRIGGER reject_test_application_update
+        BEFORE INSERT ON axon.domain_event_entry
+        FOR EACH ROW EXECUTE FUNCTION axon.reject_test_application_update()
+        """);
+
+    ResponseEntity<String> response;
+    try {
+      ApplicationUpdateRequest update = submittedUpdate(submitted);
+      response =
+          restTemplate.exchange(
+              "http://localhost:" + port + "/api/v0/applications/" + applicationId,
+              HttpMethod.PATCH,
+              new HttpEntity<>(update, headers()),
+              String.class);
+    } finally {
+      jdbcTemplate.execute(
+          "DROP TRIGGER IF EXISTS reject_test_application_update ON axon.domain_event_entry");
+      jdbcTemplate.execute("DROP FUNCTION IF EXISTS axon.reject_test_application_update()");
+    }
+
+    assertThat(response.getStatusCode().is5xxServerError()).isTrue();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM axon.application_data WHERE application_id = ?",
+                Integer.class,
+                applicationId))
+        .isEqualTo(1);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM axon.domain_event_entry WHERE aggregate_identifier = ?",
+                Integer.class,
+                applicationId.toString()))
+        .isEqualTo(1);
+    assertThat(awaitProjection(applicationId).getApplicationVersion()).isZero();
+  }
+
+  @Test
   void givenApplication_whenMakeDecision_thenAppendsSensitiveVersionAndThinEvent()
       throws Exception {
     UUID applicationId = UUID.randomUUID();
@@ -438,6 +538,95 @@ class PostgresAxonIntegrationTest {
                 Integer.class,
                 applicationId))
         .isEqualTo(2);
+  }
+
+  @Test
+  void givenSubmittedApplication_whenAutomaticallyGranted_thenPersistsCompleteDecision()
+      throws Exception {
+    UUID applicationId = UUID.randomUUID();
+    applicationId(post(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()));
+    UUID proceedingId = awaitProjection(applicationId).getProceedings().getFirst().proceedingId();
+    var request =
+        new AutograntedOutcomeRequest(
+            AutoGrantOutcome.AUTOGRANTED,
+            0L,
+            AutograntedOutcomeRequest.OverallDecisionEnum.GRANTED,
+            List.of(
+                new MakeDecisionProceedingRequest(
+                    proceedingId,
+                    new MeritsDecisionDetailsRequest(MeritsDecisionStatus.GRANTED, "Autogranted"))),
+            new EventHistoryRequest().eventDescription("Automatic assessment passed"),
+            Map.of("certificateNumber", "AUTO-2126"));
+
+    ResponseEntity<Void> response =
+        restTemplate.exchange(
+            "http://localhost:"
+                + port
+                + "/api/v0/applications/"
+                + applicationId
+                + "/auto-grant-outcome",
+            HttpMethod.PATCH,
+            new HttpEntity<>(request, headers()),
+            Void.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    ApplicationReadModel granted = awaitProjectionVersion(applicationId, 1L);
+    assertThat(granted.getAutoGranted()).isTrue();
+    assertThat(granted.getDecisionStatus()).isEqualTo("GRANTED");
+    assertThat(granted.getMeritsDecisions()).containsKey(proceedingId);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT payload -> 'certificate' ->> 'certificateNumber' "
+                    + "FROM axon.application_data WHERE application_id = ? AND version = 1",
+                String.class,
+                applicationId))
+        .isEqualTo("AUTO-2126");
+  }
+
+  @Test
+  void givenSubmittedApplication_whenMarkedReady_thenPersistsFalseOutcomeAndThinEvent()
+      throws Exception {
+    UUID applicationId = UUID.randomUUID();
+    applicationId(post(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()));
+    awaitProjection(applicationId);
+    ManualOutcomeRequest request = new ManualOutcomeRequest(AutoGrantOutcome.MANUAL, 0L);
+
+    ResponseEntity<Void> response =
+        restTemplate.exchange(
+            "http://localhost:"
+                + port
+                + "/api/v0/applications/"
+                + applicationId
+                + "/auto-grant-outcome",
+            HttpMethod.PATCH,
+            new HttpEntity<>(request, headers()),
+            Void.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    ApplicationReadModel ready = awaitProjectionVersion(applicationId, 1L);
+    assertThat(ready.getStatus()).isEqualTo("APPLICATION_SUBMITTED");
+    assertThat(ready.getAutoGranted()).isFalse();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT payload ->> 'autoGranted' FROM axon.application_data "
+                    + "WHERE application_id = ? AND version = 1",
+                String.class,
+                applicationId))
+        .isEqualTo("false");
+    assertThat(
+            jdbcTemplate.queryForMap(
+                "SELECT payload_type, convert_from(payload, 'UTF8') AS payload "
+                    + "FROM axon.domain_event_entry "
+                    + "WHERE aggregate_identifier = ? AND sequence_number = 1",
+                applicationId.toString()))
+        .satisfies(
+            event -> {
+              assertThat(event.get("payload_type").toString())
+                  .endsWith("ApplicationReadyForManualAssessmentEvent");
+              assertThat(event.get("payload").toString())
+                  .contains("applicationDataVersion")
+                  .doesNotContain("applicationContent", "LAA-123");
+            });
   }
 
   @Test
@@ -1122,11 +1311,52 @@ class PostgresAxonIntegrationTest {
         .isEqualTo(2);
   }
 
-  private CompletableFuture<ResponseEntity<Void>> concurrentPatch(
-      ExecutorService executor,
-      CyclicBarrier barrier,
-      String url,
-      HttpEntity<MakeDecisionRequest> entity) {
+  @Test
+  void givenConcurrentManualReadinessAtSameVersion_whenPatched_thenOnlyOneOutcomeIsCommitted()
+      throws Exception {
+    UUID applicationId = UUID.randomUUID();
+    applicationId(post(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()));
+    awaitProjection(applicationId);
+    ManualOutcomeRequest request = new ManualOutcomeRequest(AutoGrantOutcome.MANUAL, 0L);
+    HttpEntity<ManualOutcomeRequest> entity = new HttpEntity<>(request, headers());
+    String url =
+        "http://localhost:"
+            + port
+            + "/api/v0/applications/"
+            + applicationId
+            + "/auto-grant-outcome";
+    CyclicBarrier barrier = new CyclicBarrier(2);
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+    try {
+      CompletableFuture<ResponseEntity<Void>> first =
+          concurrentPatch(executor, barrier, url, entity);
+      CompletableFuture<ResponseEntity<Void>> second =
+          concurrentPatch(executor, barrier, url, entity);
+
+      assertThat(List.of(first.get(20, TimeUnit.SECONDS), second.get(20, TimeUnit.SECONDS)))
+          .extracting(ResponseEntity::getStatusCode)
+          .containsExactlyInAnyOrder(HttpStatus.NO_CONTENT, HttpStatus.OK);
+    } finally {
+      executor.shutdown();
+    }
+
+    assertThat(awaitProjectionVersion(applicationId, 1L).getAutoGranted()).isFalse();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM axon.application_data WHERE application_id = ?",
+                Integer.class,
+                applicationId))
+        .isEqualTo(2);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM axon.domain_event_entry WHERE aggregate_identifier = ?",
+                Integer.class,
+                applicationId.toString()))
+        .isEqualTo(2);
+  }
+
+  private <T> CompletableFuture<ResponseEntity<Void>> concurrentPatch(
+      ExecutorService executor, CyclicBarrier barrier, String url, HttpEntity<T> entity) {
     return CompletableFuture.supplyAsync(
         () -> {
           try {
@@ -1152,6 +1382,31 @@ class PostgresAxonIntegrationTest {
         "http://localhost:" + port + "/api/v0/applications",
         new HttpEntity<>(request, headers),
         responseType);
+  }
+
+  private ApplicationCreateRequest inProgress(ApplicationCreateRequest submitted) {
+    return ApplicationCreateRequest.builder()
+        .applicationType(submitted.getApplicationType())
+        .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
+        .applicationContent(submitted.getApplicationContent())
+        .laaReference(submitted.getLaaReference())
+        .individuals(submitted.getIndividuals())
+        .build();
+  }
+
+  private ApplicationUpdateRequest submittedUpdate(ApplicationCreateRequest submitted) {
+    return new ApplicationUpdateRequest()
+        .status(ApplicationStatus.APPLICATION_SUBMITTED)
+        .applicationContent(submitted.getApplicationContent());
+  }
+
+  private ResponseEntity<Void> patchSubmitted(
+      UUID applicationId, ApplicationCreateRequest submitted) {
+    return restTemplate.exchange(
+        "http://localhost:" + port + "/api/v0/applications/" + applicationId,
+        HttpMethod.PATCH,
+        new HttpEntity<>(submittedUpdate(submitted), headers()),
+        Void.class);
   }
 
   @Test

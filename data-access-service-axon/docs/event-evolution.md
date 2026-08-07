@@ -65,6 +65,12 @@ This is often clearer than making one event schema represent several eras of beh
 
 Do not delete the old class while its fully qualified name remains in `payload_type`.
 
+`ApplicationUpdatedEvent` follows this rule for the Axon update route: it records only identifiers,
+versions, previous/current status, Application type, and occurrence time. Detailed replacement
+content is stored as a new immutable `application_data` version. The external
+`ApplicationSubmitted` JSON is a separate integration contract and must not be substituted for the
+internal replayable event.
+
 ## Revision and upcasting
 
 When old serialized data must be transformed into a newer representation before deserialization,
@@ -112,6 +118,10 @@ When adding a new projection field:
 - update reset/replay tests;
 - verify replay does not call unavailable external systems;
 - decide what happens after retention deletion.
+
+External publication must remain outside tracking handlers. The `ApplicationSubmitted` producer is
+a subscribing live-event router that registers an `AFTER_COMMIT` action; projection replay cannot
+invoke it.
 
 ## Thin-event and PII review
 

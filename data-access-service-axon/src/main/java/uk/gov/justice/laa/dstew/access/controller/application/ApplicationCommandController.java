@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Min;
 import java.net.URI;
 import java.sql.SQLException;
 import java.util.UUID;
+import java.util.function.Supplier;
 import org.axonframework.eventsourcing.eventstore.AppendEventsTransactionRejectedException;
 import org.axonframework.messaging.commandhandling.gateway.CommandGateway;
 import org.axonframework.modelling.ConcurrencyException;
@@ -20,7 +21,10 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.AssignCaseworkerService;
+import uk.gov.justice.laa.dstew.access.command.application.ready.ReadyApplicationResult;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
+import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
 import uk.gov.justice.laa.dstew.access.model.CreateNoteRequest;
@@ -43,6 +47,8 @@ public class ApplicationCommandController {
   private final AssignCaseworkerRequestMapper assignCaseworkerRequestMapper;
   private final UnassignCaseworkerRequestMapper unassignCaseworkerRequestMapper;
   private final CreateNoteCommandMapper createNoteCommandMapper;
+  private final AutoGrantOutcomeCommandMapper autoGrantOutcomeCommandMapper;
+  private final UpdateApplicationCommandMapper updateApplicationCommandMapper;
 
   /** Creates the command adapter. */
   public ApplicationCommandController(
@@ -53,7 +59,9 @@ public class ApplicationCommandController {
       AssignCaseworkerService assignCaseworkerService,
       AssignCaseworkerRequestMapper assignCaseworkerRequestMapper,
       UnassignCaseworkerRequestMapper unassignCaseworkerRequestMapper,
-      CreateNoteCommandMapper createNoteCommandMapper) {
+      CreateNoteCommandMapper createNoteCommandMapper,
+      AutoGrantOutcomeCommandMapper autoGrantOutcomeCommandMapper,
+      UpdateApplicationCommandMapper updateApplicationCommandMapper) {
     this.commandGateway = commandGateway;
     this.projectionGateway = projectionGateway;
     this.commandMapper = commandMapper;
@@ -62,6 +70,8 @@ public class ApplicationCommandController {
     this.assignCaseworkerRequestMapper = assignCaseworkerRequestMapper;
     this.unassignCaseworkerRequestMapper = unassignCaseworkerRequestMapper;
     this.createNoteCommandMapper = createNoteCommandMapper;
+    this.autoGrantOutcomeCommandMapper = autoGrantOutcomeCommandMapper;
+    this.updateApplicationCommandMapper = updateApplicationCommandMapper;
   }
 
   /** Assigns a caseworker to one or more Applications after validating the complete batch. */
@@ -95,6 +105,25 @@ public class ApplicationCommandController {
       @PathVariable UUID id,
       @Valid @RequestBody MakeDecisionRequest request) {
     dispatchWithRetry(decisionCommandMapper.toCommand(id, request));
+    return ResponseEntity.noContent().build();
+  }
+
+  /** Records either terminal outcome of deciding whether an Application can be auto-granted. */
+  @PatchMapping("/{id}/auto-grant-outcome")
+  public ResponseEntity<Void> recordAutoGrantOutcome(
+      @RequestHeader("X-Service-Name") ServiceName serviceName,
+      @PathVariable UUID id,
+      @Valid @RequestBody AutoGrantOutcomeRequest request) {
+    Object command = autoGrantOutcomeCommandMapper.toCommand(id, request);
+    if (command
+        instanceof
+        uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand) {
+      ReadyApplicationResult result = dispatchWithRetry(command, ReadyApplicationResult.class);
+      return result == ReadyApplicationResult.RECORDED
+          ? ResponseEntity.noContent().build()
+          : ResponseEntity.ok().build();
+    }
+    dispatchWithRetry(command);
     return ResponseEntity.noContent().build();
   }
 
@@ -134,15 +163,33 @@ public class ApplicationCommandController {
         : ResponseEntity.accepted().location(location).build();
   }
 
+  /** Replaces an existing Application's content and optional status. */
+  @PatchMapping("/{id}")
+  public ResponseEntity<Void> updateApplication(
+      @RequestHeader("X-Service-Name") ServiceName serviceName,
+      @PathVariable UUID id,
+      @Valid @RequestBody ApplicationUpdateRequest request) {
+    dispatchWithRetry(updateApplicationCommandMapper.toCommand(id, request));
+    return ResponseEntity.noContent().build();
+  }
+
   void dispatchWithRetry(Object command) {
+    dispatchWithRetry(() -> commandGateway.sendAndWait(command));
+  }
+
+  private <R> R dispatchWithRetry(Object command, Class<R> responseType) {
+    return dispatchWithRetry(() -> commandGateway.sendAndWait(command, responseType));
+  }
+
+  private <R> R dispatchWithRetry(Supplier<R> dispatch) {
     try {
-      commandGateway.sendAndWait(command);
+      return dispatch.get();
     } catch (RuntimeException first) {
       if (!isRetryableConcurrentWrite(first)) {
         throw first;
       }
       try {
-        commandGateway.sendAndWait(command);
+        return dispatch.get();
       } catch (RuntimeException retry) {
         retry.addSuppressed(first);
         throw retry;
