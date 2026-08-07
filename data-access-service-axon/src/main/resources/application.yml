@@ -58,6 +58,11 @@ logging:
     com.azure.spring: INFO
     uk.gov.justice.laa.dstew.access.config.SecurityConfig: WARN
 
+logging:
+  level:
+    com.azure.spring: INFO
+    uk.gov.justice.laa.dstew.access.config.SecurityConfig: WARN
+
 management:
   endpoints:
     web:
