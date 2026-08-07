@@ -190,9 +190,24 @@ runs:
         axon_ingress_name="${AXON_RELEASE_NAME}-data-access-api-axon"
         axon_host="${AXON_RELEASE_NAME}-${KUBE_NAMESPACE}.cloud-platform.service.justice.gov.uk"
         axon_identifier="${axon_ingress_name}-${KUBE_NAMESPACE}-green"
-        SPRING_PROFILE="$(scripts/select-axon-spring-profile.sh "${BRANCH_NAME}" "${APP_ENVIRONMENT}")"
+        branch_name="$BRANCH_NAME"
 
-        echo "[axon] Deploying image tag: ${AXON_IMAGE_TAG} under release name: ${AXON_RELEASE_NAME} to ${axon_host} with Spring profile ${SPRING_PROFILE}..."
+        echo "Deploying image tag: $AXON_IMAGE_TAG under release name: $AXON_RELEASE_NAME to $axon_host..."
+
+        echo "branch name: $branch_name"
+
+        if [ "$branch_name" == "main" ]; then
+          case "$APP_ENVIRONMENT" in
+            production)
+              export SPRING_PROFILE="main"
+              ;;
+            *)
+              export SPRING_PROFILE="unsecured"
+              ;;
+          esac
+        else
+          export SPRING_PROFILE="preview"
+        fi
 
         if ! helm upgrade "${AXON_RELEASE_NAME}" .helm/data-access-api-axon \
           --namespace "${KUBE_NAMESPACE}" \
