@@ -68,9 +68,9 @@ lifecycle rather than blindly inheriting the Helm values environment:
 | Deployment source | Environment type | Axon `SPRING_PROFILES_ACTIVE` |
 |---|---|---|
 | Non-`main` branch or pull request | Ephemeral | `preview` |
-| `main` | UAT | `uat` |
-| `main` | Staging | `staging` |
-| `main` | Production | `production` |
+| `main` | UAT | `unsecured` |
+| `main` | Staging | `unsecured` |
+| `main` | Production | `main` |
 
 The deploy action makes this selection before rendering the Axon chart. Access API profile
 selection is independent and remains as documented in each environment section below.
@@ -93,7 +93,7 @@ selection is independent and remains as documented in each environment section b
 - **Triggered by:** push to `main`
 - **Helm values:** `.helm/data-access-api/values/uat.yaml`
 - **Spring profile:** `unsecured`
-- **Axon Spring profile:** `uat`
+- **Axon Spring profile:** `unsecured`
 - **Release name:** `laa-data-access-api` (fixed, not branch-derived)
 - **Database:** shared RDS instance, accessed via an in-cluster port-forward pod (`run=port-forward-pod`)
 - **Hostname:** set by the deploy action; external and internal ingresses both active
@@ -118,7 +118,7 @@ selection is independent and remains as documented in each environment section b
 - **Approval gate:** required before `deploy-staging` runs
 - **Helm values:** `.helm/data-access-api/values/staging.yaml`
 - **Spring profile:** `unsecured`
-- **Axon Spring profile:** `staging`
+- **Axon Spring profile:** `unsecured`
 - **Release name:** `laa-data-access-api` (fixed)
 - **Replicas:** 2 (autoscaling 2–8)
 - **Sentry environment:** `staging`
@@ -129,7 +129,7 @@ selection is independent and remains as documented in each environment section b
 - **Approval gate:** required before `deploy-production` runs
 - **Helm values:** `.helm/data-access-api/values/production.yaml`
 - **Spring profile:** `main`
-- **Axon Spring profile:** `production` when Axon rollout is enabled
+- **Axon Spring profile:** `main` when Axon rollout is enabled
 - **Release name:** `laa-data-access-api` (fixed)
 - **Replicas:** 2 (autoscaling 2–8)
 - **External ingress:** disabled — internal ingress only (`internal.cloud-platform.service.justice.gov.uk`)
