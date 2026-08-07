@@ -17,11 +17,13 @@ class AxonProfileConfigurationTest {
   @Test
   void previewProfileUsesPreviewEnvironmentSettingsAndPreservesAxonPersistence()
       throws IOException {
-    List<PropertySource<?>> properties = load("application-preview.yaml");
+    List<PropertySource<?>> properties = loadProfile("application-preview.yaml");
 
     assertThat(property(properties, "spring.application.name"))
         .isEqualTo("data-access-service-axon");
-    assertThat(property(properties, "spring.datasource.url")).isEqualTo("${DB_URL}");
+    assertThat(property(properties, "spring.datasource.url"))
+        .isEqualTo(
+            "${DB_URL:${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/laa_data_access_api?currentSchema=${AXON_DB_SCHEMA:axon}}}");
     assertThat(property(properties, "spring.datasource.username")).isEqualTo("postgres");
     assertAxonPersistence(properties);
     assertEnvironmentIntegrationProperties(properties);
@@ -29,12 +31,15 @@ class AxonProfileConfigurationTest {
 
   @Test
   void mainProfileUsesMainEnvironmentSettingsAndPreservesAxonPersistence() throws IOException {
-    List<PropertySource<?>> properties = load("application-main.yml");
+    List<PropertySource<?>> properties = loadProfile("application-main.yml");
 
     assertThat(property(properties, "spring.application.name"))
         .isEqualTo("data-access-service-axon");
-    assertThat(property(properties, "spring.datasource.url")).isEqualTo("${DB_URL}");
-    assertThat(property(properties, "spring.datasource.username")).isEqualTo("${DB_USERNAME}");
+    assertThat(property(properties, "spring.datasource.url"))
+        .isEqualTo(
+            "${DB_URL:${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/laa_data_access_api?currentSchema=${AXON_DB_SCHEMA:axon}}}");
+    assertThat(property(properties, "spring.datasource.username"))
+        .isEqualTo("${DB_USERNAME:${SPRING_DATASOURCE_USERNAME:laa_user}}");
     assertAxonPersistence(properties);
     assertEnvironmentIntegrationProperties(properties);
     assertThat(property(properties, "jdbc.datasource-proxy.slow-query.threshold"))
@@ -43,12 +48,15 @@ class AxonProfileConfigurationTest {
 
   @Test
   void unsecuredProfileDisablesSecurityAndPreservesAxonPersistence() throws IOException {
-    List<PropertySource<?>> properties = load("application-unsecured.yml");
+    List<PropertySource<?>> properties = loadProfile("application-unsecured.yml");
 
     assertThat(property(properties, "spring.application.name"))
         .isEqualTo("data-access-service-axon");
-    assertThat(property(properties, "spring.datasource.url")).isEqualTo("${DB_URL}");
-    assertThat(property(properties, "spring.datasource.username")).isEqualTo("${DB_USERNAME}");
+    assertThat(property(properties, "spring.datasource.url"))
+        .isEqualTo(
+            "${DB_URL:${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/laa_data_access_api?currentSchema=${AXON_DB_SCHEMA:axon}}}");
+    assertThat(property(properties, "spring.datasource.username"))
+        .isEqualTo("${DB_USERNAME:${SPRING_DATASOURCE_USERNAME:laa_user}}");
     assertAxonPersistence(properties);
     assertEnvironmentIntegrationProperties(properties);
     assertThat(property(properties, "feature.disable-security")).isEqualTo(true);
@@ -75,8 +83,12 @@ class AxonProfileConfigurationTest {
         .isEqualTo("${ENTRA_AUD}");
   }
 
-  private static List<PropertySource<?>> load(String resource) throws IOException {
-    return new YamlPropertySourceLoader().load(resource, new ClassPathResource(resource));
+  private static List<PropertySource<?>> loadProfile(String resource) throws IOException {
+    YamlPropertySourceLoader loader = new YamlPropertySourceLoader();
+    List<PropertySource<?>> properties =
+        new java.util.ArrayList<>(loader.load(resource, new ClassPathResource(resource)));
+    properties.addAll(loader.load("application.yml", new ClassPathResource("application.yml")));
+    return properties;
   }
 
   private static Object property(List<PropertySource<?>> properties, String name) {
