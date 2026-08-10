@@ -17,6 +17,7 @@ import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataS
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationMeritsDecision;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
+import uk.gov.justice.laa.dstew.access.command.application.decision.MakeDecisionProceeding;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.CreateLinkedApplicationGroupCommand;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupRequested;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.ValidateApplicationExistsCommand;
@@ -134,17 +135,41 @@ public class ApplicationAggregate {
       throw new uk.gov.justice.laa.dstew.access.exception
           .ApplicationAutoGrantOutcomeConflictException(command.applicationId());
     }
-    if (command.expectedApplicationVersion() != state.applicationVersion) {
+    if (!command.fromAutoGrantOutcome()
+        && command.expectedApplicationVersion() != state.applicationVersion) {
       throw new uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException(
           command.applicationId(), command.expectedApplicationVersion());
     }
     var current = applicationDataStore.get(applicationId, state.applicationDataVersion);
-    ApplicationDecisionMadeEvent event = ApplicationDecider.decideDecision(state, command, current);
+    MakeApplicationDecisionCommand effectiveCommand = command;
+    if (command.fromAutoGrantOutcome()) {
+      var grantedProceedings =
+          current.proceedings().stream()
+              .map(
+                  proceeding ->
+                      new MakeDecisionProceeding(
+                          proceeding.proceedingId(), "GRANTED", null, "Autogranted"))
+              .toList();
+      effectiveCommand =
+          new MakeApplicationDecisionCommand(
+              command.applicationId(),
+              state.applicationVersion,
+              "GRANTED",
+              true,
+              grantedProceedings,
+              command.certificate(),
+              command.serialisedRequest(),
+              "Autogranted",
+              command.occurredAt(),
+              true);
+    }
+    ApplicationDecisionMadeEvent event =
+        ApplicationDecider.decideDecision(state, effectiveCommand, current);
 
     var meritsDecisions =
         new HashMap<>(
             current.meritsDecisions() == null ? java.util.Map.of() : current.meritsDecisions());
-    command
+    effectiveCommand
         .proceedings()
         .forEach(
             proceeding ->
@@ -155,12 +180,14 @@ public class ApplicationAggregate {
     long nextVersion = state.applicationDataVersion + 1;
     var updated =
         current.withDecision(
-            command.overallDecision(),
-            AutoGrantedState.fromDecisionFlag(command.autoGranted()),
+            effectiveCommand.overallDecision(),
+            AutoGrantedState.fromDecisionFlag(effectiveCommand.autoGranted()),
             meritsDecisions,
-            "GRANTED".equals(command.overallDecision()) ? command.certificate() : null,
+            "GRANTED".equals(effectiveCommand.overallDecision())
+                ? effectiveCommand.certificate()
+                : null,
             command.serialisedRequest(),
-            command.eventDescription());
+            effectiveCommand.eventDescription());
     applicationDataStore.append(
         applicationId, nextVersion, updated, command.serialisedRequest(), command.occurredAt());
 

@@ -93,7 +93,8 @@ public final class ApplicationDecider {
       MakeApplicationDecisionCommand command,
       ApplicationDataPayload current) {
 
-    if (command.expectedApplicationVersion() != state.applicationVersion) {
+    if (!command.fromAutoGrantOutcome()
+        && command.expectedApplicationVersion() != state.applicationVersion) {
       throw new ApplicationVersionConflictException(
           command.applicationId(), command.expectedApplicationVersion());
     }
@@ -184,7 +185,8 @@ public final class ApplicationDecider {
     if (!"APPLICATION_SUBMITTED".equals(state.status)) {
       throw new InvalidApplicationStateException(command.applicationId(), state.status);
     }
-    if (command.expectedApplicationVersion() != state.applicationVersion) {
+    if (command.expectedApplicationVersion() != null
+        && command.expectedApplicationVersion() != state.applicationVersion) {
       throw new ApplicationVersionConflictException(
           command.applicationId(), command.expectedApplicationVersion());
     }

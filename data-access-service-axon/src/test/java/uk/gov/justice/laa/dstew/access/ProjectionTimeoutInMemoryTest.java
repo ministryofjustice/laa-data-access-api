@@ -138,7 +138,7 @@ class ProjectionTimeoutInMemoryTest {
             .getComponents(StreamingEventProcessor.class)
             .get("application-projection");
     processor.shutdown().join();
-    ManualOutcomeRequest readyRequest = new ManualOutcomeRequest(AutoGrantOutcome.MANUAL, 0L);
+    ManualOutcomeRequest readyRequest = new ManualOutcomeRequest(AutoGrantOutcome.MANUAL);
     HttpEntity<ManualOutcomeRequest> readyEntity = new HttpEntity<>(readyRequest, headers);
 
     ResponseEntity<Void> first =

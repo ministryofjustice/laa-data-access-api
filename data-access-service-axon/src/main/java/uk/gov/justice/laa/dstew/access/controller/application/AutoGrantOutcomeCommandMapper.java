@@ -1,13 +1,11 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
-import uk.gov.justice.laa.dstew.access.command.application.decision.MakeDecisionProceeding;
 import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcomeRequest;
@@ -28,19 +26,18 @@ public class AutoGrantOutcomeCommandMapper {
   public Object toCommand(UUID applicationId, AutoGrantOutcomeRequest request) {
     validateDiscriminator(request);
     if (request instanceof ManualOutcomeRequest manual) {
-      return new MarkApplicationReadyCommand(
-          applicationId, manual.getApplicationVersion(), serialise(request), Instant.now());
+      return new MarkApplicationReadyCommand(applicationId, serialise(request), Instant.now());
     }
     if (request instanceof AutoGrantedOutcomeRequest autogranted) {
       return new MakeApplicationDecisionCommand(
           applicationId,
-          autogranted.getApplicationVersion(),
+          0,
           "GRANTED",
           true,
-          proceedings(autogranted),
+          java.util.List.of(),
           autogranted.getCertificate(),
           serialise(request),
-          autogranted.getEventHistory().getEventDescription(),
+          "Autogranted",
           Instant.now(),
           true);
     }
@@ -56,18 +53,6 @@ public class AutoGrantOutcomeCommandMapper {
     if (!manual && !autogranted) {
       throw new IllegalArgumentException("Auto-grant outcome does not match its payload");
     }
-  }
-
-  private List<MakeDecisionProceeding> proceedings(AutoGrantedOutcomeRequest request) {
-    return request.getProceedings().stream()
-        .map(
-            proceeding ->
-                new MakeDecisionProceeding(
-                    proceeding.getProceedingId(),
-                    proceeding.getMeritsDecision().getDecision().name(),
-                    proceeding.getMeritsDecision().getReason(),
-                    proceeding.getMeritsDecision().getJustification()))
-        .toList();
   }
 
   private String serialise(AutoGrantOutcomeRequest request) {

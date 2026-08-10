@@ -358,7 +358,7 @@ class CreateApplicationInMemoryTest {
         .extracting(application -> application.getApplicationId())
         .doesNotContain(applicationId);
 
-    ManualOutcomeRequest request = new ManualOutcomeRequest(AutoGrantOutcome.MANUAL, 0L);
+    ManualOutcomeRequest request = new ManualOutcomeRequest(AutoGrantOutcome.MANUAL);
     ResponseEntity<Void> ready =
         restTemplate.exchange(
             "/api/v0/applications/" + applicationId + "/auto-grant-outcome",
@@ -428,15 +428,7 @@ class CreateApplicationInMemoryTest {
     UUID proceedingId = created.getProceedings().getFirst().getProceedingId();
     var request =
         new AutoGrantedOutcomeRequest(
-            AutoGrantOutcome.AUTOGRANTED,
-            0L,
-            AutoGrantedOutcomeRequest.OverallDecisionEnum.GRANTED,
-            List.of(
-                new MakeDecisionProceedingRequest(
-                    proceedingId,
-                    new MeritsDecisionDetailsRequest(MeritsDecisionStatus.GRANTED, "Autogranted"))),
-            new EventHistoryRequest().eventDescription("Automatic assessment passed"),
-            Map.of("certificateNumber", "AUTO-2126"));
+            AutoGrantOutcome.AUTOGRANTED, Map.of("certificateNumber", "AUTO-2126"));
 
     ResponseEntity<Void> response =
         restTemplate.exchange(
@@ -480,7 +472,7 @@ class CreateApplicationInMemoryTest {
   }
 
   @Test
-  void givenStaleVersion_whenMarkedReady_thenReturnsConflict() {
+  void givenVersionlessManualOutcome_whenMarkedReady_thenUsesCurrentApplication() {
     UUID applicationId = UUID.randomUUID();
     applicationId(
         restTemplate.postForEntity(
@@ -493,11 +485,10 @@ class CreateApplicationInMemoryTest {
         restTemplate.exchange(
             "/api/v0/applications/" + applicationId + "/auto-grant-outcome",
             HttpMethod.PATCH,
-            new HttpEntity<>(new ManualOutcomeRequest(AutoGrantOutcome.MANUAL, 9L), headers()),
+            new HttpEntity<>(new ManualOutcomeRequest(AutoGrantOutcome.MANUAL), headers()),
             String.class);
 
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-    assertThat(response.getBody()).contains("version 9 not found");
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
   }
 
   @Test
@@ -521,7 +512,7 @@ class CreateApplicationInMemoryTest {
         restTemplate.exchange(
             "/api/v0/applications/" + applicationId + "/auto-grant-outcome",
             HttpMethod.PATCH,
-            new HttpEntity<>(new ManualOutcomeRequest(AutoGrantOutcome.MANUAL, 0L), headers()),
+            new HttpEntity<>(new ManualOutcomeRequest(AutoGrantOutcome.MANUAL), headers()),
             String.class);
 
     assertThat(response.getStatusCode().value()).isEqualTo(422);
@@ -566,7 +557,7 @@ class CreateApplicationInMemoryTest {
         restTemplate.exchange(
             "/api/v0/applications/" + applicationId + "/auto-grant-outcome",
             HttpMethod.PATCH,
-            new HttpEntity<>(new ManualOutcomeRequest(AutoGrantOutcome.MANUAL, 1L), headers()),
+            new HttpEntity<>(new ManualOutcomeRequest(AutoGrantOutcome.MANUAL), headers()),
             String.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);

@@ -52,7 +52,7 @@ public class GetAllApplicationsResponseMapper {
         summaryReadModel.submittedAt() != null
             ? summaryReadModel.submittedAt().atOffset(ZoneOffset.UTC)
             : null);
-    app.setAutoGranted(toAutoGranted(summaryReadModel.isAutoGranted()));
+    app.setAutoGranted(AutoGrantedMapper.fromLegacyFlag(summaryReadModel.isAutoGranted()));
     app.setCategoryOfLaw(
         summaryReadModel.categoryOfLaw() != null
             ? CategoryOfLaw.valueOf(summaryReadModel.categoryOfLaw())
@@ -80,14 +80,6 @@ public class GetAllApplicationsResponseMapper {
             .map(this::toLinkedApplicationSummaryResponse)
             .toList());
     return app;
-  }
-
-  private uk.gov.justice.laa.dstew.access.model.AutoGranted toAutoGranted(Boolean value) {
-    return value == null
-        ? uk.gov.justice.laa.dstew.access.model.AutoGranted.PENDING
-        : value
-            ? uk.gov.justice.laa.dstew.access.model.AutoGranted.AUTOGRANTED
-            : uk.gov.justice.laa.dstew.access.model.AutoGranted.MANUAL;
   }
 
   private LinkedApplicationSummaryResponse toLinkedApplicationSummaryResponse(

@@ -106,8 +106,7 @@ class EventProcessorRecoveryInMemoryTest {
                 .exchange(
                     "/api/v0/applications/" + applicationId + "/auto-grant-outcome",
                     HttpMethod.PATCH,
-                    new HttpEntity<>(
-                        new ManualOutcomeRequest(AutoGrantOutcome.MANUAL, 0L), headers),
+                    new HttpEntity<>(new ManualOutcomeRequest(AutoGrantOutcome.MANUAL), headers),
                     Void.class)
                 .getStatusCode())
         .isEqualTo(HttpStatus.NO_CONTENT);

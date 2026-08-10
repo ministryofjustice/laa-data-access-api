@@ -551,15 +551,7 @@ class PostgresAxonIntegrationTest {
     UUID proceedingId = awaitProjection(applicationId).getProceedings().getFirst().proceedingId();
     var request =
         new AutoGrantedOutcomeRequest(
-            AutoGrantOutcome.AUTOGRANTED,
-            0L,
-            AutoGrantedOutcomeRequest.OverallDecisionEnum.GRANTED,
-            List.of(
-                new MakeDecisionProceedingRequest(
-                    proceedingId,
-                    new MeritsDecisionDetailsRequest(MeritsDecisionStatus.GRANTED, "Autogranted"))),
-            new EventHistoryRequest().eventDescription("Automatic assessment passed"),
-            Map.of("certificateNumber", "AUTO-2126"));
+            AutoGrantOutcome.AUTOGRANTED, Map.of("certificateNumber", "AUTO-2126"));
 
     ResponseEntity<Void> response =
         restTemplate.exchange(
@@ -592,7 +584,7 @@ class PostgresAxonIntegrationTest {
     UUID applicationId = UUID.randomUUID();
     applicationId(post(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()));
     awaitProjection(applicationId);
-    ManualOutcomeRequest request = new ManualOutcomeRequest(AutoGrantOutcome.MANUAL, 0L);
+    ManualOutcomeRequest request = new ManualOutcomeRequest(AutoGrantOutcome.MANUAL);
 
     ResponseEntity<Void> response =
         restTemplate.exchange(
@@ -1321,7 +1313,7 @@ class PostgresAxonIntegrationTest {
     UUID applicationId = UUID.randomUUID();
     applicationId(post(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()));
     awaitProjection(applicationId);
-    ManualOutcomeRequest request = new ManualOutcomeRequest(AutoGrantOutcome.MANUAL, 0L);
+    ManualOutcomeRequest request = new ManualOutcomeRequest(AutoGrantOutcome.MANUAL);
     HttpEntity<ManualOutcomeRequest> entity = new HttpEntity<>(request, headers());
     String url =
         "http://localhost:"

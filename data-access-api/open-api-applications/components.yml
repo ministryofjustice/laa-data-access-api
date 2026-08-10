@@ -331,44 +331,19 @@ components:
       additionalProperties: false
       required:
         - outcome
-        - applicationVersion
       properties:
         outcome:
           $ref: "#/components/schemas/AutoGrantOutcome"
-        applicationVersion:
-          type: integer
-          format: int64
-          minimum: 0
-          description: Current Application version, used for optimistic concurrency control
 
     AutoGrantedOutcomeRequest:
       type: object
       additionalProperties: false
       required:
         - outcome
-        - applicationVersion
-        - overallDecision
-        - proceedings
-        - eventHistory
         - certificate
       properties:
         outcome:
           $ref: "#/components/schemas/AutoGrantOutcome"
-        applicationVersion:
-          type: integer
-          format: int64
-          minimum: 0
-          description: Current Application version, used for optimistic concurrency control
-        overallDecision:
-          type: string
-          enum: [GRANTED]
-        proceedings:
-          type: array
-          minItems: 1
-          items:
-            $ref: "#/components/schemas/MakeDecisionProceedingRequest"
-        eventHistory:
-          $ref: "../open-api-common/components.yml#/components/schemas/EventHistoryRequest"
         certificate:
           type: object
           minProperties: 1

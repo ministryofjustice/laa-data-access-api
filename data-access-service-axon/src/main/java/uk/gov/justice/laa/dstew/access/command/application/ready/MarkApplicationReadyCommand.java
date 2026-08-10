@@ -9,6 +9,13 @@ import org.axonframework.modelling.annotation.TargetEntityId;
 @Command(routingKey = "applicationId")
 public record MarkApplicationReadyCommand(
     @TargetEntityId UUID applicationId,
-    long expectedApplicationVersion,
+    Long expectedApplicationVersion,
     String serialisedRequest,
-    Instant occurredAt) {}
+    Instant occurredAt) {
+
+  /** Creates a version-independent command for the auto-grant outcome endpoint. */
+  public MarkApplicationReadyCommand(
+      UUID applicationId, String serialisedRequest, Instant occurredAt) {
+    this(applicationId, null, serialisedRequest, occurredAt);
+  }
+}

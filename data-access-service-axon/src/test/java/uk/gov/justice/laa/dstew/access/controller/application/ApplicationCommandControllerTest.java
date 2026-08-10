@@ -58,7 +58,7 @@ class ApplicationCommandControllerTest {
   @Test
   void givenReadinessRecorded_whenMarkApplicationReady_thenReturnsNoContent() {
     UUID applicationId = UUID.randomUUID();
-    ManualOutcomeRequest request = new ManualOutcomeRequest(AutoGrantOutcome.MANUAL, 2L);
+    ManualOutcomeRequest request = new ManualOutcomeRequest(AutoGrantOutcome.MANUAL);
     MarkApplicationReadyCommand command =
         new MarkApplicationReadyCommand(applicationId, 2L, "{}", Instant.now());
     when(autoGrantOutcomeCommandMapper.toCommand(applicationId, request)).thenReturn(command);
@@ -73,7 +73,7 @@ class ApplicationCommandControllerTest {
   @Test
   void givenReadinessAlreadyRecorded_whenMarkApplicationReady_thenReturnsOk() {
     UUID applicationId = UUID.randomUUID();
-    ManualOutcomeRequest request = new ManualOutcomeRequest(AutoGrantOutcome.MANUAL, 2L);
+    ManualOutcomeRequest request = new ManualOutcomeRequest(AutoGrantOutcome.MANUAL);
     MarkApplicationReadyCommand command =
         new MarkApplicationReadyCommand(applicationId, 2L, "{}", Instant.now());
     when(autoGrantOutcomeCommandMapper.toCommand(applicationId, request)).thenReturn(command);
