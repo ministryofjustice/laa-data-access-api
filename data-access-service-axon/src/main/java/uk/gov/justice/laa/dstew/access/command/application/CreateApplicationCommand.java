@@ -1,6 +1,5 @@
 package uk.gov.justice.laa.dstew.access.command.application;
 
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.axonframework.messaging.commandhandling.annotation.Command;
@@ -17,7 +16,6 @@ public record CreateApplicationCommand(
     String status,
     String laaReference,
     Map<String, Object> applicationContent,
-    List<CreateApplicationIndividual> individuals,
     String serialisedRequest,
     int schemaVersion,
     String schemaName) {

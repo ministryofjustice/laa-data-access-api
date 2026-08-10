@@ -8,7 +8,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.util.List;
+import java.sql.SQLException;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -163,7 +163,6 @@ class ApplicationCommandControllerTest {
         "APPLICATION_SUBMITTED",
         "LAA-123",
         Map.of("id", id.toString()),
-        List.of(),
         "{}",
         1,
         "ApplyApplication.json");

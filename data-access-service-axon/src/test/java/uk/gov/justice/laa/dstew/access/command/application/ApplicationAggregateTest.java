@@ -625,7 +625,6 @@ class ApplicationAggregateTest {
         "APPLICATION_SUBMITTED",
         "LAA-123",
         validApplicationContent(applicationId, proceedingIdFor(applicationId)),
-        List.of(),
         serialisedRequest,
         schemaVersion,
         "ApplyApplication.json");

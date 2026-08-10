@@ -21,7 +21,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.config.ServiceNameContext;
 import uk.gov.justice.laa.dstew.access.domain.ApplicationDomain;
-import uk.gov.justice.laa.dstew.access.domain.IndividualDomain;
 import uk.gov.justice.laa.dstew.access.entity.DomainEventEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.mapper.MapperUtil;
@@ -410,18 +409,7 @@ class CreateApplicationUseCaseTest {
     assertThat(captured.matterType()).isEqualTo("SPECIAL_CHILDREN_ACT");
     assertThat(captured.usedDelegatedFunctions()).isTrue();
     assertThat(captured.proceedings()).hasSize(1);
-
-    // Individual field values — not just size
-    assertThat(captured.individuals()).hasSize(command.individuals().size());
-    IndividualDomain mappedIndividual = captured.individuals().iterator().next();
-    IndividualCommand sourceIndividual = command.individuals().get(0);
-    assertThat(mappedIndividual.firstName()).isEqualTo(sourceIndividual.firstName());
-    assertThat(mappedIndividual.lastName()).isEqualTo(sourceIndividual.lastName());
-    assertThat(mappedIndividual.dateOfBirth()).isEqualTo(sourceIndividual.dateOfBirth());
-    assertThat(mappedIndividual.individualContent())
-        .isEqualTo(sourceIndividual.individualContent());
-    assertThat(mappedIndividual.type()).isEqualTo(sourceIndividual.type());
-    assertThat(mappedIndividual.id()).isNull(); // no id before persistence
+    assertThat(captured.individuals()).isEmpty();
   }
 
   /**

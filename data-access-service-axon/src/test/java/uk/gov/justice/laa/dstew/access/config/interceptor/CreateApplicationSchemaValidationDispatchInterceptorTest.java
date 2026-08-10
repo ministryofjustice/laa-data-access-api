@@ -8,7 +8,6 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validApplicationContent;
 
-import java.util.List;
 import java.util.UUID;
 import org.axonframework.messaging.commandhandling.CommandMessage;
 import org.axonframework.messaging.commandhandling.GenericCommandMessage;
@@ -67,7 +66,6 @@ class CreateApplicationSchemaValidationDispatchInterceptorTest {
         "APPLICATION_SUBMITTED",
         "LAA-123",
         validApplicationContent(id, UUID.randomUUID()),
-        List.of(),
         "{}",
         1,
         schemaName);

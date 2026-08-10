@@ -52,7 +52,6 @@ import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.CreateNoteRequest;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
-import uk.gov.justice.laa.dstew.access.model.IndividualCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.InvolvedChildResponse;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceedingRequest;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
@@ -283,18 +282,7 @@ class PostgresAxonIntegrationTest {
     assertThat(projected.getApplicationContent().getId()).isEqualTo(applyApplicationId);
     assertThat(projected.getApplicationContent().getProvider()).isNotNull();
     assertThat(projected.getApplicationContent().getProvider().getOfficeCode()).isEqualTo("1A001B");
-    assertThat(projected.getIndividuals())
-        .singleElement()
-        .satisfies(
-            individual -> {
-              assertThat(individual.individualId()).isNotNull();
-              assertThat(individual.firstName()).isEqualTo("Ada");
-              assertThat(individual.lastName()).isEqualTo("Lovelace");
-              assertThat(individual.dateOfBirth()).isEqualTo(LocalDate.parse("1815-12-10"));
-              assertThat(individual.individualContent())
-                  .containsExactlyEntriesOf(Map.of("preferredName", "Ada"));
-              assertThat(individual.type()).isEqualTo("CLIENT");
-            });
+    assertThat(projected.getIndividuals()).isEmpty();
     assertThat(projected.getProceedings())
         .singleElement()
         .satisfies(
@@ -985,18 +973,6 @@ class PostgresAxonIntegrationTest {
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     assertThat(response.getBody()).contains("substantiveCostLimitation");
-  }
-
-  @Test
-  void givenBeanInvalidRequest_whenPostApplication_thenReturnsBadRequest() {
-    ApplicationCreateRequest request =
-        validCreateApplicationRequest(UUID.randomUUID(), UUID.randomUUID());
-    IndividualCreateRequest invalidIndividual = request.getIndividuals().getFirst();
-    invalidIndividual.setType(null);
-
-    ResponseEntity<String> response = post(request, headers(), String.class);
-
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
   }
 
   @Test

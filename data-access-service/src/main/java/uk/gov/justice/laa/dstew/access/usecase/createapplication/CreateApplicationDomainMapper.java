@@ -7,7 +7,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import uk.gov.justice.laa.dstew.access.domain.ApplicationDomain;
-import uk.gov.justice.laa.dstew.access.domain.IndividualDomain;
 import uk.gov.justice.laa.dstew.access.domain.ProceedingDomain;
 import uk.gov.justice.laa.dstew.access.mapper.MapperUtil;
 import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ParsedAppContentDetails;
@@ -33,7 +32,7 @@ public class CreateApplicationDomainMapper {
         .status(command.status())
         .laaReference(command.laaReference())
         .applicationContent(command.applicationContent())
-        .individuals(toIndividualDomains(command.individuals()))
+        .individuals(Set.of())
         .schemaVersion(APPLICATION_SCHEMA_VERSION)
         .applyApplicationId(parsedDetails.applyApplicationId())
         .usedDelegatedFunctions(parsedDetails.usedDelegatedFunctions())
@@ -43,35 +42,6 @@ public class CreateApplicationDomainMapper {
         .submittedAt(parsedDetails.submittedAt())
         .officeCode(parsedDetails.officeCode())
         .proceedings(toProceedingDomains(parsedDetails.proceedings()))
-        .build();
-  }
-
-  /**
-   * Converts a list of {@link IndividualCommand} records into a set of {@link IndividualDomain}.
-   *
-   * @param individuals the list of individual individuals
-   * @return a set of individual domain records
-   */
-  public Set<IndividualDomain> toIndividualDomains(List<IndividualCommand> individuals) {
-    if (individuals == null) {
-      return Set.of();
-    }
-    return individuals.stream().map(this::toIndividualDomain).collect(Collectors.toSet());
-  }
-
-  /**
-   * Converts a single {@link IndividualCommand} to an {@link IndividualDomain}.
-   *
-   * @param individual the individual individual
-   * @return the individual domain record
-   */
-  public IndividualDomain toIndividualDomain(IndividualCommand individual) {
-    return IndividualDomain.builder()
-        .firstName(individual.firstName())
-        .lastName(individual.lastName())
-        .dateOfBirth(individual.dateOfBirth())
-        .individualContent(individual.individualContent())
-        .type(individual.type())
         .build();
   }
 

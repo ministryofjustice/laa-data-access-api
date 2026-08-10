@@ -7,7 +7,6 @@ import io.swagger.v3.oas.models.media.Content;
 import io.swagger.v3.oas.models.media.MediaType;
 import io.swagger.v3.oas.models.media.Schema;
 import io.swagger.v3.oas.models.parameters.RequestBody;
-import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,8 +17,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.method.HandlerMethod;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
-import uk.gov.justice.laa.dstew.access.model.IndividualCreateRequest;
-import uk.gov.justice.laa.dstew.access.model.IndividualType;
 
 /**
  * Generates named Swagger UI examples for the {@code createApplication} operation directly from the
@@ -117,20 +114,10 @@ public class CreateApplicationExamplesCustomizer implements OperationCustomizer 
    * v1) without any per-file branching.
    */
   private ApplicationCreateRequest buildRequestWrapper(Map<String, Object> applicationContent) {
-    IndividualCreateRequest individual =
-        IndividualCreateRequest.builder()
-            .firstName("Jane")
-            .lastName("Smith")
-            .dateOfBirth(LocalDate.of(1990, 1, 15))
-            .type(IndividualType.CLIENT)
-            .details(Map.of("niNumber", "AB123456C"))
-            .build();
-
     return ApplicationCreateRequest.builder()
         .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
         .laaReference("LAA-000-001")
         .applicationContent(applicationContent)
-        .individuals(List.of(individual))
         .build();
   }
 

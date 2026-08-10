@@ -32,7 +32,6 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
-import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.model.IndividualsResponse;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadRepository;
@@ -152,7 +151,7 @@ class CreateApplicationInMemoryTest {
   }
 
   @Test
-  void givenCreatedApplication_whenGetIndividualsForApplication_thenReturnsCurrentIndividual() {
+  void givenCreatedApplication_whenGetIndividualsForApplication_thenReturnsEmptyIndividuals() {
     UUID applicationId = UUID.randomUUID();
     applicationId(
         restTemplate.postForEntity(
@@ -171,19 +170,11 @@ class CreateApplicationInMemoryTest {
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(response.getBody()).isNotNull();
-    assertThat(response.getBody().getIndividuals())
-        .singleElement()
-        .satisfies(
-            individual -> {
-              assertThat(individual.getFirstName()).isEqualTo("Ada");
-              assertThat(individual.getLastName()).isEqualTo("Lovelace");
-              assertThat(individual.getType()).isEqualTo(IndividualType.CLIENT);
-              assertThat(individual.getClientId()).isNull();
-            });
+    assertThat(response.getBody().getIndividuals()).isEmpty();
     assertThat(response.getBody().getPaging().getPage()).isEqualTo(1);
     assertThat(response.getBody().getPaging().getPageSize()).isEqualTo(20);
-    assertThat(response.getBody().getPaging().getTotalRecords()).isEqualTo(1);
-    assertThat(response.getBody().getPaging().getItemsReturned()).isEqualTo(1);
+    assertThat(response.getBody().getPaging().getTotalRecords()).isZero();
+    assertThat(response.getBody().getPaging().getItemsReturned()).isZero();
   }
 
   @Test
@@ -231,14 +222,7 @@ class CreateApplicationInMemoryTest {
     assertThat(projected.getLaaReference()).isEqualTo("LAA-123");
     assertThat(projected.getOfficeCode()).isEqualTo("1A001B");
     assertThat(projected.getSchemaVersion()).isEqualTo(1);
-    assertThat(projected.getIndividuals())
-        .singleElement()
-        .satisfies(
-            individual -> {
-              assertThat(individual.firstName()).isEqualTo("Ada");
-              assertThat(individual.lastName()).isEqualTo("Lovelace");
-              assertThat(individual.type()).isEqualTo(IndividualType.CLIENT.name());
-            });
+    assertThat(projected.getIndividuals()).isEmpty();
     assertThat(projected.getProceedings())
         .singleElement()
         .satisfies(
@@ -264,7 +248,7 @@ class CreateApplicationInMemoryTest {
         .hasValueSatisfying(
             data -> {
               assertThat(data.getPayload().laaReference()).isEqualTo("LAA-123");
-              assertThat(data.getPayload().individuals()).singleElement();
+              assertThat(data.getPayload().individuals()).isEmpty();
               assertThat(data.getPayloadHash()).hasSize(64);
             });
 
@@ -566,8 +550,8 @@ class CreateApplicationInMemoryTest {
               assertThat(summary.getApplicationId()).isEqualTo(applicationId);
               assertThat(summary.getLaaReference()).isEqualTo("LAA-123");
               assertThat(summary.getIsLead()).isTrue();
-              assertThat(summary.getClientFirstName()).isEqualTo("Ada");
-              assertThat(summary.getClientLastName()).isEqualTo("Lovelace");
+              assertThat(summary.getClientFirstName()).isNull();
+              assertThat(summary.getClientLastName()).isNull();
             });
   }
 

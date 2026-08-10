@@ -61,7 +61,7 @@ public class ApplicationCreationDetailsFactory {
         command.status(),
         command.laaReference(),
         parsed.applicationContent(),
-        toIndividuals(command.individuals()),
+        List.of(),
         command.schemaVersion(),
         parsed.applyApplicationId(),
         parsed.submittedAt(),
@@ -73,20 +73,6 @@ public class ApplicationCreationDetailsFactory {
         command.serialisedRequest(),
         Instant.now(clock),
         leadApplicationId);
-  }
-
-  private List<ApplicationIndividual> toIndividuals(List<CreateApplicationIndividual> individuals) {
-    return individuals.stream()
-        .map(
-            individual ->
-                new ApplicationIndividual(
-                    UUID.randomUUID(),
-                    individual.firstName(),
-                    individual.lastName(),
-                    individual.dateOfBirth(),
-                    individual.individualContent(),
-                    individual.type()))
-        .toList();
   }
 
   private List<ApplicationProceeding> toProceedings(List<Proceeding> proceedings) {

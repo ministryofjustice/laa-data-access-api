@@ -9,7 +9,6 @@ import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.domain.ApplicationDomain;
-import uk.gov.justice.laa.dstew.access.domain.IndividualDomain;
 import uk.gov.justice.laa.dstew.access.domain.ProceedingDomain;
 import uk.gov.justice.laa.dstew.access.domain.enums.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.domain.enums.MatterType;
@@ -17,7 +16,6 @@ import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ParsedAppContentDet
 import uk.gov.justice.laa.dstew.access.usecase.shared.parser.Proceeding;
 import uk.gov.justice.laa.dstew.access.utils.generator.DataGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.createapplication.CreateApplicationCommandGenerator;
-import uk.gov.justice.laa.dstew.access.utils.generator.createapplication.IndividualCommandGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingGenerator;
 
 class CreateApplicationDomainMapperTest {
@@ -59,7 +57,7 @@ class CreateApplicationDomainMapperTest {
     assertThat(domain.submittedAt()).isEqualTo(submittedAt);
     assertThat(domain.officeCode()).isEqualTo("OFFICE001");
     assertThat(domain.usedDelegatedFunctions()).isTrue();
-    assertThat(domain.individuals()).hasSize(command.individuals().size());
+    assertThat(domain.individuals()).isEmpty();
     assertThat(domain.proceedings()).hasSize(1);
   }
 
@@ -113,59 +111,6 @@ class CreateApplicationDomainMapperTest {
     ApplicationDomain domain = mapper.toApplicationDomain(command, parsed);
 
     assertThat(domain.proceedings()).isEmpty();
-  }
-
-  @Test
-  void givenNullIndividuals_whenToApplicationDomain_thenIndividualsIsEmpty() {
-    CreateApplicationCommand command =
-        DataGenerator.createDefault(
-            CreateApplicationCommandGenerator.class, b -> b.individuals(null));
-    ParsedAppContentDetails parsed =
-        ParsedAppContentDetails.builder()
-            .applyApplicationId(UUID.randomUUID())
-            .submittedAt(Instant.now())
-            .proceedings(List.of(DataGenerator.createDefault(ProceedingGenerator.class)))
-            .build();
-
-    ApplicationDomain domain = mapper.toApplicationDomain(command, parsed);
-
-    assertThat(domain.individuals()).isEmpty();
-  }
-
-  // --- toIndividualDomains ---
-
-  @Test
-  void givenNullIndividualCommands_whenToIndividualDomains_thenReturnsEmptySet() {
-    Set<IndividualDomain> result = mapper.toIndividualDomains(null);
-
-    assertThat(result).isEmpty();
-  }
-
-  @Test
-  void givenIndividualCommands_whenToIndividualDomains_thenReturnsMappedSet() {
-    IndividualCommand command1 = DataGenerator.createDefault(IndividualCommandGenerator.class);
-    IndividualCommand command2 =
-        DataGenerator.createDefault(
-            IndividualCommandGenerator.class, b -> b.firstName("Jane").lastName("Smith"));
-
-    Set<IndividualDomain> result = mapper.toIndividualDomains(List.of(command1, command2));
-
-    assertThat(result).hasSize(2);
-  }
-
-  // --- toIndividualDomain ---
-
-  @Test
-  void givenIndividualCommand_whenToIndividualDomain_thenMapsAllFieldsCorrectly() {
-    IndividualCommand command = DataGenerator.createDefault(IndividualCommandGenerator.class);
-
-    IndividualDomain domain = mapper.toIndividualDomain(command);
-
-    assertThat(domain.firstName()).isEqualTo(command.firstName());
-    assertThat(domain.lastName()).isEqualTo(command.lastName());
-    assertThat(domain.dateOfBirth()).isEqualTo(command.dateOfBirth());
-    assertThat(domain.individualContent()).isEqualTo(command.individualContent());
-    assertThat(domain.type()).isEqualTo(command.type());
   }
 
   // --- toProceedingDomains ---

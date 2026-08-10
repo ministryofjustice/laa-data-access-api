@@ -7,7 +7,6 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -48,17 +47,15 @@ class ApplicationCreationDetailsFactoryTest {
   }
 
   @Test
-  void givenIndividuals_whenPrepared_thenGeneratesIndividualIds() {
+  void givenCommand_whenPrepared_thenIndividualsAreEmpty() {
     UUID applicationId = UUID.randomUUID();
-    CreateApplicationCommand command = commandWithIndividuals(applicationId);
+    CreateApplicationCommand command = command(applicationId);
     Mockito.when(applicationContentParser.parse(command.applicationContent()))
         .thenReturn(parsedDetails(UUID.randomUUID()));
 
     ApplicationCreationDetails details = factory.prepare(command);
 
-    assertThat(details.individuals()).hasSize(1);
-    assertThat(details.individuals().getFirst().individualId()).isNotNull();
-    assertThat(details.individuals().getFirst().firstName()).isEqualTo("Ada");
+    assertThat(details.individuals()).isEmpty();
   }
 
   @Test
@@ -155,21 +152,6 @@ class ApplicationCreationDetailsFactoryTest {
         "APPLICATION_SUBMITTED",
         "LAA-123",
         validApplicationContent(applicationId, proceedingIdFor(applicationId)),
-        List.of(),
-        "{}",
-        1,
-        "ApplyApplication.json");
-  }
-
-  private CreateApplicationCommand commandWithIndividuals(UUID applicationId) {
-    return new CreateApplicationCommand(
-        applicationId,
-        "APPLICATION_SUBMITTED",
-        "LAA-123",
-        validApplicationContent(applicationId, proceedingIdFor(applicationId)),
-        List.of(
-            new CreateApplicationIndividual(
-                "Ada", "Lovelace", java.time.LocalDate.of(1815, 12, 10), Map.of(), "CLIENT")),
         "{}",
         1,
         "ApplyApplication.json");

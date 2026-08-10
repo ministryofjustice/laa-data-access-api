@@ -75,7 +75,7 @@ class CreateApplicationExamplesCustomizerTest {
 
     @SuppressWarnings("unchecked")
     Map<String, Object> value = (Map<String, Object>) example.getValue();
-    assertThat(value).containsKeys("status", "applicationContent", "laaReference", "individuals");
+    assertThat(value).containsKeys("status", "applicationContent", "laaReference");
 
     @SuppressWarnings("unchecked")
     Map<String, Object> content = (Map<String, Object>) value.get("applicationContent");

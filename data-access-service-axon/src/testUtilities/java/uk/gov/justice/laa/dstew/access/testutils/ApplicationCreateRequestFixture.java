@@ -1,14 +1,11 @@
 package uk.gov.justice.laa.dstew.access.testutils;
 
-import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
-import uk.gov.justice.laa.dstew.access.model.IndividualCreateRequest;
-import uk.gov.justice.laa.dstew.access.model.IndividualType;
 
 /** Builds valid API requests shared by fast and Postgres integration tests. */
 public final class ApplicationCreateRequestFixture {
@@ -62,20 +59,10 @@ public final class ApplicationCreateRequestFixture {
   /** Creates a valid request using the supplied Apply identifiers. */
   public static ApplicationCreateRequest validCreateApplicationRequest(
       UUID applyApplicationId, UUID applyProceedingId) {
-    IndividualCreateRequest individual =
-        IndividualCreateRequest.builder()
-            .firstName("Ada")
-            .lastName("Lovelace")
-            .dateOfBirth(LocalDate.of(1815, 12, 10))
-            .details(Map.of("preferredName", "Ada"))
-            .type(IndividualType.CLIENT)
-            .build();
-
     return ApplicationCreateRequest.builder()
         .status(ApplicationStatus.APPLICATION_SUBMITTED)
         .applicationContent(validApplicationContent(applyApplicationId, applyProceedingId))
         .laaReference("LAA-123")
-        .individuals(List.of(individual))
         .build();
   }
 
@@ -111,7 +98,6 @@ public final class ApplicationCreateRequestFixture {
         .status(request.getStatus())
         .applicationContent(content)
         .laaReference(request.getLaaReference())
-        .individuals(request.getIndividuals())
         .build();
   }
 

@@ -46,7 +46,6 @@ import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationCo
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationCreateRequestGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationOfficeGenerator;
-import uk.gov.justice.laa.dstew.access.utils.generator.individual.ApplicationCreateRequestIndividualGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingGenerator;
 import uk.gov.justice.laa.dstew.access.utils.harness.BaseHarnessTest;
 import uk.gov.justice.laa.dstew.access.utils.harness.HarnessResult;
@@ -531,7 +530,6 @@ public class CreateApplicationTest extends BaseHarnessTest {
                 Map.of(
                     "applicationContent", "must not be null",
                     "laaReference", "must not be null",
-                    "individuals", "must not be null",
                     "status", "must not be null"))));
   }
 
@@ -646,98 +644,7 @@ public class CreateApplicationTest extends BaseHarnessTest {
                 ApplicationCreateRequestGenerator.class,
                 builder -> builder.applicationContent(new HashMap<>())),
             problemDetail,
-            Map.of("invalidFields", Map.of("applicationContent", minimumSizErrorMessage))),
-        Arguments.of(
-            DataGenerator.createDefault(
-                ApplicationCreateRequestGenerator.class, builder -> builder.individuals(null)),
-            problemDetail,
-            Map.of("invalidFields", Map.of("individuals", mustNotBeNull))),
-        Arguments.of(
-            DataGenerator.createDefault(
-                ApplicationCreateRequestGenerator.class, builder -> builder.individuals(List.of())),
-            problemDetail,
-            Map.of("invalidFields", Map.of("individuals", minimumSizErrorMessage))),
-        Arguments.of(
-            DataGenerator.createDefault(
-                ApplicationCreateRequestGenerator.class,
-                builder ->
-                    builder.individuals(
-                        List.of(
-                            DataGenerator.createDefault(
-                                ApplicationCreateRequestIndividualGenerator.class,
-                                indBuilder -> indBuilder.dateOfBirth(null))))),
-            problemDetail,
-            Map.of("invalidFields", Map.of("individuals[0].dateOfBirth", mustNotBeNull))),
-        Arguments.of(
-            DataGenerator.createDefault(
-                ApplicationCreateRequestGenerator.class,
-                builder ->
-                    builder.individuals(
-                        List.of(
-                            DataGenerator.createDefault(
-                                ApplicationCreateRequestIndividualGenerator.class,
-                                indBuilder -> indBuilder.details(null))))),
-            problemDetail,
-            Map.of("invalidFields", Map.of("individuals[0].details", mustNotBeNull))),
-        Arguments.of(
-            DataGenerator.createDefault(
-                ApplicationCreateRequestGenerator.class,
-                builder ->
-                    builder.individuals(
-                        List.of(
-                            DataGenerator.createDefault(
-                                ApplicationCreateRequestIndividualGenerator.class,
-                                indBuilder -> indBuilder.details(new HashMap<>()))))),
-            problemDetail,
-            Map.of("invalidFields", Map.of("individuals[0].details", minimumSizErrorMessage))),
-        Arguments.of(
-            DataGenerator.createDefault(
-                ApplicationCreateRequestGenerator.class,
-                builder ->
-                    builder.individuals(
-                        List.of(
-                            DataGenerator.createDefault(
-                                ApplicationCreateRequestIndividualGenerator.class,
-                                indBuilder ->
-                                    indBuilder
-                                        .dateOfBirth(null)
-                                        .firstName("")
-                                        .lastName("")
-                                        .type(null)
-                                        .details(new HashMap<>()))))),
-            problemDetail,
-            Map.of(
-                "invalidFields",
-                Map.of(
-                    "individuals[0].details", minimumSizErrorMessage,
-                    "individuals[0].type", mustNotBeNull,
-                    "individuals[0].dateOfBirth", mustNotBeNull))),
-        Arguments.of(
-            DataGenerator.createDefault(
-                ApplicationCreateRequestGenerator.class,
-                builder ->
-                    builder.individuals(
-                        List.of(
-                            DataGenerator.createDefault(
-                                ApplicationCreateRequestIndividualGenerator.class,
-                                indBuilder ->
-                                    indBuilder
-                                        .dateOfBirth(null)
-                                        .firstName(null)
-                                        .lastName(null)
-                                        .details(null))))),
-            problemDetail,
-            Map.of(
-                "invalidFields",
-                Map.of(
-                    "individuals[0].details",
-                    mustNotBeNull,
-                    "individuals[0].lastName",
-                    mustNotBeNull,
-                    "individuals[0].firstName",
-                    mustNotBeNull,
-                    "individuals[0].dateOfBirth",
-                    mustNotBeNull))));
+            Map.of("invalidFields", Map.of("applicationContent", minimumSizErrorMessage))));
   }
 
   private void assertApplicationEqual(ApplicationCreateRequest expected, ApplicationEntity actual)
