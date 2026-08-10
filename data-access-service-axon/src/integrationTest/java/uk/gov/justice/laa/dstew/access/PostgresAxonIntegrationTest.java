@@ -1123,6 +1123,38 @@ class PostgresAxonIntegrationTest {
         .isEqualTo(2);
   }
 
+  @Test
+  void givenSeededCaseworkers_whenGetCaseworkers_thenReturnsAllCaseworkers() {
+    UUID firstId = UUID.randomUUID();
+    UUID secondId = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO axon.caseworkers (id, username) VALUES (?, ?)", firstId, "alice@example.com");
+    jdbcTemplate.update(
+        "INSERT INTO axon.caseworkers (id, username) VALUES (?, ?)", secondId, "bob@example.com");
+
+    HttpHeaders headers = new HttpHeaders();
+    headers.set("X-Service-Name", "CIVIL_APPLY");
+    ResponseEntity<List<Map<String, Object>>> response =
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/caseworkers",
+            HttpMethod.GET,
+            new HttpEntity<>(headers),
+            new ParameterizedTypeReference<>() {});
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(response.getBody())
+        .extracting(item -> item.get("username"))
+        .contains("alice@example.com", "bob@example.com");
+  }
+
+  @Test
+  void givenMissingServiceNameHeader_whenGetCaseworkers_thenReturnsBadRequest() {
+    ResponseEntity<String> response =
+        restTemplate.getForEntity("http://localhost:" + port + "/api/v0/caseworkers", String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+  }
+
   private CompletableFuture<ResponseEntity<Void>> concurrentPatch(
       ExecutorService executor,
       CyclicBarrier barrier,
