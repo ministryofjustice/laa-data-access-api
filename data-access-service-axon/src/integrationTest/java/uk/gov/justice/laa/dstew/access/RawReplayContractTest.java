@@ -32,6 +32,7 @@ import uk.gov.justice.laa.dstew.access.command.application.assignment.Applicatio
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupRequested;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
+import uk.gov.justice.laa.dstew.access.replay.RawEventReplayer;
 
 /**
  * Contract test: verifies that events stored in {@code domain_event_entry} can be deserialised with
@@ -94,40 +95,44 @@ class RawReplayContractTest {
   /** Replays events from the supplied JDBC rows into an {@link ApplicationState}. */
   private ApplicationState replayWithoutAxon(List<Map<String, Object>> rows) throws Exception {
     ApplicationState state = new ApplicationState();
-    for (Map<String, Object> row : rows) {
-      String payloadType = (String) row.get("payload_type");
-      byte[] payload = (byte[]) row.get("payload");
-      dispatchEvent(state, payloadType, payload);
-    }
+    RawEventReplayer.replay(
+        rows,
+        state,
+        Map.of(
+            "uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent",
+                (s, payload) ->
+                    ApplicationEvolve.apply(
+                        s, objectMapper.readValue(payload, ApplicationCreatedEvent.class)),
+            "uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent",
+                (s, payload) ->
+                    ApplicationEvolve.apply(
+                        s, objectMapper.readValue(payload, ApplicationDecisionMadeEvent.class)),
+            "uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent",
+                (s, payload) ->
+                    ApplicationEvolve.apply(
+                        s,
+                        objectMapper.readValue(
+                            payload, ApplicationAssignedToCaseworkerEvent.class)),
+            "uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent",
+                (s, payload) ->
+                    ApplicationEvolve.apply(
+                        s,
+                        objectMapper.readValue(
+                            payload, ApplicationUnassignedFromCaseworkerEvent.class)),
+            "uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent",
+                (s, payload) ->
+                    ApplicationEvolve.apply(
+                        s, objectMapper.readValue(payload, NoteCreatedEvent.class)),
+            "uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent",
+                (s, payload) ->
+                    ApplicationEvolve.apply(
+                        s, objectMapper.readValue(payload, ApplicationLinkedEvent.class)),
+            "uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupRequested",
+                (s, payload) ->
+                    ApplicationEvolve.apply(
+                        s,
+                        objectMapper.readValue(payload, LinkedApplicationGroupRequested.class))));
     return state;
-  }
-
-  private void dispatchEvent(ApplicationState state, String payloadType, byte[] payload)
-      throws Exception {
-    switch (payloadType) {
-      case "uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent" ->
-          ApplicationEvolve.apply(
-              state, objectMapper.readValue(payload, ApplicationCreatedEvent.class));
-      case "uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent" ->
-          ApplicationEvolve.apply(
-              state, objectMapper.readValue(payload, ApplicationDecisionMadeEvent.class));
-      case "uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent" ->
-          ApplicationEvolve.apply(
-              state, objectMapper.readValue(payload, ApplicationAssignedToCaseworkerEvent.class));
-      case "uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent" ->
-          ApplicationEvolve.apply(
-              state,
-              objectMapper.readValue(payload, ApplicationUnassignedFromCaseworkerEvent.class));
-      case "uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent" ->
-          ApplicationEvolve.apply(state, objectMapper.readValue(payload, NoteCreatedEvent.class));
-      case "uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent" ->
-          ApplicationEvolve.apply(
-              state, objectMapper.readValue(payload, ApplicationLinkedEvent.class));
-      case "uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupRequested" ->
-          ApplicationEvolve.apply(
-              state, objectMapper.readValue(payload, LinkedApplicationGroupRequested.class));
-      default -> throw new IllegalArgumentException("Unknown event type: " + payloadType);
-    }
   }
 
   private HttpHeaders headers() {
