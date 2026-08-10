@@ -177,20 +177,9 @@ public class ApplicationProjection {
   /** Creates the current-state row from an Application's creation event. */
   @EventHandler
   public void on(ApplicationCreatedEvent event, QueryUpdateEmitter queryUpdateEmitter) {
-    ApplicationReadModel saved =
-        applicationReadRepository.save(
-            ApplicationReadModel.builder()
-                .applicationId(event.applicationId())
-                .status(event.status())
-                .applicationDataVersion(event.applicationDataVersion())
-                .applicationVersion(0L)
-                .schemaVersion(event.schemaVersion())
-                .applicationType(event.applicationType())
-                .applyApplicationId(event.applyApplicationId())
-                .createdAt(event.occurredAt())
-                .modifiedAt(event.occurredAt())
-                .leadApplicationId(event.leadApplicationId())
-                .build());
+    ApplicationReadModel application = new ApplicationReadModel();
+    ApplicationReadModelEvolve.apply(application, event);
+    ApplicationReadModel saved = applicationReadRepository.save(application);
     queryUpdateEmitter.emit(
         FindApplicationByIdQuery.class,
         query -> query.applicationId().equals(event.applicationId()),
@@ -204,8 +193,7 @@ public class ApplicationProjection {
         .findById(event.applicationId())
         .ifPresent(
             application -> {
-              application.setLeadApplicationId(event.leadApplicationId());
-              application.setModifiedAt(event.occurredAt());
+              ApplicationReadModelEvolve.apply(application, event);
               applicationReadRepository.save(application);
             });
   }
@@ -240,10 +228,7 @@ public class ApplicationProjection {
         .findById(event.applicationId())
         .ifPresent(
             application -> {
-              application.setStatus(event.status());
-              application.setApplicationVersion(event.applicationVersion());
-              application.setApplicationDataVersion(event.applicationDataVersion());
-              application.setModifiedAt(event.occurredAt());
+              ApplicationReadModelEvolve.apply(application, event);
               ApplicationReadModel saved = applicationReadRepository.save(application);
               queryUpdateEmitter.emit(
                   FindApplicationByIdQuery.class,
@@ -259,10 +244,7 @@ public class ApplicationProjection {
         .findById(event.applicationId())
         .ifPresent(
             application -> {
-              application.setCaseworkerId(event.caseworkerId());
-              application.setApplicationVersion(event.applicationVersion());
-              application.setApplicationDataVersion(event.applicationDataVersion());
-              application.setModifiedAt(event.occurredAt());
+              ApplicationReadModelEvolve.apply(application, event);
               applicationReadRepository.save(application);
             });
   }
@@ -274,10 +256,7 @@ public class ApplicationProjection {
         .findById(event.applicationId())
         .ifPresent(
             application -> {
-              application.setCaseworkerId(null);
-              application.setApplicationVersion(event.applicationVersion());
-              application.setApplicationDataVersion(event.applicationDataVersion());
-              application.setModifiedAt(event.occurredAt());
+              ApplicationReadModelEvolve.apply(application, event);
               applicationReadRepository.save(application);
             });
   }
@@ -289,8 +268,7 @@ public class ApplicationProjection {
         .findById(event.applicationId())
         .ifPresent(
             application -> {
-              application.setApplicationDataVersion(event.applicationDataVersion());
-              application.setModifiedAt(event.occurredAt());
+              ApplicationReadModelEvolve.apply(application, event);
               applicationReadRepository.save(application);
             });
   }

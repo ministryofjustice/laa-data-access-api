@@ -11,10 +11,15 @@ import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApp
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 
 /**
- * Event-fold functions for {@link ApplicationReadModel}, mirroring the persisted-column updates
- * performed by {@link ApplicationProjection}'s {@code @EventHandler} methods. Useful for
- * reconstructing the current-state read model directly from a raw event stream, without going
- * through the Axon query API.
+ * Event-fold functions for {@link ApplicationReadModel}. This is the single, canonical source of
+ * truth for how each event mutates the persisted-column state of the read model, shared by:
+ *
+ * <ul>
+ *   <li>{@link ApplicationProjection}'s {@code @EventHandler} methods, which fold events onto the
+ *       live current-state row as they are published
+ *   <li>{@code ApplicationRawReplayService}, which folds events read directly from the raw event
+ *       store (bypassing the Axon query API) to reconstruct the same state for diagnostics/recovery
+ * </ul>
  */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class ApplicationReadModelEvolve {

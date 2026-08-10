@@ -33,6 +33,7 @@ import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsQuery;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsResult;
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
+import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdRebuildQuery;
 import uk.gov.justice.laa.dstew.access.query.application.FindNotesForApplicationQuery;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.history.FindApplicationHistoryQuery;
@@ -127,6 +128,26 @@ public class ApplicationQueryController {
   public ResponseEntity<ApplicationResponse> getApplicationById(@PathVariable UUID id) {
     ApplicationReadModel application =
         findApplicationAwaitingProjection(id)
+            .orElseThrow(
+                () -> new ResourceNotFoundException("No application found with ID: " + id));
+    return ResponseEntity.ok(responseMapper.toResponse(application));
+  }
+
+  /**
+   * Diagnostic/test endpoint that reconstructs the Application's read model directly from the raw
+   * Axon event store, bypassing the Axon query API's running projection entirely.
+   *
+   * <p>This is <strong>not</strong> part of the standard read API — it exists to verify (or, in a
+   * recovery scenario, cross-check) that the persisted event stream alone is sufficient to
+   * reconstruct current state, independent of the running projection.
+   */
+  @GetMapping("/{id}/raw-replay")
+  public ResponseEntity<ApplicationResponse> getRawReplayedApplication(@PathVariable UUID id) {
+    ApplicationReadModel application =
+        Optional.ofNullable(
+                queryGateway
+                    .query(new FindApplicationByIdRebuildQuery(id), ApplicationReadModel.class)
+                    .join())
             .orElseThrow(
                 () -> new ResourceNotFoundException("No application found with ID: " + id));
     return ResponseEntity.ok(responseMapper.toResponse(application));
