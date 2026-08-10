@@ -162,12 +162,13 @@ class PostgresAxonIntegrationTest {
             """,
             String.class);
 
-    assertThat(appliedVersions).containsExactly("1", "2");
+    assertThat(appliedVersions).containsExactly("1", "2", "3");
     assertThat(tables)
         .containsExactly(
             "application_current_state",
             "application_data",
             "application_history",
+            "application_list_index",
             "caseworkers",
             "domain_event_entry",
             "flyway_schema_history",
@@ -177,12 +178,12 @@ class PostgresAxonIntegrationTest {
     assertThat(
             jdbcTemplate.queryForObject(
                 """
-                SELECT is_nullable
-                FROM information_schema.columns
-                WHERE table_schema = 'axon'
-                  AND table_name = 'token_entry'
-                  AND column_name = 'mask'
-                """,
+            SELECT is_nullable
+            FROM information_schema.columns
+            WHERE table_schema = 'axon'
+              AND table_name = 'token_entry'
+              AND column_name = 'mask'
+            """,
                 String.class))
         .isEqualTo("NO");
   }
