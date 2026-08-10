@@ -11,7 +11,7 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.MakeDecision
 import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcomeRequest;
-import uk.gov.justice.laa.dstew.access.model.AutograntedOutcomeRequest;
+import uk.gov.justice.laa.dstew.access.model.AutoGrantedOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
 
 /** Maps the outcome-specific auto-grant contract to existing domain commands. */
@@ -31,7 +31,7 @@ public class AutoGrantOutcomeCommandMapper {
       return new MarkApplicationReadyCommand(
           applicationId, manual.getApplicationVersion(), serialise(request), Instant.now());
     }
-    if (request instanceof AutograntedOutcomeRequest autogranted) {
+    if (request instanceof AutoGrantedOutcomeRequest autogranted) {
       return new MakeApplicationDecisionCommand(
           applicationId,
           autogranted.getApplicationVersion(),
@@ -51,14 +51,14 @@ public class AutoGrantOutcomeCommandMapper {
     boolean manual =
         request instanceof ManualOutcomeRequest && request.getOutcome() == AutoGrantOutcome.MANUAL;
     boolean autogranted =
-        request instanceof AutograntedOutcomeRequest
+        request instanceof AutoGrantedOutcomeRequest
             && request.getOutcome() == AutoGrantOutcome.AUTOGRANTED;
     if (!manual && !autogranted) {
       throw new IllegalArgumentException("Auto-grant outcome does not match its payload");
     }
   }
 
-  private List<MakeDecisionProceeding> proceedings(AutograntedOutcomeRequest request) {
+  private List<MakeDecisionProceeding> proceedings(AutoGrantedOutcomeRequest request) {
     return request.getProceedings().stream()
         .map(
             proceeding ->

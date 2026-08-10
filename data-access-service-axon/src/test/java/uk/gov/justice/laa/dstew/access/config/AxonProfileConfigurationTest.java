@@ -13,6 +13,9 @@ class AxonProfileConfigurationTest {
 
   private static final String AXON_DIALECT =
       "uk.gov.justice.laa.dstew.access.config.ByteaEnforcedPostgresSqlDialect";
+  private static final String DATASOURCE_URL =
+      "${DB_URL:${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/"
+          + "laa_data_access_api?currentSchema=${AXON_DB_SCHEMA:axon}}}";
 
   @Test
   void previewProfileUsesPreviewEnvironmentSettingsAndPreservesAxonPersistence()
@@ -21,9 +24,7 @@ class AxonProfileConfigurationTest {
 
     assertThat(property(properties, "spring.application.name"))
         .isEqualTo("data-access-service-axon");
-    assertThat(property(properties, "spring.datasource.url"))
-        .isEqualTo(
-            "${DB_URL:${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/laa_data_access_api?currentSchema=${AXON_DB_SCHEMA:axon}}}");
+    assertThat(property(properties, "spring.datasource.url")).isEqualTo(DATASOURCE_URL);
     assertThat(property(properties, "spring.datasource.username")).isEqualTo("postgres");
     assertAxonPersistence(properties);
     assertEnvironmentIntegrationProperties(properties);
@@ -35,9 +36,7 @@ class AxonProfileConfigurationTest {
 
     assertThat(property(properties, "spring.application.name"))
         .isEqualTo("data-access-service-axon");
-    assertThat(property(properties, "spring.datasource.url"))
-        .isEqualTo(
-            "${DB_URL:${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/laa_data_access_api?currentSchema=${AXON_DB_SCHEMA:axon}}}");
+    assertThat(property(properties, "spring.datasource.url")).isEqualTo(DATASOURCE_URL);
     assertThat(property(properties, "spring.datasource.username"))
         .isEqualTo("${DB_USERNAME:${SPRING_DATASOURCE_USERNAME:laa_user}}");
     assertAxonPersistence(properties);
@@ -52,9 +51,7 @@ class AxonProfileConfigurationTest {
 
     assertThat(property(properties, "spring.application.name"))
         .isEqualTo("data-access-service-axon");
-    assertThat(property(properties, "spring.datasource.url"))
-        .isEqualTo(
-            "${DB_URL:${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/laa_data_access_api?currentSchema=${AXON_DB_SCHEMA:axon}}}");
+    assertThat(property(properties, "spring.datasource.url")).isEqualTo(DATASOURCE_URL);
     assertThat(property(properties, "spring.datasource.username"))
         .isEqualTo("${DB_USERNAME:${SPRING_DATASOURCE_USERNAME:laa_user}}");
     assertAxonPersistence(properties);

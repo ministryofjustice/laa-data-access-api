@@ -35,7 +35,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
-import uk.gov.justice.laa.dstew.access.model.AutograntedOutcomeRequest;
+import uk.gov.justice.laa.dstew.access.model.AutoGrantedOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
@@ -427,10 +427,10 @@ class CreateApplicationInMemoryTest {
     assertThat(created).isNotNull();
     UUID proceedingId = created.getProceedings().getFirst().getProceedingId();
     var request =
-        new AutograntedOutcomeRequest(
+        new AutoGrantedOutcomeRequest(
             AutoGrantOutcome.AUTOGRANTED,
             0L,
-            AutograntedOutcomeRequest.OverallDecisionEnum.GRANTED,
+            AutoGrantedOutcomeRequest.OverallDecisionEnum.GRANTED,
             List.of(
                 new MakeDecisionProceedingRequest(
                     proceedingId,

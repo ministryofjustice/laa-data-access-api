@@ -10,7 +10,7 @@ import tools.jackson.databind.json.JsonMapper;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
-import uk.gov.justice.laa.dstew.access.model.AutograntedOutcomeRequest;
+import uk.gov.justice.laa.dstew.access.model.AutoGrantedOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceedingRequest;
 import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
@@ -38,10 +38,10 @@ class AutoGrantOutcomeCommandMapperTest {
     UUID id = UUID.randomUUID();
     UUID proceedingId = UUID.randomUUID();
     var request =
-        new AutograntedOutcomeRequest(
+        new AutoGrantedOutcomeRequest(
             AutoGrantOutcome.AUTOGRANTED,
             7L,
-            AutograntedOutcomeRequest.OverallDecisionEnum.GRANTED,
+            AutoGrantedOutcomeRequest.OverallDecisionEnum.GRANTED,
             List.of(
                 new MakeDecisionProceedingRequest(
                     proceedingId,

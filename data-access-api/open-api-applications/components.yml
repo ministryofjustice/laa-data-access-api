@@ -318,12 +318,12 @@ components:
         outcome:
           $ref: "#/components/schemas/AutoGrantOutcome"
       oneOf:
-        - $ref: "#/components/schemas/AutograntedOutcomeRequest"
+        - $ref: "#/components/schemas/AutoGrantedOutcomeRequest"
         - $ref: "#/components/schemas/ManualOutcomeRequest"
       discriminator:
         propertyName: outcome
         mapping:
-          AUTOGRANTED: "#/components/schemas/AutograntedOutcomeRequest"
+          AUTOGRANTED: "#/components/schemas/AutoGrantedOutcomeRequest"
           MANUAL: "#/components/schemas/ManualOutcomeRequest"
 
     ManualOutcomeRequest:
@@ -341,7 +341,7 @@ components:
           minimum: 0
           description: Current Application version, used for optimistic concurrency control
 
-    AutograntedOutcomeRequest:
+    AutoGrantedOutcomeRequest:
       type: object
       additionalProperties: false
       required:

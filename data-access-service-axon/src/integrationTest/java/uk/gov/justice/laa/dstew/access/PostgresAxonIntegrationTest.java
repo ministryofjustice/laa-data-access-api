@@ -41,6 +41,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.ObjectMapper;
+import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
@@ -49,7 +50,8 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
-import uk.gov.justice.laa.dstew.access.model.AutograntedOutcomeRequest;
+import uk.gov.justice.laa.dstew.access.model.AutoGranted;
+import uk.gov.justice.laa.dstew.access.model.AutoGrantedOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
@@ -360,7 +362,7 @@ class PostgresAxonIntegrationTest {
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
     ApplicationReadModel projected = awaitProjectionVersion(applicationId, 1L);
     assertThat(projected.getStatus()).isEqualTo("APPLICATION_SUBMITTED");
-    assertThat(projected.getAutoGranted()).isNull();
+    assertThat(projected.getAutoGranted()).isEqualTo(AutoGrantedState.PENDING);
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM axon.application_data WHERE application_id = ?",
@@ -481,7 +483,7 @@ class PostgresAxonIntegrationTest {
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
     ApplicationReadModel decided = awaitProjectionVersion(applicationId, 1L);
     assertThat(decided.getDecisionStatus()).isEqualTo("REFUSED");
-    assertThat(decided.getAutoGranted()).isFalse();
+    assertThat(decided.getAutoGranted()).isEqualTo(AutoGrantedState.MANUAL);
     assertThat(decided.getMeritsDecisions().get(proceedingId).justification())
         .isEqualTo("The evidence did not meet the test");
 
@@ -521,7 +523,7 @@ class PostgresAxonIntegrationTest {
         .satisfies(event -> assertThat(event.getEventDescription()).isEqualTo("Decision recorded"));
     ApplicationResponse application = awaitGet(applicationId).getBody();
     assertThat(application.getDecisionStatus()).isEqualTo(DecisionStatus.REFUSED);
-    assertThat(application.getAutoGrant()).isFalse();
+    assertThat(application.getAutoGranted()).isEqualTo(AutoGranted.MANUAL);
     assertThat(application.getVersion()).isEqualTo(1L);
     assertThat(application.getProceedings().getFirst().getMeritsDecision())
         .isEqualTo(MeritsDecisionStatus.REFUSED);
@@ -548,10 +550,10 @@ class PostgresAxonIntegrationTest {
     applicationId(post(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()));
     UUID proceedingId = awaitProjection(applicationId).getProceedings().getFirst().proceedingId();
     var request =
-        new AutograntedOutcomeRequest(
+        new AutoGrantedOutcomeRequest(
             AutoGrantOutcome.AUTOGRANTED,
             0L,
-            AutograntedOutcomeRequest.OverallDecisionEnum.GRANTED,
+            AutoGrantedOutcomeRequest.OverallDecisionEnum.GRANTED,
             List.of(
                 new MakeDecisionProceedingRequest(
                     proceedingId,
@@ -572,7 +574,7 @@ class PostgresAxonIntegrationTest {
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
     ApplicationReadModel granted = awaitProjectionVersion(applicationId, 1L);
-    assertThat(granted.getAutoGranted()).isTrue();
+    assertThat(granted.getAutoGranted()).isEqualTo(AutoGrantedState.AUTOGRANTED);
     assertThat(granted.getDecisionStatus()).isEqualTo("GRANTED");
     assertThat(granted.getMeritsDecisions()).containsKey(proceedingId);
     assertThat(
@@ -585,7 +587,7 @@ class PostgresAxonIntegrationTest {
   }
 
   @Test
-  void givenSubmittedApplication_whenMarkedReady_thenPersistsFalseOutcomeAndThinEvent()
+  void givenSubmittedApplication_whenMarkedReady_thenPersistsManualOutcomeAndThinEvent()
       throws Exception {
     UUID applicationId = UUID.randomUUID();
     applicationId(post(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()));
@@ -606,14 +608,14 @@ class PostgresAxonIntegrationTest {
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
     ApplicationReadModel ready = awaitProjectionVersion(applicationId, 1L);
     assertThat(ready.getStatus()).isEqualTo("APPLICATION_SUBMITTED");
-    assertThat(ready.getAutoGranted()).isFalse();
+    assertThat(ready.getAutoGranted()).isEqualTo(AutoGrantedState.MANUAL);
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT payload ->> 'autoGranted' FROM axon.application_data "
                     + "WHERE application_id = ? AND version = 1",
                 String.class,
                 applicationId))
-        .isEqualTo("false");
+        .isEqualTo("MANUAL");
     assertThat(
             jdbcTemplate.queryForMap(
                 "SELECT payload_type, convert_from(payload, 'UTF8') AS payload "
@@ -926,6 +928,7 @@ class PostgresAxonIntegrationTest {
             .submittedAt(OffsetDateTime.parse("2026-07-14T12:30:00Z"))
             .isLead(true)
             .usedDelegatedFunctions(false)
+            .autoGranted(AutoGranted.PENDING)
             .version(0L)
             .applicationType(ApplicationType.INITIAL)
             .provider(
@@ -1341,7 +1344,8 @@ class PostgresAxonIntegrationTest {
       executor.shutdown();
     }
 
-    assertThat(awaitProjectionVersion(applicationId, 1L).getAutoGranted()).isFalse();
+    assertThat(awaitProjectionVersion(applicationId, 1L).getAutoGranted())
+        .isEqualTo(AutoGrantedState.MANUAL);
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM axon.application_data WHERE application_id = ?",
@@ -1368,6 +1372,38 @@ class PostgresAxonIntegrationTest {
           }
         },
         executor);
+  }
+
+  @Test
+  void givenSeededCaseworkers_whenGetCaseworkers_thenReturnsAllCaseworkers() {
+    UUID firstId = UUID.randomUUID();
+    UUID secondId = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO axon.caseworkers (id, username) VALUES (?, ?)", firstId, "alice@example.com");
+    jdbcTemplate.update(
+        "INSERT INTO axon.caseworkers (id, username) VALUES (?, ?)", secondId, "bob@example.com");
+
+    HttpHeaders headers = new HttpHeaders();
+    headers.set("X-Service-Name", "CIVIL_APPLY");
+    ResponseEntity<List<Map<String, Object>>> response =
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/caseworkers",
+            HttpMethod.GET,
+            new HttpEntity<>(headers),
+            new ParameterizedTypeReference<>() {});
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(response.getBody())
+        .extracting(item -> item.get("username"))
+        .contains("alice@example.com", "bob@example.com");
+  }
+
+  @Test
+  void givenMissingServiceNameHeader_whenGetCaseworkers_thenReturnsBadRequest() {
+    ResponseEntity<String> response =
+        restTemplate.getForEntity("http://localhost:" + port + "/api/v0/caseworkers", String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
   }
 
   private ResponseEntity<Void> post(ApplicationCreateRequest request, HttpHeaders headers) {

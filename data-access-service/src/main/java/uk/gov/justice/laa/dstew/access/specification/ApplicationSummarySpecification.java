@@ -148,8 +148,7 @@ public class ApplicationSummarySpecification {
     }
     return switch (autoGranted) {
       case "PENDING" -> (root, query, builder) -> builder.isNull(root.get("isAutoGranted"));
-      case "AUTOGRANTED" ->
-          (root, query, builder) -> builder.isTrue(root.get("isAutoGranted"));
+      case "AUTOGRANTED" -> (root, query, builder) -> builder.isTrue(root.get("isAutoGranted"));
       case "MANUAL" -> (root, query, builder) -> builder.isFalse(root.get("isAutoGranted"));
       default -> throw new IllegalArgumentException("Unknown autoGranted state: " + autoGranted);
     };
