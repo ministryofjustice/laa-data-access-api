@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.query.application;
 
 import java.time.LocalDate;
+import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.query.PaginationHelper;
 
 /**
@@ -18,7 +19,7 @@ public record FindAllApplicationsQuery(
     String clientFirstName,
     String clientLastName,
     LocalDate clientDateOfBirth,
-    Boolean isAutoGranted,
+    AutoGrantedState autoGranted,
     String sortBy,
     String orderBy,
     Integer page,

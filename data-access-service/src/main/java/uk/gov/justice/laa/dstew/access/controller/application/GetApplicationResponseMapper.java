@@ -50,7 +50,12 @@ public class GetApplicationResponseMapper {
             : null);
     applicationResponse.setIsLead(applicationReadModel.isLead());
     applicationResponse.setUsedDelegatedFunctions(applicationReadModel.usedDelegatedFunctions());
-    applicationResponse.setAutoGrant(applicationReadModel.autoGrant());
+    applicationResponse.setAutoGranted(
+        applicationReadModel.autoGrant() == null
+            ? uk.gov.justice.laa.dstew.access.model.AutoGranted.PENDING
+            : applicationReadModel.autoGrant()
+                ? uk.gov.justice.laa.dstew.access.model.AutoGranted.AUTOGRANTED
+                : uk.gov.justice.laa.dstew.access.model.AutoGranted.MANUAL);
     applicationResponse.setDecisionStatus(
         applicationReadModel.decisionStatus() != null
             ? DecisionStatus.valueOf(applicationReadModel.decisionStatus())

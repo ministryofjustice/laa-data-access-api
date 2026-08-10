@@ -123,8 +123,8 @@ class EventProcessorRecoveryInMemoryTest {
                                 new HttpEntity<>(headers),
                                 ApplicationResponse.class)
                             .getBody()
-                            .getAutoGrant())
-                    .isFalse());
+                            .getAutoGranted())
+                    .isEqualTo(uk.gov.justice.laa.dstew.access.model.AutoGranted.MANUAL));
 
     var processors =
         java.util.List.of(
@@ -161,8 +161,8 @@ class EventProcessorRecoveryInMemoryTest {
                     new HttpEntity<>(headers),
                     ApplicationResponse.class)
                 .getBody()
-                .getAutoGrant())
-        .isFalse();
+                .getAutoGranted())
+        .isEqualTo(uk.gov.justice.laa.dstew.access.model.AutoGranted.MANUAL);
     assertThat(processors)
         .allSatisfy(
             processor -> {

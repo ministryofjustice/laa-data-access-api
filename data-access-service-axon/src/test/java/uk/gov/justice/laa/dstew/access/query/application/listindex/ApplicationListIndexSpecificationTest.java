@@ -134,12 +134,27 @@ class ApplicationListIndexSpecificationTest {
   @Test
   void givenAutoGrantedFilter_whenBuilt_thenAddsEqualPredicate() {
     FindAllApplicationsQuery query =
-        new FindAllApplicationsQuery(null, null, null, null, null, null, false, null, null, 1, 20);
+        new FindAllApplicationsQuery(
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState.MANUAL,
+            null,
+            null,
+            1,
+            20);
 
     ApplicationListIndexSpecification.from(query).toPredicate(root, criteriaQuery, cb);
 
-    org.mockito.Mockito.verify(root).get("isAutoGranted");
-    org.mockito.Mockito.verify(cb).equal(any(), org.mockito.Mockito.eq(false));
+    org.mockito.Mockito.verify(root).get("autoGranted");
+    org.mockito.Mockito.verify(cb)
+        .equal(
+            any(),
+            org.mockito.Mockito.eq(
+                uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState.MANUAL));
   }
 
   @Test

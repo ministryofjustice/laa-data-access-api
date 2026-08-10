@@ -5,7 +5,7 @@ import java.util.UUID;
 import org.axonframework.eventsourcing.annotation.EventTag;
 import org.axonframework.messaging.eventhandling.annotation.Event;
 
-/** Thin event recording the immutable data version that contains {@code autoGrant=false}. */
+/** Thin event recording the immutable data version that contains {@code autoGranted=MANUAL}. */
 @Event
 public record ApplicationReadyForManualAssessmentEvent(
     @EventTag(key = "ApplicationAggregate") UUID applicationId,

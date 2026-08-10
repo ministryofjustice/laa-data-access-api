@@ -134,7 +134,7 @@ public final class ApplicationDecider {
         state.applicationVersion + 1,
         state.applicationDataVersion + 1,
         command.overallDecision(),
-        command.autoGranted(),
+        AutoGrantedState.fromDecisionFlag(command.autoGranted()),
         command.occurredAt());
   }
 
@@ -175,10 +175,10 @@ public final class ApplicationDecider {
   /** Validates an idempotent transition to manual-assessment readiness. */
   public static ReadyApplicationResult decideReady(
       ApplicationState state, MarkApplicationReadyCommand command) {
-    if (Boolean.FALSE.equals(state.autoGranted)) {
+    if (state.autoGranted == AutoGrantedState.MANUAL) {
       return ReadyApplicationResult.ALREADY_RECORDED;
     }
-    if (Boolean.TRUE.equals(state.autoGranted)) {
+    if (state.autoGranted == AutoGrantedState.AUTOGRANTED) {
       throw new ApplicationAutoGrantOutcomeConflictException(command.applicationId());
     }
     if (!"APPLICATION_SUBMITTED".equals(state.status)) {

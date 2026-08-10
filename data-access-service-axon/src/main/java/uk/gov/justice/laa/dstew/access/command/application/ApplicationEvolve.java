@@ -22,7 +22,7 @@ public final class ApplicationEvolve {
     state.requestFingerprint = event.requestFingerprint();
     state.status = event.status();
     state.applicationType = event.applicationType();
-    state.autoGranted = null;
+    state.autoGranted = AutoGrantedState.PENDING;
     state.applicationDataVersion = event.applicationDataVersion();
     state.applicationVersion = 0L;
   }
@@ -32,7 +32,7 @@ public final class ApplicationEvolve {
     state.status = event.status();
     state.applicationVersion = event.applicationVersion();
     state.applicationDataVersion = event.applicationDataVersion();
-    state.autoGranted = event.enteredSubmitted() ? null : state.autoGranted;
+    state.autoGranted = event.enteredSubmitted() ? AutoGrantedState.PENDING : state.autoGranted;
   }
 
   /** Applies an {@link ApplicationDecisionMadeEvent} to the given state. */
@@ -46,7 +46,7 @@ public final class ApplicationEvolve {
   public static void apply(ApplicationState state, ApplicationReadyForManualAssessmentEvent event) {
     state.applicationVersion = event.applicationVersion();
     state.applicationDataVersion = event.applicationDataVersion();
-    state.autoGranted = false;
+    state.autoGranted = AutoGrantedState.MANUAL;
   }
 
   /** Applies an {@link ApplicationAssignedToCaseworkerEvent} to the given state. */

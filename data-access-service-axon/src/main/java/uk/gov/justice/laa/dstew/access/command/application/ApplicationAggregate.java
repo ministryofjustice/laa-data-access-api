@@ -117,7 +117,7 @@ public class ApplicationAggregate {
       ApplicationDataStore applicationDataStore,
       EventAppender eventAppender) {
     requireApplicationExists(command.applicationId());
-    if (command.fromAutoGrantOutcome() && Boolean.FALSE.equals(state.autoGranted)) {
+    if (command.fromAutoGrantOutcome() && state.autoGranted == AutoGrantedState.MANUAL) {
       throw new uk.gov.justice.laa.dstew.access.exception
           .ApplicationAutoGrantOutcomeConflictException(command.applicationId());
     }
@@ -125,7 +125,7 @@ public class ApplicationAggregate {
       throw new uk.gov.justice.laa.dstew.access.exception.InvalidApplicationStateException(
           command.applicationId(), state.status);
     }
-    if (command.fromAutoGrantOutcome() && Boolean.TRUE.equals(state.autoGranted)) {
+    if (command.fromAutoGrantOutcome() && state.autoGranted == AutoGrantedState.AUTOGRANTED) {
       var recorded = applicationDataStore.get(applicationId, state.applicationDataVersion);
       if (java.util.Objects.equals(
           recorded.decisionSerialisedRequest(), command.serialisedRequest())) {
@@ -156,7 +156,7 @@ public class ApplicationAggregate {
     var updated =
         current.withDecision(
             command.overallDecision(),
-            command.autoGranted(),
+            AutoGrantedState.fromDecisionFlag(command.autoGranted()),
             meritsDecisions,
             "GRANTED".equals(command.overallDecision()) ? command.certificate() : null,
             command.serialisedRequest(),
@@ -227,7 +227,7 @@ public class ApplicationAggregate {
     eventAppender.append(event);
   }
 
-  /** Stores {@code autoGrant=false} as the next immutable Application-data version. */
+  /** Stores {@code autoGranted=MANUAL} as the next immutable Application-data version. */
   @CommandHandler
   ReadyApplicationResult handle(
       MarkApplicationReadyCommand command,

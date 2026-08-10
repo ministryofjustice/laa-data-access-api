@@ -64,7 +64,7 @@ Verified against a running instance: `HTTP/1.1 201` with
 
 `PATCH /api/v0/applications/{id}` replaces `applicationContent` as a new immutable data version.
 The following transition from in progress to submitted returns `204 No Content`, advances the
-public Application version, keeps `autoGrant=null`, and publishes one `ApplicationSubmitted` event
+public Application version, keeps `autoGranted=PENDING`, and publishes one `ApplicationSubmitted` event
 after commit:
 
 ```bash
@@ -204,8 +204,8 @@ does not yet surface them here.
 ### Exercise manual-task visibility
 
 This sequence exercises the DSTEW-2093 contract end to end: a submitted Application starts with
-`autoGrant=null`, is absent from the manual-task query, and becomes visible only after the ready
-operation records `autoGrant=false`. It uses fresh identifiers so the sequence can be repeated.
+`autoGranted=PENDING`, is absent from the manual-task query, and becomes visible only after the ready
+operation records `autoGranted=MANUAL`. It uses fresh identifiers so the sequence can be repeated.
 
 Create a submitted Application:
 
@@ -253,10 +253,10 @@ JSON
 ```
 
 Confirm it is not yet a manual task. The selected result should be an empty array because the
-Application has `autoGrant=null`:
+Application has `autoGranted=PENDING`:
 
 ```bash
-curl -s "http://localhost:8082/api/v0/applications?status=APPLICATION_SUBMITTED&isAutoGranted=false&page=1&pageSize=20" \
+curl -s "http://localhost:8082/api/v0/applications?status=APPLICATION_SUBMITTED&autoGranted=MANUAL&page=1&pageSize=20" \
   | jq --arg id "$APP_ID" '.applications | map(select(.applicationId == $id))'
 ```
 
@@ -285,7 +285,7 @@ Expected fields are `status: "APPLICATION_SUBMITTED"`, `autoGrant: false`, and `
 The same Application should now appear in the manual-task query:
 
 ```bash
-curl -s "http://localhost:8082/api/v0/applications?status=APPLICATION_SUBMITTED&isAutoGranted=false&page=1&pageSize=20" \
+curl -s "http://localhost:8082/api/v0/applications?status=APPLICATION_SUBMITTED&autoGranted=MANUAL&page=1&pageSize=20" \
   | jq --arg id "$APP_ID" '.applications | map(select(.applicationId == $id))'
 ```
 

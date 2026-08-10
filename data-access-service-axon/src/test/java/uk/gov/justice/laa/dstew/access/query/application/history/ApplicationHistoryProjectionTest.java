@@ -197,7 +197,13 @@ class ApplicationHistoryProjectionTest {
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-07-20T10:00:00Z");
     ApplicationDecisionMadeEvent event =
-        new ApplicationDecisionMadeEvent(applicationId, 1L, 4L, "GRANTED", false, occurredAt);
+        new ApplicationDecisionMadeEvent(
+            applicationId,
+            1L,
+            4L,
+            "GRANTED",
+            uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState.MANUAL,
+            occurredAt);
     projection.on(event, message(event, "decision-event"));
     ArgumentCaptor<ApplicationHistoryReadModel> captor =
         ArgumentCaptor.forClass(ApplicationHistoryReadModel.class);
@@ -207,7 +213,13 @@ class ApplicationHistoryProjectionTest {
     when(applicationDataStore.get(applicationId, 4L))
         .thenReturn(
             ApplicationDataPayload.from(applicationCreationDetails(applicationId))
-                .withDecision("GRANTED", false, Map.of(), null, "{}", "Decision recorded"));
+                .withDecision(
+                    "GRANTED",
+                    uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState.MANUAL,
+                    Map.of(),
+                    null,
+                    "{}",
+                    "Decision recorded"));
 
     var result =
         projection.handle(

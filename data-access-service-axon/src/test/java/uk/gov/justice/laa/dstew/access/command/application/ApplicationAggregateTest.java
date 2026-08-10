@@ -201,7 +201,8 @@ class ApplicationAggregateTest {
                 occurredAt))
         .then()
         .events(
-            new ApplicationDecisionMadeEvent(applicationId, 1L, 1L, "REFUSED", false, occurredAt));
+            new ApplicationDecisionMadeEvent(
+                applicationId, 1L, 1L, "REFUSED", AutoGrantedState.MANUAL, occurredAt));
   }
 
   @Test
@@ -240,7 +241,7 @@ class ApplicationAggregateTest {
         .events(
             applicationCreatedEvent(applicationId, details),
             new ApplicationDecisionMadeEvent(
-                applicationId, 1L, 1L, "REFUSED", false, firstOccurredAt))
+                applicationId, 1L, 1L, "REFUSED", AutoGrantedState.MANUAL, firstOccurredAt))
         .when()
         .command(
             new MakeApplicationDecisionCommand(
@@ -257,7 +258,7 @@ class ApplicationAggregateTest {
         .then()
         .events(
             new ApplicationDecisionMadeEvent(
-                applicationId, 2L, 2L, "REFUSED", false, secondOccurredAt));
+                applicationId, 2L, 2L, "REFUSED", AutoGrantedState.MANUAL, secondOccurredAt));
   }
 
   @Test
@@ -343,7 +344,12 @@ class ApplicationAggregateTest {
         .events(
             applicationCreatedEvent(applicationId),
             new ApplicationDecisionMadeEvent(
-                applicationId, 1L, 1L, "GRANTED", true, Instant.parse("2026-07-21T09:00:00Z")))
+                applicationId,
+                1L,
+                1L,
+                "GRANTED",
+                AutoGrantedState.AUTOGRANTED,
+                Instant.parse("2026-07-21T09:00:00Z")))
         .when()
         .command(
             new MarkApplicationReadyCommand(

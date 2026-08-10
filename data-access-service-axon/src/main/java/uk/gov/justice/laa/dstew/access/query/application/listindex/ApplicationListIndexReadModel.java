@@ -2,6 +2,8 @@ package uk.gov.justice.laa.dstew.access.query.application.listindex;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
@@ -11,6 +13,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 
 /**
  * Replayable list-index read model used exclusively for filtering, sorting, counting, and paging
@@ -47,8 +50,9 @@ public class ApplicationListIndexReadModel {
   @Column(name = "matter_type")
   private String matterType;
 
-  @Column(name = "is_auto_granted")
-  private Boolean isAutoGranted;
+  @Enumerated(EnumType.STRING)
+  @Column(name = "auto_granted", nullable = false)
+  private AutoGrantedState autoGranted;
 
   @Column(name = "submitted_at")
   private Instant submittedAt;

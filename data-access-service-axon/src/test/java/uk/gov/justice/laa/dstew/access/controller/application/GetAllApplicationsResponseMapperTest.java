@@ -49,6 +49,7 @@ class GetAllApplicationsResponseMapperTest {
     UUID applicationId = UUID.randomUUID();
     ApplicationReadModel app =
         ApplicationReadModel.builder()
+            .autoGranted(uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState.PENDING)
             .applicationId(applicationId)
             .status("APPLICATION_SUBMITTED")
             .laaReference("LAA-999")
@@ -79,6 +80,7 @@ class GetAllApplicationsResponseMapperTest {
   void givenApplicationWithNoLeadId_whenToResponse_thenIsLeadTrue() {
     ApplicationReadModel app =
         ApplicationReadModel.builder()
+            .autoGranted(uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState.PENDING)
             .applicationId(UUID.randomUUID())
             .modifiedAt(Instant.now())
             .leadApplicationId(null)
@@ -99,6 +101,7 @@ class GetAllApplicationsResponseMapperTest {
   void givenApplicationWithLeadId_whenToResponse_thenIsLeadFalse() {
     ApplicationReadModel app =
         ApplicationReadModel.builder()
+            .autoGranted(uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState.PENDING)
             .applicationId(UUID.randomUUID())
             .modifiedAt(Instant.now())
             .leadApplicationId(UUID.randomUUID())
@@ -122,6 +125,7 @@ class GetAllApplicationsResponseMapperTest {
             UUID.randomUUID(), "Ada", "Lovelace", LocalDate.of(1815, 12, 10), Map.of(), "CLIENT");
     ApplicationReadModel app =
         ApplicationReadModel.builder()
+            .autoGranted(uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState.PENDING)
             .applicationId(UUID.randomUUID())
             .modifiedAt(Instant.now())
             .individuals(List.of(client))
@@ -146,6 +150,7 @@ class GetAllApplicationsResponseMapperTest {
 
     ApplicationReadModel leadApp =
         ApplicationReadModel.builder()
+            .autoGranted(uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState.PENDING)
             .applicationId(leadId)
             .modifiedAt(Instant.now())
             .leadApplicationId(null)
@@ -178,6 +183,7 @@ class GetAllApplicationsResponseMapperTest {
   void givenApplicationWithNoGroup_whenToResponse_thenLinkedApplicationsEmpty() {
     ApplicationReadModel app =
         ApplicationReadModel.builder()
+            .autoGranted(uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState.PENDING)
             .applicationId(UUID.randomUUID())
             .modifiedAt(Instant.now())
             .individuals(List.of())

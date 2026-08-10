@@ -11,6 +11,7 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.MatterType;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreationDetails;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationIndividual;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationProceeding;
+import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 
 /** Sensitive application data stored outside the Axon event stream. */
 public record ApplicationDataPayload(
@@ -26,7 +27,7 @@ public record ApplicationDataPayload(
     List<ApplicationProceeding> proceedings,
     String serialisedRequest,
     String overallDecision,
-    Boolean autoGranted,
+    AutoGrantedState autoGranted,
     Map<UUID, ApplicationMeritsDecision> meritsDecisions,
     Map<String, Object> certificate,
     String decisionSerialisedRequest,
@@ -41,6 +42,7 @@ public record ApplicationDataPayload(
    */
   public ApplicationDataPayload {
     notes = notes == null ? List.of() : List.copyOf(notes);
+    autoGranted = autoGranted == null ? AutoGrantedState.PENDING : autoGranted;
   }
 
   /**
@@ -63,7 +65,7 @@ public record ApplicationDataPayload(
         details.proceedings(),
         details.serialisedRequest(),
         null,
-        null,
+        AutoGrantedState.PENDING,
         Map.of(),
         null,
         null,
@@ -75,7 +77,7 @@ public record ApplicationDataPayload(
   /** Returns a complete new data version containing the supplied decision state. */
   public ApplicationDataPayload withDecision(
       String newOverallDecision,
-      Boolean newAutoGranted,
+      AutoGrantedState newAutoGranted,
       Map<UUID, ApplicationMeritsDecision> newMeritsDecisions,
       Map<String, Object> newCertificate,
       String newDecisionSerialisedRequest,
@@ -141,7 +143,7 @@ public record ApplicationDataPayload(
         proceedings,
         serialisedRequest,
         overallDecision,
-        false,
+        AutoGrantedState.MANUAL,
         meritsDecisions,
         certificate,
         decisionSerialisedRequest,
@@ -174,7 +176,7 @@ public record ApplicationDataPayload(
         List.copyOf(newProceedings),
         newSerialisedRequest,
         resetAssessment ? null : overallDecision,
-        resetAssessment ? null : autoGranted,
+        resetAssessment ? AutoGrantedState.PENDING : autoGranted,
         resetAssessment ? Map.of() : meritsDecisions,
         resetAssessment ? null : certificate,
         resetAssessment ? null : decisionSerialisedRequest,

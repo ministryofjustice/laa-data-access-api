@@ -85,7 +85,7 @@ overwriting a decision based on stale state. The aggregate chooses the next
 - `null` means automatic assessment has not recorded an outcome, so the submitted Application is
   excluded from manual-task queries;
 - `false` means assessment completed without an automatic grant, so the Application can be
-  selected with `isAutoGranted=false` for manual work;
+  selected with `autoGranted=MANUAL` for manual work;
 - `true` means an automatically granted Decision was recorded, so the Application remains outside
   manual work.
 

@@ -22,7 +22,8 @@ spring:
       mode: never # Use Flyway for DB schema.
   cloud:
     aws:
-      region: ${AWS_REGION}
+      region:
+        static: ${AWS_REGION:eu-west-2}
       endpoint: ${AWS_ENDPOINT_URL:}
   security:
     oauth2:

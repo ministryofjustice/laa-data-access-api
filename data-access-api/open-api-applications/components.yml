@@ -20,6 +20,14 @@ components:
         - CCS
       default: INITIAL
 
+    AutoGranted:
+      type: string
+      description: The current automatic-assessment state of the Application
+      enum:
+        - PENDING
+        - AUTOGRANTED
+        - MANUAL
+
     OpponentResponse:
       type: object
       properties:
@@ -41,6 +49,7 @@ components:
         - lastUpdated
         - proceedings
         - applicationVersion
+        - autoGranted
       properties:
         applicationId:
           type: string
@@ -62,10 +71,8 @@ components:
           type: boolean
         usedDelegatedFunctions:
           type: boolean
-        autoGrant:
-          type: boolean
-          nullable: true
-          description: Null while automatic assessment is pending, false for manual work, true when automatically granted
+        autoGranted:
+          $ref: "#/components/schemas/AutoGranted"
         decisionStatus:
           $ref: "#/components/schemas/DecisionStatus"
         applicationType:
@@ -132,6 +139,8 @@ components:
     ApplicationSummary:
       type: object
       description: (APPLICATION LIST PAGE / VIEW - OPEN APPLICATIONS ONLY BY DEFAULT)
+      required:
+        - autoGranted
       properties:
         applicationId:
           type: string
@@ -154,10 +163,8 @@ components:
         assignedTo:
           type: string
           format: uuid
-        autoGrant:
-          type: boolean
-          nullable: true
-          description: Null while automatic assessment is pending, false for manual work, true when automatically granted
+        autoGranted:
+          $ref: "#/components/schemas/AutoGranted"
         clientFirstName:
           type: string
         clientLastName:

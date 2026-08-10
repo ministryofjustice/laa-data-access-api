@@ -60,7 +60,8 @@ public class GetAllApplicationsResponseMapper {
     summary.setApplicationType(ApplicationType.INITIAL);
     summary.setIsLead(app.getLeadApplicationId() == null);
     summary.setAssignedTo(app.getCaseworkerId());
-    summary.setAutoGrant(app.getAutoGranted());
+    summary.setAutoGranted(
+        uk.gov.justice.laa.dstew.access.model.AutoGranted.valueOf(app.getAutoGranted().name()));
 
     ApplicationIndividual client = primaryClient(app);
     if (client != null) {

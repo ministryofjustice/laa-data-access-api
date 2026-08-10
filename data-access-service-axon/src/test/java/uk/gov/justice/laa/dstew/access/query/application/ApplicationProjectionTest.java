@@ -176,7 +176,13 @@ class ApplicationProjectionTest {
     when(applicationReadRepository.save(existing)).thenReturn(existing);
 
     projection.on(
-        new ApplicationDecisionMadeEvent(applicationId, 3L, 4L, "GRANTED", false, occurredAt),
+        new ApplicationDecisionMadeEvent(
+            applicationId,
+            3L,
+            4L,
+            "GRANTED",
+            uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState.MANUAL,
+            occurredAt),
         queryUpdateEmitter);
 
     assertThat(existing.getApplicationVersion()).isEqualTo(3L);
@@ -393,7 +399,10 @@ class ApplicationProjectionTest {
     ApplicationDataPayload data = mock(ApplicationDataPayload.class);
     when(data.applyApplicationId()).thenReturn(applyApplicationId);
     when(data.submittedAt()).thenReturn(submittedAt);
-    when(data.autoGranted()).thenReturn(autoGranted);
+    when(data.autoGranted())
+        .thenReturn(
+            uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState.fromDecisionFlag(
+                autoGranted));
     return data;
   }
 }

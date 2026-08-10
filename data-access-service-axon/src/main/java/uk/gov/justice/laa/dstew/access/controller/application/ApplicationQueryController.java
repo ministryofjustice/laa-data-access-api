@@ -81,11 +81,11 @@ public class ApplicationQueryController {
   /**
    * Returns a paginated, filtered list of Application summaries.
    *
-   * <p>Filters on {@code status}, {@code laaReference}, {@code matterType}, and {@code
-   * isAutoGranted} are applied. {@code clientFirstName}, {@code clientLastName}, {@code
-   * clientDateOfBirth}, and {@code userId} are accepted for API compatibility but not yet used as
-   * filters — a future migration will denormalise client fields from the {@code individuals} JSON
-   * column to enable them.
+   * <p>Filters on {@code status}, {@code laaReference}, {@code matterType}, and {@code autoGranted}
+   * are applied. {@code clientFirstName}, {@code clientLastName}, {@code clientDateOfBirth}, and
+   * {@code userId} are accepted for API compatibility but not yet used as filters — a future
+   * migration will denormalise client fields from the {@code individuals} JSON column to enable
+   * them.
    */
   @GetMapping
   public ResponseEntity<ApplicationSummaryResponse> getApplications(
@@ -95,7 +95,7 @@ public class ApplicationQueryController {
       @RequestParam(required = false) String clientLastName,
       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
           LocalDate clientDateOfBirth,
-      @RequestParam(required = false) Boolean isAutoGranted,
+      @RequestParam(required = false) uk.gov.justice.laa.dstew.access.model.AutoGranted autoGranted,
       @RequestParam(required = false) MatterType matterType,
       @RequestParam(required = false) ApplicationSortBy sortBy,
       @RequestParam(required = false) ApplicationOrderBy orderBy,
@@ -111,7 +111,10 @@ public class ApplicationQueryController {
                     clientFirstName,
                     clientLastName,
                     clientDateOfBirth,
-                    isAutoGranted,
+                    autoGranted == null
+                        ? null
+                        : uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState
+                            .valueOf(autoGranted.name()),
                     sortBy == null ? null : sortBy.name(),
                     orderBy == null ? null : orderBy.name(),
                     page,

@@ -109,7 +109,8 @@ class CreateApplicationInMemoryTest {
     assertThat(updateResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
     ApplicationReadModel current = awaitApplicationVersion(applicationId, 1L);
     assertThat(current.getStatus()).isEqualTo("APPLICATION_SUBMITTED");
-    assertThat(current.getAutoGranted()).isNull();
+    assertThat(current.getAutoGranted())
+        .isEqualTo(uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState.PENDING);
     assertThat(current.getApplicationDataVersion()).isEqualTo(1L);
     assertThat(awaitHistoryTypes(applicationId, "APPLICATION_CREATED", "APPLICATION_UPDATED"))
         .hasSize(2);
@@ -278,7 +279,8 @@ class CreateApplicationInMemoryTest {
     assertThat(projected.getApplicationId()).isEqualTo(applicationId);
     assertThat(projected.getApplyApplicationId()).isEqualTo(applyApplicationId);
     assertThat(projected.getStatus()).isEqualTo(ApplicationStatus.APPLICATION_SUBMITTED.name());
-    assertThat(projected.getAutoGranted()).isNull();
+    assertThat(projected.getAutoGranted())
+        .isEqualTo(uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState.PENDING);
     assertThat(projected.getLaaReference()).isEqualTo("LAA-123");
     assertThat(projected.getOfficeCode()).isEqualTo("1A001B");
     assertThat(projected.getSchemaVersion()).isEqualTo(2);
@@ -342,11 +344,12 @@ class CreateApplicationInMemoryTest {
             new HttpEntity<>(headers()),
             ApplicationResponse.class);
     assertThat(directBeforeReady.getBody()).isNotNull();
-    assertThat(directBeforeReady.getBody().getAutoGrant()).isNull();
+    assertThat(directBeforeReady.getBody().getAutoGranted())
+        .isEqualTo(uk.gov.justice.laa.dstew.access.model.AutoGranted.PENDING);
 
     ResponseEntity<ApplicationSummaryResponse> before =
         restTemplate.exchange(
-            "/api/v0/applications?status=APPLICATION_SUBMITTED&isAutoGranted=false",
+            "/api/v0/applications?status=APPLICATION_SUBMITTED&autoGranted=MANUAL",
             HttpMethod.GET,
             new HttpEntity<>(headers()),
             ApplicationSummaryResponse.class);
@@ -366,7 +369,8 @@ class CreateApplicationInMemoryTest {
 
     ApplicationReadModel projected = awaitApplicationVersion(applicationId, 1L);
     assertThat(projected.getStatus()).isEqualTo(ApplicationStatus.APPLICATION_SUBMITTED.name());
-    assertThat(projected.getAutoGranted()).isFalse();
+    assertThat(projected.getAutoGranted())
+        .isEqualTo(uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState.MANUAL);
 
     ResponseEntity<ApplicationResponse> direct =
         restTemplate.exchange(
@@ -376,11 +380,12 @@ class CreateApplicationInMemoryTest {
             ApplicationResponse.class);
     assertThat(direct.getBody()).isNotNull();
     assertThat(direct.getBody().getStatus()).isEqualTo(ApplicationStatus.APPLICATION_SUBMITTED);
-    assertThat(direct.getBody().getAutoGrant()).isFalse();
+    assertThat(direct.getBody().getAutoGranted())
+        .isEqualTo(uk.gov.justice.laa.dstew.access.model.AutoGranted.MANUAL);
 
     ResponseEntity<ApplicationSummaryResponse> after =
         restTemplate.exchange(
-            "/api/v0/applications?status=APPLICATION_SUBMITTED&isAutoGranted=false",
+            "/api/v0/applications?status=APPLICATION_SUBMITTED&autoGranted=MANUAL",
             HttpMethod.GET,
             new HttpEntity<>(headers()),
             ApplicationSummaryResponse.class);
@@ -388,7 +393,10 @@ class CreateApplicationInMemoryTest {
     assertThat(after.getBody().getApplications())
         .filteredOn(application -> application.getApplicationId().equals(applicationId))
         .singleElement()
-        .satisfies(application -> assertThat(application.getAutoGrant()).isFalse());
+        .satisfies(
+            application ->
+                assertThat(application.getAutoGranted())
+                    .isEqualTo(uk.gov.justice.laa.dstew.access.model.AutoGranted.MANUAL));
 
     ResponseEntity<Void> replay =
         restTemplate.exchange(
@@ -448,7 +456,8 @@ class CreateApplicationInMemoryTest {
                 ApplicationResponse.class)
             .getBody();
     assertThat(granted).isNotNull();
-    assertThat(granted.getAutoGrant()).isTrue();
+    assertThat(granted.getAutoGranted())
+        .isEqualTo(uk.gov.justice.laa.dstew.access.model.AutoGranted.AUTOGRANTED);
     assertThat(granted.getDecisionStatus()).isEqualTo(DecisionStatus.GRANTED);
     assertThat(granted.getProceedings())
         .singleElement()

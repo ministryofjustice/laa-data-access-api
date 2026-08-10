@@ -20,7 +20,7 @@ public class GetAllApplicationsQueryMapper {
    * @param clientLastName optional client last-name filter
    * @param clientDateOfBirth optional client date-of-birth filter
    * @param userId optional caseworker ID filter
-   * @param isAutoGranted optional auto-grant filter
+   * @param autoGranted optional automatic-assessment state filter
    * @param matterType optional matter-type filter
    * @param sortBy optional sort field
    * @param orderBy optional sort direction
@@ -35,7 +35,7 @@ public class GetAllApplicationsQueryMapper {
       String clientLastName,
       LocalDate clientDateOfBirth,
       UUID userId,
-      Boolean isAutoGranted,
+      String autoGranted,
       MatterType matterType,
       ApplicationSortBy sortBy,
       ApplicationOrderBy orderBy,
@@ -48,7 +48,7 @@ public class GetAllApplicationsQueryMapper {
         .clientLastName(clientLastName)
         .clientDateOfBirth(clientDateOfBirth)
         .userId(userId)
-        .isAutoGranted(isAutoGranted)
+        .autoGranted(autoGranted)
         .matterType(matterType == null ? null : matterType.name())
         .sortBy(sortBy == null ? null : sortBy.name())
         .orderBy(orderBy == null ? null : orderBy.name())

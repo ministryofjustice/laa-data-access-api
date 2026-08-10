@@ -147,12 +147,12 @@ Use [Testing Axon code](testing-axon-code.md) to decide where a new scenario bel
 `MANUAL` request. Both variants require the current public Application version. `AUTOGRANTED`
 requires a complete granted Decision (all proceedings, merits justifications, event history, and
 certificate) and follows the existing event-sourced Decision path. `MANUAL` contains no Decision
-fields and follows the manual-readiness path, recording only `autoGrant=false`.
+fields and follows the manual-readiness path, recording only `autoGranted=MANUAL`.
 
 | Existing state | Result |
 |---|---|
-| `APPLICATION_SUBMITTED`, `autoGrant=null`, valid complete `AUTOGRANTED` request | Record one granted Decision and `autoGrant=true`, return `204` |
-| `APPLICATION_SUBMITTED`, `autoGrant=null`, current version | Append `autoGrant=false`, emit `ApplicationReadyForManualAssessmentEvent`, return `204` |
+| `APPLICATION_SUBMITTED`, `autoGranted=PENDING`, valid complete `AUTOGRANTED` request | Record one granted Decision and `autoGranted=AUTOGRANTED`, return `204` |
+| `APPLICATION_SUBMITTED`, `autoGranted=PENDING`, current version | Append `autoGranted=MANUAL`, emit `ApplicationReadyForManualAssessmentEvent`, return `204` |
 | Equivalent terminal outcome | Idempotent success with no data append or event |
 | Incompatible terminal outcome | Reject with `409` |
 | Pending outcome but stale version | Reject with `409` |
@@ -160,8 +160,8 @@ fields and follows the manual-readiness path, recording only `autoGrant=false`.
 
 The manual-readiness event contains only `applicationId`, `applicationVersion`, `applicationDataVersion`, and
 `occurredAt`. `ApplicationProjection` advances its version pointer when handling or replaying that
-event. Hydration then reads `autoGrant=false` from the referenced payload, allowing
-`GET /api/v0/applications?status=APPLICATION_SUBMITTED&isAutoGranted=false` to return only work
+event. Hydration then reads `autoGranted=MANUAL` from the referenced payload, allowing
+`GET /api/v0/applications?status=APPLICATION_SUBMITTED&autoGranted=MANUAL` to return only work
 explicitly routed to a caseworker. Direct lookup by identifier continues to return a submitted
 Application while its outcome is still null.
 

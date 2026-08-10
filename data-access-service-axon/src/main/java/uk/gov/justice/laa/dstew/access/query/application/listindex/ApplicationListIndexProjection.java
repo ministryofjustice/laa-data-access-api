@@ -66,7 +66,8 @@ public class ApplicationListIndexProjection {
             .laaReference(data.laaReference())
             .caseworkerId(null)
             .matterType(data.matterType() == null ? null : data.matterType().name())
-            .isAutoGranted(null)
+            .autoGranted(
+                uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState.PENDING)
             .submittedAt(data.submittedAt())
             .modifiedAt(event.occurredAt())
             .leadApplicationId(event.leadApplicationId())
@@ -104,7 +105,7 @@ public class ApplicationListIndexProjection {
             row -> {
               row.setStatus(
                   event.overallDecision() != null ? event.overallDecision() : row.getStatus());
-              row.setIsAutoGranted(event.autoGranted());
+              row.setAutoGranted(event.autoGranted());
               row.setStreamVersion(event.applicationVersion());
               row.setModifiedAt(event.occurredAt());
               row.setProjectionPosition(message.identifier().hashCode());
@@ -119,7 +120,8 @@ public class ApplicationListIndexProjection {
         .findById(event.applicationId())
         .ifPresent(
             row -> {
-              row.setIsAutoGranted(false);
+              row.setAutoGranted(
+                  uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState.MANUAL);
               row.setStreamVersion(event.applicationVersion());
               row.setModifiedAt(event.occurredAt());
               row.setProjectionPosition(message.identifier().hashCode());
@@ -140,7 +142,7 @@ public class ApplicationListIndexProjection {
               row.setStatus(event.status());
               row.setLaaReference(data.laaReference());
               row.setMatterType(data.matterType() == null ? null : data.matterType().name());
-              row.setIsAutoGranted(data.autoGranted());
+              row.setAutoGranted(data.autoGranted());
               row.setSubmittedAt(data.submittedAt());
               row.setClientFirstName(client != null ? client.firstName() : null);
               row.setClientLastName(client != null ? client.lastName() : null);

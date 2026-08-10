@@ -190,11 +190,19 @@ class ApplicationListIndexProjectionTest {
     when(listIndexRepository.findById(applicationId)).thenReturn(Optional.of(existing));
 
     projection.on(
-        new ApplicationDecisionMadeEvent(applicationId, 3L, 4L, "GRANTED", true, Instant.now()),
+        new ApplicationDecisionMadeEvent(
+            applicationId,
+            3L,
+            4L,
+            "GRANTED",
+            uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState.AUTOGRANTED,
+            Instant.now()),
         anyMessage());
 
     assertThat(existing.getStatus()).isEqualTo("GRANTED");
-    assertThat(existing.getIsAutoGranted()).isTrue();
+    assertThat(existing.getAutoGranted())
+        .isEqualTo(
+            uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState.AUTOGRANTED);
     assertThat(existing.getStreamVersion()).isEqualTo(3L);
     verify(listIndexRepository).save(existing);
   }
@@ -211,7 +219,13 @@ class ApplicationListIndexProjectionTest {
     when(listIndexRepository.findById(applicationId)).thenReturn(Optional.of(existing));
 
     projection.on(
-        new ApplicationDecisionMadeEvent(applicationId, 3L, 4L, null, false, Instant.now()),
+        new ApplicationDecisionMadeEvent(
+            applicationId,
+            3L,
+            4L,
+            null,
+            uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState.MANUAL,
+            Instant.now()),
         anyMessage());
 
     assertThat(existing.getStatus()).isEqualTo("APPLICATION_SUBMITTED");

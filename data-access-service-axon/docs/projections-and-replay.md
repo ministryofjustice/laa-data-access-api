@@ -24,8 +24,8 @@ router and initializer are described in [Linked applications](linked-application
 
 Decision and manual-ready events both advance the public and data versions. A replay of
 `ApplicationReadyForManualAssessmentEvent` therefore restores the pointer to the immutable payload
-containing `autoGrant=false`; no command handler or external side effect is invoked during replay.
-List queries can filter that hydrated value with `isAutoGranted=false`, which deliberately excludes
+containing `autoGranted=MANUAL`; no command handler or external side effect is invoked during replay.
+List queries can filter that hydrated value with `autoGranted=MANUAL`, which deliberately excludes
 null outcomes, while identifier lookup remains unfiltered.
 
 The aggregate event stream remains authoritative while this tracking projection catches up.

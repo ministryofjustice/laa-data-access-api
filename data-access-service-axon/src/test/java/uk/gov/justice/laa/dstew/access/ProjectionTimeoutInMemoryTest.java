@@ -162,7 +162,8 @@ class ProjectionTimeoutInMemoryTest {
 
     assertThat(first.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
     assertThat(staleRead.getBody()).isNotNull();
-    assertThat(staleRead.getBody().getAutoGrant()).isNull();
+    assertThat(staleRead.getBody().getAutoGranted())
+        .isEqualTo(uk.gov.justice.laa.dstew.access.model.AutoGranted.PENDING);
     assertThat(repeated.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(
             jdbcTemplate.queryForObject(
@@ -183,7 +184,8 @@ class ProjectionTimeoutInMemoryTest {
                       new HttpEntity<>(headers),
                       ApplicationResponse.class);
               assertThat(currentRead.getBody()).isNotNull();
-              assertThat(currentRead.getBody().getAutoGrant()).isFalse();
+              assertThat(currentRead.getBody().getAutoGranted())
+                  .isEqualTo(uk.gov.justice.laa.dstew.access.model.AutoGranted.MANUAL);
               assertThat(currentRead.getBody().getVersion()).isEqualTo(1L);
             });
   }
@@ -261,7 +263,8 @@ class ProjectionTimeoutInMemoryTest {
 
     assertThat(first.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
     assertThat(staleRead.getBody()).isNotNull();
-    assertThat(staleRead.getBody().getAutoGrant()).isNull();
+    assertThat(staleRead.getBody().getAutoGranted())
+        .isEqualTo(uk.gov.justice.laa.dstew.access.model.AutoGranted.PENDING);
     assertThat(repeated.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
     assertThat(
             jdbcTemplate.queryForObject(
@@ -282,7 +285,8 @@ class ProjectionTimeoutInMemoryTest {
                       new HttpEntity<>(headers),
                       ApplicationResponse.class);
               assertThat(currentRead.getBody()).isNotNull();
-              assertThat(currentRead.getBody().getAutoGrant()).isTrue();
+              assertThat(currentRead.getBody().getAutoGranted())
+                  .isEqualTo(uk.gov.justice.laa.dstew.access.model.AutoGranted.AUTOGRANTED);
               assertThat(currentRead.getBody().getVersion()).isEqualTo(1L);
             });
   }

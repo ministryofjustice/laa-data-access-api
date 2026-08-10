@@ -20,6 +20,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
@@ -160,7 +161,7 @@ public class ApplicationProjection {
                 applicationReadRepository.findAllByStatus(
                     ApplicationStatus.APPLICATION_SUBMITTED.name()))
             .stream()
-            .filter(application -> application.getAutoGranted() == null)
+            .filter(application -> application.getAutoGranted() == AutoGrantedState.PENDING)
             .filter(application -> application.getSubmittedAt() != null)
             .filter(application -> application.getSubmittedAt().isBefore(query.submittedBefore()))
             .map(

@@ -40,10 +40,10 @@ paths:
             type: string
             format: uuid
         - in: query
-          name: isAutoGranted
-          description: Filter by the recorded auto-grant outcome; false selects manual work and excludes null outcomes
+          name: autoGranted
+          description: Filter by the explicit automatic-assessment state
           schema:
-            type: boolean
+            $ref: "./components.yml#/components/schemas/AutoGranted"
         - in: query
           name: matterType
           description: The matter type of the application
