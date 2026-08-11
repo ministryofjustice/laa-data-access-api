@@ -29,7 +29,6 @@ public final class ApplicationCreateRequestFixture {
                 Map.entry("dateOfBirth", "1815-12-10"),
                 Map.entry("appliedPreviously", false),
                 Map.entry("addresses", List.of(validAddressContent())))),
-        Map.entry("allLinkedApplications", List.of()),
         Map.entry("proceedings", List.of(validProceedingContent(applyProceedingId))));
   }
 

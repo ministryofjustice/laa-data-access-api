@@ -10,7 +10,6 @@
     "submittedAt",
     "proceedings",
     "provider",
-    "allLinkedApplications",
     "client"
   ],
   "properties": {
@@ -59,13 +58,6 @@
         "null"
       ],
       "description": "Current status of the application"
-    },
-    "allLinkedApplications": {
-      "type": ["array", "null"],
-      "items": {
-        "$ref": "../common/LinkedApplication.json"
-      },
-      "description": "All linked applications"
     }
   },
   "additionalProperties": false

@@ -21,6 +21,7 @@ import java.util.concurrent.TimeUnit;
 import org.axonframework.eventsourcing.eventstore.EventStorageEngine;
 import org.axonframework.eventsourcing.eventstore.jpa.AggregateBasedJpaEventStorageEngine;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
@@ -816,6 +817,7 @@ class PostgresAxonIntegrationTest {
   }
 
   @Test
+  @Disabled("Linked applications removed from schema; orchestration retained for future endpoint")
   void givenExistingLeadApplication_whenPostLinkedApplication_thenProjectsCurrentStateAndHistory()
       throws Exception {
     UUID leadApplyApplicationId = UUID.randomUUID();
@@ -849,6 +851,7 @@ class PostgresAxonIntegrationTest {
   }
 
   @Test
+  @Disabled("Linked applications removed from schema; orchestration retained for future endpoint")
   void givenMissingLeadApplication_whenPostApplication_thenReturnsNotFound() {
     UUID missingLeadApplyApplicationId = UUID.randomUUID();
     UUID rejectedApplicationId = UUID.randomUUID();
@@ -868,6 +871,7 @@ class PostgresAxonIntegrationTest {
   }
 
   @Test
+  @Disabled("Linked applications removed from schema; orchestration retained for future endpoint")
   void givenMissingAssociatedApplication_whenPostApplication_thenReturnsNotFound()
       throws Exception {
     UUID leadApplyApplicationId = UUID.randomUUID();

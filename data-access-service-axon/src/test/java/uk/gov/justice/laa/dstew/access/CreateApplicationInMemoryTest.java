@@ -13,6 +13,7 @@ import java.util.concurrent.TimeUnit;
 import org.axonframework.common.configuration.AxonConfiguration;
 import org.axonframework.messaging.eventhandling.processing.streaming.StreamingEventProcessor;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
@@ -336,6 +337,7 @@ class CreateApplicationInMemoryTest {
   }
 
   @Test
+  @Disabled("Linked applications removed from schema; orchestration retained for future endpoint")
   void givenMissingLeadApplication_whenPostApplication_thenReturnsNotFound() {
     UUID missingApplyApplicationId = UUID.randomUUID();
     UUID rejectedApplicationId = UUID.randomUUID();
@@ -354,6 +356,7 @@ class CreateApplicationInMemoryTest {
   }
 
   @Test
+  @Disabled("Linked applications removed from schema; orchestration retained for future endpoint")
   void givenMissingAssociatedApplication_whenPostApplication_thenReturnsNotFound() {
     UUID leadApplyApplicationId = UUID.randomUUID();
     ResponseEntity<Void> leadResponse =
@@ -385,6 +388,7 @@ class CreateApplicationInMemoryTest {
   }
 
   @Test
+  @Disabled("Linked applications removed from schema; orchestration retained for future endpoint")
   void givenExistingLeadApplication_whenPostLinkedApplication_thenProjectsLeadLink() {
     UUID leadApplyApplicationId = UUID.randomUUID();
     ResponseEntity<Void> leadResponse =
@@ -461,6 +465,7 @@ class CreateApplicationInMemoryTest {
   }
 
   @Test
+  @Disabled("Linked applications removed from schema; orchestration retained for future endpoint")
   void givenExistingLeadAndFirstLinked_whenPostSecondLinkedApplication_thenJoinsExistingGroup() {
     UUID leadApplyApplicationId = UUID.randomUUID();
     UUID leadApplicationId =
@@ -561,6 +566,7 @@ class CreateApplicationInMemoryTest {
   }
 
   @Test
+  @Disabled("Linked applications removed from schema; orchestration retained for future endpoint")
   void givenLinkedApplications_whenGetApplications_thenLinkedApplicationsPopulatedOnLead() {
     UUID leadApplyApplicationId = UUID.randomUUID();
     UUID leadApplicationId =
