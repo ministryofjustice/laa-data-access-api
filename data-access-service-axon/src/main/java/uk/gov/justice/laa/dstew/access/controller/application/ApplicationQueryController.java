@@ -34,6 +34,7 @@ import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsQuer
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsResult;
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdRebuildQuery;
+import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdRebuildQueryNative;
 import uk.gov.justice.laa.dstew.access.query.application.FindNotesForApplicationQuery;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.history.FindApplicationHistoryQuery;
@@ -147,6 +148,24 @@ public class ApplicationQueryController {
         Optional.ofNullable(
                 queryGateway
                     .query(new FindApplicationByIdRebuildQuery(id), ApplicationReadModel.class)
+                    .join())
+            .orElseThrow(
+                () -> new ResourceNotFoundException("No application found with ID: " + id));
+    return ResponseEntity.ok(responseMapper.toResponse(application));
+  }
+
+  /**
+   * Diagnostic/test endpoint that reconstructs the Application's read model directly from the Axon
+   * event store using its native, tag-filtered streaming API, bypassing the Axon query API's
+   * running projection entirely.
+   */
+  @GetMapping("/{id}/native-replay")
+  public ResponseEntity<ApplicationResponse> getNativeReplayedApplication(@PathVariable UUID id) {
+    ApplicationReadModel application =
+        Optional.ofNullable(
+                queryGateway
+                    .query(
+                        new FindApplicationByIdRebuildQueryNative(id), ApplicationReadModel.class)
                     .join())
             .orElseThrow(
                 () -> new ResourceNotFoundException("No application found with ID: " + id));
