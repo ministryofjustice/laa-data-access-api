@@ -28,13 +28,13 @@ class JsonSchemaValidatorTest {
   }
 
   @Test
-  void validateAcceptsPayloadMatchingSchema_ApplyApplication2() {
+  void givenValidV2Payload_whenValidate_thenAcceptsPayload() {
     Map<String, Object> payload = validApplyApplicationV2Payload();
     validator.validate(payload, "ApplyApplication.json", 2);
   }
 
   @Test
-  void validateRejectsMissingRequiredField_ApplyApplication2() {
+  void givenV2PayloadMissingRequiredField_whenValidate_thenThrowsValidationException() {
     Map<String, Object> payload = new HashMap<>(validApplyApplicationV2Payload());
     payload.remove("provider");
 
