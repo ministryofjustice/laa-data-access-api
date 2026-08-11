@@ -39,6 +39,7 @@ public class ApplicationAddress implements Serializable {
 
   @JsonAnyGetter private Map<String, Object> additionalAddressData;
 
+  /** Stores an additional unmapped address property. */
   @JsonAnySetter
   public ApplicationAddress putAdditionalProperty(String key, Object value) {
     if (this.additionalAddressData == null) {

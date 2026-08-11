@@ -48,6 +48,7 @@ public class LinkedApplication implements Serializable {
 
   @JsonAnyGetter private Map<String, Object> additionalData;
 
+  /** Stores an additional unmapped linked-application property. */
   @JsonAnySetter
   public LinkedApplication putAdditionalProperty(String key, Object value) {
     if (this.additionalData == null) {

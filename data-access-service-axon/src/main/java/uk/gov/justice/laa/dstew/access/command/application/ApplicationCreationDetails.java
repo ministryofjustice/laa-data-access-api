@@ -28,6 +28,7 @@ public record ApplicationCreationDetails(
     Instant occurredAt,
     UUID leadApplicationId) {
 
+  /** Normalises nullable collection fields to empty immutable lists. */
   public ApplicationCreationDetails {
     opponents = opponents == null ? List.of() : List.copyOf(opponents);
     allLinkedApplications =
