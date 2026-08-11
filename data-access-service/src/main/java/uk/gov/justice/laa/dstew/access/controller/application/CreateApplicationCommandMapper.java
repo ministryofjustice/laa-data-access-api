@@ -29,6 +29,7 @@ public class CreateApplicationCommandMapper {
    */
   public CreateApplicationCommand toCreateCommand(ApplicationCreateRequest req, int schemaVersion) {
     return CreateApplicationCommand.builder()
+        .id(req.getId())
         .status(req.getStatus() != null ? req.getStatus().name() : null)
         .laaReference(req.getLaaReference())
         .applicationContent(req.getApplicationContent())

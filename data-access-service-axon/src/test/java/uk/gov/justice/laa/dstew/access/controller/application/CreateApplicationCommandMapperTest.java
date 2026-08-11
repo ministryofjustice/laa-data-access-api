@@ -1,15 +1,12 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.json.JsonMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
-import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 class CreateApplicationCommandMapperTest {
 
@@ -25,7 +22,7 @@ class CreateApplicationCommandMapperTest {
   }
 
   @Test
-  void givenValidContentId_whenMapped_thenApplicationIdEqualsContentId() {
+  void givenValidId_whenMapped_thenApplicationIdEqualsRequestId() {
     UUID id = UUID.randomUUID();
     var command = mapper.toCommand(request(id), 1);
 
@@ -33,35 +30,7 @@ class CreateApplicationCommandMapperTest {
     assertThat(command.applyApplicationId()).isEqualTo(id);
   }
 
-  @Test
-  void givenMissingContentId_whenMapped_thenThrowsValidationException() {
-    ApplicationCreateRequest request =
-        ApplicationCreateRequest.builder().applicationContent(Map.of()).build();
-
-    assertThatThrownBy(() -> mapper.toCommand(request, 1)).isInstanceOf(ValidationException.class);
-  }
-
-  @Test
-  void givenMalformedContentId_whenMapped_thenThrowsValidationException() {
-    ApplicationCreateRequest request =
-        ApplicationCreateRequest.builder().applicationContent(Map.of("id", "not-a-uuid")).build();
-
-    assertThatThrownBy(() -> mapper.toCommand(request, 1)).isInstanceOf(ValidationException.class);
-  }
-
-  @Test
-  void givenNullContentId_whenMapped_thenThrowsValidationException() {
-    Map<String, Object> content = new HashMap<>();
-    content.put("id", null);
-    ApplicationCreateRequest request =
-        ApplicationCreateRequest.builder().applicationContent(content).build();
-
-    assertThatThrownBy(() -> mapper.toCommand(request, 1)).isInstanceOf(ValidationException.class);
-  }
-
-  private ApplicationCreateRequest request(UUID contentId) {
-    return ApplicationCreateRequest.builder()
-        .applicationContent(Map.of("id", contentId.toString()))
-        .build();
+  private ApplicationCreateRequest request(UUID id) {
+    return ApplicationCreateRequest.builder().id(id).applicationContent(Map.of()).build();
   }
 }

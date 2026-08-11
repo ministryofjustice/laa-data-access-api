@@ -81,10 +81,15 @@ components:
     ApplicationCreateRequest:
       type: object
       required:
+        - id
         - status
         - applicationContent
         - laaReference
       properties:
+        id:
+          type: string
+          format: uuid
+          description: The unique reference used to identify the application.
         status:
           $ref: "../open-api-common/components.yml#/components/schemas/ApplicationStatus"
         applicationContent:

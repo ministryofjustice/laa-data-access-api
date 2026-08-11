@@ -25,6 +25,7 @@ class CreateApplicationCommandMapperTest {
         DataGenerator.createDefault(ApplicationCreateRequestGenerator.class);
     CreateApplicationCommand command = mapper.toCreateCommand(req, 1);
 
+    assertThat(command.id()).isEqualTo(req.getId());
     assertThat(command.status()).isEqualTo(req.getStatus().name());
     assertThat(command.laaReference()).isEqualTo(req.getLaaReference());
     assertThat(command.applicationContent()).isEqualTo(req.getApplicationContent());

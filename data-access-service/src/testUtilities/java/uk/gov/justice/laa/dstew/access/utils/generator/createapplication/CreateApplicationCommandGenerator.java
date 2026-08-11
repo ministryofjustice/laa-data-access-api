@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.utils.generator.createapplication;
 
 import java.util.Map;
+import java.util.UUID;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.usecase.createapplication.CreateApplicationCommand;
 import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
@@ -24,6 +25,7 @@ public class CreateApplicationCommandGenerator
     Map<String, Object> appContent = mapper.convertValue(contentGen.createDefault(), Map.class);
 
     return CreateApplicationCommand.builder()
+        .id(UUID.randomUUID())
         .status("APPLICATION_IN_PROGRESS")
         .laaReference("REF7327")
         .applicationContent(appContent)

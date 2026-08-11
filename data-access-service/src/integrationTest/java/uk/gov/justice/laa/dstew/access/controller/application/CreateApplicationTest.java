@@ -528,6 +528,7 @@ public class CreateApplicationTest extends BaseHarnessTest {
             Map.of(
                 "invalidFields",
                 Map.of(
+                    "id", "must not be null",
                     "applicationContent", "must not be null",
                     "laaReference", "must not be null",
                     "status", "must not be null"))));

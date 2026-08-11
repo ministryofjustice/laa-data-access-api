@@ -115,6 +115,7 @@ public class CreateApplicationExamplesCustomizer implements OperationCustomizer 
    */
   private ApplicationCreateRequest buildRequestWrapper(Map<String, Object> applicationContent) {
     return ApplicationCreateRequest.builder()
+        .id(java.util.UUID.randomUUID())
         .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
         .laaReference("LAA-000-001")
         .applicationContent(applicationContent)

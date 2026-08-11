@@ -59,6 +59,7 @@ public final class ApplicationCreateRequestFixture {
   public static ApplicationCreateRequest validCreateApplicationRequest(
       UUID applyApplicationId, UUID applyProceedingId) {
     return ApplicationCreateRequest.builder()
+        .id(applyApplicationId)
         .status(ApplicationStatus.APPLICATION_SUBMITTED)
         .applicationContent(validApplicationContent(applyApplicationId, applyProceedingId))
         .laaReference("LAA-123")
@@ -94,6 +95,7 @@ public final class ApplicationCreateRequestFixture {
                 Map.entry("updatedAt", "2026-07-14T12:30:00Z"),
                 Map.entry("confirmLink", true))));
     return ApplicationCreateRequest.builder()
+        .id(applyApplicationId)
         .status(request.getStatus())
         .applicationContent(content)
         .laaReference(request.getLaaReference())

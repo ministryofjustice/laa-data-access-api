@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "BaseCivilApplication.json",
-  "title": "CivilApplyV2",
+  "title": "CivilApply",
   "description": "Base civil application schema for data common across Civil Apply matter types",
   "type": "object",
   "required": [
