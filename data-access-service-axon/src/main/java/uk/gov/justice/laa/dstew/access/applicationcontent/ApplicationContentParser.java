@@ -85,7 +85,6 @@ public class ApplicationContentParser {
         .client(applicationContent.getClient())
         .provider(applicationContent.getProvider())
         .opponents(opponents)
-        .applyApplicationId(applicationContent.getId())
         .categoryOfLaw(getCategoryOfLaw(leadProceeding))
         .matterType(getMatterType(leadProceeding))
         .submittedAt(parseSubmittedAt(applicationContent.getSubmittedAt()))

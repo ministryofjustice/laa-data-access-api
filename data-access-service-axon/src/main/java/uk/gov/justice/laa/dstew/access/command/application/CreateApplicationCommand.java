@@ -18,10 +18,4 @@ public record CreateApplicationCommand(
     Map<String, Object> applicationContent,
     String serialisedRequest,
     int schemaVersion,
-    String schemaName) {
-
-  /** Returns the validated Apply identifier carried by the application content. */
-  public UUID applyApplicationId() {
-    return applicationId;
-  }
-}
+    String schemaName) {}

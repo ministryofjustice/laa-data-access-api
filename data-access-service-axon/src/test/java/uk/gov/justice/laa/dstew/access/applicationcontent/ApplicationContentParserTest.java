@@ -21,13 +21,13 @@ class ApplicationContentParserTest {
 
   @Test
   void givenCompleteApplicationContent_whenParse_thenExtractsProductionDetails() {
-    UUID applyApplicationId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
     UUID linkedApplicationId = UUID.randomUUID();
     UUID proceedingId = UUID.randomUUID();
     Map<String, Object> rawContent =
         Map.of(
             "id",
-            applyApplicationId.toString(),
+            applicationId.toString(),
             "submittedAt",
             "2026-01-15T10:20:30Z",
             "provider",
@@ -58,10 +58,8 @@ class ApplicationContentParserTest {
                     UUID.randomUUID().toString(),
                     "associatedApplicationId",
                     linkedApplicationId.toString())));
-
     ParsedAppContentDetails result = parser.parse(rawContent);
 
-    assertThat(result.applyApplicationId()).isEqualTo(applyApplicationId);
     assertThat(result.categoryOfLaw()).isEqualTo("Family");
     assertThat(result.matterType()).isEqualTo("SPECIAL_CHILDREN_ACT");
     assertThat(result.submittedAt()).isEqualTo(Instant.parse("2026-01-15T10:20:30Z"));

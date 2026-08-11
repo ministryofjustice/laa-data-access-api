@@ -27,7 +27,6 @@ class CreateApplicationCommandMapperTest {
     var command = mapper.toCommand(request(id), 1);
 
     assertThat(command.applicationId()).isEqualTo(id);
-    assertThat(command.applyApplicationId()).isEqualTo(id);
   }
 
   private ApplicationCreateRequest request(UUID id) {

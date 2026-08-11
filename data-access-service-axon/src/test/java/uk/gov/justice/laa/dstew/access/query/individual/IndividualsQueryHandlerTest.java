@@ -154,7 +154,6 @@ class IndividualsQueryHandlerTest {
             base.opponents(),
             base.allLinkedApplications(),
             base.schemaVersion(),
-            base.applyApplicationId(),
             base.submittedAt(),
             base.usedDelegatedFunctions(),
             base.categoryOfLaw(),

@@ -64,7 +64,6 @@ public class ApplicationCreationDetailsFactory {
         parsed.opponents(),
         parsed.allLinkedApplications(),
         command.schemaVersion(),
-        parsed.applyApplicationId(),
         parsed.submittedAt(),
         parsed.usedDelegatedFunctions(),
         parsed.categoryOfLaw(),

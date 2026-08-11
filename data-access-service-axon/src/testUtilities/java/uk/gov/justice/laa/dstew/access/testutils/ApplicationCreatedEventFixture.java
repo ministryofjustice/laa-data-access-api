@@ -13,15 +13,9 @@ public final class ApplicationCreatedEventFixture {
 
   private ApplicationCreatedEventFixture() {}
 
-  /** Creates a minimal event where applicationId equals applyApplicationId. */
+  /** Creates a minimal event with stable values for the supplied identifier. */
   public static ApplicationCreatedEvent applicationCreatedEvent(UUID applicationId) {
     return applicationCreatedEvent(applicationId, applicationCreationDetails(applicationId));
-  }
-
-  /** Creates a minimal event with stable values and the supplied identifiers. */
-  public static ApplicationCreatedEvent applicationCreatedEvent(
-      UUID applyApplicationId, UUID applicationId) {
-    return applicationCreatedEvent(applicationId, applicationCreationDetails(applyApplicationId));
   }
 
   /** Creates an event from the supplied identifier and creation details. */
@@ -33,14 +27,13 @@ public final class ApplicationCreatedEventFixture {
         ApplicationDataStore.fingerprint(details.serialisedRequest()),
         details.status(),
         details.schemaVersion(),
-        details.applyApplicationId(),
         details.occurredAt(),
         details.leadApplicationId(),
         List.of());
   }
 
-  /** Creates minimal creation details with stable values and the supplied Apply identifier. */
-  public static ApplicationCreationDetails applicationCreationDetails(UUID applyApplicationId) {
+  /** Creates minimal creation details with stable values for the supplied identifier. */
+  public static ApplicationCreationDetails applicationCreationDetails(UUID applicationId) {
     return new ApplicationCreationDetails(
         "APPLICATION_SUBMITTED",
         "LAA-123",
@@ -49,7 +42,6 @@ public final class ApplicationCreatedEventFixture {
         List.of(),
         List.of(),
         1,
-        applyApplicationId,
         Instant.parse("2026-07-14T12:30:00Z"),
         false,
         null,

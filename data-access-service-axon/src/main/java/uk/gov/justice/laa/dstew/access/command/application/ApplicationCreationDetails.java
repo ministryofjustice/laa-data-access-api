@@ -18,7 +18,6 @@ public record ApplicationCreationDetails(
     List<Opponent> opponents,
     List<LinkedApplication> allLinkedApplications,
     int schemaVersion,
-    UUID applyApplicationId,
     Instant submittedAt,
     Boolean usedDelegatedFunctions,
     String categoryOfLaw,

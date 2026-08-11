@@ -58,9 +58,9 @@ class ProjectionTimeoutInMemoryTest {
         .shutdown()
         .join();
 
-    UUID applyApplicationId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
     ApplicationCreateRequest request =
-        validCreateApplicationRequest(applyApplicationId, UUID.randomUUID());
+        validCreateApplicationRequest(applicationId, UUID.randomUUID());
     HttpHeaders headers = new HttpHeaders();
     headers.set("X-Service-Name", "CIVIL_APPLY");
     headers.set("X-Schema-Version", "1");
@@ -75,13 +75,13 @@ class ProjectionTimeoutInMemoryTest {
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
     assertThat(response.getHeaders().getLocation()).isNotNull();
     assertThat(response.getHeaders().getLocation().getPath())
-        .isEqualTo("/api/v0/applications/" + applyApplicationId);
+        .isEqualTo("/api/v0/applications/" + applicationId);
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM domain_event_entry "
                     + "WHERE aggregate_identifier = ? AND sequence_number = 0",
                 Integer.class,
-                applyApplicationId.toString()))
+                applicationId.toString()))
         .isEqualTo(1);
 
     // The test must complete well below the full 5-second default timeout.

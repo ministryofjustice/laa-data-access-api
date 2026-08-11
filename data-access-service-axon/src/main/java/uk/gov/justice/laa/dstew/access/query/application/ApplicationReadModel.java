@@ -51,9 +51,6 @@ public class ApplicationReadModel {
   @Column(name = "schema_version")
   private int schemaVersion;
 
-  @Column(name = "apply_application_id")
-  private UUID applyApplicationId;
-
   @Column(name = "lead_application_id")
   private UUID leadApplicationId;
 

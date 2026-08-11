@@ -188,7 +188,6 @@ public final class ApplicationDecider {
         fingerprint,
         details.status(),
         details.schemaVersion(),
-        details.applyApplicationId(),
         details.occurredAt(),
         details.leadApplicationId(),
         details.allLinkedApplications() == null

@@ -160,7 +160,6 @@ public class ApplicationProjection {
                 .applicationDataVersion(event.applicationDataVersion())
                 .applicationVersion(0L)
                 .schemaVersion(event.schemaVersion())
-                .applyApplicationId(event.applyApplicationId())
                 .createdAt(event.occurredAt())
                 .modifiedAt(event.occurredAt())
                 .leadApplicationId(event.leadApplicationId())
