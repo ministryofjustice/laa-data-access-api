@@ -8,4 +8,4 @@ public record FindIndividualsResult(
     int page,
     int pageSize,
     int totalRecords,
-    ApplicationClientDetails clientDetails) {}
+    boolean includeClientDetails) {}

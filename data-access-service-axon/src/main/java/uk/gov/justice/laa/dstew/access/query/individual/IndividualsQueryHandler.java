@@ -31,7 +31,7 @@ public class IndividualsQueryHandler {
   public FindIndividualsResult handle(FindIndividualsQuery query) {
     // If type filter is not CLIENT, return empty
     if (query.individualType() != null && !"CLIENT".equals(query.individualType())) {
-      return new FindIndividualsResult(null, query.page(), query.pageSize(), 0, null);
+      return new FindIndividualsResult(null, query.page(), query.pageSize(), 0, false);
     }
 
     List<ApplicationReadModel> applications = findApplications(query.applicationId());
@@ -51,19 +51,9 @@ public class IndividualsQueryHandler {
             .findFirst()
             .orElse(null);
 
-    ApplicationClientDetails clientDetails =
-        query.includeClientDetails() && client != null
-            ? new ApplicationClientDetails(
-                client.getLastNameAtBirth(),
-                client.getPreviousApplicationId(),
-                client.getRelationshipToInvolvedChildren(),
-                client.getAppliedPreviously(),
-                client.getAddresses())
-            : null;
-
     int totalRecords = client != null ? 1 : 0;
     return new FindIndividualsResult(
-        client, query.page(), query.pageSize(), totalRecords, clientDetails);
+        client, query.page(), query.pageSize(), totalRecords, query.includeClientDetails());
   }
 
   private List<ApplicationReadModel> findApplications(UUID applicationId) {

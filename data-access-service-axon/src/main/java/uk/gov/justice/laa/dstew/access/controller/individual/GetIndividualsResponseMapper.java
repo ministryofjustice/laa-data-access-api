@@ -11,7 +11,6 @@ import uk.gov.justice.laa.dstew.access.model.IndividualResponse;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.model.IndividualsResponse;
 import uk.gov.justice.laa.dstew.access.model.PagingResponse;
-import uk.gov.justice.laa.dstew.access.query.individual.ApplicationClientDetails;
 import uk.gov.justice.laa.dstew.access.query.individual.FindIndividualsResult;
 
 /** Maps Axon individual query results to the public API response. */
@@ -24,7 +23,7 @@ public class GetIndividualsResponseMapper {
   public IndividualsResponse toResponse(FindIndividualsResult result) {
     List<IndividualResponse> individuals = new ArrayList<>();
     if (result.client() != null) {
-      individuals.add(toClientResponse(result.client(), result.clientDetails()));
+      individuals.add(toClientResponse(result.client(), result.includeClientDetails()));
     }
     PagingResponse paging = new PagingResponse();
     paging.setPage(result.page());
@@ -35,7 +34,7 @@ public class GetIndividualsResponseMapper {
   }
 
   private IndividualResponse toClientResponse(
-      ApplicationClient client, ApplicationClientDetails clientDetails) {
+      ApplicationClient client, boolean includeClientDetails) {
     IndividualResponse response =
         new IndividualResponse()
             .firstName(client.getFirstName())
@@ -45,13 +44,13 @@ public class GetIndividualsResponseMapper {
                     ? java.time.LocalDate.parse(client.getDateOfBirth())
                     : null)
             .type(IndividualType.CLIENT);
-    if (clientDetails != null) {
+    if (includeClientDetails) {
       response
-          .lastNameAtBirth(clientDetails.lastNameAtBirth())
-          .previousApplicationId(clientDetails.previousApplicationId())
-          .relationshipToInvolvedChildren(clientDetails.relationshipToInvolvedChildren())
-          .appliedPreviously(clientDetails.appliedPreviously())
-          .correspondenceAddress(toAddressMaps(clientDetails.correspondenceAddress()));
+          .lastNameAtBirth(client.getLastNameAtBirth())
+          .previousApplicationId(client.getPreviousApplicationId())
+          .relationshipToInvolvedChildren(client.getRelationshipToInvolvedChildren())
+          .appliedPreviously(client.getAppliedPreviously())
+          .correspondenceAddress(toAddressMaps(client.getAddresses()));
     }
     return response;
   }

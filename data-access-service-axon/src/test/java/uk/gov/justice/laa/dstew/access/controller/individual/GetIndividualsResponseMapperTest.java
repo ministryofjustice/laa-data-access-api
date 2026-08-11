@@ -8,7 +8,6 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationAddress;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
 import uk.gov.justice.laa.dstew.access.model.IndividualResponse;
 import uk.gov.justice.laa.dstew.access.model.IndividualsResponse;
-import uk.gov.justice.laa.dstew.access.query.individual.ApplicationClientDetails;
 import uk.gov.justice.laa.dstew.access.query.individual.FindIndividualsResult;
 
 class GetIndividualsResponseMapperTest {
@@ -22,18 +21,20 @@ class GetIndividualsResponseMapperTest {
             .firstName("Ada")
             .lastName("Lovelace")
             .dateOfBirth("1815-12-10")
+            .lastNameAtBirth("Byron")
+            .previousApplicationId("previous-id")
+            .relationshipToInvolvedChildren("MOTHER")
+            .appliedPreviously(true)
+            .addresses(
+                List.of(
+                    ApplicationAddress.builder()
+                        .addressLineOne("London")
+                        .countryCode("GBR")
+                        .build()))
             .build();
-    ApplicationClientDetails clientDetails =
-        new ApplicationClientDetails(
-            "Byron",
-            "previous-id",
-            "MOTHER",
-            true,
-            List.of(
-                ApplicationAddress.builder().addressLineOne("London").countryCode("GBR").build()));
 
     IndividualsResponse response =
-        mapper.toResponse(new FindIndividualsResult(client, 2, 5, 1, clientDetails));
+        mapper.toResponse(new FindIndividualsResult(client, 2, 5, 1, true));
 
     IndividualResponse mapped = response.getIndividuals().get(0);
     assertThat(mapped.getClientId()).isNull();

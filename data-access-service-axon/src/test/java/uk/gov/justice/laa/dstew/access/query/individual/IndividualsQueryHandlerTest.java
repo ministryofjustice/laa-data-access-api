@@ -59,7 +59,7 @@ class IndividualsQueryHandlerTest {
     assertThat(result.totalRecords()).isEqualTo(1);
     assertThat(result.page()).isEqualTo(1);
     assertThat(result.pageSize()).isEqualTo(20);
-    assertThat(result.clientDetails()).isNull();
+    assertThat(result.includeClientDetails()).isFalse();
   }
 
   @Test
@@ -93,13 +93,7 @@ class IndividualsQueryHandlerTest {
 
     verify(applicationRepository).findById(applicationId);
     assertThat(result.client()).isEqualTo(client);
-    assertThat(result.clientDetails().lastNameAtBirth()).isEqualTo("Byron");
-    assertThat(result.clientDetails().relationshipToInvolvedChildren()).isEqualTo("MOTHER");
-    assertThat(result.clientDetails().correspondenceAddress())
-        .hasSize(1)
-        .first()
-        .extracting(ApplicationAddress::getAddressLineOne)
-        .isEqualTo("1 Main Street");
+    assertThat(result.includeClientDetails()).isTrue();
   }
 
   @Test
