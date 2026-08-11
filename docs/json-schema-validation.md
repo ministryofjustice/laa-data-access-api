@@ -109,19 +109,21 @@ When the schema evolves, create a `schema/2/` directory with the updated JSON sc
 ```
 resources/
   schema/
-    1/
-      ApplyApplication.json      ← current
+    common/
+      Provider.json            ← shared sub-schemas referenced via "../common/X.json"
+      Client.json
       Proceeding.json
-      ApplicationOffice.json
+      ...
+    1/
+      ApplyApplication.json    ← current root schema; $refs point to ../common/
       ...
     2/
-      ApplyApplication.json      ← evolved schema
-      Proceeding.json            ← or $ref to ../1/ if unchanged
+      ApplyApplication.json    ← evolved root schema
       ...
 ```
 
 ### Key points
 
-- **`$ref` resolution** — networknt resolves `"$ref": "Proceeding.json"` relative to the schema's own URI, so because they're in the same classpath directory it just works.
+- **`$ref` resolution** — networknt resolves relative `$ref` paths from the schema's own URI. Root schemas in versioned directories (e.g. `schema/1/`) reference shared sub-schemas via `"$ref": "../common/Provider.json"`. Sub-schemas that are version-specific should live inside the versioned directory and use same-directory refs (e.g. `"$ref": "Child.json"`).
 - **Two layers of validation** — JSON Schema validates the *structure* of the raw payload; Bean Validation (`PayloadValidationService.convertAndValidate`) validates the *typed POJO* after conversion. Both are useful.
 - **Schema version on the entity** — you already store `schemaVersion` on the entity, so on *read* you can deserialise using the correct schema/model version too.
