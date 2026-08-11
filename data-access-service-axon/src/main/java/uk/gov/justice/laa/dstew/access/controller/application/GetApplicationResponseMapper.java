@@ -6,11 +6,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
-import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationContent;
+import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationProvider;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Opponent;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ScopeLimitation;
-import uk.gov.justice.laa.dstew.access.command.application.ApplicationProceeding;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationMeritsDecision;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
@@ -30,7 +29,6 @@ public class GetApplicationResponseMapper {
 
   /** Builds a response without reparsing content from JSON. */
   public ApplicationResponse toResponse(ApplicationReadModel application) {
-    ApplicationContent content = application.getApplicationContent();
     ApplicationResponse response = new ApplicationResponse();
     response.setApplicationId(application.getApplicationId());
     response.setStatus(ApplicationStatus.valueOf(application.getStatus()));
@@ -50,33 +48,28 @@ public class GetApplicationResponseMapper {
             : uk.gov.justice.laa.dstew.access.model.DecisionStatus.valueOf(
                 application.getDecisionStatus()));
     response.setVersion(application.getApplicationVersion());
-    response.setProvider(toProvider(application, content));
-    response.setOpponents(toOpponents(content));
+    response.setProvider(toProvider(application));
+    response.setOpponents(toOpponents(application.getOpponents()));
     response.setProceedings(
-        toProceedings(application.getProceedings(), content, application.getMeritsDecisions()));
+        toProceedings(application.getProceedings(), application.getMeritsDecisions()));
     return response;
   }
 
-  private ProviderResponse toProvider(
-      ApplicationReadModel application, ApplicationContent content) {
-    String contactEmail = null;
-    if (content != null && content.getProvider() != null) {
-      contactEmail = content.getProvider().getContactEmail();
-    }
-    if (application.getOfficeCode() == null && contactEmail == null) {
+  private ProviderResponse toProvider(ApplicationReadModel application) {
+    ApplicationProvider provider = application.getProvider();
+    String contactEmail = provider != null ? provider.getContactEmail() : null;
+    String officeCode = application.getOfficeCode();
+    if (officeCode == null && contactEmail == null) {
       return null;
     }
-    return ProviderResponse.builder()
-        .officeCode(application.getOfficeCode())
-        .contactEmail(contactEmail)
-        .build();
+    return ProviderResponse.builder().officeCode(officeCode).contactEmail(contactEmail).build();
   }
 
-  private List<OpponentResponse> toOpponents(ApplicationContent content) {
-    if (content == null || content.getOpponents() == null) {
+  private List<OpponentResponse> toOpponents(List<Opponent> opponents) {
+    if (opponents == null) {
       return Collections.emptyList();
     }
-    return content.getOpponents().stream().map(this::toOpponent).toList();
+    return opponents.stream().map(this::toOpponent).toList();
   }
 
   private OpponentResponse toOpponent(Opponent opponent) {
@@ -89,27 +82,22 @@ public class GetApplicationResponseMapper {
   }
 
   private List<ApplicationProceedingResponse> toProceedings(
-      List<ApplicationProceeding> proceedings,
-      ApplicationContent content,
-      Map<UUID, ApplicationMeritsDecision> meritsDecisions) {
+      List<Proceeding> proceedings, Map<UUID, ApplicationMeritsDecision> meritsDecisions) {
     if (proceedings == null) {
       return Collections.emptyList();
     }
     return proceedings.stream()
-        .map(proceeding -> toProceeding(proceeding, content, meritsDecisions))
+        .map(proceeding -> toProceeding(proceeding, meritsDecisions))
         .toList();
   }
 
   private ApplicationProceedingResponse toProceeding(
-      ApplicationProceeding applicationProceeding,
-      ApplicationContent content,
-      Map<UUID, ApplicationMeritsDecision> meritsDecisions) {
-    Proceeding proceeding = applicationProceeding.proceedingContent();
+      Proceeding proceeding, Map<UUID, ApplicationMeritsDecision> meritsDecisions) {
     ApplicationMeritsDecision meritsDecision =
-        meritsDecisions == null ? null : meritsDecisions.get(applicationProceeding.proceedingId());
+        meritsDecisions == null ? null : meritsDecisions.get(proceeding.getId());
     return ApplicationProceedingResponse.builder()
-        .proceedingId(applicationProceeding.proceedingId())
-        .proceedingDescription(applicationProceeding.description())
+        .proceedingId(proceeding.getId())
+        .proceedingDescription(proceeding.getDescription())
         .proceedingType(proceeding.getMeaning())
         .delegatedFunctionsDate(proceeding.getDelegatedFunctionsDate())
         .categoryOfLaw(toCategoryOfLaw(proceeding.getCategoryOfLaw()))

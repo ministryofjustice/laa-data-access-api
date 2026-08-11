@@ -47,7 +47,7 @@ class ApplicationCreationDetailsFactoryTest {
   }
 
   @Test
-  void givenCommand_whenPrepared_thenIndividualsAreEmpty() {
+  void givenCommand_whenPrepared_thenOpponentsArePassedThrough() {
     UUID applicationId = UUID.randomUUID();
     CreateApplicationCommand command = command(applicationId);
     Mockito.when(applicationContentParser.parse(command.applicationContent()))
@@ -55,7 +55,7 @@ class ApplicationCreationDetailsFactoryTest {
 
     ApplicationCreationDetails details = factory.prepare(command);
 
-    assertThat(details.individuals()).isEmpty();
+    assertThat(details.opponents()).isEmpty();
   }
 
   @Test
@@ -95,12 +95,11 @@ class ApplicationCreationDetailsFactoryTest {
     ApplicationCreationDetails details = factory.prepare(command);
 
     assertThat(details.proceedings()).hasSize(1);
-    uk.gov.justice.laa.dstew.access.command.application.ApplicationProceeding proc =
+    uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding proc =
         details.proceedings().getFirst();
-    assertThat(proc.proceedingId()).isNotNull();
-    assertThat(proc.applyProceedingId()).isEqualTo(applyProceedingId);
-    assertThat(proc.description()).isEqualTo("Care order");
-    assertThat(proc.lead()).isTrue();
+    assertThat(proc.getId()).isEqualTo(applyProceedingId);
+    assertThat(proc.getDescription()).isEqualTo("Care order");
+    assertThat(proc.getLeadProceeding()).isTrue();
   }
 
   @Test
@@ -127,7 +126,7 @@ class ApplicationCreationDetailsFactoryTest {
             .description("Care order")
             .build();
     return new ParsedAppContentDetails(
-        null, applyApplicationId, null, null, null, null, null, List.of(proceeding), null);
+        null, null, null, applyApplicationId, null, null, null, null, List.of(proceeding), null);
   }
 
   private ParsedAppContentDetails parsedDetailsWithMultipleLinked(
@@ -143,7 +142,7 @@ class ApplicationCreationDetailsFactoryTest {
                 .associatedApplicationId(anotherAssociatedId)
                 .build());
     return new ParsedAppContentDetails(
-        null, applyApplicationId, null, null, null, null, null, List.of(), linkedApps);
+        null, null, null, applyApplicationId, null, null, null, null, List.of(), linkedApps);
   }
 
   private CreateApplicationCommand command(UUID applicationId) {
@@ -160,11 +159,12 @@ class ApplicationCreationDetailsFactoryTest {
   private ParsedAppContentDetails parsedDetails(UUID applyApplicationId) {
     return new ParsedAppContentDetails(
         null,
+        null,
+        null,
         applyApplicationId,
         "Family",
         "SPECIAL_CHILDREN_ACT",
         Instant.parse("2026-07-14T12:30:00Z"),
-        "1A001B",
         false,
         List.of(),
         null);
@@ -172,7 +172,7 @@ class ApplicationCreationDetailsFactoryTest {
 
   private ParsedAppContentDetails parsedDetailsWithNoLinks(UUID applyApplicationId) {
     return new ParsedAppContentDetails(
-        null, applyApplicationId, null, null, null, null, null, List.of(), null);
+        null, null, null, applyApplicationId, null, null, null, null, List.of(), null);
   }
 
   private ParsedAppContentDetails parsedDetailsWithLead(
@@ -183,7 +183,16 @@ class ApplicationCreationDetailsFactoryTest {
             .associatedApplicationId(applyApplicationId)
             .build();
     return new ParsedAppContentDetails(
-        null, applyApplicationId, null, null, null, null, null, List.of(), List.of(linkedApp));
+        null,
+        null,
+        null,
+        applyApplicationId,
+        null,
+        null,
+        null,
+        null,
+        List.of(),
+        List.of(linkedApp));
   }
 
   private UUID proceedingIdFor(UUID applicationId) {

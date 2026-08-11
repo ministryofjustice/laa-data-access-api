@@ -1,8 +1,5 @@
 package uk.gov.justice.laa.dstew.access.query.individual;
 
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -10,8 +7,6 @@ import java.util.UUID;
 import org.axonframework.messaging.queryhandling.annotation.QueryHandler;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
-import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationContent;
-import uk.gov.justice.laa.dstew.access.command.application.ApplicationIndividual;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
@@ -31,9 +26,14 @@ public class IndividualsQueryHandler {
     this.applicationDataStore = applicationDataStore;
   }
 
-  /** Returns current individuals after applying application, type, and pagination filters. */
+  /** Returns current client after applying application and type filters. */
   @QueryHandler
   public FindIndividualsResult handle(FindIndividualsQuery query) {
+    // If type filter is not CLIENT, return empty
+    if (query.individualType() != null && !"CLIENT".equals(query.individualType())) {
+      return new FindIndividualsResult(null, query.page(), query.pageSize(), 0, null);
+    }
+
     List<ApplicationReadModel> applications = findApplications(query.applicationId());
     List<ApplicationDataId> dataIds =
         applications.stream()
@@ -44,53 +44,31 @@ public class IndividualsQueryHandler {
             .toList();
     Map<ApplicationDataId, ApplicationDataPayload> payloads = applicationDataStore.getAll(dataIds);
 
-    Map<UUID, ApplicationIndividual> uniqueIndividuals = new LinkedHashMap<>();
-    payloads.values().stream()
-        .map(ApplicationDataPayload::individuals)
-        .filter(Objects::nonNull)
-        .flatMap(Collection::stream)
-        .filter(individual -> matchesType(individual, query.individualType()))
-        .sorted(Comparator.comparing(ApplicationIndividual::individualId))
-        .forEach(
-            individual -> uniqueIndividuals.putIfAbsent(individual.individualId(), individual));
+    ApplicationClient client =
+        payloads.values().stream()
+            .map(ApplicationDataPayload::client)
+            .filter(Objects::nonNull)
+            .findFirst()
+            .orElse(null);
 
-    List<ApplicationIndividual> filtered = List.copyOf(uniqueIndividuals.values());
-    int fromIndex = Math.min((query.page() - 1) * query.pageSize(), filtered.size());
-    int toIndex = Math.min(fromIndex + query.pageSize(), filtered.size());
     ApplicationClientDetails clientDetails =
-        query.includeClientDetails() && "CLIENT".equals(query.individualType())
-            ? clientDetails(payloads.values())
+        query.includeClientDetails() && client != null
+            ? new ApplicationClientDetails(
+                client.getLastNameAtBirth(),
+                client.getPreviousApplicationId(),
+                client.getRelationshipToInvolvedChildren(),
+                client.getAppliedPreviously(),
+                client.getAddresses())
             : null;
+
+    int totalRecords = client != null ? 1 : 0;
     return new FindIndividualsResult(
-        filtered.subList(fromIndex, toIndex),
-        query.page(),
-        query.pageSize(),
-        filtered.size(),
-        clientDetails);
+        client, query.page(), query.pageSize(), totalRecords, clientDetails);
   }
 
   private List<ApplicationReadModel> findApplications(UUID applicationId) {
     return applicationId == null
         ? applicationRepository.findAll()
         : applicationRepository.findById(applicationId).stream().toList();
-  }
-
-  private boolean matchesType(ApplicationIndividual individual, String individualType) {
-    return individualType == null || Objects.equals(individual.type(), individualType);
-  }
-
-  private ApplicationClientDetails clientDetails(Collection<ApplicationDataPayload> payloads) {
-    ApplicationContent content =
-        payloads.stream().findFirst().map(ApplicationDataPayload::applicationContent).orElse(null);
-    if (content == null || content.getClient() == null) {
-      return new ApplicationClientDetails(null, null, null, null, null);
-    }
-    ApplicationClient client = content.getClient();
-    return new ApplicationClientDetails(
-        client.getLastNameAtBirth(),
-        client.getPreviousApplicationId(),
-        client.getRelationshipToInvolvedChildren(),
-        client.getAppliedPreviously(),
-        client.getAddresses());
   }
 }

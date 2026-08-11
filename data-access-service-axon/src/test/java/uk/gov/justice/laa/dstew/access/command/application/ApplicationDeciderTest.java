@@ -362,11 +362,14 @@ class ApplicationDeciderTest {
         "APPLICATION_SUBMITTED",
         "LAA-123",
         null,
-        List.of(),
+        uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationProvider.builder()
+            .officeCode("1A001B")
+            .build(),
+        null,
+        null,
         1,
         applicationId,
         Instant.parse("2026-07-14T12:30:00Z"),
-        "1A001B",
         false,
         null,
         null,
@@ -383,17 +386,24 @@ class ApplicationDeciderTest {
             "APPLICATION_SUBMITTED",
             "LAA-123",
             null,
-            List.of(),
+            uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationProvider.builder()
+                .officeCode("1A001B")
+                .build(),
+            null,
+            null,
             1,
             applicationId,
             Instant.parse("2026-07-14T12:30:00Z"),
-            "1A001B",
             false,
             null,
             null,
             List.of(
-                new ApplicationProceeding(
-                    proceedingId, UUID.randomUUID(), "Care order", true, null)),
+                uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding.builder()
+                    .id(proceedingId)
+                    .leadProceeding(true)
+                    .description("Care order")
+                    .code("SE003")
+                    .build()),
             "{}",
             Instant.parse("2026-07-15T08:00:00Z"),
             null);

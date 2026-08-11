@@ -66,8 +66,6 @@ public class ApplicationContentParser {
       }
     }
 
-    String officeCode = extractOfficeCode(applicationContent);
-
     List<Proceeding> proceedings =
         applicationContent.getProceedings() != null
             ? applicationContent.getProceedings()
@@ -78,25 +76,23 @@ public class ApplicationContentParser {
             ? applicationContent.getAllLinkedApplications()
             : Collections.emptyList();
 
+    List<Opponent> opponents =
+        applicationContent.getOpponents() != null
+            ? applicationContent.getOpponents()
+            : Collections.emptyList();
+
     return ParsedAppContentDetails.builder()
-        .applicationContent(applicationContent)
+        .client(applicationContent.getClient())
+        .provider(applicationContent.getProvider())
+        .opponents(opponents)
         .applyApplicationId(applicationContent.getId())
         .categoryOfLaw(getCategoryOfLaw(leadProceeding))
         .matterType(getMatterType(leadProceeding))
         .submittedAt(parseSubmittedAt(applicationContent.getSubmittedAt()))
         .usedDelegatedFunctions(usedDelegatedFunction)
-        .officeCode(officeCode)
         .proceedings(proceedings)
         .allLinkedApplications(allLinkedApplications)
         .build();
-  }
-
-  private String extractOfficeCode(ApplicationContent applicationContent) {
-    if (applicationContent.getProvider() != null
-        && applicationContent.getProvider().getOfficeCode() != null) {
-      return applicationContent.getProvider().getOfficeCode();
-    }
-    return null;
   }
 
   private Instant parseSubmittedAt(String submittedAt) {

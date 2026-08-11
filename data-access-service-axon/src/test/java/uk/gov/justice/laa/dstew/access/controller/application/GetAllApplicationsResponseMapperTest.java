@@ -12,7 +12,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import uk.gov.justice.laa.dstew.access.command.application.ApplicationIndividual;
+import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
@@ -52,13 +52,15 @@ class GetAllApplicationsResponseMapperTest {
             .applicationId(applicationId)
             .status("APPLICATION_SUBMITTED")
             .laaReference("LAA-999")
-            .officeCode("2B002C")
+            .provider(
+                uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationProvider.builder()
+                    .officeCode("2B002C")
+                    .build())
             .matterType("SPECIAL_CHILDREN_ACT")
             .categoryOfLaw("FAMILY")
             .usedDelegatedFunctions(true)
             .submittedAt(Instant.parse("2026-07-01T10:00:00Z"))
             .modifiedAt(Instant.parse("2026-07-02T10:00:00Z"))
-            .individuals(List.of())
             .build();
 
     FindAllApplicationsResult result =
@@ -82,7 +84,6 @@ class GetAllApplicationsResponseMapperTest {
             .applicationId(UUID.randomUUID())
             .modifiedAt(Instant.now())
             .leadApplicationId(null)
-            .individuals(List.of())
             .build();
 
     ApplicationSummary summary =
@@ -102,7 +103,6 @@ class GetAllApplicationsResponseMapperTest {
             .applicationId(UUID.randomUUID())
             .modifiedAt(Instant.now())
             .leadApplicationId(UUID.randomUUID())
-            .individuals(List.of())
             .build();
 
     ApplicationSummary summary =
@@ -117,14 +117,17 @@ class GetAllApplicationsResponseMapperTest {
 
   @Test
   void givenApplicationWithClientIndividual_whenToResponse_thenClientFieldsPopulated() {
-    ApplicationIndividual client =
-        new ApplicationIndividual(
-            UUID.randomUUID(), "Ada", "Lovelace", LocalDate.of(1815, 12, 10), Map.of(), "CLIENT");
+    ApplicationClient client =
+        ApplicationClient.builder()
+            .firstName("Ada")
+            .lastName("Lovelace")
+            .dateOfBirth("1815-12-10")
+            .build();
     ApplicationReadModel app =
         ApplicationReadModel.builder()
             .applicationId(UUID.randomUUID())
             .modifiedAt(Instant.now())
-            .individuals(List.of(client))
+            .client(client)
             .build();
 
     ApplicationSummary summary =
@@ -149,7 +152,6 @@ class GetAllApplicationsResponseMapperTest {
             .applicationId(leadId)
             .modifiedAt(Instant.now())
             .leadApplicationId(null)
-            .individuals(List.of())
             .build();
 
     LinkedApplicationGroupReadModel group =
@@ -180,7 +182,6 @@ class GetAllApplicationsResponseMapperTest {
         ApplicationReadModel.builder()
             .applicationId(UUID.randomUUID())
             .modifiedAt(Instant.now())
-            .individuals(List.of())
             .build();
 
     ApplicationSummary summary =

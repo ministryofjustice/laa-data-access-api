@@ -1,11 +1,12 @@
 package uk.gov.justice.laa.dstew.access.controller.individual;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationAddress;
-import uk.gov.justice.laa.dstew.access.command.application.ApplicationIndividual;
+import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
 import uk.gov.justice.laa.dstew.access.model.IndividualResponse;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.model.IndividualsResponse;
@@ -21,10 +22,10 @@ public class GetIndividualsResponseMapper {
 
   /** Maps a query result and its paging metadata to the generated response model. */
   public IndividualsResponse toResponse(FindIndividualsResult result) {
-    List<IndividualResponse> individuals =
-        result.individuals().stream()
-            .map(individual -> toResponse(individual, result.clientDetails()))
-            .toList();
+    List<IndividualResponse> individuals = new ArrayList<>();
+    if (result.client() != null) {
+      individuals.add(toClientResponse(result.client(), result.clientDetails()));
+    }
     PagingResponse paging = new PagingResponse();
     paging.setPage(result.page());
     paging.setPageSize(result.pageSize());
@@ -33,20 +34,19 @@ public class GetIndividualsResponseMapper {
     return new IndividualsResponse().individuals(individuals).paging(paging);
   }
 
-  private IndividualResponse toResponse(
-      ApplicationIndividual individual, ApplicationClientDetails clientDetails) {
+  private IndividualResponse toClientResponse(
+      ApplicationClient client, ApplicationClientDetails clientDetails) {
     IndividualResponse response =
         new IndividualResponse()
-            .firstName(individual.firstName())
-            .lastName(individual.lastName())
-            .dateOfBirth(individual.dateOfBirth())
-            .details(individual.individualContent());
-    if (individual.type() != null) {
-      response.setType(IndividualType.valueOf(individual.type()));
-    }
+            .firstName(client.getFirstName())
+            .lastName(client.getLastName())
+            .dateOfBirth(
+                client.getDateOfBirth() != null
+                    ? java.time.LocalDate.parse(client.getDateOfBirth())
+                    : null)
+            .type(IndividualType.CLIENT);
     if (clientDetails != null) {
       response
-          .clientId(individual.individualId())
           .lastNameAtBirth(clientDetails.lastNameAtBirth())
           .previousApplicationId(clientDetails.previousApplicationId())
           .relationshipToInvolvedChildren(clientDetails.relationshipToInvolvedChildren())

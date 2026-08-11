@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.testutils;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationProvider;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreationDetails;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
@@ -44,11 +45,12 @@ public final class ApplicationCreatedEventFixture {
         "APPLICATION_SUBMITTED",
         "LAA-123",
         null,
+        ApplicationProvider.builder().officeCode("1A001B").build(),
+        List.of(),
         List.of(),
         1,
         applyApplicationId,
         Instant.parse("2026-07-14T12:30:00Z"),
-        "1A001B",
         false,
         null,
         null,

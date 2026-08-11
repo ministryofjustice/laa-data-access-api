@@ -269,10 +269,10 @@ public class ApplicationProjection {
   private ApplicationReadModel hydrate(
       ApplicationReadModel application, ApplicationDataPayload data) {
     application.setLaaReference(data.laaReference());
-    application.setApplicationContent(data.applicationContent());
-    application.setIndividuals(data.individuals());
+    application.setClient(data.client());
+    application.setProvider(data.provider());
+    application.setOpponents(data.opponents());
     application.setSubmittedAt(data.submittedAt());
-    application.setOfficeCode(data.officeCode());
     application.setUsedDelegatedFunctions(data.usedDelegatedFunctions());
     application.setCategoryOfLaw(data.categoryOfLaw());
     application.setMatterType(data.matterType());

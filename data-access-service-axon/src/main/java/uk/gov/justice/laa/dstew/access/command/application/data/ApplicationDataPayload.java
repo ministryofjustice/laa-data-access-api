@@ -5,23 +5,24 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationContent;
+import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
+import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationProvider;
+import uk.gov.justice.laa.dstew.access.applicationcontent.Opponent;
+import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreationDetails;
-import uk.gov.justice.laa.dstew.access.command.application.ApplicationIndividual;
-import uk.gov.justice.laa.dstew.access.command.application.ApplicationProceeding;
 
 /** Sensitive application data stored outside the Axon event stream. */
 public record ApplicationDataPayload(
     String laaReference,
-    ApplicationContent applicationContent,
-    List<ApplicationIndividual> individuals,
+    ApplicationClient client,
+    ApplicationProvider provider,
+    List<Opponent> opponents,
     UUID applyApplicationId,
     Instant submittedAt,
-    String officeCode,
     Boolean usedDelegatedFunctions,
     String categoryOfLaw,
     String matterType,
-    List<ApplicationProceeding> proceedings,
+    List<Proceeding> proceedings,
     String serialisedRequest,
     String overallDecision,
     Boolean autoGranted,
@@ -33,12 +34,13 @@ public record ApplicationDataPayload(
     List<ApplicationNote> notes) {
 
   /**
-   * Normalises a null {@code notes} list to an empty list so that existing {@code application_data}
-   * JSONB rows (which pre-date this field) deserialise cleanly when Jackson passes {@code null} for
-   * the absent key.
+   * Normalises a null {@code notes} and {@code opponents} lists to empty lists so that existing
+   * {@code application_data} JSONB rows (which pre-date these fields) deserialise cleanly when
+   * Jackson passes {@code null} for the absent keys.
    */
   public ApplicationDataPayload {
     notes = notes == null ? List.of() : List.copyOf(notes);
+    opponents = opponents == null ? List.of() : List.copyOf(opponents);
   }
 
   /**
@@ -50,11 +52,11 @@ public record ApplicationDataPayload(
   public static ApplicationDataPayload from(ApplicationCreationDetails details) {
     return new ApplicationDataPayload(
         details.laaReference(),
-        details.applicationContent(),
-        details.individuals(),
+        details.client(),
+        details.provider(),
+        details.opponents(),
         details.applyApplicationId(),
         details.submittedAt(),
-        details.officeCode(),
         details.usedDelegatedFunctions(),
         details.categoryOfLaw(),
         details.matterType(),
@@ -80,11 +82,11 @@ public record ApplicationDataPayload(
       String newDecisionEventDescription) {
     return new ApplicationDataPayload(
         laaReference,
-        applicationContent,
-        individuals,
+        client,
+        provider,
+        opponents,
         applyApplicationId,
         submittedAt,
-        officeCode,
         usedDelegatedFunctions,
         categoryOfLaw,
         matterType,
@@ -104,11 +106,11 @@ public record ApplicationDataPayload(
   public ApplicationDataPayload withAssignment(String newAssignmentEventDescription) {
     return new ApplicationDataPayload(
         laaReference,
-        applicationContent,
-        individuals,
+        client,
+        provider,
+        opponents,
         applyApplicationId,
         submittedAt,
-        officeCode,
         usedDelegatedFunctions,
         categoryOfLaw,
         matterType,
@@ -130,11 +132,11 @@ public record ApplicationDataPayload(
     updated.add(new ApplicationNote(noteText, createdAt));
     return new ApplicationDataPayload(
         laaReference,
-        applicationContent,
-        individuals,
+        client,
+        provider,
+        opponents,
         applyApplicationId,
         submittedAt,
-        officeCode,
         usedDelegatedFunctions,
         categoryOfLaw,
         matterType,

@@ -85,11 +85,14 @@ class ApplicationAggregateTest {
             "APPLICATION_SUBMITTED",
             "LAA-123",
             null,
-            List.of(),
+            uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationProvider.builder()
+                .officeCode("1A001B")
+                .build(),
+            null,
+            null,
             1,
             applicationId,
             java.time.Instant.parse("2026-07-14T12:30:00Z"),
-            "1A001B",
             false,
             null,
             null,
@@ -453,11 +456,14 @@ class ApplicationAggregateTest {
                 "APPLICATION_SUBMITTED",
                 "LAA-123",
                 null,
-                List.of(),
+                uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationProvider.builder()
+                    .officeCode("1A001B")
+                    .build(),
+                null,
+                null,
                 1,
                 applicationId,
                 java.time.Instant.parse("2026-07-14T12:30:00Z"),
-                "1A001B",
                 false,
                 null,
                 null,
@@ -491,11 +497,14 @@ class ApplicationAggregateTest {
             "APPLICATION_SUBMITTED",
             "LAA-123",
             null,
-            List.of(),
+            uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationProvider.builder()
+                .officeCode("1A001B")
+                .build(),
+            null,
+            null,
             1,
             applicationId,
             java.time.Instant.parse("2026-07-14T12:30:00Z"),
-            "1A001B",
             false,
             null,
             null,
@@ -603,16 +612,23 @@ class ApplicationAggregateTest {
     return new ApplicationCreationDetails(
         original.status(),
         original.laaReference(),
-        original.applicationContent(),
-        original.individuals(),
+        original.client(),
+        original.provider(),
+        original.opponents(),
+        original.allLinkedApplications(),
         original.schemaVersion(),
         original.applyApplicationId(),
         original.submittedAt(),
-        original.officeCode(),
         original.usedDelegatedFunctions(),
         original.categoryOfLaw(),
         original.matterType(),
-        List.of(new ApplicationProceeding(proceedingId, proceedingId, "Proceeding", true, null)),
+        List.of(
+            uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding.builder()
+                .id(proceedingId)
+                .leadProceeding(true)
+                .description("Proceeding")
+                .code("SE003")
+                .build()),
         original.serialisedRequest(),
         original.occurredAt(),
         original.leadApplicationId());

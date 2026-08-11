@@ -1,11 +1,10 @@
 package uk.gov.justice.laa.dstew.access.query.individual;
 
-import java.util.List;
-import uk.gov.justice.laa.dstew.access.command.application.ApplicationIndividual;
+import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
 
-/** Paginated individuals query result and optional application-level client details. */
+/** Paginated individuals query result with client details from application data. */
 public record FindIndividualsResult(
-    List<ApplicationIndividual> individuals,
+    ApplicationClient client,
     int page,
     int pageSize,
     int totalRecords,

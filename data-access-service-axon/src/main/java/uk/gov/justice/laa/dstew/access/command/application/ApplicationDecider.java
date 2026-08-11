@@ -11,6 +11,7 @@ import java.util.stream.Collectors;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import uk.gov.justice.laa.dstew.access.applicationcontent.LinkedApplication;
+import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.AssignCaseworkerToApplicationCommand;
@@ -94,9 +95,7 @@ public final class ApplicationDecider {
     validateDecision(command);
 
     Set<UUID> linkedProceedingIds =
-        current.proceedings().stream()
-            .map(ApplicationProceeding::proceedingId)
-            .collect(Collectors.toSet());
+        current.proceedings().stream().map(Proceeding::getId).collect(Collectors.toSet());
     List<UUID> unknownProceedingIds =
         command.proceedings().stream()
             .map(MakeDecisionProceeding::proceedingId)
@@ -192,10 +191,9 @@ public final class ApplicationDecider {
         details.applyApplicationId(),
         details.occurredAt(),
         details.leadApplicationId(),
-        details.applicationContent() == null
-                || details.applicationContent().getAllLinkedApplications() == null
+        details.allLinkedApplications() == null
             ? java.util.List.of()
-            : details.applicationContent().getAllLinkedApplications().stream()
+            : details.allLinkedApplications().stream()
                 .map(LinkedApplication::getAssociatedApplicationId)
                 .filter(java.util.Objects::nonNull)
                 .distinct()

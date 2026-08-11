@@ -65,7 +65,9 @@ class ApplicationContentParserTest {
     assertThat(result.categoryOfLaw()).isEqualTo("Family");
     assertThat(result.matterType()).isEqualTo("SPECIAL_CHILDREN_ACT");
     assertThat(result.submittedAt()).isEqualTo(Instant.parse("2026-01-15T10:20:30Z"));
-    assertThat(result.officeCode()).isEqualTo("OFF1");
+    assertThat(result.provider()).isNotNull();
+    assertThat(result.provider().getOfficeCode()).isEqualTo("OFF1");
+    assertThat(result.provider().getContactEmail()).isEqualTo("test@example.com");
     assertThat(result.usedDelegatedFunctions()).isTrue();
     assertThat(result.proceedings())
         .singleElement()

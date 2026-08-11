@@ -279,19 +279,16 @@ class PostgresAxonIntegrationTest {
     assertThat(projected.getCategoryOfLaw()).isEqualTo("Family");
     assertThat(projected.getMatterType()).isEqualTo("SPECIAL_CHILDREN_ACT");
     assertThat(projected.getCreatedAt()).isNotNull().isEqualTo(projected.getModifiedAt());
-    assertThat(projected.getApplicationContent().getId()).isEqualTo(applyApplicationId);
-    assertThat(projected.getApplicationContent().getProvider()).isNotNull();
-    assertThat(projected.getApplicationContent().getProvider().getOfficeCode()).isEqualTo("1A001B");
-    assertThat(projected.getIndividuals()).isEmpty();
+    assertThat(projected.getApplyApplicationId()).isEqualTo(applyApplicationId);
+    assertThat(projected.getProvider()).isNotNull();
+    assertThat(projected.getProvider().getOfficeCode()).isEqualTo("1A001B");
     assertThat(projected.getProceedings())
         .singleElement()
         .satisfies(
             proceeding -> {
-              assertThat(proceeding.proceedingId()).isNotNull();
-              assertThat(proceeding.applyProceedingId()).isEqualTo(applyProceedingId);
-              assertThat(proceeding.description()).isEqualTo("Care order");
-              assertThat(proceeding.lead()).isTrue();
-              assertThat(proceeding.proceedingContent().getId()).isEqualTo(applyProceedingId);
+              assertThat(proceeding.getId()).isEqualTo(applyProceedingId);
+              assertThat(proceeding.getDescription()).isEqualTo("Care order");
+              assertThat(proceeding.getLeadProceeding()).isTrue();
             });
 
     assertThat(awaitHistory(applicationId, 1))
@@ -336,7 +333,7 @@ class PostgresAxonIntegrationTest {
     UUID applyProceedingId = UUID.randomUUID();
     applicationId(post(validCreateApplicationRequest(applicationId, applyProceedingId), headers()));
     ApplicationReadModel created = awaitProjection(applicationId);
-    UUID proceedingId = created.getProceedings().getFirst().proceedingId();
+    UUID proceedingId = created.getProceedings().getFirst().getId();
 
     MakeDecisionRequest request =
         MakeDecisionRequest.builder()
@@ -434,7 +431,7 @@ class PostgresAxonIntegrationTest {
     UUID applicationId = UUID.randomUUID();
     UUID applyProceedingId = UUID.randomUUID();
     applicationId(post(validCreateApplicationRequest(applicationId, applyProceedingId), headers()));
-    UUID proceedingId = awaitProjection(applicationId).getProceedings().getFirst().proceedingId();
+    UUID proceedingId = awaitProjection(applicationId).getProceedings().getFirst().getId();
     Map<String, Object> certificate =
         Map.of(
             "certificateNumber", "TESTCERT001",
@@ -1043,7 +1040,7 @@ class PostgresAxonIntegrationTest {
       throws Exception {
     UUID applicationId = UUID.randomUUID();
     applicationId(post(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()));
-    UUID proceedingId = awaitProjection(applicationId).getProceedings().getFirst().proceedingId();
+    UUID proceedingId = awaitProjection(applicationId).getProceedings().getFirst().getId();
     MakeDecisionRequest request =
         MakeDecisionRequest.builder()
             .applicationVersion(0L)

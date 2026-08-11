@@ -8,12 +8,13 @@ import lombok.Builder;
 /** Record representing extracted details from application content. */
 @Builder
 public record ParsedAppContentDetails(
-    ApplicationContent applicationContent,
+    ApplicationClient client,
+    ApplicationProvider provider,
+    List<Opponent> opponents,
     UUID applyApplicationId,
     String categoryOfLaw,
     String matterType,
     Instant submittedAt,
-    String officeCode,
     Boolean usedDelegatedFunctions,
     List<Proceeding> proceedings,
     List<LinkedApplication> allLinkedApplications) {}

@@ -170,11 +170,18 @@ class CreateApplicationInMemoryTest {
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(response.getBody()).isNotNull();
-    assertThat(response.getBody().getIndividuals()).isEmpty();
+    assertThat(response.getBody().getIndividuals())
+        .singleElement()
+        .satisfies(
+            individual -> {
+              assertThat(individual.getFirstName()).isEqualTo("Ada");
+              assertThat(individual.getLastName()).isEqualTo("Lovelace");
+              assertThat(individual.getType().name()).isEqualTo("CLIENT");
+            });
     assertThat(response.getBody().getPaging().getPage()).isEqualTo(1);
     assertThat(response.getBody().getPaging().getPageSize()).isEqualTo(20);
-    assertThat(response.getBody().getPaging().getTotalRecords()).isZero();
-    assertThat(response.getBody().getPaging().getItemsReturned()).isZero();
+    assertThat(response.getBody().getPaging().getTotalRecords()).isEqualTo(1);
+    assertThat(response.getBody().getPaging().getItemsReturned()).isEqualTo(1);
   }
 
   @Test
@@ -222,14 +229,13 @@ class CreateApplicationInMemoryTest {
     assertThat(projected.getLaaReference()).isEqualTo("LAA-123");
     assertThat(projected.getOfficeCode()).isEqualTo("1A001B");
     assertThat(projected.getSchemaVersion()).isEqualTo(1);
-    assertThat(projected.getIndividuals()).isEmpty();
     assertThat(projected.getProceedings())
         .singleElement()
         .satisfies(
             proceeding -> {
-              assertThat(proceeding.applyProceedingId()).isEqualTo(applyProceedingId);
-              assertThat(proceeding.lead()).isTrue();
-              assertThat(proceeding.description()).isEqualTo("Care order");
+              assertThat(proceeding.getId()).isEqualTo(applyProceedingId);
+              assertThat(proceeding.getLeadProceeding()).isTrue();
+              assertThat(proceeding.getDescription()).isEqualTo("Care order");
             });
 
     assertThat(awaitHistory(applicationId, 1))
@@ -248,7 +254,6 @@ class CreateApplicationInMemoryTest {
         .hasValueSatisfying(
             data -> {
               assertThat(data.getPayload().laaReference()).isEqualTo("LAA-123");
-              assertThat(data.getPayload().individuals()).isEmpty();
               assertThat(data.getPayloadHash()).hasSize(64);
             });
 
@@ -550,8 +555,8 @@ class CreateApplicationInMemoryTest {
               assertThat(summary.getApplicationId()).isEqualTo(applicationId);
               assertThat(summary.getLaaReference()).isEqualTo("LAA-123");
               assertThat(summary.getIsLead()).isTrue();
-              assertThat(summary.getClientFirstName()).isNull();
-              assertThat(summary.getClientLastName()).isNull();
+              assertThat(summary.getClientFirstName()).isEqualTo("Ada");
+              assertThat(summary.getClientLastName()).isEqualTo("Lovelace");
             });
   }
 

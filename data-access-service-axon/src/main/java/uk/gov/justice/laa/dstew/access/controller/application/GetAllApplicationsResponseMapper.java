@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
+import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.Collections;
 import java.util.List;
@@ -7,7 +8,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
-import uk.gov.justice.laa.dstew.access.command.application.ApplicationIndividual;
+import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
@@ -57,12 +58,7 @@ public class GetAllApplicationsResponseMapper {
     summary.setIsLead(app.getLeadApplicationId() == null);
     summary.setAssignedTo(app.getCaseworkerId());
 
-    ApplicationIndividual client = primaryClient(app);
-    if (client != null) {
-      summary.setClientFirstName(client.firstName());
-      summary.setClientLastName(client.lastName());
-      summary.setClientDateOfBirth(client.dateOfBirth());
-    }
+    populateClientDetails(summary, app);
 
     summary.setLinkedApplications(toLinkedSummaries(app, groupsByLeadId));
     return summary;
@@ -90,14 +86,15 @@ public class GetAllApplicationsResponseMapper {
     }
   }
 
-  private ApplicationIndividual primaryClient(ApplicationReadModel app) {
-    if (app.getIndividuals() == null) {
-      return null;
+  private void populateClientDetails(ApplicationSummary summary, ApplicationReadModel app) {
+    ApplicationClient client = app.getClient();
+    if (client != null) {
+      summary.setClientFirstName(client.getFirstName());
+      summary.setClientLastName(client.getLastName());
+      if (client.getDateOfBirth() != null) {
+        summary.setClientDateOfBirth(LocalDate.parse(client.getDateOfBirth()));
+      }
     }
-    return app.getIndividuals().stream()
-        .filter(i -> "CLIENT".equals(i.type()))
-        .findFirst()
-        .orElse(null);
   }
 
   private List<LinkedApplicationSummaryResponse> toLinkedSummaries(
