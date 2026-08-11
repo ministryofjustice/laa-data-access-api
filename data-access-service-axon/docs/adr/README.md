@@ -8,6 +8,7 @@ context in which they were made, and the conditions that should cause them to be
 | [0001](0001-use-a-subscribing-event-router-for-application-linking.md) | Accepted | Use a stateless subscribing event router, rather than a saga, for application linking |
 | [0002](0002-separate-sensitive-data-from-domain-events.md) | Accepted | Store sensitive application data as immutable versions referenced by thin events |
 | [0003](0003-define-application-behaviour-after-retention-deletion.md) | Proposed | Give applications an explicit retention-deleted state after sensitive data is deleted |
+| [0005](0005-introduce-shared-draft-submit-lifecycle.md) | Proposed | Introduce a shared draft → submit lifecycle for application-like aggregates (Application and PriorAuthority) |
 
 ADRs describe why a decision was made. The developer guides describe how the resulting
 implementation works today.
