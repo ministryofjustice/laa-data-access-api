@@ -18,6 +18,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class RetryingCommandDispatcher {
 
+  private static final String UNIQUE_CONSTRAINT_VIOLATION = "23505";
+
   private final CommandGateway commandGateway;
 
   public RetryingCommandDispatcher(CommandGateway commandGateway) {
@@ -52,7 +54,7 @@ public class RetryingCommandDispatcher {
     Throwable cause = exception;
     while (cause != null) {
       if (cause instanceof SQLException sqlException
-          && "23505".equals(sqlException.getSQLState())) {
+          && UNIQUE_CONSTRAINT_VIOLATION.equals(sqlException.getSQLState())) {
         return true;
       }
       cause = cause.getCause();
