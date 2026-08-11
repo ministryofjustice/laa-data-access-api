@@ -6,7 +6,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.domain.ApplicationDomain;
 import uk.gov.justice.laa.dstew.access.domain.ProceedingDomain;
@@ -28,12 +27,10 @@ class CreateApplicationDomainMapperTest {
   void givenCommandAndParsedDetails_whenToApplicationDomain_thenMapsAllFieldsCorrectly() {
     CreateApplicationCommand command =
         DataGenerator.createDefault(CreateApplicationCommandGenerator.class);
-    UUID applyApplicationId = UUID.randomUUID();
     Instant submittedAt = Instant.parse("2024-06-01T10:00:00Z");
     Proceeding proceeding = DataGenerator.createDefault(ProceedingGenerator.class);
     ParsedAppContentDetails parsed =
         ParsedAppContentDetails.builder()
-            .applyApplicationId(applyApplicationId)
             .categoryOfLaw(CategoryOfLaw.FAMILY)
             .matterType(MatterType.SPECIAL_CHILDREN_ACT)
             .submittedAt(submittedAt)
@@ -51,7 +48,7 @@ class CreateApplicationDomainMapperTest {
     assertThat(domain.applicationContent()).isEqualTo(command.applicationContent());
     assertThat(domain.schemaVersion())
         .isEqualTo(CreateApplicationDomainMapper.APPLICATION_SCHEMA_VERSION);
-    assertThat(domain.applyApplicationId()).isEqualTo(applyApplicationId);
+    assertThat(domain.applyApplicationId()).isEqualTo(command.id());
     assertThat(domain.categoryOfLaw()).isEqualTo("FAMILY");
     assertThat(domain.matterType()).isEqualTo("SPECIAL_CHILDREN_ACT");
     assertThat(domain.submittedAt()).isEqualTo(submittedAt);
@@ -67,7 +64,6 @@ class CreateApplicationDomainMapperTest {
         DataGenerator.createDefault(CreateApplicationCommandGenerator.class);
     ParsedAppContentDetails parsed =
         ParsedAppContentDetails.builder()
-            .applyApplicationId(UUID.randomUUID())
             .categoryOfLaw(null)
             .matterType(MatterType.SPECIAL_CHILDREN_ACT)
             .submittedAt(Instant.now())
@@ -85,7 +81,6 @@ class CreateApplicationDomainMapperTest {
         DataGenerator.createDefault(CreateApplicationCommandGenerator.class);
     ParsedAppContentDetails parsed =
         ParsedAppContentDetails.builder()
-            .applyApplicationId(UUID.randomUUID())
             .categoryOfLaw(CategoryOfLaw.FAMILY)
             .matterType(null)
             .submittedAt(Instant.now())
@@ -102,11 +97,7 @@ class CreateApplicationDomainMapperTest {
     CreateApplicationCommand command =
         DataGenerator.createDefault(CreateApplicationCommandGenerator.class);
     ParsedAppContentDetails parsed =
-        ParsedAppContentDetails.builder()
-            .applyApplicationId(UUID.randomUUID())
-            .submittedAt(Instant.now())
-            .proceedings(null)
-            .build();
+        ParsedAppContentDetails.builder().submittedAt(Instant.now()).proceedings(null).build();
 
     ApplicationDomain domain = mapper.toApplicationDomain(command, parsed);
 

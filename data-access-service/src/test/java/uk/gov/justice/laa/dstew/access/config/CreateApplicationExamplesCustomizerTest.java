@@ -80,7 +80,7 @@ class CreateApplicationExamplesCustomizerTest {
     @SuppressWarnings("unchecked")
     Map<String, Object> content = (Map<String, Object>) value.get("applicationContent");
     assertThat(content)
-        .containsKeys("id", "submittedAt", "office", "proceedings", "applicant", "laaReference");
+        .containsKeys("submittedAt", "office", "proceedings", "applicant", "laaReference");
     assertThat(content.get("submittedAt")).isEqualTo("2024-03-21T09:00:00Z");
 
     @SuppressWarnings("unchecked")
@@ -110,7 +110,7 @@ class CreateApplicationExamplesCustomizerTest {
 
     @SuppressWarnings("unchecked")
     Map<String, Object> content = (Map<String, Object>) value.get("applicationContent");
-    assertThat(content).containsKeys("id", "submittedAt", "laaReference", "proceedings", "office");
+    assertThat(content).containsKeys("submittedAt", "laaReference", "proceedings", "office");
     assertThat(content).doesNotContainKey("applicant");
   }
 

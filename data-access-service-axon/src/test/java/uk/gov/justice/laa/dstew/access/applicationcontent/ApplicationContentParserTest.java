@@ -21,13 +21,10 @@ class ApplicationContentParserTest {
 
   @Test
   void givenCompleteApplicationContent_whenParse_thenExtractsProductionDetails() {
-    UUID applicationId = UUID.randomUUID();
     UUID linkedApplicationId = UUID.randomUUID();
     UUID proceedingId = UUID.randomUUID();
     Map<String, Object> rawContent =
         Map.of(
-            "id",
-            applicationId.toString(),
             "submittedAt",
             "2026-01-15T10:20:30Z",
             "provider",
@@ -81,8 +78,6 @@ class ApplicationContentParserTest {
   void givenProceedingsWithoutLead_whenParse_thenThrowsProductionValidationFailure() {
     Map<String, Object> rawContent =
         Map.of(
-            "id",
-            UUID.randomUUID().toString(),
             "submittedAt",
             "2026-01-15T10:20:30Z",
             "proceedings",
@@ -105,8 +100,7 @@ class ApplicationContentParserTest {
 
   @Test
   void givenUnparseableSubmittedAt_whenParse_thenThrowsValidationFailure() {
-    Map<String, Object> rawContent =
-        Map.of("id", UUID.randomUUID().toString(), "submittedAt", "not-an-instant");
+    Map<String, Object> rawContent = Map.of("submittedAt", "not-an-instant");
 
     assertThatThrownBy(() -> parser.parse(rawContent))
         .isInstanceOf(ValidationException.class)

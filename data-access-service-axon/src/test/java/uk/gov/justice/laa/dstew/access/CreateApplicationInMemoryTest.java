@@ -268,7 +268,7 @@ class CreateApplicationInMemoryTest {
     ApplicationCreateRequest validRequest =
         validCreateApplicationRequest(applicationId, UUID.randomUUID());
     var invalidContent = new java.util.HashMap<>(validRequest.getApplicationContent());
-    invalidContent.remove("id");
+    invalidContent.remove("submittedAt");
     validRequest.setApplicationContent(invalidContent);
 
     ResponseEntity<String> response =

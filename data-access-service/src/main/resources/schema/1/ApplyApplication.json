@@ -4,14 +4,9 @@
   "title": "CivilApply",
   "description": "Schema for validating ApplicationContent",
   "type": "object",
-  "required": ["id", "submittedAt"],
+  "required": ["submittedAt"],
 
   "properties": {
-    "id": {
-      "type": "string",
-      "format": "uuid",
-      "description": "Unique identifier for the application"
-    },
     "proceedings": {
       "type": "array",
       "items": {

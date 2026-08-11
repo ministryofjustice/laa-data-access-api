@@ -47,11 +47,9 @@ public class CreateApplicationUseCase {
     ParsedAppContentDetails parsed = applicationContentParser.parse(command.applicationContent());
 
     // 4. Duplicate-check BEFORE save
-    if (applicationGateway.existsByApplyApplicationId(parsed.applyApplicationId())) {
+    if (applicationGateway.existsByApplyApplicationId(command.id())) {
       throw new ValidationException(
-          List.of(
-              "Application already exists for Apply Application Id: "
-                  + parsed.applyApplicationId()));
+          List.of("Application already exists for Apply Application Id: " + command.id()));
     }
 
     // 5. Build domain (pre-save; id and createdAt are null) then persist application

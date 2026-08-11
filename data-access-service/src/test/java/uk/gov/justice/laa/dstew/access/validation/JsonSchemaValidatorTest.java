@@ -18,7 +18,6 @@ class JsonSchemaValidatorTest {
   void validateAcceptsPayloadMatchingSchema() {
     Map<String, Object> payload =
         Map.of(
-            "id", UUID.randomUUID().toString(),
             "submittedAt", "2026-01-15T10:20:30Z",
             "status", "APPLICATION_IN_PROGRESS",
             "laaReference", "REF-123",
@@ -49,39 +48,9 @@ class JsonSchemaValidatorTest {
   }
 
   @Test
-  void validateExceptionOnInvalidUUIDPayloadMatchingSchema() {
-    Map<String, Object> payload =
-        Map.of(
-            "id", "test-id-not-uuid",
-            "submittedAt", "2026-01-15T10:20:30Z",
-            "status", "APPLICATION_IN_PROGRESS",
-            "laaReference", "REF-123",
-            "office", Map.of("code", "OFF1"),
-            "proceedings",
-                List.of(
-                    Map.of(
-                        "id",
-                        UUID.randomUUID().toString(),
-                        "leadProceeding",
-                        true,
-                        "description",
-                        "Test proceeding")));
-
-    ValidationException validationException =
-        assertThrows(
-            ValidationException.class,
-            () -> validator.validate(payload, "ApplyApplication.json", 1));
-    assertTrue(
-        validationException.errors().stream().anyMatch(msg -> msg.toLowerCase().contains("id")),
-        "Expected validation errors to mention id field format");
-  }
-
-  @Test
   void validateRejectsMissingRequiredField() {
-    Map<String, Object> payloadMissingId =
+    Map<String, Object> payloadMissingSubmittedAt =
         Map.of(
-            "submittedAt",
-            "2026-01-15T10:20:30Z",
             "proceedings",
             List.of(
                 Map.of(
@@ -95,11 +64,11 @@ class JsonSchemaValidatorTest {
     ValidationException ex =
         assertThrows(
             ValidationException.class,
-            () -> validator.validate(payloadMissingId, "ApplyApplication.json", 1));
+            () -> validator.validate(payloadMissingSubmittedAt, "ApplyApplication.json", 1));
 
     assertTrue(
-        ex.errors().stream().anyMatch(msg -> msg.toLowerCase().contains("id")),
-        "Expected validation errors to mention missing id");
+        ex.errors().stream().anyMatch(msg -> msg.toLowerCase().contains("submittedat")),
+        "Expected validation errors to mention missing submittedAt");
   }
 
   @Test
@@ -119,8 +88,6 @@ class JsonSchemaValidatorTest {
 
   private Map<String, Object> validApplyApplicationV2Payload() {
     return Map.of(
-        "id",
-        UUID.randomUUID().toString(),
         "createdAt",
         "2026-01-15T09:00:00Z",
         "submittedAt",
@@ -196,10 +163,10 @@ class JsonSchemaValidatorTest {
   void validateRejectsMissingRequiredFieldWithinCollectionItem() {
     Map<String, Object> payload =
         Map.of(
-            "id", UUID.randomUUID().toString(),
-            "submittedAt", "2026-01-15T10:20:30Z",
+            "submittedAt",
+            "2026-01-15T10:20:30Z",
             "proceedings",
-                List.of(Map.of("id", UUID.randomUUID().toString(), "leadProceeding", true)));
+            List.of(Map.of("id", UUID.randomUUID().toString(), "leadProceeding", true)));
 
     ValidationException ex =
         assertThrows(

@@ -22,31 +22,31 @@ class JsonSchemaValidatorTest {
   }
 
   @Test
-  void givenApplyPayloadMissingRequiredId_whenValidate_thenReportsProductionFailureShape() {
+  void givenUnknownPropertyInPayload_whenValidate_thenReportsAdditionalProperty() {
     Map<String, Object> payload =
         new HashMap<>(validApplicationContent(UUID.randomUUID(), UUID.randomUUID()));
-    payload.remove("id");
+    payload.put("unknownField", "some-value");
 
     assertThatThrownBy(() -> validator.validate(payload, "ApplyApplication.json", 1))
         .isInstanceOf(ValidationException.class)
         .satisfies(
             exception ->
                 assertThat(((ValidationException) exception).errors())
-                    .anyMatch(message -> message.toLowerCase().contains("id")));
+                    .anyMatch(message -> message.toLowerCase().contains("additional")));
   }
 
   @Test
-  void givenInvalidApplicationId_whenValidate_thenReportsUuidFormat() {
+  void givenIdPropertyInPayload_whenValidate_thenRejectsAsAdditionalProperty() {
     Map<String, Object> payload =
         new HashMap<>(validApplicationContent(UUID.randomUUID(), UUID.randomUUID()));
-    payload.put("id", "not-a-uuid");
+    payload.put("id", UUID.randomUUID().toString());
 
     assertThatThrownBy(() -> validator.validate(payload, "ApplyApplication.json", 1))
         .isInstanceOf(ValidationException.class)
         .satisfies(
             exception ->
                 assertThat(((ValidationException) exception).errors())
-                    .anyMatch(message -> message.toLowerCase().contains("id")));
+                    .anyMatch(message -> message.toLowerCase().contains("additional")));
   }
 
   @Test

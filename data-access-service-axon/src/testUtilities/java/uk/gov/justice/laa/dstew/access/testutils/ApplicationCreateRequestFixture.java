@@ -16,7 +16,6 @@ public final class ApplicationCreateRequestFixture {
   public static Map<String, Object> validApplicationContent(
       UUID applicationId, UUID applyProceedingId) {
     return Map.ofEntries(
-        Map.entry("id", applicationId.toString()),
         Map.entry("createdAt", "2026-07-14T12:00:00Z"),
         Map.entry("submittedAt", "2026-07-14T12:30:00Z"),
         Map.entry(

@@ -144,15 +144,15 @@ public class CreateApplicationTest extends BaseHarnessTest {
     ApplicationContent content =
         DataGenerator.createDefault(
             ApplicationContentGenerator.class,
-            builder ->
-                builder
-                    .allLinkedApplications(List.of(linkedApplication))
-                    .id(associatedApplicationId));
+            builder -> builder.allLinkedApplications(List.of(linkedApplication)));
 
     ApplicationCreateRequest request =
         DataGenerator.createDefault(
             ApplicationCreateRequestGenerator.class,
-            builder -> builder.applicationContent(objectMapper.convertValue(content, Map.class)));
+            builder ->
+                builder
+                    .id(associatedApplicationId)
+                    .applicationContent(objectMapper.convertValue(content, Map.class)));
 
     // when
     HarnessResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
@@ -198,14 +198,16 @@ public class CreateApplicationTest extends BaseHarnessTest {
         DataGenerator.createDefault(
             ApplicationContentGenerator.class,
             builder ->
-                builder
-                    .allLinkedApplications(List.of(linkedApplication, invalidLinkedApplication))
-                    .id(associatedApplicationId));
+                builder.allLinkedApplications(
+                    List.of(linkedApplication, invalidLinkedApplication)));
 
     ApplicationCreateRequest request =
         DataGenerator.createDefault(
             ApplicationCreateRequestGenerator.class,
-            builder -> builder.applicationContent(objectMapper.convertValue(content, Map.class)));
+            builder ->
+                builder
+                    .id(associatedApplicationId)
+                    .applicationContent(objectMapper.convertValue(content, Map.class)));
 
     // when
     HarnessResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
@@ -228,15 +230,15 @@ public class CreateApplicationTest extends BaseHarnessTest {
     ApplicationEntity existingApplication =
         persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
 
-    ApplicationContent content =
-        DataGenerator.createDefault(
-            ApplicationContentGenerator.class,
-            builder -> builder.id(existingApplication.getApplyApplicationId()));
+    ApplicationContent content = DataGenerator.createDefault(ApplicationContentGenerator.class);
 
     ApplicationCreateRequest request =
         DataGenerator.createDefault(
             ApplicationCreateRequestGenerator.class,
-            builder -> builder.applicationContent(objectMapper.convertValue(content, Map.class)));
+            builder ->
+                builder
+                    .id(existingApplication.getApplyApplicationId())
+                    .applicationContent(objectMapper.convertValue(content, Map.class)));
 
     ProblemDetail expectedProblemDetail =
         ProblemDetailBuilder.create()
@@ -262,6 +264,11 @@ public class CreateApplicationTest extends BaseHarnessTest {
 
   private ApplicationEntity verifyCreateNewApplication(
       ApplicationOffice office, LinkedApplication linkedApplication) throws Exception {
+    UUID applicationId =
+        linkedApplication == null
+            ? UUID.randomUUID()
+            : linkedApplication.getAssociatedApplicationId();
+
     ApplicationContent content =
         DataGenerator.createDefault(
             ApplicationContentGenerator.class,
@@ -269,16 +276,15 @@ public class CreateApplicationTest extends BaseHarnessTest {
                 builder
                     .office(office)
                     .allLinkedApplications(
-                        linkedApplication == null ? null : List.of(linkedApplication))
-                    .id(
-                        linkedApplication == null
-                            ? UUID.randomUUID()
-                            : linkedApplication.getAssociatedApplicationId()));
+                        linkedApplication == null ? null : List.of(linkedApplication)));
 
     ApplicationCreateRequest applicationCreateRequest =
         DataGenerator.createDefault(
             ApplicationCreateRequestGenerator.class,
-            builder -> builder.applicationContent(objectMapper.convertValue(content, Map.class)));
+            builder ->
+                builder
+                    .id(applicationId)
+                    .applicationContent(objectMapper.convertValue(content, Map.class)));
 
     HarnessResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest);
 
@@ -587,8 +593,8 @@ public class CreateApplicationTest extends BaseHarnessTest {
   public void
       givenApplicationContentMissingRequiredFields_whenCreateApplication_thenReturnBadRequest()
           throws Exception {
-    // given - applicationContent that is missing the required 'id' and 'submittedAt' fields,
-    // which are enforced by JSON Schema validation (not Bean Validation)
+    // given - applicationContent that is missing the required 'submittedAt' field,
+    // which is enforced by JSON Schema validation (not Bean Validation)
     ApplicationCreateRequest request =
         DataGenerator.createDefault(
             ApplicationCreateRequestGenerator.class,
@@ -607,7 +613,6 @@ public class CreateApplicationTest extends BaseHarnessTest {
     assertEquals("Generic Validation Error", detail.getDetail());
     List<?> errors = (List<?>) detail.getProperties().get("errors");
     assertThat(errors).isNotEmpty();
-    assertThat(errors).anyMatch(e -> e.toString().contains("id"));
     assertThat(errors).anyMatch(e -> e.toString().contains("submittedAt"));
     assertTrue(trackedApplicationIds().isEmpty(), "Expected no application to be persisted");
   }

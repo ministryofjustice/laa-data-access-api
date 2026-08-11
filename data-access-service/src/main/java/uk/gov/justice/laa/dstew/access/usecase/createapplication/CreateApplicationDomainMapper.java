@@ -34,7 +34,7 @@ public class CreateApplicationDomainMapper {
         .applicationContent(command.applicationContent())
         .individuals(Set.of())
         .schemaVersion(APPLICATION_SCHEMA_VERSION)
-        .applyApplicationId(parsedDetails.applyApplicationId())
+        .applyApplicationId(command.id())
         .usedDelegatedFunctions(parsedDetails.usedDelegatedFunctions())
         .categoryOfLaw(
             parsedDetails.categoryOfLaw() != null ? parsedDetails.categoryOfLaw().name() : null)

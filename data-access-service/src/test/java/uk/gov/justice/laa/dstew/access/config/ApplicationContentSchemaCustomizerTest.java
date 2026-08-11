@@ -55,7 +55,7 @@ class ApplicationContentSchemaCustomizerTest {
     // then
     Schema<?> schema = openApi.getComponents().getSchemas().get("ApplyApplicationContentV1");
     assertThat(schema).isNotNull();
-    assertThat(schema.getRequired()).containsExactlyInAnyOrder("id", "submittedAt");
+    assertThat(schema.getRequired()).containsExactlyInAnyOrder("submittedAt");
   }
 
   @Test

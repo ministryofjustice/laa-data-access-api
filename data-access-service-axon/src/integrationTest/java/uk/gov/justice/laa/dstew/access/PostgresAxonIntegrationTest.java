@@ -914,7 +914,7 @@ class PostgresAxonIntegrationTest {
     ApplicationCreateRequest request =
         validCreateApplicationRequest(UUID.randomUUID(), UUID.randomUUID());
     Map<String, Object> invalidContent = new HashMap<>(request.getApplicationContent());
-    invalidContent.remove("id");
+    invalidContent.remove("submittedAt");
     request.setApplicationContent(invalidContent);
 
     ResponseEntity<String> response = post(request, headers(), String.class);

@@ -190,13 +190,12 @@ class CreateApplicationUseCaseTest {
         DataGenerator.createDefault(
             ApplicationContentGenerator.class,
             b ->
-                b.id(associatedApplyId)
-                    .allLinkedApplications(
-                        List.of(
-                            LinkedApplication.builder()
-                                .leadApplicationId(null)
-                                .associatedApplicationId(associatedApplyId)
-                                .build())));
+                b.allLinkedApplications(
+                    List.of(
+                        LinkedApplication.builder()
+                            .leadApplicationId(null)
+                            .associatedApplicationId(associatedApplyId)
+                            .build())));
 
     CreateApplicationCommand command =
         DataGenerator.createDefault(
@@ -238,13 +237,12 @@ class CreateApplicationUseCaseTest {
         DataGenerator.createDefault(
             ApplicationContentGenerator.class,
             b ->
-                b.id(sharedId)
-                    .allLinkedApplications(
-                        List.of(
-                            LinkedApplication.builder()
-                                .leadApplicationId(sharedId)
-                                .associatedApplicationId(sharedId)
-                                .build())));
+                b.allLinkedApplications(
+                    List.of(
+                        LinkedApplication.builder()
+                            .leadApplicationId(sharedId)
+                            .associatedApplicationId(sharedId)
+                            .build())));
 
     CreateApplicationCommand command =
         DataGenerator.createDefault(
@@ -321,7 +319,7 @@ class CreateApplicationUseCaseTest {
     ApplicationContent contentMissingRequired =
         ApplicationContent.builder()
             .proceedings(List.of(DataGenerator.createDefault(ProceedingGenerator.class)))
-            .build(); // id=null, submittedAt=null
+            .build(); // submittedAt=null
 
     CreateApplicationCommand command =
         DataGenerator.createDefault(
@@ -332,7 +330,6 @@ class CreateApplicationUseCaseTest {
         .isThrownBy(() -> useCase.execute(command))
         .satisfies(
             e -> {
-              assertThat(e.errors()).anyMatch(err -> err.contains("id:"));
               assertThat(e.errors()).anyMatch(err -> err.contains("submittedAt:"));
             });
 
@@ -401,8 +398,8 @@ class CreateApplicationUseCaseTest {
     assertThat(captured.schemaVersion())
         .isEqualTo(CreateApplicationDomainMapper.APPLICATION_SCHEMA_VERSION);
 
-    // Fields derived from parsing the content (known values from the default generators)
-    assertThat(captured.applyApplicationId()).isEqualTo(extractApplyApplicationId(command));
+    // applyApplicationId now comes from the top-level command id
+    assertThat(captured.applyApplicationId()).isEqualTo(command.id());
     assertThat(captured.submittedAt()).isEqualTo(Instant.parse("2024-01-01T12:00:00Z"));
     assertThat(captured.officeCode()).isEqualTo("officeCode");
     assertThat(captured.categoryOfLaw()).isEqualTo("FAMILY");
@@ -410,14 +407,6 @@ class CreateApplicationUseCaseTest {
     assertThat(captured.usedDelegatedFunctions()).isTrue();
     assertThat(captured.proceedings()).hasSize(1);
     assertThat(captured.individuals()).isEmpty();
-  }
-
-  /**
-   * Extracts the {@code applyApplicationId} from the command's content map. The id is stored as a
-   * {@link String} after Jackson round-trip serialisation in the generator.
-   */
-  private UUID extractApplyApplicationId(CreateApplicationCommand command) {
-    return UUID.fromString((String) command.applicationContent().get("id"));
   }
 
   /**
@@ -445,13 +434,12 @@ class CreateApplicationUseCaseTest {
         DataGenerator.createDefault(
             ApplicationContentGenerator.class,
             b ->
-                b.id(associatedApplyId)
-                    .allLinkedApplications(
-                        List.of(
-                            LinkedApplication.builder()
-                                .leadApplicationId(leadApplyId)
-                                .associatedApplicationId(associatedApplyId)
-                                .build())));
+                b.allLinkedApplications(
+                    List.of(
+                        LinkedApplication.builder()
+                            .leadApplicationId(leadApplyId)
+                            .associatedApplicationId(associatedApplyId)
+                            .build())));
     return DataGenerator.createDefault(
         CreateApplicationCommandGenerator.class,
         b -> b.applicationContent(toContentMap(appContent)));
