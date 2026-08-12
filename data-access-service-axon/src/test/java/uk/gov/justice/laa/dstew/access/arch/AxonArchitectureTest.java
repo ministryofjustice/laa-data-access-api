@@ -66,6 +66,19 @@ class AxonArchitectureTest {
   }
 
   @Test
+  void controllersMustNotDependOnCommandGateway() {
+    ArchRule rule =
+        noClasses()
+            .that()
+            .resideInAPackage("..controller..")
+            .should()
+            .dependOnClassesThat()
+            .areAssignableTo(CommandGateway.class)
+            .allowEmptyShould(true);
+    rule.check(classes);
+  }
+
+  @Test
   void aggregatesMustNotDependOnQueryGateway() {
     ArchRule rule =
         noClasses()
