@@ -63,7 +63,10 @@
       "description": "Indicates if address lookup was used"
     },
     "careOf": {
-      "type": "string",
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "Care-of type"
     },
     "careOfFirstName": {
