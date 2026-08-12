@@ -1,122 +1,162 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import org.axonframework.messaging.commandhandling.gateway.CommandGateway;
-import org.axonframework.modelling.ConcurrencyException;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationCommand;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.AssignCaseworkerService;
-import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
-import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
+import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationUseCase;
+import uk.gov.justice.laa.dstew.access.command.application.assignment.AssignCaseworkerUseCase;
+import uk.gov.justice.laa.dstew.access.command.application.assignment.CaseworkerAssignment;
+import uk.gov.justice.laa.dstew.access.command.application.assignment.UnassignCaseworkerFromApplicationCommand;
+import uk.gov.justice.laa.dstew.access.command.application.assignment.UnassignCaseworkerUseCase;
+import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
+import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionUseCase;
+import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
+import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteUseCase;
 
-/**
- * Focused unit coverage for {@link ApplicationCommandController#dispatchWithRetry}.
- *
- * <p>Projection-wait semantics are covered by {@code SubscriptionProjectionGatewayTest}.
- */
+/** Verifies that each controller endpoint delegates to the appropriate use case. */
 class ApplicationCommandControllerTest {
 
-  private CommandGateway commandGateway;
+  private CreateApplicationUseCase createApplicationUseCase;
+  private MakeApplicationDecisionUseCase makeDecisionUseCase;
+  private CreateNoteUseCase createNoteUseCase;
+  private UnassignCaseworkerUseCase unassignCaseworkerUseCase;
+  private AssignCaseworkerUseCase assignCaseworkerUseCase;
+  private CreateApplicationCommandMapper commandMapper;
+  private MakeDecisionCommandMapper decisionCommandMapper;
+  private AssignCaseworkerRequestMapper assignCaseworkerRequestMapper;
+  private UnassignCaseworkerRequestMapper unassignCaseworkerRequestMapper;
+  private CreateNoteCommandMapper createNoteCommandMapper;
   private ApplicationCommandController controller;
 
   @BeforeEach
   void setUp() {
-    commandGateway = mock(CommandGateway.class);
+    MockHttpServletRequest request = new MockHttpServletRequest();
+    RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
+    createApplicationUseCase = mock(CreateApplicationUseCase.class);
+    makeDecisionUseCase = mock(MakeApplicationDecisionUseCase.class);
+    createNoteUseCase = mock(CreateNoteUseCase.class);
+    unassignCaseworkerUseCase = mock(UnassignCaseworkerUseCase.class);
+    assignCaseworkerUseCase = mock(AssignCaseworkerUseCase.class);
+    commandMapper = mock(CreateApplicationCommandMapper.class);
+    decisionCommandMapper = mock(MakeDecisionCommandMapper.class);
+    assignCaseworkerRequestMapper = mock(AssignCaseworkerRequestMapper.class);
+    unassignCaseworkerRequestMapper = mock(UnassignCaseworkerRequestMapper.class);
+    createNoteCommandMapper = mock(CreateNoteCommandMapper.class);
     controller =
         new ApplicationCommandController(
-            commandGateway,
-            mock(SubscriptionProjectionGateway.class),
-            mock(CreateApplicationCommandMapper.class),
-            mock(MakeDecisionCommandMapper.class),
-            mock(AssignCaseworkerService.class),
-            mock(AssignCaseworkerRequestMapper.class),
-            mock(UnassignCaseworkerRequestMapper.class),
-            mock(CreateNoteCommandMapper.class));
+            createApplicationUseCase,
+            makeDecisionUseCase,
+            createNoteUseCase,
+            unassignCaseworkerUseCase,
+            assignCaseworkerUseCase,
+            commandMapper,
+            decisionCommandMapper,
+            assignCaseworkerRequestMapper,
+            unassignCaseworkerRequestMapper,
+            createNoteCommandMapper);
+  }
+
+  @AfterEach
+  void tearDown() {
+    RequestContextHolder.resetRequestAttributes();
   }
 
   @Test
-  void givenSuccessfulDispatch_whenDispatchWithRetry_thenSendsOnce() {
-    CreateApplicationCommand command = stubCommand();
+  void givenProjectedResult_whenCreateApplication_thenDelegatesToUseCaseAndReturns201() {
+    CreateApplicationCommand command = stubCreateCommand();
+    when(commandMapper.toCommand(any(), anyInt())).thenReturn(command);
+    when(createApplicationUseCase.execute(command)).thenReturn(true);
 
-    controller.dispatchWithRetry(command);
+    ResponseEntity<Void> response = controller.createApplication(null, 1, null);
 
-    verify(commandGateway, times(1)).sendAndWait(command);
+    verify(createApplicationUseCase).execute(command);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
   }
 
   @Test
-  void givenConcurrencyException_whenDispatchWithRetry_thenRetriesOnce() {
-    CreateApplicationCommand command = stubCommand();
-    when(commandGateway.sendAndWait(command))
-        .thenThrow(new ConcurrencyException("concurrent write"))
-        .thenReturn(null);
+  void givenTimeoutResult_whenCreateApplication_thenDelegatesToUseCaseAndReturns202() {
+    CreateApplicationCommand command = stubCreateCommand();
+    when(commandMapper.toCommand(any(), anyInt())).thenReturn(command);
+    when(createApplicationUseCase.execute(command)).thenReturn(false);
 
-    controller.dispatchWithRetry(command);
+    ResponseEntity<Void> response = controller.createApplication(null, 1, null);
 
-    verify(commandGateway, times(2)).sendAndWait(command);
+    verify(createApplicationUseCase).execute(command);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
   }
 
   @Test
-  void givenUniqueConstraintViolation_whenDispatchWithRetry_thenRetriesOnce() {
-    CreateApplicationCommand command = stubCommand();
-    when(commandGateway.sendAndWait(command))
-        .thenThrow(
-            new DataIntegrityViolationException(
-                "concurrent data version", new SQLException("duplicate key", "23505")))
-        .thenReturn(null);
+  void givenRequest_whenMakeDecision_thenDelegatesToUseCase() {
+    UUID id = UUID.randomUUID();
+    MakeApplicationDecisionCommand command = mock(MakeApplicationDecisionCommand.class);
+    when(decisionCommandMapper.toCommand(id, null)).thenReturn(command);
 
-    controller.dispatchWithRetry(command);
+    controller.makeDecision(null, id, null);
 
-    verify(commandGateway, times(2)).sendAndWait(command);
+    verify(makeDecisionUseCase).execute(command);
   }
 
   @Test
-  void givenOtherDataIntegrityViolation_whenDispatchWithRetry_thenPropagatesWithoutRetry() {
-    CreateApplicationCommand command = stubCommand();
-    DataIntegrityViolationException failure =
-        new DataIntegrityViolationException(
-            "foreign key violation", new SQLException("missing reference", "23503"));
-    when(commandGateway.sendAndWait(command)).thenThrow(failure);
+  void givenRequest_whenCreateNote_thenDelegatesToUseCase() {
+    UUID id = UUID.randomUUID();
+    CreateNoteCommand command = mock(CreateNoteCommand.class);
+    when(createNoteCommandMapper.toCommand(id, null)).thenReturn(command);
 
-    assertThatThrownBy(() -> controller.dispatchWithRetry(command)).isSameAs(failure);
-    verify(commandGateway).sendAndWait(command);
+    controller.createNote(null, id, null);
+
+    verify(createNoteUseCase).execute(command);
   }
 
   @Test
-  void givenNonConcurrencyException_whenDispatchWithRetry_thenPropagatesWithoutRetry() {
-    CreateApplicationCommand command = stubCommand();
-    when(commandGateway.sendAndWait(command))
-        .thenThrow(new ResourceNotFoundException("no lead application"));
+  void givenRequest_whenUnassignCaseworker_thenDelegatesToUseCase() {
+    UUID id = UUID.randomUUID();
+    UnassignCaseworkerFromApplicationCommand command =
+        mock(UnassignCaseworkerFromApplicationCommand.class);
+    when(unassignCaseworkerRequestMapper.toCommand(id, null)).thenReturn(command);
 
-    assertThatThrownBy(() -> controller.dispatchWithRetry(command))
-        .isInstanceOf(ResourceNotFoundException.class);
-    verify(commandGateway, times(1)).sendAndWait(command);
+    controller.unassignCaseworker(null, id, null);
+
+    verify(unassignCaseworkerUseCase).execute(command);
   }
 
   @Test
-  void givenRetryAlsoFails_whenDispatchWithRetry_thenRethrowsWithOriginalSuppressed() {
-    CreateApplicationCommand command = stubCommand();
-    ConcurrencyException first = new ConcurrencyException("first write");
-    ResourceNotFoundException retry = new ResourceNotFoundException("retry failure");
-    when(commandGateway.sendAndWait(command)).thenThrow(first).thenThrow(retry);
+  void givenRequest_whenAssignCaseworker_thenDelegatesToUseCase() {
+    CaseworkerAssignment assignment =
+        new CaseworkerAssignment(UUID.randomUUID(), UUID.randomUUID(), "{}", "desc");
+    when(assignCaseworkerRequestMapper.toAssignment(any())).thenReturn(assignment);
 
-    assertThatThrownBy(() -> controller.dispatchWithRetry(command))
-        .isInstanceOf(ResourceNotFoundException.class)
-        .satisfies(e -> assertThat(e.getSuppressed()).contains(first));
+    controller.assignCaseworker(null, null);
+
+    verify(assignCaseworkerUseCase)
+        .assign(
+            assignment.caseworkerId(),
+            assignment.applicationId(),
+            assignment.serialisedRequest(),
+            assignment.eventDescription());
+    verify(makeDecisionUseCase, never()).execute(any());
+    verify(createNoteUseCase, never()).execute(any());
+    verify(unassignCaseworkerUseCase, never()).execute(any());
+    verify(createApplicationUseCase, never()).execute(any());
   }
 
-  private CreateApplicationCommand stubCommand() {
+  private CreateApplicationCommand stubCreateCommand() {
     UUID id = UUID.randomUUID();
     return new CreateApplicationCommand(
         id,

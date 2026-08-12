@@ -16,17 +16,17 @@ import org.mockito.ArgumentCaptor;
 import uk.gov.justice.laa.dstew.access.command.caseworker.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 
-class AssignCaseworkerServiceTest {
+class AssignCaseworkerUseCaseTest {
 
   private CaseworkerRepository caseworkerRepository;
   private CommandGateway commandGateway;
-  private AssignCaseworkerService service;
+  private AssignCaseworkerUseCase useCase;
 
   @BeforeEach
   void setUp() {
     caseworkerRepository = mock(CaseworkerRepository.class);
     commandGateway = mock(CommandGateway.class);
-    service = new AssignCaseworkerService(caseworkerRepository, commandGateway);
+    useCase = new AssignCaseworkerUseCase(caseworkerRepository, commandGateway);
   }
 
   @Test
@@ -36,7 +36,7 @@ class AssignCaseworkerServiceTest {
     when(caseworkerRepository.existsById(caseworkerId)).thenReturn(true);
     Instant before = Instant.now();
 
-    service.assign(caseworkerId, applicationId, "request", "description");
+    useCase.assign(caseworkerId, applicationId, "request", "description");
 
     ArgumentCaptor<AssignCaseworkerToApplicationCommand> captor =
         ArgumentCaptor.forClass(AssignCaseworkerToApplicationCommand.class);
@@ -57,7 +57,7 @@ class AssignCaseworkerServiceTest {
     UUID caseworkerId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
 
-    assertThatThrownBy(() -> service.assign(caseworkerId, applicationId, "{}", null))
+    assertThatThrownBy(() -> useCase.assign(caseworkerId, applicationId, "{}", null))
         .isInstanceOf(ResourceNotFoundException.class)
         .hasMessage("No caseworker found with id: " + caseworkerId);
 
