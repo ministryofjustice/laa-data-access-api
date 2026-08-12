@@ -557,7 +557,7 @@ class CreateApplicationInMemoryTest {
             summary -> {
               assertThat(summary.getApplicationId()).isEqualTo(createdApplicationId);
               assertThat(summary.getLaaReference()).isEqualTo("LAA-123");
-              assertThat(summary.getIsLead()).isTrue();
+              assertThat(summary.getIsLead()).isFalse();
               assertThat(summary.getClientFirstName()).isEqualTo("Ada");
               assertThat(summary.getClientLastName()).isEqualTo("Lovelace");
             });

@@ -15,6 +15,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
+import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.InvolvedChildResponse;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
@@ -38,15 +39,15 @@ public class GetApplicationResponseMapper {
         application.getSubmittedAt() == null
             ? null
             : application.getSubmittedAt().atOffset(ZoneOffset.UTC));
-    response.setIsLead(application.getLeadApplicationId() == null);
+    // Linked groups are not yet exposed; always false until the grouping endpoint is available.
+    response.setIsLead(false);
     response.setAssignedTo(application.getCaseworkerId());
     response.setUsedDelegatedFunctions(application.getUsedDelegatedFunctions());
     response.setAutoGrant(application.getAutoGranted());
     response.setDecisionStatus(
         application.getDecisionStatus() == null
             ? null
-            : uk.gov.justice.laa.dstew.access.model.DecisionStatus.valueOf(
-                application.getDecisionStatus()));
+            : DecisionStatus.valueOf(application.getDecisionStatus()));
     response.setVersion(application.getApplicationVersion());
     response.setProvider(toProvider(application));
     response.setOpponents(toOpponents(application.getOpponents()));

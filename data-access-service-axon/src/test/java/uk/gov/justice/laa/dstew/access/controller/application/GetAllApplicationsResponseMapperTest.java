@@ -78,7 +78,7 @@ class GetAllApplicationsResponseMapperTest {
   }
 
   @Test
-  void givenApplicationWithNoLeadId_whenToResponse_thenIsLeadTrue() {
+  void givenApplicationWithNoLeadId_whenToResponse_thenIsLeadFalse() {
     ApplicationReadModel app =
         ApplicationReadModel.builder()
             .applicationId(UUID.randomUUID())
@@ -93,7 +93,7 @@ class GetAllApplicationsResponseMapperTest {
             .getApplications()
             .get(0);
 
-    assertThat(summary.getIsLead()).isTrue();
+    assertThat(summary.getIsLead()).isFalse();
   }
 
   @Test

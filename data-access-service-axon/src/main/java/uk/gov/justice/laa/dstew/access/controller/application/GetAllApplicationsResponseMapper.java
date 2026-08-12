@@ -54,7 +54,8 @@ public class GetAllApplicationsResponseMapper {
     summary.setSubmittedAt(
         app.getSubmittedAt() != null ? app.getSubmittedAt().atOffset(ZoneOffset.UTC) : null);
     summary.setLastUpdated(app.getModifiedAt().atOffset(ZoneOffset.UTC));
-    summary.setIsLead(app.getLeadApplicationId() == null);
+    // Linked groups are not yet exposed; always false until the grouping endpoint is available.
+    summary.setIsLead(false);
     summary.setAssignedTo(app.getCaseworkerId());
 
     populateClientDetails(summary, app);

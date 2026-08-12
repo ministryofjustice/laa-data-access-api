@@ -710,7 +710,7 @@ class PostgresAxonIntegrationTest {
             .laaReference("LAA-123")
             .lastUpdated(actual.getLastUpdated())
             .submittedAt(OffsetDateTime.parse("2026-07-14T12:30:00Z"))
-            .isLead(true)
+            .isLead(false)
             .usedDelegatedFunctions(false)
             .version(0L)
             .provider(
