@@ -1,6 +1,8 @@
 package uk.gov.justice.laa.dstew.access.command.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validApplicationContent;
 
 import java.time.Clock;
@@ -10,9 +12,10 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationContentParser;
+import uk.gov.justice.laa.dstew.access.applicationcontent.LinkedApplication;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ParsedAppContentDetails;
+import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 
 class ApplicationCreationDetailsFactoryTest {
 
@@ -24,7 +27,7 @@ class ApplicationCreationDetailsFactoryTest {
 
   @BeforeEach
   void setUp() {
-    applicationContentParser = Mockito.mock(ApplicationContentParser.class);
+    applicationContentParser = mock(ApplicationContentParser.class);
     factory = new ApplicationCreationDetailsFactory(applicationContentParser, FIXED_CLOCK);
   }
 
@@ -33,7 +36,7 @@ class ApplicationCreationDetailsFactoryTest {
     UUID applicationId = UUID.randomUUID();
     CreateApplicationCommand command = command(applicationId);
     ParsedAppContentDetails parsed = parsedDetails();
-    Mockito.when(applicationContentParser.parse(command.applicationContent())).thenReturn(parsed);
+    when(applicationContentParser.parse(command.applicationContent())).thenReturn(parsed);
 
     ApplicationCreationDetails details = factory.prepare(command);
 
@@ -48,8 +51,7 @@ class ApplicationCreationDetailsFactoryTest {
   void givenCommand_whenPrepared_thenOpponentsArePassedThrough() {
     UUID applicationId = UUID.randomUUID();
     CreateApplicationCommand command = command(applicationId);
-    Mockito.when(applicationContentParser.parse(command.applicationContent()))
-        .thenReturn(parsedDetails());
+    when(applicationContentParser.parse(command.applicationContent())).thenReturn(parsedDetails());
 
     ApplicationCreationDetails details = factory.prepare(command);
 
@@ -60,7 +62,7 @@ class ApplicationCreationDetailsFactoryTest {
   void givenNoLinkedApplications_whenPrepared_thenReturnsNullLeadApplicationId() {
     UUID applicationId = UUID.randomUUID();
     CreateApplicationCommand command = command(applicationId);
-    Mockito.when(applicationContentParser.parse(command.applicationContent()))
+    when(applicationContentParser.parse(command.applicationContent()))
         .thenReturn(parsedDetailsWithNoLinks(applicationId));
 
     ApplicationCreationDetails details = factory.prepare(command);
@@ -74,7 +76,7 @@ class ApplicationCreationDetailsFactoryTest {
     UUID leadApplicationId = UUID.randomUUID();
     CreateApplicationCommand command = command(applicationId);
     ParsedAppContentDetails parsed = parsedDetailsWithLead(applicationId, leadApplicationId);
-    Mockito.when(applicationContentParser.parse(command.applicationContent())).thenReturn(parsed);
+    when(applicationContentParser.parse(command.applicationContent())).thenReturn(parsed);
 
     // No repository lookup — factory simply extracts from parsed content.
     ApplicationCreationDetails details = factory.prepare(command);
@@ -87,14 +89,13 @@ class ApplicationCreationDetailsFactoryTest {
     UUID applicationId = UUID.randomUUID();
     UUID applyProceedingId = UUID.randomUUID();
     CreateApplicationCommand command = command(applicationId);
-    Mockito.when(applicationContentParser.parse(command.applicationContent()))
-        .thenReturn(parsedDetailsWithProceedings(applicationId, applyProceedingId));
+    when(applicationContentParser.parse(command.applicationContent()))
+        .thenReturn(parsedDetailsWithProceedings(applyProceedingId));
 
     ApplicationCreationDetails details = factory.prepare(command);
 
     assertThat(details.proceedings()).hasSize(1);
-    uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding proc =
-        details.proceedings().getFirst();
+    Proceeding proc = details.proceedings().getFirst();
     assertThat(proc.getId()).isEqualTo(applyProceedingId);
     assertThat(proc.getDescription()).isEqualTo("Care order");
     assertThat(proc.getLeadProceeding()).isTrue();
@@ -108,17 +109,16 @@ class ApplicationCreationDetailsFactoryTest {
     CreateApplicationCommand command = command(applicationId);
     ParsedAppContentDetails parsed =
         parsedDetailsWithMultipleLinked(applicationId, leadId, anotherAssociatedId);
-    Mockito.when(applicationContentParser.parse(command.applicationContent())).thenReturn(parsed);
+    when(applicationContentParser.parse(command.applicationContent())).thenReturn(parsed);
 
     ApplicationCreationDetails details = factory.prepare(command);
 
     assertThat(details.leadApplicationId()).isEqualTo(leadId);
   }
 
-  private ParsedAppContentDetails parsedDetailsWithProceedings(
-      UUID associatedApplicationId, UUID proceedingId) {
-    uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding proceeding =
-        uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding.builder()
+  private ParsedAppContentDetails parsedDetailsWithProceedings(UUID proceedingId) {
+    Proceeding proceeding =
+        Proceeding.builder()
             .id(proceedingId)
             .leadProceeding(true)
             .description("Care order")
@@ -129,13 +129,13 @@ class ApplicationCreationDetailsFactoryTest {
 
   private ParsedAppContentDetails parsedDetailsWithMultipleLinked(
       UUID associatedApplicationId, UUID leadApplicationId, UUID anotherAssociatedId) {
-    List<uk.gov.justice.laa.dstew.access.applicationcontent.LinkedApplication> linkedApps =
+    List<LinkedApplication> linkedApps =
         List.of(
-            uk.gov.justice.laa.dstew.access.applicationcontent.LinkedApplication.builder()
+            LinkedApplication.builder()
                 .leadApplicationId(leadApplicationId)
                 .associatedApplicationId(associatedApplicationId)
                 .build(),
-            uk.gov.justice.laa.dstew.access.applicationcontent.LinkedApplication.builder()
+            LinkedApplication.builder()
                 .leadApplicationId(leadApplicationId)
                 .associatedApplicationId(anotherAssociatedId)
                 .build());
@@ -173,8 +173,8 @@ class ApplicationCreationDetailsFactoryTest {
 
   private ParsedAppContentDetails parsedDetailsWithLead(
       UUID associatedApplicationId, UUID leadApplicationId) {
-    uk.gov.justice.laa.dstew.access.applicationcontent.LinkedApplication linkedApp =
-        uk.gov.justice.laa.dstew.access.applicationcontent.LinkedApplication.builder()
+    LinkedApplication linkedApp =
+        LinkedApplication.builder()
             .leadApplicationId(leadApplicationId)
             .associatedApplicationId(associatedApplicationId)
             .build();

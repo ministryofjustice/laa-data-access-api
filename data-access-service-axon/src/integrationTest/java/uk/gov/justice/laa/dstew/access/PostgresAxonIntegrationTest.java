@@ -157,7 +157,7 @@ class PostgresAxonIntegrationTest {
             """,
             String.class);
 
-    assertThat(appliedVersions).containsExactly("1", "2", "3");
+    assertThat(appliedVersions).containsExactly("1", "2", "3", "4");
     assertThat(tables)
         .containsExactly(
             "application_current_state",

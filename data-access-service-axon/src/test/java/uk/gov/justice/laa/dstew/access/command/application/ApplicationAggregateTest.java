@@ -19,6 +19,8 @@ import org.axonframework.test.fixture.AxonTestFixture;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationProvider;
+import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.AssignCaseworkerToApplicationCommand;
@@ -30,6 +32,8 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicat
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeDecisionProceeding;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.CreateLinkedApplicationGroupCommand;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupRequested;
+import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
+import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationGroupInvariantException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException;
@@ -85,9 +89,7 @@ class ApplicationAggregateTest {
             "APPLICATION_SUBMITTED",
             "LAA-123",
             null,
-            uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationProvider.builder()
-                .officeCode("1A001B")
-                .build(),
+            ApplicationProvider.builder().officeCode("1A001B").build(),
             null,
             null,
             1,
@@ -435,10 +437,7 @@ class ApplicationAggregateTest {
         .when()
         .command(
             new CreateLinkedApplicationGroupCommand(
-                missingLeadId,
-                members.get(1),
-                members,
-                java.time.Instant.parse("2026-07-15T08:00:00Z")))
+                missingLeadId, members.get(1), members, Instant.parse("2026-07-15T08:00:00Z")))
         .then()
         .exception(ResourceNotFoundException.class)
         .noEvents();
@@ -455,19 +454,17 @@ class ApplicationAggregateTest {
                 "APPLICATION_SUBMITTED",
                 "LAA-123",
                 null,
-                uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationProvider.builder()
-                    .officeCode("1A001B")
-                    .build(),
+                ApplicationProvider.builder().officeCode("1A001B").build(),
                 null,
                 null,
                 1,
-                java.time.Instant.parse("2026-07-14T12:30:00Z"),
+                Instant.parse("2026-07-14T12:30:00Z"),
                 false,
                 null,
                 null,
                 List.of(),
                 "{}",
-                java.time.Instant.parse("2026-07-15T08:00:00Z"),
+                Instant.parse("2026-07-15T08:00:00Z"),
                 applicationId); // leadApplicationId == self
           }
         };
@@ -495,19 +492,17 @@ class ApplicationAggregateTest {
             "APPLICATION_SUBMITTED",
             "LAA-123",
             null,
-            uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationProvider.builder()
-                .officeCode("1A001B")
-                .build(),
+            ApplicationProvider.builder().officeCode("1A001B").build(),
             null,
             null,
             1,
-            java.time.Instant.parse("2026-07-14T12:30:00Z"),
+            Instant.parse("2026-07-14T12:30:00Z"),
             false,
             null,
             null,
             List.of(),
             "{}",
-            java.time.Instant.parse("2026-07-15T08:00:00Z"),
+            Instant.parse("2026-07-15T08:00:00Z"),
             otherLeadId); // already a member of another group
     ApplicationCreatedEvent associatedCreated =
         applicationCreatedEvent(applicationId, associatedDetails);
@@ -521,7 +516,7 @@ class ApplicationAggregateTest {
                 applicationId,
                 UUID.randomUUID(),
                 List.of(applicationId, UUID.randomUUID()),
-                java.time.Instant.parse("2026-07-15T08:00:00Z")))
+                Instant.parse("2026-07-15T08:00:00Z")))
         .then()
         .exception(ApplicationGroupInvariantException.class)
         .noEvents();
@@ -542,14 +537,10 @@ class ApplicationAggregateTest {
         .given()
         .events(created)
         .when()
-        .command(
-            new uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand(
-                applicationId, "My note", "{}", occurredAt))
+        .command(new CreateNoteCommand(applicationId, "My note", "{}", occurredAt))
         .then()
         .success()
-        .events(
-            new uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent(
-                applicationId, 1L, occurredAt));
+        .events(new NoteCreatedEvent(applicationId, 1L, occurredAt));
   }
 
   @Test
@@ -558,9 +549,7 @@ class ApplicationAggregateTest {
         .given()
         .noPriorActivity()
         .when()
-        .command(
-            new uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand(
-                UUID.randomUUID(), "My note", "{}", Instant.now()))
+        .command(new CreateNoteCommand(UUID.randomUUID(), "My note", "{}", Instant.now()))
         .then()
         .exception(ResourceNotFoundException.class)
         .noEvents();
@@ -619,7 +608,7 @@ class ApplicationAggregateTest {
         original.categoryOfLaw(),
         original.matterType(),
         List.of(
-            uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding.builder()
+            Proceeding.builder()
                 .id(proceedingId)
                 .leadProceeding(true)
                 .description("Proceeding")
