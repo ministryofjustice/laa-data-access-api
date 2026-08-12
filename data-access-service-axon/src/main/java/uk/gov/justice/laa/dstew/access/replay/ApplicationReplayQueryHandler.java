@@ -13,13 +13,13 @@ import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdRebu
  * directly from the raw Axon event store, bypassing the running projection entirely.
  */
 @Component
-public class ApplicationRawReplayQueryHandler {
+public class ApplicationReplayQueryHandler {
 
   private final ApplicationRawReplayService rawReplayService;
   private final ApplicationEventStoreReplayService eventStoreReplayService;
 
   /** Constructs the handler with its raw-replay service. */
-  public ApplicationRawReplayQueryHandler(
+  public ApplicationReplayQueryHandler(
       ApplicationRawReplayService rawReplayService,
       ApplicationEventStoreReplayService eventStoreReplayService) {
     this.rawReplayService = rawReplayService;

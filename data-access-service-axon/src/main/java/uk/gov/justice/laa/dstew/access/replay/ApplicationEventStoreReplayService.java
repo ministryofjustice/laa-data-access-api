@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.replay;
 
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.axonframework.eventsourcing.eventstore.EventStore;
@@ -35,6 +36,40 @@ public class ApplicationEventStoreReplayService {
   private static final Logger log =
       LoggerFactory.getLogger(ApplicationEventStoreReplayService.class);
 
+  private interface EventApplier {
+    void apply(ApplicationReadModel model, Message message);
+  }
+
+  private static final Map<String, EventApplier> EVENT_APPLIERS =
+      Map.of(
+          "ApplicationCreatedEvent",
+          (model, message) ->
+              ApplicationReadModelEvolve.apply(
+                  model, message.payloadAs(ApplicationCreatedEvent.class)),
+          "ApplicationDecisionMadeEvent",
+          (model, message) ->
+              ApplicationReadModelEvolve.apply(
+                  model, message.payloadAs(ApplicationDecisionMadeEvent.class)),
+          "ApplicationAssignedToCaseworkerEvent",
+          (model, message) ->
+              ApplicationReadModelEvolve.apply(
+                  model, message.payloadAs(ApplicationAssignedToCaseworkerEvent.class)),
+          "ApplicationUnassignedFromCaseworkerEvent",
+          (model, message) ->
+              ApplicationReadModelEvolve.apply(
+                  model, message.payloadAs(ApplicationUnassignedFromCaseworkerEvent.class)),
+          "NoteCreatedEvent",
+          (model, message) ->
+              ApplicationReadModelEvolve.apply(model, message.payloadAs(NoteCreatedEvent.class)),
+          "ApplicationLinkedEvent",
+          (model, message) ->
+              ApplicationReadModelEvolve.apply(
+                  model, message.payloadAs(ApplicationLinkedEvent.class)),
+          "LinkedApplicationGroupRequested",
+          (model, message) ->
+              ApplicationReadModelEvolve.apply(
+                  model, message.payloadAs(LinkedApplicationGroupRequested.class)));
+
   private final EventStore eventStore;
   private final ApplicationDataStore applicationDataStore;
 
@@ -42,7 +77,8 @@ public class ApplicationEventStoreReplayService {
    * Construct the service which replays events from the Axon event store.
    *
    * @param eventStore the Axon EventStore to read events from
-   * @param applicationDataStore the persistent application data store used when hydrating the read model
+   * @param applicationDataStore the persistent application data store used when hydrating the read
+   *     model
    */
   public ApplicationEventStoreReplayService(
       EventStore eventStore, ApplicationDataStore applicationDataStore) {
@@ -58,7 +94,6 @@ public class ApplicationEventStoreReplayService {
    */
   public Optional<ApplicationReadModel> replay(UUID applicationId) {
     ApplicationReadModel model = new ApplicationReadModel();
-    boolean[] receivedEvent = {false};
     TrackingToken token =
         new GapAwareTrackingToken(0, null); // Start from the beginning of the stream
     MessageStream<EventMessage> stream =
@@ -68,15 +103,16 @@ public class ApplicationEventStoreReplayService {
                     EventCriteria.havingTags(
                         Tag.of(APPLICATION_TAG_KEY, applicationId.toString()))),
             null);
+    boolean receivedEvent = false;
+
     try {
       while (stream.hasNextAvailable()) {
-        stream
-            .next()
-            .ifPresent(
-                entry -> {
-                  receivedEvent[0] = true;
-                  apply(model, entry.message());
-                });
+        var possibleEntry = stream.next();
+        if (possibleEntry.isEmpty()) {
+          continue;
+        }
+        receivedEvent = true;
+        apply(model, possibleEntry.get().message());
       }
       stream
           .error()
@@ -94,7 +130,7 @@ public class ApplicationEventStoreReplayService {
       stream.close();
     }
 
-    if (!receivedEvent[0]) {
+    if (!receivedEvent) {
       return Optional.empty();
     }
     ApplicationDataPayload data =
@@ -106,51 +142,15 @@ public class ApplicationEventStoreReplayService {
     String simpleName =
         message.type().qualifiedName().localName(); // Get the simple class name of the event
 
+    EventApplier applier = EVENT_APPLIERS.get(simpleName);
+    if (applier == null) {
+      // Unknown/irrelevant event for the Application read model; ignore.
+      log.debug("Skipping unknown event type during replay: {}", simpleName);
+      return;
+    }
+
     try {
-      switch (simpleName) {
-        case "ApplicationCreatedEvent": {
-          ApplicationCreatedEvent event = message.payloadAs(ApplicationCreatedEvent.class);
-          ApplicationReadModelEvolve.apply(model, event);
-          break;
-        }
-        case "ApplicationDecisionMadeEvent": {
-          ApplicationDecisionMadeEvent event =
-              message.payloadAs(ApplicationDecisionMadeEvent.class);
-          ApplicationReadModelEvolve.apply(model, event);
-          break;
-        }
-        case "ApplicationAssignedToCaseworkerEvent": {
-          ApplicationAssignedToCaseworkerEvent event =
-              message.payloadAs(ApplicationAssignedToCaseworkerEvent.class);
-          ApplicationReadModelEvolve.apply(model, event);
-          break;
-        }
-        case "ApplicationUnassignedFromCaseworkerEvent": {
-          ApplicationUnassignedFromCaseworkerEvent event =
-              message.payloadAs(ApplicationUnassignedFromCaseworkerEvent.class);
-          ApplicationReadModelEvolve.apply(model, event);
-          break;
-        }
-        case "NoteCreatedEvent": {
-          NoteCreatedEvent event = message.payloadAs(NoteCreatedEvent.class);
-          ApplicationReadModelEvolve.apply(model, event);
-          break;
-        }
-        case "ApplicationLinkedEvent": {
-          ApplicationLinkedEvent event = message.payloadAs(ApplicationLinkedEvent.class);
-          ApplicationReadModelEvolve.apply(model, event);
-          break;
-        }
-        case "LinkedApplicationGroupRequested": {
-          LinkedApplicationGroupRequested event =
-              message.payloadAs(LinkedApplicationGroupRequested.class);
-          ApplicationReadModelEvolve.apply(model, event);
-          break;
-        }
-        default:
-          // Unknown/irrelevant event for the Application read model; ignore.
-          log.debug("Skipping unknown event type during replay: {}", simpleName);
-      }
+      applier.apply(model, message);
     } catch (Exception ex) {
       throw new IllegalStateException("Unable to apply event " + simpleName + " during replay", ex);
     }
