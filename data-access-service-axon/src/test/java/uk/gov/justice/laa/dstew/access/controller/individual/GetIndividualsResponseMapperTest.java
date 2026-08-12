@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.controller.individual;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationAddress;
@@ -20,7 +21,7 @@ class GetIndividualsResponseMapperTest {
         ApplicationClient.builder()
             .firstName("Ada")
             .lastName("Lovelace")
-            .dateOfBirth("1815-12-10")
+            .dateOfBirth(LocalDate.of(1815, 12, 10))
             .lastNameAtBirth("Byron")
             .previousApplicationId("previous-id")
             .relationshipToInvolvedChildren("MOTHER")

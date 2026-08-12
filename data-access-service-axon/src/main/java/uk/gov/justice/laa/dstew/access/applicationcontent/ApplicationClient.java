@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.applicationcontent;
 
 import java.io.Serializable;
+import java.time.LocalDate;
 import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -20,7 +21,7 @@ public class ApplicationClient implements Serializable {
   @Nullable private String firstName;
   @Nullable private String lastName;
   @Nullable private String lastNameAtBirth;
-  @Nullable private String dateOfBirth;
+  @Nullable private LocalDate dateOfBirth;
   @Nullable private Boolean hasNationalInsuranceNumber;
   @Nullable private String nationalInsuranceNumber;
   @Nullable private Boolean appliedPreviously;

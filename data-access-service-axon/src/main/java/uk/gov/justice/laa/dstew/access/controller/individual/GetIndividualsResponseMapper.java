@@ -39,10 +39,7 @@ public class GetIndividualsResponseMapper {
         new IndividualResponse()
             .firstName(client.getFirstName())
             .lastName(client.getLastName())
-            .dateOfBirth(
-                client.getDateOfBirth() != null
-                    ? java.time.LocalDate.parse(client.getDateOfBirth())
-                    : null)
+            .dateOfBirth(client.getDateOfBirth())
             .type(IndividualType.CLIENT);
     if (includeClientDetails) {
       response

@@ -1,13 +1,12 @@
 package uk.gov.justice.laa.dstew.access.query.application.listindex;
 
-import java.util.List;
 import org.axonframework.messaging.core.annotation.Namespace;
 import org.axonframework.messaging.eventhandling.EventMessage;
 import org.axonframework.messaging.eventhandling.annotation.EventHandler;
 import org.axonframework.messaging.eventhandling.replay.annotation.ResetHandler;
 import org.springframework.stereotype.Component;
+import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.ApplicationIndividual;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
@@ -55,7 +54,7 @@ public class ApplicationListIndexProjection {
     ApplicationDataPayload data =
         applicationDataStore.get(event.applicationId(), event.applicationDataVersion());
 
-    ApplicationIndividual client = primaryClient(data);
+    ApplicationClient client = data.client();
 
     listIndexRepository.save(
         ApplicationListIndexReadModel.builder()
@@ -63,13 +62,13 @@ public class ApplicationListIndexProjection {
             .status(event.status())
             .laaReference(data.laaReference())
             .caseworkerId(null)
-            .matterType(data.matterType() == null ? null : data.matterType().name())
+            .matterType(data.matterType() == null ? null : data.matterType())
             .isAutoGranted(null)
             .submittedAt(data.submittedAt())
             .leadApplicationId(event.leadApplicationId())
-            .clientFirstName(client != null ? client.firstName() : null)
-            .clientLastName(client != null ? client.lastName() : null)
-            .clientDateOfBirth(client != null ? client.dateOfBirth() : null)
+            .clientFirstName(client != null ? client.getFirstName() : null)
+            .clientLastName(client != null ? client.getLastName() : null)
+            .clientDateOfBirth(client != null ? client.getDateOfBirth() : null)
             .streamVersion(0L)
             .projectionPosition(message.identifier().hashCode())
             .build());
@@ -156,13 +155,5 @@ public class ApplicationListIndexProjection {
   @ResetHandler
   public void reset() {
     listIndexRepository.deleteAllInBatch();
-  }
-
-  private ApplicationIndividual primaryClient(ApplicationDataPayload data) {
-    List<ApplicationIndividual> individuals = data.individuals();
-    if (individuals == null) {
-      return null;
-    }
-    return individuals.stream().filter(i -> "CLIENT".equals(i.type())).findFirst().orElse(null);
   }
 }

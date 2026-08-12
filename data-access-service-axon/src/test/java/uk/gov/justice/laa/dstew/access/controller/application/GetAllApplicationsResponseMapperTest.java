@@ -121,7 +121,7 @@ class GetAllApplicationsResponseMapperTest {
         ApplicationClient.builder()
             .firstName("Ada")
             .lastName("Lovelace")
-            .dateOfBirth("1815-12-10")
+            .dateOfBirth(LocalDate.of(1815, 12, 10))
             .build();
     ApplicationReadModel app =
         ApplicationReadModel.builder()

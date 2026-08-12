@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import java.io.Serial;
 import java.io.Serializable;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -40,9 +41,9 @@ public class LinkedApplication implements Serializable {
 
   @Nullable private String linkTypeCode;
 
-  @Nullable private String createdAt;
+  @Nullable private Instant createdAt;
 
-  @Nullable private String updatedAt;
+  @Nullable private Instant updatedAt;
 
   @Nullable private Boolean confirmLink;
 

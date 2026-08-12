@@ -1,6 +1,5 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
-import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.Collections;
 import java.util.List;
@@ -92,7 +91,7 @@ public class GetAllApplicationsResponseMapper {
       summary.setClientFirstName(client.getFirstName());
       summary.setClientLastName(client.getLastName());
       if (client.getDateOfBirth() != null) {
-        summary.setClientDateOfBirth(LocalDate.parse(client.getDateOfBirth()));
+        summary.setClientDateOfBirth(client.getDateOfBirth());
       }
     }
   }
