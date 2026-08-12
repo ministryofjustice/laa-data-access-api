@@ -69,8 +69,8 @@ class ApplicationHistoryProjectionTest {
                 "group-event-id:" + memberId, memberId, "APPLICATION_GROUP_JOINED"));
     for (ApplicationHistoryReadModel history : captor.getAllValues()) {
       var payload = objectMapper.readTree(history.getRequestPayload());
-      assertThat(payload.get("groupId").asText()).isEqualTo(leadId.toString());
-      assertThat(payload.get("leadApplicationId").asText()).isEqualTo(leadId.toString());
+      assertThat(payload.get("groupId").asString()).isEqualTo(leadId.toString());
+      assertThat(payload.get("leadApplicationId").asString()).isEqualTo(leadId.toString());
       assertThat(payload.get("memberApplicationIds")).hasSize(2);
       assertThat(payload.get("occurredAt")).isNotNull();
       assertThat(history.getServiceName()).isEqualTo("CIVIL_APPLY");
@@ -96,8 +96,8 @@ class ApplicationHistoryProjectionTest {
     assertThat(history.getApplicationId()).isEqualTo(memberId);
     assertThat(history.getEventType()).isEqualTo("APPLICATION_GROUP_JOINED");
     var payload = objectMapper.readTree(history.getRequestPayload());
-    assertThat(payload.get("groupId").asText()).isEqualTo(groupId.toString());
-    assertThat(payload.get("memberId").asText()).isEqualTo(memberId.toString());
+    assertThat(payload.get("groupId").asString()).isEqualTo(groupId.toString());
+    assertThat(payload.get("memberId").asString()).isEqualTo(memberId.toString());
     assertThat(payload.get("occurredAt")).isNotNull();
   }
 
@@ -126,8 +126,7 @@ class ApplicationHistoryProjectionTest {
   }
 
   @Test
-  void givenAssignmentHistory_whenQueried_thenReconstructsCaseworkerAndDescription()
-      throws Exception {
+  void givenAssignmentHistory_whenQueried_thenReconstructsCaseworkerAndDescription() {
     UUID applicationId = UUID.randomUUID();
     UUID caseworkerId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-07-20T08:00:00Z");
@@ -155,8 +154,9 @@ class ApplicationHistoryProjectionTest {
             history -> {
               try {
                 var payload = objectMapper.readTree(history.getRequestPayload());
-                assertThat(payload.get("caseworkerId").asText()).isEqualTo(caseworkerId.toString());
-                assertThat(payload.get("eventDescription").asText())
+                assertThat(payload.get("caseworkerId").asString())
+                    .isEqualTo(caseworkerId.toString());
+                assertThat(payload.get("eventDescription").asString())
                     .isEqualTo("Assigned for assessment");
               } catch (Exception exception) {
                 throw new AssertionError(exception);
@@ -188,7 +188,7 @@ class ApplicationHistoryProjectionTest {
                 applicationId, List.of("UNASSIGN_APPLICATION_TO_CASEWORKER")));
 
     var payload = objectMapper.readTree(result.getFirst().getRequestPayload());
-    assertThat(payload.get("eventDescription").asText()).isEqualTo("Returned to queue");
+    assertThat(payload.get("eventDescription").asString()).isEqualTo("Returned to queue");
     assertThat(payload.get("caseworkerId")).isNull();
   }
 
@@ -215,7 +215,7 @@ class ApplicationHistoryProjectionTest {
                 applicationId, List.of("APPLICATION_MAKE_DECISION_GRANTED")));
 
     var payload = objectMapper.readTree(result.getFirst().getRequestPayload());
-    assertThat(payload.get("eventDescription").asText()).isEqualTo("Decision recorded");
+    assertThat(payload.get("eventDescription").asString()).isEqualTo("Decision recorded");
   }
 
   @Test
@@ -258,7 +258,7 @@ class ApplicationHistoryProjectionTest {
             new FindApplicationHistoryQuery(applicationId, List.of("APPLICATION_NOTE_CREATED")));
 
     var payload = objectMapper.readTree(result.getFirst().getRequestPayload());
-    assertThat(payload.get("noteText").asText()).isEqualTo("My note text");
+    assertThat(payload.get("noteText").asString()).isEqualTo("My note text");
   }
 
   private EventMessage message(Object payload, String identifier) {

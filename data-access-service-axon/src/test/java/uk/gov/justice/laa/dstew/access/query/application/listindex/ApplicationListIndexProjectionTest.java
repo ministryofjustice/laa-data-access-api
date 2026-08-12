@@ -21,8 +21,8 @@ import org.axonframework.messaging.eventhandling.GenericEventMessage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.ApplicationIndividual;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
@@ -77,24 +77,27 @@ class ApplicationListIndexProjectionTest {
   }
 
   @Test
-  void givenCreatedEventWithClientIndividual_whenHandled_thenPopulatesPiiColumns() {
+  void givenCreatedEventWithClient_whenHandled_thenPopulatesPiiColumns() {
     UUID applicationId = UUID.randomUUID();
     ApplicationCreatedEvent event = applicationCreatedEvent(applicationId);
 
-    ApplicationIndividual client =
-        new ApplicationIndividual(
-            UUID.randomUUID(), "Jane", "Smith", LocalDate.of(1990, 6, 15), null, "CLIENT");
+    ApplicationClient client =
+        ApplicationClient.builder()
+            .firstName("Jane")
+            .lastName("Smith")
+            .dateOfBirth(LocalDate.of(1990, 6, 15))
+            .appliedPreviously(false)
+            .addresses(List.of())
+            .build();
     ApplicationDataPayload basePayload =
         ApplicationDataPayload.from(applicationCreationDetails(applicationId));
-    // Build a payload with the client individual via the public constructor fields
     ApplicationDataPayload payloadWithClient =
         new ApplicationDataPayload(
             basePayload.laaReference(),
-            basePayload.applicationContent(),
-            List.of(client),
-            basePayload.applyApplicationId(),
+            client,
+            basePayload.provider(),
+            basePayload.opponents(),
             basePayload.submittedAt(),
-            basePayload.officeCode(),
             basePayload.usedDelegatedFunctions(),
             basePayload.categoryOfLaw(),
             basePayload.matterType(),
@@ -125,7 +128,7 @@ class ApplicationListIndexProjectionTest {
   }
 
   @Test
-  void givenCreatedEventWithNoIndividuals_whenHandled_thenPiiColumnsAreNull() {
+  void givenCreatedEventWithNoClient_whenHandled_thenPiiColumnsAreNull() {
     UUID applicationId = UUID.randomUUID();
     ApplicationCreatedEvent event = applicationCreatedEvent(applicationId);
     ApplicationDataPayload payload =

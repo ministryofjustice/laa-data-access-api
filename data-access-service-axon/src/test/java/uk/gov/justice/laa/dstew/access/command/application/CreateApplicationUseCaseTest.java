@@ -8,7 +8,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -82,10 +81,8 @@ class CreateApplicationUseCaseTest {
         "APPLICATION_SUBMITTED",
         "LAA-123",
         Map.of("id", id.toString()),
-        List.of(),
         "{}",
         1,
-        "ApplyApplication.json",
-        "APPLY");
+        "ApplyApplication.json");
   }
 }

@@ -45,6 +45,7 @@ public class ApplicationContent implements Serializable {
 
   @Nullable
   @Valid
+  @Builder.Default
   @Schema(name = "proceedings", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
   @JsonProperty("proceedings")
   private List<Proceeding> proceedings = new ArrayList<>();
