@@ -665,7 +665,7 @@ class PostgresAxonIntegrationTest {
     Map<String, Object> proceeding = firstProceeding(content);
     proceeding.put("meaning", "Care proceedings");
     proceeding.put("substantiveLevelOfServiceName", "FULL_REPRESENTATION");
-    proceeding.put("substantiveCostLimitation", 2_500.0);
+    proceeding.put("substantiveCostLimitation", "2500.0");
     proceeding.put(
         "involvedChildren",
         List.of(

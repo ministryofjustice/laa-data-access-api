@@ -46,7 +46,7 @@ class PayloadValidatorTest {
             {"id": 2 }
             """),
         Arguments.of(
-            "Invalid data type for field 'substantiveCostLimitation'. Expected: Number.",
+            "BigDecimal",
             """
             {"id": "550e8400-e29b-41d4-a716-446655440000",
             "leadProceeding": true,
