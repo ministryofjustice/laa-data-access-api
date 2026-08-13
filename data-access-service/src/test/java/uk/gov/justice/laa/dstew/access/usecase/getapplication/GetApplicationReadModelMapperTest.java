@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.usecase.getapplication;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Collections;
@@ -51,7 +52,7 @@ class GetApplicationReadModelMapperTest {
             .categoryOfLaw("Family")
             .matterType("SPECIAL_CHILDREN_ACT")
             .levelOfService("SERVICE")
-            .substantiveCostLimitation(1234.56)
+            .substantiveCostLimitation(new BigDecimal("1234.56"))
             .delegatedFunctionsDate(LocalDate.of(2025, 5, 6))
             .scopeLimitations(
                 List.of(Map.of("meaning", "Full Representation", "description", "desc")))
@@ -122,7 +123,8 @@ class GetApplicationReadModelMapperTest {
     assertThat(actual.proceedings().getFirst().categoryOfLaw()).isEqualTo("Family");
     assertThat(actual.proceedings().getFirst().matterType()).isEqualTo("SPECIAL_CHILDREN_ACT");
     assertThat(actual.proceedings().getFirst().levelOfService()).isEqualTo("SERVICE");
-    assertThat(actual.proceedings().getFirst().substantiveCostLimitation()).isEqualTo(1234.56);
+    assertThat(actual.proceedings().getFirst().substantiveCostLimitation())
+        .isEqualTo(new BigDecimal("1234.56"));
     assertThat(actual.proceedings().getFirst().delegatedFunctionsDate())
         .isEqualTo(LocalDate.of(2025, 5, 6));
     assertThat(actual.proceedings().getFirst().meritsDecision()).isEqualTo("GRANTED");

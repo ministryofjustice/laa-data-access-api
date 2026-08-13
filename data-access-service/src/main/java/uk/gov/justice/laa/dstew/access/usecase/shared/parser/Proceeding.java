@@ -20,6 +20,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import tools.jackson.databind.annotation.JsonDeserialize;
+import tools.jackson.databind.annotation.JsonSerialize;
+import tools.jackson.databind.ser.std.ToStringSerializer;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.deserializer.StringToBigDecimalDeserializer;
 
@@ -63,6 +65,7 @@ public class Proceeding implements Serializable {
 
   @Nullable
   @JsonDeserialize(using = StringToBigDecimalDeserializer.class)
+  @JsonSerialize(using = ToStringSerializer.class)
   private BigDecimal substantiveCostLimitation;
 
   @Nullable private List<Map<String, Object>> scopeLimitations;

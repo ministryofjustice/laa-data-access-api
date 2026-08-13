@@ -142,8 +142,8 @@ class JsonSchemaValidatorTest {
         Map.entry("categoryOfLaw", "FAMILY"),
         Map.entry("clientInvolvementType", "A"),
         Map.entry("usedDelegatedFunctions", false),
-        Map.entry("delegatedFunctionsCostLimitation", 1000.0),
-        Map.entry("substantiveCostLimitation", 2000.0),
+        Map.entry("delegatedFunctionsCostLimitation", "1000.0"),
+        Map.entry("substantiveCostLimitation", "2000.0"),
         Map.entry("levelOfService", "FULL"),
         Map.entry(
             "scopeLimitations",

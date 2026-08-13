@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.utils.generator.getapplication;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Collections;
 import java.util.UUID;
@@ -28,7 +29,7 @@ public class ProceedingDbProjectionGenerator
         .categoryOfLaw("Family")
         .matterType("SPECIAL_CHILDREN_ACT")
         .levelOfService("Full representation")
-        .substantiveCostLimitation(1350.0)
+        .substantiveCostLimitation(new BigDecimal("1350.0"))
         .delegatedFunctionsDate(LocalDate.of(2025, 5, 6))
         .scopeLimitations(Collections.emptyList())
         .involvedChildren(Collections.emptyList())
