@@ -20,8 +20,6 @@
     "substantiveCostLimitation",
     "substantiveLevelOfService",
     "substantiveLevelOfServiceName",
-    "emergencyLevelOfService",
-    "emergencyLevelOfServiceName",
     "scopeLimitations"
   ],
   "properties": {
@@ -95,11 +93,11 @@
       "description": "Substantive level of service name"
     },
     "emergencyLevelOfService": {
-      "type": "integer",
+      "type": ["integer", "null"],
       "description": "Emergency level of service"
     },
     "emergencyLevelOfServiceName": {
-      "type": "string",
+      "type": ["string", "null"],
       "description": "Emergency level of service name"
     },
     "scopeLimitations": {
