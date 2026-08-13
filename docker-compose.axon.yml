@@ -27,6 +27,11 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-axon:5432/laa_data_access_api?currentSchema=axon
       SPRING_DATASOURCE_USERNAME: laa_user
       SPRING_DATASOURCE_PASSWORD: laa_password
+      AWS_REGION: ${AWS_REGION:-eu-west-2}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-local-access-key}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-local-secret-key}
+      AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL:-http://localstack:4566}
+      APPLICATION_INTEGRATION_EVENTS_TOPIC_ARN: ${DATA_ACCESS_EVENTS_TOPIC_ARN:-}
     depends_on:
       postgres-axon:
         condition: service_healthy

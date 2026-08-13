@@ -7,9 +7,11 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationGroupInvariantException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException;
+import uk.gov.justice.laa.dstew.access.exception.InvalidApplicationStateException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
@@ -73,6 +75,24 @@ public class ApplicationExceptionHandler {
       ApplicationVersionConflictException exception) {
     return ResponseEntity.status(HttpStatus.CONFLICT)
         .body(ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage()));
+  }
+
+  /** Returns a conflict when manual readiness would overwrite an automatic grant. */
+  @ExceptionHandler(ApplicationAutoGrantOutcomeConflictException.class)
+  ResponseEntity<ProblemDetail> handleApplicationAutoGrantOutcomeConflictException(
+      ApplicationAutoGrantOutcomeConflictException exception) {
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage()));
+  }
+
+  /** Returns an unprocessable response when manual readiness is invalid for the lifecycle state. */
+  @ExceptionHandler(InvalidApplicationStateException.class)
+  ResponseEntity<ProblemDetail> handleInvalidApplicationStateException(
+      InvalidApplicationStateException exception) {
+    return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT)
+        .body(
+            ProblemDetail.forStatusAndDetail(
+                HttpStatus.UNPROCESSABLE_CONTENT, exception.getMessage()));
   }
 
   private ResponseEntity<ProblemDetail> validationError(List<String> errors) {

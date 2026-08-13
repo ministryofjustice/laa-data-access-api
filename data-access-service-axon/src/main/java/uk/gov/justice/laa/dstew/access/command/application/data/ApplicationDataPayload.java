@@ -10,6 +10,7 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationProvider;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Opponent;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreationDetails;
+import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 
 /** Sensitive application data stored outside the Axon event stream. */
 public record ApplicationDataPayload(
@@ -24,7 +25,7 @@ public record ApplicationDataPayload(
     List<Proceeding> proceedings,
     String serialisedRequest,
     String overallDecision,
-    Boolean autoGranted,
+    AutoGrantedState autoGranted,
     Map<UUID, ApplicationMeritsDecision> meritsDecisions,
     Map<String, Object> certificate,
     String decisionSerialisedRequest,
@@ -40,6 +41,7 @@ public record ApplicationDataPayload(
   public ApplicationDataPayload {
     notes = notes == null ? List.of() : List.copyOf(notes);
     opponents = opponents == null ? List.of() : List.copyOf(opponents);
+    autoGranted = autoGranted == null ? AutoGrantedState.PENDING : autoGranted;
   }
 
   /**
@@ -61,7 +63,7 @@ public record ApplicationDataPayload(
         details.proceedings(),
         details.serialisedRequest(),
         null,
-        null,
+        AutoGrantedState.PENDING,
         Map.of(),
         null,
         null,
@@ -73,7 +75,7 @@ public record ApplicationDataPayload(
   /** Returns a complete new data version containing the supplied decision state. */
   public ApplicationDataPayload withDecision(
       String newOverallDecision,
-      Boolean newAutoGranted,
+      AutoGrantedState newAutoGranted,
       Map<UUID, ApplicationMeritsDecision> newMeritsDecisions,
       Map<String, Object> newCertificate,
       String newDecisionSerialisedRequest,
@@ -119,6 +121,62 @@ public record ApplicationDataPayload(
         decisionSerialisedRequest,
         decisionEventDescription,
         newAssignmentEventDescription,
+        notes);
+  }
+
+  /** Returns a complete new data version marked as requiring manual assessment. */
+  public ApplicationDataPayload withManualAssessmentRequired() {
+    return new ApplicationDataPayload(
+        laaReference,
+        client,
+        provider,
+        opponents,
+        submittedAt,
+        usedDelegatedFunctions,
+        categoryOfLaw,
+        matterType,
+        proceedings,
+        serialisedRequest,
+        overallDecision,
+        AutoGrantedState.MANUAL,
+        meritsDecisions,
+        certificate,
+        decisionSerialisedRequest,
+        decisionEventDescription,
+        assignmentEventDescription,
+        notes);
+  }
+
+  /** Returns a complete new data version containing replacement Application content. */
+  public ApplicationDataPayload withApplicationUpdate(
+      ApplicationContent newApplicationContent,
+      Instant newSubmittedAt,
+      String newOfficeCode,
+      Boolean newUsedDelegatedFunctions,
+      CategoryOfLaw newCategoryOfLaw,
+      MatterType newMatterType,
+      List<ApplicationProceeding> newProceedings,
+      String newSerialisedRequest,
+      boolean resetAssessment) {
+    return new ApplicationDataPayload(
+        laaReference,
+        newApplicationContent,
+        individuals,
+        applyApplicationId,
+        newSubmittedAt,
+        newOfficeCode,
+        newUsedDelegatedFunctions,
+        newCategoryOfLaw,
+        newMatterType,
+        List.copyOf(newProceedings),
+        newSerialisedRequest,
+        resetAssessment ? null : overallDecision,
+        resetAssessment ? AutoGrantedState.PENDING : autoGranted,
+        resetAssessment ? Map.of() : meritsDecisions,
+        resetAssessment ? null : certificate,
+        resetAssessment ? null : decisionSerialisedRequest,
+        resetAssessment ? null : decisionEventDescription,
+        assignmentEventDescription,
         notes);
   }
 

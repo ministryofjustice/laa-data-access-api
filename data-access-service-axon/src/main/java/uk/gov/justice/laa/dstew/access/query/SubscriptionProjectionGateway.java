@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.query;
 
 import java.time.Duration;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.springframework.beans.factory.annotation.Value;
@@ -52,6 +53,20 @@ public class SubscriptionProjectionGateway {
     }
   }
 
+  /** Waits for an existing projection to become readable, including the first delayed update. */
+  public <R> Optional<R> findProjection(Object query, Class<R> projectionType) {
+    CompletableFuture<R> firstResult =
+        Mono.from(queryGateway.subscriptionQuery(query, projectionType)).toFuture();
+    try {
+      if (!doAwait(firstResult)) {
+        return Optional.empty();
+      }
+      return Optional.ofNullable(queryGateway.query(query, projectionType).join());
+    } finally {
+      firstResult.cancel(true);
+    }
+  }
+
   private <R> boolean doAwait(CompletableFuture<R> firstResult) {
     try {
       Boolean result =
@@ -61,10 +76,14 @@ public class SubscriptionProjectionGateway {
               .block();
       return Boolean.TRUE.equals(result);
     } catch (RuntimeException e) {
-      if (e.getCause() instanceof InterruptedException) {
-        Thread.currentThread().interrupt();
-      }
+      restoreInterrupt(e);
       throw e;
+    }
+  }
+
+  private void restoreInterrupt(RuntimeException exception) {
+    if (exception.getCause() instanceof InterruptedException) {
+      Thread.currentThread().interrupt();
     }
   }
 }

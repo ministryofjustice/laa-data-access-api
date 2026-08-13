@@ -8,6 +8,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.time.Duration;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -140,6 +141,31 @@ class SubscriptionProjectionGatewayTest {
     gateway.awaitProjection(query(), ApplicationReadModel.class, () -> {});
 
     assertThat(cancelled).isTrue();
+  }
+
+  @Test
+  void givenDelayedResult_whenFindProjection_thenReturnsFirstAvailableProjection() {
+    ApplicationReadModel notification = mock(ApplicationReadModel.class);
+    ApplicationReadModel hydrated = mock(ApplicationReadModel.class);
+    FindApplicationByIdQuery query = query();
+    subscription(Mono.delay(Duration.ofMillis(10)).map(ignored -> notification));
+    when(queryGateway.query(query, ApplicationReadModel.class))
+        .thenReturn(java.util.concurrent.CompletableFuture.completedFuture(hydrated));
+
+    Optional<ApplicationReadModel> result =
+        gateway.findProjection(query, ApplicationReadModel.class);
+
+    assertThat(result).contains(hydrated);
+  }
+
+  @Test
+  void givenNoResultBeforeTimeout_whenFindProjection_thenReturnsEmpty() {
+    subscription(Mono.never());
+
+    Optional<ApplicationReadModel> result =
+        gateway.findProjection(query(), ApplicationReadModel.class);
+
+    assertThat(result).isEmpty();
   }
 
   // ── helpers ───────────────────────────────────────────────────────────────

@@ -50,7 +50,8 @@ class GetApplicationResponseMapperTest {
         .isEqualTo(OffsetDateTime.ofInstant(readModel.submittedAt(), ZoneOffset.UTC));
     assertThat(response.getIsLead()).isEqualTo(readModel.isLead());
     assertThat(response.getUsedDelegatedFunctions()).isEqualTo(readModel.usedDelegatedFunctions());
-    assertThat(response.getAutoGrant()).isEqualTo(readModel.autoGrant());
+    assertThat(response.getAutoGranted())
+        .isEqualTo(uk.gov.justice.laa.dstew.access.model.AutoGranted.AUTOGRANTED);
     assertThat(response.getDecisionStatus())
         .isEqualTo(DecisionStatus.valueOf(readModel.decisionStatus()));
     assertThat(response.getVersion()).isEqualTo(readModel.version());

@@ -183,6 +183,7 @@ runs:
         BRANCH_NAME: ${{ steps.extract_release_name.outputs.branch-name }}
         LAA_IPS: ${{ steps.get_laa_ips.outputs.laa-ips }}
         APP_ENVIRONMENT: ${{ inputs.app-environment }}
+        INTEGRATION_EVENTS_ENABLED: ${{ steps.extract_release_name.outputs.branch-name == 'main' }}
       run: |
         set -euo pipefail
 
@@ -222,6 +223,7 @@ runs:
           --set ingressInternal.hosts="{${axon_internal_host}}" \
           --set spring.profile="${SPRING_PROFILE}" \
           --set aws.region="${ECR_REGION}" \
+          --set aws.integrationEvents.enabled="${INTEGRATION_EVENTS_ENABLED}" \
           --set db.postgresqlReleaseName="${RELEASE_NAME}-postgresql" \
           --values "${VALUES_FILE}" \
           --install \

@@ -57,6 +57,8 @@ public class GetAllApplicationsResponseMapper {
     // Linked groups are not yet exposed; always false until the grouping endpoint is available.
     summary.setIsLead(false);
     summary.setAssignedTo(app.getCaseworkerId());
+    summary.setAutoGranted(
+        uk.gov.justice.laa.dstew.access.model.AutoGranted.valueOf(app.getAutoGranted().name()));
 
     populateClientDetails(summary, app);
 

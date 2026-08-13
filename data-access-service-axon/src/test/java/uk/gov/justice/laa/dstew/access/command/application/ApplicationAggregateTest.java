@@ -34,9 +34,14 @@ import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.CreateLin
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupRequested;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
+import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand;
+import uk.gov.justice.laa.dstew.access.command.application.ready.ReadyApplicationResult;
+import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationGroupInvariantException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException;
+import uk.gov.justice.laa.dstew.access.exception.InvalidApplicationStateException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
@@ -200,7 +205,8 @@ class ApplicationAggregateTest {
                 occurredAt))
         .then()
         .events(
-            new ApplicationDecisionMadeEvent(applicationId, 1L, 1L, "REFUSED", false, occurredAt));
+            new ApplicationDecisionMadeEvent(
+                applicationId, 1L, 1L, "REFUSED", AutoGrantedState.MANUAL, occurredAt));
   }
 
   @Test
@@ -239,7 +245,7 @@ class ApplicationAggregateTest {
         .events(
             applicationCreatedEvent(applicationId, details),
             new ApplicationDecisionMadeEvent(
-                applicationId, 1L, 1L, "REFUSED", false, firstOccurredAt))
+                applicationId, 1L, 1L, "REFUSED", AutoGrantedState.MANUAL, firstOccurredAt))
         .when()
         .command(
             new MakeApplicationDecisionCommand(
@@ -256,7 +262,7 @@ class ApplicationAggregateTest {
         .then()
         .events(
             new ApplicationDecisionMadeEvent(
-                applicationId, 2L, 2L, "REFUSED", false, secondOccurredAt));
+                applicationId, 2L, 2L, "REFUSED", AutoGrantedState.MANUAL, secondOccurredAt));
   }
 
   @Test
@@ -272,6 +278,132 @@ class ApplicationAggregateTest {
         .command(decisionCommand(applicationId, 1L, proceedingId, "REFUSED", "justification", null))
         .then()
         .exception(ApplicationVersionConflictException.class)
+        .noEvents();
+  }
+
+  @Test
+  void givenSubmittedUnassessedApplication_whenMarkedReady_thenStoresFalseOutcomeAndEmitsEvent() {
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-21T09:30:00Z");
+    ApplicationCreationDetails details = applicationCreationDetails(applicationId);
+    when(applicationDataStore.get(applicationId, 0L))
+        .thenReturn(ApplicationDataPayload.from(details));
+    when(applicationDataStore.append(any(), anyLong(), any(), any(), any())).thenReturn("hash");
+
+    fixture
+        .given()
+        .events(applicationCreatedEvent(applicationId, details))
+        .when()
+        .command(new MarkApplicationReadyCommand(applicationId, 0L, "{}", occurredAt))
+        .then()
+        .resultMessagePayload(ReadyApplicationResult.RECORDED)
+        .events(new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, 1L, occurredAt));
+  }
+
+  @Test
+  void givenApplicationDataCannotBeAppended_whenMarkedReady_thenDoesNotEmitEvent() {
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-21T09:30:00Z");
+    ApplicationCreationDetails details = applicationCreationDetails(applicationId);
+    when(applicationDataStore.get(applicationId, 0L))
+        .thenReturn(ApplicationDataPayload.from(details));
+    when(applicationDataStore.append(any(), anyLong(), any(), any(), any()))
+        .thenThrow(new IllegalStateException("application data unavailable"));
+
+    fixture
+        .given()
+        .events(applicationCreatedEvent(applicationId, details))
+        .when()
+        .command(new MarkApplicationReadyCommand(applicationId, 0L, "{}", occurredAt))
+        .then()
+        .exception(IllegalStateException.class)
+        .noEvents();
+  }
+
+  @Test
+  void givenAlreadyManualApplication_whenMarkedReadyAgain_thenSucceedsWithoutAnotherEvent() {
+    UUID applicationId = UUID.randomUUID();
+    Instant firstOccurredAt = Instant.parse("2026-07-21T09:30:00Z");
+
+    fixture
+        .given()
+        .events(
+            applicationCreatedEvent(applicationId),
+            new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, 1L, firstOccurredAt))
+        .when()
+        .command(
+            new MarkApplicationReadyCommand(
+                applicationId, 0L, "{}", Instant.parse("2026-07-21T09:31:00Z")))
+        .then()
+        .resultMessagePayload(ReadyApplicationResult.ALREADY_RECORDED)
+        .noEvents();
+  }
+
+  @Test
+  void givenAutomaticallyGrantedApplication_whenMarkedReady_thenRejectsIncompatibleOutcome() {
+    UUID applicationId = UUID.randomUUID();
+
+    fixture
+        .given()
+        .events(
+            applicationCreatedEvent(applicationId),
+            new ApplicationDecisionMadeEvent(
+                applicationId,
+                1L,
+                1L,
+                "GRANTED",
+                AutoGrantedState.AUTOGRANTED,
+                Instant.parse("2026-07-21T09:00:00Z")))
+        .when()
+        .command(
+            new MarkApplicationReadyCommand(
+                applicationId, 1L, "{}", Instant.parse("2026-07-21T09:31:00Z")))
+        .then()
+        .exception(ApplicationAutoGrantOutcomeConflictException.class)
+        .noEvents();
+  }
+
+  @Test
+  void givenUnassessedApplicationAndStaleVersion_whenMarkedReady_thenRejectsConflict() {
+    UUID applicationId = UUID.randomUUID();
+
+    fixture
+        .given()
+        .events(applicationCreatedEvent(applicationId))
+        .when()
+        .command(
+            new MarkApplicationReadyCommand(
+                applicationId, 2L, "{}", Instant.parse("2026-07-21T09:31:00Z")))
+        .then()
+        .exception(ApplicationVersionConflictException.class)
+        .noEvents();
+  }
+
+  @Test
+  void givenApplicationInProgress_whenMarkedReady_thenRejectsInvalidState() {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationCreatedEvent inProgress =
+        new ApplicationCreatedEvent(
+            applicationId,
+            0L,
+            "fingerprint",
+            "APPLICATION_IN_PROGRESS",
+            1,
+            "APPLY",
+            applicationId,
+            Instant.parse("2026-07-21T09:00:00Z"),
+            null,
+            List.of());
+
+    fixture
+        .given()
+        .events(inProgress)
+        .when()
+        .command(
+            new MarkApplicationReadyCommand(
+                applicationId, 0L, "{}", Instant.parse("2026-07-21T09:31:00Z")))
+        .then()
+        .exception(InvalidApplicationStateException.class)
         .noEvents();
   }
 

@@ -1,5 +1,8 @@
 replicaCount: 1
 
+service_account:
+  name: laa-data-access-staging-service-account
+
 resources:
   limits:
     cpu: 1000m
@@ -21,4 +24,3 @@ sentry:
 axon:
   schema: data_access_axon
   flywayTable: flyway_schema_history_axon
-

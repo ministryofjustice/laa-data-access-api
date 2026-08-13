@@ -12,6 +12,14 @@ components:
         - ASC
         - DESC
 
+    AutoGranted:
+      type: string
+      description: The current automatic-assessment state of the Application
+      enum:
+        - PENDING
+        - AUTOGRANTED
+        - MANUAL
+
     OpponentResponse:
       type: object
       properties:
@@ -33,6 +41,7 @@ components:
         - lastUpdated
         - proceedings
         - applicationVersion
+        - autoGranted
       properties:
         applicationId:
           type: string
@@ -54,8 +63,8 @@ components:
           type: boolean
         usedDelegatedFunctions:
           type: boolean
-        autoGrant:
-          type: boolean
+        autoGranted:
+          $ref: "#/components/schemas/AutoGranted"
         decisionStatus:
           $ref: "#/components/schemas/DecisionStatus"
         opponents:
@@ -117,6 +126,8 @@ components:
     ApplicationSummary:
       type: object
       description: (APPLICATION LIST PAGE / VIEW - OPEN APPLICATIONS ONLY BY DEFAULT)
+      required:
+        - autoGranted
       properties:
         applicationId:
           type: string
@@ -139,8 +150,8 @@ components:
         assignedTo:
           type: string
           format: uuid
-        autoGrant:
-          type: boolean
+        autoGranted:
+          $ref: "#/components/schemas/AutoGranted"
         clientFirstName:
           type: string
         clientLastName:
@@ -277,6 +288,52 @@ components:
           type: integer
           format: int64
           description: Version of application being decided, used for concurrency control
+
+    AutoGrantOutcome:
+      type: string
+      enum:
+        - AUTOGRANTED
+        - MANUAL
+
+    AutoGrantOutcomeRequest:
+      type: object
+      required:
+        - outcome
+      properties:
+        outcome:
+          $ref: "#/components/schemas/AutoGrantOutcome"
+      oneOf:
+        - $ref: "#/components/schemas/AutoGrantedOutcomeRequest"
+        - $ref: "#/components/schemas/ManualOutcomeRequest"
+      discriminator:
+        propertyName: outcome
+        mapping:
+          AUTOGRANTED: "#/components/schemas/AutoGrantedOutcomeRequest"
+          MANUAL: "#/components/schemas/ManualOutcomeRequest"
+
+    ManualOutcomeRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - outcome
+      properties:
+        outcome:
+          $ref: "#/components/schemas/AutoGrantOutcome"
+
+    AutoGrantedOutcomeRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - outcome
+        - certificate
+      properties:
+        outcome:
+          $ref: "#/components/schemas/AutoGrantOutcome"
+        certificate:
+          type: object
+          minProperties: 1
+          additionalProperties: true
+          description: Certificate information for the autogranted Decision
 
     ApplicationProceedingsResponse:
       type: array

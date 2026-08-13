@@ -17,6 +17,7 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationProvider;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Opponent;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
+import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationMeritsDecision;
 
 /** Replayable current-state read model for an Application. */
@@ -69,7 +70,7 @@ public class ApplicationReadModel {
 
   @Transient private String decisionStatus;
 
-  @Transient private Boolean autoGranted;
+  @Transient private AutoGrantedState autoGranted;
 
   @Transient private Map<UUID, ApplicationMeritsDecision> meritsDecisions;
 

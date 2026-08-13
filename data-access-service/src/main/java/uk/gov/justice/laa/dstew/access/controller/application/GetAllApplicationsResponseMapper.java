@@ -51,7 +51,7 @@ public class GetAllApplicationsResponseMapper {
         summaryReadModel.submittedAt() != null
             ? summaryReadModel.submittedAt().atOffset(ZoneOffset.UTC)
             : null);
-    app.setAutoGrant(summaryReadModel.isAutoGranted());
+    app.setAutoGranted(AutoGrantedMapper.fromLegacyFlag(summaryReadModel.isAutoGranted()));
     app.setCategoryOfLaw(
         summaryReadModel.categoryOfLaw() != null
             ? CategoryOfLaw.valueOf(summaryReadModel.categoryOfLaw())

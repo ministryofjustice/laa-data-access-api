@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
+import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
@@ -49,6 +50,7 @@ class GetAllApplicationsResponseMapperTest {
     UUID applicationId = UUID.randomUUID();
     ApplicationReadModel app =
         ApplicationReadModel.builder()
+            .autoGranted(AutoGrantedState.PENDING)
             .applicationId(applicationId)
             .status("APPLICATION_SUBMITTED")
             .laaReference("LAA-999")
@@ -81,6 +83,7 @@ class GetAllApplicationsResponseMapperTest {
   void givenApplicationWithNoLeadId_whenToResponse_thenIsLeadFalse() {
     ApplicationReadModel app =
         ApplicationReadModel.builder()
+            .autoGranted(AutoGrantedState.PENDING)
             .applicationId(UUID.randomUUID())
             .modifiedAt(Instant.now())
             .leadApplicationId(null)
@@ -100,6 +103,7 @@ class GetAllApplicationsResponseMapperTest {
   void givenApplicationWithLeadId_whenToResponse_thenIsLeadFalse() {
     ApplicationReadModel app =
         ApplicationReadModel.builder()
+            .autoGranted(AutoGrantedState.PENDING)
             .applicationId(UUID.randomUUID())
             .modifiedAt(Instant.now())
             .leadApplicationId(UUID.randomUUID())
@@ -125,6 +129,7 @@ class GetAllApplicationsResponseMapperTest {
             .build();
     ApplicationReadModel app =
         ApplicationReadModel.builder()
+            .autoGranted(AutoGrantedState.PENDING)
             .applicationId(UUID.randomUUID())
             .modifiedAt(Instant.now())
             .client(client)
@@ -149,6 +154,7 @@ class GetAllApplicationsResponseMapperTest {
 
     ApplicationReadModel leadApp =
         ApplicationReadModel.builder()
+            .autoGranted(AutoGrantedState.PENDING)
             .applicationId(leadId)
             .modifiedAt(Instant.now())
             .leadApplicationId(null)
@@ -180,6 +186,7 @@ class GetAllApplicationsResponseMapperTest {
   void givenApplicationWithNoGroup_whenToResponse_thenLinkedApplicationsEmpty() {
     ApplicationReadModel app =
         ApplicationReadModel.builder()
+            .autoGranted(AutoGrantedState.PENDING)
             .applicationId(UUID.randomUUID())
             .modifiedAt(Instant.now())
             .build();

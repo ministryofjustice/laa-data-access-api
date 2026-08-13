@@ -43,7 +43,9 @@ public class GetApplicationResponseMapper {
     response.setIsLead(false);
     response.setAssignedTo(application.getCaseworkerId());
     response.setUsedDelegatedFunctions(application.getUsedDelegatedFunctions());
-    response.setAutoGrant(application.getAutoGranted());
+    response.setAutoGranted(
+        uk.gov.justice.laa.dstew.access.model.AutoGranted.valueOf(
+            application.getAutoGranted().name()));
     response.setDecisionStatus(
         application.getDecisionStatus() == null
             ? null

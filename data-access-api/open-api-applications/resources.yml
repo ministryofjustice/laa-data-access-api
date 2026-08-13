@@ -40,10 +40,10 @@ paths:
             type: string
             format: uuid
         - in: query
-          name: isAutoGranted
-          description: Has the application been marked as auto granted
+          name: autoGranted
+          description: Filter by the explicit automatic-assessment state
           schema:
-            type: boolean
+            $ref: "./components.yml#/components/schemas/AutoGranted"
         - in: query
           name: matterType
           description: The matter type of the application
@@ -328,6 +328,37 @@ paths:
         '401': { description: Unauthorized }
         '403': { description: Forbidden }
         '404': { description: Not found }
+        '500': { description: Internal server error }
+
+  /api/v0/applications/{id}/auto-grant-outcome:
+    patch:
+      tags:
+        - application-auto-grant-outcome-command
+      operationId: recordAutoGrantOutcome
+      summary: Record the outcome of deciding whether an Application can be auto-granted
+      parameters:
+        - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './components.yml#/components/schemas/AutoGrantOutcomeRequest'
+      responses:
+        '200': { description: An equivalent terminal outcome was already recorded }
+        '204': { description: Auto-grant outcome recorded }
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '403': { description: Forbidden }
+        '404': { description: Application not found }
+        '409': { description: Stale version or incompatible terminal outcome }
+        '422': { description: Application is not submitted }
         '500': { description: Internal server error }
 
   /api/v0/applications/{id}/certificate:

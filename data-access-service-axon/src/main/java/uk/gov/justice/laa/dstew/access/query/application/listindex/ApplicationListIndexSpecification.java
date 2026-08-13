@@ -42,6 +42,9 @@ public final class ApplicationListIndexSpecification {
       if (query.clientDateOfBirth() != null) {
         predicates.add(cb.equal(root.get("clientDateOfBirth"), query.clientDateOfBirth()));
       }
+      if (query.autoGranted() != null) {
+        predicates.add(cb.equal(root.get("autoGranted"), query.autoGranted()));
+      }
 
       return cb.and(predicates.toArray(new Predicate[0]));
     };

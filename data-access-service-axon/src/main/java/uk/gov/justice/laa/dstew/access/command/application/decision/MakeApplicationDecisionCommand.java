@@ -18,7 +18,32 @@ public record MakeApplicationDecisionCommand(
     Map<String, Object> certificate,
     String serialisedRequest,
     String eventDescription,
-    Instant occurredAt) {
+    Instant occurredAt,
+    boolean fromAutoGrantOutcome) {
+
+  /** Backwards-compatible constructor for the general caseworker Decision endpoint. */
+  public MakeApplicationDecisionCommand(
+      UUID applicationId,
+      long expectedApplicationVersion,
+      String overallDecision,
+      Boolean autoGranted,
+      List<MakeDecisionProceeding> proceedings,
+      Map<String, Object> certificate,
+      String serialisedRequest,
+      String eventDescription,
+      Instant occurredAt) {
+    this(
+        applicationId,
+        expectedApplicationVersion,
+        overallDecision,
+        autoGranted,
+        proceedings,
+        certificate,
+        serialisedRequest,
+        eventDescription,
+        occurredAt,
+        false);
+  }
 
   public MakeApplicationDecisionCommand {
     proceedings = List.copyOf(proceedings);

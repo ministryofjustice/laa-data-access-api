@@ -26,7 +26,7 @@ public class GetAllApplicationsQueryGenerator
         .clientLastName("Doe")
         .clientDateOfBirth(LocalDate.of(1990, 1, 1))
         .userId(UUID.randomUUID())
-        .isAutoGranted(false)
+        .autoGranted("MANUAL")
         .matterType("SPECIAL_CHILDREN_ACT")
         .sortBy("SUBMITTED_DATE")
         .orderBy("ASC")

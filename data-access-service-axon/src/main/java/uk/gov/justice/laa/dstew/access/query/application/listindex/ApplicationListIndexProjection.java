@@ -8,12 +8,15 @@ import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
+import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
 
 /**
  * Independently replayable tracking projection that maintains {@code application_list_index}.
@@ -63,8 +66,9 @@ public class ApplicationListIndexProjection {
             .laaReference(data.laaReference())
             .caseworkerId(null)
             .matterType(data.matterType() == null ? null : data.matterType())
-            .isAutoGranted(null)
+            .autoGranted(AutoGrantedState.PENDING)
             .submittedAt(data.submittedAt())
+            .modifiedAt(event.occurredAt())
             .leadApplicationId(event.leadApplicationId())
             .clientFirstName(client != null ? client.getFirstName() : null)
             .clientLastName(client != null ? client.getLastName() : null)
@@ -82,6 +86,7 @@ public class ApplicationListIndexProjection {
         .ifPresent(
             row -> {
               row.setLeadApplicationId(event.leadApplicationId());
+              row.setModifiedAt(event.occurredAt());
               row.setProjectionPosition(message.identifier().hashCode());
               listIndexRepository.save(row);
             });
@@ -99,8 +104,49 @@ public class ApplicationListIndexProjection {
             row -> {
               row.setStatus(
                   event.overallDecision() != null ? event.overallDecision() : row.getStatus());
-              row.setIsAutoGranted(event.autoGranted());
+              row.setAutoGranted(event.autoGranted());
               row.setStreamVersion(event.applicationVersion());
+              row.setModifiedAt(event.occurredAt());
+              row.setProjectionPosition(message.identifier().hashCode());
+              listIndexRepository.save(row);
+            });
+  }
+
+  /** Records that automatic assessment completed with a manual-assessment outcome. */
+  @EventHandler
+  public void on(ApplicationReadyForManualAssessmentEvent event, EventMessage message) {
+    listIndexRepository
+        .findById(event.applicationId())
+        .ifPresent(
+            row -> {
+              row.setAutoGranted(AutoGrantedState.MANUAL);
+              row.setStreamVersion(event.applicationVersion());
+              row.setModifiedAt(event.occurredAt());
+              row.setProjectionPosition(message.identifier().hashCode());
+              listIndexRepository.save(row);
+            });
+  }
+
+  /** Refreshes filter and sort fields from the new immutable application-data version. */
+  @EventHandler
+  public void on(ApplicationUpdatedEvent event, EventMessage message) {
+    listIndexRepository
+        .findById(event.applicationId())
+        .ifPresent(
+            row -> {
+              ApplicationDataPayload data =
+                  applicationDataStore.get(event.applicationId(), event.applicationDataVersion());
+              ApplicationIndividual client = data.client();
+              row.setStatus(event.status());
+              row.setLaaReference(data.laaReference());
+              row.setMatterType(data.matterType() == null ? null : data.matterType());
+              row.setAutoGranted(data.autoGranted());
+              row.setSubmittedAt(data.submittedAt());
+              row.setClientFirstName(client != null ? client.getFirstName() : null);
+              row.setClientLastName(client != null ? client.getLastName() : null);
+              row.setClientDateOfBirth(client != null ? client.getDateOfBirth() : null);
+              row.setStreamVersion(event.applicationVersion());
+              row.setModifiedAt(event.occurredAt());
               row.setProjectionPosition(message.identifier().hashCode());
               listIndexRepository.save(row);
             });
@@ -115,6 +161,7 @@ public class ApplicationListIndexProjection {
             row -> {
               row.setCaseworkerId(event.caseworkerId());
               row.setStreamVersion(event.applicationVersion());
+              row.setModifiedAt(event.occurredAt());
               row.setProjectionPosition(message.identifier().hashCode());
               listIndexRepository.save(row);
             });
@@ -129,6 +176,7 @@ public class ApplicationListIndexProjection {
             row -> {
               row.setCaseworkerId(null);
               row.setStreamVersion(event.applicationVersion());
+              row.setModifiedAt(event.occurredAt());
               row.setProjectionPosition(message.identifier().hashCode());
               listIndexRepository.save(row);
             });
@@ -146,6 +194,7 @@ public class ApplicationListIndexProjection {
         .findById(event.applicationId())
         .ifPresent(
             row -> {
+              row.setModifiedAt(event.occurredAt());
               row.setProjectionPosition(message.identifier().hashCode());
               listIndexRepository.save(row);
             });

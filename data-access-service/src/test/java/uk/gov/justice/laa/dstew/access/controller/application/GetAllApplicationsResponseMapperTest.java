@@ -79,7 +79,8 @@ class GetAllApplicationsResponseMapperTest {
     ApplicationSummary app = body.getApplications().get(0);
     assertThat(app.getApplicationId()).isEqualTo(id);
     assertThat(app.getSubmittedAt()).isEqualTo(submittedAt.atOffset(ZoneOffset.UTC));
-    assertThat(app.getAutoGrant()).isTrue();
+    assertThat(app.getAutoGranted())
+        .isEqualTo(uk.gov.justice.laa.dstew.access.model.AutoGranted.AUTOGRANTED);
     assertThat(app.getCategoryOfLaw()).isEqualTo(CategoryOfLaw.FAMILY);
     assertThat(app.getMatterType()).isEqualTo(MatterType.SPECIAL_CHILDREN_ACT);
     assertThat(app.getUsedDelegatedFunctions()).isTrue();

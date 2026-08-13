@@ -24,6 +24,7 @@ import org.mockito.ArgumentCaptor;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
@@ -193,11 +194,12 @@ class ApplicationListIndexProjectionTest {
     when(listIndexRepository.findById(applicationId)).thenReturn(Optional.of(existing));
 
     projection.on(
-        new ApplicationDecisionMadeEvent(applicationId, 3L, 4L, "GRANTED", true, Instant.now()),
+        new ApplicationDecisionMadeEvent(
+            applicationId, 3L, 4L, "GRANTED", AutoGrantedState.AUTOGRANTED, Instant.now()),
         anyMessage());
 
     assertThat(existing.getStatus()).isEqualTo("GRANTED");
-    assertThat(existing.getIsAutoGranted()).isTrue();
+    assertThat(existing.getAutoGranted()).isEqualTo(AutoGrantedState.AUTOGRANTED);
     assertThat(existing.getStreamVersion()).isEqualTo(3L);
     verify(listIndexRepository).save(existing);
   }
@@ -214,7 +216,8 @@ class ApplicationListIndexProjectionTest {
     when(listIndexRepository.findById(applicationId)).thenReturn(Optional.of(existing));
 
     projection.on(
-        new ApplicationDecisionMadeEvent(applicationId, 3L, 4L, null, false, Instant.now()),
+        new ApplicationDecisionMadeEvent(
+            applicationId, 3L, 4L, null, AutoGrantedState.MANUAL, Instant.now()),
         anyMessage());
 
     assertThat(existing.getStatus()).isEqualTo("APPLICATION_SUBMITTED");
