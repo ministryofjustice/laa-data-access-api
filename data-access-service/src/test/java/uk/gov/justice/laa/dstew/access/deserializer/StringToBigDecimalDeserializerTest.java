@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.applicationcontent;
+package uk.gov.justice.laa.dstew.access.deserializer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
