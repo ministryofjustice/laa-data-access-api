@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -245,10 +246,10 @@ public final class ApplicationDecider {
         details.occurredAt(),
         details.leadApplicationId(),
         details.allLinkedApplications() == null
-            ? java.util.List.of()
+            ? List.of()
             : details.allLinkedApplications().stream()
                 .map(LinkedApplication::getAssociatedApplicationId)
-                .filter(java.util.Objects::nonNull)
+                .filter(Objects::nonNull)
                 .distinct()
                 .toList());
   }

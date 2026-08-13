@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.command.application;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.Objects;
 import java.util.UUID;
 import org.axonframework.eventsourcing.annotation.EventSourcingHandler;
 import org.axonframework.eventsourcing.annotation.reflection.EntityCreator;
@@ -29,6 +30,9 @@ import uk.gov.justice.laa.dstew.access.command.application.ready.ReadyApplicatio
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdateDetailsFactory;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationCommand;
+import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConflictException;
+import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException;
+import uk.gov.justice.laa.dstew.access.exception.InvalidApplicationStateException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 
 /** Event-sourced consistency boundary for an Application and its owned child state. */
@@ -119,25 +123,21 @@ public class ApplicationAggregate {
       EventAppender eventAppender) {
     requireApplicationExists(command.applicationId());
     if (command.fromAutoGrantOutcome() && state.autoGranted == AutoGrantedState.MANUAL) {
-      throw new uk.gov.justice.laa.dstew.access.exception
-          .ApplicationAutoGrantOutcomeConflictException(command.applicationId());
+      throw new ApplicationAutoGrantOutcomeConflictException(command.applicationId());
     }
     if (command.fromAutoGrantOutcome() && !"APPLICATION_SUBMITTED".equals(state.status)) {
-      throw new uk.gov.justice.laa.dstew.access.exception.InvalidApplicationStateException(
-          command.applicationId(), state.status);
+      throw new InvalidApplicationStateException(command.applicationId(), state.status);
     }
     if (command.fromAutoGrantOutcome() && state.autoGranted == AutoGrantedState.AUTOGRANTED) {
       var recorded = applicationDataStore.get(applicationId, state.applicationDataVersion);
-      if (java.util.Objects.equals(
-          recorded.decisionSerialisedRequest(), command.serialisedRequest())) {
+      if (Objects.equals(recorded.decisionSerialisedRequest(), command.serialisedRequest())) {
         return;
       }
-      throw new uk.gov.justice.laa.dstew.access.exception
-          .ApplicationAutoGrantOutcomeConflictException(command.applicationId());
+      throw new ApplicationAutoGrantOutcomeConflictException(command.applicationId());
     }
     if (!command.fromAutoGrantOutcome()
         && command.expectedApplicationVersion() != state.applicationVersion) {
-      throw new uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException(
+      throw new ApplicationVersionConflictException(
           command.applicationId(), command.expectedApplicationVersion());
     }
     var current = applicationDataStore.get(applicationId, state.applicationDataVersion);
