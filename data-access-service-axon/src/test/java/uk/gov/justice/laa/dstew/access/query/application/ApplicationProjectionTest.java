@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.query.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -26,6 +27,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
@@ -91,7 +93,7 @@ class ApplicationProjectionTest {
     ApplicationCreatedEvent event = applicationCreatedEvent(applicationId);
 
     final Predicate<?>[] capturedPredicate = new Predicate[1];
-    org.mockito.Mockito.doAnswer(
+    doAnswer(
             inv -> {
               capturedPredicate[0] = (Predicate<?>) inv.getArgument(1);
               return null;
@@ -177,12 +179,7 @@ class ApplicationProjectionTest {
 
     projection.on(
         new ApplicationDecisionMadeEvent(
-            applicationId,
-            3L,
-            4L,
-            "GRANTED",
-            uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState.MANUAL,
-            occurredAt),
+            applicationId, 3L, 4L, "GRANTED", AutoGrantedState.MANUAL, occurredAt),
         queryUpdateEmitter);
 
     assertThat(existing.getApplicationVersion()).isEqualTo(3L);
@@ -399,10 +396,7 @@ class ApplicationProjectionTest {
     ApplicationDataPayload data = mock(ApplicationDataPayload.class);
     when(data.applyApplicationId()).thenReturn(applyApplicationId);
     when(data.submittedAt()).thenReturn(submittedAt);
-    when(data.autoGranted())
-        .thenReturn(
-            uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState.fromDecisionFlag(
-                autoGranted));
+    when(data.autoGranted()).thenReturn(AutoGrantedState.fromDecisionFlag(autoGranted));
     return data;
   }
 }

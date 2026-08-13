@@ -2,6 +2,9 @@ package uk.gov.justice.laa.dstew.access.observability;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -29,7 +32,7 @@ class AssessmentReconciliationTest {
   @Test
   void givenOldUnassessedApplications_whenReconciliationRuns_thenReportsIdentifiersAndAge(
       CapturedOutput output) {
-    QueryGateway queryGateway = org.mockito.Mockito.mock(QueryGateway.class);
+    QueryGateway queryGateway = mock(QueryGateway.class);
     SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
     Instant now = Instant.parse("2026-08-04T10:00:00Z");
     UUID applicationId = UUID.fromString("8c9e6c2e-4f1a-4e3a-9c2b-1a2b3c4d5e6f");
@@ -37,9 +40,7 @@ class AssessmentReconciliationTest {
     StalledAssessment stalled =
         new StalledAssessment(
             applicationId, applyApplicationId, 4L, now.minus(Duration.ofMinutes(45)));
-    when(queryGateway.query(
-            org.mockito.ArgumentMatchers.any(FindStalledAssessmentsQuery.class),
-            org.mockito.ArgumentMatchers.eq(StalledAssessments.class)))
+    when(queryGateway.query(any(FindStalledAssessmentsQuery.class), eq(StalledAssessments.class)))
         .thenReturn(CompletableFuture.completedFuture(new StalledAssessments(List.of(stalled))));
     AssessmentReconciliation reconciliation =
         new AssessmentReconciliation(
@@ -49,8 +50,7 @@ class AssessmentReconciliationTest {
 
     ArgumentCaptor<FindStalledAssessmentsQuery> query =
         ArgumentCaptor.forClass(FindStalledAssessmentsQuery.class);
-    verify(queryGateway)
-        .query(query.capture(), org.mockito.ArgumentMatchers.eq(StalledAssessments.class));
+    verify(queryGateway).query(query.capture(), eq(StalledAssessments.class));
     assertThat(query.getValue().submittedBefore()).isEqualTo(now.minus(Duration.ofMinutes(15)));
     assertThat(output)
         .contains(
@@ -67,11 +67,9 @@ class AssessmentReconciliationTest {
 
   @Test
   void givenTheProjectionQueryFails_whenReconciliationRuns_thenMarksItsSignalsStale() {
-    QueryGateway queryGateway = org.mockito.Mockito.mock(QueryGateway.class);
+    QueryGateway queryGateway = mock(QueryGateway.class);
     SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
-    when(queryGateway.query(
-            org.mockito.ArgumentMatchers.any(FindStalledAssessmentsQuery.class),
-            org.mockito.ArgumentMatchers.eq(StalledAssessments.class)))
+    when(queryGateway.query(any(FindStalledAssessmentsQuery.class), eq(StalledAssessments.class)))
         .thenReturn(CompletableFuture.failedFuture(new IllegalStateException("projection failed")));
     AssessmentReconciliation reconciliation =
         new AssessmentReconciliation(

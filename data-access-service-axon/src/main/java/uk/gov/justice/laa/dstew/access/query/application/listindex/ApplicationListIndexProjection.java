@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationIndividual;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
@@ -66,8 +67,7 @@ public class ApplicationListIndexProjection {
             .laaReference(data.laaReference())
             .caseworkerId(null)
             .matterType(data.matterType() == null ? null : data.matterType().name())
-            .autoGranted(
-                uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState.PENDING)
+            .autoGranted(AutoGrantedState.PENDING)
             .submittedAt(data.submittedAt())
             .modifiedAt(event.occurredAt())
             .leadApplicationId(event.leadApplicationId())
@@ -120,8 +120,7 @@ public class ApplicationListIndexProjection {
         .findById(event.applicationId())
         .ifPresent(
             row -> {
-              row.setAutoGranted(
-                  uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState.MANUAL);
+              row.setAutoGranted(AutoGrantedState.MANUAL);
               row.setStreamVersion(event.applicationVersion());
               row.setModifiedAt(event.occurredAt());
               row.setProjectionPosition(message.identifier().hashCode());

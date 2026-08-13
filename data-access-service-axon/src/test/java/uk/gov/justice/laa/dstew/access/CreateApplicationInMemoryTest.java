@@ -26,6 +26,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.annotation.DirtiesContext;
+import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataRepository;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
@@ -109,8 +110,7 @@ class CreateApplicationInMemoryTest {
     assertThat(updateResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
     ApplicationReadModel current = awaitApplicationVersion(applicationId, 1L);
     assertThat(current.getStatus()).isEqualTo("APPLICATION_SUBMITTED");
-    assertThat(current.getAutoGranted())
-        .isEqualTo(uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState.PENDING);
+    assertThat(current.getAutoGranted()).isEqualTo(AutoGrantedState.PENDING);
     assertThat(current.getApplicationDataVersion()).isEqualTo(1L);
     assertThat(awaitHistoryTypes(applicationId, "APPLICATION_CREATED", "APPLICATION_UPDATED"))
         .hasSize(2);
@@ -279,8 +279,7 @@ class CreateApplicationInMemoryTest {
     assertThat(projected.getApplicationId()).isEqualTo(applicationId);
     assertThat(projected.getApplyApplicationId()).isEqualTo(applyApplicationId);
     assertThat(projected.getStatus()).isEqualTo(ApplicationStatus.APPLICATION_SUBMITTED.name());
-    assertThat(projected.getAutoGranted())
-        .isEqualTo(uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState.PENDING);
+    assertThat(projected.getAutoGranted()).isEqualTo(AutoGrantedState.PENDING);
     assertThat(projected.getLaaReference()).isEqualTo("LAA-123");
     assertThat(projected.getOfficeCode()).isEqualTo("1A001B");
     assertThat(projected.getSchemaVersion()).isEqualTo(2);
@@ -369,8 +368,7 @@ class CreateApplicationInMemoryTest {
 
     ApplicationReadModel projected = awaitApplicationVersion(applicationId, 1L);
     assertThat(projected.getStatus()).isEqualTo(ApplicationStatus.APPLICATION_SUBMITTED.name());
-    assertThat(projected.getAutoGranted())
-        .isEqualTo(uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState.MANUAL);
+    assertThat(projected.getAutoGranted()).isEqualTo(AutoGrantedState.MANUAL);
 
     ResponseEntity<ApplicationResponse> direct =
         restTemplate.exchange(

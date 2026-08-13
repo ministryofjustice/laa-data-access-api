@@ -24,6 +24,7 @@ import org.mockito.ArgumentCaptor;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationIndividual;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
@@ -191,18 +192,11 @@ class ApplicationListIndexProjectionTest {
 
     projection.on(
         new ApplicationDecisionMadeEvent(
-            applicationId,
-            3L,
-            4L,
-            "GRANTED",
-            uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState.AUTOGRANTED,
-            Instant.now()),
+            applicationId, 3L, 4L, "GRANTED", AutoGrantedState.AUTOGRANTED, Instant.now()),
         anyMessage());
 
     assertThat(existing.getStatus()).isEqualTo("GRANTED");
-    assertThat(existing.getAutoGranted())
-        .isEqualTo(
-            uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState.AUTOGRANTED);
+    assertThat(existing.getAutoGranted()).isEqualTo(AutoGrantedState.AUTOGRANTED);
     assertThat(existing.getStreamVersion()).isEqualTo(3L);
     verify(listIndexRepository).save(existing);
   }
@@ -220,12 +214,7 @@ class ApplicationListIndexProjectionTest {
 
     projection.on(
         new ApplicationDecisionMadeEvent(
-            applicationId,
-            3L,
-            4L,
-            null,
-            uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState.MANUAL,
-            Instant.now()),
+            applicationId, 3L, 4L, null, AutoGrantedState.MANUAL, Instant.now()),
         anyMessage());
 
     assertThat(existing.getStatus()).isEqualTo("APPLICATION_SUBMITTED");

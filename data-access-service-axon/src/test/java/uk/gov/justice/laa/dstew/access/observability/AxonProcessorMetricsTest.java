@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.observability;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -14,9 +15,9 @@ class AxonProcessorMetricsTest {
 
   @Test
   void givenLaggingFailedProcessor_whenMetricsAreRead_thenHealthIsSeparateFromReconciliation() {
-    AxonConfiguration configuration = org.mockito.Mockito.mock(AxonConfiguration.class);
-    StreamingEventProcessor processor = org.mockito.Mockito.mock(StreamingEventProcessor.class);
-    EventTrackerStatus status = org.mockito.Mockito.mock(EventTrackerStatus.class);
+    AxonConfiguration configuration = mock(AxonConfiguration.class);
+    StreamingEventProcessor processor = mock(StreamingEventProcessor.class);
+    EventTrackerStatus status = mock(EventTrackerStatus.class);
     when(configuration.getComponents(StreamingEventProcessor.class))
         .thenReturn(Map.of("application-projection", processor));
     when(processor.isRunning()).thenReturn(true);

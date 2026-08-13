@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationNotesResponse;
@@ -111,10 +112,7 @@ public class ApplicationQueryController {
                     clientFirstName,
                     clientLastName,
                     clientDateOfBirth,
-                    autoGranted == null
-                        ? null
-                        : uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState
-                            .valueOf(autoGranted.name()),
+                    autoGranted == null ? null : AutoGrantedState.valueOf(autoGranted.name()),
                     sortBy == null ? null : sortBy.name(),
                     orderBy == null ? null : orderBy.name(),
                     page,

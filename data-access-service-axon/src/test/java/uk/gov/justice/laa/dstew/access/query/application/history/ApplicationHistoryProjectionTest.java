@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.query.application.history;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationCreationDetails;
@@ -18,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
+import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
@@ -56,7 +58,7 @@ class ApplicationHistoryProjectionTest {
 
     ArgumentCaptor<ApplicationHistoryReadModel> captor =
         ArgumentCaptor.forClass(ApplicationHistoryReadModel.class);
-    verify(repository, org.mockito.Mockito.times(2)).save(captor.capture());
+    verify(repository, times(2)).save(captor.capture());
     assertThat(captor.getAllValues())
         .extracting(
             ApplicationHistoryReadModel::getEventId,
@@ -198,12 +200,7 @@ class ApplicationHistoryProjectionTest {
     Instant occurredAt = Instant.parse("2026-07-20T10:00:00Z");
     ApplicationDecisionMadeEvent event =
         new ApplicationDecisionMadeEvent(
-            applicationId,
-            1L,
-            4L,
-            "GRANTED",
-            uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState.MANUAL,
-            occurredAt);
+            applicationId, 1L, 4L, "GRANTED", AutoGrantedState.MANUAL, occurredAt);
     projection.on(event, message(event, "decision-event"));
     ArgumentCaptor<ApplicationHistoryReadModel> captor =
         ArgumentCaptor.forClass(ApplicationHistoryReadModel.class);
@@ -214,12 +211,7 @@ class ApplicationHistoryProjectionTest {
         .thenReturn(
             ApplicationDataPayload.from(applicationCreationDetails(applicationId))
                 .withDecision(
-                    "GRANTED",
-                    uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState.MANUAL,
-                    Map.of(),
-                    null,
-                    "{}",
-                    "Decision recorded"));
+                    "GRANTED", AutoGrantedState.MANUAL, Map.of(), null, "{}", "Decision recorded"));
 
     var result =
         projection.handle(

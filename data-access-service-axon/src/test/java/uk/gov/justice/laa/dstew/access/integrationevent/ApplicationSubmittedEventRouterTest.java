@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.integrationevent;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -140,9 +141,7 @@ class ApplicationSubmittedEventRouterTest {
   void givenPublishFailsAfterCommit_whenCallbackRuns_thenFailureIsLoggedAndNotPropagated(
       CapturedOutput output) {
     ApplicationSubmittedPublisher publisher = mock(ApplicationSubmittedPublisher.class);
-    org.mockito.Mockito.doThrow(new IllegalStateException("SNS unavailable"))
-        .when(publisher)
-        .publish(any(), any());
+    doThrow(new IllegalStateException("SNS unavailable")).when(publisher).publish(any(), any());
     ApplicationSubmittedEventRouter router =
         new ApplicationSubmittedEventRouter(
             publisher, Clock.fixed(COMMITTED_AT, ZoneOffset.UTC), new SimpleMeterRegistry());
