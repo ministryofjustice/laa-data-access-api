@@ -22,7 +22,7 @@ public class StringToBigDecimalDeserializer extends StdDeserializer<BigDecimal> 
     if (p.currentToken() == JsonToken.VALUE_NULL) {
       return null;
     }
-    String text = p.getText();
+    String text = p.getString();
     try {
       return new BigDecimal(text);
     } catch (NumberFormatException e) {
