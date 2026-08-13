@@ -168,7 +168,6 @@ public class ApplicationProjection {
                 application ->
                     new StalledAssessment(
                         application.getApplicationId(),
-                        application.getApplyApplicationId(),
                         application.getApplicationVersion(),
                         application.getSubmittedAt()))
             .toList());

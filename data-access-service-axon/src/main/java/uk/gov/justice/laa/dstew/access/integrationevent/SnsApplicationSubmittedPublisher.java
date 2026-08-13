@@ -22,16 +22,13 @@ public class SnsApplicationSubmittedPublisher implements ApplicationSubmittedPub
   }
 
   @Override
-  public void publish(ApplicationSubmittedEvent event, String applicationType) {
+  public void publish(ApplicationSubmittedEvent event) {
     try {
       snsClient.publish(
           PublishRequest.builder()
               .topicArn(topicArn)
               .message(objectMapper.writeValueAsString(event))
-              .messageAttributes(
-                  java.util.Map.of(
-                      "eventType", stringAttribute(event.eventType()),
-                      "applicationType", stringAttribute(applicationType)))
+              .messageAttributes(java.util.Map.of("eventType", stringAttribute(event.eventType())))
               .build());
     } catch (JacksonException exception) {
       throw new IllegalStateException("Unable to serialise ApplicationSubmitted event", exception);

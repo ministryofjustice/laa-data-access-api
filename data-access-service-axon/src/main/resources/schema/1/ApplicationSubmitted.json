@@ -21,10 +21,9 @@
     "data": {
       "type": "object",
       "additionalProperties": true,
-      "required": ["applicationId", "applyApplicationId", "applicationVersion"],
+      "required": ["applicationId", "applicationVersion"],
       "properties": {
         "applicationId": { "type": "string", "format": "uuid" },
-        "applyApplicationId": { "type": "string", "format": "uuid" },
         "laaReference": { "type": ["string", "null"] },
         "applicationVersion": { "type": "integer", "minimum": 0 }
       }

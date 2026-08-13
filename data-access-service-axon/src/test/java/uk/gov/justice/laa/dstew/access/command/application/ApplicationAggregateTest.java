@@ -389,8 +389,6 @@ class ApplicationAggregateTest {
             "fingerprint",
             "APPLICATION_IN_PROGRESS",
             1,
-            "APPLY",
-            applicationId,
             Instant.parse("2026-07-21T09:00:00Z"),
             null,
             List.of());

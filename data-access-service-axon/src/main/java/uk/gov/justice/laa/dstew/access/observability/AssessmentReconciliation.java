@@ -95,10 +95,9 @@ public class AssessmentReconciliation {
 
   private void report(StalledAssessment application, Instant now) {
     LOG.warn(
-        "Application remains unassessed: applicationId={}, applyApplicationId={},"
-            + " applicationVersion={}, submittedAt={}, ageSeconds={}",
+        "Application remains unassessed: applicationId={}, applicationVersion={},"
+            + " submittedAt={}, ageSeconds={}",
         application.applicationId(),
-        application.applyApplicationId(),
         application.applicationVersion(),
         application.submittedAt(),
         ageSeconds(application, now));

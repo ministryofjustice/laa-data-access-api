@@ -41,7 +41,6 @@ import uk.gov.justice.laa.dstew.access.model.AutoGrantedOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
-import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.model.IndividualsResponse;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceedingRequest;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
@@ -85,13 +84,7 @@ class CreateApplicationInMemoryTest {
     ApplicationCreateRequest submitted =
         validCreateApplicationRequest(applicationId, UUID.randomUUID());
     ApplicationCreateRequest inProgress =
-        ApplicationCreateRequest.builder()
-            .applicationType(submitted.getApplicationType())
-            .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
-            .applicationContent(submitted.getApplicationContent())
-            .laaReference(submitted.getLaaReference())
-            .individuals(submitted.getIndividuals())
-            .build();
+        submitted.toBuilder().status(ApplicationStatus.APPLICATION_IN_PROGRESS).build();
     applicationId(
         restTemplate.postForEntity(
             "/api/v0/applications", new HttpEntity<>(inProgress, headers()), Void.class));
@@ -485,13 +478,7 @@ class CreateApplicationInMemoryTest {
     ApplicationCreateRequest submitted =
         validCreateApplicationRequest(applicationId, UUID.randomUUID());
     ApplicationCreateRequest inProgress =
-        ApplicationCreateRequest.builder()
-            .applicationType(submitted.getApplicationType())
-            .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
-            .applicationContent(submitted.getApplicationContent())
-            .laaReference(submitted.getLaaReference())
-            .individuals(submitted.getIndividuals())
-            .build();
+        submitted.toBuilder().status(ApplicationStatus.APPLICATION_IN_PROGRESS).build();
     applicationId(
         restTemplate.postForEntity(
             "/api/v0/applications", new HttpEntity<>(inProgress, headers()), Void.class));
@@ -516,7 +503,7 @@ class CreateApplicationInMemoryTest {
             new HttpEntity<>(
                 validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()),
             Void.class));
-    UUID proceedingId = awaitProjection(applicationId).getProceedings().getFirst().proceedingId();
+    UUID proceedingId = awaitProjection(applicationId).getProceedings().getFirst().getId();
     MakeDecisionRequest decision =
         MakeDecisionRequest.builder()
             .applicationVersion(0L)

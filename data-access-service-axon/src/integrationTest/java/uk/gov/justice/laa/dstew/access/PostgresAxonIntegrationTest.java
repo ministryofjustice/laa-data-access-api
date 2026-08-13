@@ -531,7 +531,7 @@ class PostgresAxonIntegrationTest {
       throws Exception {
     UUID applicationId = UUID.randomUUID();
     applicationId(post(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()));
-    UUID proceedingId = awaitProjection(applicationId).getProceedings().getFirst().proceedingId();
+    UUID proceedingId = awaitProjection(applicationId).getProceedings().getFirst().getId();
     var request =
         new AutoGrantedOutcomeRequest(
             AutoGrantOutcome.AUTOGRANTED, Map.of("certificateNumber", "AUTO-2126"));
@@ -1381,13 +1381,7 @@ class PostgresAxonIntegrationTest {
   }
 
   private ApplicationCreateRequest inProgress(ApplicationCreateRequest submitted) {
-    return ApplicationCreateRequest.builder()
-        .applicationType(submitted.getApplicationType())
-        .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
-        .applicationContent(submitted.getApplicationContent())
-        .laaReference(submitted.getLaaReference())
-        .individuals(submitted.getIndividuals())
-        .build();
+    return submitted.toBuilder().status(ApplicationStatus.APPLICATION_IN_PROGRESS).build();
   }
 
   private ApplicationUpdateRequest submittedUpdate(ApplicationCreateRequest submitted) {

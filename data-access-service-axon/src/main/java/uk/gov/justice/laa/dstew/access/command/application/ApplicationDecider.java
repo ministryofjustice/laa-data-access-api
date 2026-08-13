@@ -194,9 +194,7 @@ public final class ApplicationDecider {
 
   /** Returns the next replayable state transition for an Application update. */
   public static ApplicationUpdatedEvent decideUpdate(
-      ApplicationState state,
-      UpdateApplicationCommand command,
-      ApplicationDataPayload updatedData) {
+      ApplicationState state, UpdateApplicationCommand command) {
     String nextStatus = command.status() == null ? state.status : command.status();
     return new ApplicationUpdatedEvent(
         state.applicationId,
@@ -204,8 +202,6 @@ public final class ApplicationDecider {
         state.applicationDataVersion + 1,
         state.status,
         nextStatus,
-        state.applicationType,
-        updatedData.applyApplicationId(),
         command.occurredAt());
   }
 

@@ -21,7 +21,6 @@ public final class ApplicationEvolve {
     state.schemaVersion = event.schemaVersion();
     state.requestFingerprint = event.requestFingerprint();
     state.status = event.status();
-    state.applicationType = event.applicationType();
     state.autoGranted = AutoGrantedState.PENDING;
     state.applicationDataVersion = event.applicationDataVersion();
     state.applicationVersion = 0L;
