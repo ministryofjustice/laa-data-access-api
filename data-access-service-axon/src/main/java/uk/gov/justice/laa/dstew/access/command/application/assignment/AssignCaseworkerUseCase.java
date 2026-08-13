@@ -2,9 +2,10 @@ package uk.gov.justice.laa.dstew.access.command.application.assignment;
 
 import java.time.Instant;
 import java.util.UUID;
-import org.axonframework.messaging.commandhandling.gateway.CommandGateway;
+import java.util.concurrent.CompletableFuture;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.command.caseworker.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 
@@ -13,25 +14,27 @@ import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 public class AssignCaseworkerUseCase {
 
   private final CaseworkerRepository caseworkerRepository;
-  private final CommandGateway commandGateway;
+  private final RetryingCommandDispatcher dispatcher;
 
   /** Creates the assignment coordinator with its directory and command gateway. */
   public AssignCaseworkerUseCase(
-      CaseworkerRepository caseworkerRepository, CommandGateway commandGateway) {
+      CaseworkerRepository caseworkerRepository, RetryingCommandDispatcher dispatcher) {
     this.caseworkerRepository = caseworkerRepository;
-    this.commandGateway = commandGateway;
+    this.dispatcher = dispatcher;
   }
 
   /** Validates and assigns the caseworker to one Application. */
   @Transactional
-  public void assign(
+  public CompletableFuture<Void> assign(
       UUID caseworkerId, UUID applicationId, String serialisedRequest, String eventDescription) {
     if (!caseworkerRepository.existsById(caseworkerId)) {
       throw new ResourceNotFoundException("No caseworker found with id: " + caseworkerId);
     }
     Instant occurredAt = Instant.now();
-    commandGateway.sendAndWait(
-        new AssignCaseworkerToApplicationCommand(
-            applicationId, caseworkerId, serialisedRequest, eventDescription, occurredAt));
+    return dispatcher
+        .dispatchAsync(
+            new AssignCaseworkerToApplicationCommand(
+                applicationId, caseworkerId, serialisedRequest, eventDescription, occurredAt))
+        .thenApply(ignored -> null);
   }
 }

@@ -1,37 +1,31 @@
 package uk.gov.justice.laa.dstew.access.command.application;
 
+import java.util.concurrent.CompletableFuture;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
-import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
-import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
-import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
 
-/**
- * Dispatches a create-application command and waits for the projection to confirm the application
- * is readable.
- */
+/** Dispatches a create-application command to Axon. */
 @Component
 public class CreateApplicationUseCase {
 
   private final RetryingCommandDispatcher dispatcher;
-  private final SubscriptionProjectionGateway projectionGateway;
+  private final ApplicationEventStorePositionRepository eventStorePositionRepository;
 
   public CreateApplicationUseCase(
-      RetryingCommandDispatcher dispatcher, SubscriptionProjectionGateway projectionGateway) {
+      RetryingCommandDispatcher dispatcher,
+      ApplicationEventStorePositionRepository eventStorePositionRepository) {
     this.dispatcher = dispatcher;
-    this.projectionGateway = projectionGateway;
+    this.eventStorePositionRepository = eventStorePositionRepository;
   }
 
-  /**
-   * Dispatches the command and waits for the projection to become readable.
-   *
-   * @return {@code true} when the projection confirms the application within the configured
-   *     timeout; {@code false} on timeout — the command has still committed.
-   */
-  public boolean execute(CreateApplicationCommand command) {
-    return projectionGateway.awaitProjection(
-        new FindApplicationByIdQuery(command.applicationId()),
-        ApplicationReadModel.class,
-        () -> dispatcher.dispatch(command));
+  /** Dispatches the command and completes when Axon has handled it. */
+  public CompletableFuture<ApplicationCommandResult> execute(CreateApplicationCommand command) {
+    return dispatcher
+        .dispatchAsync(command)
+        .thenApply(
+            ignored ->
+                new ApplicationCommandResult(
+                    command.applicationId(),
+                    eventStorePositionRepository.latestSequence(command.applicationId())));
   }
 }

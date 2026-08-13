@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.command;
 
 import java.sql.SQLException;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 import org.axonframework.eventsourcing.eventstore.AppendEventsTransactionRejectedException;
 import org.axonframework.messaging.commandhandling.gateway.CommandGateway;
@@ -53,6 +54,47 @@ public class RetryingCommandDispatcher {
         throw retry;
       }
     }
+  }
+
+  /** Dispatches the command asynchronously, retrying once on concurrent-write failures. */
+  public CompletableFuture<Object> dispatchAsync(Object command) {
+    return commandGateway
+        .send(command, Object.class)
+        .handle(
+            (result, throwable) -> {
+              if (throwable == null) {
+                return CompletableFuture.completedFuture(result);
+              }
+              RuntimeException exception = unwrap(throwable);
+              if (!isRetryableConcurrentWrite(exception)) {
+                return CompletableFuture.<Object>failedFuture(exception);
+              }
+              return commandGateway
+                  .send(command, Object.class)
+                  .handle(
+                      (retryResult, retryThrowable) -> {
+                        if (retryThrowable == null) {
+                          return CompletableFuture.completedFuture(retryResult);
+                        }
+                        RuntimeException retryException = unwrap(retryThrowable);
+                        retryException.addSuppressed(exception);
+                        return CompletableFuture.<Object>failedFuture(retryException);
+                      })
+                  .thenCompose(future -> future);
+            })
+        .thenCompose(future -> future);
+  }
+
+  private RuntimeException unwrap(Throwable throwable) {
+    Throwable cause = throwable;
+    while (cause.getCause() != null
+        && (cause instanceof java.util.concurrent.CompletionException
+            || cause instanceof java.util.concurrent.ExecutionException)) {
+      cause = cause.getCause();
+    }
+    return cause instanceof RuntimeException runtimeException
+        ? runtimeException
+        : new RuntimeException(cause);
   }
 
   private boolean isRetryableConcurrentWrite(RuntimeException exception) {

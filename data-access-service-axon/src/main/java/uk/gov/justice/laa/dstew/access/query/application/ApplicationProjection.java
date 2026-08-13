@@ -8,6 +8,7 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.axonframework.messaging.core.annotation.Namespace;
+import org.axonframework.messaging.eventhandling.EventMessage;
 import org.axonframework.messaging.eventhandling.annotation.EventHandler;
 import org.axonframework.messaging.eventhandling.replay.annotation.ResetHandler;
 import org.axonframework.messaging.queryhandling.QueryUpdateEmitter;
@@ -19,6 +20,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.ApplicationEventStorePositionRepository;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
@@ -44,6 +46,7 @@ import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationLi
 public class ApplicationProjection {
 
   private final ApplicationReadRepository applicationReadRepository;
+  private final ApplicationEventStorePositionRepository eventStorePositionRepository;
   private final LinkedApplicationGroupReadRepository groupReadRepository;
   private final ApplicationDataStore applicationDataStore;
   private final ApplicationListIndexReadRepository listIndexRepository;
@@ -60,10 +63,12 @@ public class ApplicationProjection {
    */
   public ApplicationProjection(
       ApplicationReadRepository applicationReadRepository,
+      ApplicationEventStorePositionRepository eventStorePositionRepository,
       LinkedApplicationGroupReadRepository groupReadRepository,
       ApplicationDataStore applicationDataStore,
       ApplicationListIndexReadRepository listIndexRepository) {
     this.applicationReadRepository = applicationReadRepository;
+    this.eventStorePositionRepository = eventStorePositionRepository;
     this.groupReadRepository = groupReadRepository;
     this.applicationDataStore = applicationDataStore;
     this.listIndexRepository = listIndexRepository;
@@ -176,7 +181,8 @@ public class ApplicationProjection {
 
   /** Creates the current-state row from an Application's creation event. */
   @EventHandler
-  public void on(ApplicationCreatedEvent event, QueryUpdateEmitter queryUpdateEmitter) {
+  public void on(
+      ApplicationCreatedEvent event, EventMessage message, QueryUpdateEmitter queryUpdateEmitter) {
     ApplicationReadModel saved =
         applicationReadRepository.save(
             ApplicationReadModel.builder()
@@ -184,6 +190,7 @@ public class ApplicationProjection {
                 .status(event.status())
                 .applicationDataVersion(event.applicationDataVersion())
                 .applicationVersion(0L)
+                .aggregateSequence(sequenceFor(event.applicationId(), message))
                 .schemaVersion(event.schemaVersion())
                 .applicationType(event.applicationType())
                 .applyApplicationId(event.applyApplicationId())
@@ -199,13 +206,14 @@ public class ApplicationProjection {
 
   /** Updates the linked-group membership after the Application is created. */
   @EventHandler
-  public void on(ApplicationLinkedEvent event) {
+  public void on(ApplicationLinkedEvent event, EventMessage message) {
     applicationReadRepository
         .findById(event.applicationId())
         .ifPresent(
             application -> {
               application.setLeadApplicationId(event.leadApplicationId());
               application.setModifiedAt(event.occurredAt());
+              application.setAggregateSequence(sequenceFor(event.applicationId(), message));
               applicationReadRepository.save(application);
             });
   }
@@ -236,13 +244,18 @@ public class ApplicationProjection {
   /** Advances current state to the updated immutable data and status. */
   @EventHandler
   public void on(ApplicationUpdatedEvent event, QueryUpdateEmitter queryUpdateEmitter) {
+  public void on(
+      ApplicationDecisionMadeEvent event,
+      EventMessage message,
+      QueryUpdateEmitter queryUpdateEmitter) {
     applicationReadRepository
         .findById(event.applicationId())
         .ifPresent(
             application -> {
               application.setStatus(event.status());
-              application.setApplicationVersion(event.applicationVersion());
               application.setApplicationDataVersion(event.applicationDataVersion());
+              application.setApplicationVersion(event.applicationVersion());
+              application.setAggregateSequence(sequenceFor(event.applicationId(), message));
               application.setModifiedAt(event.occurredAt());
               ApplicationReadModel saved = applicationReadRepository.save(application);
               queryUpdateEmitter.emit(
@@ -254,7 +267,7 @@ public class ApplicationProjection {
 
   /** Updates the assigned caseworker and referenced application-data version. */
   @EventHandler
-  public void on(ApplicationAssignedToCaseworkerEvent event) {
+  public void on(ApplicationAssignedToCaseworkerEvent event, EventMessage message) {
     applicationReadRepository
         .findById(event.applicationId())
         .ifPresent(
@@ -262,6 +275,7 @@ public class ApplicationProjection {
               application.setCaseworkerId(event.caseworkerId());
               application.setApplicationVersion(event.applicationVersion());
               application.setApplicationDataVersion(event.applicationDataVersion());
+              application.setAggregateSequence(sequenceFor(event.applicationId(), message));
               application.setModifiedAt(event.occurredAt());
               applicationReadRepository.save(application);
             });
@@ -269,7 +283,7 @@ public class ApplicationProjection {
 
   /** Clears the assigned caseworker and updates the referenced application-data version. */
   @EventHandler
-  public void on(ApplicationUnassignedFromCaseworkerEvent event) {
+  public void on(ApplicationUnassignedFromCaseworkerEvent event, EventMessage message) {
     applicationReadRepository
         .findById(event.applicationId())
         .ifPresent(
@@ -277,6 +291,7 @@ public class ApplicationProjection {
               application.setCaseworkerId(null);
               application.setApplicationVersion(event.applicationVersion());
               application.setApplicationDataVersion(event.applicationDataVersion());
+              application.setAggregateSequence(sequenceFor(event.applicationId(), message));
               application.setModifiedAt(event.occurredAt());
               applicationReadRepository.save(application);
             });
@@ -284,12 +299,13 @@ public class ApplicationProjection {
 
   /** Advances the referenced application-data version when a note is created. */
   @EventHandler
-  public void on(NoteCreatedEvent event) {
+  public void on(NoteCreatedEvent event, EventMessage message) {
     applicationReadRepository
         .findById(event.applicationId())
         .ifPresent(
             application -> {
               application.setApplicationDataVersion(event.applicationDataVersion());
+              application.setAggregateSequence(sequenceFor(event.applicationId(), message));
               application.setModifiedAt(event.occurredAt());
               applicationReadRepository.save(application);
             });
@@ -320,6 +336,10 @@ public class ApplicationProjection {
   @ResetHandler
   public void reset() {
     applicationReadRepository.deleteAllInBatch();
+  }
+
+  private long sequenceFor(UUID applicationId, EventMessage message) {
+    return eventStorePositionRepository.sequenceForEvent(applicationId, message.identifier());
   }
 
   private Sort buildSort(String sortBy, String orderBy) {

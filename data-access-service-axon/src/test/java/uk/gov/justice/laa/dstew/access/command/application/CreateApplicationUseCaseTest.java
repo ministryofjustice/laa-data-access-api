@@ -1,9 +1,5 @@
 package uk.gov.justice.laa.dstew.access.command.application;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -11,68 +7,46 @@ import static org.mockito.Mockito.when;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
-import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
-import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
-import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
 
 class CreateApplicationUseCaseTest {
 
   private RetryingCommandDispatcher dispatcher;
-  private SubscriptionProjectionGateway projectionGateway;
+  private ApplicationEventStorePositionRepository eventStorePositionRepository;
   private CreateApplicationUseCase useCase;
 
   @BeforeEach
   void setUp() {
     dispatcher = mock(RetryingCommandDispatcher.class);
-    projectionGateway = mock(SubscriptionProjectionGateway.class);
-    useCase = new CreateApplicationUseCase(dispatcher, projectionGateway);
+    eventStorePositionRepository = mock(ApplicationEventStorePositionRepository.class);
+    useCase = new CreateApplicationUseCase(dispatcher, eventStorePositionRepository);
   }
 
   @Test
-  void givenProjectionConfirmed_whenExecute_thenReturnsTrue() {
+  void givenCommittedCommand_whenExecute_thenReturnsAggregateSequence() {
     CreateApplicationCommand command = stubCommand();
-    when(projectionGateway.awaitProjection(any(), eq(ApplicationReadModel.class), any()))
-        .thenReturn(true);
+    when(dispatcher.dispatchAsync(command)).thenReturn(CompletableFuture.completedFuture(null));
+    when(eventStorePositionRepository.latestSequence(command.applicationId())).thenReturn(3L);
 
-    boolean result = useCase.execute(command);
+    ApplicationCommandResult result = useCase.execute(command).join();
 
-    assertThat(result).isTrue();
-    verify(projectionGateway)
-        .awaitProjection(
-            eq(new FindApplicationByIdQuery(command.applicationId())),
-            eq(ApplicationReadModel.class),
-            any());
+    org.assertj.core.api.Assertions.assertThat(result)
+        .isEqualTo(new ApplicationCommandResult(command.applicationId(), 3L));
   }
 
   @Test
-  void givenProjectionTimeout_whenExecute_thenReturnsFalse() {
+  void givenCommittedCommand_whenExecute_thenReadsCommittedSequenceAfterDispatch() {
     CreateApplicationCommand command = stubCommand();
-    when(projectionGateway.awaitProjection(any(), eq(ApplicationReadModel.class), any()))
-        .thenReturn(false);
+    when(dispatcher.dispatchAsync(command)).thenReturn(CompletableFuture.completedFuture(null));
+    when(eventStorePositionRepository.latestSequence(command.applicationId())).thenReturn(0L);
 
-    boolean result = useCase.execute(command);
+    useCase.execute(command).join();
 
-    assertThat(result).isFalse();
-  }
-
-  @Test
-  void givenProjection_whenExecute_thenDispatchesViaRetryingDispatcher() {
-    CreateApplicationCommand command = stubCommand();
-    doAnswer(
-            invocation -> {
-              Runnable action = invocation.getArgument(2);
-              action.run();
-              return true;
-            })
-        .when(projectionGateway)
-        .awaitProjection(any(), eq(ApplicationReadModel.class), any());
-
-    useCase.execute(command);
-
-    verify(dispatcher).dispatch(command);
+    verify(dispatcher).dispatchAsync(command);
+    verify(eventStorePositionRepository).latestSequence(command.applicationId());
   }
 
   private CreateApplicationCommand stubCommand() {

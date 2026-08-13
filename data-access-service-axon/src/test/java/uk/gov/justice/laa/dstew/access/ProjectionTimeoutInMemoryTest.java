@@ -66,13 +66,13 @@ class ProjectionTimeoutInMemoryTest {
   @Autowired private JdbcTemplate jdbcTemplate;
 
   @Test
-  void givenStoppedProjectionProcessor_whenPostApplication_thenReturnsAcceptedWithLocation() {
-    // Stop the projection processor so no QueryUpdateEmitter.emit can be called for this command.
-    StreamingEventProcessor processor =
-        axonConfiguration
-            .getComponents(StreamingEventProcessor.class)
-            .get("application-projection");
-    processor.shutdown().join();
+  void givenStoppedProjectionProcessor_whenPostApplication_thenReturnsCreatedWithEtag() {
+    // Stop the projection processor to prove the command response does not wait for it.
+    axonConfiguration
+        .getComponents(StreamingEventProcessor.class)
+        .get("application-projection")
+        .shutdown()
+        .join();
 
     UUID applyApplicationId = UUID.randomUUID();
     ApplicationCreateRequest request =
@@ -87,8 +87,8 @@ class ProjectionTimeoutInMemoryTest {
             "/api/v0/applications", new HttpEntity<>(request, headers), Void.class);
     long elapsedMs = System.currentTimeMillis() - startMs;
 
-    // Command committed → 202 because projection never appeared within the 200 ms timeout.
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    assertThat(response.getHeaders().getETag()).isEqualTo("\"0\"");
     assertThat(response.getHeaders().getLocation()).isNotNull();
     assertThat(response.getHeaders().getLocation().getPath())
         .isEqualTo("/api/v0/applications/" + applyApplicationId);

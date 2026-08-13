@@ -8,6 +8,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
@@ -124,12 +126,36 @@ public class ApplicationQueryController {
 
   /** Returns the current-state projection for the requested Application. */
   @GetMapping("/{id}")
-  public ResponseEntity<ApplicationResponse> getApplicationById(@PathVariable UUID id) {
-    ApplicationReadModel application =
-        findApplicationAwaitingProjection(id)
-            .orElseThrow(
-                () -> new ResourceNotFoundException("No application found with ID: " + id));
-    return ResponseEntity.ok(responseMapper.toResponse(application));
+  public ResponseEntity<ApplicationResponse> getApplicationById(
+      @PathVariable UUID id, @RequestHeader(value = "If-Match", required = false) String ifMatch) {
+    Long expectedSequence = parseExpectedSequence(ifMatch);
+    Optional<ApplicationReadModel> application = findApplication(id);
+    if (expectedSequence != null
+        && (application.isEmpty() || application.get().getAggregateSequence() < expectedSequence)) {
+      return ResponseEntity.accepted().build();
+    }
+    ApplicationReadModel readModel =
+        application.orElseThrow(
+            () -> new ResourceNotFoundException("No application found with ID: " + id));
+    return ResponseEntity.ok()
+        .eTag("\"" + readModel.getAggregateSequence() + "\"")
+        .body(responseMapper.toResponse(readModel));
+  }
+
+  private Long parseExpectedSequence(String ifMatch) {
+    if (ifMatch == null) {
+      return null;
+    }
+    if (!ifMatch.matches("\"[0-9]+\"")) {
+      throw new ResponseStatusException(
+          HttpStatus.BAD_REQUEST, "If-Match must be a quoted sequence ETag");
+    }
+    try {
+      return Long.parseLong(ifMatch.substring(1, ifMatch.length() - 1));
+    } catch (NumberFormatException exception) {
+      throw new ResponseStatusException(
+          HttpStatus.BAD_REQUEST, "If-Match sequence is out of range", exception);
+    }
   }
 
   /** Returns the certificate stored in the Application's current immutable data version. */

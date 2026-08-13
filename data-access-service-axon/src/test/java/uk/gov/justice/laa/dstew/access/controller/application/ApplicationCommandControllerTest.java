@@ -12,6 +12,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -20,6 +21,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
+import uk.gov.justice.laa.dstew.access.command.application.ApplicationCommandResult;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.AssignCaseworkerUseCase;
@@ -136,23 +138,19 @@ class ApplicationCommandControllerTest {
   }
 
   @Test
-  void givenProjectedResult_whenCreateApplication_thenDelegatesToUseCaseAndReturns201() {
+  void givenCommittedCommand_whenCreateApplication_thenDelegatesToUseCaseAndReturns201() {
     CreateApplicationCommand command = stubCreateCommand();
     when(commandMapper.toCommand(any(), anyInt())).thenReturn(command);
-    when(createApplicationUseCase.execute(command)).thenReturn(true);
-    ResponseEntity<Void> response = controller.createApplication(null, 1, null);
+    when(createApplicationUseCase.execute(command))
+        .thenReturn(
+            CompletableFuture.completedFuture(
+                new ApplicationCommandResult(command.applicationId(), 3L)));
+
+    ResponseEntity<Void> response = controller.createApplication(null, 1, null).join();
+
     verify(createApplicationUseCase).execute(command);
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-  }
-
-  @Test
-  void givenTimeoutResult_whenCreateApplication_thenDelegatesToUseCaseAndReturns202() {
-    CreateApplicationCommand command = stubCreateCommand();
-    when(commandMapper.toCommand(any(), anyInt())).thenReturn(command);
-    when(createApplicationUseCase.execute(command)).thenReturn(false);
-    ResponseEntity<Void> response = controller.createApplication(null, 1, null);
-    verify(createApplicationUseCase).execute(command);
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+    assertThat(response.getHeaders().getETag()).isEqualTo("\"3\"");
   }
 
   @Test
@@ -160,8 +158,13 @@ class ApplicationCommandControllerTest {
     UUID id = UUID.randomUUID();
     MakeApplicationDecisionCommand command = mock(MakeApplicationDecisionCommand.class);
     when(decisionCommandMapper.toCommand(id, null)).thenReturn(command);
-    controller.makeDecision(null, id, null);
+    when(makeDecisionUseCase.execute(command))
+        .thenReturn(CompletableFuture.completedFuture(new ApplicationCommandResult(id, 3L)));
+
+    ResponseEntity<Void> response = controller.makeDecision(null, id, null).join();
+
     verify(makeDecisionUseCase).execute(command);
+    assertThat(response.getHeaders().getETag()).isEqualTo("\"3\"");
   }
 
   @Test
@@ -169,8 +172,13 @@ class ApplicationCommandControllerTest {
     UUID id = UUID.randomUUID();
     CreateNoteCommand command = mock(CreateNoteCommand.class);
     when(createNoteCommandMapper.toCommand(id, null)).thenReturn(command);
-    controller.createNote(null, id, null);
+    when(createNoteUseCase.execute(command))
+        .thenReturn(CompletableFuture.completedFuture(new ApplicationCommandResult(id, 3L)));
+
+    ResponseEntity<Void> response = controller.createNote(null, id, null).join();
+
     verify(createNoteUseCase).execute(command);
+    assertThat(response.getHeaders().getETag()).isEqualTo("\"3\"");
   }
 
   @Test
@@ -179,8 +187,13 @@ class ApplicationCommandControllerTest {
     UnassignCaseworkerFromApplicationCommand command =
         mock(UnassignCaseworkerFromApplicationCommand.class);
     when(unassignCaseworkerRequestMapper.toCommand(id, null)).thenReturn(command);
-    controller.unassignCaseworker(null, id, null);
+    when(unassignCaseworkerUseCase.execute(command))
+        .thenReturn(CompletableFuture.completedFuture(new ApplicationCommandResult(id, 3L)));
+
+    ResponseEntity<Void> response = controller.unassignCaseworker(null, id, null).join();
+
     verify(unassignCaseworkerUseCase).execute(command);
+    assertThat(response.getHeaders().getETag()).isEqualTo("\"3\"");
   }
 
   @Test
@@ -188,13 +201,22 @@ class ApplicationCommandControllerTest {
     CaseworkerAssignment assignment =
         new CaseworkerAssignment(UUID.randomUUID(), UUID.randomUUID(), "{}", "desc");
     when(assignCaseworkerRequestMapper.toAssignment(any())).thenReturn(assignment);
-    controller.assignCaseworker(null, null);
+    when(assignCaseworkerUseCase.assign(
+            assignment.caseworkerId(),
+            assignment.applicationId(),
+            assignment.serialisedRequest(),
+            assignment.eventDescription()))
+        .thenReturn(CompletableFuture.completedFuture(null));
+
+    ResponseEntity<Void> response = controller.assignCaseworker(null, null).join();
+
     verify(assignCaseworkerUseCase)
         .assign(
             assignment.caseworkerId(),
             assignment.applicationId(),
             assignment.serialisedRequest(),
             assignment.eventDescription());
+    assertThat(response.getHeaders().getETag()).isNull();
     verify(makeDecisionUseCase, never()).execute(any());
     verify(createNoteUseCase, never()).execute(any());
     verify(unassignCaseworkerUseCase, never()).execute(any());

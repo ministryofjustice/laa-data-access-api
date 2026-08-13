@@ -9,24 +9,25 @@ import static org.mockito.Mockito.when;
 
 import java.time.Instant;
 import java.util.UUID;
-import org.axonframework.messaging.commandhandling.gateway.CommandGateway;
+import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.command.caseworker.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 
 class AssignCaseworkerUseCaseTest {
 
   private CaseworkerRepository caseworkerRepository;
-  private CommandGateway commandGateway;
+  private RetryingCommandDispatcher dispatcher;
   private AssignCaseworkerUseCase useCase;
 
   @BeforeEach
   void setUp() {
     caseworkerRepository = mock(CaseworkerRepository.class);
-    commandGateway = mock(CommandGateway.class);
-    useCase = new AssignCaseworkerUseCase(caseworkerRepository, commandGateway);
+    dispatcher = mock(RetryingCommandDispatcher.class);
+    useCase = new AssignCaseworkerUseCase(caseworkerRepository, dispatcher);
   }
 
   @Test
@@ -36,11 +37,14 @@ class AssignCaseworkerUseCaseTest {
     when(caseworkerRepository.existsById(caseworkerId)).thenReturn(true);
     Instant before = Instant.now();
 
-    useCase.assign(caseworkerId, applicationId, "request", "description");
+    when(dispatcher.dispatchAsync(org.mockito.ArgumentMatchers.any()))
+        .thenReturn(CompletableFuture.completedFuture(null));
+
+    useCase.assign(caseworkerId, applicationId, "request", "description").join();
 
     ArgumentCaptor<AssignCaseworkerToApplicationCommand> captor =
         ArgumentCaptor.forClass(AssignCaseworkerToApplicationCommand.class);
-    verify(commandGateway).sendAndWait(captor.capture());
+    verify(dispatcher).dispatchAsync(captor.capture());
     assertThat(captor.getValue())
         .satisfies(
             command -> {
@@ -61,6 +65,6 @@ class AssignCaseworkerUseCaseTest {
         .isInstanceOf(ResourceNotFoundException.class)
         .hasMessage("No caseworker found with id: " + caseworkerId);
 
-    verify(commandGateway, never()).sendAndWait(org.mockito.ArgumentMatchers.any());
+    verify(dispatcher, never()).dispatchAsync(org.mockito.ArgumentMatchers.any());
   }
 }

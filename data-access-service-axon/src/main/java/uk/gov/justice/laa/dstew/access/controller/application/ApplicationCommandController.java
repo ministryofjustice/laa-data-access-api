@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import java.net.URI;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -86,36 +87,42 @@ public class ApplicationCommandController {
 
   /** Assigns a caseworker to one or more Applications after validating the complete batch. */
   @PostMapping("/assign")
-  public ResponseEntity<Void> assignCaseworker(
+  public CompletableFuture<ResponseEntity<Void>> assignCaseworker(
       @RequestHeader("X-Service-Name") ServiceName serviceName,
       @Valid @RequestBody CaseworkerAssignRequest request) {
     var assignment = assignCaseworkerRequestMapper.toAssignment(request);
-    assignCaseworkerUseCase.assign(
-        assignment.caseworkerId(),
-        assignment.applicationId(),
-        assignment.serialisedRequest(),
-        assignment.eventDescription());
-    return ResponseEntity.ok().build();
+    return assignCaseworkerUseCase
+        .assign(
+            assignment.caseworkerId(),
+            assignment.applicationId(),
+            assignment.serialisedRequest(),
+            assignment.eventDescription())
+        .thenApply(ignored -> ResponseEntity.ok().build());
   }
 
   /** Removes the current caseworker assignment from an Application. */
   @PostMapping("/{id}/unassign")
-  public ResponseEntity<Void> unassignCaseworker(
+  public CompletableFuture<ResponseEntity<Void>> unassignCaseworker(
       @RequestHeader("X-Service-Name") ServiceName serviceName,
       @PathVariable UUID id,
       @Valid @RequestBody CaseworkerUnassignRequest request) {
-    unassignCaseworkerUseCase.execute(unassignCaseworkerRequestMapper.toCommand(id, request));
-    return ResponseEntity.ok().build();
+    return unassignCaseworkerUseCase
+        .execute(unassignCaseworkerRequestMapper.toCommand(id, request))
+        .thenApply(
+            result -> ResponseEntity.ok().eTag("\"" + result.aggregateSequence() + "\"").build());
   }
 
   /** Applies an overall and per-proceeding decision to an existing Application version. */
   @PatchMapping("/{id}/decision")
-  public ResponseEntity<Void> makeDecision(
+  public CompletableFuture<ResponseEntity<Void>> makeDecision(
       @RequestHeader("X-Service-Name") ServiceName serviceName,
       @PathVariable UUID id,
       @Valid @RequestBody MakeDecisionRequest request) {
-    makeDecisionUseCase.execute(decisionCommandMapper.toCommand(id, request));
-    return ResponseEntity.noContent().build();
+    return makeDecisionUseCase
+        .execute(decisionCommandMapper.toCommand(id, request))
+        .thenApply(
+            result ->
+                ResponseEntity.noContent().eTag("\"" + result.aggregateSequence() + "\"").build());
   }
 
   /** Records either terminal outcome of deciding whether an Application can be auto-granted. */
@@ -137,17 +144,20 @@ public class ApplicationCommandController {
 
   /** Appends a note to an existing Application. */
   @PostMapping("/{id}/notes")
-  public ResponseEntity<Void> createNote(
+  public CompletableFuture<ResponseEntity<Void>> createNote(
       @RequestHeader("X-Service-Name") ServiceName serviceName,
       @PathVariable UUID id,
       @Valid @RequestBody CreateNoteRequest request) {
-    createNoteUseCase.execute(createNoteCommandMapper.toCommand(id, request));
-    return ResponseEntity.noContent().build();
+    return createNoteUseCase
+        .execute(createNoteCommandMapper.toCommand(id, request))
+        .thenApply(
+            result ->
+                ResponseEntity.noContent().eTag("\"" + result.aggregateSequence() + "\"").build());
   }
 
-  /** Dispatches create directly to Axon and returns 201 once the projection is readable. */
+  /** Dispatches create directly to Axon and returns once its events have committed. */
   @PostMapping
-  public ResponseEntity<Void> createApplication(
+  public CompletableFuture<ResponseEntity<Void>> createApplication(
       @RequestHeader("X-Service-Name") ServiceName serviceName,
       @RequestHeader(value = "X-Schema-Version", required = false, defaultValue = "1") @Min(1)
           int schemaVersion,
@@ -158,10 +168,14 @@ public class ApplicationCommandController {
             .path("/{id}")
             .buildAndExpand(command.applicationId())
             .toUri();
-    boolean projected = createApplicationUseCase.execute(command);
-    return projected
-        ? ResponseEntity.created(location).build()
-        : ResponseEntity.accepted().location(location).build();
+
+    return createApplicationUseCase
+        .execute(command)
+        .thenApply(
+            result ->
+                ResponseEntity.created(location)
+                    .eTag("\"" + result.aggregateSequence() + "\"")
+                    .build());
   }
 
   /** Replaces an existing Application's content and optional status. */

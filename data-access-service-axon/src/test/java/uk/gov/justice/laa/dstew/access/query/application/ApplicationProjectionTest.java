@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Predicate;
+import org.axonframework.messaging.eventhandling.EventMessage;
 import org.axonframework.messaging.queryhandling.QueryUpdateEmitter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,6 +27,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.ApplicationEventStorePositionRepository;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
@@ -43,19 +45,23 @@ import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationLi
 class ApplicationProjectionTest {
 
   private ApplicationReadRepository applicationReadRepository;
+  private ApplicationEventStorePositionRepository eventStorePositionRepository;
   private LinkedApplicationGroupReadRepository groupReadRepository;
   private QueryUpdateEmitter queryUpdateEmitter;
   private ApplicationDataStore applicationDataStore;
   private ApplicationListIndexReadRepository listIndexRepository;
+  private EventMessage eventMessage;
   private ApplicationProjection projection;
 
   @BeforeEach
   void setUp() {
     applicationReadRepository = mock(ApplicationReadRepository.class);
+    eventStorePositionRepository = mock(ApplicationEventStorePositionRepository.class);
     groupReadRepository = mock(LinkedApplicationGroupReadRepository.class);
     queryUpdateEmitter = mock(QueryUpdateEmitter.class);
     applicationDataStore = mock(ApplicationDataStore.class);
     listIndexRepository = mock(ApplicationListIndexReadRepository.class);
+    eventMessage = mock(EventMessage.class);
     when(applicationDataStore.get(any(), anyLong()))
         .thenAnswer(
             invocation ->
@@ -63,6 +69,7 @@ class ApplicationProjectionTest {
     projection =
         new ApplicationProjection(
             applicationReadRepository,
+            eventStorePositionRepository,
             groupReadRepository,
             applicationDataStore,
             listIndexRepository);
@@ -76,7 +83,7 @@ class ApplicationProjectionTest {
         ApplicationReadModel.builder().applicationId(applicationId).build();
     when(applicationReadRepository.save(any())).thenReturn(saved);
 
-    projection.on(event, queryUpdateEmitter);
+    projection.on(event, eventMessage, queryUpdateEmitter);
 
     InOrder order = inOrder(applicationReadRepository, queryUpdateEmitter);
     order.verify(applicationReadRepository).save(any());
@@ -104,7 +111,7 @@ class ApplicationProjectionTest {
     when(applicationReadRepository.save(any()))
         .thenReturn(ApplicationReadModel.builder().applicationId(applicationId).build());
 
-    projection.on(event, queryUpdateEmitter);
+    projection.on(event, eventMessage, queryUpdateEmitter);
 
     assertThat(capturedPredicate[0]).isNotNull();
     Predicate<FindApplicationByIdQuery> predicate =
@@ -162,7 +169,7 @@ class ApplicationProjectionTest {
     ApplicationLinkedEvent event =
         new ApplicationLinkedEvent(applicationId, leadApplicationId, Instant.now());
 
-    projection.on(event);
+    projection.on(event, eventMessage);
 
     assertThat(existing.getLeadApplicationId()).isEqualTo(leadApplicationId);
     verify(applicationReadRepository).save(existing);
@@ -218,7 +225,8 @@ class ApplicationProjectionTest {
     when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(existing));
 
     projection.on(
-        new ApplicationAssignedToCaseworkerEvent(applicationId, 1L, 2L, caseworkerId, occurredAt));
+        new ApplicationAssignedToCaseworkerEvent(applicationId, 1L, 2L, caseworkerId, occurredAt),
+        eventMessage);
 
     assertThat(existing.getCaseworkerId()).isEqualTo(caseworkerId);
     assertThat(existing.getApplicationVersion()).isEqualTo(1L);
@@ -238,7 +246,9 @@ class ApplicationProjectionTest {
             .build();
     when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(existing));
 
-    projection.on(new ApplicationUnassignedFromCaseworkerEvent(applicationId, 2L, 3L, occurredAt));
+    projection.on(
+        new ApplicationUnassignedFromCaseworkerEvent(applicationId, 2L, 3L, occurredAt),
+        eventMessage);
 
     assertThat(existing.getCaseworkerId()).isNull();
     assertThat(existing.getApplicationVersion()).isEqualTo(2L);
@@ -262,7 +272,8 @@ class ApplicationProjectionTest {
 
     projection.on(
         new uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent(
-            applicationId, 1L, occurredAt));
+            applicationId, 1L, occurredAt),
+        eventMessage);
 
     assertThat(existing.getApplicationDataVersion()).isEqualTo(1L);
     assertThat(existing.getApplicationVersion()).isEqualTo(0L);

@@ -40,6 +40,9 @@ public class ApplicationReadModel {
   @Column(name = "application_version", nullable = false)
   private long applicationVersion;
 
+  @Column(name = "aggregate_sequence", nullable = false)
+  private long aggregateSequence;
+
   @Transient private String laaReference;
 
   @Transient private ApplicationContent applicationContent;
