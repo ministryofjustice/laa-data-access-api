@@ -87,6 +87,13 @@ or unreliable calls to either handler.
 Projection handlers should be deterministic for an event, tolerate retries, and have a reset
 handler for owned tables. They must not emit irreversible external side effects during replay.
 
+### Publish integration events only from an explicit live after-commit boundary
+
+Do not publish SNS messages from aggregates, event-sourcing handlers, or tracking projections.
+`ApplicationSubmittedEventRouter` is deliberately a subscribing processor and registers the SNS
+call with Axon's `AFTER_COMMIT` phase. It catches and logs transport failures because the accepted
+fire-and-forget guarantee must not turn a committed Application into a failed write response.
+
 ### Do not edit tracking tokens manually
 
 Use Axon's processor lifecycle and reset APIs. Editing `token_entry` while a processor owns a token

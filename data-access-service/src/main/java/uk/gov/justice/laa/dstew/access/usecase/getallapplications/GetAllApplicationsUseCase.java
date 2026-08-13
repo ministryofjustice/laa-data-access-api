@@ -56,7 +56,7 @@ public class GetAllApplicationsUseCase {
             query.clientDateOfBirth(),
             query.userId(),
             query.matterType(),
-            query.isAutoGranted(),
+            query.autoGranted(),
             query.sortBy(),
             query.orderBy(),
             query.page(),

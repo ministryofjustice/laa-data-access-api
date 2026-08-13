@@ -4,8 +4,9 @@ CREATE TABLE application_list_index (
     laa_reference        VARCHAR(255),
     caseworker_id        UUID,
     matter_type          VARCHAR(255),
-    is_auto_granted      BOOLEAN,
+    auto_granted         VARCHAR(32)  NOT NULL DEFAULT 'PENDING',
     submitted_at         TIMESTAMPTZ,
+    modified_at          TIMESTAMPTZ  NOT NULL,
     lead_application_id  UUID,
     client_first_name    VARCHAR(255),
     client_last_name     VARCHAR(255),
@@ -20,6 +21,7 @@ CREATE INDEX idx_ali_status        ON application_list_index (status);
 CREATE INDEX idx_ali_matter_type   ON application_list_index (matter_type);
 CREATE INDEX idx_ali_laa_reference ON application_list_index (laa_reference);
 CREATE INDEX idx_ali_caseworker    ON application_list_index (caseworker_id);
+CREATE INDEX idx_ali_auto_granted  ON application_list_index (auto_granted);
 
 -- Case-insensitive client name filter indexes
 CREATE INDEX idx_ali_client_last_name  ON application_list_index (lower(client_last_name));
@@ -30,8 +32,8 @@ CREATE INDEX idx_ali_client_dob ON application_list_index (client_date_of_birth)
 
 -- Sort index (most common: newest first)
 CREATE INDEX idx_ali_submitted_at ON application_list_index (submitted_at DESC NULLS LAST);
+CREATE INDEX idx_ali_modified_at ON application_list_index (modified_at DESC);
 
 -- Composite for the caseworker worklist: filter + sort in a single scan
 CREATE INDEX idx_ali_caseworker_submitted
     ON application_list_index (caseworker_id, submitted_at DESC NULLS LAST);
-

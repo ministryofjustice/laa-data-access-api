@@ -8,6 +8,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -29,6 +30,13 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicat
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteUseCase;
+import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand;
+import uk.gov.justice.laa.dstew.access.command.application.ready.ReadyApplicationResult;
+import uk.gov.justice.laa.dstew.access.command.application.ready.RecordAutoGrantOutcomeUseCase;
+import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationCommand;
+import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationUseCase;
+import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
+import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
 
 /** Verifies that each controller endpoint delegates to the appropriate use case. */
 class ApplicationCommandControllerTest {
@@ -38,27 +46,35 @@ class ApplicationCommandControllerTest {
   private CreateNoteUseCase createNoteUseCase;
   private UnassignCaseworkerUseCase unassignCaseworkerUseCase;
   private AssignCaseworkerUseCase assignCaseworkerUseCase;
+  private RecordAutoGrantOutcomeUseCase recordAutoGrantOutcomeUseCase;
+  private UpdateApplicationUseCase updateApplicationUseCase;
   private CreateApplicationCommandMapper commandMapper;
   private MakeDecisionCommandMapper decisionCommandMapper;
   private AssignCaseworkerRequestMapper assignCaseworkerRequestMapper;
   private UnassignCaseworkerRequestMapper unassignCaseworkerRequestMapper;
   private CreateNoteCommandMapper createNoteCommandMapper;
+  private AutoGrantOutcomeCommandMapper autoGrantOutcomeCommandMapper;
+  private UpdateApplicationCommandMapper updateApplicationCommandMapper;
   private ApplicationCommandController controller;
 
   @BeforeEach
   void setUp() {
-    MockHttpServletRequest request = new MockHttpServletRequest();
-    RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
+    RequestContextHolder.setRequestAttributes(
+        new ServletRequestAttributes(new MockHttpServletRequest()));
     createApplicationUseCase = mock(CreateApplicationUseCase.class);
     makeDecisionUseCase = mock(MakeApplicationDecisionUseCase.class);
     createNoteUseCase = mock(CreateNoteUseCase.class);
     unassignCaseworkerUseCase = mock(UnassignCaseworkerUseCase.class);
     assignCaseworkerUseCase = mock(AssignCaseworkerUseCase.class);
+    recordAutoGrantOutcomeUseCase = mock(RecordAutoGrantOutcomeUseCase.class);
+    updateApplicationUseCase = mock(UpdateApplicationUseCase.class);
     commandMapper = mock(CreateApplicationCommandMapper.class);
     decisionCommandMapper = mock(MakeDecisionCommandMapper.class);
     assignCaseworkerRequestMapper = mock(AssignCaseworkerRequestMapper.class);
     unassignCaseworkerRequestMapper = mock(UnassignCaseworkerRequestMapper.class);
     createNoteCommandMapper = mock(CreateNoteCommandMapper.class);
+    autoGrantOutcomeCommandMapper = mock(AutoGrantOutcomeCommandMapper.class);
+    updateApplicationCommandMapper = mock(UpdateApplicationCommandMapper.class);
     controller =
         new ApplicationCommandController(
             createApplicationUseCase,
@@ -66,11 +82,15 @@ class ApplicationCommandControllerTest {
             createNoteUseCase,
             unassignCaseworkerUseCase,
             assignCaseworkerUseCase,
+            recordAutoGrantOutcomeUseCase,
+            updateApplicationUseCase,
             commandMapper,
             decisionCommandMapper,
             assignCaseworkerRequestMapper,
             unassignCaseworkerRequestMapper,
-            createNoteCommandMapper);
+            createNoteCommandMapper,
+            autoGrantOutcomeCommandMapper,
+            updateApplicationCommandMapper);
   }
 
   @AfterEach
@@ -79,13 +99,48 @@ class ApplicationCommandControllerTest {
   }
 
   @Test
+  void givenReadinessRecorded_whenMarkApplicationReady_thenReturnsNoContent() {
+    UUID id = UUID.randomUUID();
+    ManualOutcomeRequest request = new ManualOutcomeRequest(AutoGrantOutcome.MANUAL);
+    MarkApplicationReadyCommand command =
+        new MarkApplicationReadyCommand(id, 2L, "{}", Instant.now());
+    when(autoGrantOutcomeCommandMapper.toCommand(id, request)).thenReturn(command);
+    when(recordAutoGrantOutcomeUseCase.recordReady(command))
+        .thenReturn(ReadyApplicationResult.RECORDED);
+
+    assertThat(controller.recordAutoGrantOutcome(null, id, request).getStatusCode())
+        .isEqualTo(HttpStatus.NO_CONTENT);
+  }
+
+  @Test
+  void givenReadinessAlreadyRecorded_whenMarkApplicationReady_thenReturnsOk() {
+    UUID id = UUID.randomUUID();
+    ManualOutcomeRequest request = new ManualOutcomeRequest(AutoGrantOutcome.MANUAL);
+    MarkApplicationReadyCommand command =
+        new MarkApplicationReadyCommand(id, 2L, "{}", Instant.now());
+    when(autoGrantOutcomeCommandMapper.toCommand(id, request)).thenReturn(command);
+    when(recordAutoGrantOutcomeUseCase.recordReady(command))
+        .thenReturn(ReadyApplicationResult.ALREADY_RECORDED);
+
+    assertThat(controller.recordAutoGrantOutcome(null, id, request).getStatusCode())
+        .isEqualTo(HttpStatus.OK);
+  }
+
+  @Test
+  void givenRequest_whenUpdateApplication_thenDelegatesToUseCase() {
+    UUID id = UUID.randomUUID();
+    UpdateApplicationCommand command = mock(UpdateApplicationCommand.class);
+    when(updateApplicationCommandMapper.toCommand(id, null)).thenReturn(command);
+    controller.updateApplication(null, id, null);
+    verify(updateApplicationUseCase).execute(command);
+  }
+
+  @Test
   void givenProjectedResult_whenCreateApplication_thenDelegatesToUseCaseAndReturns201() {
     CreateApplicationCommand command = stubCreateCommand();
     when(commandMapper.toCommand(any(), anyInt())).thenReturn(command);
     when(createApplicationUseCase.execute(command)).thenReturn(true);
-
     ResponseEntity<Void> response = controller.createApplication(null, 1, null);
-
     verify(createApplicationUseCase).execute(command);
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
   }
@@ -95,9 +150,7 @@ class ApplicationCommandControllerTest {
     CreateApplicationCommand command = stubCreateCommand();
     when(commandMapper.toCommand(any(), anyInt())).thenReturn(command);
     when(createApplicationUseCase.execute(command)).thenReturn(false);
-
     ResponseEntity<Void> response = controller.createApplication(null, 1, null);
-
     verify(createApplicationUseCase).execute(command);
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
   }
@@ -107,9 +160,7 @@ class ApplicationCommandControllerTest {
     UUID id = UUID.randomUUID();
     MakeApplicationDecisionCommand command = mock(MakeApplicationDecisionCommand.class);
     when(decisionCommandMapper.toCommand(id, null)).thenReturn(command);
-
     controller.makeDecision(null, id, null);
-
     verify(makeDecisionUseCase).execute(command);
   }
 
@@ -118,9 +169,7 @@ class ApplicationCommandControllerTest {
     UUID id = UUID.randomUUID();
     CreateNoteCommand command = mock(CreateNoteCommand.class);
     when(createNoteCommandMapper.toCommand(id, null)).thenReturn(command);
-
     controller.createNote(null, id, null);
-
     verify(createNoteUseCase).execute(command);
   }
 
@@ -130,9 +179,7 @@ class ApplicationCommandControllerTest {
     UnassignCaseworkerFromApplicationCommand command =
         mock(UnassignCaseworkerFromApplicationCommand.class);
     when(unassignCaseworkerRequestMapper.toCommand(id, null)).thenReturn(command);
-
     controller.unassignCaseworker(null, id, null);
-
     verify(unassignCaseworkerUseCase).execute(command);
   }
 
@@ -141,9 +188,7 @@ class ApplicationCommandControllerTest {
     CaseworkerAssignment assignment =
         new CaseworkerAssignment(UUID.randomUUID(), UUID.randomUUID(), "{}", "desc");
     when(assignCaseworkerRequestMapper.toAssignment(any())).thenReturn(assignment);
-
     controller.assignCaseworker(null, null);
-
     verify(assignCaseworkerUseCase)
         .assign(
             assignment.caseworkerId(),

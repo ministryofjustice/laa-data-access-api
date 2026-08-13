@@ -7,6 +7,8 @@ import uk.gov.justice.laa.dstew.access.command.application.assignment.Applicatio
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupRequested;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
+import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
 
 /** Event-fold functions for {@link ApplicationState}. */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
@@ -18,14 +20,33 @@ public final class ApplicationEvolve {
     state.isAssociatedMember = event.leadApplicationId() != null;
     state.schemaVersion = event.schemaVersion();
     state.requestFingerprint = event.requestFingerprint();
+    state.status = event.status();
+    state.applicationType = event.applicationType();
+    state.autoGranted = AutoGrantedState.PENDING;
     state.applicationDataVersion = event.applicationDataVersion();
     state.applicationVersion = 0L;
+  }
+
+  /** Applies an {@link ApplicationUpdatedEvent} to the given state. */
+  public static void apply(ApplicationState state, ApplicationUpdatedEvent event) {
+    state.status = event.status();
+    state.applicationVersion = event.applicationVersion();
+    state.applicationDataVersion = event.applicationDataVersion();
+    state.autoGranted = event.enteredSubmitted() ? AutoGrantedState.PENDING : state.autoGranted;
   }
 
   /** Applies an {@link ApplicationDecisionMadeEvent} to the given state. */
   public static void apply(ApplicationState state, ApplicationDecisionMadeEvent event) {
     state.applicationVersion = event.applicationVersion();
     state.applicationDataVersion = event.applicationDataVersion();
+    state.autoGranted = event.autoGranted();
+  }
+
+  /** Applies an {@link ApplicationReadyForManualAssessmentEvent} to the given state. */
+  public static void apply(ApplicationState state, ApplicationReadyForManualAssessmentEvent event) {
+    state.applicationVersion = event.applicationVersion();
+    state.applicationDataVersion = event.applicationDataVersion();
+    state.autoGranted = AutoGrantedState.MANUAL;
   }
 
   /** Applies an {@link ApplicationAssignedToCaseworkerEvent} to the given state. */

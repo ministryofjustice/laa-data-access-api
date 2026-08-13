@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.query.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -11,6 +12,7 @@ import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventF
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationCreationDetails;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -25,6 +27,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
@@ -32,6 +35,7 @@ import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataP
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationNote;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
+import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadRepository;
@@ -89,7 +93,7 @@ class ApplicationProjectionTest {
     ApplicationCreatedEvent event = applicationCreatedEvent(applicationId);
 
     final Predicate<?>[] capturedPredicate = new Predicate[1];
-    org.mockito.Mockito.doAnswer(
+    doAnswer(
             inv -> {
               capturedPredicate[0] = (Predicate<?>) inv.getArgument(1);
               return null;
@@ -114,6 +118,38 @@ class ApplicationProjectionTest {
     projection.reset();
 
     verify(applicationReadRepository).deleteAllInBatch();
+  }
+
+  @Test
+  void givenSubmittedApplications_whenReconciliationQueries_thenReturnsOnlyOldUnassessedOnes() {
+    Instant threshold = Instant.parse("2026-08-04T09:45:00Z");
+    UUID stalledId = UUID.randomUUID();
+    UUID assessedId = UUID.randomUUID();
+    UUID recentId = UUID.randomUUID();
+    ApplicationReadModel stalled = reconciliationReadModel(stalledId);
+    ApplicationReadModel assessed = reconciliationReadModel(assessedId);
+    ApplicationReadModel recent = reconciliationReadModel(recentId);
+    when(applicationReadRepository.findAllByStatus("APPLICATION_SUBMITTED"))
+        .thenReturn(List.of(stalled, assessed, recent));
+    ApplicationDataPayload stalledData =
+        reconciliationData(stalledId, threshold.minus(15, ChronoUnit.MINUTES), null);
+    ApplicationDataPayload assessedData =
+        reconciliationData(assessedId, threshold.minus(20, ChronoUnit.MINUTES), false);
+    ApplicationDataPayload recentData =
+        reconciliationData(recentId, threshold.plusSeconds(1), null);
+    when(applicationDataStore.getAll(any()))
+        .thenReturn(
+            Map.of(
+                dataId(stalled), stalledData,
+                dataId(assessed), assessedData,
+                dataId(recent), recentData));
+
+    StalledAssessments result = projection.handle(new FindStalledAssessmentsQuery(threshold));
+
+    assertThat(result.applications())
+        .containsExactly(
+            new StalledAssessment(
+                stalledId, stalledId, 3L, threshold.minus(15, ChronoUnit.MINUTES)));
   }
 
   @Test
@@ -142,7 +178,8 @@ class ApplicationProjectionTest {
     when(applicationReadRepository.save(existing)).thenReturn(existing);
 
     projection.on(
-        new ApplicationDecisionMadeEvent(applicationId, 3L, 4L, "GRANTED", false, occurredAt),
+        new ApplicationDecisionMadeEvent(
+            applicationId, 3L, 4L, "GRANTED", AutoGrantedState.MANUAL, occurredAt),
         queryUpdateEmitter);
 
     assertThat(existing.getApplicationVersion()).isEqualTo(3L);
@@ -150,6 +187,25 @@ class ApplicationProjectionTest {
     assertThat(existing.getModifiedAt()).isEqualTo(occurredAt);
     verify(queryUpdateEmitter)
         .emit(any(Class.class), any(Predicate.class), any(ApplicationReadModel.class));
+  }
+
+  @Test
+  void givenReadyEvent_whenHandled_thenAdvancesReferencedDataVersion() {
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-21T09:30:00Z");
+    ApplicationReadModel existing =
+        ApplicationReadModel.builder().applicationId(applicationId).build();
+    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(existing));
+    when(applicationReadRepository.save(existing)).thenReturn(existing);
+
+    projection.on(
+        new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, 1L, occurredAt),
+        queryUpdateEmitter);
+
+    assertThat(existing.getStatus()).isNull();
+    assertThat(existing.getApplicationVersion()).isEqualTo(1L);
+    assertThat(existing.getApplicationDataVersion()).isEqualTo(1L);
+    assertThat(existing.getModifiedAt()).isEqualTo(occurredAt);
   }
 
   @Test
@@ -318,5 +374,29 @@ class ApplicationProjectionTest {
 
     assertThat(result.applications()).isEmpty();
     assertThat(result.totalElements()).isZero();
+  }
+
+  private ApplicationReadModel reconciliationReadModel(UUID applicationId) {
+    return ApplicationReadModel.builder()
+        .applicationId(applicationId)
+        .status("APPLICATION_SUBMITTED")
+        .applicationDataVersion(2L)
+        .applicationVersion(3L)
+        .applyApplicationId(applicationId)
+        .build();
+  }
+
+  private ApplicationDataId dataId(ApplicationReadModel application) {
+    return new ApplicationDataId(
+        application.getApplicationId(), application.getApplicationDataVersion());
+  }
+
+  private ApplicationDataPayload reconciliationData(
+      UUID applyApplicationId, Instant submittedAt, Boolean autoGranted) {
+    ApplicationDataPayload data = mock(ApplicationDataPayload.class);
+    when(data.applyApplicationId()).thenReturn(applyApplicationId);
+    when(data.submittedAt()).thenReturn(submittedAt);
+    when(data.autoGranted()).thenReturn(AutoGrantedState.fromDecisionFlag(autoGranted));
+    return data;
   }
 }
