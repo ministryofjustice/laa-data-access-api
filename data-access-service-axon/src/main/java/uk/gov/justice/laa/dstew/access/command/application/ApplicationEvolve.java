@@ -12,7 +12,7 @@ import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpd
 
 /** Event-fold functions for {@link ApplicationState}. */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
-public final class ApplicationAggregateUpdater {
+public final class ApplicationEvolve {
 
   /** Applies an {@link ApplicationCreatedEvent} to the given state. */
   public static void apply(ApplicationState state, ApplicationCreatedEvent event) {

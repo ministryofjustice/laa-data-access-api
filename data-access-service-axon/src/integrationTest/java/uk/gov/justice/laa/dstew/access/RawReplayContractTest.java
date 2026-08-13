@@ -23,8 +23,8 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.ObjectMapper;
-import uk.gov.justice.laa.dstew.access.command.application.ApplicationAggregateUpdater;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.ApplicationEvolve;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationState;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
@@ -36,8 +36,8 @@ import uk.gov.justice.laa.dstew.access.replay.RawEventReplayer;
 
 /**
  * Contract test: verifies that events stored in {@code domain_event_entry} can be deserialised with
- * a plain Jackson {@code ObjectMapper} and that replaying them through {@link
- * ApplicationAggregateUpdater} reconstructs the correct {@link ApplicationState}.
+ * a plain Jackson {@code ObjectMapper} and that replaying them through {@link ApplicationEvolve}
+ * reconstructs the correct {@link ApplicationState}.
  */
 @Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -101,35 +101,35 @@ class RawReplayContractTest {
         Map.of(
             "ApplicationCreatedEvent",
                 (s, payload) ->
-                    ApplicationAggregateUpdater.apply(
+                    ApplicationEvolve.apply(
                         s, objectMapper.readValue(payload, ApplicationCreatedEvent.class)),
             "ApplicationDecisionMadeEvent",
                 (s, payload) ->
-                    ApplicationAggregateUpdater.apply(
+                    ApplicationEvolve.apply(
                         s, objectMapper.readValue(payload, ApplicationDecisionMadeEvent.class)),
             "ApplicationAssignedToCaseworkerEvent",
                 (s, payload) ->
-                    ApplicationAggregateUpdater.apply(
+                    ApplicationEvolve.apply(
                         s,
                         objectMapper.readValue(
                             payload, ApplicationAssignedToCaseworkerEvent.class)),
             "ApplicationUnassignedFromCaseworkerEvent",
                 (s, payload) ->
-                    ApplicationAggregateUpdater.apply(
+                    ApplicationEvolve.apply(
                         s,
                         objectMapper.readValue(
                             payload, ApplicationUnassignedFromCaseworkerEvent.class)),
             "NoteCreatedEvent",
                 (s, payload) ->
-                    ApplicationAggregateUpdater.apply(
+                    ApplicationEvolve.apply(
                         s, objectMapper.readValue(payload, NoteCreatedEvent.class)),
             "ApplicationLinkedEvent",
                 (s, payload) ->
-                    ApplicationAggregateUpdater.apply(
+                    ApplicationEvolve.apply(
                         s, objectMapper.readValue(payload, ApplicationLinkedEvent.class)),
             "LinkedApplicationGroupRequested",
                 (s, payload) ->
-                    ApplicationAggregateUpdater.apply(
+                    ApplicationEvolve.apply(
                         s,
                         objectMapper.readValue(payload, LinkedApplicationGroupRequested.class))));
     return state;

@@ -313,33 +313,33 @@ public class ApplicationAggregate {
 
   @EventSourcingHandler
   void on(LinkedApplicationGroupRequested event) {
-    ApplicationAggregateUpdater.apply(state, event);
+    ApplicationEvolve.apply(state, event);
   }
 
   @EventSourcingHandler
   void on(ApplicationCreatedEvent event) {
-    ApplicationAggregateUpdater.apply(state, event);
+    ApplicationEvolve.apply(state, event);
     this.applicationId = state.applicationId;
   }
 
   @EventSourcingHandler
   void on(ApplicationDecisionMadeEvent event) {
-    ApplicationAggregateUpdater.apply(state, event);
+    ApplicationEvolve.apply(state, event);
   }
 
   @EventSourcingHandler
   void on(ApplicationAssignedToCaseworkerEvent event) {
-    ApplicationAggregateUpdater.apply(state, event);
+    ApplicationEvolve.apply(state, event);
   }
 
   @EventSourcingHandler
   void on(ApplicationUnassignedFromCaseworkerEvent event) {
-    ApplicationAggregateUpdater.apply(state, event);
+    ApplicationEvolve.apply(state, event);
   }
 
   @EventSourcingHandler
   void on(NoteCreatedEvent event) {
-    ApplicationAggregateUpdater.apply(state, event);
+    ApplicationEvolve.apply(state, event);
   }
 
   @EventSourcingHandler
@@ -354,7 +354,7 @@ public class ApplicationAggregate {
 
   @EventSourcingHandler
   void on(ApplicationLinkedEvent event) {
-    ApplicationAggregateUpdater.apply(state, event);
+    ApplicationEvolve.apply(state, event);
   }
 
   @EntityCreator

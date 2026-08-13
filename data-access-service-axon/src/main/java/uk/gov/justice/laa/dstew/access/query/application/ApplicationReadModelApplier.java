@@ -4,11 +4,13 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupRequested;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
 
 /**
  * Event-fold functions for {@link ApplicationReadModel}. This is the single, canonical source of
@@ -76,4 +78,13 @@ public final class ApplicationReadModelApplier {
 
   /** Applies a {@link LinkedApplicationGroupRequested} to the given read model. */
   public static void apply(ApplicationReadModel model, LinkedApplicationGroupRequested event) {}
+
+  /** Applies an {@link ApplicationUpdatedEvent} to the given state. */
+  public static void apply(ApplicationReadModel model, ApplicationUpdatedEvent event) {
+    model.setStatus(event.status());
+    model.setApplicationVersion(event.applicationVersion());
+    model.setApplicationDataVersion(event.applicationDataVersion());
+    model.setAutoGranted(
+        event.enteredSubmitted() ? AutoGrantedState.PENDING : model.getAutoGranted());
+  }
 }
