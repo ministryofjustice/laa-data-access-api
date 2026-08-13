@@ -136,7 +136,7 @@ public class ApplicationListIndexProjection {
             row -> {
               ApplicationDataPayload data =
                   applicationDataStore.get(event.applicationId(), event.applicationDataVersion());
-              ApplicationIndividual client = data.client();
+              ApplicationClient client = data.client();
               row.setStatus(event.status());
               row.setLaaReference(data.laaReference());
               row.setMatterType(data.matterType() == null ? null : data.matterType());

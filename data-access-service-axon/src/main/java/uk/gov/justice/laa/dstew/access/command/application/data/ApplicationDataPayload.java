@@ -149,22 +149,22 @@ public record ApplicationDataPayload(
 
   /** Returns a complete new data version containing replacement Application content. */
   public ApplicationDataPayload withApplicationUpdate(
-      ApplicationContent newApplicationContent,
+      ApplicationClient newClient,
+      ApplicationProvider newProvider,
+      List<Opponent> newOpponents,
       Instant newSubmittedAt,
-      String newOfficeCode,
       Boolean newUsedDelegatedFunctions,
-      CategoryOfLaw newCategoryOfLaw,
-      MatterType newMatterType,
-      List<ApplicationProceeding> newProceedings,
+      String newCategoryOfLaw,
+      String newMatterType,
+      List<Proceeding> newProceedings,
       String newSerialisedRequest,
       boolean resetAssessment) {
     return new ApplicationDataPayload(
         laaReference,
-        newApplicationContent,
-        individuals,
-        applyApplicationId,
+        newClient,
+        newProvider,
+        newOpponents,
         newSubmittedAt,
-        newOfficeCode,
         newUsedDelegatedFunctions,
         newCategoryOfLaw,
         newMatterType,

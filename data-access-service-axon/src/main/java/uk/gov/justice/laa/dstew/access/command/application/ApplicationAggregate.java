@@ -148,7 +148,7 @@ public class ApplicationAggregate {
               .map(
                   proceeding ->
                       new MakeDecisionProceeding(
-                          proceeding.proceedingId(), "GRANTED", null, "Autogranted"))
+                          proceeding.getId(), "GRANTED", null, "Autogranted"))
               .toList();
       effectiveCommand =
           new MakeApplicationDecisionCommand(
@@ -294,7 +294,7 @@ public class ApplicationAggregate {
     boolean enteringSubmitted =
         !"APPLICATION_SUBMITTED".equals(state.status) && "APPLICATION_SUBMITTED".equals(nextStatus);
     var updated = detailsFactory.prepare(command, current, enteringSubmitted);
-    ApplicationUpdatedEvent event = ApplicationDecider.decideUpdate(state, command, updated);
+    ApplicationUpdatedEvent event = ApplicationDecider.decideUpdate(state, command);
     applicationDataStore.append(
         applicationId,
         event.applicationDataVersion(),
