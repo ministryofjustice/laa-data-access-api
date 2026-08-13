@@ -36,10 +36,11 @@ public final class RawEventReplayer {
       throws Exception {
     for (Map<String, Object> row : rows) {
       String payloadType = (String) row.get("payload_type");
+      String payloadClassName = payloadType.substring(payloadType.lastIndexOf('.') + 1);
       byte[] payload = (byte[]) row.get("payload");
-      EventApplier<S> applier = dispatchers.get(payloadType);
+      EventApplier<S> applier = dispatchers.get(payloadClassName);
       if (applier == null) {
-        throw new IllegalArgumentException("Unknown event type: " + payloadType);
+        throw new IllegalArgumentException("Unknown event type: " + payloadClassName);
       }
       applier.apply(state, payload);
     }

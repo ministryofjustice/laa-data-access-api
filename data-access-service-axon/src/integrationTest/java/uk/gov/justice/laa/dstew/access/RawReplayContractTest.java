@@ -23,8 +23,8 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.ObjectMapper;
+import uk.gov.justice.laa.dstew.access.command.application.ApplicationAggregateUpdater;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.ApplicationEvolve;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationState;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
@@ -36,8 +36,8 @@ import uk.gov.justice.laa.dstew.access.replay.RawEventReplayer;
 
 /**
  * Contract test: verifies that events stored in {@code domain_event_entry} can be deserialised with
- * a plain Jackson {@code ObjectMapper} and that replaying them through {@link ApplicationEvolve}
- * reconstructs the correct {@link ApplicationState}.
+ * a plain Jackson {@code ObjectMapper} and that replaying them through {@link
+ * ApplicationAggregateUpdater} reconstructs the correct {@link ApplicationState}.
  */
 @Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -99,37 +99,37 @@ class RawReplayContractTest {
         rows,
         state,
         Map.of(
-            "uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent",
+            "ApplicationCreatedEvent",
                 (s, payload) ->
-                    ApplicationEvolve.apply(
+                    ApplicationAggregateUpdater.apply(
                         s, objectMapper.readValue(payload, ApplicationCreatedEvent.class)),
-            "uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent",
+            "ApplicationDecisionMadeEvent",
                 (s, payload) ->
-                    ApplicationEvolve.apply(
+                    ApplicationAggregateUpdater.apply(
                         s, objectMapper.readValue(payload, ApplicationDecisionMadeEvent.class)),
-            "uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent",
+            "ApplicationAssignedToCaseworkerEvent",
                 (s, payload) ->
-                    ApplicationEvolve.apply(
+                    ApplicationAggregateUpdater.apply(
                         s,
                         objectMapper.readValue(
                             payload, ApplicationAssignedToCaseworkerEvent.class)),
-            "uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent",
+            "ApplicationUnassignedFromCaseworkerEvent",
                 (s, payload) ->
-                    ApplicationEvolve.apply(
+                    ApplicationAggregateUpdater.apply(
                         s,
                         objectMapper.readValue(
                             payload, ApplicationUnassignedFromCaseworkerEvent.class)),
-            "uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent",
+            "NoteCreatedEvent",
                 (s, payload) ->
-                    ApplicationEvolve.apply(
+                    ApplicationAggregateUpdater.apply(
                         s, objectMapper.readValue(payload, NoteCreatedEvent.class)),
-            "uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent",
+            "ApplicationLinkedEvent",
                 (s, payload) ->
-                    ApplicationEvolve.apply(
+                    ApplicationAggregateUpdater.apply(
                         s, objectMapper.readValue(payload, ApplicationLinkedEvent.class)),
-            "uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupRequested",
+            "LinkedApplicationGroupRequested",
                 (s, payload) ->
-                    ApplicationEvolve.apply(
+                    ApplicationAggregateUpdater.apply(
                         s,
                         objectMapper.readValue(payload, LinkedApplicationGroupRequested.class))));
     return state;

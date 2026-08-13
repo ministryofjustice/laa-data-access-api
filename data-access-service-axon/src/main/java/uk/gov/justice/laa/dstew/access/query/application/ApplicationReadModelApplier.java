@@ -22,7 +22,7 @@ import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent
  * </ul>
  */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
-public final class ApplicationReadModelEvolve {
+public final class ApplicationReadModelApplier {
 
   /** Applies an {@link ApplicationCreatedEvent} to the given read model. */
   public static void apply(ApplicationReadModel model, ApplicationCreatedEvent event) {

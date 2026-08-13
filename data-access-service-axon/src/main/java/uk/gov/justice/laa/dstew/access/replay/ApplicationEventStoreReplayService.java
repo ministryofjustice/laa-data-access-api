@@ -25,7 +25,7 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationD
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupRequested;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
-import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModelEvolve;
+import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModelApplier;
 
 /** Reconstructs an Application read model through Axon's native, tag-filtered event-store API. */
 @Service
@@ -44,30 +44,30 @@ public class ApplicationEventStoreReplayService {
       Map.of(
           "ApplicationCreatedEvent",
           (model, message) ->
-              ApplicationReadModelEvolve.apply(
+              ApplicationReadModelApplier.apply(
                   model, message.payloadAs(ApplicationCreatedEvent.class)),
           "ApplicationDecisionMadeEvent",
           (model, message) ->
-              ApplicationReadModelEvolve.apply(
+              ApplicationReadModelApplier.apply(
                   model, message.payloadAs(ApplicationDecisionMadeEvent.class)),
           "ApplicationAssignedToCaseworkerEvent",
           (model, message) ->
-              ApplicationReadModelEvolve.apply(
+              ApplicationReadModelApplier.apply(
                   model, message.payloadAs(ApplicationAssignedToCaseworkerEvent.class)),
           "ApplicationUnassignedFromCaseworkerEvent",
           (model, message) ->
-              ApplicationReadModelEvolve.apply(
+              ApplicationReadModelApplier.apply(
                   model, message.payloadAs(ApplicationUnassignedFromCaseworkerEvent.class)),
           "NoteCreatedEvent",
           (model, message) ->
-              ApplicationReadModelEvolve.apply(model, message.payloadAs(NoteCreatedEvent.class)),
+              ApplicationReadModelApplier.apply(model, message.payloadAs(NoteCreatedEvent.class)),
           "ApplicationLinkedEvent",
           (model, message) ->
-              ApplicationReadModelEvolve.apply(
+              ApplicationReadModelApplier.apply(
                   model, message.payloadAs(ApplicationLinkedEvent.class)),
           "LinkedApplicationGroupRequested",
           (model, message) ->
-              ApplicationReadModelEvolve.apply(
+              ApplicationReadModelApplier.apply(
                   model, message.payloadAs(LinkedApplicationGroupRequested.class)));
 
   private final EventStore eventStore;

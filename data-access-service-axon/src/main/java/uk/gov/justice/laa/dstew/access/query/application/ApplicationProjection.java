@@ -178,7 +178,7 @@ public class ApplicationProjection {
   @EventHandler
   public void on(ApplicationCreatedEvent event, QueryUpdateEmitter queryUpdateEmitter) {
     ApplicationReadModel application = new ApplicationReadModel();
-    ApplicationReadModelEvolve.apply(application, event);
+    ApplicationReadModelApplier.apply(application, event);
     ApplicationReadModel saved = applicationReadRepository.save(application);
     queryUpdateEmitter.emit(
         FindApplicationByIdQuery.class,
@@ -193,7 +193,7 @@ public class ApplicationProjection {
         .findById(event.applicationId())
         .ifPresent(
             application -> {
-              ApplicationReadModelEvolve.apply(application, event);
+              ApplicationReadModelApplier.apply(application, event);
               applicationReadRepository.save(application);
             });
   }
@@ -228,7 +228,7 @@ public class ApplicationProjection {
         .findById(event.applicationId())
         .ifPresent(
             application -> {
-              ApplicationReadModelEvolve.apply(application, event);
+              ApplicationReadModelApplier.apply(application, event);
               ApplicationReadModel saved = applicationReadRepository.save(application);
               queryUpdateEmitter.emit(
                   FindApplicationByIdQuery.class,
@@ -244,7 +244,7 @@ public class ApplicationProjection {
         .findById(event.applicationId())
         .ifPresent(
             application -> {
-              ApplicationReadModelEvolve.apply(application, event);
+              ApplicationReadModelApplier.apply(application, event);
               applicationReadRepository.save(application);
             });
   }
@@ -256,7 +256,7 @@ public class ApplicationProjection {
         .findById(event.applicationId())
         .ifPresent(
             application -> {
-              ApplicationReadModelEvolve.apply(application, event);
+              ApplicationReadModelApplier.apply(application, event);
               applicationReadRepository.save(application);
             });
   }
@@ -268,7 +268,7 @@ public class ApplicationProjection {
         .findById(event.applicationId())
         .ifPresent(
             application -> {
-              ApplicationReadModelEvolve.apply(application, event);
+              ApplicationReadModelApplier.apply(application, event);
               applicationReadRepository.save(application);
             });
   }

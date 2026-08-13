@@ -17,12 +17,12 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationD
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupRequested;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
-import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModelEvolve;
+import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModelApplier;
 
 /**
  * Reconstructs an {@link ApplicationReadModel} directly from the raw Axon event store, bypassing
  * the Axon query API entirely. Events are read via plain JDBC, deserialised with Jackson, and
- * folded via {@link ApplicationReadModelEvolve}; the resulting persisted-column state is then
+ * folded via {@link ApplicationReadModelApplier}; the resulting persisted-column state is then
  * hydrated with its sensitive {@code application_data} payload, mirroring {@code
  * ApplicationProjection}'s query-handling logic.
  *
@@ -75,35 +75,35 @@ public class ApplicationRawReplayService {
 
   private Map<String, RawEventReplayer.EventApplier<ApplicationReadModel>> dispatchers() {
     return Map.of(
-        "uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent",
+        "ApplicationCreatedEvent",
             (m, payload) ->
-                ApplicationReadModelEvolve.apply(
+                ApplicationReadModelApplier.apply(
                     m, objectMapper.readValue(payload, ApplicationCreatedEvent.class)),
-        "uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent",
+        "ApplicationDecisionMadeEvent",
             (m, payload) ->
-                ApplicationReadModelEvolve.apply(
+                ApplicationReadModelApplier.apply(
                     m, objectMapper.readValue(payload, ApplicationDecisionMadeEvent.class)),
-        "uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent",
+        "ApplicationAssignedToCaseworkerEvent",
             (m, payload) ->
-                ApplicationReadModelEvolve.apply(
+                ApplicationReadModelApplier.apply(
                     m, objectMapper.readValue(payload, ApplicationAssignedToCaseworkerEvent.class)),
-        "uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent",
+        "ApplicationUnassignedFromCaseworkerEvent",
             (m, payload) ->
-                ApplicationReadModelEvolve.apply(
+                ApplicationReadModelApplier.apply(
                     m,
                     objectMapper.readValue(
                         payload, ApplicationUnassignedFromCaseworkerEvent.class)),
-        "uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent",
+        "NoteCreatedEvent",
             (m, payload) ->
-                ApplicationReadModelEvolve.apply(
+                ApplicationReadModelApplier.apply(
                     m, objectMapper.readValue(payload, NoteCreatedEvent.class)),
-        "uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent",
+        "ApplicationLinkedEvent",
             (m, payload) ->
-                ApplicationReadModelEvolve.apply(
+                ApplicationReadModelApplier.apply(
                     m, objectMapper.readValue(payload, ApplicationLinkedEvent.class)),
-        "uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupRequested",
+        "LinkedApplicationGroupRequested",
             (m, payload) ->
-                ApplicationReadModelEvolve.apply(
+                ApplicationReadModelApplier.apply(
                     m, objectMapper.readValue(payload, LinkedApplicationGroupRequested.class)));
   }
 
