@@ -112,7 +112,10 @@ public class GetApplicationResponseMapper {
         .matterType(
             EnumParsingUtils.convertToMatterType(applicationProceedingReadModel.matterType()))
         .levelOfService(applicationProceedingReadModel.levelOfService())
-        .substantiveCostLimitation(applicationProceedingReadModel.substantiveCostLimitation())
+        .substantiveCostLimitation(
+            applicationProceedingReadModel.substantiveCostLimitation() == null
+                ? null
+                : applicationProceedingReadModel.substantiveCostLimitation().doubleValue())
         .delegatedFunctionsDate(applicationProceedingReadModel.delegatedFunctionsDate())
         .meritsDecision(
             applicationProceedingReadModel.meritsDecision() != null
