@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import java.io.Serial;
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -14,6 +15,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.jspecify.annotations.Nullable;
+import tools.jackson.databind.annotation.JsonDeserialize;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
 /** Proceeding. Matches schema/common/Proceeding.json. */
@@ -60,9 +62,13 @@ public class Proceeding implements Serializable {
 
   @Nullable private LocalDate delegatedFunctionsDate;
 
-  @Nullable private Number delegatedFunctionsCostLimitation;
+  @Nullable
+  @JsonDeserialize(using = StringToBigDecimalDeserializer.class)
+  private BigDecimal delegatedFunctionsCostLimitation;
 
-  @Nullable private Number substantiveCostLimitation;
+  @Nullable
+  @JsonDeserialize(using = StringToBigDecimalDeserializer.class)
+  private BigDecimal substantiveCostLimitation;
 
   @Nullable private Integer substantiveLevelOfService;
 

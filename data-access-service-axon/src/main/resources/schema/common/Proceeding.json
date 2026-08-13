@@ -16,8 +16,6 @@
     "categoryOfLawCode",
     "clientInvolvementType",
     "usedDelegatedFunctions",
-    "delegatedFunctionsCostLimitation",
-    "substantiveCostLimitation",
     "substantiveLevelOfService",
     "substantiveLevelOfServiceName",
     "scopeLimitations"
@@ -77,11 +75,11 @@
       "description": "Date delegated functions were used"
     },
     "delegatedFunctionsCostLimitation": {
-      "type": "number",
+      "type": ["string", "null"],
       "description": "Delegated functions cost limitation"
     },
     "substantiveCostLimitation": {
-      "type": "number",
+      "type": ["string", "null"],
       "description": "Substantive cost limitation"
     },
     "substantiveLevelOfService": {
