@@ -28,7 +28,6 @@ import uk.gov.justice.laa.dstew.access.command.application.assignment.Applicatio
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationNote;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
@@ -96,8 +95,7 @@ public class ApplicationProjection {
               ApplicationDataPayload data =
                   applicationDataStore.get(
                       application.getApplicationId(), application.getApplicationDataVersion());
-              return new ApplicationNotesResult(
-                  data == null ? List.of() : data.notes());
+              return new ApplicationNotesResult(data == null ? List.of() : data.notes());
             })
         .orElse(null);
   }
