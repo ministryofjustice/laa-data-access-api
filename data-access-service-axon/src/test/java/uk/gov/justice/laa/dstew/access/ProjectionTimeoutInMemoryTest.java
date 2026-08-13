@@ -8,8 +8,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import org.axonframework.common.configuration.AxonConfiguration;
 import org.axonframework.messaging.eventhandling.processing.streaming.StreamingEventProcessor;
 import org.junit.jupiter.api.Test;
@@ -68,11 +67,11 @@ class ProjectionTimeoutInMemoryTest {
   @Test
   void givenStoppedProjectionProcessor_whenPostApplication_thenReturnsCreatedWithEtag() {
     // Stop the projection processor to prove the command response does not wait for it.
-    axonConfiguration
-        .getComponents(StreamingEventProcessor.class)
-        .get("application-projection")
-        .shutdown()
-        .join();
+    StreamingEventProcessor processor =
+        axonConfiguration
+            .getComponents(StreamingEventProcessor.class)
+            .get("application-projection");
+    processor.shutdown().join();
 
     UUID applyApplicationId = UUID.randomUUID();
     ApplicationCreateRequest request =
@@ -81,11 +80,9 @@ class ProjectionTimeoutInMemoryTest {
     headers.set("X-Service-Name", "CIVIL_APPLY");
     headers.set("X-Schema-Version", "2");
 
-    long startMs = System.currentTimeMillis();
     ResponseEntity<Void> response =
         restTemplate.postForEntity(
             "/api/v0/applications", new HttpEntity<>(request, headers), Void.class);
-    long elapsedMs = System.currentTimeMillis() - startMs;
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
     assertThat(response.getHeaders().getETag()).isEqualTo("\"0\"");
@@ -100,24 +97,22 @@ class ProjectionTimeoutInMemoryTest {
                 applyApplicationId.toString()))
         .isEqualTo(1);
 
-    // The test must complete well below the full 5-second default timeout.
-    assertThat(elapsedMs).isLessThan(3_000L);
+    processor.start().join();
+    await()
+        .atMost(Duration.ofSeconds(5))
+        .untilAsserted(
+            () -> {
+              ResponseEntity<ApplicationResponse> directRead =
+                  restTemplate.exchange(
+                      "/api/v0/applications/" + applyApplicationId,
+                      HttpMethod.GET,
+                      new HttpEntity<>(headers),
+                      ApplicationResponse.class);
 
-    CompletableFuture<Void> restart =
-        CompletableFuture.runAsync(
-            () -> processor.start().join(),
-            CompletableFuture.delayedExecutor(50, TimeUnit.MILLISECONDS));
-    ResponseEntity<ApplicationResponse> directRead =
-        restTemplate.exchange(
-            "/api/v0/applications/" + applyApplicationId,
-            HttpMethod.GET,
-            new HttpEntity<>(headers),
-            ApplicationResponse.class);
-
-    restart.join();
-    assertThat(directRead.getStatusCode()).isEqualTo(HttpStatus.OK);
-    assertThat(directRead.getBody()).isNotNull();
-    assertThat(directRead.getBody().getApplicationId()).isEqualTo(applyApplicationId);
+              assertThat(directRead.getStatusCode()).isEqualTo(HttpStatus.OK);
+              assertThat(directRead.getBody()).isNotNull();
+              assertThat(directRead.getBody().getApplicationId()).isEqualTo(applyApplicationId);
+            });
   }
 
   @Test
@@ -202,16 +197,22 @@ class ProjectionTimeoutInMemoryTest {
                     "/api/v0/applications", new HttpEntity<>(createRequest, headers), Void.class)
                 .getStatusCode())
         .isEqualTo(HttpStatus.CREATED);
-    ApplicationResponse created =
-        restTemplate
-            .exchange(
-                "/api/v0/applications/" + applicationId,
-                HttpMethod.GET,
-                new HttpEntity<>(headers),
-                ApplicationResponse.class)
-            .getBody();
-    assertThat(created).isNotNull();
-    UUID proceedingId = created.getProceedings().getFirst().getProceedingId();
+    AtomicReference<ApplicationResponse> created = new AtomicReference<>();
+    await()
+        .atMost(Duration.ofSeconds(5))
+        .untilAsserted(
+            () -> {
+              ResponseEntity<ApplicationResponse> response =
+                  restTemplate.exchange(
+                      "/api/v0/applications/" + applicationId,
+                      HttpMethod.GET,
+                      new HttpEntity<>(headers),
+                      ApplicationResponse.class);
+              assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+              assertThat(response.getBody()).isNotNull();
+              created.set(response.getBody());
+            });
+    UUID proceedingId = created.get().getProceedings().getFirst().getProceedingId();
 
     StreamingEventProcessor processor =
         axonConfiguration

@@ -414,6 +414,7 @@ class CreateApplicationInMemoryTest {
             new HttpEntity<>(
                 validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()),
             Void.class));
+    awaitProjection(applicationId);
     ApplicationResponse created =
         restTemplate
             .exchange(

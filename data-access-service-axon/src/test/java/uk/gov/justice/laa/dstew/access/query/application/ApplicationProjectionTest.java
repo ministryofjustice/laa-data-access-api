@@ -38,6 +38,7 @@ import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataS
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationNote;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
+import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadRepository;
@@ -191,6 +192,40 @@ class ApplicationProjectionTest {
 
     assertThat(existing.getApplicationVersion()).isEqualTo(3L);
     assertThat(existing.getApplicationDataVersion()).isEqualTo(4L);
+    assertThat(existing.getModifiedAt()).isEqualTo(occurredAt);
+    verify(queryUpdateEmitter)
+        .emit(any(Class.class), any(Predicate.class), any(ApplicationReadModel.class));
+  }
+
+  @Test
+  void givenUpdatedEvent_whenHandled_thenAdvancesStateSequenceAndEmitsUpdate() {
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-20T08:00:00Z");
+    ApplicationReadModel existing =
+        ApplicationReadModel.builder().applicationId(applicationId).build();
+    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(existing));
+    when(applicationReadRepository.save(existing)).thenReturn(existing);
+    when(eventMessage.identifier()).thenReturn("event-message-id");
+    when(eventStorePositionRepository.sequenceForEvent(applicationId, "event-message-id"))
+        .thenReturn(7L);
+
+    projection.on(
+        new ApplicationUpdatedEvent(
+            applicationId,
+            3L,
+            4L,
+            "APPLICATION_DRAFT",
+            "APPLICATION_SUBMITTED",
+            "CERTIFICATED",
+            applicationId,
+            occurredAt),
+        eventMessage,
+        queryUpdateEmitter);
+
+    assertThat(existing.getStatus()).isEqualTo("APPLICATION_SUBMITTED");
+    assertThat(existing.getApplicationVersion()).isEqualTo(3L);
+    assertThat(existing.getApplicationDataVersion()).isEqualTo(4L);
+    assertThat(existing.getAggregateSequence()).isEqualTo(7L);
     assertThat(existing.getModifiedAt()).isEqualTo(occurredAt);
     verify(queryUpdateEmitter)
         .emit(any(Class.class), any(Predicate.class), any(ApplicationReadModel.class));

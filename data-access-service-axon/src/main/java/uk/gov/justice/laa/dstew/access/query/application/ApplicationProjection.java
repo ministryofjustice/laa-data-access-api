@@ -97,7 +97,7 @@ public class ApplicationProjection {
                   applicationDataStore.get(
                       application.getApplicationId(), application.getApplicationDataVersion());
               return new ApplicationNotesResult(
-                  data == null ? List.<ApplicationNote>of() : data.notes());
+                  data == null ? List.of() : data.notes());
             })
         .orElse(null);
   }
@@ -243,11 +243,8 @@ public class ApplicationProjection {
 
   /** Advances current state to the updated immutable data and status. */
   @EventHandler
-  public void on(ApplicationUpdatedEvent event, QueryUpdateEmitter queryUpdateEmitter) {
   public void on(
-      ApplicationDecisionMadeEvent event,
-      EventMessage message,
-      QueryUpdateEmitter queryUpdateEmitter) {
+      ApplicationUpdatedEvent event, EventMessage message, QueryUpdateEmitter queryUpdateEmitter) {
     applicationReadRepository
         .findById(event.applicationId())
         .ifPresent(
