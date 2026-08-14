@@ -18,7 +18,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Validates payloads against versioned JSON Schemas loaded from the classpath. Schemas are expected
- * at {@code schema/{version}/{schemaName}}, e.g. {@code schema/1/ApplyApplication.json}.
+ * at {@code schema/{version}/{schemaName}}, e.g. {@code schema/1/BaseCivilApplication.json}.
  */
 @Component
 @RequiredArgsConstructor
@@ -28,7 +28,7 @@ public class JsonSchemaValidator {
    * Validate a payload against a named schema at the given version.
    *
    * @param payload the object to validate (e.g. {@code Map<String, Object>})
-   * @param schemaName the schema filename, e.g. {@code "ApplyApplication.json"}
+   * @param schemaName the schema filename, e.g. {@code "BaseCivilApplication.json"}
    * @param schemaVersion the version directory, e.g. {@code 1} loads from {@code schema/1/}
    * @throws ValidationException if the payload does not conform to the schema
    */

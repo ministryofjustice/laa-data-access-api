@@ -151,7 +151,7 @@ class ApplicationCreationDetailsFactoryTest {
         validApplicationContent(applicationId, proceedingIdFor(applicationId)),
         "{}",
         1,
-        "ApplyApplication.json");
+        "BaseCivilApplication.json");
   }
 
   private ParsedAppContentDetails parsedDetails() {

@@ -54,7 +54,7 @@ public class ApplicationContentSchemaCustomizer implements OpenApiCustomizer {
 
     // Register the application content schema.
     addSchemaFromClasspath(
-        components, "ApplyApplicationContentV1", "schema/1/ApplyApplication.json");
+        components, "ApplyApplicationContentV1", "schema/1/BaseCivilApplication.json");
 
     var schemas = components.getSchemas();
     if (schemas == null) {

@@ -758,7 +758,7 @@ class ApplicationAggregateTest {
         validApplicationContent(applicationId, proceedingIdFor(applicationId)),
         serialisedRequest,
         schemaVersion,
-        "ApplyApplication.json");
+        "BaseCivilApplication.json");
   }
 
   private UUID proceedingIdFor(UUID applicationId) {

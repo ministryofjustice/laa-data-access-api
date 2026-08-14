@@ -209,6 +209,6 @@ class ApplicationCommandControllerTest {
         Map.of("id", id.toString()),
         "{}",
         1,
-        "ApplyApplication.json");
+        "BaseCivilApplication.json");
   }
 }

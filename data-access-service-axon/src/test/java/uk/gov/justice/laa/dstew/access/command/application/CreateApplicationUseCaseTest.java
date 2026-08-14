@@ -83,6 +83,6 @@ class CreateApplicationUseCaseTest {
         Map.of("id", id.toString()),
         "{}",
         1,
-        "ApplyApplication.json");
+        "BaseCivilApplication.json");
   }
 }

@@ -15,7 +15,7 @@ import lombok.NoArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
-/** ApplicationContent pojo. Matches schema/1/ApplyApplication.json. */
+/** ApplicationContent pojo. Matches schema/1/BaseCivilApplication.json. */
 @Builder(toBuilder = true)
 @NoArgsConstructor
 @AllArgsConstructor

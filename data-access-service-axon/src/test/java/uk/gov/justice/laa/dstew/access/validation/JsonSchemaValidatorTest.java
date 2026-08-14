@@ -18,7 +18,9 @@ class JsonSchemaValidatorTest {
   @Test
   void givenApplyPayloadAndVersionOneSchema_whenValidate_thenAcceptsPayload() {
     validator.validate(
-        validApplicationContent(UUID.randomUUID(), UUID.randomUUID()), "ApplyApplication.json", 1);
+        validApplicationContent(UUID.randomUUID(), UUID.randomUUID()),
+        "BaseCivilApplication.json",
+        1);
   }
 
   @Test
@@ -27,7 +29,7 @@ class JsonSchemaValidatorTest {
         new HashMap<>(validApplicationContent(UUID.randomUUID(), UUID.randomUUID()));
     payload.put("unknownField", "some-value");
 
-    assertThatThrownBy(() -> validator.validate(payload, "ApplyApplication.json", 1))
+    assertThatThrownBy(() -> validator.validate(payload, "BaseCivilApplication.json", 1))
         .isInstanceOf(ValidationException.class)
         .satisfies(
             exception ->
@@ -41,7 +43,7 @@ class JsonSchemaValidatorTest {
         new HashMap<>(validApplicationContent(UUID.randomUUID(), UUID.randomUUID()));
     payload.put("id", UUID.randomUUID().toString());
 
-    assertThatThrownBy(() -> validator.validate(payload, "ApplyApplication.json", 1))
+    assertThatThrownBy(() -> validator.validate(payload, "BaseCivilApplication.json", 1))
         .isInstanceOf(ValidationException.class)
         .satisfies(
             exception ->
@@ -55,7 +57,7 @@ class JsonSchemaValidatorTest {
         new HashMap<>(validApplicationContent(UUID.randomUUID(), UUID.randomUUID()));
     payload.put("proceedings", List.of());
 
-    assertThatThrownBy(() -> validator.validate(payload, "ApplyApplication.json", 1))
+    assertThatThrownBy(() -> validator.validate(payload, "BaseCivilApplication.json", 1))
         .isInstanceOf(ValidationException.class)
         .satisfies(
             exception ->
@@ -71,7 +73,7 @@ class JsonSchemaValidatorTest {
     proceeding.remove("description");
     payload.put("proceedings", List.of(proceeding));
 
-    assertThatThrownBy(() -> validator.validate(payload, "ApplyApplication.json", 1))
+    assertThatThrownBy(() -> validator.validate(payload, "BaseCivilApplication.json", 1))
         .isInstanceOf(ValidationException.class)
         .satisfies(
             exception ->

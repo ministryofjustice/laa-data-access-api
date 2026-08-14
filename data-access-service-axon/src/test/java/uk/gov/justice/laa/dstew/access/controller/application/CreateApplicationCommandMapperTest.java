@@ -18,7 +18,7 @@ class CreateApplicationCommandMapperTest {
     UUID id = UUID.randomUUID();
     var command = mapper.toCommand(request(id), 2);
 
-    assertThat(command.schemaName()).isEqualTo("ApplyApplication.json");
+    assertThat(command.schemaName()).isEqualTo("BaseCivilApplication.json");
   }
 
   @Test
