@@ -23,6 +23,7 @@ class ServiceNameMetadataDispatchInterceptorTest {
   void givenServiceNameContext_whenCommandIsDispatched_thenAddsServiceNameMetadata() {
     ServiceNameContext context = new ServiceNameContext();
     context.setServiceName(ServiceName.fromValue("CIVIL_APPLY"));
+    context.setCorrelationId("corr-2096");
     ServiceNameMetadataDispatchInterceptor interceptor =
         new ServiceNameMetadataDispatchInterceptor(context);
     var command = new GenericCommandMessage(new MessageType(String.class), "command");
@@ -34,7 +35,9 @@ class ServiceNameMetadataDispatchInterceptorTest {
     verify(chain).proceed(intercepted.capture(), isNull());
     assertThat(intercepted.getValue().metadata())
         .containsEntry(
-            ServiceNameMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY, "CIVIL_APPLY");
+            ServiceNameMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY, "CIVIL_APPLY")
+        .containsEntry(
+            ServiceNameMetadataDispatchInterceptor.CORRELATION_ID_METADATA_KEY, "corr-2096");
   }
 
   @Test

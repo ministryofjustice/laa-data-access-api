@@ -19,7 +19,13 @@ import uk.gov.justice.laa.dstew.access.command.application.assignment.AssignCase
 import uk.gov.justice.laa.dstew.access.command.application.assignment.UnassignCaseworkerUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteUseCase;
+import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand;
+import uk.gov.justice.laa.dstew.access.command.application.ready.ReadyApplicationResult;
+import uk.gov.justice.laa.dstew.access.command.application.ready.RecordAutoGrantOutcomeUseCase;
+import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
+import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
 import uk.gov.justice.laa.dstew.access.model.CreateNoteRequest;
@@ -36,11 +42,15 @@ public class ApplicationCommandController {
   private final CreateNoteUseCase createNoteUseCase;
   private final UnassignCaseworkerUseCase unassignCaseworkerUseCase;
   private final AssignCaseworkerUseCase assignCaseworkerUseCase;
+  private final RecordAutoGrantOutcomeUseCase recordAutoGrantOutcomeUseCase;
+  private final UpdateApplicationUseCase updateApplicationUseCase;
   private final CreateApplicationCommandMapper commandMapper;
   private final MakeDecisionCommandMapper decisionCommandMapper;
   private final AssignCaseworkerRequestMapper assignCaseworkerRequestMapper;
   private final UnassignCaseworkerRequestMapper unassignCaseworkerRequestMapper;
   private final CreateNoteCommandMapper createNoteCommandMapper;
+  private final AutoGrantOutcomeCommandMapper autoGrantOutcomeCommandMapper;
+  private final UpdateApplicationCommandMapper updateApplicationCommandMapper;
 
   /** Creates the command adapter. */
   public ApplicationCommandController(
@@ -49,21 +59,29 @@ public class ApplicationCommandController {
       CreateNoteUseCase createNoteUseCase,
       UnassignCaseworkerUseCase unassignCaseworkerUseCase,
       AssignCaseworkerUseCase assignCaseworkerUseCase,
+      RecordAutoGrantOutcomeUseCase recordAutoGrantOutcomeUseCase,
+      UpdateApplicationUseCase updateApplicationUseCase,
       CreateApplicationCommandMapper commandMapper,
       MakeDecisionCommandMapper decisionCommandMapper,
       AssignCaseworkerRequestMapper assignCaseworkerRequestMapper,
       UnassignCaseworkerRequestMapper unassignCaseworkerRequestMapper,
-      CreateNoteCommandMapper createNoteCommandMapper) {
+      CreateNoteCommandMapper createNoteCommandMapper,
+      AutoGrantOutcomeCommandMapper autoGrantOutcomeCommandMapper,
+      UpdateApplicationCommandMapper updateApplicationCommandMapper) {
     this.createApplicationUseCase = createApplicationUseCase;
     this.makeDecisionUseCase = makeDecisionUseCase;
     this.createNoteUseCase = createNoteUseCase;
     this.unassignCaseworkerUseCase = unassignCaseworkerUseCase;
     this.assignCaseworkerUseCase = assignCaseworkerUseCase;
+    this.recordAutoGrantOutcomeUseCase = recordAutoGrantOutcomeUseCase;
+    this.updateApplicationUseCase = updateApplicationUseCase;
     this.commandMapper = commandMapper;
     this.decisionCommandMapper = decisionCommandMapper;
     this.assignCaseworkerRequestMapper = assignCaseworkerRequestMapper;
     this.unassignCaseworkerRequestMapper = unassignCaseworkerRequestMapper;
     this.createNoteCommandMapper = createNoteCommandMapper;
+    this.autoGrantOutcomeCommandMapper = autoGrantOutcomeCommandMapper;
+    this.updateApplicationCommandMapper = updateApplicationCommandMapper;
   }
 
   /** Assigns a caseworker to one or more Applications after validating the complete batch. */
@@ -100,6 +118,23 @@ public class ApplicationCommandController {
     return ResponseEntity.noContent().build();
   }
 
+  /** Records either terminal outcome of deciding whether an Application can be auto-granted. */
+  @PatchMapping("/{id}/auto-grant-outcome")
+  public ResponseEntity<Void> recordAutoGrantOutcome(
+      @RequestHeader("X-Service-Name") ServiceName serviceName,
+      @PathVariable UUID id,
+      @Valid @RequestBody AutoGrantOutcomeRequest request) {
+    Object command = autoGrantOutcomeCommandMapper.toCommand(id, request);
+    if (command instanceof MarkApplicationReadyCommand readyCommand) {
+      ReadyApplicationResult result = recordAutoGrantOutcomeUseCase.recordReady(readyCommand);
+      return result == ReadyApplicationResult.RECORDED
+          ? ResponseEntity.noContent().build()
+          : ResponseEntity.ok().build();
+    }
+    recordAutoGrantOutcomeUseCase.record(command);
+    return ResponseEntity.noContent().build();
+  }
+
   /** Appends a note to an existing Application. */
   @PostMapping("/{id}/notes")
   public ResponseEntity<Void> createNote(
@@ -118,7 +153,6 @@ public class ApplicationCommandController {
           int schemaVersion,
       @Valid @RequestBody ApplicationCreateRequest request) {
     CreateApplicationCommand command = commandMapper.toCommand(request, schemaVersion);
-
     URI location =
         ServletUriComponentsBuilder.fromCurrentRequest()
             .path("/{id}")
@@ -128,9 +162,18 @@ public class ApplicationCommandController {
     int i=0;
     i++;
     boolean projected = createApplicationUseCase.execute(command);
-
     return projected
         ? ResponseEntity.created(location).build()
         : ResponseEntity.accepted().location(location).build();
+  }
+
+  /** Replaces an existing Application's content and optional status. */
+  @PatchMapping("/{id}")
+  public ResponseEntity<Void> updateApplication(
+      @RequestHeader("X-Service-Name") ServiceName serviceName,
+      @PathVariable UUID id,
+      @Valid @RequestBody ApplicationUpdateRequest request) {
+    updateApplicationUseCase.execute(updateApplicationCommandMapper.toCommand(id, request));
+    return ResponseEntity.noContent().build();
   }
 }

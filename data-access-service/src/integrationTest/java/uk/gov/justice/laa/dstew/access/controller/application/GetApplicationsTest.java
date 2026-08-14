@@ -4,7 +4,6 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertBadRequest;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertContentHeaders;
@@ -54,7 +53,7 @@ public class GetApplicationsTest extends BaseHarnessTest {
   public static final String SEARCH_FIRSTNAME_PARAM = "clientFirstName=";
   public static final String SEARCH_LASTNAME_PARAM = "clientLastName=";
   public static final String SEARCH_CASEWORKERID_PARAM = "userId=";
-  public static final String SEARCH_ISAUTOGRANTED_PARAM = "isAutoGranted=";
+  public static final String SEARCH_AUTOGRANTED_PARAM = "autoGranted=";
   public static final String SEARCH_CLIENTDOB_PARAM = "clientDateOfBirth=";
   public static final String SEARCH_MATTERTYPE_PARAM = "matterType=";
   public static final String SEARCH_SORTBY_PARAM = "sortBy=";
@@ -202,7 +201,9 @@ public class GetApplicationsTest extends BaseHarnessTest {
     ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
 
     // then
-    assertNull(actual.getApplications().getFirst().getAutoGrant());
+    assertEquals(
+        uk.gov.justice.laa.dstew.access.model.AutoGranted.PENDING,
+        actual.getApplications().getFirst().getAutoGranted());
   }
 
   @Test
@@ -1076,11 +1077,12 @@ public class GetApplicationsTest extends BaseHarnessTest {
   }
 
   @ParameterizedTest
-  @ValueSource(booleans = {true, false})
+  @ValueSource(strings = {"AUTOGRANTED", "MANUAL"})
   public void
       givenApplicationFilteredByAutoGrant_whenGetApplications_thenReturnExpectedApplicationsCorrectly(
-          boolean isAutoGranted) throws Exception {
+          String autoGranted) throws Exception {
     // given
+    boolean isAutoGranted = "AUTOGRANTED".equals(autoGranted);
     List<ApplicationEntity> expectedApplications =
         persistedDataGenerator.createAndPersistMultiple(
             ApplicationEntityGenerator.class, 4, builder -> builder.isAutoGranted(isAutoGranted));
@@ -1091,8 +1093,7 @@ public class GetApplicationsTest extends BaseHarnessTest {
 
     // when
     HarnessResult result =
-        getUri(
-            TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_ISAUTOGRANTED_PARAM + isAutoGranted);
+        getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_AUTOGRANTED_PARAM + autoGranted);
     ApplicationSummaryResponse actual = deserialise(result, ApplicationSummaryResponse.class);
     // then
     assertContentHeaders(result);
@@ -1109,8 +1110,7 @@ public class GetApplicationsTest extends BaseHarnessTest {
       givenApplicationFilteredByAutoGrant_whenGetApplicationsAndInvalidFormat_thenReturnBadRequest()
           throws Exception {
     HarnessResult result =
-        getUri(
-            TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_ISAUTOGRANTED_PARAM + "something");
+        getUri(TestConstants.URIs.GET_APPLICATIONS + "?" + SEARCH_AUTOGRANTED_PARAM + "something");
     assertBadRequest(result);
   }
 
@@ -1409,7 +1409,8 @@ public class GetApplicationsTest extends BaseHarnessTest {
         applicationEntity.getCaseworker() != null
             ? applicationEntity.getCaseworker().getId()
             : null);
-    applicationSummary.autoGrant(applicationEntity.getIsAutoGranted());
+    applicationSummary.autoGranted(
+        AutoGrantedMapper.fromLegacyFlag(applicationEntity.getIsAutoGranted()));
     applicationSummary.setLaaReference(applicationEntity.getLaaReference());
     applicationSummary.setApplicationType(ApplicationType.INITIAL);
     applicationSummary.setClientFirstName(

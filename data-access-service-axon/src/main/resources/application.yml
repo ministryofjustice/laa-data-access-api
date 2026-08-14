@@ -22,7 +22,9 @@ spring:
       mode: never # Use Flyway for DB schema.
   cloud:
     aws:
-      region: ${AWS_REGION}
+      region:
+        static: ${AWS_REGION:eu-west-2}
+      endpoint: ${AWS_ENDPOINT_URL:}
   security:
     oauth2:
       resourceserver:
@@ -47,6 +49,10 @@ axon:
 application:
   projection:
     timeout: 5s
+  assessment:
+    reconciliation:
+      threshold: ${ASSESSMENT_RECONCILIATION_THRESHOLD:15m}
+      interval: ${ASSESSMENT_RECONCILIATION_INTERVAL:5m}
 
 logging:
   level:
@@ -54,7 +60,10 @@ logging:
     uk.gov.justice.laa.dstew.access.config.SecurityConfig: WARN
 
 management:
-  endpoints.web.exposure.include: health,info,prometheus,metrics
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
   endpoint.health.show-details: always
   info.env.enabled: true
 

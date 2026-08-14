@@ -16,7 +16,7 @@ public record GetAllApplicationsQuery(
     String clientLastName,
     LocalDate clientDateOfBirth,
     UUID userId,
-    Boolean isAutoGranted,
+    String autoGranted,
     String matterType,
     String sortBy,
     String orderBy,

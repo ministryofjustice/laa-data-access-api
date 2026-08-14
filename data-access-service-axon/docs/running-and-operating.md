@@ -57,6 +57,52 @@ Flyway creates and validates the `axon` schema during startup. Swagger UI is ava
 module's Springdoc configuration at `http://localhost:8082/swagger-ui/index.html` once the service
 is healthy.
 
+To run the Axon service with its local SNS topic and verification queue, include LocalStack and
+explicitly enable the optional publisher:
+
+```bash
+DATA_ACCESS_EVENTS_TOPIC_ARN=arn:aws:sns:eu-west-2:000000000000:data-access-events \
+AWS_ENDPOINT_URL=http://localstack:4566 \
+docker compose -f docker-compose.axon.yml -f docker-compose.localstack.yml up -d --build
+```
+
+The publisher remains disabled when no topic ARN is supplied, so the Axon-only Compose stack does
+not depend on a LocalStack hostname. In UAT, where the Cloud Platform resources currently exist,
+the chart reads the topic ARN from the `data-access-events-sns-topic` secret and runs as the
+`laa-data-access-uat-irsa` service account. `AWS_ENDPOINT_URL` and static credentials remain unset,
+so the AWS SDK default credentials provider uses web-identity credentials. Enable the same chart
+switch in later environments only after their equivalent topic, secret, policy, and IRSA service
+account have been provisioned.
+
+Run the producer delivery test with Docker available:
+
+```bash
+./gradlew :data-access-service-axon:integrationTest \
+  --tests '*ApplicationSubmittedLocalStackIntegrationTest'
+```
+
+An SNS failure after commit is logged as `Failed to publish ApplicationSubmitted event after
+commit` with the event, Application, and correlation identifiers. This is an accepted missed-
+trigger risk: the Application remains committed and later reconciliation must detect it.
+
+The read-only reconciliation runs every five minutes by default and reports submitted Applications
+whose `autoGrant` remains null after 15 minutes. Override these independently with
+`ASSESSMENT_RECONCILIATION_INTERVAL` and `ASSESSMENT_RECONCILIATION_THRESHOLD`. It queries the
+replayable Application projection through Axon's query gateway; it never publishes, assesses, or
+updates an Application. Inspect:
+
+- `application_assessment_stalled` and `application_assessment_oldest_age_seconds` for genuine
+  unassessed-Application backlog;
+- `application_assessment_reconciliation_fresh` to confirm those reconciliation gauges came from
+  the latest scheduled query;
+- `axon_event_processor_running`, `axon_event_processor_error`, and
+  `axon_event_processor_caught_up` for projection health;
+- `application_submitted_publication_total{outcome="success|failure"}` for direct SNS publication.
+
+These metrics are exposed at `/actuator/prometheus`. Treat a lagging or failed
+`application-projection` processor as a stale reconciliation source before investigating a
+reported Application as a missed publication.
+
 ## Build and test
 
 The normal repository build runs compilation, packaging, standard unit/in-memory tests, Checkstyle,

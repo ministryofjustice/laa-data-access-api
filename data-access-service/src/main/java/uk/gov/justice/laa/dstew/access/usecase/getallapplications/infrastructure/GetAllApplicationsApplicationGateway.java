@@ -29,7 +29,7 @@ public interface GetAllApplicationsApplicationGateway {
       LocalDate clientDateOfBirth,
       UUID userId,
       String matterType,
-      Boolean isAutoGranted,
+      String autoGranted,
       String sortBy,
       String orderBy,
       Integer page,

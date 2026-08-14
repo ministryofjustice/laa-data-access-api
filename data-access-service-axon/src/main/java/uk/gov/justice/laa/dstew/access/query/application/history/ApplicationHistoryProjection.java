@@ -18,6 +18,7 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationD
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
 import uk.gov.justice.laa.dstew.access.config.interceptor.ServiceNameMetadataDispatchInterceptor;
 
 /** Independently replayable, append-only audit projection of Application events. */
@@ -51,6 +52,17 @@ public class ApplicationHistoryProjection {
         message,
         event.applicationId(),
         "APPLICATION_CREATED",
+        serialise(event),
+        event.occurredAt());
+  }
+
+  /** Appends an audit entry when an Application is updated. */
+  @EventHandler
+  public void on(ApplicationUpdatedEvent event, EventMessage message) {
+    append(
+        message,
+        event.applicationId(),
+        "APPLICATION_UPDATED",
         serialise(event),
         event.occurredAt());
   }

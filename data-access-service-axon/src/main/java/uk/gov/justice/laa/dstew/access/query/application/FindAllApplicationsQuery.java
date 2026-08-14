@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.query.application;
 
 import java.time.LocalDate;
+import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.query.PaginationHelper;
 
 /**
@@ -18,10 +19,37 @@ public record FindAllApplicationsQuery(
     String clientFirstName,
     String clientLastName,
     LocalDate clientDateOfBirth,
+    AutoGrantedState autoGranted,
     String sortBy,
     String orderBy,
     Integer page,
     Integer pageSize) {
+
+  /** Backwards-compatible constructor for callers that do not filter by auto-grant outcome. */
+  public FindAllApplicationsQuery(
+      String status,
+      String laaReference,
+      String matterType,
+      String clientFirstName,
+      String clientLastName,
+      LocalDate clientDateOfBirth,
+      String sortBy,
+      String orderBy,
+      Integer page,
+      Integer pageSize) {
+    this(
+        status,
+        laaReference,
+        matterType,
+        clientFirstName,
+        clientLastName,
+        clientDateOfBirth,
+        null,
+        sortBy,
+        orderBy,
+        page,
+        pageSize);
+  }
 
   /** Resolves defaults and validates the shared pagination constraints. */
   public FindAllApplicationsQuery {

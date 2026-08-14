@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.command;
 
 import java.sql.SQLException;
+import java.util.function.Supplier;
 import org.axonframework.eventsourcing.eventstore.AppendEventsTransactionRejectedException;
 import org.axonframework.messaging.commandhandling.gateway.CommandGateway;
 import org.axonframework.modelling.ConcurrencyException;
@@ -28,14 +29,25 @@ public class RetryingCommandDispatcher {
 
   /** Dispatches the command, retrying once on concurrent-write failures. */
   public void dispatch(Object command) {
+    dispatch(() -> commandGateway.sendAndWait(command));
+  }
+
+  /**
+   * Dispatches the command and returns its response, retrying once on concurrent-write failures.
+   */
+  public <R> R dispatch(Object command, Class<R> responseType) {
+    return dispatch(() -> commandGateway.sendAndWait(command, responseType));
+  }
+
+  private <R> R dispatch(Supplier<R> dispatch) {
     try {
-      commandGateway.sendAndWait(command);
+      return dispatch.get();
     } catch (RuntimeException first) {
       if (!isRetryableConcurrentWrite(first)) {
         throw first;
       }
       try {
-        commandGateway.sendAndWait(command);
+        return dispatch.get();
       } catch (RuntimeException retry) {
         retry.addSuppressed(first);
         throw retry;

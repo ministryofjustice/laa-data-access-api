@@ -22,9 +22,15 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.MakeDecision
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupRequested;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand;
+import uk.gov.justice.laa.dstew.access.command.application.ready.ReadyApplicationResult;
+import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationCommand;
+import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationGroupInvariantException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException;
+import uk.gov.justice.laa.dstew.access.exception.InvalidApplicationStateException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
@@ -87,7 +93,8 @@ public final class ApplicationDecider {
       MakeApplicationDecisionCommand command,
       ApplicationDataPayload current) {
 
-    if (command.expectedApplicationVersion() != state.applicationVersion) {
+    if (!command.fromAutoGrantOutcome()
+        && command.expectedApplicationVersion() != state.applicationVersion) {
       throw new ApplicationVersionConflictException(
           command.applicationId(), command.expectedApplicationVersion());
     }
@@ -108,13 +115,27 @@ public final class ApplicationDecider {
           "No proceeding found with id: "
               + unknownProceedingIds.stream().map(UUID::toString).collect(Collectors.joining(",")));
     }
+    if (command.fromAutoGrantOutcome()) {
+      if (!"GRANTED".equals(command.overallDecision())) {
+        throw new ValidationException(
+            List.of("An AUTOGRANTED outcome must have overallDecision GRANTED"));
+      }
+      Set<UUID> decidedProceedingIds =
+          command.proceedings().stream()
+              .map(MakeDecisionProceeding::proceedingId)
+              .collect(Collectors.toSet());
+      if (!decidedProceedingIds.equals(linkedProceedingIds)) {
+        throw new ValidationException(
+            List.of("An AUTOGRANTED outcome must decide every Application proceeding"));
+      }
+    }
 
     return new ApplicationDecisionMadeEvent(
         state.applicationId,
         state.applicationVersion + 1,
         state.applicationDataVersion + 1,
         command.overallDecision(),
-        command.autoGranted(),
+        AutoGrantedState.fromDecisionFlag(command.autoGranted()),
         command.occurredAt());
   }
 
@@ -150,6 +171,43 @@ public final class ApplicationDecider {
   public static NoteCreatedEvent decideNote(ApplicationState state, CreateNoteCommand command) {
     return new NoteCreatedEvent(
         state.applicationId, state.applicationDataVersion + 1, command.occurredAt());
+  }
+
+  /** Validates an idempotent transition to manual-assessment readiness. */
+  public static ReadyApplicationResult decideReady(
+      ApplicationState state, MarkApplicationReadyCommand command) {
+    if (state.autoGranted == AutoGrantedState.MANUAL) {
+      return ReadyApplicationResult.ALREADY_RECORDED;
+    }
+    if (state.autoGranted == AutoGrantedState.AUTOGRANTED) {
+      throw new ApplicationAutoGrantOutcomeConflictException(command.applicationId());
+    }
+    if (!"APPLICATION_SUBMITTED".equals(state.status)) {
+      throw new InvalidApplicationStateException(command.applicationId(), state.status);
+    }
+    if (command.expectedApplicationVersion() != null
+        && command.expectedApplicationVersion() != state.applicationVersion) {
+      throw new ApplicationVersionConflictException(
+          command.applicationId(), command.expectedApplicationVersion());
+    }
+    return ReadyApplicationResult.RECORDED;
+  }
+
+  /** Returns the next replayable state transition for an Application update. */
+  public static ApplicationUpdatedEvent decideUpdate(
+      ApplicationState state,
+      UpdateApplicationCommand command,
+      ApplicationDataPayload updatedData) {
+    String nextStatus = command.status() == null ? state.status : command.status();
+    return new ApplicationUpdatedEvent(
+        state.applicationId,
+        state.applicationVersion + 1,
+        state.applicationDataVersion + 1,
+        state.status,
+        nextStatus,
+        state.applicationType,
+        updatedData.applyApplicationId(),
+        command.occurredAt());
   }
 
   private static void validateDecision(MakeApplicationDecisionCommand command) {

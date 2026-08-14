@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationNotesResponse;
@@ -26,6 +27,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
+import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationNotesResult;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsQuery;
@@ -45,6 +47,7 @@ public class ApplicationQueryController {
   private final GetAllApplicationsResponseMapper getAllResponseMapper;
   private final GetApplicationHistoryResponseMapper historyResponseMapper;
   private final GetAllNotesForApplicationResponseMapper notesResponseMapper;
+  private final SubscriptionProjectionGateway projectionGateway;
 
   /**
    * Constructs the controller with its query gateway and response mappers.
@@ -66,21 +69,24 @@ public class ApplicationQueryController {
       GetApplicationResponseMapper responseMapper,
       GetAllApplicationsResponseMapper getAllResponseMapper,
       GetApplicationHistoryResponseMapper historyResponseMapper,
-      GetAllNotesForApplicationResponseMapper notesResponseMapper) {
+      GetAllNotesForApplicationResponseMapper notesResponseMapper,
+      SubscriptionProjectionGateway projectionGateway) {
     this.queryGateway = queryGateway;
     this.responseMapper = responseMapper;
     this.getAllResponseMapper = getAllResponseMapper;
     this.historyResponseMapper = historyResponseMapper;
     this.notesResponseMapper = notesResponseMapper;
+    this.projectionGateway = projectionGateway;
   }
 
   /**
    * Returns a paginated, filtered list of Application summaries.
    *
-   * <p>Filters on {@code status}, {@code laaReference}, and {@code matterType} are applied. {@code
-   * clientFirstName}, {@code clientLastName}, {@code clientDateOfBirth}, and {@code userId} are
-   * accepted for API compatibility but not yet used as filters — a future migration will
-   * denormalise client fields from the {@code individuals} JSON column to enable them.
+   * <p>Filters on {@code status}, {@code laaReference}, {@code matterType}, and {@code autoGranted}
+   * are applied. {@code clientFirstName}, {@code clientLastName}, {@code clientDateOfBirth}, and
+   * {@code userId} are accepted for API compatibility but not yet used as filters — a future
+   * migration will denormalise client fields from the {@code individuals} JSON column to enable
+   * them.
    */
   @GetMapping
   public ResponseEntity<ApplicationSummaryResponse> getApplications(
@@ -90,6 +96,7 @@ public class ApplicationQueryController {
       @RequestParam(required = false) String clientLastName,
       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
           LocalDate clientDateOfBirth,
+      @RequestParam(required = false) uk.gov.justice.laa.dstew.access.model.AutoGranted autoGranted,
       @RequestParam(required = false) MatterType matterType,
       @RequestParam(required = false) ApplicationSortBy sortBy,
       @RequestParam(required = false) ApplicationOrderBy orderBy,
@@ -105,6 +112,7 @@ public class ApplicationQueryController {
                     clientFirstName,
                     clientLastName,
                     clientDateOfBirth,
+                    autoGranted == null ? null : AutoGrantedState.valueOf(autoGranted.name()),
                     sortBy == null ? null : sortBy.name(),
                     orderBy == null ? null : orderBy.name(),
                     page,
@@ -118,7 +126,7 @@ public class ApplicationQueryController {
   @GetMapping("/{id}")
   public ResponseEntity<ApplicationResponse> getApplicationById(@PathVariable UUID id) {
     ApplicationReadModel application =
-        findApplication(id)
+        findApplicationAwaitingProjection(id)
             .orElseThrow(
                 () -> new ResourceNotFoundException("No application found with ID: " + id));
     return ResponseEntity.ok(responseMapper.toResponse(application));
@@ -169,6 +177,11 @@ public class ApplicationQueryController {
             .orElseThrow(
                 () -> new ResourceNotFoundException("No application found with ID: " + id));
     return ResponseEntity.ok(response);
+  }
+
+  private Optional<ApplicationReadModel> findApplicationAwaitingProjection(UUID applicationId) {
+    return projectionGateway.findProjection(
+        new FindApplicationByIdQuery(applicationId), ApplicationReadModel.class);
   }
 
   private Optional<ApplicationReadModel> findApplication(UUID applicationId) {

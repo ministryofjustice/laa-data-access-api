@@ -2,7 +2,9 @@ package uk.gov.justice.laa.dstew.access.query.application.listindex;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import jakarta.persistence.criteria.CriteriaBuilder;
@@ -15,6 +17,7 @@ import java.time.LocalDate;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.jpa.domain.Specification;
+import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsQuery;
 
 class ApplicationListIndexSpecificationTest {
@@ -58,7 +61,7 @@ class ApplicationListIndexSpecificationTest {
 
     assertThat(result).isNotNull();
     // cb.and() was called with an empty array — the AND of zero predicates
-    org.mockito.Mockito.verify(cb).and(new Predicate[0]);
+    verify(cb).and(new Predicate[0]);
   }
 
   @Test
@@ -69,8 +72,8 @@ class ApplicationListIndexSpecificationTest {
 
     ApplicationListIndexSpecification.from(query).toPredicate(root, criteriaQuery, cb);
 
-    org.mockito.Mockito.verify(root).get("status");
-    org.mockito.Mockito.verify(cb).equal(any(), org.mockito.Mockito.eq("APPLICATION_SUBMITTED"));
+    verify(root).get("status");
+    verify(cb).equal(any(), eq("APPLICATION_SUBMITTED"));
   }
 
   @Test
@@ -80,8 +83,8 @@ class ApplicationListIndexSpecificationTest {
 
     ApplicationListIndexSpecification.from(query).toPredicate(root, criteriaQuery, cb);
 
-    org.mockito.Mockito.verify(root).get("laaReference");
-    org.mockito.Mockito.verify(cb).equal(any(), org.mockito.Mockito.eq("LAA-123"));
+    verify(root).get("laaReference");
+    verify(cb).equal(any(), eq("LAA-123"));
   }
 
   @Test
@@ -91,8 +94,8 @@ class ApplicationListIndexSpecificationTest {
 
     ApplicationListIndexSpecification.from(query).toPredicate(root, criteriaQuery, cb);
 
-    org.mockito.Mockito.verify(root).get("matterType");
-    org.mockito.Mockito.verify(cb).equal(any(), org.mockito.Mockito.eq("MEDIATION"));
+    verify(root).get("matterType");
+    verify(cb).equal(any(), eq("MEDIATION"));
   }
 
   @Test
@@ -102,9 +105,9 @@ class ApplicationListIndexSpecificationTest {
 
     ApplicationListIndexSpecification.from(query).toPredicate(root, criteriaQuery, cb);
 
-    org.mockito.Mockito.verify(root).get("clientFirstName");
-    org.mockito.Mockito.verify(cb).lower(any());
-    org.mockito.Mockito.verify(cb).like(any(Expression.class), org.mockito.Mockito.eq("jane%"));
+    verify(root).get("clientFirstName");
+    verify(cb).lower(any());
+    verify(cb).like(any(Expression.class), eq("jane%"));
   }
 
   @Test
@@ -114,9 +117,9 @@ class ApplicationListIndexSpecificationTest {
 
     ApplicationListIndexSpecification.from(query).toPredicate(root, criteriaQuery, cb);
 
-    org.mockito.Mockito.verify(root).get("clientLastName");
-    org.mockito.Mockito.verify(cb).lower(any());
-    org.mockito.Mockito.verify(cb).like(any(Expression.class), org.mockito.Mockito.eq("smith%"));
+    verify(root).get("clientLastName");
+    verify(cb).lower(any());
+    verify(cb).like(any(Expression.class), eq("smith%"));
   }
 
   @Test
@@ -127,8 +130,20 @@ class ApplicationListIndexSpecificationTest {
 
     ApplicationListIndexSpecification.from(query).toPredicate(root, criteriaQuery, cb);
 
-    org.mockito.Mockito.verify(root).get("clientDateOfBirth");
-    org.mockito.Mockito.verify(cb).equal(any(), org.mockito.Mockito.eq(dob));
+    verify(root).get("clientDateOfBirth");
+    verify(cb).equal(any(), eq(dob));
+  }
+
+  @Test
+  void givenAutoGrantedFilter_whenBuilt_thenAddsEqualPredicate() {
+    FindAllApplicationsQuery query =
+        new FindAllApplicationsQuery(
+            null, null, null, null, null, null, AutoGrantedState.MANUAL, null, null, 1, 20);
+
+    ApplicationListIndexSpecification.from(query).toPredicate(root, criteriaQuery, cb);
+
+    verify(root).get("autoGranted");
+    verify(cb).equal(any(), eq(AutoGrantedState.MANUAL));
   }
 
   @Test
@@ -149,9 +164,9 @@ class ApplicationListIndexSpecificationTest {
     ApplicationListIndexSpecification.from(query).toPredicate(root, criteriaQuery, cb);
 
     // Three filters: status, laaReference, matterType + clientLastName = 4 predicates
-    org.mockito.Mockito.verify(cb).equal(any(), org.mockito.Mockito.eq("APPLICATION_SUBMITTED"));
-    org.mockito.Mockito.verify(cb).equal(any(), org.mockito.Mockito.eq("LAA-123"));
-    org.mockito.Mockito.verify(cb).equal(any(), org.mockito.Mockito.eq("MEDIATION"));
-    org.mockito.Mockito.verify(cb).like(any(Expression.class), org.mockito.Mockito.eq("smith%"));
+    verify(cb).equal(any(), eq("APPLICATION_SUBMITTED"));
+    verify(cb).equal(any(), eq("LAA-123"));
+    verify(cb).equal(any(), eq("MEDIATION"));
+    verify(cb).like(any(Expression.class), eq("smith%"));
   }
 }
