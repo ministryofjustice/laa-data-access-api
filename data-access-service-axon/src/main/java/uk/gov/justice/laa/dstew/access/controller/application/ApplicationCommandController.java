@@ -159,8 +159,7 @@ public class ApplicationCommandController {
             .buildAndExpand(command.applicationId())
             .toUri();
 
-    int i=0;
-    i++;
+    int i = 0;
     boolean projected = createApplicationUseCase.execute(command);
     return projected
         ? ResponseEntity.created(location).build()
