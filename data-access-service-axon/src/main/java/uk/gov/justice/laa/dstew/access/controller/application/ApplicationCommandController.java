@@ -126,6 +126,7 @@ public class ApplicationCommandController {
             .toUri();
 
     int i=0;
+    i++;
     boolean projected = createApplicationUseCase.execute(command);
 
     return projected
