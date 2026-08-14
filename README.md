@@ -9,7 +9,7 @@ Source code for LAA Digital's Access Data Stewardship API, owned by the Access D
 
 This API will provide a trusted API source of truth for the Civil Applications and Civil Decide projects for data
 related to applications, proceedings, delegated functions, scope limitations, cost limitations and level of service.
-
+ 
 ### Monitoring (Prometheus & Grafana)
 
 See `docs/monitoring.md` for details on how application metrics are collected, scraped by Prometheus, and visualised in Grafana dashboards.
