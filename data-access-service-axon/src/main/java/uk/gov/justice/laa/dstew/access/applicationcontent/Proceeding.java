@@ -58,6 +58,8 @@ public class Proceeding implements Serializable {
 
   @Nullable private String clientInvolvementType;
 
+  @Nullable private String clientInvolvementTypeCode;
+
   private @Nullable Boolean usedDelegatedFunctions;
 
   @Nullable private LocalDate delegatedFunctionsDate;

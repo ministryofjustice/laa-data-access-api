@@ -60,7 +60,11 @@
     },
     "clientInvolvementType": {
       "type": "string",
-      "description": "Client involvement type"
+      "description": "Client involvement type description as sent by Apply"
+    },
+    "clientInvolvementTypeCode": {
+      "type": ["string", "null"],
+      "description": "Client involvement type CCMS code from legal framework"
     },
     "usedDelegatedFunctions": {
       "type": "boolean",
