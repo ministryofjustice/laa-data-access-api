@@ -28,6 +28,7 @@ import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRe
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.context.annotation.Import;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.env.Environment;
 import org.springframework.http.HttpEntity;
@@ -69,10 +70,12 @@ import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuer
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
+import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 
 @Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureTestRestTemplate
+@Import(TestJwtDecoderConfig.class)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class PostgresAxonIntegrationTest {
 
@@ -1249,6 +1252,7 @@ class PostgresAxonIntegrationTest {
     HttpHeaders headers = new HttpHeaders();
     headers.set("X-Service-Name", "CIVIL_APPLY");
     headers.set("X-Schema-Version", String.valueOf(schemaVersion));
+    headers.setBearerAuth(TestJwtDecoderConfig.BEARER_TOKEN);
     return headers;
   }
 

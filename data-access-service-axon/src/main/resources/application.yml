@@ -28,8 +28,6 @@ spring:
       resourceserver:
         jwt:
           issuer-uri: ${ENTRA_ISSUER_URI}
-          jwk-set-uri: ${ENTRA_JWK_SET_URI}
-          audience: ${ENTRA_AUD}
 
 axon:
   axonserver:
@@ -48,10 +46,28 @@ application:
   projection:
     timeout: 5s
 
+laa:
+  springboot:
+    starter:
+      oauth2:
+        resourceserver:
+          jwt:
+            tenants:
+              - issuer-uri: ${ENTRA_ISSUER_URI}
+                audiences:
+                  - ${ENTRA_AUD}
+        authorized-roles: '[{"name": "LAA_CASEWORKER", "uris": ["/api/**"]}]'
+        unprotected-uris:
+          - /actuator/health
+          - /actuator/info
+          - /actuator/prometheus
+          - /actuator/metrics/**
+          - /swagger-ui/**
+          - /v3/api-docs/**
+
 logging:
   level:
     com.azure.spring: INFO
-    uk.gov.justice.laa.dstew.access.config.SecurityConfig: WARN
 
 management:
   endpoints.web.exposure.include: health,info,prometheus,metrics
@@ -61,3 +77,6 @@ management:
 springdoc:
   api-docs:
     version: openapi_3_1
+
+feature:
+  disable-security: ${FEATURE_DISABLE_SECURITY:false}

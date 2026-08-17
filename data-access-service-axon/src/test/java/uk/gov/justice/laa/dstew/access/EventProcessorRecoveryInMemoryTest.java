@@ -33,6 +33,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
+import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 
 /** Verifies replay and transient-failure recovery using real tracking event processors. */
 @SpringBootTest(
@@ -46,7 +47,7 @@ import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedAppli
       "spring.datasource.url=jdbc:h2:mem:axon-recovery;DB_CLOSE_DELAY=-1"
     })
 @AutoConfigureTestRestTemplate
-@Import(EventProcessorRecoveryInMemoryTest.RecoveryConfig.class)
+@Import({EventProcessorRecoveryInMemoryTest.RecoveryConfig.class, TestJwtDecoderConfig.class})
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class EventProcessorRecoveryInMemoryTest {
 
@@ -68,6 +69,7 @@ class EventProcessorRecoveryInMemoryTest {
     HttpHeaders headers = new HttpHeaders();
     headers.set("X-Service-Name", "CIVIL_APPLY");
     headers.set("X-Schema-Version", "2");
+    headers.setBearerAuth(TestJwtDecoderConfig.BEARER_TOKEN);
     assertThat(
             restTemplate
                 .postForEntity(

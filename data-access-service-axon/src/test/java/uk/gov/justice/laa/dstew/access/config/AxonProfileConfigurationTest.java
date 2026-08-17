@@ -75,11 +75,15 @@ class AxonProfileConfigurationTest {
 
   private static void assertEnvironmentIntegrationProperties(List<PropertySource<?>> properties) {
     assertThat(property(properties, "spring.cloud.aws.region")).isEqualTo("${AWS_REGION}");
-    assertThat(property(properties, "spring.security.oauth2.resourceserver.jwt.issuer-uri"))
+    assertThat(
+            property(
+                properties,
+                "laa.springboot.starter.oauth2.resourceserver.jwt.tenants[0].issuer-uri"))
         .isEqualTo("${ENTRA_ISSUER_URI}");
-    assertThat(property(properties, "spring.security.oauth2.resourceserver.jwt.jwk-set-uri"))
-        .isEqualTo("${ENTRA_JWK_SET_URI}");
-    assertThat(property(properties, "spring.security.oauth2.resourceserver.jwt.audience"))
+    assertThat(
+            property(
+                properties,
+                "laa.springboot.starter.oauth2.resourceserver.jwt.tenants[0].audiences[0]"))
         .isEqualTo("${ENTRA_AUD}");
   }
 

@@ -18,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -40,6 +41,7 @@ import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuer
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
+import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 
 @SpringBootTest(
     classes = DataAccessServiceAxonApplication.class,
@@ -52,6 +54,7 @@ import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedAppli
       "spring.datasource.url=jdbc:h2:mem:axon-create;DB_CLOSE_DELAY=-1"
     })
 @AutoConfigureTestRestTemplate
+@Import(TestJwtDecoderConfig.class)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class CreateApplicationInMemoryTest {
 
@@ -143,12 +146,17 @@ class CreateApplicationInMemoryTest {
   }
 
   @Test
-  void givenMissingServiceName_whenGetApplicationHistory_thenReturnsBadRequest() {
+  void givenMissingServiceName_whenGetApplicationHistory_thenReturnsForbidden() {
+    HttpHeaders headers = new HttpHeaders();
+    headers.setBearerAuth(TestJwtDecoderConfig.BEARER_TOKEN);
     ResponseEntity<String> response =
-        restTemplate.getForEntity(
-            "/api/v0/applications/" + UUID.randomUUID() + "/history-search", String.class);
+        restTemplate.exchange(
+            "/api/v0/applications/" + UUID.randomUUID() + "/history-search",
+            HttpMethod.GET,
+            new HttpEntity<>(headers),
+            String.class);
 
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
   }
 
   @Test
@@ -625,6 +633,7 @@ class CreateApplicationInMemoryTest {
     HttpHeaders headers = new HttpHeaders();
     headers.set("X-Service-Name", "CIVIL_APPLY");
     headers.set("X-Schema-Version", "2");
+    headers.setBearerAuth(TestJwtDecoderConfig.BEARER_TOKEN);
     return headers;
   }
 
