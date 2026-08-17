@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "eventType",
+    "schemaVersion",
+    "eventId",
+    "occurredAt",
+    "source",
+    "correlationId",
+    "data"
+  ],
+  "properties": {
+    "eventType": { "const": "ApplicationSubmitted" },
+    "schemaVersion": { "const": 1 },
+    "eventId": { "type": "string", "format": "uuid" },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "source": { "const": "laa-data-access-api" },
+    "correlationId": { "type": "string", "minLength": 1 },
+    "data": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["applicationId", "applyApplicationId", "applicationVersion"],
+      "properties": {
+        "applicationId": { "type": "string", "format": "uuid" },
+        "applyApplicationId": { "type": "string", "format": "uuid" },
+        "laaReference": { "type": ["string", "null"] },
+        "applicationVersion": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

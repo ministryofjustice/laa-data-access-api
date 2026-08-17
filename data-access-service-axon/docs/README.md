@@ -36,6 +36,7 @@ experience should follow the learning path below before using the documents as a
 | [Sequence diagrams](sequence-diagrams/README.md) | Step-by-step application creation and linking flows |
 | [Architecture decisions](adr/README.md) | Why significant design choices were made and when they should be revisited |
 | [Example payloads](example-payloads.md) | Worked request/response examples for every endpoint |
+| [ApplicationSubmitted integration event](application-submitted-integration-event.md) | Producer trigger, v1 SNS contract, delivery guarantee, and operations |
 
 ## Useful code entry points
 
@@ -43,6 +44,7 @@ experience should follow the learning path below before using the documents as a
 - `ApplicationAggregate` owns the state and rules of one application.
 - `LinkedApplicationGroupAggregate` owns the lead and membership of a linked group.
 - `ApplicationGroupEventRouter` validates linked applications synchronously.
+- `ApplicationSubmittedEventRouter` schedules live-only SNS publication after command commit.
 - `LinkedApplicationGroupInitializer` creates or extends the group after the request event commits.
 - `ApplicationDataStore` reads and appends immutable sensitive-data versions.
 - `ApplicationProjection` and `ApplicationHistoryProjection` build query-side views.

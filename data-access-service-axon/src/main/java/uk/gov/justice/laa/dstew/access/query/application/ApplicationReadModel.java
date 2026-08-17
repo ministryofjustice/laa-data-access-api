@@ -16,6 +16,7 @@ import lombok.NoArgsConstructor;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationIndividual;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationProceeding;
+import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationMeritsDecision;
 
 /** Replayable current-state read model for an Application. */
@@ -74,7 +75,7 @@ public class ApplicationReadModel {
 
   @Transient private String decisionStatus;
 
-  @Transient private Boolean autoGranted;
+  @Transient private AutoGrantedState autoGranted;
 
   @Transient private Map<UUID, ApplicationMeritsDecision> meritsDecisions;
 

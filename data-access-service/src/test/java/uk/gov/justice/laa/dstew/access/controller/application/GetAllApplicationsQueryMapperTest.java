@@ -28,7 +28,7 @@ class GetAllApplicationsQueryMapperTest {
             "Doe",
             dob,
             userId,
-            true,
+            "AUTOGRANTED",
             MatterType.SPECIAL_CHILDREN_ACT,
             ApplicationSortBy.SUBMITTED_DATE,
             ApplicationOrderBy.ASC,
@@ -43,7 +43,7 @@ class GetAllApplicationsQueryMapperTest {
             .clientLastName("Doe")
             .clientDateOfBirth(dob)
             .userId(userId)
-            .isAutoGranted(true)
+            .autoGranted("AUTOGRANTED")
             .matterType("SPECIAL_CHILDREN_ACT")
             .sortBy("SUBMITTED_DATE")
             .orderBy("ASC")
@@ -64,7 +64,7 @@ class GetAllApplicationsQueryMapperTest {
             "B",
             LocalDate.now(),
             UUID.randomUUID(),
-            true,
+            "AUTOGRANTED",
             MatterType.SPECIAL_CHILDREN_ACT,
             ApplicationSortBy.SUBMITTED_DATE,
             ApplicationOrderBy.ASC,
@@ -83,7 +83,7 @@ class GetAllApplicationsQueryMapperTest {
             "B",
             LocalDate.now(),
             UUID.randomUUID(),
-            true,
+            "AUTOGRANTED",
             MatterType.SPECIAL_CHILDREN_ACT,
             ApplicationSortBy.SUBMITTED_DATE,
             ApplicationOrderBy.ASC,
@@ -102,7 +102,7 @@ class GetAllApplicationsQueryMapperTest {
             "B",
             LocalDate.now(),
             UUID.randomUUID(),
-            true,
+            "AUTOGRANTED",
             MatterType.SPECIAL_CHILDREN_ACT,
             ApplicationSortBy.SUBMITTED_DATE,
             ApplicationOrderBy.ASC,
@@ -121,7 +121,7 @@ class GetAllApplicationsQueryMapperTest {
             null,
             LocalDate.now(),
             UUID.randomUUID(),
-            true,
+            "AUTOGRANTED",
             MatterType.SPECIAL_CHILDREN_ACT,
             ApplicationSortBy.SUBMITTED_DATE,
             ApplicationOrderBy.ASC,
@@ -140,7 +140,7 @@ class GetAllApplicationsQueryMapperTest {
             "B",
             null,
             UUID.randomUUID(),
-            true,
+            "AUTOGRANTED",
             MatterType.SPECIAL_CHILDREN_ACT,
             ApplicationSortBy.SUBMITTED_DATE,
             ApplicationOrderBy.ASC,
@@ -159,7 +159,7 @@ class GetAllApplicationsQueryMapperTest {
             "B",
             LocalDate.now(),
             null,
-            true,
+            "AUTOGRANTED",
             MatterType.SPECIAL_CHILDREN_ACT,
             ApplicationSortBy.SUBMITTED_DATE,
             ApplicationOrderBy.ASC,
@@ -184,7 +184,7 @@ class GetAllApplicationsQueryMapperTest {
             ApplicationOrderBy.ASC,
             1,
             10);
-    assertThat(command.isAutoGranted()).isNull();
+    assertThat(command.autoGranted()).isNull();
   }
 
   @Test
@@ -197,7 +197,7 @@ class GetAllApplicationsQueryMapperTest {
             "B",
             LocalDate.now(),
             UUID.randomUUID(),
-            true,
+            "AUTOGRANTED",
             null,
             ApplicationSortBy.SUBMITTED_DATE,
             ApplicationOrderBy.ASC,
@@ -216,7 +216,7 @@ class GetAllApplicationsQueryMapperTest {
             "B",
             LocalDate.now(),
             UUID.randomUUID(),
-            true,
+            "AUTOGRANTED",
             MatterType.SPECIAL_CHILDREN_ACT,
             null,
             ApplicationOrderBy.ASC,
@@ -235,7 +235,7 @@ class GetAllApplicationsQueryMapperTest {
             "B",
             LocalDate.now(),
             UUID.randomUUID(),
-            true,
+            "AUTOGRANTED",
             MatterType.SPECIAL_CHILDREN_ACT,
             ApplicationSortBy.SUBMITTED_DATE,
             null,
@@ -254,7 +254,7 @@ class GetAllApplicationsQueryMapperTest {
             "B",
             LocalDate.now(),
             UUID.randomUUID(),
-            true,
+            "AUTOGRANTED",
             MatterType.SPECIAL_CHILDREN_ACT,
             ApplicationSortBy.SUBMITTED_DATE,
             ApplicationOrderBy.ASC,
@@ -273,7 +273,7 @@ class GetAllApplicationsQueryMapperTest {
             "B",
             LocalDate.now(),
             UUID.randomUUID(),
-            true,
+            "AUTOGRANTED",
             MatterType.SPECIAL_CHILDREN_ACT,
             ApplicationSortBy.SUBMITTED_DATE,
             ApplicationOrderBy.ASC,

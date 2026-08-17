@@ -20,6 +20,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
@@ -28,6 +29,9 @@ import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataS
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationNote;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
+import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadModel;
@@ -149,6 +153,27 @@ public class ApplicationProjection {
         content, groupsByLeadId, indexPage.getTotalElements(), query.page(), query.pageSize());
   }
 
+  /** Returns old submitted Applications that still have no automatic-assessment outcome. */
+  @QueryHandler
+  public StalledAssessments handle(FindStalledAssessmentsQuery query) {
+    return new StalledAssessments(
+        hydrate(
+                applicationReadRepository.findAllByStatus(
+                    ApplicationStatus.APPLICATION_SUBMITTED.name()))
+            .stream()
+            .filter(application -> application.getAutoGranted() == AutoGrantedState.PENDING)
+            .filter(application -> application.getSubmittedAt() != null)
+            .filter(application -> application.getSubmittedAt().isBefore(query.submittedBefore()))
+            .map(
+                application ->
+                    new StalledAssessment(
+                        application.getApplicationId(),
+                        application.getApplyApplicationId(),
+                        application.getApplicationVersion(),
+                        application.getSubmittedAt()))
+            .toList());
+  }
+
   /** Creates the current-state row from an Application's creation event. */
   @EventHandler
   public void on(ApplicationCreatedEvent event, QueryUpdateEmitter queryUpdateEmitter) {
@@ -188,12 +213,36 @@ public class ApplicationProjection {
   /** Advances the current-state row to the immutable data version containing the decision. */
   @EventHandler
   public void on(ApplicationDecisionMadeEvent event, QueryUpdateEmitter queryUpdateEmitter) {
+    advanceCurrentState(
+        event.applicationId(),
+        event.applicationVersion(),
+        event.applicationDataVersion(),
+        event.occurredAt(),
+        queryUpdateEmitter);
+  }
+
+  /** Advances the current-state row to the immutable data version containing manual readiness. */
+  @EventHandler
+  public void on(
+      ApplicationReadyForManualAssessmentEvent event, QueryUpdateEmitter queryUpdateEmitter) {
+    advanceCurrentState(
+        event.applicationId(),
+        event.applicationVersion(),
+        event.applicationDataVersion(),
+        event.occurredAt(),
+        queryUpdateEmitter);
+  }
+
+  /** Advances current state to the updated immutable data and status. */
+  @EventHandler
+  public void on(ApplicationUpdatedEvent event, QueryUpdateEmitter queryUpdateEmitter) {
     applicationReadRepository
         .findById(event.applicationId())
         .ifPresent(
             application -> {
-              application.setApplicationDataVersion(event.applicationDataVersion());
+              application.setStatus(event.status());
               application.setApplicationVersion(event.applicationVersion());
+              application.setApplicationDataVersion(event.applicationDataVersion());
               application.setModifiedAt(event.occurredAt());
               ApplicationReadModel saved = applicationReadRepository.save(application);
               queryUpdateEmitter.emit(
@@ -246,6 +295,27 @@ public class ApplicationProjection {
             });
   }
 
+  private void advanceCurrentState(
+      UUID applicationId,
+      long applicationVersion,
+      long applicationDataVersion,
+      java.time.Instant occurredAt,
+      QueryUpdateEmitter queryUpdateEmitter) {
+    applicationReadRepository
+        .findById(applicationId)
+        .ifPresent(
+            application -> {
+              application.setApplicationDataVersion(applicationDataVersion);
+              application.setApplicationVersion(applicationVersion);
+              application.setModifiedAt(occurredAt);
+              ApplicationReadModel saved = applicationReadRepository.save(application);
+              queryUpdateEmitter.emit(
+                  FindApplicationByIdQuery.class,
+                  query -> query.applicationId().equals(applicationId),
+                  saved);
+            });
+  }
+
   /** Clears the disposable current-state table before replay. */
   @ResetHandler
   public void reset() {
@@ -265,6 +335,28 @@ public class ApplicationProjection {
             application.getApplicationId(), application.getApplicationDataVersion());
     ApplicationDataPayload data = applicationDataStore.getAll(List.of(id)).get(id);
     return data == null ? Optional.empty() : Optional.of(hydrate(application, data));
+  }
+
+  private List<ApplicationReadModel> hydrate(List<ApplicationReadModel> applications) {
+    List<ApplicationDataId> ids =
+        applications.stream()
+            .map(
+                application ->
+                    new ApplicationDataId(
+                        application.getApplicationId(), application.getApplicationDataVersion()))
+            .toList();
+    Map<ApplicationDataId, ApplicationDataPayload> dataById = applicationDataStore.getAll(ids);
+    return applications.stream()
+        .map(
+            application -> {
+              ApplicationDataId id =
+                  new ApplicationDataId(
+                      application.getApplicationId(), application.getApplicationDataVersion());
+              ApplicationDataPayload data = dataById.get(id);
+              return data == null ? null : hydrate(application, data);
+            })
+        .filter(Objects::nonNull)
+        .toList();
   }
 
   private ApplicationReadModel hydrate(

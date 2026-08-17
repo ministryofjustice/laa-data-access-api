@@ -29,13 +29,13 @@ public class ApplicationSummarySpecification {
       LocalDate clientDateOfBirth,
       UUID userId,
       MatterType matterType,
-      Boolean isAutoGranted) {
+      String autoGranted) {
     return isStatus(status)
         .and(likeLaaReference(reference))
         .and(IndividualFilterSpecification.filterIndividual(firstName, lastName, clientDateOfBirth))
         .and(isCaseworkerId(userId))
         .and(isMatterType(matterType))
-        .and(isAutoGranted(isAutoGranted));
+        .and(hasAutoGrantedState(autoGranted));
   }
 
   private static Specification<ApplicationEntity> isMatterType(MatterType matterType) {
@@ -142,10 +142,15 @@ public class ApplicationSummarySpecification {
     return str != null && !str.isBlank();
   }
 
-  private static Specification<ApplicationEntity> isAutoGranted(Boolean isAutoGranted) {
-    if (isAutoGranted != null) {
-      return (root, query, builder) -> builder.equal(root.get("isAutoGranted"), isAutoGranted);
+  private static Specification<ApplicationEntity> hasAutoGrantedState(String autoGranted) {
+    if (autoGranted == null) {
+      return Specification.unrestricted();
     }
-    return Specification.unrestricted();
+    return switch (autoGranted) {
+      case "PENDING" -> (root, query, builder) -> builder.isNull(root.get("isAutoGranted"));
+      case "AUTOGRANTED" -> (root, query, builder) -> builder.isTrue(root.get("isAutoGranted"));
+      case "MANUAL" -> (root, query, builder) -> builder.isFalse(root.get("isAutoGranted"));
+      default -> throw new IllegalArgumentException("Unknown autoGranted state: " + autoGranted);
+    };
   }
 }

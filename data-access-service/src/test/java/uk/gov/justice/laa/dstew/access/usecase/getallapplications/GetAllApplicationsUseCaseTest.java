@@ -57,7 +57,7 @@ class GetAllApplicationsUseCaseTest {
             eq(query.clientDateOfBirth()),
             eq(query.userId()),
             eq(query.matterType()),
-            eq(query.isAutoGranted()),
+            eq(query.autoGranted()),
             eq(query.sortBy()),
             eq(query.orderBy()),
             eq(query.page()),

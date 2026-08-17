@@ -17,11 +17,18 @@ import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataS
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationMeritsDecision;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
+import uk.gov.justice.laa.dstew.access.command.application.decision.MakeDecisionProceeding;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.CreateLinkedApplicationGroupCommand;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupRequested;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.ValidateApplicationExistsCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
+import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand;
+import uk.gov.justice.laa.dstew.access.command.application.ready.ReadyApplicationResult;
+import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdateDetailsFactory;
+import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationCommand;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 
 /** Event-sourced consistency boundary for an Application and its owned child state. */
@@ -111,17 +118,58 @@ public class ApplicationAggregate {
       ApplicationDataStore applicationDataStore,
       EventAppender eventAppender) {
     requireApplicationExists(command.applicationId());
-    if (command.expectedApplicationVersion() != state.applicationVersion) {
+    if (command.fromAutoGrantOutcome() && state.autoGranted == AutoGrantedState.MANUAL) {
+      throw new uk.gov.justice.laa.dstew.access.exception
+          .ApplicationAutoGrantOutcomeConflictException(command.applicationId());
+    }
+    if (command.fromAutoGrantOutcome() && !"APPLICATION_SUBMITTED".equals(state.status)) {
+      throw new uk.gov.justice.laa.dstew.access.exception.InvalidApplicationStateException(
+          command.applicationId(), state.status);
+    }
+    if (command.fromAutoGrantOutcome() && state.autoGranted == AutoGrantedState.AUTOGRANTED) {
+      var recorded = applicationDataStore.get(applicationId, state.applicationDataVersion);
+      if (java.util.Objects.equals(
+          recorded.decisionSerialisedRequest(), command.serialisedRequest())) {
+        return;
+      }
+      throw new uk.gov.justice.laa.dstew.access.exception
+          .ApplicationAutoGrantOutcomeConflictException(command.applicationId());
+    }
+    if (!command.fromAutoGrantOutcome()
+        && command.expectedApplicationVersion() != state.applicationVersion) {
       throw new uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException(
           command.applicationId(), command.expectedApplicationVersion());
     }
     var current = applicationDataStore.get(applicationId, state.applicationDataVersion);
-    ApplicationDecisionMadeEvent event = ApplicationDecider.decideDecision(state, command, current);
+    MakeApplicationDecisionCommand effectiveCommand = command;
+    if (command.fromAutoGrantOutcome()) {
+      var grantedProceedings =
+          current.proceedings().stream()
+              .map(
+                  proceeding ->
+                      new MakeDecisionProceeding(
+                          proceeding.proceedingId(), "GRANTED", null, "Autogranted"))
+              .toList();
+      effectiveCommand =
+          new MakeApplicationDecisionCommand(
+              command.applicationId(),
+              state.applicationVersion,
+              "GRANTED",
+              true,
+              grantedProceedings,
+              command.certificate(),
+              command.serialisedRequest(),
+              "Autogranted",
+              command.occurredAt(),
+              true);
+    }
+    ApplicationDecisionMadeEvent event =
+        ApplicationDecider.decideDecision(state, effectiveCommand, current);
 
     var meritsDecisions =
         new HashMap<>(
             current.meritsDecisions() == null ? java.util.Map.of() : current.meritsDecisions());
-    command
+    effectiveCommand
         .proceedings()
         .forEach(
             proceeding ->
@@ -132,12 +180,14 @@ public class ApplicationAggregate {
     long nextVersion = state.applicationDataVersion + 1;
     var updated =
         current.withDecision(
-            command.overallDecision(),
-            command.autoGranted(),
+            effectiveCommand.overallDecision(),
+            AutoGrantedState.fromDecisionFlag(effectiveCommand.autoGranted()),
             meritsDecisions,
-            "GRANTED".equals(command.overallDecision()) ? command.certificate() : null,
+            "GRANTED".equals(effectiveCommand.overallDecision())
+                ? effectiveCommand.certificate()
+                : null,
             command.serialisedRequest(),
-            command.eventDescription());
+            effectiveCommand.eventDescription());
     applicationDataStore.append(
         applicationId, nextVersion, updated, command.serialisedRequest(), command.occurredAt());
 
@@ -204,6 +254,56 @@ public class ApplicationAggregate {
     eventAppender.append(event);
   }
 
+  /** Stores {@code autoGranted=MANUAL} as the next immutable Application-data version. */
+  @CommandHandler
+  ReadyApplicationResult handle(
+      MarkApplicationReadyCommand command,
+      ApplicationDataStore applicationDataStore,
+      EventAppender eventAppender) {
+    requireApplicationExists(command.applicationId());
+    ReadyApplicationResult result = ApplicationDecider.decideReady(state, command);
+    if (result == ReadyApplicationResult.ALREADY_RECORDED) {
+      return result;
+    }
+
+    var current = applicationDataStore.get(applicationId, state.applicationDataVersion);
+    long nextApplicationVersion = state.applicationVersion + 1;
+    long nextDataVersion = state.applicationDataVersion + 1;
+    applicationDataStore.append(
+        applicationId,
+        nextDataVersion,
+        current.withManualAssessmentRequired(),
+        command.serialisedRequest(),
+        command.occurredAt());
+    eventAppender.append(
+        new ApplicationReadyForManualAssessmentEvent(
+            applicationId, nextApplicationVersion, nextDataVersion, command.occurredAt()));
+    return result;
+  }
+
+  /** Replaces Application content and appends a thin, replayable update event. */
+  @CommandHandler
+  void handle(
+      UpdateApplicationCommand command,
+      ApplicationDataStore applicationDataStore,
+      ApplicationUpdateDetailsFactory detailsFactory,
+      EventAppender eventAppender) {
+    requireApplicationExists(command.applicationId());
+    var current = applicationDataStore.get(applicationId, state.applicationDataVersion);
+    String nextStatus = command.status() == null ? state.status : command.status();
+    boolean enteringSubmitted =
+        !"APPLICATION_SUBMITTED".equals(state.status) && "APPLICATION_SUBMITTED".equals(nextStatus);
+    var updated = detailsFactory.prepare(command, current, enteringSubmitted);
+    ApplicationUpdatedEvent event = ApplicationDecider.decideUpdate(state, command, updated);
+    applicationDataStore.append(
+        applicationId,
+        event.applicationDataVersion(),
+        updated,
+        command.serialisedRequest(),
+        command.occurredAt());
+    eventAppender.append(event);
+  }
+
   private void requireApplicationExists(UUID requestedApplicationId) {
     if (applicationId == null) {
       throw new ResourceNotFoundException(
@@ -239,6 +339,16 @@ public class ApplicationAggregate {
 
   @EventSourcingHandler
   void on(NoteCreatedEvent event) {
+    ApplicationEvolve.apply(state, event);
+  }
+
+  @EventSourcingHandler
+  void on(ApplicationReadyForManualAssessmentEvent event) {
+    ApplicationEvolve.apply(state, event);
+  }
+
+  @EventSourcingHandler
+  void on(ApplicationUpdatedEvent event) {
     ApplicationEvolve.apply(state, event);
   }
 

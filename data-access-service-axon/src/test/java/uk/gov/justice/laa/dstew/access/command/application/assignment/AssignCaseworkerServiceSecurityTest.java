@@ -17,12 +17,12 @@ import uk.gov.justice.laa.dstew.access.command.caseworker.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.utils.BaseSecuredUseCaseTest;
 import uk.gov.justice.laa.dstew.access.utils.TestSecurityConfig;
 
-@SpringBootTest(classes = {AssignCaseworkerService.class, TestSecurityConfig.class})
+@SpringBootTest(classes = {AssignCaseworkerUseCase.class, TestSecurityConfig.class})
 @ImportAutoConfiguration(
     exclude = {DataSourceAutoConfiguration.class, HibernateJpaAutoConfiguration.class})
 class AssignCaseworkerServiceSecurityTest extends BaseSecuredUseCaseTest {
 
-  @Autowired private AssignCaseworkerService service;
+  @Autowired private AssignCaseworkerUseCase useCase;
 
   @MockitoBean private CaseworkerRepository caseworkerRepository;
 
@@ -33,7 +33,7 @@ class AssignCaseworkerServiceSecurityTest extends BaseSecuredUseCaseTest {
     setSecurityContext(NO_ROLE);
 
     assertThatExceptionOfType(AuthorizationDeniedException.class)
-        .isThrownBy(() -> service.assign(UUID.randomUUID(), UUID.randomUUID(), "{}", null))
+        .isThrownBy(() -> useCase.assign(UUID.randomUUID(), UUID.randomUUID(), "{}", null))
         .withMessageContaining("Access Denied");
 
     verifyNoInteractions(caseworkerRepository, commandGateway);
@@ -44,7 +44,7 @@ class AssignCaseworkerServiceSecurityTest extends BaseSecuredUseCaseTest {
     setSecurityContextWithName(" ", CASEWORKER_ROLE);
 
     assertThatExceptionOfType(AuthorizationDeniedException.class)
-        .isThrownBy(() -> service.assign(UUID.randomUUID(), UUID.randomUUID(), "{}", null))
+        .isThrownBy(() -> useCase.assign(UUID.randomUUID(), UUID.randomUUID(), "{}", null))
         .withMessageContaining("Access Denied");
 
     verifyNoInteractions(caseworkerRepository, commandGateway);

@@ -4,9 +4,11 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration;
 import org.springframework.boot.persistence.autoconfigure.EntityScan;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /** Starts the standalone Axon-based data access proof of concept. */
 @SpringBootApplication(exclude = FlywayAutoConfiguration.class)
+@EnableScheduling
 @EntityScan(
     basePackages = {
       "uk.gov.justice.laa.dstew.access",

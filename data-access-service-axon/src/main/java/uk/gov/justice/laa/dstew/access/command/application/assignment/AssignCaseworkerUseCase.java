@@ -11,13 +11,13 @@ import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 
 /** Validates and dispatches a single Application assignment command. */
 @Service
-public class AssignCaseworkerService {
+public class AssignCaseworkerUseCase {
 
   private final CaseworkerRepository caseworkerRepository;
   private final CommandGateway commandGateway;
 
   /** Creates the assignment coordinator with its directory and command gateway. */
-  public AssignCaseworkerService(
+  public AssignCaseworkerUseCase(
       CaseworkerRepository caseworkerRepository, CommandGateway commandGateway) {
     this.caseworkerRepository = caseworkerRepository;
     this.commandGateway = commandGateway;
