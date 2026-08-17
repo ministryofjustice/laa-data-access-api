@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "Opponents.json",
+  "$id": "Opponent.json",
   "title": "Opponent",
   "description": "Opponent information for the application",
   "type": "object",

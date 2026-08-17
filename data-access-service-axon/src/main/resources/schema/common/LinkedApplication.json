@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "LinkedApplication.json",
-  "title": "LinkedApplicationV2",
+  "title": "LinkedApplication",
   "description": "Represents a linked application",
   "type": "object",
   "required": [

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "Proceedings.json",
+  "$id": "Proceeding.json",
   "title": "Proceeding",
   "description": "Proceeding information for the application",
   "type": "object",
@@ -15,6 +15,7 @@
     "categoryOfLaw",
     "categoryOfLawCode",
     "clientInvolvementType",
+    "clientInvolvementTypeCode",
     "usedDelegatedFunctions",
     "substantiveLevelOfService",
     "substantiveLevelOfServiceName",
@@ -60,11 +61,11 @@
     },
     "clientInvolvementType": {
       "type": "string",
-      "description": "Client involvement type description as sent by Apply"
+      "description": "Client involvement type description"
     },
     "clientInvolvementTypeCode": {
-      "type": ["string", "null"],
-      "description": "Client involvement type CCMS code from legal framework"
+      "type": "string",
+      "description": "Client involvement type code from legal framework"
     },
     "usedDelegatedFunctions": {
       "type": "boolean",
