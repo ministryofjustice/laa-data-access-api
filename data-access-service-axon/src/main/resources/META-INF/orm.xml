@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<entity-mappings xmlns="https://jakarta.ee/xml/ns/persistence/orm" version="3.0">
+
+  <!-- Force BYTEA on Axon's event store columns instead of PostgreSQL Large Object Storage (OID) -->
+
+  <entity class="org.axonframework.eventsourcing.eventstore.jpa.AggregateEventEntry">
+    <table name="domain_event_entry"/>
+    <attribute-override name="identifier">
+      <column name="event_identifier"/>
+    </attribute-override>
+    <attribute-override name="payload">
+      <column name="payload" column-definition="BYTEA"/>
+    </attribute-override>
+    <attribute-override name="metadata">
+      <column name="meta_data" column-definition="BYTEA"/>
+    </attribute-override>
+    <attribute-override name="version">
+      <column name="payload_revision"/>
+    </attribute-override>
+    <attribute-override name="type">
+      <column name="payload_type"/>
+    </attribute-override>
+    <attribute-override name="timestamp">
+      <column name="time_stamp"/>
+    </attribute-override>
+    <attribute-override name="aggregateType">
+      <column name="type"/>
+    </attribute-override>
+    <attribute-override name="aggregateIdentifier">
+      <column name="aggregate_identifier"/>
+    </attribute-override>
+    <attribute-override name="aggregateSequenceNumber">
+      <column name="sequence_number"/>
+    </attribute-override>
+  </entity>
+
+  <entity class="org.axonframework.messaging.eventhandling.processing.streaming.token.store.jpa.TokenEntry">
+    <attribute-override name="token">
+      <column name="token" column-definition="BYTEA"/>
+    </attribute-override>
+  </entity>
+
+</entity-mappings>

@@ -1,0 +1,26 @@
+replicaCount: 2
+
+service_account:
+  name: laa-data-access-prod-service-account
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1G
+  requests:
+    cpu: 100m
+    memory: 1G
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+
+sentry:
+  enabled: true
+  environment: production
+  tracesSampleRate: 0.2
+
+axon:
+  schema: data_access_axon
+  flywayTable: flyway_schema_history_axon

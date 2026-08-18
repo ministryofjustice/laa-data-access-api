@@ -50,7 +50,8 @@ public class GetApplicationResponseMapper {
             : null);
     applicationResponse.setIsLead(applicationReadModel.isLead());
     applicationResponse.setUsedDelegatedFunctions(applicationReadModel.usedDelegatedFunctions());
-    applicationResponse.setAutoGrant(applicationReadModel.autoGrant());
+    applicationResponse.setAutoGranted(
+        AutoGrantedMapper.fromLegacyFlag(applicationReadModel.autoGrant()));
     applicationResponse.setDecisionStatus(
         applicationReadModel.decisionStatus() != null
             ? DecisionStatus.valueOf(applicationReadModel.decisionStatus())

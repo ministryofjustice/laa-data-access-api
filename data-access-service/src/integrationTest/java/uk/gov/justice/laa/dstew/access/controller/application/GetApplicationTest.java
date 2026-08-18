@@ -511,7 +511,8 @@ public class GetApplicationTest extends BaseHarnessTest {
             ? OffsetDateTime.ofInstant(applicationEntity.getSubmittedAt(), ZoneOffset.UTC)
             : null);
     application.setUsedDelegatedFunctions(applicationEntity.getUsedDelegatedFunctions());
-    application.setAutoGrant(applicationEntity.getIsAutoGranted());
+    application.setAutoGranted(
+        AutoGrantedMapper.fromLegacyFlag(applicationEntity.getIsAutoGranted()));
     if (applicationEntity.getDecision() != null) {
       application.setDecisionStatus(applicationEntity.getDecision().getOverallDecision());
     }
@@ -680,6 +681,6 @@ public class GetApplicationTest extends BaseHarnessTest {
       return null;
     }
     Object submitterEmail = content.get("submitterEmail");
-    return submitterEmail instanceof String ? (String) submitterEmail : null;
+    return submitterEmail instanceof String s ? s : null;
   }
 }

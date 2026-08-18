@@ -30,6 +30,13 @@ ext['jackson-2-bom.version'] = '2.21.5'
 ext['log4j2.version'] = '2.25.5'
 //Incorrect Authorization (new) [High Severity][https://security.snyk.io/vuln/SNYK-JAVA-TOOLSJACKSONCORE-17972609] in tools.jackson.core:jackson-databind@3.1.4
 ext['jackson-bom.version'] = '3.1.5'
+//  Upgrade io.netty:netty-codec-http@4.2.15.Final
+//  ✗ Incorrect Authorization (new) [Medium Severity][https://security.snyk.io/vuln/SNYK-JAVA-IONETTY-18170206] in io.netty:netty-codec-http@4.2.15.Final
+//  ✗ Allocation of Resources Without Limits or Throttling (new) [High Severity][https://security.snyk.io/vuln/SNYK-JAVA-IONETTY-18170202] in io.netty:netty-codec-http@4.2.15.Final
+//  ✗ Allocation of Resources Without Limits or Throttling (new) [High Severity][https://security.snyk.io/vuln/SNYK-JAVA-IONETTY-18170213] in io.netty:netty-codec-http@4.2.15.Final
+//  ✗ Allocation of Resources Without Limits or Throttling (new) [High Severity][https://security.snyk.io/vuln/SNYK-JAVA-IONETTY-18170204] in io.netty:netty-codec-http2@4.2.15.Final
+//  ✗ Allocation of Resources Without Limits or Throttling (new) [High Severity][https://security.snyk.io/vuln/SNYK-JAVA-IONETTY-18170205] in io.netty:netty-codec-http3@4.2.15.Final
+ext['netty.version'] = '4.2.16.Final'
 
 def requiredJavaVersion = 25
 def currentJavaVersion = JavaVersion.current().majorVersion.toInteger()
@@ -47,7 +54,8 @@ configurations {
 }
 
 dependencies {
-    jacocoAnt "org.jacoco:org.jacoco.ant:0.8.14"
+    jacocoAnt "org.jacoco:org.jacoco.ant:0.8.15"
+    runtimeOnly "javax.xml.bind:jaxb-api:2.3.1"
     compileOnly 'org.projectlombok:lombok:1.18.46'
     annotationProcessor 'org.projectlombok:lombok:1.18.46'
     testCompileOnly 'org.projectlombok:lombok:1.18.46'
@@ -87,38 +95,18 @@ subprojects {
 }
 
 allprojects {
-    // Keep lockfile count low: lock only the configurations that are actually resolved in CI/dev.
-    def lockedConfigs = [
-            "compileClasspath",
-            "runtimeClasspath",
-            "testCompileClasspath",
-            "testRuntimeClasspath",
-            "integrationTestCompileClasspath",
-            "integrationTestRuntimeClasspath"
-    ] as Set
-
-    configurations.configureEach { conf ->
-        if (lockedConfigs.contains(conf.name)) {
-            resolutionStrategy.activateDependencyLocking()
+    repositories {
+        maven {
+            name = "sonatypeSnapshots"
+            url = uri('https://central.sonatype.com/repository/maven-snapshots/')
+            mavenContent {
+                snapshotsOnly()
+            }
+            content {
+                includeGroup('uk.gov.justice.service.laa')
+            }
         }
-
-    }
-}
-
-tasks.register('resolveAndLockAll', Exec) {
-    description = 'Resolves all locked configurations for every project and writes lock files.'
-    workingDir = rootDir
-    commandLine './gradlew', 'resolveAndLockAllInternal', '--write-locks'
-}
-
-tasks.register('resolveAndLockAllInternal') {
-    description = 'Internal task – use resolveAndLockAll instead.'
-    doLast {
-        allprojects.each { proj ->
-            proj.configurations
-                .findAll { it.canBeResolved }
-                .each { it.resolve() }
-        }
+        mavenCentral()
     }
 }
 
@@ -151,4 +139,7 @@ tasks.register('jacocoAggregatedReport', JacocoReport) {
         html.outputLocation = layout.buildDirectory.dir("reports/jacoco/html").get().asFile
         csv.required = false
     }
+}
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
 }

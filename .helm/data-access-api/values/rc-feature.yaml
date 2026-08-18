@@ -68,11 +68,11 @@ slowQueryThresholdSeconds: 1
 portForward:
   enabled: false
 
-# Mock OAuth2 Server - Use shared instance
-# All PR/feature environments share ONE mock-oauth2 instance
+# Mock OAuth2 Server - Use real Entra ID for client integrations
+# RC environments use real Azure Entra ID to support OBO flows and client testing
 mockOAuth2:
   sharedInstance:
-    enabled: true  # Use the shared instance
+    enabled: false  # Use real Entra ID from secrets
     serviceName: laa-data-access-mock-oauth2-shared
     namespace: laa-data-access-api-uat
 

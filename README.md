@@ -1,3 +1,6 @@
+[![Ministry of Justice Repository Compliance Badge](https://github-community.service.justice.gov.uk/repository-standards/api/laa-data-access-api/badge)](https://github-community.service.justice.gov.uk/repository-standards/laa-data-access-api)
+
+
 # laa-data-access-api
 
 ## Overview
@@ -6,22 +9,6 @@ Source code for LAA Digital's Access Data Stewardship API, owned by the Access D
 
 This API will provide a trusted API source of truth for the Civil Applications and Civil Decide projects for data
 related to applications, proceedings, delegated functions, scope limitations, cost limitations and level of service.
-
-### Add GitHub Token
-Generate a Github PAT (Personal Access Token) to access the required plugin, via https://github.com/settings/tokens
-
-Specify the Note field, e.g. “Token to allow access to LAA Gradle plugin”.
-
-If you don't already have one, create a `gradle.properties` file in your home directory at `~/.gradle/gradle.properties`.
-
-Add the following properties to `~/.gradle/gradle.properties` and replace the placeholder values as follows:
-
-```
-project.ext.gitPackageUser = YOUR_GITHUB_USERNAME
-project.ext.gitPackageKey = PAT_CREATED_ABOVE
-```
-
-Go back to Github to authorize MOJ for SSO
 
 ### Monitoring (Prometheus & Grafana)
 
@@ -42,6 +29,9 @@ Includes the following subprojects:
   on Spring Web, but must not depend on Spring Data (nor any database code)
 - `data-access-api` - OpenAPI specification used for generating API stub interfaces and documentation.
 - `data-access-service` - example REST API service with CRUD operations interfacing a JPA repository with PostgreSQL.
+- `data-access-service-axon` - event-driven proof of concept using Axon aggregates and projections. See its
+  [developer guide](data-access-service-axon/docs/README.md) for the architecture, linking logic, sensitive-data
+  separation, and replay behaviour.
 
 ### To do items
 - Continue to update this `README.md` file to include information such as what this project does.
@@ -116,9 +106,6 @@ To update to Java 25:
 Execute
 
 `./gradlew clean build`
-
-Note that completing the build and unit tests currently requires:
-- GitHub token with `read:packages` access - used by [`laa-ccms-spring-boot-gradle-plugin`](#gradle-plugin-used)
 
 ### Run integration tests
 Execute
@@ -344,6 +331,49 @@ curl -X GET "http://localhost:9000/api/v0/caseworkers" \
 - App: http://localhost:9000
 - Mock OAuth2: http://localhost:9998
 - Postgres: localhost:6432
+
+---
+
+### Local SNS-to-SQS seam (event-driven auto-grant)
+
+This repo owns the `data-access-events` SNS topic used by the event-driven auto-grant design
+(mirrors the deployed `laa-data-access-api-uat/resources/sns.tf`). The consumer's queue is owned
+by `laa-civil-decide-api`, so this repo's local stack also creates a private verification queue,
+purely so the producer side can be proven independently without checking out that other repo.
+
+```bash
+docker compose -f docker-compose.localstack.yml up -d
+AWS_REGION=eu-west-2 AWS_ACCESS_KEY_ID=local-access-key AWS_SECRET_ACCESS_KEY=local-secret-key \
+  AWS_ENDPOINT_URL=http://localhost:4566 scripts/localstack/smoke-test.sh
+```
+
+See `scripts/localstack/init-localstack.sh` for the full resource shape and cross-repo integration
+notes.
+
+`data-access-service-axon` publishes to this topic when
+`APPLICATION_INTEGRATION_EVENTS_TOPIC_ARN` is set. The Axon Compose service supplies the local ARN,
+endpoint, region, and dummy credentials automatically. Deployed environments leave
+`AWS_ENDPOINT_URL` and static credentials unset so the AWS SDK default credentials provider uses
+the pod's IRSA service account, matching `laa-data-claims-event-service`.
+
+#### Deployed topic configuration
+
+The Axon Helm chart enables publication only where Cloud Platform has provisioned the SNS topic.
+Its `aws.topicArnSecret` values select the `data-access-events-sns-topic` Kubernetes secret and
+`topic_arn` key created by `laa-data-access-api-<environment>/resources/sns.tf`. Branch deployments
+explicitly disable publication so ephemeral Application identifiers are not sent into the shared
+UAT event path.
+
+If Terraform recreates the topic, apply the Cloud Platform namespace resources before redeploying
+Data Access. Terraform updates `topic_arn` in the existing secret, so no application code change
+is required. Render the chart and confirm the topic environment variable before deployment:
+
+```bash
+helm template data-access-api-axon .helm/data-access-api-axon \
+  --values .helm/data-access-api-axon/values/uat.yaml \
+  --set image.repository=test --set image.tag=test |
+  grep -A6 APPLICATION_INTEGRATION_EVENTS_TOPIC_ARN
+```
 
 ---
 

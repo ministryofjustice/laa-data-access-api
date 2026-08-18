@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
@@ -43,6 +44,7 @@ public class HarnessDataIsolationTest extends BaseHarnessTest {
    * <p>Cleanliness is verified once, after @AfterAll has removed all sentinels, at the end of
    * {@link #assertSentinelsSurvivedThenDelete()}.
    */
+  @AfterEach
   @Order(2)
   @Override
   void assertDatabaseCleanAfterTest() {

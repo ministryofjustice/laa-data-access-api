@@ -1,6 +1,6 @@
 plugins {
     id 'io.freefair.lombok' version '9.4.0'
-    id 'uk.gov.laa.springboot.laa-spring-boot-gradle-plugin'
+    id 'uk.gov.justice.service.laa.laa-spring-boot-gradle-plugin'
 }
 
 java {
@@ -30,4 +30,7 @@ dependencies {
     implementation 'org.springframework:spring-core'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
 }

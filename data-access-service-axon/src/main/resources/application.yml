@@ -1,0 +1,72 @@
+server:
+  port: ${SERVER_PORT:8082}
+
+spring:
+  application:
+    name: data-access-service-axon
+  autoconfigure:
+    exclude: org.axonframework.springboot.autoconfig.XStreamAutoConfiguration
+  datasource:
+    url: ${DB_URL:${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/laa_data_access_api?currentSchema=${AXON_DB_SCHEMA:axon}}}
+    username: ${DB_USERNAME:${SPRING_DATASOURCE_USERNAME:laa_user}}
+    password: ${DB_PASSWORD:${SPRING_DATASOURCE_PASSWORD:laa_password}}
+  jpa:
+    database-platform: uk.gov.justice.laa.dstew.access.config.ByteaEnforcedPostgresSqlDialect
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        default_schema: ${AXON_DB_SCHEMA:axon}
+  sql:
+    init:
+      mode: never # Use Flyway for DB schema.
+  cloud:
+    aws:
+      region:
+        static: ${AWS_REGION:eu-west-2}
+      endpoint: ${AWS_ENDPOINT_URL:}
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${ENTRA_ISSUER_URI}
+          jwk-set-uri: ${ENTRA_JWK_SET_URI}
+          audience: ${ENTRA_AUD}
+
+axon:
+  axonserver:
+    enabled: false
+  converter:
+    general: jackson
+    events: jackson
+    messages: jackson
+  db:
+    # Schema and Flyway history table are env-overridable so Helm-injected values
+    # (e.g. data_access_axon / flyway_schema_history_axon) take effect at runtime.
+    schema: ${AXON_DB_SCHEMA:axon}
+    flyway-table: ${AXON_FLYWAY_TABLE:flyway_schema_history}
+
+application:
+  projection:
+    timeout: 5s
+  assessment:
+    reconciliation:
+      threshold: ${ASSESSMENT_RECONCILIATION_THRESHOLD:15m}
+      interval: ${ASSESSMENT_RECONCILIATION_INTERVAL:5m}
+
+logging:
+  level:
+    com.azure.spring: INFO
+    uk.gov.justice.laa.dstew.access.config.SecurityConfig: WARN
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint.health.show-details: always
+  info.env.enabled: true
+
+springdoc:
+  api-docs:
+    version: openapi_3_1

@@ -1,7 +1,9 @@
 package uk.gov.justice.laa.dstew.access.controller.application.sharedAsserts;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -12,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.test.web.servlet.MvcResult;
+import uk.gov.justice.laa.dstew.access.controller.application.AutoGrantedMapper;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.repository.ApplicationRepository;
@@ -95,7 +98,8 @@ public class ApplicationAsserts {
             ? OffsetDateTime.ofInstant(applicationEntity.getSubmittedAt(), ZoneOffset.UTC)
             : null);
     application.setUsedDelegatedFunctions(applicationEntity.getUsedDelegatedFunctions());
-    application.setAutoGrant(applicationEntity.getIsAutoGranted());
+    application.setAutoGranted(
+        AutoGrantedMapper.fromLegacyFlag(applicationEntity.getIsAutoGranted()));
     if (applicationEntity.getDecision() != null) {
       application.setDecisionStatus(applicationEntity.getDecision().getOverallDecision());
     }
