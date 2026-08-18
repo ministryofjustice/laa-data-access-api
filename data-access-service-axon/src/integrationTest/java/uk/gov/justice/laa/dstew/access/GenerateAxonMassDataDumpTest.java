@@ -8,6 +8,7 @@ import java.nio.file.Files;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.UUID;
@@ -18,6 +19,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.random.RandomGeneratorFactory;
+import java.util.stream.Collectors;
 import javax.sql.DataSource;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
@@ -99,7 +101,7 @@ class GenerateAxonMassDataDumpTest extends AbstractApplicationTestSeederIntegrat
     ApplicationLifecycleSelector lifecycleSelector = new ApplicationLifecycleSelector();
     ApplicationTestDataSeeder seeder = newSeeder();
     GenerationSummary summary = new GenerationSummary();
-    List<String> failures = java.util.Collections.synchronizedList(new ArrayList<>());
+    List<String> failures = Collections.synchronizedList(new ArrayList<>());
     ExecutorService executor = Executors.newFixedThreadPool(workerSettings.effectiveWorkers());
     try {
       List<Callable<Void>> tasks = new ArrayList<>();
@@ -243,7 +245,7 @@ class GenerateAxonMassDataDumpTest extends AbstractApplicationTestSeederIntegrat
     List<UUID> ids =
         caseworkerRepository.findAll().stream()
             .map(Caseworker::getId)
-            .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+            .collect(Collectors.toCollection(ArrayList::new));
     while (ids.size() < size) {
       UUID id = UUID.randomUUID();
       caseworkerRepository.save(new Caseworker(id, "axon-mass-data-" + ids.size()));

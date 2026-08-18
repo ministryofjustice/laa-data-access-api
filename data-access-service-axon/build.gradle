@@ -81,6 +81,7 @@ test {
 tasks.named('integrationTest') {
     dependsOn tasks.named('testUtilitiesClasses')
     useJUnitPlatform()
+    exclude 'uk/gov/justice/laa/dstew/access/GenerateAxonMassDataDumpTest.class'
 }
 
 tasks.register('generateAxonMassDataDump', Test) {

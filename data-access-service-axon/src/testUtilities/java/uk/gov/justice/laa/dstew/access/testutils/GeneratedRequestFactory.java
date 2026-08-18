@@ -27,10 +27,9 @@ public class GeneratedRequestFactory {
         ApplicationCreateRequestFixture.validCreateApplicationRequestWithRandomData(
             applicationId, proceedingId(applicationId));
     return ApplicationCreateRequest.builder()
-        .applicationType(baseline.getApplicationType())
+        .id(applicationId)
         .status(baseline.getStatus())
         .laaReference("AXON-MG-" + runId + "-" + index)
-        .individuals(baseline.getIndividuals())
         .applicationContent(baseline.getApplicationContent())
         .build();
   }

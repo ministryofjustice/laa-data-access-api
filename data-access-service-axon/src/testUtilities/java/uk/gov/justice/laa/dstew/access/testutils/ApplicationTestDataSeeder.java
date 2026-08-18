@@ -83,7 +83,7 @@ public class ApplicationTestDataSeeder {
               .join()
               .getProceedings()
               .getFirst()
-              .proceedingId();
+              .getId();
       makeApplicationDecisionUseCase.execute(
           makeDecisionCommandMapper.toCommand(
               applicationId, new GeneratedRequestFactory("").decision(proceedingId)));
