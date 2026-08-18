@@ -711,7 +711,7 @@ class PostgresAxonIntegrationTest {
             String.class);
     assertThat(missingApplicationResponse.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     assertThat(missingApplicationResponse.getBody())
-        .contains("No application found with id: " + missingApplicationId);
+        .contains("No application found with ID: " + missingApplicationId);
   }
 
   @Test
@@ -1186,7 +1186,9 @@ class PostgresAxonIntegrationTest {
     IndividualCreateRequest invalidIndividual = request.getIndividuals().getFirst();
     invalidIndividual.setType(null);
 
-    ResponseEntity<String> response = post(request, headers(), String.class);
+    // Use valid auth headers but send invalid request body bean
+    HttpHeaders validHeaders = headers();
+    ResponseEntity<String> response = post(request, validHeaders, String.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
   }
@@ -1395,8 +1397,15 @@ class PostgresAxonIntegrationTest {
 
   @Test
   void givenMissingServiceNameHeader_whenGetCaseworkers_thenReturnsBadRequest() {
+    HttpHeaders headers = new HttpHeaders();
+    headers.setBearerAuth(TestJwtDecoderConfig.BEARER_TOKEN);
+    // Intentionally omit X-Service-Name to test validation
     ResponseEntity<String> response =
-        restTemplate.getForEntity("http://localhost:" + port + "/api/v0/caseworkers", String.class);
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/caseworkers",
+            HttpMethod.GET,
+            new HttpEntity<>(headers),
+            String.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
   }

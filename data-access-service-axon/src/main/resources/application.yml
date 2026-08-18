@@ -64,6 +64,7 @@ laa:
                   - ${ENTRA_AUD}
         authorized-roles: '[{"name": "LAA_CASEWORKER", "uris": ["/api/**"]}]'
         unprotected-uris:
+          - /error
           - /actuator/health
           - /actuator/info
           - /actuator/prometheus

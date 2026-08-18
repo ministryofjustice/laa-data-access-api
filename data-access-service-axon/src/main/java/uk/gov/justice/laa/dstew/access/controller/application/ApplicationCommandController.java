@@ -171,6 +171,7 @@ public class ApplicationCommandController {
 
   /** Replaces an existing Application's content and optional status. */
   @PatchMapping("/{id}")
+  @AllowApiCaseworker
   public ResponseEntity<Void> updateApplication(
       @RequestHeader("X-Service-Name") ServiceName serviceName,
       @PathVariable UUID id,
