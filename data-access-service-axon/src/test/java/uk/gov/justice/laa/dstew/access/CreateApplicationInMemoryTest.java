@@ -197,7 +197,7 @@ class CreateApplicationInMemoryTest {
   }
 
   @Test
-  void givenMissingServiceName_whenGetApplicationHistory_thenReturnsForbidden() {
+  void givenMissingServiceName_whenGetApplicationHistory_thenReturnsBadRequest() {
     HttpHeaders headers = new HttpHeaders();
     headers.setBearerAuth(TestJwtDecoderConfig.BEARER_TOKEN);
     ResponseEntity<String> response =
@@ -207,7 +207,7 @@ class CreateApplicationInMemoryTest {
             new HttpEntity<>(headers),
             String.class);
 
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
   }
 
   @Test
