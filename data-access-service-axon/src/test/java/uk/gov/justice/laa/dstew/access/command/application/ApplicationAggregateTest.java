@@ -4,6 +4,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validApplicationContent;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationCreatedEvent;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationCreationDetails;
 
@@ -18,6 +19,8 @@ import org.axonframework.test.fixture.AxonTestFixture;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationProvider;
+import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.AssignCaseworkerToApplicationCommand;
@@ -29,6 +32,8 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicat
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeDecisionProceeding;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.CreateLinkedApplicationGroupCommand;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupRequested;
+import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
+import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ReadyApplicationResult;
@@ -89,12 +94,11 @@ class ApplicationAggregateTest {
             "APPLICATION_SUBMITTED",
             "LAA-123",
             null,
-            List.of(),
+            ApplicationProvider.builder().officeCode("1A001B").build(),
+            null,
+            null,
             1,
-            "APPLY",
-            applicationId,
             java.time.Instant.parse("2026-07-14T12:30:00Z"),
-            "1A001B",
             false,
             null,
             null,
@@ -385,8 +389,6 @@ class ApplicationAggregateTest {
             "fingerprint",
             "APPLICATION_IN_PROGRESS",
             1,
-            "APPLY",
-            applicationId,
             Instant.parse("2026-07-21T09:00:00Z"),
             null,
             List.of());
@@ -565,10 +567,7 @@ class ApplicationAggregateTest {
         .when()
         .command(
             new CreateLinkedApplicationGroupCommand(
-                missingLeadId,
-                members.get(1),
-                members,
-                java.time.Instant.parse("2026-07-15T08:00:00Z")))
+                missingLeadId, members.get(1), members, Instant.parse("2026-07-15T08:00:00Z")))
         .then()
         .exception(ResourceNotFoundException.class)
         .noEvents();
@@ -585,18 +584,17 @@ class ApplicationAggregateTest {
                 "APPLICATION_SUBMITTED",
                 "LAA-123",
                 null,
-                List.of(),
+                ApplicationProvider.builder().officeCode("1A001B").build(),
+                null,
+                null,
                 1,
-                "APPLY",
-                applicationId,
-                java.time.Instant.parse("2026-07-14T12:30:00Z"),
-                "1A001B",
+                Instant.parse("2026-07-14T12:30:00Z"),
                 false,
                 null,
                 null,
                 List.of(),
                 "{}",
-                java.time.Instant.parse("2026-07-15T08:00:00Z"),
+                Instant.parse("2026-07-15T08:00:00Z"),
                 applicationId); // leadApplicationId == self
           }
         };
@@ -624,18 +622,17 @@ class ApplicationAggregateTest {
             "APPLICATION_SUBMITTED",
             "LAA-123",
             null,
-            List.of(),
+            ApplicationProvider.builder().officeCode("1A001B").build(),
+            null,
+            null,
             1,
-            "APPLY",
-            applicationId,
-            java.time.Instant.parse("2026-07-14T12:30:00Z"),
-            "1A001B",
+            Instant.parse("2026-07-14T12:30:00Z"),
             false,
             null,
             null,
             List.of(),
             "{}",
-            java.time.Instant.parse("2026-07-15T08:00:00Z"),
+            Instant.parse("2026-07-15T08:00:00Z"),
             otherLeadId); // already a member of another group
     ApplicationCreatedEvent associatedCreated =
         applicationCreatedEvent(applicationId, associatedDetails);
@@ -649,7 +646,7 @@ class ApplicationAggregateTest {
                 applicationId,
                 UUID.randomUUID(),
                 List.of(applicationId, UUID.randomUUID()),
-                java.time.Instant.parse("2026-07-15T08:00:00Z")))
+                Instant.parse("2026-07-15T08:00:00Z")))
         .then()
         .exception(ApplicationGroupInvariantException.class)
         .noEvents();
@@ -670,14 +667,10 @@ class ApplicationAggregateTest {
         .given()
         .events(created)
         .when()
-        .command(
-            new uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand(
-                applicationId, "My note", "{}", occurredAt))
+        .command(new CreateNoteCommand(applicationId, "My note", "{}", occurredAt))
         .then()
         .success()
-        .events(
-            new uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent(
-                applicationId, 1L, occurredAt));
+        .events(new NoteCreatedEvent(applicationId, 1L, occurredAt));
   }
 
   @Test
@@ -686,9 +679,7 @@ class ApplicationAggregateTest {
         .given()
         .noPriorActivity()
         .when()
-        .command(
-            new uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand(
-                UUID.randomUUID(), "My note", "{}", Instant.now()))
+        .command(new CreateNoteCommand(UUID.randomUUID(), "My note", "{}", Instant.now()))
         .then()
         .exception(ResourceNotFoundException.class)
         .noEvents();
@@ -737,17 +728,22 @@ class ApplicationAggregateTest {
     return new ApplicationCreationDetails(
         original.status(),
         original.laaReference(),
-        original.applicationContent(),
-        original.individuals(),
+        original.client(),
+        original.provider(),
+        original.opponents(),
+        original.allLinkedApplications(),
         original.schemaVersion(),
-        original.applicationType(),
-        original.applyApplicationId(),
         original.submittedAt(),
-        original.officeCode(),
         original.usedDelegatedFunctions(),
         original.categoryOfLaw(),
         original.matterType(),
-        List.of(new ApplicationProceeding(proceedingId, proceedingId, "Proceeding", true, null)),
+        List.of(
+            Proceeding.builder()
+                .id(proceedingId)
+                .leadProceeding(true)
+                .description("Proceeding")
+                .code("SE003")
+                .build()),
         original.serialisedRequest(),
         original.occurredAt(),
         original.leadApplicationId());
@@ -759,12 +755,14 @@ class ApplicationAggregateTest {
         applicationId,
         "APPLICATION_SUBMITTED",
         "LAA-123",
-        Map.of("id", applicationId.toString()),
-        List.of(),
+        validApplicationContent(applicationId, proceedingIdFor(applicationId)),
         serialisedRequest,
         schemaVersion,
-        "ApplyApplication.json",
-        "APPLY");
+        "BaseCivilApplication.json");
+  }
+
+  private UUID proceedingIdFor(UUID applicationId) {
+    return UUID.nameUUIDFromBytes(("proceeding-" + applicationId).getBytes(StandardCharsets.UTF_8));
   }
 
   @AfterEach

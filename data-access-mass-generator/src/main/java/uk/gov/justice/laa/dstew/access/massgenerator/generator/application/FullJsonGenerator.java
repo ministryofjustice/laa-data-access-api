@@ -37,7 +37,6 @@ public class FullJsonGenerator
   @Override
   public ApplicationContent createDefault() {
     return ApplicationContent.builder()
-        .id(UUID.randomUUID())
         .submittedAt(randomInstant())
         .status(faker.options().option("generating_reports", "submitted", "draft"))
         .laaReference(faker.regexify("L-[A-Z]{3}-[A-Z][0-9]{2}-[0-9]"))

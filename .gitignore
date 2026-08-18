@@ -36,3 +36,6 @@ plans/k6-perf.md
 
 ### LocalStack local state ###
 volume/
+
+### Agent instructions (local only) ###
+AGENTS.md

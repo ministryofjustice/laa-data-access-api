@@ -74,7 +74,6 @@ class GetAllApplicationsGatewayMapperTest {
             .clientFirstName("Jane")
             .clientLastName("Doe")
             .clientDateOfBirth(LocalDate.of(1990, 5, 15))
-            .applicationType("INITIAL")
             .modifiedAt(modifiedAt)
             .isLead(true)
             .linkedApplications(List.of())

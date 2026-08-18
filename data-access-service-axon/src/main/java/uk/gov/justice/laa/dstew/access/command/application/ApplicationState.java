@@ -15,7 +15,6 @@ public class ApplicationState {
   int schemaVersion;
   String requestFingerprint;
   String status;
-  String applicationType;
   AutoGrantedState autoGranted = AutoGrantedState.PENDING;
   long applicationDataVersion;
   long applicationVersion;

@@ -190,10 +190,12 @@ runs:
         AXON_RELEASE_NAME="${RELEASE_NAME}-axon"
         axon_ingress_name="${AXON_RELEASE_NAME}-data-access-api-axon"
         axon_host="${AXON_RELEASE_NAME}-${KUBE_NAMESPACE}.cloud-platform.service.justice.gov.uk"
+        axon_internal_host="${AXON_RELEASE_NAME}-internal-${KUBE_NAMESPACE}.internal-non-prod.cloud-platform.service.justice.gov.uk"
         axon_identifier="${axon_ingress_name}-${KUBE_NAMESPACE}-green"
+        axon_internal_identifier="${AXON_RELEASE_NAME}-data-access-api-axon-internal-${KUBE_NAMESPACE}-green"
         branch_name="$BRANCH_NAME"
 
-        echo "Deploying image tag: $AXON_IMAGE_TAG under release name: $AXON_RELEASE_NAME to $axon_host..."
+        echo "Deploying image tag: $AXON_IMAGE_TAG under release name: $AXON_RELEASE_NAME to $axon_host and $axon_internal_host..."
 
         echo "branch name: $branch_name"
 
@@ -217,6 +219,8 @@ runs:
           --set ingress.annotations."external-dns\.alpha\.kubernetes\.io/set-identifier"="${axon_identifier}" \
           --set ingress.annotations."nginx\.ingress\.kubernetes\.io/whitelist-source-range"="$LAA_IPS" \
           --set ingress.hosts="{${axon_host}}" \
+          --set ingressInternal.annotations."external-dns\.alpha\.kubernetes\.io/set-identifier"="${axon_internal_identifier}" \
+          --set ingressInternal.hosts="{${axon_internal_host}}" \
           --set spring.profile="${SPRING_PROFILE}" \
           --set aws.region="${ECR_REGION}" \
           --set aws.integrationEvents.enabled="${INTEGRATION_EVENTS_ENABLED}" \

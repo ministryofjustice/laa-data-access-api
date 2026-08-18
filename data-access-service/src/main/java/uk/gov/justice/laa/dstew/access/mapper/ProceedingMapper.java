@@ -50,7 +50,9 @@ public interface ProceedingMapper {
     applicationProceedingResponse.setLevelOfService(
         proceeding.getSubstantiveLevelOfServiceNameEnum());
     applicationProceedingResponse.setSubstantiveCostLimitation(
-        proceeding.getSubstantiveCostLimitation());
+        proceeding.getSubstantiveCostLimitation() == null
+            ? null
+            : proceeding.getSubstantiveCostLimitation().doubleValue());
     if (proceeding.getScopeLimitations() != null) {
       List<ScopeLimitationResponse> scopeLimitations =
           proceeding.getScopeLimitations().stream()

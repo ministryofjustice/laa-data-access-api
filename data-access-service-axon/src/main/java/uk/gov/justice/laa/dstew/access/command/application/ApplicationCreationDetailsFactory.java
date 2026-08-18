@@ -9,7 +9,6 @@ import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationContentParser;
 import uk.gov.justice.laa.dstew.access.applicationcontent.LinkedApplication;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ParsedAppContentDetails;
-import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 
 /**
  * Parses an incoming create command into {@link ApplicationCreationDetails}. This class is
@@ -60,46 +59,18 @@ public class ApplicationCreationDetailsFactory {
     return new ApplicationCreationDetails(
         command.status(),
         command.laaReference(),
-        parsed.applicationContent(),
-        toIndividuals(command.individuals()),
+        parsed.client(),
+        parsed.provider(),
+        parsed.opponents(),
+        parsed.allLinkedApplications(),
         command.schemaVersion(),
-        command.applicationType(),
-        parsed.applyApplicationId(),
         parsed.submittedAt(),
-        parsed.officeCode(),
         parsed.usedDelegatedFunctions(),
         parsed.categoryOfLaw(),
         parsed.matterType(),
-        toProceedings(parsed.proceedings()),
+        parsed.proceedings(),
         command.serialisedRequest(),
         Instant.now(clock),
         leadApplicationId);
-  }
-
-  private List<ApplicationIndividual> toIndividuals(List<CreateApplicationIndividual> individuals) {
-    return individuals.stream()
-        .map(
-            individual ->
-                new ApplicationIndividual(
-                    UUID.randomUUID(),
-                    individual.firstName(),
-                    individual.lastName(),
-                    individual.dateOfBirth(),
-                    individual.individualContent(),
-                    individual.type()))
-        .toList();
-  }
-
-  private List<ApplicationProceeding> toProceedings(List<Proceeding> proceedings) {
-    return proceedings.stream()
-        .map(
-            proceeding ->
-                new ApplicationProceeding(
-                    UUID.randomUUID(),
-                    proceeding.getId(),
-                    proceeding.getDescription(),
-                    Boolean.TRUE.equals(proceeding.getLeadProceeding()),
-                    proceeding))
-        .toList();
   }
 }

@@ -31,7 +31,6 @@ import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
-import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ApplicationContent;
@@ -47,7 +46,6 @@ import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationCo
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationCreateRequestGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationOfficeGenerator;
-import uk.gov.justice.laa.dstew.access.utils.generator.individual.ApplicationCreateRequestIndividualGenerator;
 import uk.gov.justice.laa.dstew.access.utils.generator.proceeding.ProceedingGenerator;
 import uk.gov.justice.laa.dstew.access.utils.harness.BaseHarnessTest;
 import uk.gov.justice.laa.dstew.access.utils.harness.HarnessResult;
@@ -83,47 +81,6 @@ public class CreateApplicationTest extends BaseHarnessTest {
       givenCreateNewApplication_whenCreateApplicationWithCivilDecideServiceName_thenReturnCreatedAndPersistServiceName()
           throws Exception {
     verifyCreateNewApplicationWithServiceName(ServiceName.CIVIL_DECIDE);
-  }
-
-  @Test
-  public void
-      givenNullApplicationType_whenCreateApplication_thenDefaultsToApplyBehaviourAndReturnsCreated()
-          throws Exception {
-    // given - no applicationType provided; service defaults to APPLY
-    ApplicationCreateRequest request =
-        DataGenerator.createDefault(
-            ApplicationCreateRequestGenerator.class, builder -> builder.applicationType(null));
-
-    // when
-    HarnessResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
-
-    // then
-    assertSecurityHeaders(result);
-    assertCreated(result);
-    UUID createdId = HeaderUtils.GetUUIDFromLocation(result.getResponse().getHeader("Location"));
-    persistedDataGenerator.trackExistingApplication(createdId);
-  }
-
-  @Test
-  public void givenCcsApplicationType_whenCreateApplication_thenReturnCreated() throws Exception {
-    // given - CCS application type; schema requires id, submittedAt and laaReference in content
-    ApplicationContent content = DataGenerator.createDefault(ApplicationContentGenerator.class);
-    Map<String, Object> contentMap = new HashMap<>(objectMapper.convertValue(content, Map.class));
-    contentMap.put("laaReference", "LAA-CSS-001");
-
-    ApplicationCreateRequest request =
-        DataGenerator.createDefault(
-            ApplicationCreateRequestGenerator.class,
-            builder -> builder.applicationType(ApplicationType.CCS).applicationContent(contentMap));
-
-    // when
-    HarnessResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
-
-    // then
-    assertSecurityHeaders(result);
-    assertCreated(result);
-    UUID createdId = HeaderUtils.GetUUIDFromLocation(result.getResponse().getHeader("Location"));
-    persistedDataGenerator.trackExistingApplication(createdId);
   }
 
   @Test
@@ -187,15 +144,15 @@ public class CreateApplicationTest extends BaseHarnessTest {
     ApplicationContent content =
         DataGenerator.createDefault(
             ApplicationContentGenerator.class,
-            builder ->
-                builder
-                    .allLinkedApplications(List.of(linkedApplication))
-                    .id(associatedApplicationId));
+            builder -> builder.allLinkedApplications(List.of(linkedApplication)));
 
     ApplicationCreateRequest request =
         DataGenerator.createDefault(
             ApplicationCreateRequestGenerator.class,
-            builder -> builder.applicationContent(objectMapper.convertValue(content, Map.class)));
+            builder ->
+                builder
+                    .id(associatedApplicationId)
+                    .applicationContent(objectMapper.convertValue(content, Map.class)));
 
     // when
     HarnessResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
@@ -241,14 +198,16 @@ public class CreateApplicationTest extends BaseHarnessTest {
         DataGenerator.createDefault(
             ApplicationContentGenerator.class,
             builder ->
-                builder
-                    .allLinkedApplications(List.of(linkedApplication, invalidLinkedApplication))
-                    .id(associatedApplicationId));
+                builder.allLinkedApplications(
+                    List.of(linkedApplication, invalidLinkedApplication)));
 
     ApplicationCreateRequest request =
         DataGenerator.createDefault(
             ApplicationCreateRequestGenerator.class,
-            builder -> builder.applicationContent(objectMapper.convertValue(content, Map.class)));
+            builder ->
+                builder
+                    .id(associatedApplicationId)
+                    .applicationContent(objectMapper.convertValue(content, Map.class)));
 
     // when
     HarnessResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, request);
@@ -271,15 +230,15 @@ public class CreateApplicationTest extends BaseHarnessTest {
     ApplicationEntity existingApplication =
         persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
 
-    ApplicationContent content =
-        DataGenerator.createDefault(
-            ApplicationContentGenerator.class,
-            builder -> builder.id(existingApplication.getApplyApplicationId()));
+    ApplicationContent content = DataGenerator.createDefault(ApplicationContentGenerator.class);
 
     ApplicationCreateRequest request =
         DataGenerator.createDefault(
             ApplicationCreateRequestGenerator.class,
-            builder -> builder.applicationContent(objectMapper.convertValue(content, Map.class)));
+            builder ->
+                builder
+                    .id(existingApplication.getApplyApplicationId())
+                    .applicationContent(objectMapper.convertValue(content, Map.class)));
 
     ProblemDetail expectedProblemDetail =
         ProblemDetailBuilder.create()
@@ -305,6 +264,11 @@ public class CreateApplicationTest extends BaseHarnessTest {
 
   private ApplicationEntity verifyCreateNewApplication(
       ApplicationOffice office, LinkedApplication linkedApplication) throws Exception {
+    UUID applicationId =
+        linkedApplication == null
+            ? UUID.randomUUID()
+            : linkedApplication.getAssociatedApplicationId();
+
     ApplicationContent content =
         DataGenerator.createDefault(
             ApplicationContentGenerator.class,
@@ -312,16 +276,15 @@ public class CreateApplicationTest extends BaseHarnessTest {
                 builder
                     .office(office)
                     .allLinkedApplications(
-                        linkedApplication == null ? null : List.of(linkedApplication))
-                    .id(
-                        linkedApplication == null
-                            ? UUID.randomUUID()
-                            : linkedApplication.getAssociatedApplicationId()));
+                        linkedApplication == null ? null : List.of(linkedApplication)));
 
     ApplicationCreateRequest applicationCreateRequest =
         DataGenerator.createDefault(
             ApplicationCreateRequestGenerator.class,
-            builder -> builder.applicationContent(objectMapper.convertValue(content, Map.class)));
+            builder ->
+                builder
+                    .id(applicationId)
+                    .applicationContent(objectMapper.convertValue(content, Map.class)));
 
     HarnessResult result = postUri(TestConstants.URIs.CREATE_APPLICATION, applicationCreateRequest);
 
@@ -571,9 +534,9 @@ public class CreateApplicationTest extends BaseHarnessTest {
             Map.of(
                 "invalidFields",
                 Map.of(
+                    "id", "must not be null",
                     "applicationContent", "must not be null",
                     "laaReference", "must not be null",
-                    "individuals", "must not be null",
                     "status", "must not be null"))));
   }
 
@@ -630,8 +593,8 @@ public class CreateApplicationTest extends BaseHarnessTest {
   public void
       givenApplicationContentMissingRequiredFields_whenCreateApplication_thenReturnBadRequest()
           throws Exception {
-    // given - applicationContent that is missing the required 'id' and 'submittedAt' fields,
-    // which are enforced by JSON Schema validation (not Bean Validation)
+    // given - applicationContent that is missing the required 'submittedAt' field,
+    // which is enforced by JSON Schema validation (not Bean Validation)
     ApplicationCreateRequest request =
         DataGenerator.createDefault(
             ApplicationCreateRequestGenerator.class,
@@ -650,7 +613,6 @@ public class CreateApplicationTest extends BaseHarnessTest {
     assertEquals("Generic Validation Error", detail.getDetail());
     List<?> errors = (List<?>) detail.getProperties().get("errors");
     assertThat(errors).isNotEmpty();
-    assertThat(errors).anyMatch(e -> e.toString().contains("id"));
     assertThat(errors).anyMatch(e -> e.toString().contains("submittedAt"));
     assertTrue(trackedApplicationIds().isEmpty(), "Expected no application to be persisted");
   }
@@ -688,98 +650,7 @@ public class CreateApplicationTest extends BaseHarnessTest {
                 ApplicationCreateRequestGenerator.class,
                 builder -> builder.applicationContent(new HashMap<>())),
             problemDetail,
-            Map.of("invalidFields", Map.of("applicationContent", minimumSizErrorMessage))),
-        Arguments.of(
-            DataGenerator.createDefault(
-                ApplicationCreateRequestGenerator.class, builder -> builder.individuals(null)),
-            problemDetail,
-            Map.of("invalidFields", Map.of("individuals", mustNotBeNull))),
-        Arguments.of(
-            DataGenerator.createDefault(
-                ApplicationCreateRequestGenerator.class, builder -> builder.individuals(List.of())),
-            problemDetail,
-            Map.of("invalidFields", Map.of("individuals", minimumSizErrorMessage))),
-        Arguments.of(
-            DataGenerator.createDefault(
-                ApplicationCreateRequestGenerator.class,
-                builder ->
-                    builder.individuals(
-                        List.of(
-                            DataGenerator.createDefault(
-                                ApplicationCreateRequestIndividualGenerator.class,
-                                indBuilder -> indBuilder.dateOfBirth(null))))),
-            problemDetail,
-            Map.of("invalidFields", Map.of("individuals[0].dateOfBirth", mustNotBeNull))),
-        Arguments.of(
-            DataGenerator.createDefault(
-                ApplicationCreateRequestGenerator.class,
-                builder ->
-                    builder.individuals(
-                        List.of(
-                            DataGenerator.createDefault(
-                                ApplicationCreateRequestIndividualGenerator.class,
-                                indBuilder -> indBuilder.details(null))))),
-            problemDetail,
-            Map.of("invalidFields", Map.of("individuals[0].details", mustNotBeNull))),
-        Arguments.of(
-            DataGenerator.createDefault(
-                ApplicationCreateRequestGenerator.class,
-                builder ->
-                    builder.individuals(
-                        List.of(
-                            DataGenerator.createDefault(
-                                ApplicationCreateRequestIndividualGenerator.class,
-                                indBuilder -> indBuilder.details(new HashMap<>()))))),
-            problemDetail,
-            Map.of("invalidFields", Map.of("individuals[0].details", minimumSizErrorMessage))),
-        Arguments.of(
-            DataGenerator.createDefault(
-                ApplicationCreateRequestGenerator.class,
-                builder ->
-                    builder.individuals(
-                        List.of(
-                            DataGenerator.createDefault(
-                                ApplicationCreateRequestIndividualGenerator.class,
-                                indBuilder ->
-                                    indBuilder
-                                        .dateOfBirth(null)
-                                        .firstName("")
-                                        .lastName("")
-                                        .type(null)
-                                        .details(new HashMap<>()))))),
-            problemDetail,
-            Map.of(
-                "invalidFields",
-                Map.of(
-                    "individuals[0].details", minimumSizErrorMessage,
-                    "individuals[0].type", mustNotBeNull,
-                    "individuals[0].dateOfBirth", mustNotBeNull))),
-        Arguments.of(
-            DataGenerator.createDefault(
-                ApplicationCreateRequestGenerator.class,
-                builder ->
-                    builder.individuals(
-                        List.of(
-                            DataGenerator.createDefault(
-                                ApplicationCreateRequestIndividualGenerator.class,
-                                indBuilder ->
-                                    indBuilder
-                                        .dateOfBirth(null)
-                                        .firstName(null)
-                                        .lastName(null)
-                                        .details(null))))),
-            problemDetail,
-            Map.of(
-                "invalidFields",
-                Map.of(
-                    "individuals[0].details",
-                    mustNotBeNull,
-                    "individuals[0].lastName",
-                    mustNotBeNull,
-                    "individuals[0].firstName",
-                    mustNotBeNull,
-                    "individuals[0].dateOfBirth",
-                    mustNotBeNull))));
+            Map.of("invalidFields", Map.of("applicationContent", minimumSizErrorMessage))));
   }
 
   private void assertApplicationEqual(ApplicationCreateRequest expected, ApplicationEntity actual)

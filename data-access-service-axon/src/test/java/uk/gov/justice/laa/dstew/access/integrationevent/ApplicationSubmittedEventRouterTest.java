@@ -54,15 +54,12 @@ class ApplicationSubmittedEventRouterTest {
         .singleElement()
         .satisfies(
             published -> {
-              assertThat(published.applicationType()).isEqualTo("APPLY");
               assertThat(published.event().eventType()).isEqualTo("ApplicationSubmitted");
               assertThat(published.event().schemaVersion()).isEqualTo(1);
               assertThat(published.event().occurredAt()).isEqualTo(COMMITTED_AT);
               assertThat(published.event().source()).isEqualTo("laa-data-access-api");
               assertThat(published.event().correlationId()).isEqualTo("corr-2096");
               assertThat(published.event().data().applicationId()).isEqualTo(event.applicationId());
-              assertThat(published.event().data().applyApplicationId())
-                  .isEqualTo(event.applyApplicationId());
               assertThat(published.event().data().laaReference()).isNull();
               assertThat(published.event().data().applicationVersion()).isZero();
             });
@@ -78,7 +75,7 @@ class ApplicationSubmittedEventRouterTest {
     router.on(createdEvent("APPLICATION_IN_PROGRESS"), eventMessage(Map.of()), lifecycle);
 
     verify(lifecycle, never()).runOnAfterCommit(any());
-    verify(publisher, never()).publish(any(), any());
+    verify(publisher, never()).publish(any());
   }
 
   @Test
@@ -95,8 +92,6 @@ class ApplicationSubmittedEventRouterTest {
             7L,
             "APPLICATION_IN_PROGRESS",
             "APPLICATION_SUBMITTED",
-            "APPLY",
-            id,
             COMMITTED_AT.minusSeconds(1));
 
     router.on(event, eventMessage(Map.of("correlationId", "corr-update")), lifecycle);
@@ -122,26 +117,19 @@ class ApplicationSubmittedEventRouterTest {
     UUID id = UUID.randomUUID();
     ApplicationUpdatedEvent event =
         new ApplicationUpdatedEvent(
-            id,
-            2L,
-            2L,
-            "APPLICATION_SUBMITTED",
-            "APPLICATION_SUBMITTED",
-            "APPLY",
-            id,
-            COMMITTED_AT);
+            id, 2L, 2L, "APPLICATION_SUBMITTED", "APPLICATION_SUBMITTED", COMMITTED_AT);
 
     router.on(event, eventMessage(Map.of()), lifecycle);
 
     verify(lifecycle, never()).runOnAfterCommit(any());
-    verify(publisher, never()).publish(any(), any());
+    verify(publisher, never()).publish(any());
   }
 
   @Test
   void givenPublishFailsAfterCommit_whenCallbackRuns_thenFailureIsLoggedAndNotPropagated(
       CapturedOutput output) {
     ApplicationSubmittedPublisher publisher = mock(ApplicationSubmittedPublisher.class);
-    doThrow(new IllegalStateException("SNS unavailable")).when(publisher).publish(any(), any());
+    doThrow(new IllegalStateException("SNS unavailable")).when(publisher).publish(any());
     ApplicationSubmittedEventRouter router =
         new ApplicationSubmittedEventRouter(
             publisher, Clock.fixed(COMMITTED_AT, ZoneOffset.UTC), new SimpleMeterRegistry());
@@ -185,16 +173,7 @@ class ApplicationSubmittedEventRouterTest {
   private ApplicationCreatedEvent createdEvent(String status) {
     UUID id = UUID.fromString("8c9e6c2e-4f1a-4e3a-9c2b-1a2b3c4d5e6f");
     return new ApplicationCreatedEvent(
-        id,
-        0L,
-        "fingerprint",
-        status,
-        1,
-        "APPLY",
-        id,
-        COMMITTED_AT.minusSeconds(1),
-        null,
-        List.of());
+        id, 0L, "fingerprint", status, 1, COMMITTED_AT.minusSeconds(1), null, List.of());
   }
 
   private EventMessage eventMessage(Map<String, String> metadata) {
@@ -212,10 +191,10 @@ class ApplicationSubmittedEventRouterTest {
     private final java.util.ArrayList<Published> events = new java.util.ArrayList<>();
 
     @Override
-    public void publish(ApplicationSubmittedEvent event, String applicationType) {
-      events.add(new Published(event, applicationType));
+    public void publish(ApplicationSubmittedEvent event) {
+      events.add(new Published(event));
     }
   }
 
-  private record Published(ApplicationSubmittedEvent event, String applicationType) {}
+  private record Published(ApplicationSubmittedEvent event) {}
 }

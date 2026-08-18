@@ -14,8 +14,6 @@ public record ApplicationCreatedEvent(
     String requestFingerprint,
     String status,
     int schemaVersion,
-    String applicationType,
-    UUID applyApplicationId,
     Instant occurredAt,
     UUID leadApplicationId,
     List<UUID> associatedApplicationIds) {

@@ -34,7 +34,6 @@ public class ApplicationReadModelGenerator
         .usedDelegatedFunctions(false)
         .autoGrant(true)
         .decisionStatus("GRANTED")
-        .applicationType("INITIAL")
         .version(0L)
         .opponents(List.of(opponentReadModelGenerator.createDefault()))
         .provider(

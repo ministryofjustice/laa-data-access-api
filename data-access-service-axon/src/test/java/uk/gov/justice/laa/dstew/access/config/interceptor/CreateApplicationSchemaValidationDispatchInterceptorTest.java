@@ -6,9 +6,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validApplicationContent;
 
-import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import org.axonframework.messaging.commandhandling.CommandMessage;
 import org.axonframework.messaging.commandhandling.GenericCommandMessage;
@@ -27,7 +26,7 @@ class CreateApplicationSchemaValidationDispatchInterceptorTest {
     CreateApplicationSchemaValidationDispatchInterceptor interceptor =
         new CreateApplicationSchemaValidationDispatchInterceptor(validator);
     UUID id = UUID.randomUUID();
-    CreateApplicationCommand command = createCommand(id, "CssApplication.json", "CCS");
+    CreateApplicationCommand command = createCommand(id, "CssApplication.json");
     var commandMessage =
         new GenericCommandMessage(new MessageType(CreateApplicationCommand.class), command);
     MessageDispatchInterceptorChain<CommandMessage> chain = chain();
@@ -61,17 +60,14 @@ class CreateApplicationSchemaValidationDispatchInterceptorTest {
     return chain;
   }
 
-  private CreateApplicationCommand createCommand(
-      UUID id, String schemaName, String applicationType) {
+  private CreateApplicationCommand createCommand(UUID id, String schemaName) {
     return new CreateApplicationCommand(
         id,
         "APPLICATION_SUBMITTED",
         "LAA-123",
-        Map.of("id", id.toString()),
-        List.of(),
+        validApplicationContent(id, UUID.randomUUID()),
         "{}",
         1,
-        schemaName,
-        applicationType);
+        schemaName);
   }
 }

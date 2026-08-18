@@ -22,11 +22,9 @@ public class GetApplicationReadModelMapper {
    * Builds the use-case read model from a raw DB projection.
    *
    * @param projection application DB projection
-   * @param applicationType applicationType
    * @return application read model
    */
-  public ApplicationReadModel toApplicationReadModel(
-      ApplicationDbProjection projection, String applicationType) {
+  public ApplicationReadModel toApplicationReadModel(ApplicationDbProjection projection) {
     return ApplicationReadModel.builder()
         .id(projection.id())
         .status(projection.status())
@@ -38,7 +36,6 @@ public class GetApplicationReadModelMapper {
         .usedDelegatedFunctions(projection.usedDelegatedFunctions())
         .autoGrant(projection.autoGrant())
         .decisionStatus(projection.decisionStatus())
-        .applicationType(applicationType)
         .version(projection.version())
         .opponents(toOpponentReadModels(projection.opponents()))
         .provider(toProviderReadModel(projection.officeCode(), projection.submitterEmail()))
