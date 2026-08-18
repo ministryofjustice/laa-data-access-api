@@ -6,7 +6,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.web.SecurityFilterChain;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationProvider;
@@ -30,7 +29,10 @@ class NoSecurityConfig {
   @Bean
   SecurityFilterChain securityFilterChain(final HttpSecurity http) throws Exception {
     http.authorizeHttpRequests(authorize -> authorize.anyRequest().permitAll())
-        .csrf(AbstractHttpConfigurer::disable);
+        .csrf(
+            csrf ->
+                csrf.ignoringRequestMatchers(
+                    "/api/**", "/actuator/**", "/swagger-ui/**", "/v3/api-docs/**", "/error"));
     return http.build();
   }
 
