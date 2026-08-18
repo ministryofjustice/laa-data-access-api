@@ -5,8 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationProvider;
 
@@ -27,13 +26,8 @@ class NoSecurityConfig {
   }
 
   @Bean
-  SecurityFilterChain securityFilterChain(final HttpSecurity http) throws Exception {
-    http.authorizeHttpRequests(authorize -> authorize.anyRequest().permitAll())
-        .csrf(
-            csrf ->
-                csrf.ignoringRequestMatchers(
-                    "/api/**", "/actuator/**", "/swagger-ui/**", "/v3/api-docs/**", "/error"));
-    return http.build();
+  WebSecurityCustomizer webSecurityCustomizer() {
+    return web -> web.ignoring().requestMatchers("/**");
   }
 
   @Bean("entra")
