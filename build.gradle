@@ -30,13 +30,9 @@ ext['jackson-2-bom.version'] = '2.21.5'
 ext['log4j2.version'] = '2.25.5'
 //Incorrect Authorization (new) [High Severity][https://security.snyk.io/vuln/SNYK-JAVA-TOOLSJACKSONCORE-17972609] in tools.jackson.core:jackson-databind@3.1.4
 ext['jackson-bom.version'] = '3.1.5'
-//  Upgrade io.netty:netty-codec-http@4.2.15.Final
-//  ✗ Incorrect Authorization (new) [Medium Severity][https://security.snyk.io/vuln/SNYK-JAVA-IONETTY-18170206] in io.netty:netty-codec-http@4.2.15.Final
-//  ✗ Allocation of Resources Without Limits or Throttling (new) [High Severity][https://security.snyk.io/vuln/SNYK-JAVA-IONETTY-18170202] in io.netty:netty-codec-http@4.2.15.Final
-//  ✗ Allocation of Resources Without Limits or Throttling (new) [High Severity][https://security.snyk.io/vuln/SNYK-JAVA-IONETTY-18170213] in io.netty:netty-codec-http@4.2.15.Final
-//  ✗ Allocation of Resources Without Limits or Throttling (new) [High Severity][https://security.snyk.io/vuln/SNYK-JAVA-IONETTY-18170204] in io.netty:netty-codec-http2@4.2.15.Final
-//  ✗ Allocation of Resources Without Limits or Throttling (new) [High Severity][https://security.snyk.io/vuln/SNYK-JAVA-IONETTY-18170205] in io.netty:netty-codec-http3@4.2.15.Final
-ext['netty.version'] = '4.2.16.Final'
+//  Upgrade io.netty:netty-codec-http@4.2.17.Final
+//  [High Severity][https://security.snyk.io/vuln/SNYK-JAVA-IONETTY-18956131] in io.netty:netty-codec-http@4.2.16.Final
+ext['netty.version'] = '4.2.17.Final'
 
 def requiredJavaVersion = 25
 def currentJavaVersion = JavaVersion.current().majorVersion.toInteger()
