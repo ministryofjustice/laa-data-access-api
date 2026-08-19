@@ -7,6 +7,9 @@ public class PriorAuthorityCreationConflictException extends RuntimeException {
 
   private final UUID submissionId;
 
+  /**
+   * Creates a conflict exception for a submission ID that already exists with different content.
+   */
   public PriorAuthorityCreationConflictException(UUID submissionId) {
     super(
         "Prior authority already exists with a different payload for submission: " + submissionId);

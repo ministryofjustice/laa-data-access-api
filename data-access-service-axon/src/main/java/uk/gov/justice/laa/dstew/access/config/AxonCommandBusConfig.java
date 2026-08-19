@@ -5,7 +5,7 @@ import org.axonframework.messaging.core.correlation.CorrelationDataProvider;
 import org.axonframework.messaging.core.correlation.SimpleCorrelationDataProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import uk.gov.justice.laa.dstew.access.config.interceptor.CreateApplicationSchemaValidationDispatchInterceptor;
+import uk.gov.justice.laa.dstew.access.config.interceptor.ContentSchemaValidationDispatchInterceptor;
 import uk.gov.justice.laa.dstew.access.config.interceptor.ServiceNameMetadataDispatchInterceptor;
 
 /** Configures the default Axon command bus with dispatch interceptors and metadata correlation. */
@@ -23,13 +23,12 @@ public class AxonCommandBusConfig {
   @Bean
   ConfigurationEnhancer commandDispatchInterceptors(
       ServiceNameMetadataDispatchInterceptor serviceNameInterceptor,
-      CreateApplicationSchemaValidationDispatchInterceptor schemaInterceptor) {
+      ContentSchemaValidationDispatchInterceptor schemaInterceptor) {
     return registry ->
         registry
             .registerComponent(
                 ServiceNameMetadataDispatchInterceptor.class, config -> serviceNameInterceptor)
             .registerComponent(
-                CreateApplicationSchemaValidationDispatchInterceptor.class,
-                config -> schemaInterceptor);
+                ContentSchemaValidationDispatchInterceptor.class, config -> schemaInterceptor);
   }
 }

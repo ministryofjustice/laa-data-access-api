@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["billingType", "totalAmount", "costsSharedWithOtherParties"],
+  "properties": {
+    "billingType": {
+      "type": "string",
+      "enum": ["HOURLY", "FIXED_RATE"]
+    },
+    "hourlyRate": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "timeRequested": {
+      "$ref": "TimeRequested.json"
+    },
+    "totalAmount": {
+      "type": "number"
+    },
+    "costsSharedWithOtherParties": {
+      "type": "boolean"
+    },
+    "apportionment": {
+      "$ref": "Apportionment.json"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "billingType": {
+            "const": "HOURLY"
+          }
+        }
+      },
+      "then": {
+        "required": ["hourlyRate", "timeRequested"]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "costsSharedWithOtherParties": {
+            "const": true
+          }
+        }
+      },
+      "then": {
+        "required": ["apportionment"]
+      }
+    }
+  ]
+}

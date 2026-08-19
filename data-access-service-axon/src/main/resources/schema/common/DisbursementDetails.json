@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["disbursementPurpose", "disbursementAmount"],
+  "properties": {
+    "disbursementPurpose": {
+      "type": "string",
+      "minLength": 1
+    },
+    "disbursementAmount": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    }
+  }
+}

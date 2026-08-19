@@ -1,0 +1,63 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["priorAuthorityType", "justification"],
+  "properties": {
+    "priorAuthorityType": {
+      "type": "string",
+      "enum": ["EXPERT", "DISBURSEMENT", "COUNSEL"]
+    },
+    "justification": {
+      "type": "string",
+      "maxLength": 10000
+    },
+    "expertDetails": {
+      "$ref": "../common/ExpertDetails.json"
+    },
+    "counselDetails": {
+      "$ref": "../common/CounselDetails.json"
+    },
+    "disbursementDetails": {
+      "$ref": "../common/DisbursementDetails.json"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "priorAuthorityType": {
+            "const": "EXPERT"
+          }
+        }
+      },
+      "then": {
+        "required": ["expertDetails"]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "priorAuthorityType": {
+            "const": "COUNSEL"
+          }
+        }
+      },
+      "then": {
+        "required": ["counselDetails"]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "priorAuthorityType": {
+            "const": "DISBURSEMENT"
+          }
+        }
+      },
+      "then": {
+        "required": ["disbursementDetails"]
+      }
+    }
+  ]
+}
