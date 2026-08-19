@@ -23,6 +23,7 @@ import uk.gov.justice.laa.dstew.access.model.DocumentDownloadResponse;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
+import uk.gov.justice.laa.dstew.access.query.application.ApplicationNotesResult;
 import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsQuery;
@@ -42,7 +43,6 @@ public class ApplicationQueryController implements ApplicationQueryApi {
   private final GetAllApplicationsResponseMapper getAllResponseMapper;
   private final GetApplicationHistoryResponseMapper historyResponseMapper;
   private final GetAllNotesForApplicationResponseMapper notesResponseMapper;
-  private final SubscriptionProjectionGateway projectionGateway;
 
   /**
    * Constructs the controller with its query gateway and response mappers.
@@ -121,8 +121,9 @@ public class ApplicationQueryController implements ApplicationQueryApi {
   @LogMethodResponse
   public ResponseEntity<ApplicationResponse> getApplicationById(ServiceName serviceName, UUID id) {
     ApplicationReadModel application =
-        findApplicationAwaitingProjection(id)
-            .orElseGet(() -> applicationQueryUseCase.getApplicationById(id));
+        findApplication(id)
+            .orElseThrow(
+                () -> new ResourceNotFoundException("No application found with ID: " + id));
     return ResponseEntity.ok(responseMapper.toResponse(application));
   }
 
