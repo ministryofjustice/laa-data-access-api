@@ -9,7 +9,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -208,10 +207,8 @@ class ApplicationCommandControllerTest {
         "APPLICATION_SUBMITTED",
         "LAA-123",
         Map.of("id", id.toString()),
-        List.of(),
         "{}",
         1,
-        "ApplyApplication.json",
-        "APPLY");
+        "BaseCivilApplication.json");
   }
 }

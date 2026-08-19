@@ -21,6 +21,7 @@ import java.util.concurrent.TimeUnit;
 import org.axonframework.eventsourcing.eventstore.EventStorageEngine;
 import org.axonframework.eventsourcing.eventstore.jpa.AggregateBasedJpaEventStorageEngine;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
@@ -48,7 +49,6 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
-import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.AutoGranted;
@@ -59,7 +59,6 @@ import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.CreateNoteRequest;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
-import uk.gov.justice.laa.dstew.access.model.IndividualCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.InvolvedChildResponse;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceedingRequest;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
@@ -167,7 +166,7 @@ class PostgresAxonIntegrationTest {
             """,
             String.class);
 
-    assertThat(appliedVersions).containsExactly("1", "2", "3");
+    assertThat(appliedVersions).containsExactly("1", "2", "3", "4");
     assertThat(tables)
         .containsExactly(
             "application_current_state",
@@ -261,62 +260,46 @@ class PostgresAxonIntegrationTest {
   @Test
   void givenValidRequest_whenPostApplication_thenPersistsEventAndCurrentStateProjection()
       throws Exception {
-    UUID applyApplicationId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
     UUID applyProceedingId = UUID.randomUUID();
     HttpHeaders headers = new HttpHeaders();
     headers.set("X-Service-Name", "CIVIL_APPLY");
-    headers.set("X-Schema-Version", "2");
+    headers.set("X-Schema-Version", "1");
 
     ResponseEntity<Void> response =
         restTemplate.postForEntity(
             "http://localhost:" + port + "/api/v0/applications",
             new HttpEntity<>(
-                validCreateApplicationRequest(applyApplicationId, applyProceedingId), headers),
+                validCreateApplicationRequest(applicationId, applyProceedingId), headers),
             Void.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-    UUID applicationId = applicationId(response);
-    assertThat(applicationId).isEqualTo(applyApplicationId);
+    UUID createdApplicationId = applicationId(response);
+    assertThat(createdApplicationId).isEqualTo(applicationId);
 
-    ApplicationReadModel projected = awaitProjection(applicationId);
-    assertThat(projected.getApplicationId()).isEqualTo(applicationId);
+    ApplicationReadModel projected = awaitProjection(createdApplicationId);
+    assertThat(projected.getApplicationId()).isEqualTo(createdApplicationId);
     assertThat(projected.getStatus()).isEqualTo("APPLICATION_SUBMITTED");
     assertThat(projected.getLaaReference()).isEqualTo("LAA-123");
-    assertThat(projected.getSchemaVersion()).isEqualTo(2);
-    assertThat(projected.getApplicationType()).isEqualTo("APPLY");
-    assertThat(projected.getApplyApplicationId()).isEqualTo(applyApplicationId);
+    assertThat(projected.getSchemaVersion()).isEqualTo(1);
     assertThat(projected.getSubmittedAt()).isEqualTo(Instant.parse("2026-07-14T12:30:00Z"));
     assertThat(projected.getOfficeCode()).isEqualTo("1A001B");
     assertThat(projected.getUsedDelegatedFunctions()).isFalse();
-    assertThat(projected.getCategoryOfLaw()).isEqualTo("FAMILY");
+    assertThat(projected.getCategoryOfLaw()).isEqualTo("Family");
     assertThat(projected.getMatterType()).isEqualTo("SPECIAL_CHILDREN_ACT");
     assertThat(projected.getCreatedAt()).isNotNull().isEqualTo(projected.getModifiedAt());
-    assertThat(projected.getApplicationContent().getId()).isEqualTo(applyApplicationId);
-    assertThat(projected.getApplicationContent().getOffice().getCode()).isEqualTo("1A001B");
-    assertThat(projected.getIndividuals())
-        .singleElement()
-        .satisfies(
-            individual -> {
-              assertThat(individual.individualId()).isNotNull();
-              assertThat(individual.firstName()).isEqualTo("Ada");
-              assertThat(individual.lastName()).isEqualTo("Lovelace");
-              assertThat(individual.dateOfBirth()).isEqualTo(LocalDate.parse("1815-12-10"));
-              assertThat(individual.individualContent())
-                  .containsExactlyEntriesOf(Map.of("preferredName", "Ada"));
-              assertThat(individual.type()).isEqualTo("CLIENT");
-            });
+    assertThat(projected.getProvider()).isNotNull();
+    assertThat(projected.getProvider().getOfficeCode()).isEqualTo("1A001B");
     assertThat(projected.getProceedings())
         .singleElement()
         .satisfies(
             proceeding -> {
-              assertThat(proceeding.proceedingId()).isNotNull();
-              assertThat(proceeding.applyProceedingId()).isEqualTo(applyProceedingId);
-              assertThat(proceeding.description()).isEqualTo("Care order");
-              assertThat(proceeding.lead()).isTrue();
-              assertThat(proceeding.proceedingContent().getId()).isEqualTo(applyProceedingId);
+              assertThat(proceeding.getId()).isEqualTo(applyProceedingId);
+              assertThat(proceeding.getDescription()).isEqualTo("Care order");
+              assertThat(proceeding.getLeadProceeding()).isTrue();
             });
 
-    assertThat(awaitHistory(applicationId, 1))
+    assertThat(awaitHistory(createdApplicationId, 1))
         .singleElement()
         .satisfies(
             history -> {
@@ -454,7 +437,7 @@ class PostgresAxonIntegrationTest {
     UUID applyProceedingId = UUID.randomUUID();
     applicationId(post(validCreateApplicationRequest(applicationId, applyProceedingId), headers()));
     ApplicationReadModel created = awaitProjection(applicationId);
-    UUID proceedingId = created.getProceedings().getFirst().proceedingId();
+    UUID proceedingId = created.getProceedings().getFirst().getId();
 
     MakeDecisionRequest request =
         MakeDecisionRequest.builder()
@@ -551,7 +534,7 @@ class PostgresAxonIntegrationTest {
       throws Exception {
     UUID applicationId = UUID.randomUUID();
     applicationId(post(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()));
-    UUID proceedingId = awaitProjection(applicationId).getProceedings().getFirst().proceedingId();
+    UUID proceedingId = awaitProjection(applicationId).getProceedings().getFirst().getId();
     var request =
         new AutoGrantedOutcomeRequest(
             AutoGrantOutcome.AUTOGRANTED, Map.of("certificateNumber", "AUTO-2126"));
@@ -633,7 +616,7 @@ class PostgresAxonIntegrationTest {
     UUID applicationId = UUID.randomUUID();
     UUID applyProceedingId = UUID.randomUUID();
     applicationId(post(validCreateApplicationRequest(applicationId, applyProceedingId), headers()));
-    UUID proceedingId = awaitProjection(applicationId).getProceedings().getFirst().proceedingId();
+    UUID proceedingId = awaitProjection(applicationId).getProceedings().getFirst().getId();
     Map<String, Object> certificate =
         Map.of(
             "certificateNumber", "TESTCERT001",
@@ -859,51 +842,43 @@ class PostgresAxonIntegrationTest {
   @Test
   void givenCreatedApplication_whenGetApplication_thenReturnsCurrentStateProjection()
       throws Exception {
-    UUID applyApplicationId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
     UUID applyProceedingId = UUID.randomUUID();
     final UUID involvedChildId = UUID.randomUUID();
     ApplicationCreateRequest request =
-        validCreateApplicationRequest(applyApplicationId, applyProceedingId);
+        validCreateApplicationRequest(applicationId, applyProceedingId);
     Map<String, Object> content = new HashMap<>(request.getApplicationContent());
     Map<String, Object> proceeding = firstProceeding(content);
     proceeding.put("meaning", "Care proceedings");
-    proceeding.put("substantiveLevelOfServiceNameEnum", "FULL_REPRESENTATION");
-    proceeding.put("substantiveCostLimitation", 2_500.0);
+    proceeding.put("substantiveLevelOfServiceName", "FULL_REPRESENTATION");
+    proceeding.put("substantiveCostLimitation", "2500.0");
     proceeding.put(
-        "scopeLimitations", List.of(Map.of("meaning", "LIMITED", "description", "Limited scope")));
-    content.put("proceedings", List.of(proceeding));
-    content.put("submitterEmail", "provider@example.com");
-    content.put(
-        "applicationMerits",
-        Map.of(
-            "opponents",
-            List.of(
-                Map.of(
-                    "opposableType",
-                    "INDIVIDUAL",
-                    "opposable",
-                    Map.of("firstName", "Grace", "lastName", "Hopper"))),
-            "involvedChildren",
-            List.of(
-                Map.of(
-                    "id",
-                    involvedChildId.toString(),
-                    "fullName",
-                    "Child Example",
-                    "dateOfBirth",
-                    "2015-01-02"))));
-    content.put(
-        "proceedingMerits",
+        "involvedChildren",
         List.of(
             Map.of(
-                "proceedingId",
-                applyProceedingId.toString(),
-                "proceedingLinkedChildren",
-                List.of(Map.of("involvedChildId", involvedChildId.toString())))));
+                "id",
+                involvedChildId.toString(),
+                "fullName",
+                "Child Example",
+                "dateOfBirth",
+                "2015-01-02")));
+    proceeding.put(
+        "scopeLimitations",
+        List.of(
+            Map.ofEntries(
+                Map.entry("id", UUID.randomUUID().toString()),
+                Map.entry("type", "LIMITATION"),
+                Map.entry("code", "CV117"),
+                Map.entry("meaning", "LIMITED"),
+                Map.entry("description", "Limited scope"))));
+    content.put("proceedings", List.of(proceeding));
+    content.put(
+        "opponents",
+        List.of(Map.of("opponentType", "INDIVIDUAL", "firstName", "Grace", "lastName", "Hopper")));
     request.setApplicationContent(content);
 
-    UUID applicationId = applicationId(post(request, headers()));
-    ResponseEntity<ApplicationResponse> response = awaitGet(applicationId);
+    UUID createdApplicationId = applicationId(post(request, headers()));
+    ResponseEntity<ApplicationResponse> response = awaitGet(createdApplicationId);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     ApplicationResponse actual = response.getBody();
@@ -916,18 +891,20 @@ class PostgresAxonIntegrationTest {
 
     ApplicationResponse expected =
         new ApplicationResponse()
-            .applicationId(applicationId)
+            .applicationId(createdApplicationId)
             .status(ApplicationStatus.APPLICATION_SUBMITTED)
             .laaReference("LAA-123")
             .lastUpdated(actual.getLastUpdated())
             .submittedAt(OffsetDateTime.parse("2026-07-14T12:30:00Z"))
-            .isLead(true)
+            .isLead(false)
             .usedDelegatedFunctions(false)
             .autoGranted(AutoGranted.PENDING)
             .version(0L)
-            .applicationType(ApplicationType.INITIAL)
             .provider(
-                new ProviderResponse().officeCode("1A001B").contactEmail("provider@example.com"))
+                ProviderResponse.builder()
+                    .officeCode("1A001B")
+                    .contactEmail("provider@example.com")
+                    .build())
             .opponents(
                 List.of(
                     new OpponentResponse()
@@ -953,7 +930,7 @@ class PostgresAxonIntegrationTest {
                             List.of(
                                 new InvolvedChildResponse()
                                     .fullName("Child Example")
-                                    .dateOfBirth(LocalDate.parse("2015-01-02"))))));
+                                    .dateOfBirth(LocalDate.of(2015, 1, 2))))));
 
     assertThat(actual).usingRecursiveComparison().isEqualTo(expected);
   }
@@ -973,10 +950,10 @@ class PostgresAxonIntegrationTest {
   @Test
   void givenIdenticalRetry_whenPostApplicationAgain_thenReturnsCreatedIdempotently()
       throws Exception {
-    UUID applyApplicationId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
     HttpEntity<ApplicationCreateRequest> request =
         new HttpEntity<>(
-            validCreateApplicationRequest(applyApplicationId, UUID.randomUUID()), headers());
+            validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers());
 
     ResponseEntity<Void> firstResponse =
         restTemplate.postForEntity(
@@ -992,51 +969,52 @@ class PostgresAxonIntegrationTest {
     assertThat(retryResponse.getHeaders().getLocation())
         .isEqualTo(firstResponse.getHeaders().getLocation());
 
-    UUID applicationId = applicationId(firstResponse);
-    assertThat(awaitHistory(applicationId, 1))
+    UUID createdApplicationId = applicationId(firstResponse);
+    assertThat(awaitHistory(createdApplicationId, 1))
         .singleElement()
         .satisfies(h -> assertThat(h.getEventType()).isEqualTo("APPLICATION_CREATED"));
 
     List<Map<String, Object>> events =
         jdbcTemplate.queryForList(
             "SELECT COUNT(*) as cnt FROM axon.domain_event_entry WHERE aggregate_identifier = ?",
-            applicationId.toString());
+            createdApplicationId.toString());
     assertThat(events.getFirst().get("cnt")).isEqualTo(1L);
   }
 
   @Test
   void givenChangedPayload_whenPostApplicationAgain_thenReturnsConflict() throws Exception {
-    UUID applyApplicationId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
     UUID applyProceedingId = UUID.randomUUID();
 
     ResponseEntity<Void> firstResponse =
-        post(validCreateApplicationRequest(applyApplicationId, applyProceedingId), headers());
+        post(validCreateApplicationRequest(applicationId, applyProceedingId), headers());
     awaitProjection(applicationId(firstResponse));
 
     ResponseEntity<String> conflictResponse =
         post(
-            validCreateApplicationRequest(applyApplicationId, UUID.randomUUID()),
+            validCreateApplicationRequest(applicationId, UUID.randomUUID()),
             headers(),
             String.class);
 
     assertThat(firstResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
     assertThat(conflictResponse.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-    assertThat(awaitHistory(applyApplicationId, 1)).hasSize(1);
+    assertThat(awaitHistory(applicationId, 1)).hasSize(1);
   }
 
   @Test
+  @Disabled("Linked applications removed from schema; orchestration retained for future endpoint")
   void givenExistingLeadApplication_whenPostLinkedApplication_thenProjectsCurrentStateAndHistory()
       throws Exception {
-    UUID leadApplyApplicationId = UUID.randomUUID();
+    UUID leadApplicationId = UUID.randomUUID();
     ResponseEntity<Void> leadResponse =
-        post(validCreateApplicationRequest(leadApplyApplicationId, UUID.randomUUID()), headers());
-    UUID leadApplicationId = applicationId(leadResponse);
-    awaitProjection(leadApplicationId);
+        post(validCreateApplicationRequest(leadApplicationId, UUID.randomUUID()), headers());
+    UUID createdLeadApplicationId = applicationId(leadResponse);
+    awaitProjection(createdLeadApplicationId);
 
     ResponseEntity<Void> linkedResponse =
         post(
             validLinkedCreateApplicationRequest(
-                UUID.randomUUID(), UUID.randomUUID(), leadApplyApplicationId),
+                UUID.randomUUID(), UUID.randomUUID(), createdLeadApplicationId),
             headers());
     UUID linkedApplicationId = applicationId(linkedResponse);
 
@@ -1047,62 +1025,61 @@ class PostgresAxonIntegrationTest {
         .containsExactlyInAnyOrder("APPLICATION_CREATED", "APPLICATION_GROUP_JOINED");
     assertThat(
             awaitHistoryTypes(
-                leadApplicationId, "APPLICATION_CREATED", "APPLICATION_GROUP_CREATED"))
+                createdLeadApplicationId, "APPLICATION_CREATED", "APPLICATION_GROUP_CREATED"))
         .extracting(ApplicationHistoryReadModel::getEventType)
         .containsExactlyInAnyOrder("APPLICATION_CREATED", "APPLICATION_GROUP_CREATED");
     ApplicationReadModel projected =
         applicationReadRepository
             .findById(linkedApplicationId)
             .orElseThrow(() -> new AssertionError("Application not found: " + linkedApplicationId));
-    assertThat(projected.getLeadApplicationId()).isEqualTo(leadApplicationId);
+    assertThat(projected.getLeadApplicationId()).isEqualTo(createdLeadApplicationId);
   }
 
   @Test
+  @Disabled("Linked applications removed from schema; orchestration retained for future endpoint")
   void givenMissingLeadApplication_whenPostApplication_thenReturnsNotFound() {
-    UUID missingLeadApplyApplicationId = UUID.randomUUID();
+    UUID missingLeadApplicationId = UUID.randomUUID();
     UUID rejectedApplicationId = UUID.randomUUID();
 
     ResponseEntity<String> response =
         post(
             validLinkedCreateApplicationRequest(
-                rejectedApplicationId, UUID.randomUUID(), missingLeadApplyApplicationId),
+                rejectedApplicationId, UUID.randomUUID(), missingLeadApplicationId),
             headers(),
             String.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-    assertThat(response.getBody()).contains(missingLeadApplyApplicationId.toString());
+    assertThat(response.getBody()).contains(missingLeadApplicationId.toString());
     assertRejectedApplicationWasRolledBack(rejectedApplicationId);
-    assertThat(groupReadRepository.findByLeadApplicationId(missingLeadApplyApplicationId))
-        .isEmpty();
+    assertThat(groupReadRepository.findByLeadApplicationId(missingLeadApplicationId)).isEmpty();
   }
 
   @Test
+  @Disabled("Linked applications removed from schema; orchestration retained for future endpoint")
   void givenMissingAssociatedApplication_whenPostApplication_thenReturnsNotFound()
       throws Exception {
-    UUID leadApplyApplicationId = UUID.randomUUID();
-    UUID leadApplicationId =
+    UUID leadApplicationId = UUID.randomUUID();
+    UUID createdLeadApplicationId =
         applicationId(
-            post(
-                validCreateApplicationRequest(leadApplyApplicationId, UUID.randomUUID()),
-                headers()));
-    awaitProjection(leadApplicationId);
+            post(validCreateApplicationRequest(leadApplicationId, UUID.randomUUID()), headers()));
+    awaitProjection(createdLeadApplicationId);
 
-    UUID missingAssociatedApplyApplicationId = UUID.randomUUID();
+    UUID missingAssociatedApplicationId = UUID.randomUUID();
     UUID rejectedApplicationId = UUID.randomUUID();
     ResponseEntity<String> response =
         post(
             validLinkedCreateApplicationRequest(
                 rejectedApplicationId,
                 UUID.randomUUID(),
-                leadApplyApplicationId,
-                missingAssociatedApplyApplicationId),
+                createdLeadApplicationId,
+                missingAssociatedApplicationId),
             headers(),
             String.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-    assertThat(response.getBody()).contains(missingAssociatedApplyApplicationId.toString());
+    assertThat(response.getBody()).contains(missingAssociatedApplicationId.toString());
     assertRejectedApplicationWasRolledBack(rejectedApplicationId);
-    assertThat(groupReadRepository.findByLeadApplicationId(leadApplicationId)).isEmpty();
+    assertThat(groupReadRepository.findByLeadApplicationId(createdLeadApplicationId)).isEmpty();
   }
 
   @Test
@@ -1124,7 +1101,7 @@ class PostgresAxonIntegrationTest {
     ApplicationCreateRequest request =
         validCreateApplicationRequest(UUID.randomUUID(), UUID.randomUUID());
     Map<String, Object> invalidContent = new HashMap<>(request.getApplicationContent());
-    invalidContent.remove("id");
+    invalidContent.remove("submittedAt");
     request.setApplicationContent(invalidContent);
 
     ResponseEntity<String> response = post(request, headers(), String.class);
@@ -1160,7 +1137,9 @@ class PostgresAxonIntegrationTest {
     ResponseEntity<String> response = post(request, headers(), String.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-    assertThat(response.getBody()).contains("submittedAt: must be an ISO-8601 instant");
+    assertThat(response.getBody())
+        .contains("submittedAt")
+        .contains("must be a valid RFC 3339 date-time");
   }
 
   @Test
@@ -1183,8 +1162,7 @@ class PostgresAxonIntegrationTest {
   void givenBeanInvalidRequest_whenPostApplication_thenReturnsBadRequest() {
     ApplicationCreateRequest request =
         validCreateApplicationRequest(UUID.randomUUID(), UUID.randomUUID());
-    IndividualCreateRequest invalidIndividual = request.getIndividuals().getFirst();
-    invalidIndividual.setType(null);
+    request.setLaaReference(null);
 
     // Use valid auth headers but send invalid request body bean
     HttpHeaders validHeaders = headers();
@@ -1196,10 +1174,10 @@ class PostgresAxonIntegrationTest {
   @Test
   void givenConcurrentIdenticalRequests_whenPosted_thenBothSucceedWithOneCreationEvent()
       throws Exception {
-    UUID applyApplicationId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
     UUID applyProceedingId = UUID.randomUUID();
     ApplicationCreateRequest request =
-        validCreateApplicationRequest(applyApplicationId, applyProceedingId);
+        validCreateApplicationRequest(applicationId, applyProceedingId);
     HttpEntity<ApplicationCreateRequest> entity = new HttpEntity<>(request, headers());
 
     CyclicBarrier barrier = new CyclicBarrier(2);
@@ -1241,12 +1219,12 @@ class PostgresAxonIntegrationTest {
     }
 
     // The event store must contain exactly one ApplicationCreatedEvent.
-    awaitProjection(applyApplicationId);
+    awaitProjection(applicationId);
     List<Map<String, Object>> events =
         jdbcTemplate.queryForList(
             "SELECT payload_type, sequence_number FROM axon.domain_event_entry "
                 + "WHERE aggregate_identifier = ? ORDER BY sequence_number",
-            applyApplicationId.toString());
+            applicationId.toString());
     assertThat(events)
         .singleElement()
         .satisfies(
@@ -1261,7 +1239,7 @@ class PostgresAxonIntegrationTest {
       throws Exception {
     UUID applicationId = UUID.randomUUID();
     applicationId(post(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()));
-    UUID proceedingId = awaitProjection(applicationId).getProceedings().getFirst().proceedingId();
+    UUID proceedingId = awaitProjection(applicationId).getProceedings().getFirst().getId();
     MakeDecisionRequest request =
         MakeDecisionRequest.builder()
             .applicationVersion(0L)
@@ -1426,13 +1404,7 @@ class PostgresAxonIntegrationTest {
   }
 
   private ApplicationCreateRequest inProgress(ApplicationCreateRequest submitted) {
-    return ApplicationCreateRequest.builder()
-        .applicationType(submitted.getApplicationType())
-        .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
-        .applicationContent(submitted.getApplicationContent())
-        .laaReference(submitted.getLaaReference())
-        .individuals(submitted.getIndividuals())
-        .build();
+    return submitted.toBuilder().status(ApplicationStatus.APPLICATION_IN_PROGRESS).build();
   }
 
   private ApplicationUpdateRequest submittedUpdate(ApplicationCreateRequest submitted) {
@@ -1537,7 +1509,7 @@ class PostgresAxonIntegrationTest {
   }
 
   private HttpHeaders headers() {
-    return headers(2);
+    return headers(1);
   }
 
   private HttpHeaders headers(int schemaVersion) {

@@ -12,14 +12,6 @@ components:
         - ASC
         - DESC
 
-    ApplicationType:
-      type: string
-      enum:
-        - INITIAL
-        - APPLY
-        - CCS
-      default: INITIAL
-
     AutoGranted:
       type: string
       description: The current automatic-assessment state of the Application
@@ -75,8 +67,6 @@ components:
           $ref: "#/components/schemas/AutoGranted"
         decisionStatus:
           $ref: "#/components/schemas/DecisionStatus"
-        applicationType:
-          $ref: "#/components/schemas/ApplicationType"
         opponents:
           type: array
           items:
@@ -100,13 +90,15 @@ components:
     ApplicationCreateRequest:
       type: object
       required:
+        - id
         - status
         - applicationContent
         - laaReference
-        - individuals
       properties:
-        applicationType:
-          $ref: "#/components/schemas/ApplicationType"
+        id:
+          type: string
+          format: uuid
+          description: The unique reference used to identify the application.
         status:
           $ref: "../open-api-common/components.yml#/components/schemas/ApplicationStatus"
         applicationContent:
@@ -117,11 +109,6 @@ components:
         laaReference:
           type: string
           minLength: 1
-        individuals:
-          type: array
-          minItems: 1
-          items:
-            $ref: "../open-api-individuals/components.yml#/components/schemas/IndividualCreateRequest"
 
     ApplicationUpdateRequest:
       type: object
@@ -176,8 +163,6 @@ components:
           type: string
         officeCode:
           type: string
-        applicationType:
-          $ref: "#/components/schemas/ApplicationType"
         isLead:
           type: boolean
         linkedApplications:

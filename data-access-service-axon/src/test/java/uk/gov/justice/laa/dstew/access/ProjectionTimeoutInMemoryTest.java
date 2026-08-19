@@ -77,12 +77,12 @@ class ProjectionTimeoutInMemoryTest {
             .get("application-projection");
     processor.shutdown().join();
 
-    UUID applyApplicationId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
     ApplicationCreateRequest request =
-        validCreateApplicationRequest(applyApplicationId, UUID.randomUUID());
+        validCreateApplicationRequest(applicationId, UUID.randomUUID());
     HttpHeaders headers = new HttpHeaders();
     headers.set("X-Service-Name", "CIVIL_APPLY");
-    headers.set("X-Schema-Version", "2");
+    headers.set("X-Schema-Version", "1");
     headers.setBearerAuth(TestJwtDecoderConfig.BEARER_TOKEN);
 
     long startMs = System.currentTimeMillis();
@@ -95,13 +95,13 @@ class ProjectionTimeoutInMemoryTest {
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
     assertThat(response.getHeaders().getLocation()).isNotNull();
     assertThat(response.getHeaders().getLocation().getPath())
-        .isEqualTo("/api/v0/applications/" + applyApplicationId);
+        .isEqualTo("/api/v0/applications/" + applicationId);
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM domain_event_entry "
                     + "WHERE aggregate_identifier = ? AND sequence_number = 0",
                 Integer.class,
-                applyApplicationId.toString()))
+                applicationId.toString()))
         .isEqualTo(1);
 
     // The test must complete well below the full 5-second default timeout.
@@ -113,7 +113,7 @@ class ProjectionTimeoutInMemoryTest {
             CompletableFuture.delayedExecutor(50, TimeUnit.MILLISECONDS));
     ResponseEntity<ApplicationResponse> directRead =
         restTemplate.exchange(
-            "/api/v0/applications/" + applyApplicationId,
+            "/api/v0/applications/" + applicationId,
             HttpMethod.GET,
             new HttpEntity<>(headers),
             ApplicationResponse.class);
@@ -121,7 +121,7 @@ class ProjectionTimeoutInMemoryTest {
     restart.join();
     assertThat(directRead.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(directRead.getBody()).isNotNull();
-    assertThat(directRead.getBody().getApplicationId()).isEqualTo(applyApplicationId);
+    assertThat(directRead.getBody().getApplicationId()).isEqualTo(applicationId);
   }
 
   @Test
@@ -298,7 +298,7 @@ class ProjectionTimeoutInMemoryTest {
   private HttpHeaders headers() {
     HttpHeaders headers = new HttpHeaders();
     headers.set("X-Service-Name", "CIVIL_APPLY");
-    headers.set("X-Schema-Version", "2");
+    headers.set("X-Schema-Version", "1");
     headers.setBearerAuth(TestJwtDecoderConfig.BEARER_TOKEN);
     return headers;
   }

@@ -8,14 +8,16 @@ import lombok.NoArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
-/** Opposable pojo. */
-@Builder(toBuilder = true)
-@NoArgsConstructor
+/** Opponent information. Matches schema/common/Opponent.json. */
 @AllArgsConstructor
+@NoArgsConstructor
 @Data
+@Builder(toBuilder = true)
 @ExcludeFromGeneratedCodeCoverage
-public class Opposable implements Serializable {
-  private @Nullable String firstName;
-  private @Nullable String lastName;
-  private @Nullable String name;
+public class Opponent implements Serializable {
+
+  @Nullable private String opponentType;
+  @Nullable private String firstName;
+  @Nullable private String lastName;
+  @Nullable private String organisationName;
 }

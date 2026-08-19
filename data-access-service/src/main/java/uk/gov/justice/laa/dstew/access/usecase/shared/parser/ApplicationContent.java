@@ -12,7 +12,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -32,11 +31,6 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 public class ApplicationContent implements Serializable {
 
   @Serial private static final long serialVersionUID = 1L;
-
-  @NotNull
-  @Valid
-  @Schema(name = "id", requiredMode = Schema.RequiredMode.REQUIRED)
-  private UUID id;
 
   @Nullable
   @Valid

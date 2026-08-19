@@ -36,10 +36,8 @@ class AssessmentReconciliationTest {
     SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
     Instant now = Instant.parse("2026-08-04T10:00:00Z");
     UUID applicationId = UUID.fromString("8c9e6c2e-4f1a-4e3a-9c2b-1a2b3c4d5e6f");
-    UUID applyApplicationId = UUID.fromString("7b8d5b1d-3e0f-4d2b-8b1a-0a1b2c3d4e5f");
     StalledAssessment stalled =
-        new StalledAssessment(
-            applicationId, applyApplicationId, 4L, now.minus(Duration.ofMinutes(45)));
+        new StalledAssessment(applicationId, 4L, now.minus(Duration.ofMinutes(45)));
     when(queryGateway.query(any(FindStalledAssessmentsQuery.class), eq(StalledAssessments.class)))
         .thenReturn(CompletableFuture.completedFuture(new StalledAssessments(List.of(stalled))));
     AssessmentReconciliation reconciliation =
@@ -53,11 +51,7 @@ class AssessmentReconciliationTest {
     verify(queryGateway).query(query.capture(), eq(StalledAssessments.class));
     assertThat(query.getValue().submittedBefore()).isEqualTo(now.minus(Duration.ofMinutes(15)));
     assertThat(output)
-        .contains(
-            applicationId.toString(),
-            applyApplicationId.toString(),
-            "applicationVersion=4",
-            "ageSeconds=2700");
+        .contains(applicationId.toString(), "applicationVersion=4", "ageSeconds=2700");
     assertThat(meterRegistry.get("application.assessment.stalled").gauge().value()).isEqualTo(1);
     assertThat(meterRegistry.get("application.assessment.oldest.age").gauge().value())
         .isEqualTo(2700);

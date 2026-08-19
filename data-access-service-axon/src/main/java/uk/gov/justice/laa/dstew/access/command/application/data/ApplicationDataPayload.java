@@ -5,26 +5,24 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationContent;
-import uk.gov.justice.laa.dstew.access.applicationcontent.CategoryOfLaw;
-import uk.gov.justice.laa.dstew.access.applicationcontent.MatterType;
+import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
+import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationProvider;
+import uk.gov.justice.laa.dstew.access.applicationcontent.Opponent;
+import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreationDetails;
-import uk.gov.justice.laa.dstew.access.command.application.ApplicationIndividual;
-import uk.gov.justice.laa.dstew.access.command.application.ApplicationProceeding;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 
 /** Sensitive application data stored outside the Axon event stream. */
 public record ApplicationDataPayload(
     String laaReference,
-    ApplicationContent applicationContent,
-    List<ApplicationIndividual> individuals,
-    UUID applyApplicationId,
+    ApplicationClient client,
+    ApplicationProvider provider,
+    List<Opponent> opponents,
     Instant submittedAt,
-    String officeCode,
     Boolean usedDelegatedFunctions,
-    CategoryOfLaw categoryOfLaw,
-    MatterType matterType,
-    List<ApplicationProceeding> proceedings,
+    String categoryOfLaw,
+    String matterType,
+    List<Proceeding> proceedings,
     String serialisedRequest,
     String overallDecision,
     AutoGrantedState autoGranted,
@@ -36,12 +34,13 @@ public record ApplicationDataPayload(
     List<ApplicationNote> notes) {
 
   /**
-   * Normalises a null {@code notes} list to an empty list so that existing {@code application_data}
-   * JSONB rows (which pre-date this field) deserialise cleanly when Jackson passes {@code null} for
-   * the absent key.
+   * Normalises a null {@code notes} and {@code opponents} lists to empty lists so that existing
+   * {@code application_data} JSONB rows (which pre-date these fields) deserialise cleanly when
+   * Jackson passes {@code null} for the absent keys.
    */
   public ApplicationDataPayload {
     notes = notes == null ? List.of() : List.copyOf(notes);
+    opponents = opponents == null ? List.of() : List.copyOf(opponents);
     autoGranted = autoGranted == null ? AutoGrantedState.PENDING : autoGranted;
   }
 
@@ -54,11 +53,10 @@ public record ApplicationDataPayload(
   public static ApplicationDataPayload from(ApplicationCreationDetails details) {
     return new ApplicationDataPayload(
         details.laaReference(),
-        details.applicationContent(),
-        details.individuals(),
-        details.applyApplicationId(),
+        details.client(),
+        details.provider(),
+        details.opponents(),
         details.submittedAt(),
-        details.officeCode(),
         details.usedDelegatedFunctions(),
         details.categoryOfLaw(),
         details.matterType(),
@@ -84,11 +82,10 @@ public record ApplicationDataPayload(
       String newDecisionEventDescription) {
     return new ApplicationDataPayload(
         laaReference,
-        applicationContent,
-        individuals,
-        applyApplicationId,
+        client,
+        provider,
+        opponents,
         submittedAt,
-        officeCode,
         usedDelegatedFunctions,
         categoryOfLaw,
         matterType,
@@ -108,11 +105,10 @@ public record ApplicationDataPayload(
   public ApplicationDataPayload withAssignment(String newAssignmentEventDescription) {
     return new ApplicationDataPayload(
         laaReference,
-        applicationContent,
-        individuals,
-        applyApplicationId,
+        client,
+        provider,
+        opponents,
         submittedAt,
-        officeCode,
         usedDelegatedFunctions,
         categoryOfLaw,
         matterType,
@@ -132,11 +128,10 @@ public record ApplicationDataPayload(
   public ApplicationDataPayload withManualAssessmentRequired() {
     return new ApplicationDataPayload(
         laaReference,
-        applicationContent,
-        individuals,
-        applyApplicationId,
+        client,
+        provider,
+        opponents,
         submittedAt,
-        officeCode,
         usedDelegatedFunctions,
         categoryOfLaw,
         matterType,
@@ -154,22 +149,22 @@ public record ApplicationDataPayload(
 
   /** Returns a complete new data version containing replacement Application content. */
   public ApplicationDataPayload withApplicationUpdate(
-      ApplicationContent newApplicationContent,
+      ApplicationClient newClient,
+      ApplicationProvider newProvider,
+      List<Opponent> newOpponents,
       Instant newSubmittedAt,
-      String newOfficeCode,
       Boolean newUsedDelegatedFunctions,
-      CategoryOfLaw newCategoryOfLaw,
-      MatterType newMatterType,
-      List<ApplicationProceeding> newProceedings,
+      String newCategoryOfLaw,
+      String newMatterType,
+      List<Proceeding> newProceedings,
       String newSerialisedRequest,
       boolean resetAssessment) {
     return new ApplicationDataPayload(
         laaReference,
-        newApplicationContent,
-        individuals,
-        applyApplicationId,
+        newClient,
+        newProvider,
+        newOpponents,
         newSubmittedAt,
-        newOfficeCode,
         newUsedDelegatedFunctions,
         newCategoryOfLaw,
         newMatterType,
@@ -191,11 +186,10 @@ public record ApplicationDataPayload(
     updated.add(new ApplicationNote(noteText, createdAt));
     return new ApplicationDataPayload(
         laaReference,
-        applicationContent,
-        individuals,
-        applyApplicationId,
+        client,
+        provider,
+        opponents,
         submittedAt,
-        officeCode,
         usedDelegatedFunctions,
         categoryOfLaw,
         matterType,

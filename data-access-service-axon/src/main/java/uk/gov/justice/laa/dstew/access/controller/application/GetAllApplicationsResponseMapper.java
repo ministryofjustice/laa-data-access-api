@@ -7,11 +7,10 @@ import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
-import uk.gov.justice.laa.dstew.access.command.application.ApplicationIndividual;
+import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
-import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
@@ -50,38 +49,54 @@ public class GetAllApplicationsResponseMapper {
     summary.setLaaReference(app.getLaaReference());
     summary.setOfficeCode(app.getOfficeCode());
     summary.setUsedDelegatedFunctions(app.getUsedDelegatedFunctions());
-    summary.setCategoryOfLaw(
-        app.getCategoryOfLaw() != null ? CategoryOfLaw.valueOf(app.getCategoryOfLaw()) : null);
-    summary.setMatterType(
-        app.getMatterType() != null ? MatterType.valueOf(app.getMatterType()) : null);
+    summary.setCategoryOfLaw(toCategoryOfLaw(app.getCategoryOfLaw()));
+    summary.setMatterType(toMatterType(app.getMatterType()));
     summary.setSubmittedAt(
         app.getSubmittedAt() != null ? app.getSubmittedAt().atOffset(ZoneOffset.UTC) : null);
     summary.setLastUpdated(app.getModifiedAt().atOffset(ZoneOffset.UTC));
-    summary.setApplicationType(ApplicationType.INITIAL);
-    summary.setIsLead(app.getLeadApplicationId() == null);
+    // Linked groups are not yet exposed; always false until the grouping endpoint is available.
+    summary.setIsLead(false);
     summary.setAssignedTo(app.getCaseworkerId());
     summary.setAutoGranted(
         uk.gov.justice.laa.dstew.access.model.AutoGranted.valueOf(app.getAutoGranted().name()));
 
-    ApplicationIndividual client = primaryClient(app);
-    if (client != null) {
-      summary.setClientFirstName(client.firstName());
-      summary.setClientLastName(client.lastName());
-      summary.setClientDateOfBirth(client.dateOfBirth());
-    }
+    populateClientDetails(summary, app);
 
     summary.setLinkedApplications(toLinkedSummaries(app, groupsByLeadId));
     return summary;
   }
 
-  private ApplicationIndividual primaryClient(ApplicationReadModel app) {
-    if (app.getIndividuals() == null) {
+  private CategoryOfLaw toCategoryOfLaw(String categoryOfLaw) {
+    if (categoryOfLaw == null) {
       return null;
     }
-    return app.getIndividuals().stream()
-        .filter(i -> "CLIENT".equals(i.type()))
-        .findFirst()
-        .orElse(null);
+    try {
+      return CategoryOfLaw.valueOf(categoryOfLaw.toUpperCase().replace(" ", "_"));
+    } catch (IllegalArgumentException e) {
+      return null;
+    }
+  }
+
+  private MatterType toMatterType(String matterType) {
+    if (matterType == null) {
+      return null;
+    }
+    try {
+      return MatterType.valueOf(matterType.toUpperCase().replace(" ", "_"));
+    } catch (IllegalArgumentException e) {
+      return null;
+    }
+  }
+
+  private void populateClientDetails(ApplicationSummary summary, ApplicationReadModel app) {
+    ApplicationClient client = app.getClient();
+    if (client != null) {
+      summary.setClientFirstName(client.getFirstName());
+      summary.setClientLastName(client.getLastName());
+      if (client.getDateOfBirth() != null) {
+        summary.setClientDateOfBirth(client.getDateOfBirth());
+      }
+    }
   }
 
   private List<LinkedApplicationSummaryResponse> toLinkedSummaries(

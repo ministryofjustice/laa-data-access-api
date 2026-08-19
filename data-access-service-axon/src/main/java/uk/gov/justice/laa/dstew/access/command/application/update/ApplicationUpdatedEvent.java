@@ -13,8 +13,6 @@ public record ApplicationUpdatedEvent(
     long applicationDataVersion,
     String previousStatus,
     String status,
-    String applicationType,
-    UUID applyApplicationId,
     Instant occurredAt) {
 
   /** Whether this update represents a transition into submitted state. */

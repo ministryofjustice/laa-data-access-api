@@ -30,9 +30,9 @@ class SnsApplicationSubmittedPublisherTest {
             Instant.parse("2026-08-03T09:30:00Z"),
             "laa-data-access-api",
             "corr-2096",
-            new ApplicationSubmittedData(applicationId, applicationId, "LAA-2096", 3L));
+            new ApplicationSubmittedData(applicationId, "LAA-2096", 3L));
 
-    publisher.publish(event, "APPLY");
+    publisher.publish(event);
 
     ArgumentCaptor<PublishRequest> request = ArgumentCaptor.forClass(PublishRequest.class);
     verify(snsClient).publish(request.capture());
@@ -40,8 +40,6 @@ class SnsApplicationSubmittedPublisherTest {
         .isEqualTo("arn:aws:sns:eu-west-2:000000000000:data-access-events");
     assertThat(request.getValue().messageAttributes().get("eventType").stringValue())
         .isEqualTo("ApplicationSubmitted");
-    assertThat(request.getValue().messageAttributes().get("applicationType").stringValue())
-        .isEqualTo("APPLY");
 
     var body = objectMapper.readTree(request.getValue().message());
     assertThat(body.get("eventType").asText()).isEqualTo("ApplicationSubmitted");

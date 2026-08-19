@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "Child.json",
+  "title": "Child",
+  "description": "Child information for the application",
+  "type": "object",
+  "required": [
+    "id",
+    "fullName",
+    "dateOfBirth"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for the involved child"
+    },
+    "fullName": {
+      "type": "string",
+      "description": "Full name of the involved child"
+    },
+    "dateOfBirth": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of birth of the involved child"
+    }
+  },
+  "additionalProperties": false
+}

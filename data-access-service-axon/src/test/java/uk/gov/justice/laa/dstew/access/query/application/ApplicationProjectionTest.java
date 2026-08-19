@@ -132,11 +132,10 @@ class ApplicationProjectionTest {
     when(applicationReadRepository.findAllByStatus("APPLICATION_SUBMITTED"))
         .thenReturn(List.of(stalled, assessed, recent));
     ApplicationDataPayload stalledData =
-        reconciliationData(stalledId, threshold.minus(15, ChronoUnit.MINUTES), null);
+        reconciliationData(threshold.minus(15, ChronoUnit.MINUTES), null);
     ApplicationDataPayload assessedData =
-        reconciliationData(assessedId, threshold.minus(20, ChronoUnit.MINUTES), false);
-    ApplicationDataPayload recentData =
-        reconciliationData(recentId, threshold.plusSeconds(1), null);
+        reconciliationData(threshold.minus(20, ChronoUnit.MINUTES), false);
+    ApplicationDataPayload recentData = reconciliationData(threshold.plusSeconds(1), null);
     when(applicationDataStore.getAll(any()))
         .thenReturn(
             Map.of(
@@ -148,8 +147,7 @@ class ApplicationProjectionTest {
 
     assertThat(result.applications())
         .containsExactly(
-            new StalledAssessment(
-                stalledId, stalledId, 3L, threshold.minus(15, ChronoUnit.MINUTES)));
+            new StalledAssessment(stalledId, 3L, threshold.minus(15, ChronoUnit.MINUTES)));
   }
 
   @Test
@@ -382,7 +380,6 @@ class ApplicationProjectionTest {
         .status("APPLICATION_SUBMITTED")
         .applicationDataVersion(2L)
         .applicationVersion(3L)
-        .applyApplicationId(applicationId)
         .build();
   }
 
@@ -391,10 +388,8 @@ class ApplicationProjectionTest {
         application.getApplicationId(), application.getApplicationDataVersion());
   }
 
-  private ApplicationDataPayload reconciliationData(
-      UUID applyApplicationId, Instant submittedAt, Boolean autoGranted) {
+  private ApplicationDataPayload reconciliationData(Instant submittedAt, Boolean autoGranted) {
     ApplicationDataPayload data = mock(ApplicationDataPayload.class);
-    when(data.applyApplicationId()).thenReturn(applyApplicationId);
     when(data.submittedAt()).thenReturn(submittedAt);
     when(data.autoGranted()).thenReturn(AutoGrantedState.fromDecisionFlag(autoGranted));
     return data;

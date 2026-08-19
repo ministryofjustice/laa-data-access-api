@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.usecase.getapplication.model;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -14,7 +15,7 @@ public record ApplicationProceedingReadModel(
     String categoryOfLaw,
     String matterType,
     String levelOfService,
-    Double substantiveCostLimitation,
+    BigDecimal substantiveCostLimitation,
     LocalDate delegatedFunctionsDate,
     String meritsDecision,
     List<InvolvedChildReadModel> involvedChildren,

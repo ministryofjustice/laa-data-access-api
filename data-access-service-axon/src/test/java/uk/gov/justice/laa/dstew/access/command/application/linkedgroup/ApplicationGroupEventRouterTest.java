@@ -138,8 +138,6 @@ class ApplicationGroupEventRouterTest {
         ApplicationDataStore.fingerprint("{}"),
         "APPLICATION_SUBMITTED",
         1,
-        "APPLY",
-        applicationId,
         occurredAt,
         leadApplicationId,
         associatedApplicationIds);

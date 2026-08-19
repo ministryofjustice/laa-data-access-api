@@ -36,7 +36,6 @@ public class ApplicationSummaryReadModelGenerator
         .clientFirstName("Jane")
         .clientLastName("Doe")
         .clientDateOfBirth(LocalDate.of(1990, 1, 1))
-        .applicationType("INITIAL")
         .modifiedAt(Instant.now())
         .isLead(true)
         .linkedApplications(List.of())

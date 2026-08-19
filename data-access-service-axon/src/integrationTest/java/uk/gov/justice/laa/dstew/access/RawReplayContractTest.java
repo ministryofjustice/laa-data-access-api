@@ -136,7 +136,7 @@ class RawReplayContractTest {
   private HttpHeaders headers() {
     HttpHeaders headers = new HttpHeaders();
     headers.set("X-Service-Name", "CIVIL_APPLY");
-    headers.set("X-Schema-Version", "2");
+    headers.set("X-Schema-Version", "1");
     headers.setBearerAuth(TestJwtDecoderConfig.BEARER_TOKEN);
     return headers;
   }

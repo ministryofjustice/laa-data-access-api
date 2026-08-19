@@ -18,7 +18,6 @@ public record ApplicationReadModel(
     Boolean usedDelegatedFunctions,
     Boolean autoGrant,
     String decisionStatus,
-    String applicationType,
     Long version,
     List<OpponentReadModel> opponents,
     ProviderReadModel provider,

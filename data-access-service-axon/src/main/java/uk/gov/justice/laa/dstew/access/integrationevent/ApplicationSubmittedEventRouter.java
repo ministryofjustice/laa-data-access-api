@@ -58,10 +58,7 @@ public class ApplicationSubmittedEventRouter {
     String correlationId = correlationId(message);
     lifecycle.runOnAfterCommit(
         ignored ->
-            publishSafely(
-                applicationSubmittedEvent(
-                    event.applicationId(), event.applyApplicationId(), 0L, correlationId),
-                event.applicationType()));
+            publishSafely(applicationSubmittedEvent(event.applicationId(), 0L, correlationId)));
   }
 
   /** Schedules publication only for updates that cross into submitted state. */
@@ -76,15 +73,11 @@ public class ApplicationSubmittedEventRouter {
         ignored ->
             publishSafely(
                 applicationSubmittedEvent(
-                    event.applicationId(),
-                    event.applyApplicationId(),
-                    event.applicationVersion(),
-                    correlationId),
-                event.applicationType()));
+                    event.applicationId(), event.applicationVersion(), correlationId)));
   }
 
   private ApplicationSubmittedEvent applicationSubmittedEvent(
-      UUID applicationId, UUID applyApplicationId, long applicationVersion, String correlationId) {
+      UUID applicationId, long applicationVersion, String correlationId) {
     return new ApplicationSubmittedEvent(
         "ApplicationSubmitted",
         1,
@@ -92,7 +85,7 @@ public class ApplicationSubmittedEventRouter {
         clock.instant(),
         "laa-data-access-api",
         correlationId,
-        new ApplicationSubmittedData(applicationId, applyApplicationId, null, applicationVersion));
+        new ApplicationSubmittedData(applicationId, null, applicationVersion));
   }
 
   private String correlationId(EventMessage message) {
@@ -101,16 +94,15 @@ public class ApplicationSubmittedEventRouter {
     return value == null || value.toString().isBlank() ? message.identifier() : value.toString();
   }
 
-  private void publishSafely(ApplicationSubmittedEvent event, String applicationType) {
+  private void publishSafely(ApplicationSubmittedEvent event) {
     try {
-      publisher.publish(event, applicationType);
+      publisher.publish(event);
       recordPublication("success");
       LOG.info(
           "Published ApplicationSubmitted event: eventId={}, applicationId={},"
-              + " applyApplicationId={}, applicationVersion={}, correlationId={}, eventAgeSeconds={}",
+              + " applicationVersion={}, correlationId={}, eventAgeSeconds={}",
           event.eventId(),
           event.data().applicationId(),
-          event.data().applyApplicationId(),
           event.data().applicationVersion(),
           event.correlationId(),
           eventAgeSeconds(event));
@@ -118,10 +110,9 @@ public class ApplicationSubmittedEventRouter {
       recordPublication("failure");
       LOG.error(
           "Failed to publish ApplicationSubmitted event after commit: eventId={}, applicationId={},"
-              + " applyApplicationId={}, applicationVersion={}, correlationId={}, eventAgeSeconds={}",
+              + " applicationVersion={}, correlationId={}, eventAgeSeconds={}",
           event.eventId(),
           event.data().applicationId(),
-          event.data().applyApplicationId(),
           event.data().applicationVersion(),
           event.correlationId(),
           eventAgeSeconds(event),

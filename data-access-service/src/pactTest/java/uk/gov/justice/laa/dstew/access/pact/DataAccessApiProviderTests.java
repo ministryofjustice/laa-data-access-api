@@ -103,7 +103,6 @@ public class DataAccessApiProviderTests extends AbstractProviderPactTests {
             .id(UUID.fromString("00000000-0000-0000-0000-000000000001"))
             .laaReference("LAA-REF-0001")
             .status("APPLICATION_SUBMITTED")
-            .applicationType("INITIAL")
             .categoryOfLaw("FAMILY")
             .matterType("SPECIAL_CHILDREN_ACT")
             .isLead(true)
