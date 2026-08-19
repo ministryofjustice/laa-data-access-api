@@ -206,6 +206,15 @@ public final class ApplicationDecider {
         command.occurredAt());
   }
 
+  /** Validates that the application holds an overall decision of {@code GRANTED}. */
+  public static void validateGranted(ApplicationState state) {
+    if (!"GRANTED".equals(state.overallDecision)) {
+      throw new ValidationException(
+          List.of(
+              "Prior authority requires the application to have an overall decision of GRANTED"));
+    }
+  }
+
   private static void validateDecision(MakeApplicationDecisionCommand command) {
     List<String> errors = new ArrayList<>();
     if (command.proceedings().isEmpty()) {
