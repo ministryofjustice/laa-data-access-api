@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.command.application.priorauthority.data;
 import java.time.Instant;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
+import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 
 /** Writes and retrieves immutable prior-authority data versions. */
 @Component

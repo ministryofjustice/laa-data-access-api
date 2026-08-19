@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.command.application.priorauthority.data;
+package uk.gov.justice.laa.dstew.access.util;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
