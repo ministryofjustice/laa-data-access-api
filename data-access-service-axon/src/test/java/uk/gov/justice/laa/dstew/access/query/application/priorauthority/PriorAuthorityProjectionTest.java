@@ -76,7 +76,7 @@ class PriorAuthorityProjectionTest {
   @SuppressWarnings("unchecked")
   void givenCreatedEvent_whenHandled_thenEmittedPredicateMatchesOnlyEventSubmissionId() {
     UUID submissionId = UUID.randomUUID();
-    UUID otherId = UUID.randomUUID();
+    final UUID otherId = UUID.randomUUID();
     PriorAuthorityCreatedEvent event =
         new PriorAuthorityCreatedEvent(
             submissionId, UUID.randomUUID(), 1L, "fp", "SUBMITTED", 1, Instant.now());
