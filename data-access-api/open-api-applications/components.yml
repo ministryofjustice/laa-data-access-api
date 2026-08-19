@@ -468,3 +468,141 @@ components:
       properties:
         Health:
           type: string
+
+    PriorAuthorityType:
+      type: string
+      enum:
+        - EXPERT
+        - DISBURSEMENT
+        - COUNSEL
+
+    BillingType:
+      type: string
+      enum:
+        - HOURLY
+        - FIXED_RATE
+
+    CounselType:
+      type: string
+      enum:
+        - KINGS_COUNSEL_ALONE
+        - TWO_JUNIOR_COUNSEL
+        - KINGS_COUNSEL_AND_JUNIOR_COUNSEL
+        - KINGS_COUNSEL_AND_TWO_JUNIOR_COUNSEL
+
+    TimeRequested:
+      type: object
+      required:
+        - hours
+        - minutes
+      properties:
+        hours:
+          type: integer
+          minimum: 0
+        minutes:
+          type: integer
+          minimum: 0
+          maximum: 59
+
+    Apportionment:
+      type: object
+      required:
+        - partiesSharingCosts
+        - clientShareAmount
+      properties:
+        partiesSharingCosts:
+          type: integer
+          minimum: 2
+        clientShareAmount:
+          type: number
+          format: double
+
+    ExpertCosts:
+      type: object
+      required:
+        - billingType
+        - totalAmount
+        - costsSharedWithOtherParties
+      properties:
+        billingType:
+          $ref: "#/components/schemas/BillingType"
+        hourlyRate:
+          type: number
+          format: double
+        timeRequested:
+          $ref: "#/components/schemas/TimeRequested"
+        totalAmount:
+          type: number
+          format: double
+        costsSharedWithOtherParties:
+          type: boolean
+        apportionment:
+          $ref: "#/components/schemas/Apportionment"
+
+    ExpertDetails:
+      type: object
+      required:
+        - expertType
+        - expertFullName
+        - expertPostcode
+        - expertCosts
+      properties:
+        expertType:
+          type: string
+        expertFullName:
+          type: string
+        expertPostcode:
+          type: string
+        expertCosts:
+          $ref: "#/components/schemas/ExpertCosts"
+
+    CounselDetails:
+      type: object
+      required:
+        - counselType
+      properties:
+        counselType:
+          $ref: "#/components/schemas/CounselType"
+
+    DisbursementDetails:
+      type: object
+      required:
+        - disbursementPurpose
+        - disbursementAmount
+      properties:
+        disbursementPurpose:
+          type: string
+        disbursementAmount:
+          type: number
+          format: double
+
+    CreatePriorAuthorityRequest:
+      type: object
+      required:
+        - priorAuthorityType
+        - justification
+      properties:
+        priorAuthorityType:
+          $ref: "#/components/schemas/PriorAuthorityType"
+        justification:
+          type: string
+          maxLength: 10000
+        expertDetails:
+          $ref: "#/components/schemas/ExpertDetails"
+        counselDetails:
+          $ref: "#/components/schemas/CounselDetails"
+        disbursementDetails:
+          $ref: "#/components/schemas/DisbursementDetails"
+
+    CreatePriorAuthorityResponse:
+      type: object
+      required:
+        - submissionId
+        - submittedAt
+      properties:
+        submissionId:
+          type: string
+          format: uuid
+        submittedAt:
+          type: string
+          format: date-time
