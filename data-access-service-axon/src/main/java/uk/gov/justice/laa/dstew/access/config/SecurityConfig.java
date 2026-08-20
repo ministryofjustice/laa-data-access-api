@@ -12,6 +12,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationManagerResolver;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -53,15 +54,6 @@ public class SecurityConfig {
           "unknown-token",
           List.of("APPROLE_UNKNOWN"));
 
-  @Value("${spring.security.oauth2.resourceserver.jwt.audience}")
-  private String audience;
-
-  @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri}")
-  private String issuerUri;
-
-  @Value("${spring.security.oauth2.resourceserver.jwt.jwk-set-uri}")
-  private String jwkSetUri;
-
   @Value("${feature.enable-dev-token:false}")
   private boolean enableDevToken;
 
@@ -72,7 +64,10 @@ public class SecurityConfig {
    */
   @Bean("fallbackJwtDecoder")
   @ConditionalOnMissingBean(JwtDecoder.class)
-  public JwtDecoder fallbackJwtDecoder() {
+  public JwtDecoder fallbackJwtDecoder(
+      @Value("${spring.security.oauth2.resourceserver.jwt.jwk-set-uri}") String jwkSetUri,
+      @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri}") String issuerUri,
+      @Value("${spring.security.oauth2.resourceserver.jwt.audience}") String audience) {
     NimbusJwtDecoder jwtDecoder = NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build();
 
     OAuth2TokenValidator<Jwt> audienceValidator =
@@ -96,9 +91,19 @@ public class SecurityConfig {
    */
   @Bean
   AuthenticationManagerResolver<HttpServletRequest> authenticationManagerResolver(
-      ObjectProvider<JwtDecoder> jwtDecoderProvider) {
-    AuthenticationManager jwtAuthenticationManager =
-        jwtAuthenticationManager(jwtDecoderProvider.getIfAvailable(this::fallbackJwtDecoder));
+      ObjectProvider<JwtDecoder> jwtDecoderProvider, Environment environment) {
+    JwtDecoder resolvedJwtDecoder = jwtDecoderProvider.getIfAvailable();
+    if (resolvedJwtDecoder == null) {
+      resolvedJwtDecoder =
+          fallbackJwtDecoder(
+              environment.getRequiredProperty(
+                  "spring.security.oauth2.resourceserver.jwt.jwk-set-uri"),
+              environment.getRequiredProperty(
+                  "spring.security.oauth2.resourceserver.jwt.issuer-uri"),
+              environment.getRequiredProperty(
+                  "spring.security.oauth2.resourceserver.jwt.audience"));
+    }
+    AuthenticationManager jwtAuthenticationManager = jwtAuthenticationManager(resolvedJwtDecoder);
     AuthenticationManager devTokenAuthenticationManager = this::authenticateDevToken;
 
     return request ->
