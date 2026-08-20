@@ -17,6 +17,8 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationD
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 
 /**
  * Independently replayable tracking projection that maintains {@code application_list_index}.
@@ -98,12 +100,15 @@ public class ApplicationListIndexProjection {
    */
   @EventHandler
   public void on(ApplicationDecisionMadeEvent event, EventMessage message) {
+    ApplicationStatus applicationStatus =
+        DecisionStatus.valueOf(event.overallDecision()).equals(DecisionStatus.REFUSED)
+            ? ApplicationStatus.APPLICATION_REFUSED
+            : ApplicationStatus.APPLICATION_GRANTED;
     listIndexRepository
         .findById(event.applicationId())
         .ifPresent(
             row -> {
-              row.setStatus(
-                  event.overallDecision() != null ? event.overallDecision() : row.getStatus());
+              row.setStatus(applicationStatus.name());
               row.setAutoGranted(event.autoGranted());
               row.setStreamVersion(event.applicationVersion());
               row.setModifiedAt(event.occurredAt());

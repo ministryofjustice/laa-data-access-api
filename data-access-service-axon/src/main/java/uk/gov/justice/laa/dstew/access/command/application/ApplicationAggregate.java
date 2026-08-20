@@ -20,6 +20,7 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationD
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeDecisionProceeding;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.CreateLinkedApplicationGroupCommand;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupRequested;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.ValidateApplicationExistsCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
@@ -76,7 +77,7 @@ public class ApplicationAggregate {
               fingerprint,
               details,
               applicationDataVersion)
-          .forEach(e -> eventAppender.append(e));
+          .forEach(eventAppender::append);
     } else {
       String fingerprint = ApplicationDataStore.fingerprint(command.serialisedRequest());
       ApplicationDecider.decideCreate(
