@@ -9,30 +9,31 @@ on:
         default: "300000"
         type: string
       database:
-        description: "Target database. Use 'uat' for the default UAT database, or 'other' to supply connection details below."
+        description: "Target database. Use 'uat' for the default UAT database, or 'db2'/'db3' to supply connection details below."
         required: true
         default: "uat"
         type: choice
         options:
           - uat
-          - other
+          - db2
+          - db3
       # Phase 2: replace the freeform inputs below with GitHub secrets following
       # the naming convention {ENV}_DB_* and use dynamic variable indirection to
-      # resolve them. The 'other' option above would be replaced with named choices.
+      # resolve them. The 'db2'/'db3' options above would be replaced with named choices.
       db_host:
-        description: "[other only] Database host"
+        description: "[db2/db3 only] Database host"
         required: false
         type: string
       db_name:
-        description: "[other only] Database name"
+        description: "[db2/db3 only] Database name"
         required: false
         type: string
       db_username:
-        description: "[other only] Database username"
+        description: "[db2/db3 only] Database username"
         required: false
         type: string
       db_password:
-        description: "[other only] Database password"
+        description: "[db2/db3 only] Database password"
         required: false
         type: string
 
@@ -59,14 +60,14 @@ jobs:
           DB_PASSWORD: ${{ inputs.db_password }}
         run: |
           set -euo pipefail
-          if [ "$DATABASE" = "other" ]; then
+          if [ "$DATABASE" = "other" ] || [ "$DATABASE" = "database3" ]; then
             missing=()
             [ -z "$DB_HOST" ]     && missing+=("db_host")
             [ -z "$DB_NAME" ]     && missing+=("db_name")
             [ -z "$DB_USERNAME" ] && missing+=("db_username")
             [ -z "$DB_PASSWORD" ] && missing+=("db_password")
             if [ ${#missing[@]} -gt 0 ]; then
-              echo "The following inputs are required when database is 'other': ${missing[*]}" >&2
+              echo "The following inputs are required when database is '${DATABASE}': ${missing[*]}" >&2
               exit 1
             fi
           fi
@@ -116,7 +117,7 @@ jobs:
 
           echo "Running mass generator on pod: $POD_NAME (count: $RECORD_COUNT, database: $DATABASE)"
 
-          if [ "$DATABASE" = "other" ]; then
+          if [ "$DATABASE" = "db2" ] || [ "$DATABASE" = "db3" ]; then
             echo "::add-mask::$DB_PASSWORD"
             kubectl exec -n "$KUBE_NAMESPACE" "$POD_NAME" -- \
               env "DB_URL=jdbc:postgresql://${DB_HOST}:5432/${DB_NAME}" \
