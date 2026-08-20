@@ -70,9 +70,9 @@ public class SecurityConfig {
    *
    * @return the configured JWT decoder
    */
-  @Bean
+  @Bean("fallbackJwtDecoder")
   @ConditionalOnMissingBean(JwtDecoder.class)
-  public JwtDecoder jwtDecoder() {
+  public JwtDecoder fallbackJwtDecoder() {
     NimbusJwtDecoder jwtDecoder = NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build();
 
     OAuth2TokenValidator<Jwt> audienceValidator =
@@ -98,7 +98,7 @@ public class SecurityConfig {
   AuthenticationManagerResolver<HttpServletRequest> authenticationManagerResolver(
       ObjectProvider<JwtDecoder> jwtDecoderProvider) {
     AuthenticationManager jwtAuthenticationManager =
-        jwtAuthenticationManager(jwtDecoderProvider.getIfAvailable(this::jwtDecoder));
+        jwtAuthenticationManager(jwtDecoderProvider.getIfAvailable(this::fallbackJwtDecoder));
     AuthenticationManager devTokenAuthenticationManager = this::authenticateDevToken;
 
     return request ->

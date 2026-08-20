@@ -5,6 +5,7 @@ import java.util.Map;
 import org.springframework.boot.restclient.RestTemplateCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import uk.gov.laa.springboot.oauth2.testsupport.StubJwtDecoder;
 import uk.gov.laa.springboot.oauth2.testsupport.StubJwtToken;
@@ -23,6 +24,7 @@ public class TestJwtDecoderConfig {
   public static final String AUDIENCE = "api://data-access-api-test";
 
   @Bean
+  @Primary
   JwtDecoder jwtDecoder() {
     return StubJwtDecoder.of(
         new StubJwtToken(
