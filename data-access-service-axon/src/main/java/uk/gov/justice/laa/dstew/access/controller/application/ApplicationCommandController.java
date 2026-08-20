@@ -31,7 +31,6 @@ import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
 import uk.gov.justice.laa.dstew.access.model.CreateNoteRequest;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
-import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 
 /** HTTP command adapter for Application writes. */
 @RestController
@@ -101,7 +100,6 @@ public class ApplicationCommandController {
 
   /** Removes the current caseworker assignment from an Application. */
   @PostMapping("/{id}/unassign")
-  @AllowApiCaseworker
   public ResponseEntity<Void> unassignCaseworker(
       @RequestHeader("X-Service-Name") ServiceName serviceName,
       @PathVariable UUID id,
@@ -112,7 +110,6 @@ public class ApplicationCommandController {
 
   /** Applies an overall and per-proceeding decision to an existing Application version. */
   @PatchMapping("/{id}/decision")
-  @AllowApiCaseworker
   public ResponseEntity<Void> makeDecision(
       @RequestHeader("X-Service-Name") ServiceName serviceName,
       @PathVariable UUID id,
@@ -140,7 +137,6 @@ public class ApplicationCommandController {
 
   /** Appends a note to an existing Application. */
   @PostMapping("/{id}/notes")
-  @AllowApiCaseworker
   public ResponseEntity<Void> createNote(
       @RequestHeader("X-Service-Name") ServiceName serviceName,
       @PathVariable UUID id,
@@ -151,7 +147,6 @@ public class ApplicationCommandController {
 
   /** Dispatches create directly to Axon and returns 201 once the projection is readable. */
   @PostMapping
-  @AllowApiCaseworker
   public ResponseEntity<Void> createApplication(
       @RequestHeader("X-Service-Name") ServiceName serviceName,
       @RequestHeader(value = "X-Schema-Version", required = false, defaultValue = "1") @Min(1)
@@ -171,7 +166,6 @@ public class ApplicationCommandController {
 
   /** Replaces an existing Application's content and optional status. */
   @PatchMapping("/{id}")
-  @AllowApiCaseworker
   public ResponseEntity<Void> updateApplication(
       @RequestHeader("X-Service-Name") ServiceName serviceName,
       @PathVariable UUID id,

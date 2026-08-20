@@ -26,3 +26,13 @@ sentry:
 axon:
   schema: data_access_axon
   flywayTable: flyway_schema_history_axon
+
+mockOAuth2:
+  sharedInstance:
+    enabled: true
+    serviceName: laa-data-access-mock-oauth2-shared
+    namespace: laa-data-access-api-uat
+
+featureFlags:
+  enable_dev_token: "true"
+  disable_security: "false"

@@ -25,6 +25,13 @@ spring:
       region:
         static: ${AWS_REGION:eu-west-2}
       endpoint: ${AWS_ENDPOINT_URL:}
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${ENTRA_ISSUER_URI}
+          jwk-set-uri: ${ENTRA_JWK_SET_URI}
+          audience: ${ENTRA_AUD}
 
 axon:
   axonserver:
@@ -84,4 +91,5 @@ springdoc:
     version: openapi_3_1
 
 feature:
+  enable-dev-token: ${FEATURE_ENABLE_DEV_TOKEN:false}
   disable-security: ${FEATURE_DISABLE_SECURITY:false}
