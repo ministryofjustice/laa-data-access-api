@@ -37,10 +37,10 @@ import uk.gov.justice.laa.dstew.access.model.Apportionment;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantedOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.BillingType;
-import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityRequest;
-import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityResponse;
 import uk.gov.justice.laa.dstew.access.model.CounselDetails;
 import uk.gov.justice.laa.dstew.access.model.CounselType;
+import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityRequest;
+import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityResponse;
 import uk.gov.justice.laa.dstew.access.model.DisbursementDetails;
 import uk.gov.justice.laa.dstew.access.model.ExpertCosts;
 import uk.gov.justice.laa.dstew.access.model.ExpertDetails;
@@ -260,7 +260,9 @@ class PriorAuthorityIntegrationTest {
 
     ResponseEntity<String> response =
         restTemplate.postForEntity(
-            priorAuthorityUrl(applicationId), new HttpEntity<>(disbursementRequest(), headers()), String.class);
+            priorAuthorityUrl(applicationId),
+            new HttpEntity<>(disbursementRequest(), headers()),
+            String.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
   }
@@ -422,22 +424,28 @@ class PriorAuthorityIntegrationTest {
             "{\"priorAuthorityType\":\"EXPERT\",\"justification\":\"Required\",\"expertDetails\":{\"expertType\":\"Expert\",\"expertFullName\":\"Name\",\"expertPostcode\":\"AB1\",\"expertCosts\":{}}}"),
         Arguments.of(
             "hourly expert without hourly rate",
-            expertPayload("{\"billingType\":\"HOURLY\",\"timeRequested\":{\"hours\":1,\"minutes\":0},\"totalAmount\":1,\"costsSharedWithOtherParties\":false}")),
+            expertPayload(
+                "{\"billingType\":\"HOURLY\",\"timeRequested\":{\"hours\":1,\"minutes\":0},\"totalAmount\":1,\"costsSharedWithOtherParties\":false}")),
         Arguments.of(
             "hourly expert without requested time",
-            expertPayload("{\"billingType\":\"HOURLY\",\"hourlyRate\":1,\"totalAmount\":1,\"costsSharedWithOtherParties\":false}")),
+            expertPayload(
+                "{\"billingType\":\"HOURLY\",\"hourlyRate\":1,\"totalAmount\":1,\"costsSharedWithOtherParties\":false}")),
         Arguments.of(
             "hourly expert with non-positive rate",
-            expertPayload("{\"billingType\":\"HOURLY\",\"hourlyRate\":0,\"timeRequested\":{\"hours\":1,\"minutes\":0},\"totalAmount\":1,\"costsSharedWithOtherParties\":false}")),
+            expertPayload(
+                "{\"billingType\":\"HOURLY\",\"hourlyRate\":0,\"timeRequested\":{\"hours\":1,\"minutes\":0},\"totalAmount\":1,\"costsSharedWithOtherParties\":false}")),
         Arguments.of(
             "shared costs without apportionment",
-            expertPayload("{\"billingType\":\"FIXED_RATE\",\"totalAmount\":1,\"costsSharedWithOtherParties\":true}")),
+            expertPayload(
+                "{\"billingType\":\"FIXED_RATE\",\"totalAmount\":1,\"costsSharedWithOtherParties\":true}")),
         Arguments.of(
             "requested time outside permitted range",
-            expertPayload("{\"billingType\":\"HOURLY\",\"hourlyRate\":1,\"timeRequested\":{\"hours\":-1,\"minutes\":60},\"totalAmount\":1,\"costsSharedWithOtherParties\":false}")),
+            expertPayload(
+                "{\"billingType\":\"HOURLY\",\"hourlyRate\":1,\"timeRequested\":{\"hours\":-1,\"minutes\":60},\"totalAmount\":1,\"costsSharedWithOtherParties\":false}")),
         Arguments.of(
             "apportionment below minimum parties",
-            expertPayload("{\"billingType\":\"FIXED_RATE\",\"totalAmount\":1,\"costsSharedWithOtherParties\":true,\"apportionment\":{\"partiesSharingCosts\":1,\"clientShareAmount\":1}}")));
+            expertPayload(
+                "{\"billingType\":\"FIXED_RATE\",\"totalAmount\":1,\"costsSharedWithOtherParties\":true,\"apportionment\":{\"partiesSharingCosts\":1,\"clientShareAmount\":1}}")));
   }
 
   private static String expertPayload(String expertCosts) {
