@@ -50,7 +50,6 @@ class GetApplicationUseCaseTest {
 
     assertThat(actual.id()).isEqualTo(projection.id());
     assertThat(actual.status()).isEqualTo(projection.status());
-    assertThat(actual.applicationType()).isEqualTo(GetApplicationUseCase.APPLICATION_TYPE_INITIAL);
     assertThat(actual.provider()).isNotNull();
     assertThat(actual.provider().officeCode()).isEqualTo(projection.officeCode());
     assertThat(actual.provider().contactEmail()).isEqualTo(projection.submitterEmail());

@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "BaseCivilApplication.json",
+  "title": "CivilApply",
+  "description": "Base civil application schema for data common across Civil Apply matter types",
+  "type": "object",
+  "required": [
+    "createdAt",
+    "submittedAt",
+    "proceedings",
+    "provider",
+    "client"
+  ],
+  "properties": {
+    "createdAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp when the application was created"
+    },
+    "submittedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp when the application was submitted"
+    },
+    "provider": {
+      "$ref": "../common/Provider.json"
+    },
+    "client": {
+      "$ref": "../common/Client.json"
+    },
+    "proceedings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "../common/Proceeding.json"
+      },
+      "description": "Proceedings associated with the application"
+    },
+    "opponents": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "../common/Opponent.json"
+      },
+      "description": "Opponents associated with the application"
+    },
+    "status": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Current status of the application"
+    }
+  },
+  "additionalProperties": false
+}

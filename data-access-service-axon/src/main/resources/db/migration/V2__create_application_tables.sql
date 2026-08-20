@@ -20,7 +20,6 @@ CREATE TABLE application_current_state (
     application_version BIGINT NOT NULL,
     schema_version INTEGER NOT NULL,
     application_type VARCHAR(255) NOT NULL,
-    apply_application_id UUID NOT NULL,
     lead_application_id UUID,
     caseworker_id UUID,
     created_at TIMESTAMPTZ NOT NULL,

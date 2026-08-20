@@ -14,11 +14,6 @@ import uk.gov.justice.laa.dstew.access.validation.ValidationException;
  */
 public class ApplicationContentParser {
 
-  private static final GenericEnumConvertor<MatterType> matterTypeConvertor =
-      new GenericEnumConvertor<>(MatterType.class);
-  private static final GenericEnumConvertor<CategoryOfLaw> categoryOfLawConvertor =
-      new GenericEnumConvertor<>(CategoryOfLaw.class);
-
   private final PayloadValidator payloadValidator;
 
   /**
@@ -71,9 +66,6 @@ public class ApplicationContentParser {
       }
     }
 
-    String officeCode =
-        (applicationContent.getOffice() == null) ? null : applicationContent.getOffice().getCode();
-
     List<Proceeding> proceedings =
         applicationContent.getProceedings() != null
             ? applicationContent.getProceedings()
@@ -84,14 +76,19 @@ public class ApplicationContentParser {
             ? applicationContent.getAllLinkedApplications()
             : Collections.emptyList();
 
+    List<Opponent> opponents =
+        applicationContent.getOpponents() != null
+            ? applicationContent.getOpponents()
+            : Collections.emptyList();
+
     return ParsedAppContentDetails.builder()
-        .applicationContent(applicationContent)
-        .applyApplicationId(applicationContent.getId())
+        .client(applicationContent.getClient())
+        .provider(applicationContent.getProvider())
+        .opponents(opponents)
         .categoryOfLaw(getCategoryOfLaw(leadProceeding))
         .matterType(getMatterType(leadProceeding))
         .submittedAt(parseSubmittedAt(applicationContent.getSubmittedAt()))
         .usedDelegatedFunctions(usedDelegatedFunction)
-        .officeCode(officeCode)
         .proceedings(proceedings)
         .allLinkedApplications(allLinkedApplications)
         .build();
@@ -105,17 +102,17 @@ public class ApplicationContentParser {
     }
   }
 
-  private MatterType getMatterType(Proceeding leadProceeding) {
+  private String getMatterType(Proceeding leadProceeding) {
     if (leadProceeding == null) {
       return null;
     }
-    return matterTypeConvertor.lenientEnumConversion(leadProceeding.getMatterTypeEnum());
+    return leadProceeding.getMatterType();
   }
 
-  private CategoryOfLaw getCategoryOfLaw(Proceeding leadProceeding) {
+  private String getCategoryOfLaw(Proceeding leadProceeding) {
     if (leadProceeding == null) {
       return null;
     }
-    return categoryOfLawConvertor.lenientEnumConversion(leadProceeding.getCategoryOfLawEnum());
+    return leadProceeding.getCategoryOfLaw();
   }
 }

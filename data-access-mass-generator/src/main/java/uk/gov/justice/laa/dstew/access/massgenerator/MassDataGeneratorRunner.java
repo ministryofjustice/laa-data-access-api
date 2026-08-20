@@ -260,7 +260,7 @@ public class MassDataGeneratorRunner implements CommandLineRunner {
     return persistedDataGenerator.createAndPersist(
         ApplicationEntityGenerator.class,
         b ->
-            b.applyApplicationId(content.getId())
+            b.applyApplicationId(UUID.randomUUID())
                 .laaReference(content.getLaaReference())
                 .submittedAt(Instant.parse(content.getSubmittedAt()))
                 .officeCode(content.getOffice() != null ? content.getOffice().getCode() : null)

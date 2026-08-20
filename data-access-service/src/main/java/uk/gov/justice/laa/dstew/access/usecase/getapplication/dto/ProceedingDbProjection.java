@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.usecase.getapplication.dto;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -17,7 +18,7 @@ public record ProceedingDbProjection(
     String categoryOfLaw,
     String matterType,
     String levelOfService,
-    Double substantiveCostLimitation,
+    BigDecimal substantiveCostLimitation,
     LocalDate delegatedFunctionsDate,
     List<Map<String, Object>> scopeLimitations,
     List<InvolvedChild> involvedChildren) {}

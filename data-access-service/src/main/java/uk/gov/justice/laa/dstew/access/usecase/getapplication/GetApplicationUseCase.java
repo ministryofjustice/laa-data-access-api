@@ -14,7 +14,6 @@ public class GetApplicationUseCase {
 
   private final GetApplicationApplicationGateway applicationGateway;
   private final GetApplicationReadModelMapper readModelMapper;
-  public static final String APPLICATION_TYPE_INITIAL = "INITIAL";
 
   /**
    * Retrieves a single application by id.
@@ -27,9 +26,7 @@ public class GetApplicationUseCase {
   public ApplicationReadModel execute(UUID id) {
     return applicationGateway
         .findApplicationById(id)
-        .map(
-            projection ->
-                readModelMapper.toApplicationReadModel(projection, APPLICATION_TYPE_INITIAL))
+        .map(readModelMapper::toApplicationReadModel)
         .orElseThrow(
             () ->
                 new ResourceNotFoundException(

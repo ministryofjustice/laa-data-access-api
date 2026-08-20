@@ -159,13 +159,7 @@ class ApplicationSubmittedLocalStackIntegrationTest {
     ApplicationCreateRequest submitted =
         validCreateApplicationRequest(applicationId, UUID.randomUUID());
     ApplicationCreateRequest inProgress =
-        ApplicationCreateRequest.builder()
-            .applicationType(submitted.getApplicationType())
-            .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
-            .applicationContent(submitted.getApplicationContent())
-            .laaReference(submitted.getLaaReference())
-            .individuals(submitted.getIndividuals())
-            .build();
+        submitted.toBuilder().status(ApplicationStatus.APPLICATION_IN_PROGRESS).build();
     ResponseEntity<Void> createResponse =
         restTemplate.postForEntity(
             applicationUrl(),
@@ -279,7 +273,7 @@ class ApplicationSubmittedLocalStackIntegrationTest {
   private HttpHeaders headers(String correlationId) {
     HttpHeaders headers = new HttpHeaders();
     headers.set("X-Service-Name", "CIVIL_APPLY");
-    headers.set("X-Schema-Version", "2");
+    headers.set("X-Schema-Version", "1");
     headers.set("X-Correlation-Id", correlationId);
     return headers;
   }

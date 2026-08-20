@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ScopeLimitation.json",
+  "title": "Scope Limitation",
+  "description": "Scope limitation for a proceeding",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "code",
+    "meaning",
+    "description"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for the scope limitation"
+    },
+    "code": {
+      "type": "string",
+      "description": "Scope limitation code"
+    },
+    "type": {
+      "type": "string",
+      "description": "Scope limitation type"
+    },
+    "meaning": {
+      "type": "string",
+      "description": "Scope limitation meaning"
+    },
+    "description": {
+      "type": "string",
+      "description": "Scope limitation description"
+    }
+  },
+  "additionalProperties": false
+}

@@ -56,7 +56,6 @@ class GetAllIndividualsGatewayMapperTest {
         List.of(Map.of("line1", "1 Main St"), Map.of("line1", "City"));
     ApplicationContent content =
         ApplicationContent.builder()
-            .id(UUID.randomUUID())
             .submittedAt("2024-01-01T12:00:00Z")
             .lastNameAtBirth("Alberts")
             .previousApplicationId("ZZ999Z")
@@ -88,7 +87,6 @@ class GetAllIndividualsGatewayMapperTest {
   void givenNullApplicant_whenToClientDetails_thenApplicantSourcedFieldsAreNull() {
     ApplicationContent content =
         ApplicationContent.builder()
-            .id(UUID.randomUUID())
             .submittedAt("2024-01-01T12:00:00Z")
             .lastNameAtBirth("Alberts")
             .previousApplicationId("ZZ999Z")
@@ -111,7 +109,6 @@ class GetAllIndividualsGatewayMapperTest {
   void givenNullAppliedPreviously_whenToClientDetails_thenAppliedPreviouslyIsNull() {
     ApplicationContent content =
         ApplicationContent.builder()
-            .id(UUID.randomUUID())
             .submittedAt("2024-01-01T12:00:00Z")
             .applicant(
                 ApplicationApplicant.builder()
@@ -133,7 +130,6 @@ class GetAllIndividualsGatewayMapperTest {
         List.of(Map.of("line1", "address 1"), Map.of("line1", "address 2"));
     ApplicationContent content =
         ApplicationContent.builder()
-            .id(UUID.randomUUID())
             .submittedAt("2024-01-01T12:00:00Z")
             .applicant(ApplicationApplicant.builder().addresses(addresses).build())
             .build();

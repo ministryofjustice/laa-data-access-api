@@ -1,25 +1,30 @@
 package uk.gov.justice.laa.dstew.access.controller.individual;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.springframework.stereotype.Component;
-import uk.gov.justice.laa.dstew.access.command.application.ApplicationIndividual;
+import tools.jackson.databind.ObjectMapper;
+import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationAddress;
+import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
 import uk.gov.justice.laa.dstew.access.model.IndividualResponse;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.model.IndividualsResponse;
 import uk.gov.justice.laa.dstew.access.model.PagingResponse;
-import uk.gov.justice.laa.dstew.access.query.individual.ApplicationClientDetails;
 import uk.gov.justice.laa.dstew.access.query.individual.FindIndividualsResult;
 
 /** Maps Axon individual query results to the public API response. */
 @Component
 public class GetIndividualsResponseMapper {
 
+  private final ObjectMapper objectMapper = new ObjectMapper();
+
   /** Maps a query result and its paging metadata to the generated response model. */
   public IndividualsResponse toResponse(FindIndividualsResult result) {
-    List<IndividualResponse> individuals =
-        result.individuals().stream()
-            .map(individual -> toResponse(individual, result.clientDetails()))
-            .toList();
+    List<IndividualResponse> individuals = new ArrayList<>();
+    if (result.client() != null) {
+      individuals.add(toClientResponse(result.client(), result.includeClientDetails()));
+    }
     PagingResponse paging = new PagingResponse();
     paging.setPage(result.page());
     paging.setPageSize(result.pageSize());
@@ -28,27 +33,32 @@ public class GetIndividualsResponseMapper {
     return new IndividualsResponse().individuals(individuals).paging(paging);
   }
 
-  private IndividualResponse toResponse(
-      ApplicationIndividual individual, ApplicationClientDetails clientDetails) {
+  private IndividualResponse toClientResponse(
+      ApplicationClient client, boolean includeClientDetails) {
     IndividualResponse response =
         new IndividualResponse()
-            .firstName(individual.firstName())
-            .lastName(individual.lastName())
-            .dateOfBirth(individual.dateOfBirth())
-            .details(individual.individualContent());
-    if (individual.type() != null) {
-      response.setType(IndividualType.valueOf(individual.type()));
-    }
-    if (clientDetails != null) {
+            .firstName(client.getFirstName())
+            .lastName(client.getLastName())
+            .dateOfBirth(client.getDateOfBirth())
+            .type(IndividualType.CLIENT);
+    if (includeClientDetails) {
       response
-          .clientId(individual.individualId())
-          .lastNameAtBirth(clientDetails.lastNameAtBirth())
-          .previousApplicationId(clientDetails.previousApplicationId())
-          .relationshipToInvolvedChildren(clientDetails.relationshipToInvolvedChildren())
-          .correspondenceAddressType(clientDetails.correspondenceAddressType())
-          .appliedPreviously(clientDetails.appliedPreviously())
-          .correspondenceAddress(clientDetails.correspondenceAddress());
+          .lastNameAtBirth(client.getLastNameAtBirth())
+          .previousApplicationId(client.getPreviousApplicationId())
+          .relationshipToInvolvedChildren(client.getRelationshipToInvolvedChildren())
+          .appliedPreviously(client.getAppliedPreviously())
+          .correspondenceAddress(toAddressMaps(client.getAddresses()));
     }
     return response;
+  }
+
+  @SuppressWarnings("unchecked")
+  private List<Map<String, Object>> toAddressMaps(List<ApplicationAddress> addresses) {
+    if (addresses == null) {
+      return null;
+    }
+    return addresses.stream()
+        .map(addr -> (Map<String, Object>) objectMapper.convertValue(addr, Map.class))
+        .toList();
   }
 }

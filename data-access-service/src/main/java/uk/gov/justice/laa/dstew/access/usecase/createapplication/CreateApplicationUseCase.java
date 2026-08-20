@@ -39,22 +39,17 @@ public class CreateApplicationUseCase {
   public ApplicationDomain execute(CreateApplicationCommand command) {
 
     // 1. Validate against JSON schema
-    String formType =
-        switch (command.applicationType()) {
-          case "CCS" -> "CssApplication.json";
-          default -> "ApplyApplication.json";
-        };
-    jsonSchemaValidator.validate(command.applicationContent(), formType, command.schemaVersion());
+    // Currently only one schema defined should be updated when others added
+    jsonSchemaValidator.validate(
+        command.applicationContent(), "ApplyApplication.json", command.schemaVersion());
 
     // 3. Validate and parse application content
     ParsedAppContentDetails parsed = applicationContentParser.parse(command.applicationContent());
 
     // 4. Duplicate-check BEFORE save
-    if (applicationGateway.existsByApplyApplicationId(parsed.applyApplicationId())) {
+    if (applicationGateway.existsByApplyApplicationId(command.id())) {
       throw new ValidationException(
-          List.of(
-              "Application already exists for Apply Application Id: "
-                  + parsed.applyApplicationId()));
+          List.of("Application already exists for Apply Application Id: " + command.id()));
     }
 
     // 5. Build domain (pre-save; id and createdAt are null) then persist application

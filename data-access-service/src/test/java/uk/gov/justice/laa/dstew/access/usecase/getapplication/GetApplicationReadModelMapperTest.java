@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.usecase.getapplication;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Collections;
@@ -51,7 +52,7 @@ class GetApplicationReadModelMapperTest {
             .categoryOfLaw("Family")
             .matterType("SPECIAL_CHILDREN_ACT")
             .levelOfService("SERVICE")
-            .substantiveCostLimitation(1234.56)
+            .substantiveCostLimitation(new BigDecimal("1234.56"))
             .delegatedFunctionsDate(LocalDate.of(2025, 5, 6))
             .scopeLimitations(
                 List.of(Map.of("meaning", "Full Representation", "description", "desc")))
@@ -87,7 +88,7 @@ class GetApplicationReadModelMapperTest {
             .proceedings(List.of(proceeding))
             .build();
 
-    ApplicationReadModel actual = mapper.toApplicationReadModel(projection, "INITIAL");
+    ApplicationReadModel actual = mapper.toApplicationReadModel(projection);
 
     // Scalar fields
     assertThat(actual.id()).isEqualTo(projection.id());
@@ -101,9 +102,6 @@ class GetApplicationReadModelMapperTest {
     assertThat(actual.autoGrant()).isEqualTo(projection.autoGrant());
     assertThat(actual.decisionStatus()).isEqualTo(projection.decisionStatus());
     assertThat(actual.version()).isEqualTo(projection.version());
-
-    // Business rule: applicationType always INITIAL
-    assertThat(actual.applicationType()).isEqualTo("INITIAL");
 
     // Provider
     assertThat(actual.provider()).isNotNull();
@@ -125,7 +123,8 @@ class GetApplicationReadModelMapperTest {
     assertThat(actual.proceedings().getFirst().categoryOfLaw()).isEqualTo("Family");
     assertThat(actual.proceedings().getFirst().matterType()).isEqualTo("SPECIAL_CHILDREN_ACT");
     assertThat(actual.proceedings().getFirst().levelOfService()).isEqualTo("SERVICE");
-    assertThat(actual.proceedings().getFirst().substantiveCostLimitation()).isEqualTo(1234.56);
+    assertThat(actual.proceedings().getFirst().substantiveCostLimitation())
+        .isEqualTo(new BigDecimal("1234.56"));
     assertThat(actual.proceedings().getFirst().delegatedFunctionsDate())
         .isEqualTo(LocalDate.of(2025, 5, 6));
     assertThat(actual.proceedings().getFirst().meritsDecision()).isEqualTo("GRANTED");
@@ -159,7 +158,7 @@ class GetApplicationReadModelMapperTest {
             .submitterEmail(submitterEmail)
             .build();
 
-    ApplicationReadModel actual = mapper.toApplicationReadModel(projection, "INITIAL");
+    ApplicationReadModel actual = mapper.toApplicationReadModel(projection);
 
     if (!providerExpected) {
       assertThat(actual.provider()).isNull();
@@ -168,13 +167,6 @@ class GetApplicationReadModelMapperTest {
       assertThat(actual.provider().officeCode()).isEqualTo(expectedOfficeCode);
       assertThat(actual.provider().contactEmail()).isEqualTo(expectedContactEmail);
     }
-  }
-
-  @Test
-  void givenAlwaysSetApplicationType_whenMapped_thenApplicationTypeIsInitial() {
-    ApplicationReadModel actual = mapper.toApplicationReadModel(minimalProjection(), "INITIAL");
-
-    assertThat(actual.applicationType()).isEqualTo("INITIAL");
   }
 
   @Test
@@ -188,7 +180,7 @@ class GetApplicationReadModelMapperTest {
     ApplicationDbProjection projection =
         minimalProjection().toBuilder().proceedings(List.of(proceeding)).build();
 
-    ApplicationReadModel actual = mapper.toApplicationReadModel(projection, "INITIAL");
+    ApplicationReadModel actual = mapper.toApplicationReadModel(projection);
 
     assertThat(actual.proceedings().getFirst().involvedChildren()).isEmpty();
   }
@@ -197,7 +189,7 @@ class GetApplicationReadModelMapperTest {
   void givenNullProceedings_whenMapped_thenProceedingsIsEmpty() {
     ApplicationDbProjection projection = minimalProjection().toBuilder().proceedings(null).build();
 
-    ApplicationReadModel actual = mapper.toApplicationReadModel(projection, "INITIAL");
+    ApplicationReadModel actual = mapper.toApplicationReadModel(projection);
 
     assertThat(actual.proceedings()).isEmpty();
   }
@@ -206,7 +198,7 @@ class GetApplicationReadModelMapperTest {
   void givenNullOpponents_whenMapped_thenOpponentsIsEmpty() {
     ApplicationDbProjection projection = minimalProjection().toBuilder().opponents(null).build();
 
-    ApplicationReadModel actual = mapper.toApplicationReadModel(projection, "INITIAL");
+    ApplicationReadModel actual = mapper.toApplicationReadModel(projection);
 
     assertThat(actual.opponents()).isEmpty();
   }
@@ -220,7 +212,7 @@ class GetApplicationReadModelMapperTest {
                     OpponentDetails.builder().opposableType("Individual").opposable(null).build()))
             .build();
 
-    ApplicationReadModel actual = mapper.toApplicationReadModel(projection, "INITIAL");
+    ApplicationReadModel actual = mapper.toApplicationReadModel(projection);
 
     assertThat(actual.opponents()).hasSize(1);
     assertThat(actual.opponents().getFirst().firstName()).isNull();
@@ -239,7 +231,7 @@ class GetApplicationReadModelMapperTest {
     ApplicationDbProjection projection =
         minimalProjection().toBuilder().proceedings(List.of(proceeding)).build();
 
-    ApplicationReadModel actual = mapper.toApplicationReadModel(projection, "INITIAL");
+    ApplicationReadModel actual = mapper.toApplicationReadModel(projection);
 
     assertThat(actual.proceedings().getFirst().scopeLimitations()).isEmpty();
   }
@@ -257,7 +249,7 @@ class GetApplicationReadModelMapperTest {
     ApplicationDbProjection projection =
         minimalProjection().toBuilder().proceedings(List.of(proceeding)).build();
 
-    ApplicationReadModel actual = mapper.toApplicationReadModel(projection, "INITIAL");
+    ApplicationReadModel actual = mapper.toApplicationReadModel(projection);
 
     assertThat(actual.proceedings().getFirst().scopeLimitations()).hasSize(2);
     assertThat(actual.proceedings().getFirst().scopeLimitations().get(0).scopeLimitation())

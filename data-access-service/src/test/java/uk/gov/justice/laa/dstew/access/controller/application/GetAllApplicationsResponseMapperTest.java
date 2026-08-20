@@ -13,7 +13,6 @@ import org.springframework.http.ResponseEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
-import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.usecase.getallapplications.GetAllApplicationsResult;
@@ -59,7 +58,6 @@ class GetAllApplicationsResponseMapperTest {
                     .clientFirstName("Jane")
                     .clientLastName("Doe")
                     .clientDateOfBirth(dob)
-                    .applicationType("INITIAL")
                     .modifiedAt(modifiedAt)
                     .isLead(true)
                     .linkedApplications(List.of(linked)));
@@ -93,7 +91,6 @@ class GetAllApplicationsResponseMapperTest {
     assertThat(app.getClientFirstName()).isEqualTo("Jane");
     assertThat(app.getClientLastName()).isEqualTo("Doe");
     assertThat(app.getClientDateOfBirth()).isEqualTo(dob);
-    assertThat(app.getApplicationType()).isEqualTo(ApplicationType.INITIAL);
     assertThat(app.getLastUpdated())
         .isEqualTo(OffsetDateTime.ofInstant(modifiedAt, ZoneOffset.UTC));
     assertThat(app.getIsLead()).isTrue();

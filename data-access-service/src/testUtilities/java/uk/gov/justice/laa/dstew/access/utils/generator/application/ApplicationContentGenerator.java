@@ -2,7 +2,6 @@ package uk.gov.justice.laa.dstew.access.utils.generator.application;
 
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ApplicationApplicant;
 import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
@@ -20,9 +19,7 @@ public class ApplicationContentGenerator
 
   @Override
   public ApplicationContent createDefault() {
-    UUID applicationId = UUID.randomUUID();
     return ApplicationContent.builder()
-        .id(applicationId)
         .office(officeGenerator.createDefault())
         .submittedAt("2024-01-01T12:00:00Z")
         .previousApplicationId("ZZ999Z")

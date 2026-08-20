@@ -5,12 +5,14 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import uk.gov.justice.laa.dstew.access.applicationcontent.LinkedApplication;
+import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.AssignCaseworkerToApplicationCommand;
@@ -101,9 +103,7 @@ public final class ApplicationDecider {
     validateDecision(command);
 
     Set<UUID> linkedProceedingIds =
-        current.proceedings().stream()
-            .map(ApplicationProceeding::proceedingId)
-            .collect(Collectors.toSet());
+        current.proceedings().stream().map(Proceeding::getId).collect(Collectors.toSet());
     List<UUID> unknownProceedingIds =
         command.proceedings().stream()
             .map(MakeDecisionProceeding::proceedingId)
@@ -195,9 +195,7 @@ public final class ApplicationDecider {
 
   /** Returns the next replayable state transition for an Application update. */
   public static ApplicationUpdatedEvent decideUpdate(
-      ApplicationState state,
-      UpdateApplicationCommand command,
-      ApplicationDataPayload updatedData) {
+      ApplicationState state, UpdateApplicationCommand command) {
     String nextStatus = command.status() == null ? state.status : command.status();
     return new ApplicationUpdatedEvent(
         state.applicationId,
@@ -205,8 +203,6 @@ public final class ApplicationDecider {
         state.applicationDataVersion + 1,
         state.status,
         nextStatus,
-        state.applicationType,
-        updatedData.applyApplicationId(),
         command.occurredAt());
   }
 
@@ -247,16 +243,13 @@ public final class ApplicationDecider {
         fingerprint,
         details.status(),
         details.schemaVersion(),
-        details.applicationType(),
-        details.applyApplicationId(),
         details.occurredAt(),
         details.leadApplicationId(),
-        details.applicationContent() == null
-                || details.applicationContent().getAllLinkedApplications() == null
-            ? java.util.List.of()
-            : details.applicationContent().getAllLinkedApplications().stream()
+        details.allLinkedApplications() == null
+            ? List.of()
+            : details.allLinkedApplications().stream()
                 .map(LinkedApplication::getAssociatedApplicationId)
-                .filter(java.util.Objects::nonNull)
+                .filter(Objects::nonNull)
                 .distinct()
                 .toList());
   }

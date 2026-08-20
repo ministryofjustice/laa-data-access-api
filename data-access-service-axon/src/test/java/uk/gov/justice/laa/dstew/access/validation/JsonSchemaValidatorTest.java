@@ -2,8 +2,10 @@ package uk.gov.justice.laa.dstew.access.validation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validApplicationContent;
+import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validProceedingContent;
 
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -14,135 +16,48 @@ class JsonSchemaValidatorTest {
   private final JsonSchemaValidator validator = new JsonSchemaValidator();
 
   @Test
-  void givenApplyPayloadAndVersionTwoSchema_whenValidate_thenAcceptsPayload() {
-    Map<String, Object> payload =
-        Map.of(
-            "id",
-            UUID.randomUUID().toString(),
-            "submittedAt",
-            "2026-01-15T10:20:30Z",
-            "status",
-            "APPLICATION_IN_PROGRESS",
-            "office",
-            Map.of("code", "OFF1"),
-            "applicant",
-            Map.of(
-                "id",
-                UUID.randomUUID().toString(),
-                "addresses",
-                List.of(Map.of("id", UUID.randomUUID().toString()))),
-            "proceedings",
-            List.of(
-                Map.of(
-                    "id",
-                    UUID.randomUUID().toString(),
-                    "leadProceeding",
-                    true,
-                    "description",
-                    "Test proceeding")));
-
-    validator.validate(payload, "ApplyApplication.json", 2);
+  void givenApplyPayloadAndVersionOneSchema_whenValidate_thenAcceptsPayload() {
+    validator.validate(
+        validApplicationContent(UUID.randomUUID(), UUID.randomUUID()),
+        "BaseCivilApplication.json",
+        1);
   }
 
   @Test
-  void givenCssPayloadAndCssSchema_whenValidate_thenAcceptsPayload() {
+  void givenUnknownPropertyInPayload_whenValidate_thenReportsAdditionalProperty() {
     Map<String, Object> payload =
-        Map.of(
-            "id",
-            UUID.randomUUID().toString(),
-            "submittedAt",
-            "2026-01-15T10:20:30Z",
-            "status",
-            "APPLICATION_IN_PROGRESS",
-            "laaReference",
-            "REF-123",
-            "office",
-            Map.of("code", "OFF1"),
-            "proceedings",
-            List.of(
-                Map.of(
-                    "id",
-                    UUID.randomUUID().toString(),
-                    "leadProceeding",
-                    true,
-                    "description",
-                    "Test proceeding")));
+        new HashMap<>(validApplicationContent(UUID.randomUUID(), UUID.randomUUID()));
+    payload.put("unknownField", "some-value");
 
-    validator.validate(payload, "CssApplication.json", 1);
-  }
-
-  @Test
-  void givenApplyPayloadMissingRequiredId_whenValidate_thenReportsProductionFailureShape() {
-    Map<String, Object> payload = Map.of("submittedAt", "2026-01-15T10:20:30Z");
-
-    assertThatThrownBy(() -> validator.validate(payload, "ApplyApplication.json", 1))
+    assertThatThrownBy(() -> validator.validate(payload, "BaseCivilApplication.json", 1))
         .isInstanceOf(ValidationException.class)
         .satisfies(
             exception ->
                 assertThat(((ValidationException) exception).errors())
-                    .anyMatch(message -> message.toLowerCase().contains("id")));
+                    .anyMatch(message -> message.toLowerCase().contains("additional")));
   }
 
   @Test
-  void givenCssPayloadMissingLaaReference_whenValidate_thenReportsRequiredField() {
+  void givenIdPropertyInPayload_whenValidate_thenRejectsAsAdditionalProperty() {
     Map<String, Object> payload =
-        Map.of(
-            "id",
-            UUID.randomUUID().toString(),
-            "submittedAt",
-            "2026-01-15T10:20:30Z",
-            "status",
-            "APPLICATION_IN_PROGRESS",
-            "office",
-            Map.of("code", "OFF1"));
+        new HashMap<>(validApplicationContent(UUID.randomUUID(), UUID.randomUUID()));
+    payload.put("id", UUID.randomUUID().toString());
 
-    assertThatThrownBy(() -> validator.validate(payload, "CssApplication.json", 1))
+    assertThatThrownBy(() -> validator.validate(payload, "BaseCivilApplication.json", 1))
         .isInstanceOf(ValidationException.class)
         .satisfies(
             exception ->
                 assertThat(((ValidationException) exception).errors())
-                    .anyMatch(message -> message.contains("laaReference")));
+                    .anyMatch(message -> message.toLowerCase().contains("additional")));
   }
 
   @Test
-  void givenInvalidApplicationId_whenValidate_thenReportsUuidFormat() {
+  void givenEmptyProceedingsForVersionOne_whenValidate_thenReportsMinimumItems() {
     Map<String, Object> payload =
-        Map.of(
-            "id",
-            "not-a-uuid",
-            "submittedAt",
-            "2026-01-15T10:20:30Z",
-            "office",
-            Map.of("code", "OFF1"));
+        new HashMap<>(validApplicationContent(UUID.randomUUID(), UUID.randomUUID()));
+    payload.put("proceedings", List.of());
 
-    assertThatThrownBy(() -> validator.validate(payload, "ApplyApplication.json", 1))
-        .isInstanceOf(ValidationException.class)
-        .satisfies(
-            exception ->
-                assertThat(((ValidationException) exception).errors())
-                    .anyMatch(message -> message.toLowerCase().contains("id")));
-  }
-
-  @Test
-  void givenEmptyProceedingsForVersionTwo_whenValidate_thenReportsMinimumItems() {
-    Map<String, Object> payload =
-        Map.of(
-            "id",
-            UUID.randomUUID().toString(),
-            "submittedAt",
-            "2026-01-15T10:20:30Z",
-            "office",
-            Map.of("code", "OFF1"),
-            "applicant",
-            Map.of(
-                "id",
-                UUID.randomUUID().toString(),
-                "addresses",
-                List.of(Map.of("id", UUID.randomUUID().toString()))),
-            "proceedings",
-            Collections.emptyList());
-
-    assertThatThrownBy(() -> validator.validate(payload, "ApplyApplication.json", 2))
+    assertThatThrownBy(() -> validator.validate(payload, "BaseCivilApplication.json", 1))
         .isInstanceOf(ValidationException.class)
         .satisfies(
             exception ->
@@ -153,15 +68,12 @@ class JsonSchemaValidatorTest {
   @Test
   void givenProceedingMissingDescription_whenValidate_thenReportsNestedRequiredField() {
     Map<String, Object> payload =
-        Map.of(
-            "id",
-            UUID.randomUUID().toString(),
-            "submittedAt",
-            "2026-01-15T10:20:30Z",
-            "proceedings",
-            List.of(Map.of("id", UUID.randomUUID().toString(), "leadProceeding", true)));
+        new HashMap<>(validApplicationContent(UUID.randomUUID(), UUID.randomUUID()));
+    Map<String, Object> proceeding = new HashMap<>(validProceedingContent(UUID.randomUUID()));
+    proceeding.remove("description");
+    payload.put("proceedings", List.of(proceeding));
 
-    assertThatThrownBy(() -> validator.validate(payload, "ApplyApplication.json", 1))
+    assertThatThrownBy(() -> validator.validate(payload, "BaseCivilApplication.json", 1))
         .isInstanceOf(ValidationException.class)
         .satisfies(
             exception ->

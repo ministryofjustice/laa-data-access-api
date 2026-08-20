@@ -22,7 +22,6 @@ public record ApplicationSummaryReadModel(
     String clientFirstName,
     String clientLastName,
     LocalDate clientDateOfBirth,
-    String applicationType,
     Instant modifiedAt,
     Boolean isLead,
     List<LinkedApplicationSummaryReadModel> linkedApplications) {}

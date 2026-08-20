@@ -168,7 +168,6 @@ public class ApplicationProjection {
                 application ->
                     new StalledAssessment(
                         application.getApplicationId(),
-                        application.getApplyApplicationId(),
                         application.getApplicationVersion(),
                         application.getSubmittedAt()))
             .toList());
@@ -185,8 +184,6 @@ public class ApplicationProjection {
                 .applicationDataVersion(event.applicationDataVersion())
                 .applicationVersion(0L)
                 .schemaVersion(event.schemaVersion())
-                .applicationType(event.applicationType())
-                .applyApplicationId(event.applyApplicationId())
                 .createdAt(event.occurredAt())
                 .modifiedAt(event.occurredAt())
                 .leadApplicationId(event.leadApplicationId())
@@ -362,13 +359,13 @@ public class ApplicationProjection {
   private ApplicationReadModel hydrate(
       ApplicationReadModel application, ApplicationDataPayload data) {
     application.setLaaReference(data.laaReference());
-    application.setApplicationContent(data.applicationContent());
-    application.setIndividuals(data.individuals());
+    application.setClient(data.client());
+    application.setProvider(data.provider());
+    application.setOpponents(data.opponents());
     application.setSubmittedAt(data.submittedAt());
-    application.setOfficeCode(data.officeCode());
     application.setUsedDelegatedFunctions(data.usedDelegatedFunctions());
-    application.setCategoryOfLaw(data.categoryOfLaw() == null ? null : data.categoryOfLaw().name());
-    application.setMatterType(data.matterType() == null ? null : data.matterType().name());
+    application.setCategoryOfLaw(data.categoryOfLaw());
+    application.setMatterType(data.matterType());
     application.setProceedings(data.proceedings());
     application.setDecisionStatus(data.overallDecision());
     application.setAutoGranted(data.autoGranted());

@@ -13,9 +13,10 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationContent;
-import uk.gov.justice.laa.dstew.access.command.application.ApplicationIndividual;
-import uk.gov.justice.laa.dstew.access.command.application.ApplicationProceeding;
+import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
+import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationProvider;
+import uk.gov.justice.laa.dstew.access.applicationcontent.Opponent;
+import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationMeritsDecision;
 
@@ -42,18 +43,14 @@ public class ApplicationReadModel {
 
   @Transient private String laaReference;
 
-  @Transient private ApplicationContent applicationContent;
+  @Transient private ApplicationClient client;
 
-  @Transient private List<ApplicationIndividual> individuals;
+  @Transient private ApplicationProvider provider;
+
+  @Transient private List<Opponent> opponents;
 
   @Column(name = "schema_version")
   private int schemaVersion;
-
-  @Column(name = "application_type")
-  private String applicationType;
-
-  @Column(name = "apply_application_id")
-  private UUID applyApplicationId;
 
   @Column(name = "lead_application_id")
   private UUID leadApplicationId;
@@ -63,15 +60,13 @@ public class ApplicationReadModel {
 
   @Transient private Instant submittedAt;
 
-  @Transient private String officeCode;
-
   @Transient private Boolean usedDelegatedFunctions;
 
   @Transient private String categoryOfLaw;
 
   @Transient private String matterType;
 
-  @Transient private List<ApplicationProceeding> proceedings;
+  @Transient private List<Proceeding> proceedings;
 
   @Transient private String decisionStatus;
 
@@ -86,4 +81,9 @@ public class ApplicationReadModel {
 
   @Column(name = "modified_at")
   private Instant modifiedAt;
+
+  /** Derives office code from provider for backward compatibility. */
+  public String getOfficeCode() {
+    return provider != null ? provider.getOfficeCode() : null;
+  }
 }

@@ -34,7 +34,6 @@ import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
-import uk.gov.justice.laa.dstew.access.model.ApplicationType;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.utils.TestConstants;
@@ -1412,7 +1411,6 @@ public class GetApplicationsTest extends BaseHarnessTest {
     applicationSummary.autoGranted(
         AutoGrantedMapper.fromLegacyFlag(applicationEntity.getIsAutoGranted()));
     applicationSummary.setLaaReference(applicationEntity.getLaaReference());
-    applicationSummary.setApplicationType(ApplicationType.INITIAL);
     applicationSummary.setClientFirstName(
         applicationEntity.getIndividuals().stream().findFirst().get().getFirstName());
     applicationSummary.setClientLastName(

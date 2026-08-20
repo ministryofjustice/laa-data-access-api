@@ -14,7 +14,6 @@ class ApplicationSubmittedContractTest {
   void givenOptionalDataFieldAdded_whenVersionOneValidated_thenContractRemainsCompatible() {
     Map<String, Object> data = new HashMap<>();
     data.put("applicationId", UUID.randomUUID().toString());
-    data.put("applyApplicationId", UUID.randomUUID().toString());
     data.put("laaReference", null);
     data.put("applicationVersion", 3);
     data.put("futureOptionalField", "ignored-by-v1-consumers");
