@@ -8,8 +8,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
@@ -20,6 +25,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.annotation.DirtiesContext;
@@ -33,6 +39,8 @@ import uk.gov.justice.laa.dstew.access.model.AutoGrantedOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.BillingType;
 import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityRequest;
 import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityResponse;
+import uk.gov.justice.laa.dstew.access.model.CounselDetails;
+import uk.gov.justice.laa.dstew.access.model.CounselType;
 import uk.gov.justice.laa.dstew.access.model.DisbursementDetails;
 import uk.gov.justice.laa.dstew.access.model.ExpertCosts;
 import uk.gov.justice.laa.dstew.access.model.ExpertDetails;
@@ -227,6 +235,63 @@ class PriorAuthorityIntegrationTest {
         .isEmpty();
   }
 
+  @ParameterizedTest
+  @EnumSource(CounselType.class)
+  void givenGrantedApplication_whenCreateCounselPriorAuthority_thenReturnsCreated(
+      CounselType counselType) {
+    UUID applicationId = grantedApplication();
+    CreatePriorAuthorityRequest request =
+        CreatePriorAuthorityRequest.builder()
+            .priorAuthorityType(PriorAuthorityType.COUNSEL)
+            .justification("Specialist counsel is required")
+            .counselDetails(CounselDetails.builder().counselType(counselType).build())
+            .build();
+
+    ResponseEntity<String> response =
+        restTemplate.postForEntity(
+            priorAuthorityUrl(applicationId), new HttpEntity<>(request, headers()), String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+  }
+
+  @Test
+  void givenGrantedApplication_whenCreateDisbursementPriorAuthority_thenReturnsCreated() {
+    UUID applicationId = grantedApplication();
+
+    ResponseEntity<String> response =
+        restTemplate.postForEntity(
+            priorAuthorityUrl(applicationId), new HttpEntity<>(disbursementRequest(), headers()), String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+  }
+
+  @Test
+  void givenGrantedApplication_whenJustificationIsAtMaximumLength_thenReturnsCreated() {
+    UUID applicationId = grantedApplication();
+    CreatePriorAuthorityRequest request = fixedRateExpertRequest();
+    request.setJustification("x".repeat(10_000));
+
+    ResponseEntity<String> response =
+        restTemplate.postForEntity(
+            priorAuthorityUrl(applicationId), new HttpEntity<>(request, headers()), String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("invalidPriorAuthorityRequests")
+  void givenGrantedApplication_whenPriorAuthorityPayloadViolatesSchema_thenReturnsBadRequest(
+      String description, String payload) {
+    UUID applicationId = grantedApplication();
+
+    ResponseEntity<String> response =
+        restTemplate.postForEntity(
+            priorAuthorityUrl(applicationId), new HttpEntity<>(payload, headers()), String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertNoPriorAuthorityPersisted(applicationId);
+  }
+
   private void createApplication(UUID applicationId, UUID applyProceedingId) {
     ResponseEntity<Void> response =
         restTemplate.postForEntity(
@@ -235,6 +300,30 @@ class PriorAuthorityIntegrationTest {
                 validCreateApplicationRequest(applicationId, applyProceedingId), headers()),
             Void.class);
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+  }
+
+  private UUID grantedApplication() {
+    UUID applicationId = UUID.randomUUID();
+    createApplication(applicationId, UUID.randomUUID());
+    awaitApplicationProjection(applicationId);
+    grantApplication(applicationId);
+    awaitApplicationProjectionVersion(applicationId, 1L);
+    return applicationId;
+  }
+
+  private void assertNoPriorAuthorityPersisted(UUID applicationId) {
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM axon.prior_authority_data WHERE application_id = ?",
+                Integer.class,
+                applicationId))
+        .isZero();
+    assertThat(
+            jdbcTemplate.queryForList(
+                "SELECT submission_id FROM axon.prior_authority_current_state"
+                    + " WHERE application_id = ?",
+                applicationId))
+        .isEmpty();
   }
 
   private void grantApplication(UUID applicationId) {
@@ -292,7 +381,68 @@ class PriorAuthorityIntegrationTest {
     HttpHeaders headers = new HttpHeaders();
     headers.set("X-Service-Name", "CIVIL_APPLY");
     headers.set("X-Schema-Version", "1");
+    headers.setContentType(MediaType.APPLICATION_JSON);
     return headers;
+  }
+
+  private static Stream<Arguments> invalidPriorAuthorityRequests() {
+    return Stream.of(
+        Arguments.of("missing priorAuthorityType", "{\"justification\":\"Required\"}"),
+        Arguments.of(
+            "unknown priorAuthorityType",
+            "{\"priorAuthorityType\":\"UNKNOWN\",\"justification\":\"Required\"}"),
+        Arguments.of("missing justification", "{\"priorAuthorityType\":\"COUNSEL\"}"),
+        Arguments.of(
+            "justification exceeds maximum length",
+            "{\"priorAuthorityType\":\"COUNSEL\",\"justification\":\"%s\",\"counselDetails\":{\"counselType\":\"KINGS_COUNSEL_ALONE\"}}"
+                .formatted("x".repeat(10_001))),
+        Arguments.of(
+            "counsel without counselDetails",
+            "{\"priorAuthorityType\":\"COUNSEL\",\"justification\":\"Required\"}"),
+        Arguments.of(
+            "counsel without counselType",
+            "{\"priorAuthorityType\":\"COUNSEL\",\"justification\":\"Required\",\"counselDetails\":{}}"),
+        Arguments.of(
+            "unknown counselType",
+            "{\"priorAuthorityType\":\"COUNSEL\",\"justification\":\"Required\",\"counselDetails\":{\"counselType\":\"JUNIOR\"}}"),
+        Arguments.of(
+            "disbursement without disbursementDetails",
+            "{\"priorAuthorityType\":\"DISBURSEMENT\",\"justification\":\"Required\"}"),
+        Arguments.of(
+            "blank disbursement purpose",
+            "{\"priorAuthorityType\":\"DISBURSEMENT\",\"justification\":\"Required\",\"disbursementDetails\":{\"disbursementPurpose\":\"\",\"disbursementAmount\":1}}"),
+        Arguments.of(
+            "non-positive disbursement amount",
+            "{\"priorAuthorityType\":\"DISBURSEMENT\",\"justification\":\"Required\",\"disbursementDetails\":{\"disbursementPurpose\":\"Interpreter\",\"disbursementAmount\":0}}"),
+        Arguments.of(
+            "blank expert details fields",
+            "{\"priorAuthorityType\":\"EXPERT\",\"justification\":\"Required\",\"expertDetails\":{\"expertType\":\"\",\"expertFullName\":\"\",\"expertPostcode\":\"\",\"expertCosts\":{\"billingType\":\"FIXED_RATE\",\"totalAmount\":1,\"costsSharedWithOtherParties\":false}}}"),
+        Arguments.of(
+            "expert costs without required fields",
+            "{\"priorAuthorityType\":\"EXPERT\",\"justification\":\"Required\",\"expertDetails\":{\"expertType\":\"Expert\",\"expertFullName\":\"Name\",\"expertPostcode\":\"AB1\",\"expertCosts\":{}}}"),
+        Arguments.of(
+            "hourly expert without hourly rate",
+            expertPayload("{\"billingType\":\"HOURLY\",\"timeRequested\":{\"hours\":1,\"minutes\":0},\"totalAmount\":1,\"costsSharedWithOtherParties\":false}")),
+        Arguments.of(
+            "hourly expert without requested time",
+            expertPayload("{\"billingType\":\"HOURLY\",\"hourlyRate\":1,\"totalAmount\":1,\"costsSharedWithOtherParties\":false}")),
+        Arguments.of(
+            "hourly expert with non-positive rate",
+            expertPayload("{\"billingType\":\"HOURLY\",\"hourlyRate\":0,\"timeRequested\":{\"hours\":1,\"minutes\":0},\"totalAmount\":1,\"costsSharedWithOtherParties\":false}")),
+        Arguments.of(
+            "shared costs without apportionment",
+            expertPayload("{\"billingType\":\"FIXED_RATE\",\"totalAmount\":1,\"costsSharedWithOtherParties\":true}")),
+        Arguments.of(
+            "requested time outside permitted range",
+            expertPayload("{\"billingType\":\"HOURLY\",\"hourlyRate\":1,\"timeRequested\":{\"hours\":-1,\"minutes\":60},\"totalAmount\":1,\"costsSharedWithOtherParties\":false}")),
+        Arguments.of(
+            "apportionment below minimum parties",
+            expertPayload("{\"billingType\":\"FIXED_RATE\",\"totalAmount\":1,\"costsSharedWithOtherParties\":true,\"apportionment\":{\"partiesSharingCosts\":1,\"clientShareAmount\":1}}")));
+  }
+
+  private static String expertPayload(String expertCosts) {
+    return "{\"priorAuthorityType\":\"EXPERT\",\"justification\":\"Required\",\"expertDetails\":{\"expertType\":\"Expert\",\"expertFullName\":\"Name\",\"expertPostcode\":\"AB1\",\"expertCosts\":%s}}"
+        .formatted(expertCosts);
   }
 
   private CreatePriorAuthorityRequest hourlyExpertRequest() {
