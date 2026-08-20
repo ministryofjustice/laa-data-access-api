@@ -6,7 +6,7 @@ on:
       record_count:
         description: "Number of records to generate"
         required: false
-        default: "300000"
+        default: "100"
         type: string
       database:
         description: "Target database. Use 'uat' for the default UAT database, or 'db2'/'db3' to supply connection details below."
