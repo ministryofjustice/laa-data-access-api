@@ -11,7 +11,7 @@ on:
       database:
         description: "Target database. Use 'uat' for the default UAT database, or 'db2'/'db3' to supply connection details below."
         required: true
-        default: "uat"
+        default: "db2"
         type: choice
         options:
           - uat
