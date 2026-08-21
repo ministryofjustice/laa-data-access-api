@@ -24,6 +24,7 @@ import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApp
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.ValidateApplicationExistsCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.ValidateApplicationGrantedCommand;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ReadyApplicationResult;
@@ -113,6 +114,16 @@ public class ApplicationAggregate {
           "No linked application found with Application ID: " + command.applicationId());
     }
     // Application exists — no events, no state change.
+  }
+
+  /** Validates that the targeted application has an overall decision of {@code GRANTED}. */
+  @CommandHandler
+  void handle(ValidateApplicationGrantedCommand command) {
+    if (applicationId == null) {
+      throw new ResourceNotFoundException(
+          "No application found with Application ID: " + command.applicationId());
+    }
+    ApplicationDecider.validateGranted(state);
   }
 
   /** Validates and stores a decision as the next immutable application-data version. */

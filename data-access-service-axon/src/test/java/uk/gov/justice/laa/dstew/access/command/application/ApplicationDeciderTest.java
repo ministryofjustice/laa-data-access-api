@@ -343,6 +343,43 @@ class ApplicationDeciderTest {
     assertThat(event.occurredAt()).isEqualTo(TIMESTAMP);
   }
 
+  // ── validateGranted ────────────────────────────────────────────────────────────
+
+  @Test
+  void givenGrantedDecision_whenValidateGranted_thenReturnsNormally() {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationState state = stateAfterCreate(applicationId, "fp", 1);
+    state.overallDecision = "GRANTED";
+
+    ApplicationDecider.validateGranted(state);
+    // no exception — test passes
+  }
+
+  @Test
+  void givenNonGrantedDecision_whenValidateGranted_thenThrowsValidationException() {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationState state = stateAfterCreate(applicationId, "fp", 1);
+    state.overallDecision = "REFUSED";
+
+    assertThatThrownBy(() -> ApplicationDecider.validateGranted(state))
+        .isInstanceOf(ValidationException.class)
+        .satisfies(
+            ex ->
+                assertThat(((ValidationException) ex).errors())
+                    .containsExactly(
+                        "Prior authority requires the application to have an overall decision of GRANTED"));
+  }
+
+  @Test
+  void givenNoDecision_whenValidateGranted_thenThrowsValidationException() {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationState state = stateAfterCreate(applicationId, "fp", 1);
+    // state.overallDecision is null by default
+
+    assertThatThrownBy(() -> ApplicationDecider.validateGranted(state))
+        .isInstanceOf(ValidationException.class);
+  }
+
   // ── helpers ────────────────────────────────────────────────────────────────────
 
   private static ApplicationState stateAfterCreate(

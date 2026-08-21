@@ -34,6 +34,7 @@ import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.CreateLin
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupRequested;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.ValidateApplicationGrantedCommand;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ReadyApplicationResult;
@@ -671,6 +672,55 @@ class ApplicationAggregateTest {
         .then()
         .success()
         .events(new NoteCreatedEvent(applicationId, 1L, occurredAt));
+  }
+
+  @Test
+  void givenGrantedApplication_whenValidateApplicationGranted_thenSucceedsWithNoEvents() {
+    UUID applicationId = UUID.randomUUID();
+
+    fixture
+        .given()
+        .events(
+            applicationCreatedEvent(applicationId),
+            new ApplicationDecisionMadeEvent(
+                applicationId,
+                1L,
+                1L,
+                "GRANTED",
+                AutoGrantedState.AUTOGRANTED,
+                Instant.parse("2026-07-21T09:00:00Z")))
+        .when()
+        .command(new ValidateApplicationGrantedCommand(applicationId))
+        .then()
+        .success()
+        .noEvents();
+  }
+
+  @Test
+  void givenNonGrantedApplication_whenValidateApplicationGranted_thenThrowsValidationException() {
+    UUID applicationId = UUID.randomUUID();
+
+    fixture
+        .given()
+        .events(applicationCreatedEvent(applicationId))
+        .when()
+        .command(new ValidateApplicationGrantedCommand(applicationId))
+        .then()
+        .exception(ValidationException.class)
+        .noEvents();
+  }
+
+  @Test
+  void
+      givenMissingApplication_whenValidateApplicationGranted_thenThrowsResourceNotFoundException() {
+    fixture
+        .given()
+        .noPriorActivity()
+        .when()
+        .command(new ValidateApplicationGrantedCommand(UUID.randomUUID()))
+        .then()
+        .exception(ResourceNotFoundException.class)
+        .noEvents();
   }
 
   @Test

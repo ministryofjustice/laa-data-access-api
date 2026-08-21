@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["counselType"],
+  "properties": {
+    "counselType": {
+      "type": "string",
+      "enum": [
+        "KINGS_COUNSEL_ALONE",
+        "TWO_JUNIOR_COUNSEL",
+        "KINGS_COUNSEL_AND_JUNIOR_COUNSEL",
+        "KINGS_COUNSEL_AND_TWO_JUNIOR_COUNSEL"
+      ]
+    }
+  }
+}
