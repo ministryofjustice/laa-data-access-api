@@ -6,6 +6,7 @@ import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationUseC
 import uk.gov.justice.laa.dstew.access.command.application.assignment.AssignCaseworkerUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.UnassignCaseworkerUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionUseCase;
+import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand;
 import uk.gov.justice.laa.dstew.access.command.application.ready.RecordAutoGrantOutcomeUseCase;
 import uk.gov.justice.laa.dstew.access.controller.application.AssignCaseworkerRequestMapper;
 import uk.gov.justice.laa.dstew.access.controller.application.AutoGrantOutcomeCommandMapper;
@@ -13,6 +14,8 @@ import uk.gov.justice.laa.dstew.access.controller.application.CreateApplicationC
 import uk.gov.justice.laa.dstew.access.controller.application.MakeDecisionCommandMapper;
 import uk.gov.justice.laa.dstew.access.controller.application.UnassignCaseworkerRequestMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
+import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
 
@@ -84,6 +87,10 @@ public class ApplicationTestDataSeeder {
               .getProceedings()
               .getFirst()
               .getId();
+      recordAutoGrantOutcomeUseCase.recordReady(
+          (MarkApplicationReadyCommand)
+              autoGrantOutcomeCommandMapper.toCommand(
+                  applicationId, new ManualOutcomeRequest(AutoGrantOutcome.MANUAL)));
       makeApplicationDecisionUseCase.execute(
           makeDecisionCommandMapper.toCommand(
               applicationId, new GeneratedRequestFactory("").decision(proceedingId)));

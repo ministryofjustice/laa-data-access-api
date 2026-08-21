@@ -152,6 +152,9 @@ public class ApplicationAggregate {
       throw new ApplicationVersionConflictException(
           command.applicationId(), command.expectedApplicationVersion());
     }
+    if (!command.fromAutoGrantOutcome() && state.autoGranted != AutoGrantedState.MANUAL) {
+      throw new ApplicationAutoGrantOutcomeConflictException(command.applicationId());
+    }
     var current = applicationDataStore.get(applicationId, state.applicationDataVersion);
     MakeApplicationDecisionCommand effectiveCommand = command;
     if (command.fromAutoGrantOutcome()) {

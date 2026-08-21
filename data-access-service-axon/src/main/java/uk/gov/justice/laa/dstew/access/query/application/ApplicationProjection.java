@@ -1,5 +1,7 @@
 package uk.gov.justice.laa.dstew.access.query.application;
 
+import static uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationStatus.APPLICATION_SUBMITTED;
+
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -19,6 +21,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
+import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.applicationcontent.Decision;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
@@ -32,8 +36,6 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationD
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
-import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
-import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadModel;
@@ -159,10 +161,7 @@ public class ApplicationProjection {
   @QueryHandler
   public StalledAssessments handle(FindStalledAssessmentsQuery query) {
     return new StalledAssessments(
-        hydrate(
-                applicationReadRepository.findAllByStatus(
-                    ApplicationStatus.APPLICATION_SUBMITTED.name()))
-            .stream()
+        hydrate(applicationReadRepository.findAllByStatus(APPLICATION_SUBMITTED.name())).stream()
             .filter(application -> application.getAutoGranted() == AutoGrantedState.PENDING)
             .filter(application -> application.getSubmittedAt() != null)
             .filter(application -> application.getSubmittedAt().isBefore(query.submittedBefore()))
@@ -324,9 +323,9 @@ public class ApplicationProjection {
       Instant occurredAt,
       QueryUpdateEmitter queryUpdateEmitter) {
     ApplicationStatus applicationStatus;
-    DecisionStatus decisionStatus = DecisionStatus.valueOf(overallDecision);
+    Decision decision = Decision.valueOf(overallDecision);
     applicationStatus =
-        decisionStatus.equals(DecisionStatus.REFUSED)
+        decision.equals(Decision.REFUSED)
             ? ApplicationStatus.APPLICATION_REFUSED
             : ApplicationStatus.APPLICATION_GRANTED;
     applicationReadRepository
