@@ -13,7 +13,6 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationD
 /** Unit tests for {@link ApplicationEvolve} decision-fold behaviour. */
 class ApplicationEvolveTest {
 
-
   @Test
   void givenDecisionMadeEventWithGranted_whenApply_thenSetsOverallDecision() {
     ApplicationState state = new ApplicationState();

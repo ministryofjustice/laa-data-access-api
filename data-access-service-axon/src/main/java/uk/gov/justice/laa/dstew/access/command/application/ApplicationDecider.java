@@ -11,6 +11,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
 import uk.gov.justice.laa.dstew.access.applicationcontent.LinkedApplication;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
@@ -213,7 +214,7 @@ public final class ApplicationDecider {
     if (command.proceedings().isEmpty()) {
       errors.add("The request must contain at least one proceeding");
     }
-    if ("GRANTED".equals(command.overallDecision())
+    if (DecisionValue.GRANTED.name().equals(command.overallDecision())
         && (command.certificate() == null || command.certificate().isEmpty())) {
       errors.add("The request must contain a certificate when overallDecision is GRANTED");
     }
