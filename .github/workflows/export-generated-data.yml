@@ -14,6 +14,7 @@ jobs:
       contents: read
     env:
       RELEASE_NAME: pr-${{ github.event.pull_request.number }}
+      MASS_GENERATOR_DEPLOYMENT: pr-${{ github.event.pull_request.number }}-mass-generator-mass-generator
       RECORD_COUNT: "100"
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -32,7 +33,7 @@ jobs:
           KUBE_NAMESPACE: ${{ secrets.KUBE_NAMESPACE }}
         run: |
           set -euo pipefail
-          DEPLOYMENT="${RELEASE_NAME}-mass-generator"
+          DEPLOYMENT="${MASS_GENERATOR_DEPLOYMENT}"
           echo "Scaling up deployment: $DEPLOYMENT"
           kubectl scale deployment "$DEPLOYMENT" \
             --replicas=1 \
@@ -68,7 +69,7 @@ jobs:
           KUBE_NAMESPACE: ${{ secrets.KUBE_NAMESPACE }}
         run: |
           set -euo pipefail
-          kubectl scale deployment "${RELEASE_NAME}-mass-generator" \
+          kubectl scale deployment "${MASS_GENERATOR_DEPLOYMENT}" \
             --replicas=0 \
             --namespace "$KUBE_NAMESPACE"
 
