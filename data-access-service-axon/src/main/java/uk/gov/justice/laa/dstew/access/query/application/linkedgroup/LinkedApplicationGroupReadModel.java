@@ -13,6 +13,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
 /** Replayable current-state read model for a linked application group. */
 @Entity
@@ -21,6 +22,7 @@ import org.hibernate.type.SqlTypes;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@ExcludeFromGeneratedCodeCoverage
 public class LinkedApplicationGroupReadModel {
 
   @Id
