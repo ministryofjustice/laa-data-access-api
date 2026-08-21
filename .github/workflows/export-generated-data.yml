@@ -1,0 +1,85 @@
+name: Export generated data
+
+on:
+  pull_request:
+    types: [labeled]
+    
+jobs:
+  export-generated-data:
+    runs-on: ubuntu-latest
+    if: github.event.label.name == 'export-generated-data'
+    environment: uat  # ephemeral environments run in the UAT cluster namespace
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      RELEASE_NAME: pr-${{ github.event.pull_request.number }}
+      RECORD_COUNT: "100"
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Authenticate to cluster
+        uses: ministryofjustice/laa-reusable-github-actions/.github/actions/authenticate_to_cluster@2aa2676c3cd9876ec7037ee8b3d729d0306cb7c6
+        with:
+          kube-cert: ${{ secrets.KUBE_CERT }}
+          kube-token: ${{ secrets.KUBE_TOKEN }}
+          kube-cluster: ${{ secrets.KUBE_CLUSTER }}
+          kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
+
+      - name: Scale mass generator up
+        shell: bash
+        env:
+          KUBE_NAMESPACE: ${{ secrets.KUBE_NAMESPACE }}
+        run: |
+          set -euo pipefail
+          DEPLOYMENT="${RELEASE_NAME}-mass-generator"
+          echo "Scaling up deployment: $DEPLOYMENT"
+          kubectl scale deployment "$DEPLOYMENT" \
+            --replicas=1 \
+            --namespace "$KUBE_NAMESPACE"
+          kubectl rollout status "deployment/$DEPLOYMENT" \
+            --namespace "$KUBE_NAMESPACE" \
+            --timeout=120s
+
+      - name: Run mass generator
+        shell: bash
+        env:
+          KUBE_NAMESPACE: ${{ secrets.KUBE_NAMESPACE }}
+        run: |
+          set -euo pipefail
+          POD_NAME=$(kubectl get pod \
+            -n "$KUBE_NAMESPACE" \
+            -l "app.kubernetes.io/instance=${RELEASE_NAME},app.kubernetes.io/name=mass-generator" \
+            -o jsonpath='{.items[0].metadata.name}')
+
+          if [ -z "$POD_NAME" ]; then
+            echo "No mass generator pod found for release ${RELEASE_NAME}" >&2
+            exit 1
+          fi
+
+          echo "Running mass generator on pod: $POD_NAME (count: $RECORD_COUNT)"
+          kubectl exec -n "$KUBE_NAMESPACE" "$POD_NAME" -- \
+            java -jar /mass-generator/mass-generator.jar "$RECORD_COUNT"
+
+      - name: Scale mass generator down
+        if: always()
+        shell: bash
+        env:
+          KUBE_NAMESPACE: ${{ secrets.KUBE_NAMESPACE }}
+        run: |
+          set -euo pipefail
+          kubectl scale deployment "${RELEASE_NAME}-mass-generator" \
+            --replicas=0 \
+            --namespace "$KUBE_NAMESPACE"
+
+      # TODO: Take a pg_dump snapshot from the ephemeral PostgreSQL pod
+      # The PostgreSQL release is named: ${RELEASE_NAME}-postgresql
+      # Pod selector: app.kubernetes.io/instance=${RELEASE_NAME}-postgresql
+      # Credentials are in the Kubernetes secret: ${RELEASE_NAME}-postgresql
+      #   key: postgres-password
+      # Example command:
+      #   kubectl exec -n "$KUBE_NAMESPACE" "$PG_POD" -- \
+      #     pg_dump -U postgres postgres > snapshot.sql
+
+      # TODO: Export snapshot (e.g. upload to S3)
+      # aws s3 cp snapshot.sql s3://your-bucket/snapshots/${RELEASE_NAME}/snapshot.sql
