@@ -128,7 +128,11 @@ class CreateApplicationInMemoryTest {
     UUID applicationId = UUID.randomUUID();
 
     ResponseEntity<String> response =
-        restTemplate.getForEntity("/api/v0/applications/" + applicationId, String.class);
+        restTemplate.exchange(
+            "/api/v0/applications/" + applicationId,
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            String.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     assertThat(response.getBody()).contains("No application found with ID: " + applicationId);
@@ -261,6 +265,7 @@ class CreateApplicationInMemoryTest {
     HttpHeaders headers = new HttpHeaders();
     headers.set("X-Service-Name", "CIVIL_APPLY");
     headers.set("X-Schema-Version", "1");
+    headers.setBearerAuth(TestJwtDecoderConfig.BEARER_TOKEN);
 
     ResponseEntity<Void> response =
         restTemplate.postForEntity(
@@ -571,6 +576,7 @@ class CreateApplicationInMemoryTest {
     HttpHeaders headers = new HttpHeaders();
     headers.set("X-Service-Name", "CIVIL_APPLY");
     headers.set("X-Schema-Version", "1");
+    headers.setBearerAuth(TestJwtDecoderConfig.BEARER_TOKEN);
     HttpEntity<ApplicationCreateRequest> request =
         new HttpEntity<>(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers);
 
@@ -598,6 +604,7 @@ class CreateApplicationInMemoryTest {
     HttpHeaders headers = new HttpHeaders();
     headers.set("X-Service-Name", "CIVIL_APPLY");
     headers.set("X-Schema-Version", "1");
+    headers.setBearerAuth(TestJwtDecoderConfig.BEARER_TOKEN);
 
     ResponseEntity<Void> firstResponse =
         restTemplate.postForEntity(
@@ -811,8 +818,10 @@ class CreateApplicationInMemoryTest {
   @Test
   void givenNoMatchingApplications_whenGetApplicationsFilteredByLaaReference_thenReturnsEmpty() {
     ResponseEntity<ApplicationSummaryResponse> response =
-        restTemplate.getForEntity(
+        restTemplate.exchange(
             "/api/v0/applications?laaReference=DOES-NOT-EXIST-12345",
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
             ApplicationSummaryResponse.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -834,7 +843,11 @@ class CreateApplicationInMemoryTest {
     awaitProjection(createdApplicationId);
 
     ResponseEntity<ApplicationSummaryResponse> response =
-        restTemplate.getForEntity("/api/v0/applications", ApplicationSummaryResponse.class);
+        restTemplate.exchange(
+            "/api/v0/applications",
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            ApplicationSummaryResponse.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(response.getBody().getApplications())
@@ -882,7 +895,11 @@ class CreateApplicationInMemoryTest {
             Optional::isPresent);
 
     ResponseEntity<ApplicationSummaryResponse> response =
-        restTemplate.getForEntity("/api/v0/applications", ApplicationSummaryResponse.class);
+        restTemplate.exchange(
+            "/api/v0/applications",
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            ApplicationSummaryResponse.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(response.getBody().getApplications())

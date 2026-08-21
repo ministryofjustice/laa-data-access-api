@@ -2,7 +2,6 @@ package uk.gov.justice.laa.dstew.access.testsupport;
 
 import java.util.List;
 import java.util.Map;
-import org.springframework.boot.restclient.RestTemplateCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -33,17 +32,5 @@ public class TestJwtDecoderConfig {
             new String[] {"LAA_CASEWORKER"},
             null,
             Map.of("iss", ISSUER_URI, "aud", List.of(AUDIENCE))));
-  }
-
-  @Bean
-  RestTemplateCustomizer bearerTokenRestTemplateCustomizer() {
-    return restTemplate ->
-        restTemplate
-            .getInterceptors()
-            .add(
-                (request, body, execution) -> {
-                  request.getHeaders().setBearerAuth(BEARER_TOKEN);
-                  return execution.execute(request, body);
-                });
   }
 }
