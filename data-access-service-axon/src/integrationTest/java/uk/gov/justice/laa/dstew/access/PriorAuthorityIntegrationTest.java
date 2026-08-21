@@ -295,6 +295,32 @@ class PriorAuthorityIntegrationTest {
     assertNoPriorAuthorityPersisted(applicationId);
   }
 
+  @Test
+  void givenUnknownToken_whenPostingPriorAuthority_thenReturnsForbidden() {
+    UUID applicationId = UUID.randomUUID();
+
+    ResponseEntity<String> response =
+        restTemplate.postForEntity(
+            priorAuthorityUrl(applicationId),
+            new HttpEntity<>(disbursementRequest(), headersWithUnknownToken()),
+            String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+  }
+
+  @Test
+  void givenNoToken_whenPostingPriorAuthority_thenReturnsUnauthorized() {
+    UUID applicationId = UUID.randomUUID();
+
+    ResponseEntity<String> response =
+        restTemplate.postForEntity(
+            priorAuthorityUrl(applicationId),
+            new HttpEntity<>(disbursementRequest(), headersWithoutAuth()),
+            String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+  }
+
   private void createApplication(UUID applicationId, UUID applyProceedingId) {
     ResponseEntity<Void> response =
         restTemplate.postForEntity(
@@ -386,6 +412,19 @@ class PriorAuthorityIntegrationTest {
     headers.set("X-Schema-Version", "1");
     headers.setContentType(MediaType.APPLICATION_JSON);
     headers.setBearerAuth(TestJwtDecoderConfig.BEARER_TOKEN);
+    return headers;
+  }
+
+  private HttpHeaders headersWithoutAuth() {
+    HttpHeaders headers = new HttpHeaders();
+    headers.set("X-Service-Name", "CIVIL_APPLY");
+    return headers;
+  }
+
+  private HttpHeaders headersWithUnknownToken() {
+    HttpHeaders headers = new HttpHeaders();
+    headers.set("X-Service-Name", "CIVIL_APPLY");
+    headers.setBearerAuth("unknown-token");
     return headers;
   }
 
