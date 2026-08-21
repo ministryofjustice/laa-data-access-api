@@ -6,6 +6,7 @@ import org.axonframework.messaging.eventhandling.annotation.EventHandler;
 import org.axonframework.messaging.eventhandling.replay.annotation.ResetHandler;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
+import uk.gov.justice.laa.dstew.access.applicationcontent.Decision;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
@@ -100,15 +101,20 @@ public class ApplicationListIndexProjection {
    */
   @EventHandler
   public void on(ApplicationDecisionMadeEvent event, EventMessage message) {
-    ApplicationStatus applicationStatus =
-        DecisionStatus.valueOf(event.overallDecision()).equals(DecisionStatus.REFUSED)
-            ? ApplicationStatus.APPLICATION_REFUSED
-            : ApplicationStatus.APPLICATION_GRANTED;
+    ApplicationStatus applicationStatus;
+    if (event.overallDecision() != null || !event.overallDecision().isBlank()) {
+      applicationStatus =
+          Decision.valueOf(event.overallDecision()).equals(Decision.REFUSED)
+              ? ApplicationStatus.APPLICATION_REFUSED
+              : ApplicationStatus.APPLICATION_GRANTED;
+    } else {
+      applicationStatus = null;
+    }
     listIndexRepository
         .findById(event.applicationId())
         .ifPresent(
             row -> {
-              row.setStatus(applicationStatus.name());
+              row.setStatus(applicationStatus != null ? applicationStatus.name() : row.getStatus());
               row.setAutoGranted(event.autoGranted());
               row.setStreamVersion(event.applicationVersion());
               row.setModifiedAt(event.occurredAt());
