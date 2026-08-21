@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["expertType", "expertFullName", "expertPostcode", "expertCosts"],
+  "properties": {
+    "expertType": {
+      "type": "string",
+      "minLength": 1
+    },
+    "expertFullName": {
+      "type": "string",
+      "minLength": 1
+    },
+    "expertPostcode": {
+      "type": "string",
+      "minLength": 1
+    },
+    "expertCosts": {
+      "$ref": "ExpertCosts.json"
+    }
+  }
+}

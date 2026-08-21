@@ -39,6 +39,7 @@ public final class ApplicationEvolve {
     state.applicationVersion = event.applicationVersion();
     state.applicationDataVersion = event.applicationDataVersion();
     state.autoGranted = event.autoGranted();
+    state.overallDecision = event.overallDecision();
   }
 
   /** Applies an {@link ApplicationReadyForManualAssessmentEvent} to the given state. */

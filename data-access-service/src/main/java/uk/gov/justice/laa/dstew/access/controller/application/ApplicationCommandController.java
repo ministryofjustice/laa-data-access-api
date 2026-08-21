@@ -21,6 +21,8 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
 import uk.gov.justice.laa.dstew.access.model.CreateNoteRequest;
+import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityRequest;
+import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityResponse;
 import uk.gov.justice.laa.dstew.access.model.DocumentDeleteResponse;
 import uk.gov.justice.laa.dstew.access.model.DocumentUpdateResponse;
 import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
@@ -155,5 +157,13 @@ public class ApplicationCommandController implements ApplicationCommandApi {
       ServiceName serviceName, UUID id, List<String> fileKeys) {
     DocumentDeleteResponse response = sdsService.deleteFiles(id, fileKeys);
     return ResponseEntity.ok(response);
+  }
+
+  @Override
+  public ResponseEntity<CreatePriorAuthorityResponse> createPriorAuthority(
+      @NotNull ServiceName serviceName,
+      UUID id,
+      @Valid CreatePriorAuthorityRequest createPriorAuthorityRequest) {
+    return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
   }
 }

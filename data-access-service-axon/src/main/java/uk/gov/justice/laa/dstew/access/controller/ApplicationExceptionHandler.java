@@ -12,6 +12,7 @@ import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictExce
 import uk.gov.justice.laa.dstew.access.exception.ApplicationGroupInvariantException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException;
 import uk.gov.justice.laa.dstew.access.exception.InvalidApplicationStateException;
+import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
@@ -66,6 +67,21 @@ public class ApplicationExceptionHandler {
                 HttpStatus.CONFLICT,
                 "Application ID "
                     + exception.getApplicationId()
+                    + " already exists with different creation data"));
+  }
+
+  /**
+   * Returns a conflict when a prior-authority submission ID is reused with different creation data.
+   */
+  @ExceptionHandler(PriorAuthorityCreationConflictException.class)
+  ResponseEntity<ProblemDetail> handlePriorAuthorityCreationConflictException(
+      PriorAuthorityCreationConflictException exception) {
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(
+            ProblemDetail.forStatusAndDetail(
+                HttpStatus.CONFLICT,
+                "Prior authority submission ID "
+                    + exception.getSubmissionId()
                     + " already exists with different creation data"));
   }
 
