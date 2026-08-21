@@ -124,6 +124,11 @@ jobs:
             bash -c "PGPASSWORD='${PG_PASSWORD}' pg_dump -U postgres postgres" \
             > "$SNAPSHOT_FILE"
 
+          if [ ! -s "$SNAPSHOT_FILE" ]; then
+            echo "Snapshot file is empty" >&2
+            exit 1
+          fi
+
           echo "Snapshot written to: $SNAPSHOT_FILE ($(wc -c < "$SNAPSHOT_FILE") bytes)"
           echo "snapshot-file=$SNAPSHOT_FILE" >> "$GITHUB_OUTPUT"
 
