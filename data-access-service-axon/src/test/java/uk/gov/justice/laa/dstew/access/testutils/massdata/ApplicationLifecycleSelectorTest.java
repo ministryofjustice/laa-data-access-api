@@ -3,8 +3,11 @@ package uk.gov.justice.laa.dstew.access.testutils.massdata;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.random.RandomGeneratorFactory;
 import org.junit.jupiter.api.Test;
+import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.testutils.ApplicationLifecycle;
 
 class ApplicationLifecycleSelectorTest {
@@ -18,6 +21,21 @@ class ApplicationLifecycleSelectorTest {
     for (int index = 0; index < 100; index++) {
       assertThat(selector.select(first)).isEqualTo(selector.select(second));
     }
+  }
+
+  @Test
+  void selectsGrantedAndRefusedManualDecisions() {
+    var random = RandomGeneratorFactory.getDefault().create(42L);
+    Set<DecisionStatus> decisions = new HashSet<>();
+
+    for (int index = 0; index < 1_000; index++) {
+      ApplicationLifecycle lifecycle = selector.select(random);
+      if (lifecycle.makeDecision()) {
+        decisions.add(lifecycle.decisionStatus());
+      }
+    }
+
+    assertThat(decisions).containsExactlyInAnyOrder(DecisionStatus.GRANTED, DecisionStatus.REFUSED);
   }
 
   @Test
