@@ -6,7 +6,7 @@ import org.axonframework.messaging.eventhandling.annotation.EventHandler;
 import org.axonframework.messaging.eventhandling.replay.annotation.ResetHandler;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
-import uk.gov.justice.laa.dstew.access.applicationcontent.Decision;
+import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
@@ -106,7 +106,7 @@ public class ApplicationListIndexProjection {
 
     } else {
       applicationStatus =
-          Decision.valueOf(event.overallDecision()).equals(Decision.REFUSED)
+          DecisionValue.valueOf(event.overallDecision()).equals(DecisionValue.REFUSED)
               ? ApplicationStatus.APPLICATION_REFUSED
               : ApplicationStatus.APPLICATION_GRANTED;
     }

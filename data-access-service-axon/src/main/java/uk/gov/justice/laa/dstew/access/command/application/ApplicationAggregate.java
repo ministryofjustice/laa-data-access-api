@@ -36,7 +36,6 @@ import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpd
 import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationCommand;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException;
-import uk.gov.justice.laa.dstew.access.exception.InvalidApplicationStateException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 
 /** Event-sourced consistency boundary for an Application and its owned child state. */
@@ -151,118 +150,6 @@ public class ApplicationAggregate {
     recordAutomaticGrant(command, applicationDataStore, eventAppender);
   }
 
-  private void validateManualDecision(MakeApplicationDecisionCommand command) {
-    if (command.expectedApplicationVersion() != state.applicationVersion) {
-      throw new ApplicationVersionConflictException(
-          command.applicationId(), command.expectedApplicationVersion());
-    }
-    if (state.autoGranted != AutoGrantedState.MANUAL) {
-      throw new ApplicationAutoGrantOutcomeConflictException(command.applicationId());
-    }
-  }
-
-  private void validateAutomaticOutcome(
-      RecordAutoGrantedOutcomeCommand command, ApplicationDataStore applicationDataStore) {
-    if (state.autoGranted == AutoGrantedState.MANUAL) {
-      throw new ApplicationAutoGrantOutcomeConflictException(command.applicationId());
-    }
-    if (!"APPLICATION_SUBMITTED".equals(state.status)) {
-      throw new InvalidApplicationStateException(command.applicationId(), state.status);
-    }
-    if (state.autoGranted != AutoGrantedState.AUTOGRANTED) {
-      return;
-    }
-
-    var recorded = applicationDataStore.get(applicationId, state.applicationDataVersion);
-    if (!Objects.equals(recorded.decisionSerialisedRequest(), command.serialisedRequest())) {
-      throw new ApplicationAutoGrantOutcomeConflictException(command.applicationId());
-    }
-  }
-
-  private void recordAutomaticGrant(
-      RecordAutoGrantedOutcomeCommand command,
-      ApplicationDataStore applicationDataStore,
-      EventAppender eventAppender) {
-    if (state.autoGranted == AutoGrantedState.AUTOGRANTED) {
-      return;
-    }
-
-    var current = applicationDataStore.get(applicationId, state.applicationDataVersion);
-    recordDecision(
-        automaticGrantDecision(command, current),
-        AutoGrantedState.AUTOGRANTED,
-        current,
-        applicationDataStore,
-        eventAppender);
-  }
-
-  private MakeApplicationDecisionCommand automaticGrantDecision(
-      RecordAutoGrantedOutcomeCommand command, ApplicationDataPayload current) {
-    var grantedProceedings =
-        current.proceedings().stream()
-            .map(
-                proceeding ->
-                    new MakeDecisionProceeding(proceeding.getId(), "GRANTED", null, "Autogranted"))
-            .toList();
-    return new MakeApplicationDecisionCommand(
-        command.applicationId(),
-        state.applicationVersion,
-        "GRANTED",
-        grantedProceedings,
-        command.certificate(),
-        command.serialisedRequest(),
-        "Autogranted",
-        command.occurredAt());
-  }
-
-  private void recordDecision(
-      MakeApplicationDecisionCommand command,
-      AutoGrantedState autoGranted,
-      ApplicationDataStore applicationDataStore,
-      EventAppender eventAppender) {
-    var current = applicationDataStore.get(applicationId, state.applicationDataVersion);
-    recordDecision(command, autoGranted, current, applicationDataStore, eventAppender);
-  }
-
-  private void recordDecision(
-      MakeApplicationDecisionCommand command,
-      AutoGrantedState autoGranted,
-      ApplicationDataPayload current,
-      ApplicationDataStore applicationDataStore,
-      EventAppender eventAppender) {
-    ApplicationDecisionMadeEvent decision =
-        ApplicationDecider.decideDecision(state, command, current, autoGranted);
-    long nextVersion = state.applicationDataVersion + 1;
-    var updated =
-        current.withDecision(
-            command.overallDecision(),
-            autoGranted,
-            meritsDecisions(current, command),
-            "GRANTED".equals(command.overallDecision()) ? command.certificate() : null,
-            command.serialisedRequest(),
-            command.eventDescription());
-    applicationDataStore.append(
-        applicationId, nextVersion, updated, command.serialisedRequest(), command.occurredAt());
-
-    eventAppender.append(decision);
-  }
-
-  private HashMap<UUID, ApplicationMeritsDecision> meritsDecisions(
-      ApplicationDataPayload current, MakeApplicationDecisionCommand command) {
-    var meritsDecisions =
-        new HashMap<>(
-            current.meritsDecisions() == null ? java.util.Map.of() : current.meritsDecisions());
-    command
-        .proceedings()
-        .forEach(
-            proceeding ->
-                meritsDecisions.put(
-                    proceeding.proceedingId(),
-                    new ApplicationMeritsDecision(
-                        proceeding.decision(), proceeding.reason(), proceeding.justification())));
-    return meritsDecisions;
-  }
-
   /** Assigns a caseworker and stores free-text audit data outside the event stream. */
   @CommandHandler
   void handle(
@@ -371,6 +258,115 @@ public class ApplicationAggregate {
         command.serialisedRequest(),
         command.occurredAt());
     eventAppender.append(event);
+  }
+
+  private void validateManualDecision(MakeApplicationDecisionCommand command) {
+    if (command.expectedApplicationVersion() != state.applicationVersion) {
+      throw new ApplicationVersionConflictException(
+          command.applicationId(), command.expectedApplicationVersion());
+    }
+    if (state.autoGranted == AutoGrantedState.AUTOGRANTED) {
+      throw new ApplicationAutoGrantOutcomeConflictException(command.applicationId());
+    }
+  }
+
+  private void validateAutomaticOutcome(
+      RecordAutoGrantedOutcomeCommand command, ApplicationDataStore applicationDataStore) {
+    if (state.autoGranted == AutoGrantedState.MANUAL) {
+      throw new ApplicationAutoGrantOutcomeConflictException(command.applicationId());
+    }
+    if (state.autoGranted != AutoGrantedState.AUTOGRANTED) {
+      return;
+    }
+
+    var recorded = applicationDataStore.get(applicationId, state.applicationDataVersion);
+    if (!Objects.equals(recorded.decisionSerialisedRequest(), command.serialisedRequest())) {
+      throw new ApplicationAutoGrantOutcomeConflictException(command.applicationId());
+    }
+  }
+
+  private void recordAutomaticGrant(
+      RecordAutoGrantedOutcomeCommand command,
+      ApplicationDataStore applicationDataStore,
+      EventAppender eventAppender) {
+    if (state.autoGranted == AutoGrantedState.AUTOGRANTED) {
+      return;
+    }
+
+    var current = applicationDataStore.get(applicationId, state.applicationDataVersion);
+    recordDecision(
+        automaticGrantDecision(command, current),
+        AutoGrantedState.AUTOGRANTED,
+        current,
+        applicationDataStore,
+        eventAppender);
+  }
+
+  private MakeApplicationDecisionCommand automaticGrantDecision(
+      RecordAutoGrantedOutcomeCommand command, ApplicationDataPayload current) {
+    var grantedProceedings =
+        current.proceedings().stream()
+            .map(
+                proceeding ->
+                    new MakeDecisionProceeding(proceeding.getId(), "GRANTED", null, "Autogranted"))
+            .toList();
+    return new MakeApplicationDecisionCommand(
+        command.applicationId(),
+        state.applicationVersion,
+        "GRANTED",
+        grantedProceedings,
+        command.certificate(),
+        command.serialisedRequest(),
+        "Autogranted",
+        command.occurredAt());
+  }
+
+  private void recordDecision(
+      MakeApplicationDecisionCommand command,
+      AutoGrantedState autoGranted,
+      ApplicationDataStore applicationDataStore,
+      EventAppender eventAppender) {
+    var current = applicationDataStore.get(applicationId, state.applicationDataVersion);
+    recordDecision(command, autoGranted, current, applicationDataStore, eventAppender);
+  }
+
+  private void recordDecision(
+      MakeApplicationDecisionCommand command,
+      AutoGrantedState autoGranted,
+      ApplicationDataPayload current,
+      ApplicationDataStore applicationDataStore,
+      EventAppender eventAppender) {
+    ApplicationDecisionMadeEvent decision =
+        ApplicationDecider.decideDecision(state, command, current, autoGranted);
+    long nextVersion = state.applicationDataVersion + 1;
+    var updated =
+        current.withDecision(
+            command.overallDecision(),
+            autoGranted,
+            meritsDecisions(current, command),
+            "GRANTED".equals(command.overallDecision()) ? command.certificate() : null,
+            command.serialisedRequest(),
+            command.eventDescription());
+    applicationDataStore.append(
+        applicationId, nextVersion, updated, command.serialisedRequest(), command.occurredAt());
+
+    eventAppender.append(decision);
+  }
+
+  private HashMap<UUID, ApplicationMeritsDecision> meritsDecisions(
+      ApplicationDataPayload current, MakeApplicationDecisionCommand command) {
+    var meritsDecisions =
+        new HashMap<>(
+            current.meritsDecisions() == null ? java.util.Map.of() : current.meritsDecisions());
+    command
+        .proceedings()
+        .forEach(
+            proceeding ->
+                meritsDecisions.put(
+                    proceeding.proceedingId(),
+                    new ApplicationMeritsDecision(
+                        proceeding.decision(), proceeding.reason(), proceeding.justification())));
+    return meritsDecisions;
   }
 
   private void requireApplicationExists(UUID requestedApplicationId) {

@@ -214,19 +214,34 @@ class ApplicationAggregateTest {
   }
 
   @Test
-  void givenPendingAutoGrantOutcome_whenDecisionMade_thenRejectsWithoutReadingData() {
+  void givenPendingAutoGrantOutcome_whenDecisionMade_thenRecordsManualDecision() {
     UUID applicationId = UUID.randomUUID();
     UUID proceedingId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-19T10:15:00Z");
     ApplicationCreationDetails details = detailsWithProceeding(applicationId, proceedingId);
+    when(applicationDataStore.get(applicationId, 0L))
+        .thenReturn(ApplicationDataPayload.from(details));
+    when(applicationDataStore.append(any(), anyLong(), any(), any(), any())).thenReturn("hash");
 
     fixture
         .given()
         .events(applicationCreatedEvent(applicationId, details))
         .when()
-        .command(decisionCommand(applicationId, 0L, proceedingId, "REFUSED", "justification", null))
+        .command(
+            new MakeApplicationDecisionCommand(
+                applicationId,
+                0L,
+                "REFUSED",
+                List.of(
+                    new MakeDecisionProceeding(proceedingId, "REFUSED", "reason", "justification")),
+                null,
+                "{\"overallDecision\":\"REFUSED\"}",
+                "Decision recorded",
+                occurredAt))
         .then()
-        .exception(ApplicationAutoGrantOutcomeConflictException.class)
-        .noEvents();
+        .events(
+            new ApplicationDecisionMadeEvent(
+                applicationId, 1L, 1L, "REFUSED", AutoGrantedState.MANUAL, occurredAt));
   }
 
   @Test
