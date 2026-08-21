@@ -10,6 +10,7 @@ import org.axonframework.eventsourcing.annotation.reflection.EntityCreator;
 import org.axonframework.extension.spring.stereotype.EventSourced;
 import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
+import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.AssignCaseworkerToApplicationCommand;
@@ -136,7 +137,7 @@ public class ApplicationAggregate {
       EventAppender eventAppender) {
     requireApplicationExists(command.applicationId());
     validateManualDecision(command);
-    recordDecision(command, AutoGrantedState.MANUAL, applicationDataStore, eventAppender);
+    recordManualDecision(command, applicationDataStore, eventAppender);
   }
 
   /** Records the external service's automatic-grant outcome as a complete system decision. */
@@ -294,7 +295,7 @@ public class ApplicationAggregate {
     }
 
     var current = applicationDataStore.get(applicationId, state.applicationDataVersion);
-    recordDecision(
+    recordManualDecision(
         automaticGrantDecision(command, current),
         AutoGrantedState.AUTOGRANTED,
         current,
@@ -308,12 +309,13 @@ public class ApplicationAggregate {
         current.proceedings().stream()
             .map(
                 proceeding ->
-                    new MakeDecisionProceeding(proceeding.getId(), "GRANTED", null, "Autogranted"))
+                    new MakeDecisionProceeding(
+                        proceeding.getId(), DecisionValue.GRANTED.name(), null, "Autogranted"))
             .toList();
     return new MakeApplicationDecisionCommand(
         command.applicationId(),
         state.applicationVersion,
-        "GRANTED",
+        DecisionValue.GRANTED.name(),
         grantedProceedings,
         command.certificate(),
         command.serialisedRequest(),
@@ -321,16 +323,16 @@ public class ApplicationAggregate {
         command.occurredAt());
   }
 
-  private void recordDecision(
+  private void recordManualDecision(
       MakeApplicationDecisionCommand command,
-      AutoGrantedState autoGranted,
       ApplicationDataStore applicationDataStore,
       EventAppender eventAppender) {
     var current = applicationDataStore.get(applicationId, state.applicationDataVersion);
-    recordDecision(command, autoGranted, current, applicationDataStore, eventAppender);
+    recordManualDecision(
+        command, AutoGrantedState.MANUAL, current, applicationDataStore, eventAppender);
   }
 
-  private void recordDecision(
+  private void recordManualDecision(
       MakeApplicationDecisionCommand command,
       AutoGrantedState autoGranted,
       ApplicationDataPayload current,
@@ -344,7 +346,9 @@ public class ApplicationAggregate {
             command.overallDecision(),
             autoGranted,
             meritsDecisions(current, command),
-            "GRANTED".equals(command.overallDecision()) ? command.certificate() : null,
+            DecisionValue.GRANTED.name().equals(command.overallDecision())
+                ? command.certificate()
+                : null,
             command.serialisedRequest(),
             command.eventDescription());
     applicationDataStore.append(

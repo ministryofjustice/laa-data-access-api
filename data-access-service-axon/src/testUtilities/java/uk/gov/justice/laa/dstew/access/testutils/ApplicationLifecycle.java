@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.testutils;
 
+import java.util.random.RandomGenerator;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 
 /**
@@ -19,6 +20,20 @@ public record ApplicationLifecycle(
       boolean assignCaseworker,
       boolean unassignCaseworker) {
     this(autoGranted, makeDecision, assignCaseworker, unassignCaseworker, DecisionStatus.REFUSED);
+  }
+
+  public static ApplicationLifecycle select(RandomGenerator random) {
+    if (random.nextDouble() < 0.175) {
+      return new ApplicationLifecycle(true, false, false, false);
+    }
+    boolean decision = random.nextDouble() < 0.40;
+    boolean assignment = random.nextDouble() < 0.70;
+    return new ApplicationLifecycle(
+        false,
+        decision,
+        assignment,
+        assignment && random.nextDouble() < 0.15,
+        decision ? random.nextBoolean() ? DecisionStatus.GRANTED : DecisionStatus.REFUSED : null);
   }
 
   public ApplicationLifecycle {
