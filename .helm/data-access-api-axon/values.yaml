@@ -49,6 +49,14 @@ autoscaling:
 spring:
   profile: uat
 
+mockOAuth2:
+  sharedInstance:
+    enabled: false
+    serviceName: laa-data-access-mock-oauth2-shared
+    namespace: laa-data-access-api-uat
+
+featureFlags: {}
+
 aws:
   region: eu-west-2
   integrationEvents:

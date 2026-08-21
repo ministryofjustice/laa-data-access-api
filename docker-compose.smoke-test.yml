@@ -18,8 +18,8 @@ services:
       retries: 5
 
   mock-oauth2-server-smoketest:
-    # Version: 2.1.10 (also update: docker-compose.yml, build.gradle integrationTestImplementation)
-    image: ghcr.io/navikt/mock-oauth2-server:2.1.10
+    # Version: 6.0.2 (also update: docker-compose.yml, build.gradle integrationTestImplementation)
+    image: ghcr.io/navikt/mock-oauth2-server:6.0.2
     container_name: laa-mock-oauth2-smoketest
     restart: unless-stopped
     ports:

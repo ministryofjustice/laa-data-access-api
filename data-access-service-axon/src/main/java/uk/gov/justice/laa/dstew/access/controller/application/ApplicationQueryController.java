@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,7 +15,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
-import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationNotesResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationOrderBy;
@@ -28,21 +26,19 @@ import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
-import uk.gov.justice.laa.dstew.access.query.application.ApplicationNotesResult;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsQuery;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsResult;
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
-import uk.gov.justice.laa.dstew.access.query.application.FindNotesForApplicationQuery;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadModel;
-import uk.gov.justice.laa.dstew.access.query.application.history.FindApplicationHistoryQuery;
+import uk.gov.justice.laa.dstew.access.usecase.application.ApplicationQueryUseCase;
 
 /** HTTP query adapter for Application reads. */
 @RestController
 @RequestMapping("/api/v0/applications")
 public class ApplicationQueryController {
 
-  private final QueryGateway queryGateway;
+  private final ApplicationQueryUseCase applicationQueryUseCase;
   private final GetApplicationResponseMapper responseMapper;
   private final GetAllApplicationsResponseMapper getAllResponseMapper;
   private final GetApplicationHistoryResponseMapper historyResponseMapper;
@@ -52,12 +48,10 @@ public class ApplicationQueryController {
   /**
    * Constructs the controller with its query gateway and response mappers.
    *
-   * @param queryGateway Axon query gateway used to dispatch {@link FindApplicationByIdQuery} and
-   *     {@link FindAllApplicationsQuery}
+   * @param applicationQueryUseCase secured application read use case
    * @param responseMapper maps a single {@link ApplicationReadModel} to {@link
    *     uk.gov.justice.laa.dstew.access.model.ApplicationResponse}
-   * @param getAllResponseMapper maps a {@link
-   *     uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsResult} to {@link
+   * @param getAllResponseMapper maps application summaries to {@link
    *     uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse}
    * @param historyResponseMapper maps a list of {@link
    *     uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadModel} to
@@ -65,13 +59,13 @@ public class ApplicationQueryController {
    * @param notesResponseMapper maps notes to {@link ApplicationNotesResponse}
    */
   public ApplicationQueryController(
-      QueryGateway queryGateway,
+      ApplicationQueryUseCase applicationQueryUseCase,
       GetApplicationResponseMapper responseMapper,
       GetAllApplicationsResponseMapper getAllResponseMapper,
       GetApplicationHistoryResponseMapper historyResponseMapper,
       GetAllNotesForApplicationResponseMapper notesResponseMapper,
       SubscriptionProjectionGateway projectionGateway) {
-    this.queryGateway = queryGateway;
+    this.applicationQueryUseCase = applicationQueryUseCase;
     this.responseMapper = responseMapper;
     this.getAllResponseMapper = getAllResponseMapper;
     this.historyResponseMapper = historyResponseMapper;
@@ -103,22 +97,19 @@ public class ApplicationQueryController {
       @RequestParam(required = false) Integer page,
       @RequestParam(required = false) Integer pageSize) {
     FindAllApplicationsResult result =
-        queryGateway
-            .query(
-                new FindAllApplicationsQuery(
-                    status == null ? null : status.name(),
-                    laaReference,
-                    matterType == null ? null : matterType.name(),
-                    clientFirstName,
-                    clientLastName,
-                    clientDateOfBirth,
-                    autoGranted == null ? null : AutoGrantedState.valueOf(autoGranted.name()),
-                    sortBy == null ? null : sortBy.name(),
-                    orderBy == null ? null : orderBy.name(),
-                    page,
-                    pageSize),
-                FindAllApplicationsResult.class)
-            .join();
+        applicationQueryUseCase.getApplications(
+            new FindAllApplicationsQuery(
+                status == null ? null : status.name(),
+                laaReference,
+                matterType == null ? null : matterType.name(),
+                clientFirstName,
+                clientLastName,
+                clientDateOfBirth,
+                autoGranted == null ? null : AutoGrantedState.valueOf(autoGranted.name()),
+                sortBy == null ? null : sortBy.name(),
+                orderBy == null ? null : orderBy.name(),
+                page,
+                pageSize));
     return getAllResponseMapper.toResponse(result);
   }
 
@@ -127,8 +118,7 @@ public class ApplicationQueryController {
   public ResponseEntity<ApplicationResponse> getApplicationById(@PathVariable UUID id) {
     ApplicationReadModel application =
         findApplicationAwaitingProjection(id)
-            .orElseThrow(
-                () -> new ResourceNotFoundException("No application found with ID: " + id));
+            .orElseGet(() -> applicationQueryUseCase.getApplicationById(id));
     return ResponseEntity.ok(responseMapper.toResponse(application));
   }
 
@@ -136,14 +126,7 @@ public class ApplicationQueryController {
   @GetMapping("/{id}/certificate")
   public ResponseEntity<Map<String, Object>> getCertificate(
       @RequestHeader("X-Service-Name") ServiceName serviceName, @PathVariable UUID id) {
-    ApplicationReadModel application =
-        findApplication(id)
-            .orElseThrow(
-                () -> new ResourceNotFoundException("No application found with id: " + id));
-    if (application.getCertificate() == null) {
-      throw new ResourceNotFoundException("No certificate found for application id: " + id);
-    }
-    return ResponseEntity.ok(application.getCertificate());
+    return ResponseEntity.ok(applicationQueryUseCase.getCertificate(id));
   }
 
   /** Returns domain-event history for the requested Application. */
@@ -157,11 +140,7 @@ public class ApplicationQueryController {
             ? Arrays.stream(DomainEventType.values()).map(DomainEventType::getValue).toList()
             : eventType.stream().map(DomainEventType::getValue).toList();
     List<ApplicationHistoryReadModel> history =
-        queryGateway
-            .queryMany(
-                new FindApplicationHistoryQuery(id, requestedTypes),
-                ApplicationHistoryReadModel.class)
-            .join();
+        applicationQueryUseCase.getApplicationHistory(id, requestedTypes);
     return ResponseEntity.ok(historyResponseMapper.toResponse(history));
   }
 
@@ -169,25 +148,12 @@ public class ApplicationQueryController {
   @GetMapping("/{id}/notes")
   public ResponseEntity<ApplicationNotesResponse> getNotesForApplication(@PathVariable UUID id) {
     ApplicationNotesResponse response =
-        Optional.ofNullable(
-                queryGateway
-                    .query(new FindNotesForApplicationQuery(id), ApplicationNotesResult.class)
-                    .join())
-            .map(result -> notesResponseMapper.toResponse(result.notes()))
-            .orElseThrow(
-                () -> new ResourceNotFoundException("No application found with ID: " + id));
+        notesResponseMapper.toResponse(applicationQueryUseCase.getNotesForApplication(id).notes());
     return ResponseEntity.ok(response);
   }
 
   private Optional<ApplicationReadModel> findApplicationAwaitingProjection(UUID applicationId) {
     return projectionGateway.findProjection(
         new FindApplicationByIdQuery(applicationId), ApplicationReadModel.class);
-  }
-
-  private Optional<ApplicationReadModel> findApplication(UUID applicationId) {
-    return Optional.ofNullable(
-        queryGateway
-            .query(new FindApplicationByIdQuery(applicationId), ApplicationReadModel.class)
-            .join());
   }
 }
