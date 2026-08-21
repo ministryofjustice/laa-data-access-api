@@ -1,0 +1,17 @@
+{
+  "name": "laa-data-access-api-performance-tests",
+  "version": "0.1.0",
+  "private": true,
+  "description": "k6 performance test framework for laa-data-access-api. Scripts run via the k6 binary; this package.json only carries lint/format tooling.",
+  "scripts": {
+    "lint": "eslint src tests",
+    "lint:fix": "eslint --fix src tests",
+    "format": "prettier --write \"src/**/*.js\" \"tests/**/*.js\"",
+    "format:check": "prettier --check \"src/**/*.js\" \"tests/**/*.js\""
+  },
+  "devDependencies": {
+    "eslint": "^9.18.0",
+    "eslint-plugin-import": "^2.31.0",
+    "prettier": "^3.4.2"
+  }
+}

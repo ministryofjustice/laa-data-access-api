@@ -1,0 +1,61 @@
+# K6 Operator TestRun custom resource. Requires the K6 Operator
+# (grafana/k6-operator) to already be installed in the cluster.
+#
+# Each TestRun spins up `parallelism` runner pods that execute the bundled
+# k6 script, then writes metrics out via Prometheus remote-write.
+apiVersion: k6.io/v1alpha1
+kind: TestRun
+metadata:
+  name: {{ include "k6-perf.fullname" . }}
+  labels:
+    {{- include "k6-perf.labels" . | nindent 4 }}
+spec:
+  parallelism: {{ .Values.testRun.parallelism }}
+  script:
+    configMap:
+      name: {{ include "k6-perf.fullname" . }}-scripts
+      file: bundle.js
+  {{- if .Values.prometheus.enabled }}
+  arguments: >-
+    -o experimental-prometheus-rw
+    --tag testid={{ include "k6-perf.fullname" . }}
+    --tag scenario={{ .Values.scenario }}
+  {{- end }}
+  runner:
+    image: {{ .Values.runner.image }}
+    {{- if .Values.serviceAccount.name }}
+    serviceAccountName: {{ .Values.serviceAccount.name }}
+    {{- end }}
+    resources:
+      {{- toYaml .Values.runner.resources | nindent 6 }}
+    env:
+      - name: K6_TARGET_URL
+        value: {{ .Values.targetUrl | quote }}
+      - name: K6_SERVICE_NAME
+        value: {{ .Values.serviceName | quote }}
+      - name: K6_SCENARIO
+        value: {{ .Values.scenario | quote }}
+      {{- if .Values.vusOverride }}
+      - name: K6_VUS_OVERRIDE
+        value: {{ .Values.vusOverride | quote }}
+      {{- end }}
+      {{- if .Values.durationOverride }}
+      - name: K6_DURATION_OVERRIDE
+        value: {{ .Values.durationOverride | quote }}
+      {{- end }}
+      {{- if .Values.token.existingSecret }}
+      - name: K6_TOKEN
+        valueFrom:
+          secretKeyRef:
+            name: {{ .Values.token.existingSecret }}
+            key: token
+      {{- else }}
+      - name: K6_TOKEN
+        value: {{ .Values.token.value | quote }}
+      {{- end }}
+      {{- if .Values.prometheus.enabled }}
+      - name: K6_PROMETHEUS_RW_SERVER_URL
+        value: {{ .Values.prometheus.remoteWriteUrl | quote }}
+      - name: K6_PROMETHEUS_RW_TREND_STATS
+        value: {{ .Values.prometheus.trendStats | quote }}
+      {{- end }}
