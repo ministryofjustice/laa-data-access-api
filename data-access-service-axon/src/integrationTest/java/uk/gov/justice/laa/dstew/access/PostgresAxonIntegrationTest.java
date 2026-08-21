@@ -78,7 +78,9 @@ import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedAppli
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 
 @Testcontainers
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(
+    webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+    properties = {"feature.enable-dev-token=true"})
 @AutoConfigureTestRestTemplate
 @Import(TestJwtDecoderConfig.class)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
