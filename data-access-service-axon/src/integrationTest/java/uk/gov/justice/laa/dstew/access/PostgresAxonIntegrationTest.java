@@ -442,7 +442,6 @@ class PostgresAxonIntegrationTest {
         MakeDecisionRequest.builder()
             .applicationVersion(0L)
             .overallDecision(DecisionStatus.REFUSED)
-            .autoGranted(false)
             .eventHistory(
                 EventHistoryRequest.builder().eventDescription("Decision recorded").build())
             .proceedings(
@@ -625,7 +624,6 @@ class PostgresAxonIntegrationTest {
         MakeDecisionRequest.builder()
             .applicationVersion(0L)
             .overallDecision(DecisionStatus.GRANTED)
-            .autoGranted(false)
             .certificate(certificate)
             .eventHistory(
                 EventHistoryRequest.builder().eventDescription("Certificate granted").build())
@@ -1230,7 +1228,6 @@ class PostgresAxonIntegrationTest {
         MakeDecisionRequest.builder()
             .applicationVersion(0L)
             .overallDecision(DecisionStatus.REFUSED)
-            .autoGranted(false)
             .eventHistory(EventHistoryRequest.builder().eventDescription("Concurrent").build())
             .proceedings(
                 List.of(

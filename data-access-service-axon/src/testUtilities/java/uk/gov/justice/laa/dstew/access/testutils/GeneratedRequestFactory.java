@@ -48,7 +48,6 @@ public class GeneratedRequestFactory {
                             .justification("Mass-data generated refusal")
                             .build())
                     .build()))
-        .autoGranted(false)
         .applicationVersion(1L)
         .certificate(Map.of("source", "mass-data"))
         .build();

@@ -266,7 +266,6 @@ components:
         - overallDecision
         - proceedings
         - eventHistory
-        - autoGranted
         - applicationVersion
       properties:
         overallDecision:
@@ -278,8 +277,6 @@ components:
             $ref: "#/components/schemas/MakeDecisionProceedingRequest"
         eventHistory:
           $ref: "../open-api-common/components.yml#/components/schemas/EventHistoryRequest"
-        autoGranted:
-          type: boolean
         certificate:
           type: object
           additionalProperties: true

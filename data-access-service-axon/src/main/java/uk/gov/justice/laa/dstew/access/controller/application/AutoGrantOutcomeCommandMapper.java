@@ -5,7 +5,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Component;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
-import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
+import uk.gov.justice.laa.dstew.access.command.application.decision.RecordAutoGrantedOutcomeCommand;
 import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcomeRequest;
@@ -25,21 +25,12 @@ public class AutoGrantOutcomeCommandMapper {
   /** Maps either terminal outcome for the supplied Application. */
   public Object toCommand(UUID applicationId, AutoGrantOutcomeRequest request) {
     validateDiscriminator(request);
-    if (request instanceof ManualOutcomeRequest manual) {
+    if (request instanceof ManualOutcomeRequest) {
       return new MarkApplicationReadyCommand(applicationId, serialise(request), Instant.now());
     }
     if (request instanceof AutoGrantedOutcomeRequest autogranted) {
-      return new MakeApplicationDecisionCommand(
-          applicationId,
-          0,
-          "GRANTED",
-          true,
-          java.util.List.of(),
-          autogranted.getCertificate(),
-          serialise(request),
-          "Autogranted",
-          Instant.now(),
-          true);
+      return new RecordAutoGrantedOutcomeCommand(
+          applicationId, autogranted.getCertificate(), serialise(request), Instant.now());
     }
     throw new IllegalArgumentException("Unsupported auto-grant outcome request");
   }
