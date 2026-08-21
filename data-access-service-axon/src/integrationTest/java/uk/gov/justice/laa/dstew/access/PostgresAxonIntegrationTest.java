@@ -436,13 +436,13 @@ class PostgresAxonIntegrationTest {
     UUID applyProceedingId = UUID.randomUUID();
     applicationId(post(validCreateApplicationRequest(applicationId, applyProceedingId), headers()));
     ApplicationReadModel created = awaitProjection(applicationId);
+    markReadyForManualDecision(applicationId);
     UUID proceedingId = created.getProceedings().getFirst().getId();
 
     MakeDecisionRequest request =
         MakeDecisionRequest.builder()
-            .applicationVersion(0L)
+            .applicationVersion(1L)
             .overallDecision(DecisionStatus.REFUSED)
-            .autoGranted(false)
             .eventHistory(
                 EventHistoryRequest.builder().eventDescription("Decision recorded").build())
             .proceedings(
@@ -466,7 +466,7 @@ class PostgresAxonIntegrationTest {
             Void.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-    ApplicationReadModel decided = awaitProjectionVersion(applicationId, 1L);
+    ApplicationReadModel decided = awaitProjectionVersion(applicationId, 2L);
     assertThat(decided.getDecisionStatus()).isEqualTo("REFUSED");
     assertThat(decided.getAutoGranted()).isEqualTo(AutoGrantedState.MANUAL);
     assertThat(decided.getMeritsDecisions().get(proceedingId).justification())
@@ -475,14 +475,14 @@ class PostgresAxonIntegrationTest {
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT payload ->> 'overallDecision' FROM axon.application_data "
-                    + "WHERE application_id = ? AND version = 1",
+                    + "WHERE application_id = ? AND version = 2",
                 String.class,
                 applicationId))
         .isEqualTo("REFUSED");
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT convert_from(payload, 'UTF8') FROM axon.domain_event_entry "
-                    + "WHERE aggregate_identifier = ? AND sequence_number = 1",
+                    + "WHERE aggregate_identifier = ? AND sequence_number = 2",
                 String.class,
                 applicationId.toString()))
         .contains("applicationDataVersion", "REFUSED")
@@ -509,7 +509,7 @@ class PostgresAxonIntegrationTest {
     ApplicationResponse application = awaitGet(applicationId).getBody();
     assertThat(application.getDecisionStatus()).isEqualTo(DecisionStatus.REFUSED);
     assertThat(application.getAutoGranted()).isEqualTo(AutoGranted.MANUAL);
-    assertThat(application.getVersion()).isEqualTo(1L);
+    assertThat(application.getVersion()).isEqualTo(2L);
     assertThat(application.getProceedings().getFirst().getMeritsDecision())
         .isEqualTo(MeritsDecisionStatus.REFUSED);
 
@@ -525,7 +525,7 @@ class PostgresAxonIntegrationTest {
                 "SELECT COUNT(*) FROM axon.application_data WHERE application_id = ?",
                 Integer.class,
                 applicationId))
-        .isEqualTo(2);
+        .isEqualTo(3);
   }
 
   @Test
@@ -615,6 +615,7 @@ class PostgresAxonIntegrationTest {
     UUID applicationId = UUID.randomUUID();
     UUID applyProceedingId = UUID.randomUUID();
     applicationId(post(validCreateApplicationRequest(applicationId, applyProceedingId), headers()));
+    markReadyForManualDecision(applicationId);
     UUID proceedingId = awaitProjection(applicationId).getProceedings().getFirst().getId();
     Map<String, Object> certificate =
         Map.of(
@@ -623,9 +624,8 @@ class PostgresAxonIntegrationTest {
             "validUntil", "2027-03-03");
     MakeDecisionRequest request =
         MakeDecisionRequest.builder()
-            .applicationVersion(0L)
+            .applicationVersion(1L)
             .overallDecision(DecisionStatus.GRANTED)
-            .autoGranted(false)
             .certificate(certificate)
             .eventHistory(
                 EventHistoryRequest.builder().eventDescription("Certificate granted").build())
@@ -648,7 +648,7 @@ class PostgresAxonIntegrationTest {
             new HttpEntity<>(request, headers()),
             Void.class);
     assertThat(decisionResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-    awaitProjectionVersion(applicationId, 1L);
+    awaitProjectionVersion(applicationId, 2L);
 
     ResponseEntity<Map<String, Object>> certificateResponse =
         restTemplate.exchange(
@@ -696,7 +696,6 @@ class PostgresAxonIntegrationTest {
         .contains("No application found with id: " + missingApplicationId);
   }
 
-  @Test
   void givenKnownCaseworkerAndApplication_whenAssigned_thenUpdatesOnlyRequestedApplication()
       throws Exception {
     UUID caseworkerId = UUID.randomUUID();
@@ -1225,12 +1224,12 @@ class PostgresAxonIntegrationTest {
       throws Exception {
     UUID applicationId = UUID.randomUUID();
     applicationId(post(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()));
+    markReadyForManualDecision(applicationId);
     UUID proceedingId = awaitProjection(applicationId).getProceedings().getFirst().getId();
     MakeDecisionRequest request =
         MakeDecisionRequest.builder()
-            .applicationVersion(0L)
+            .applicationVersion(1L)
             .overallDecision(DecisionStatus.REFUSED)
-            .autoGranted(false)
             .eventHistory(EventHistoryRequest.builder().eventDescription("Concurrent").build())
             .proceedings(
                 List.of(
@@ -1261,19 +1260,19 @@ class PostgresAxonIntegrationTest {
       executor.shutdown();
     }
 
-    assertThat(awaitProjectionVersion(applicationId, 1L).getApplicationVersion()).isEqualTo(1L);
+    assertThat(awaitProjectionVersion(applicationId, 2L).getApplicationVersion()).isEqualTo(2L);
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM axon.application_data WHERE application_id = ?",
                 Integer.class,
                 applicationId))
-        .isEqualTo(2);
+        .isEqualTo(3);
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM axon.domain_event_entry WHERE aggregate_identifier = ?",
                 Integer.class,
                 applicationId.toString()))
-        .isEqualTo(2);
+        .isEqualTo(3);
   }
 
   @Test
@@ -1319,6 +1318,22 @@ class PostgresAxonIntegrationTest {
                 Integer.class,
                 applicationId.toString()))
         .isEqualTo(2);
+  }
+
+  private void markReadyForManualDecision(UUID applicationId) throws Exception {
+    ResponseEntity<Void> response =
+        restTemplate.exchange(
+            "http://localhost:"
+                + port
+                + "/api/v0/applications/"
+                + applicationId
+                + "/auto-grant-outcome",
+            HttpMethod.PATCH,
+            new HttpEntity<>(new ManualOutcomeRequest(AutoGrantOutcome.MANUAL), headers()),
+            Void.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    awaitProjectionVersion(applicationId, 1L);
   }
 
   private <T> CompletableFuture<ResponseEntity<Void>> concurrentPatch(
