@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.command.application;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -32,12 +33,16 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicat
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeDecisionProceeding;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.CreateLinkedApplicationGroupCommand;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupRequested;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.ValidateApplicationExistsCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.ValidateApplicationGrantedCommand;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ReadyApplicationResult;
+import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdateDetailsFactory;
+import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationCommand;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationGroupInvariantException;
@@ -51,6 +56,7 @@ class ApplicationAggregateTest {
   private AxonTestFixture fixture;
   private ApplicationCreationDetailsFactory factory;
   private ApplicationDataStore applicationDataStore;
+  private ApplicationUpdateDetailsFactory updateDetailsFactory;
 
   @BeforeEach
   void setUp() {
@@ -62,6 +68,7 @@ class ApplicationAggregateTest {
           }
         };
     applicationDataStore = mock(ApplicationDataStore.class);
+    updateDetailsFactory = mock(ApplicationUpdateDetailsFactory.class);
     when(applicationDataStore.append(any(), anyLong(), any()))
         .thenAnswer(
             invocation ->
@@ -747,7 +754,10 @@ class ApplicationAggregateTest {
                             ApplicationCreationDetailsFactory.class,
                             configuration -> creationDetailsFactory)
                         .registerComponent(
-                            ApplicationDataStore.class, configuration -> applicationDataStore)));
+                            ApplicationDataStore.class, configuration -> applicationDataStore)
+                        .registerComponent(
+                            ApplicationUpdateDetailsFactory.class,
+                            configuration -> updateDetailsFactory)));
   }
 
   private CreateApplicationCommand createCommand(UUID applicationId, String serialisedRequest) {
@@ -813,6 +823,101 @@ class ApplicationAggregateTest {
 
   private UUID proceedingIdFor(UUID applicationId) {
     return UUID.nameUUIDFromBytes(("proceeding-" + applicationId).getBytes(StandardCharsets.UTF_8));
+  }
+
+  @Test
+  void givenExistingApplication_whenValidateApplicationExists_thenSucceedsWithNoEvents() {
+    UUID applicationId = UUID.randomUUID();
+
+    fixture
+        .given()
+        .events(applicationCreatedEvent(applicationId))
+        .when()
+        .command(new ValidateApplicationExistsCommand(applicationId))
+        .then()
+        .success()
+        .noEvents();
+  }
+
+  @Test
+  void givenNoApplication_whenValidateApplicationExists_thenThrowsResourceNotFoundException() {
+    fixture
+        .given()
+        .noPriorActivity()
+        .when()
+        .command(new ValidateApplicationExistsCommand(UUID.randomUUID()))
+        .then()
+        .exception(ResourceNotFoundException.class)
+        .noEvents();
+  }
+
+  @Test
+  void givenExistingApplication_whenUpdated_thenStoresNewDataAndEmitsEvent() {
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-22T10:00:00Z");
+    ApplicationDataPayload currentPayload =
+        ApplicationDataPayload.from(applicationCreationDetails(applicationId));
+    when(applicationDataStore.get(applicationId, 0L)).thenReturn(currentPayload);
+    when(updateDetailsFactory.prepare(any(), any(), anyBoolean())).thenReturn(currentPayload);
+    when(applicationDataStore.append(any(), anyLong(), any(), any(), any())).thenReturn("hash");
+
+    fixture
+        .given()
+        .events(applicationCreatedEvent(applicationId))
+        .when()
+        .command(
+            new UpdateApplicationCommand(
+                applicationId, "APPLICATION_SUBMITTED", Map.of(), "{}", occurredAt))
+        .then()
+        .success()
+        .events(
+            new ApplicationUpdatedEvent(
+                applicationId,
+                1L,
+                1L,
+                "APPLICATION_SUBMITTED",
+                "APPLICATION_SUBMITTED",
+                occurredAt));
+  }
+
+  @Test
+  void givenApplicationDataAppendFailure_whenUpdated_thenDoesNotEmitEvent() {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationDataPayload currentPayload =
+        ApplicationDataPayload.from(applicationCreationDetails(applicationId));
+    when(applicationDataStore.get(applicationId, 0L)).thenReturn(currentPayload);
+    when(updateDetailsFactory.prepare(any(), any(), anyBoolean())).thenReturn(currentPayload);
+    when(applicationDataStore.append(any(), anyLong(), any(), any(), any()))
+        .thenThrow(new IllegalStateException("application data unavailable"));
+
+    fixture
+        .given()
+        .events(applicationCreatedEvent(applicationId))
+        .when()
+        .command(
+            new UpdateApplicationCommand(
+                applicationId,
+                "APPLICATION_SUBMITTED",
+                Map.of(),
+                "{}",
+                Instant.parse("2026-07-22T10:00:00Z")))
+        .then()
+        .exception(IllegalStateException.class)
+        .noEvents();
+  }
+
+  @Test
+  void givenNoApplication_whenUpdated_thenThrowsResourceNotFoundException() {
+    fixture
+        .given()
+        .noPriorActivity()
+        .when()
+        .command(
+            new UpdateApplicationCommand(
+                UUID.randomUUID(), "APPLICATION_SUBMITTED", Map.of(), "{}", Instant.now()))
+        .then()
+        .exception(ResourceNotFoundException.class)
+        .noEvents();
   }
 
   @AfterEach
