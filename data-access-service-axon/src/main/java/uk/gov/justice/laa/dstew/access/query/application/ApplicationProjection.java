@@ -22,7 +22,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationStatus;
-import uk.gov.justice.laa.dstew.access.applicationcontent.Decision;
+import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
@@ -323,9 +323,9 @@ public class ApplicationProjection {
       Instant occurredAt,
       QueryUpdateEmitter queryUpdateEmitter) {
     ApplicationStatus applicationStatus;
-    Decision decision = Decision.valueOf(overallDecision);
+    DecisionValue decision = DecisionValue.valueOf(overallDecision);
     applicationStatus =
-        decision.equals(Decision.REFUSED)
+        decision.equals(DecisionValue.REFUSED)
             ? ApplicationStatus.APPLICATION_REFUSED
             : ApplicationStatus.APPLICATION_GRANTED;
     applicationReadRepository
