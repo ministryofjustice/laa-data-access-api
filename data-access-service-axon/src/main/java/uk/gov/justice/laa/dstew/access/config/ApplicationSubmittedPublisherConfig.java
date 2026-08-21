@@ -9,6 +9,7 @@ import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.sns.SnsClient;
 import tools.jackson.databind.ObjectMapper;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.integrationevent.ApplicationSubmittedPublisher;
 import uk.gov.justice.laa.dstew.access.integrationevent.SnsApplicationSubmittedPublisher;
 
@@ -16,6 +17,7 @@ import uk.gov.justice.laa.dstew.access.integrationevent.SnsApplicationSubmittedP
 @Configuration
 @ConditionalOnExpression(
     "T(org.springframework.util.StringUtils).hasText('${application.integration-events.topic-arn:}')")
+@ExcludeFromGeneratedCodeCoverage
 public class ApplicationSubmittedPublisherConfig {
 
   /** Builds the normal AWS SDK client, optionally overriding its endpoint for LocalStack. */
