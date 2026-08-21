@@ -27,7 +27,6 @@ public class MakeDecisionCommandMapper {
         applicationId,
         request.getApplicationVersion(),
         request.getOverallDecision().name(),
-        request.getAutoGranted(),
         proceedings(request.getProceedings()),
         request.getCertificate(),
         serialise(request),

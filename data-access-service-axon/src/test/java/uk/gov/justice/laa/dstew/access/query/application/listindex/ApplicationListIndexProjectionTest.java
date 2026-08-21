@@ -196,12 +196,7 @@ class ApplicationListIndexProjectionTest {
 
     projection.on(
         new ApplicationDecisionMadeEvent(
-            applicationId,
-            3L,
-            4L,
-            "GRANTED",
-            AutoGrantedState.AUTOGRANTED,
-            Instant.now()),
+            applicationId, 3L, 4L, "GRANTED", AutoGrantedState.AUTOGRANTED, Instant.now()),
         anyMessage());
 
     assertThat(existing.getStatus()).isEqualTo(ApplicationStatus.APPLICATION_GRANTED.name());

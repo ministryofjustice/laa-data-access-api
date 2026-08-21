@@ -93,10 +93,10 @@ public final class ApplicationDecider {
   public static ApplicationDecisionMadeEvent decideDecision(
       ApplicationState state,
       MakeApplicationDecisionCommand command,
-      ApplicationDataPayload current) {
+      ApplicationDataPayload current,
+      AutoGrantedState autoGranted) {
 
-    if (!command.fromAutoGrantOutcome()
-        && command.expectedApplicationVersion() != state.applicationVersion) {
+    if (command.expectedApplicationVersion() != state.applicationVersion) {
       throw new ApplicationVersionConflictException(
           command.applicationId(), command.expectedApplicationVersion());
     }
@@ -115,28 +115,21 @@ public final class ApplicationDecider {
           "No proceeding found with id: "
               + unknownProceedingIds.stream().map(UUID::toString).collect(Collectors.joining(",")));
     }
-    if (command.fromAutoGrantOutcome()) {
-      if (!"GRANTED".equals(command.overallDecision())) {
-        throw new ValidationException(
-            List.of("An AUTOGRANTED outcome must have overallDecision GRANTED"));
-      }
-      Set<UUID> decidedProceedingIds =
-          command.proceedings().stream()
-              .map(MakeDecisionProceeding::proceedingId)
-              .collect(Collectors.toSet());
-      if (!decidedProceedingIds.equals(linkedProceedingIds)) {
-        throw new ValidationException(
-            List.of("An AUTOGRANTED outcome must decide every Application proceeding"));
-      }
-    }
-
     return new ApplicationDecisionMadeEvent(
         state.applicationId,
         state.applicationVersion + 1,
         state.applicationDataVersion + 1,
         command.overallDecision(),
-        AutoGrantedState.fromDecisionFlag(command.autoGranted()),
+        autoGranted,
         command.occurredAt());
+  }
+
+  /** Validates an ordinary decision, which always records manual assessment. */
+  public static ApplicationDecisionMadeEvent decideDecision(
+      ApplicationState state,
+      MakeApplicationDecisionCommand command,
+      ApplicationDataPayload current) {
+    return decideDecision(state, command, current, AutoGrantedState.MANUAL);
   }
 
   /** Returns an {@link ApplicationAssignedToCaseworkerEvent}. */
