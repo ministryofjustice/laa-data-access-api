@@ -1,0 +1,5 @@
+apiVersion: v2
+name: mass-generator-job
+description: Helm chart for the LAA Data Access mass-generator job. Used exclusively by the export-generated-data workflow — not referenced by any other workflow or deployment.
+type: application
+version: 0.1.0
