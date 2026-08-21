@@ -295,7 +295,7 @@ public class ApplicationAggregate {
     }
 
     var current = applicationDataStore.get(applicationId, state.applicationDataVersion);
-    recordManualDecision(
+    recordDecision(
         automaticGrantDecision(command, current),
         AutoGrantedState.AUTOGRANTED,
         current,
@@ -328,11 +328,10 @@ public class ApplicationAggregate {
       ApplicationDataStore applicationDataStore,
       EventAppender eventAppender) {
     var current = applicationDataStore.get(applicationId, state.applicationDataVersion);
-    recordManualDecision(
-        command, AutoGrantedState.MANUAL, current, applicationDataStore, eventAppender);
+    recordDecision(command, AutoGrantedState.MANUAL, current, applicationDataStore, eventAppender);
   }
 
-  private void recordManualDecision(
+  private void recordDecision(
       MakeApplicationDecisionCommand command,
       AutoGrantedState autoGranted,
       ApplicationDataPayload current,
