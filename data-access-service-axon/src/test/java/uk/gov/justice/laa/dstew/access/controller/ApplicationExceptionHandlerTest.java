@@ -11,6 +11,7 @@ import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictExce
 import uk.gov.justice.laa.dstew.access.exception.ApplicationGroupInvariantException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException;
 import uk.gov.justice.laa.dstew.access.exception.InvalidApplicationStateException;
+import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
@@ -131,5 +132,21 @@ class ApplicationExceptionHandlerTest {
             "Application "
                 + applicationId
                 + " cannot be made ready from status APPLICATION_IN_PROGRESS");
+  }
+
+  @Test
+  void givenConflictingPriorAuthorityCreation_whenHandled_thenReturnsStablePublicConflictMessage() {
+    UUID submissionId = UUID.randomUUID();
+
+    var response =
+        handler.handlePriorAuthorityCreationConflictException(
+            new PriorAuthorityCreationConflictException(submissionId));
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+    assertThat(response.getBody().getDetail())
+        .isEqualTo(
+            "Prior authority submission ID "
+                + submissionId
+                + " already exists with different creation data");
   }
 }

@@ -37,6 +37,8 @@ paths:
     $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1{id}~1update-document"
   /api/v0/applications/{id}/delete-document:
     $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1{id}~1delete-document"
+  /api/v0/applications/{id}/prior-authority:
+    $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1{id}~1prior-authority"
   /api/v0/sds/health:
     $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1sds~1health"
 
@@ -89,3 +91,25 @@ components:
       $ref: "./open-api-applications/components.yml#/components/schemas/DocumentUpdateResponse"
     SdsHealthResponse:
       $ref: "./open-api-applications/components.yml#/components/schemas/SdsHealthResponse"
+    PriorAuthorityType:
+      $ref: "./open-api-applications/components.yml#/components/schemas/PriorAuthorityType"
+    BillingType:
+      $ref: "./open-api-applications/components.yml#/components/schemas/BillingType"
+    CounselType:
+      $ref: "./open-api-applications/components.yml#/components/schemas/CounselType"
+    TimeRequested:
+      $ref: "./open-api-applications/components.yml#/components/schemas/TimeRequested"
+    Apportionment:
+      $ref: "./open-api-applications/components.yml#/components/schemas/Apportionment"
+    ExpertCosts:
+      $ref: "./open-api-applications/components.yml#/components/schemas/ExpertCosts"
+    ExpertDetails:
+      $ref: "./open-api-applications/components.yml#/components/schemas/ExpertDetails"
+    CounselDetails:
+      $ref: "./open-api-applications/components.yml#/components/schemas/CounselDetails"
+    DisbursementDetails:
+      $ref: "./open-api-applications/components.yml#/components/schemas/DisbursementDetails"
+    CreatePriorAuthorityRequest:
+      $ref: "./open-api-applications/components.yml#/components/schemas/CreatePriorAuthorityRequest"
+    CreatePriorAuthorityResponse:
+      $ref: "./open-api-applications/components.yml#/components/schemas/CreatePriorAuthorityResponse"

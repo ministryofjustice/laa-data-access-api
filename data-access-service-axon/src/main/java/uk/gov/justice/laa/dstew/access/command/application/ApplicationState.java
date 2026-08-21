@@ -16,6 +16,7 @@ public class ApplicationState {
   String requestFingerprint;
   String status;
   AutoGrantedState autoGranted = AutoGrantedState.PENDING;
+  String overallDecision;
   long applicationDataVersion;
   long applicationVersion;
   UUID caseworkerId;

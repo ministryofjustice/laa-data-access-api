@@ -533,6 +533,50 @@ paths:
         '403': { description: Forbidden }
         '500': { description: Internal server error }
 
+  /api/v0/applications/{id}/prior-authority:
+    post:
+      tags:
+        - application-command
+      summary: Submit a Prior Authority request
+      operationId: createPriorAuthority
+      parameters:
+        - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./components.yml#/components/schemas/CreatePriorAuthorityRequest"
+      responses:
+        '201':
+          description: Prior Authority submitted and projection readable
+          headers:
+            Location:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "./components.yml#/components/schemas/CreatePriorAuthorityResponse"
+        '202':
+          description: Prior Authority submitted but projection not yet readable
+          headers:
+            Location:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "./components.yml#/components/schemas/CreatePriorAuthorityResponse"
+        '400': { description: Validation failed }
+        '404': { description: Application not found }
+
   /api/v0/sds/health:
     get:
       tags:

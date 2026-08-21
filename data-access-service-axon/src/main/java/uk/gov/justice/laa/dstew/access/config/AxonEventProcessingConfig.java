@@ -30,6 +30,11 @@ public class AxonEventProcessingConfig {
   }
 
   @Bean
+  EventProcessorDefinition priorAuthorityProjectionProcessor() {
+    return pooledStreamingProcessor("prior-authority-projection");
+  }
+
+  @Bean
   EventProcessorDefinition linkedApplicationGroupRouterProcessor() {
     return EventProcessorDefinition.subscribingMatching("linked-application-group-router")
         .customized(
