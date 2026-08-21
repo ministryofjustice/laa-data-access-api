@@ -93,7 +93,8 @@ public class ApplicationTestDataSeeder {
                   applicationId, new ManualOutcomeRequest(AutoGrantOutcome.MANUAL)));
       makeApplicationDecisionUseCase.execute(
           makeDecisionCommandMapper.toCommand(
-              applicationId, new GeneratedRequestFactory("").decision(proceedingId)));
+              applicationId,
+              new GeneratedRequestFactory("").decision(proceedingId, lifecycle.decisionStatus())));
     }
     if (lifecycle.assignCaseworker()) {
       UUID assignedCaseworkerId =
