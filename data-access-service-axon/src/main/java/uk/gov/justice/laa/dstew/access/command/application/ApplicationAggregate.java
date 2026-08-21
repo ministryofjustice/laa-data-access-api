@@ -266,7 +266,7 @@ public class ApplicationAggregate {
       throw new ApplicationVersionConflictException(
           command.applicationId(), command.expectedApplicationVersion());
     }
-    if (state.autoGranted == AutoGrantedState.AUTOGRANTED) {
+    if (state.autoGranted != AutoGrantedState.MANUAL) {
       throw new ApplicationAutoGrantOutcomeConflictException(command.applicationId());
     }
   }

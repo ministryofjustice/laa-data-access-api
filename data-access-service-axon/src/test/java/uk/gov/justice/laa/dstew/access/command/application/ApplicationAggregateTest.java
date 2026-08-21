@@ -49,12 +49,11 @@ import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 class ApplicationAggregateTest {
 
   private AxonTestFixture fixture;
-  private ApplicationCreationDetailsFactory factory;
   private ApplicationDataStore applicationDataStore;
 
   @BeforeEach
   void setUp() {
-    factory =
+    ApplicationCreationDetailsFactory factory =
         new ApplicationCreationDetailsFactory(null, null) {
           @Override
           public ApplicationCreationDetails prepare(CreateApplicationCommand command) {
@@ -214,14 +213,11 @@ class ApplicationAggregateTest {
   }
 
   @Test
-  void givenPendingAutoGrantOutcome_whenDecisionMade_thenRecordsManualDecision() {
+  void givenPendingAutoGrantOutcome_whenDecisionMade_thenRejectsWithoutReadingData() {
     UUID applicationId = UUID.randomUUID();
     UUID proceedingId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-07-19T10:15:00Z");
     ApplicationCreationDetails details = detailsWithProceeding(applicationId, proceedingId);
-    when(applicationDataStore.get(applicationId, 0L))
-        .thenReturn(ApplicationDataPayload.from(details));
-    when(applicationDataStore.append(any(), anyLong(), any(), any(), any())).thenReturn("hash");
 
     fixture
         .given()
@@ -239,9 +235,8 @@ class ApplicationAggregateTest {
                 "Decision recorded",
                 occurredAt))
         .then()
-        .events(
-            new ApplicationDecisionMadeEvent(
-                applicationId, 1L, 1L, "REFUSED", AutoGrantedState.MANUAL, occurredAt));
+        .exception(ApplicationAutoGrantOutcomeConflictException.class)
+        .noEvents();
   }
 
   @Test
