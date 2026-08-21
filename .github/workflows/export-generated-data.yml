@@ -1,0 +1,92 @@
+name: Export generated data
+
+on:
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: read
+
+jobs:
+  export-generated-data:
+    runs-on: ubuntu-latest
+    if: github.event.label.name == 'export-generated-data'
+    environment: uat  # ephemeral environments run in the UAT cluster namespace
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      RELEASE_NAME: pr-${{ github.event.pull_request.number }}
+      RECORD_COUNT: "200"
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Run deploy prerequisites
+        id: deploy_prerequisites
+        uses: ./.github/actions/deploy_prerequisites
+        with:
+          kube-cert: ${{ secrets.KUBE_CERT }}
+          kube-token: ${{ secrets.KUBE_TOKEN }}
+          kube-cluster: ${{ secrets.KUBE_CLUSTER }}
+          kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
+          ecr-role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
+          ecr-region: ${{ vars.ECR_REGION }}
+
+      - name: Run mass generator
+        shell: bash
+        env:
+          KUBE_NAMESPACE: ${{ secrets.KUBE_NAMESPACE }}
+          ECR_REGISTRY: ${{ steps.deploy_prerequisites.outputs.ecr-registry }}
+          ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+        run: |
+          set -euo pipefail
+
+          HELM_RELEASE="${RELEASE_NAME}-mass-generator"
+          JOB_NAME="${RELEASE_NAME}-mass-generator-job"
+
+          # Retrieve the image tag from the existing mass generator deployment
+          IMAGE_TAG=$(kubectl get deployment "${HELM_RELEASE}-mass-generator" \
+            -n "$KUBE_NAMESPACE" \
+            -o jsonpath='{.spec.template.spec.containers[0].image}' \
+            | cut -d: -f2)
+
+          if [ -z "$IMAGE_TAG" ]; then
+            echo "Could not retrieve image tag from deployment ${HELM_RELEASE}-mass-generator" >&2
+            exit 1
+          fi
+
+          echo "Using image tag: $IMAGE_TAG"
+
+          # Delete any previous job to allow re-runs
+          kubectl delete job "$JOB_NAME" -n "$KUBE_NAMESPACE" --ignore-not-found
+
+          # Deploy the mass generator job via its own isolated Helm chart
+          helm upgrade "$JOB_NAME" .helm/mass-generator-job \
+            --namespace "$KUBE_NAMESPACE" \
+            --set image.repository="${ECR_REGISTRY}/${ECR_REPOSITORY}" \
+            --set image.tag="${IMAGE_TAG}" \
+            --set spring.profile="preview" \
+            --set db.postgresqlReleaseName="${RELEASE_NAME}-postgresql" \
+            --set job.recordCount="${RECORD_COUNT}" \
+            --install \
+            --wait
+
+          echo "Waiting for mass generator job to complete..."
+          kubectl wait job "$JOB_NAME-job" \
+            -n "$KUBE_NAMESPACE" \
+            --for=condition=complete \
+            --timeout=3600s
+
+          echo "Mass generator job completed successfully"
+
+      # TODO: Take a pg_dump snapshot from the ephemeral PostgreSQL pod
+      # The PostgreSQL release is named: ${RELEASE_NAME}-postgresql
+      # Pod selector: app.kubernetes.io/instance=${RELEASE_NAME}-postgresql
+      # Credentials are in the Kubernetes secret: ${RELEASE_NAME}-postgresql
+      #   key: postgres-password
+      # Example command:
+      #   kubectl exec -n "$KUBE_NAMESPACE" "$PG_POD" -- \
+      #     pg_dump -U postgres postgres > snapshot.sql
+
+      # TODO: Export snapshot (e.g. upload to S3)
+      # aws s3 cp snapshot.sql s3://your-bucket/snapshots/${RELEASE_NAME}/snapshot.sql
