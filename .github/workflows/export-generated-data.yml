@@ -79,6 +79,18 @@ jobs:
 
           echo "Mass generator job completed successfully"
 
+      - name: Run smoke tests
+        uses: ./.github/actions/smoke-test
+        with:
+          release-name: ${{ env.RELEASE_NAME }}
+          branch-name: ${{ github.head_ref }}
+          kube-cert: ${{ secrets.KUBE_CERT }}
+          kube-token: ${{ secrets.KUBE_TOKEN }}
+          kube-cluster: ${{ secrets.KUBE_CLUSTER }}
+          kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          report-name: export-smoke-test-report
+
       # TODO: Take a pg_dump snapshot from the ephemeral PostgreSQL pod
       # The PostgreSQL release is named: ${RELEASE_NAME}-postgresql
       # Pod selector: app.kubernetes.io/instance=${RELEASE_NAME}-postgresql
