@@ -164,7 +164,7 @@ public class ApplicationCommandController {
         : ResponseEntity.accepted().location(location).build();
   }
 
-  /** Replaces an existing Application's content and optional status. */
+  /** Replaces an existing Application's content and  optional status. */
   @PatchMapping("/{id}")
   public ResponseEntity<Void> updateApplication(
       @RequestHeader("X-Service-Name") ServiceName serviceName,
