@@ -1,5 +1,3 @@
-replicaCount: 0
-
 image:
   repository: null
   tag: null
@@ -10,6 +8,9 @@ spring:
 db:
   postgresqlReleaseName: null
 
+job:
+  recordCount: 200
+
 resources:
   limits:
     cpu: 500m
@@ -17,4 +18,3 @@ resources:
   requests:
     cpu: 25m
     memory: 512Mi
-

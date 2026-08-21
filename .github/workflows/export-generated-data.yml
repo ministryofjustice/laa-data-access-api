@@ -21,80 +21,63 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
-      - name: Authenticate to cluster
-        uses: ministryofjustice/laa-reusable-github-actions/.github/actions/authenticate_to_cluster@2aa2676c3cd9876ec7037ee8b3d729d0306cb7c6
+      - name: Run deploy prerequisites
+        id: deploy_prerequisites
+        uses: ./.github/actions/deploy_prerequisites
         with:
           kube-cert: ${{ secrets.KUBE_CERT }}
           kube-token: ${{ secrets.KUBE_TOKEN }}
           kube-cluster: ${{ secrets.KUBE_CLUSTER }}
           kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
+          ecr-role-to-assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
+          ecr-region: ${{ vars.ECR_REGION }}
 
-      - name: Run mass generator as a job
+      - name: Run mass generator
         shell: bash
         env:
           KUBE_NAMESPACE: ${{ secrets.KUBE_NAMESPACE }}
+          ECR_REGISTRY: ${{ steps.deploy_prerequisites.outputs.ecr-registry }}
+          ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
         run: |
           set -euo pipefail
 
-          POSTGRES_SECRET="${RELEASE_NAME}-postgresql"
+          HELM_RELEASE="${RELEASE_NAME}-mass-generator"
           JOB_NAME="${RELEASE_NAME}-mass-generator-job"
 
-          # Retrieve the image from the existing mass generator deployment
-          IMAGE=$(kubectl get deployment "${RELEASE_NAME}-mass-generator-mass-generator" \
+          # Retrieve the image tag from the existing mass generator deployment
+          IMAGE_TAG=$(kubectl get deployment "${HELM_RELEASE}-mass-generator" \
             -n "$KUBE_NAMESPACE" \
-            -o jsonpath='{.spec.template.spec.containers[0].image}')
+            -o jsonpath='{.spec.template.spec.containers[0].image}' \
+            | cut -d: -f2)
 
-          if [ -z "$IMAGE" ]; then
-            echo "Could not retrieve image from deployment ${RELEASE_NAME}-mass-generator-mass-generator" >&2
+          if [ -z "$IMAGE_TAG" ]; then
+            echo "Could not retrieve image tag from deployment ${HELM_RELEASE}-mass-generator" >&2
             exit 1
           fi
 
-          echo "Using image: $IMAGE"
-          echo "Running mass generator job: $JOB_NAME (count: $RECORD_COUNT)"
+          echo "Using image tag: $IMAGE_TAG"
 
-          # Delete any previous job with the same name to allow re-runs
+          # Delete any previous job to allow re-runs
           kubectl delete job "$JOB_NAME" -n "$KUBE_NAMESPACE" --ignore-not-found
 
-          kubectl create job "$JOB_NAME" \
-            --image="$IMAGE" \
-            --namespace="$KUBE_NAMESPACE" \
-            -- java -jar /mass-generator/mass-generator.jar "$RECORD_COUNT"
+          # Deploy the mass generator job via its own isolated Helm chart
+          helm upgrade "$JOB_NAME" .helm/mass-generator-job \
+            --namespace "$KUBE_NAMESPACE" \
+            --set image.repository="${ECR_REGISTRY}/${ECR_REPOSITORY}" \
+            --set image.tag="${IMAGE_TAG}" \
+            --set spring.profile="preview" \
+            --set db.postgresqlReleaseName="${RELEASE_NAME}-postgresql" \
+            --set job.recordCount="${RECORD_COUNT}" \
+            --install \
+            --wait
 
-          # Patch the job to inject DB credentials from the existing postgres secret
-          kubectl patch job "$JOB_NAME" -n "$KUBE_NAMESPACE" --type=json -p="[
-            {\"op\": \"add\", \"path\": \"/spec/template/spec/containers/0/env\", \"value\": [
-              {\"name\": \"DB_NAME\",     \"value\": \"postgres\"},
-              {\"name\": \"DB_HOST\",     \"value\": \"${POSTGRES_SECRET}\"},
-              {\"name\": \"DB_PASSWORD\", \"valueFrom\": {\"secretKeyRef\": {\"name\": \"${POSTGRES_SECRET}\", \"key\": \"postgres-password\"}}},
-              {\"name\": \"DB_URL\",      \"value\": \"jdbc:postgresql://${POSTGRES_SECRET}:5432/postgres\"}
-            ]},
-            {\"op\": \"add\", \"path\": \"/spec/template/spec/containers/0/securityContext\", \"value\": {
-              \"runAsNonRoot\": true,
-              \"runAsUser\": 1001,
-              \"runAsGroup\": 1001,
-              \"allowPrivilegeEscalation\": false,
-              \"seccompProfile\": {\"type\": \"RuntimeDefault\"},
-              \"capabilities\": {\"drop\": [\"ALL\"]}
-            }}
-          ]"
-
-          echo "Waiting for job to complete..."
-          kubectl wait job "$JOB_NAME" \
+          echo "Waiting for mass generator job to complete..."
+          kubectl wait job "$JOB_NAME-job" \
             -n "$KUBE_NAMESPACE" \
             --for=condition=complete \
             --timeout=3600s
 
           echo "Mass generator job completed successfully"
-
-      - name: Clean up job
-        if: always()
-        shell: bash
-        env:
-          KUBE_NAMESPACE: ${{ secrets.KUBE_NAMESPACE }}
-        run: |
-          kubectl delete job "${RELEASE_NAME}-mass-generator-job" \
-            -n "$KUBE_NAMESPACE" \
-            --ignore-not-found
 
       # TODO: Take a pg_dump snapshot from the ephemeral PostgreSQL pod
       # The PostgreSQL release is named: ${RELEASE_NAME}-postgresql
