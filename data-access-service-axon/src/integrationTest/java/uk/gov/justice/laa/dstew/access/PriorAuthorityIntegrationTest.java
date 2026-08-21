@@ -51,6 +51,7 @@ import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadReposito
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadRepository;
+import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 
 /** Full HTTP/Postgres/Axon integration tests for the Prior Authority submission endpoint. */
 @Testcontainers
@@ -384,6 +385,7 @@ class PriorAuthorityIntegrationTest {
     headers.set("X-Service-Name", "CIVIL_APPLY");
     headers.set("X-Schema-Version", "1");
     headers.setContentType(MediaType.APPLICATION_JSON);
+    headers.setBearerAuth(TestJwtDecoderConfig.BEARER_TOKEN);
     return headers;
   }
 
