@@ -1,0 +1,34 @@
+replicaCount: 1
+
+service_account:
+  name: laa-data-access-uat-irsa
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1G
+  requests:
+    cpu: 25m
+    memory: 1G
+
+autoscaling:
+  enabled: false
+
+sentry:
+  enabled: true
+  environment: rc-feature
+  tracesSampleRate: 1
+
+axon:
+  schema: data_access_axon
+  flywayTable: flyway_schema_history_axon
+
+mockOAuth2:
+  sharedInstance:
+    enabled: true
+    serviceName: laa-data-access-mock-oauth2-shared
+    namespace: laa-data-access-api-uat
+
+featureFlags:
+  enable_dev_token: "true"
+  disable_security: "false"

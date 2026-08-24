@@ -37,6 +37,10 @@ inputs:
     description: "Docker image tag to deploy. Defaults to the git SHA."
     required: false
     default: ${{ github.sha }}
+  axon-image-tag:
+    description: "Docker image tag for the Axon service. When provided, the Axon service is also deployed as a separate Helm release."
+    required: false
+    default: ""
 
 outputs:
   release-name:
@@ -120,27 +124,35 @@ runs:
         external_identifier="$INGRESS_NAME-$KUBE_NAMESPACE-green"
         internal_identifier="$INTERNAL_INGRESS_NAME-$KUBE_NAMESPACE-green"
 
-        safe_release_name=$(echo "$RELEASE_NAME" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9-' '-')
-        safe_release_name=$(echo "$safe_release_name" | sed 's/^-*//; s/-*$//; s/--*/-/g')
-        hash_suffix=$(printf "%s" "$RELEASE_NAME" | shasum | cut -c1-8)
+        compute_host_base() {
+          local raw_name="$1"
+          local safe_release_name hash_suffix max_host_base_length prefix_length trimmed_prefix
+
+          safe_release_name=$(echo "$raw_name" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9-' '-')
+          safe_release_name=$(echo "$safe_release_name" | sed 's/^-*//; s/-*$//; s/--*/-/g')
+          hash_suffix=$(printf "%s" "$raw_name" | shasum | cut -c1-8)
+
+          max_host_base_length=$((57 - ${#KUBE_NAMESPACE} - 10))
+
+          if [ ${#safe_release_name} -gt $max_host_base_length ]; then
+            prefix_length=$((max_host_base_length - 9))
+            if [ $prefix_length -lt 1 ]; then
+              prefix_length=1
+            fi
+            trimmed_prefix="$(printf "%s" "$safe_release_name" | cut -c1-$prefix_length | sed 's/-*$//')"
+            if [ -n "$trimmed_prefix" ]; then
+              echo "${trimmed_prefix}-$hash_suffix"
+            else
+              echo "$hash_suffix"
+            fi
+          else
+            echo "$safe_release_name"
+          fi
+        }
+
         # Gatekeeper enforces a 57-char max per hostname label.
         # Internal host label is the strictest: <host_base>-internal-<namespace>
-        max_host_base_length=$((57 - ${#KUBE_NAMESPACE} - 10))
-
-        if [ ${#safe_release_name} -gt $max_host_base_length ]; then
-          prefix_length=$((max_host_base_length - 9))
-          if [ $prefix_length -lt 1 ]; then
-            prefix_length=1
-          fi
-          trimmed_prefix="$(printf "%s" "$safe_release_name" | cut -c1-$prefix_length | sed 's/-*$//')"
-          if [ -n "$trimmed_prefix" ]; then
-            host_base="${trimmed_prefix}-$hash_suffix"
-          else
-            host_base="$hash_suffix"
-          fi
-        else
-          host_base="$safe_release_name"
-        fi
+        host_base=$(compute_host_base "$RELEASE_NAME")
 
         external_host="$host_base-$KUBE_NAMESPACE.cloud-platform.service.justice.gov.uk"
         internal_host="$host_base-internal-$KUBE_NAMESPACE.internal-non-prod.cloud-platform.service.justice.gov.uk"
@@ -211,3 +223,79 @@ runs:
           --wait
 
         echo "release-name=${RELEASE_NAME}" >> "$GITHUB_OUTPUT"
+
+    - name: Verify Axon image exists
+      if: ${{ inputs.axon-image-tag != '' }}
+      shell: bash
+      env:
+        ECR_REPOSITORY: ${{ inputs.ecr-repository }}
+        ECR_REGION: ${{ inputs.ecr-region }}
+        AXON_IMAGE_TAG: ${{ inputs.axon-image-tag }}
+      run: |
+        set -euo pipefail
+        aws ecr describe-images \
+          --repository-name "${ECR_REPOSITORY}" \
+          --image-ids imageTag="${AXON_IMAGE_TAG}" \
+          --region "${ECR_REGION}" >/dev/null
+
+    - name: Helm deployment of Axon service
+      if: ${{ inputs.axon-image-tag != '' }}
+      shell: bash
+      env:
+        ECR_REPOSITORY: ${{ inputs.ecr-repository }}
+        ECR_REGION: ${{ inputs.ecr-region }}
+        ECR_REGISTRY: ${{ steps.deploy_prerequisites.outputs.ecr-registry }}
+        AXON_IMAGE_TAG: ${{ inputs.axon-image-tag }}
+        KUBE_NAMESPACE: ${{ inputs.kube-namespace }}
+        RELEASE_NAME: ${{ steps.resolve_release_name.outputs.release-name }}
+        LAA_IPS: ${{ steps.get_laa_ips.outputs.laa-ips }}
+      run: |
+        set -euo pipefail
+
+        compute_host_base() {
+          local raw_name="$1"
+          local safe_release_name hash_suffix max_host_base_length prefix_length trimmed_prefix
+
+          safe_release_name=$(echo "$raw_name" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9-' '-')
+          safe_release_name=$(echo "$safe_release_name" | sed 's/^-*//; s/-*$//; s/--*/-/g')
+          hash_suffix=$(printf "%s" "$raw_name" | shasum | cut -c1-8)
+          max_host_base_length=$((57 - ${#KUBE_NAMESPACE} - 10))
+
+          if [ ${#safe_release_name} -gt $max_host_base_length ]; then
+            prefix_length=$((max_host_base_length - 9))
+            if [ $prefix_length -lt 1 ]; then
+              prefix_length=1
+            fi
+            trimmed_prefix="$(printf "%s" "$safe_release_name" | cut -c1-$prefix_length | sed 's/-*$//')"
+            if [ -n "$trimmed_prefix" ]; then
+              echo "${trimmed_prefix}-$hash_suffix"
+            else
+              echo "$hash_suffix"
+            fi
+          else
+            echo "$safe_release_name"
+          fi
+        }
+
+        AXON_RELEASE_NAME="${RELEASE_NAME}-axon"
+        axon_host_base=$(compute_host_base "$AXON_RELEASE_NAME")
+        axon_host="${axon_host_base}-${KUBE_NAMESPACE}.cloud-platform.service.justice.gov.uk"
+        axon_internal_host="${axon_host_base}-internal-${KUBE_NAMESPACE}.internal-non-prod.cloud-platform.service.justice.gov.uk"
+        axon_identifier="${AXON_RELEASE_NAME}-data-access-api-axon-${KUBE_NAMESPACE}-green"
+        axon_internal_identifier="${AXON_RELEASE_NAME}-data-access-api-axon-internal-${KUBE_NAMESPACE}-green"
+
+        helm upgrade "${AXON_RELEASE_NAME}" .helm/data-access-api-axon \
+          --namespace "${KUBE_NAMESPACE}" \
+          --set image.repository="${ECR_REGISTRY}/${ECR_REPOSITORY}" \
+          --set image.tag="${AXON_IMAGE_TAG}" \
+          --set ingress.annotations."external-dns\.alpha\.kubernetes\.io/set-identifier"="${axon_identifier}" \
+          --set ingress.annotations."nginx\.ingress\.kubernetes\.io/whitelist-source-range"="${LAA_IPS}" \
+          --set ingress.hosts="{${axon_host}}" \
+          --set ingressInternal.annotations."external-dns\.alpha\.kubernetes\.io/set-identifier"="${axon_internal_identifier}" \
+          --set ingressInternal.hosts="{${axon_internal_host}}" \
+          --set spring.profile="preview" \
+          --set aws.region="${ECR_REGION}" \
+          --set db.postgresqlReleaseName="${RELEASE_NAME}-postgresql" \
+          --values .helm/data-access-api-axon/values/rc-feature.yaml \
+          --install \
+          --wait
