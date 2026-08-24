@@ -2,6 +2,8 @@ package uk.gov.justice.laa.dstew.access.command.application;
 
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
@@ -36,6 +38,12 @@ public final class ApplicationEvolve {
 
   /** Applies an {@link ApplicationDecisionMadeEvent} to the given state. */
   public static void apply(ApplicationState state, ApplicationDecisionMadeEvent event) {
+    if (event.overallDecision() != null) {
+      state.status =
+          DecisionValue.valueOf(event.overallDecision()).equals(DecisionValue.REFUSED)
+              ? ApplicationStatus.APPLICATION_REFUSED.getValue()
+              : ApplicationStatus.APPLICATION_GRANTED.getValue();
+    }
     state.applicationVersion = event.applicationVersion();
     state.applicationDataVersion = event.applicationDataVersion();
     state.autoGranted = event.autoGranted();

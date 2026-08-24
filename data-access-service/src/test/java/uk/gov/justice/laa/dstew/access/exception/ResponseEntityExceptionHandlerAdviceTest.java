@@ -63,7 +63,7 @@ class ResponseEntityExceptionHandlerAdviceTest {
     return Stream.of(
         Arguments.of(
             ApplicationStatus.class,
-            "PROGRESS. Valid values are: APPLICATION_IN_PROGRESS, APPLICATION_SUBMITTED"),
+            "PROGRESS. Valid values are: APPLICATION_IN_PROGRESS, APPLICATION_SUBMITTED, APPLICATION_GRANTED, APPLICATION_REFUSED"),
         Arguments.of(CategoryOfLaw.class, "PROGRESS. Valid values are: FAMILY"),
         Arguments.of(null, "PROGRESS"));
   }

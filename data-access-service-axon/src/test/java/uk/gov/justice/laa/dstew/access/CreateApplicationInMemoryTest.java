@@ -41,12 +41,8 @@ import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantedOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
-import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
 import uk.gov.justice.laa.dstew.access.model.IndividualsResponse;
-import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceedingRequest;
-import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
-import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetailsRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadRepository;
@@ -419,7 +415,6 @@ class CreateApplicationInMemoryTest {
                 ApplicationResponse.class)
             .getBody();
     assertThat(created).isNotNull();
-    UUID proceedingId = created.getProceedings().getFirst().getProceedingId();
     var request =
         new AutoGrantedOutcomeRequest(
             AutoGrantOutcome.AUTOGRANTED, Map.of("certificateNumber", "AUTO-2126"));
@@ -516,30 +511,16 @@ class CreateApplicationInMemoryTest {
             new HttpEntity<>(
                 validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()),
             Void.class));
-    UUID proceedingId = awaitProjection(applicationId).getProceedings().getFirst().getId();
-    MakeDecisionRequest decision =
-        MakeDecisionRequest.builder()
-            .applicationVersion(0L)
-            .overallDecision(DecisionStatus.GRANTED)
-            .autoGranted(true)
-            .certificate(java.util.Map.of("certificateNumber", "AUTO-1"))
-            .eventHistory(EventHistoryRequest.builder().eventDescription("Auto-granted").build())
-            .proceedings(
-                List.of(
-                    MakeDecisionProceedingRequest.builder()
-                        .proceedingId(proceedingId)
-                        .meritsDecision(
-                            MeritsDecisionDetailsRequest.builder()
-                                .decision(MeritsDecisionStatus.GRANTED)
-                                .justification("All automatic checks passed")
-                                .build())
-                        .build()))
-            .build();
-    restTemplate.exchange(
-        "/api/v0/applications/" + applicationId + "/decision",
-        HttpMethod.PATCH,
-        new HttpEntity<>(decision, headers()),
-        Void.class);
+    ResponseEntity<Void> autoGrantResponse =
+        restTemplate.exchange(
+            "/api/v0/applications/" + applicationId + "/auto-grant-outcome",
+            HttpMethod.PATCH,
+            new HttpEntity<>(
+                new AutoGrantedOutcomeRequest(
+                    AutoGrantOutcome.AUTOGRANTED, java.util.Map.of("certificateNumber", "AUTO-1")),
+                headers()),
+            Void.class);
+    assertThat(autoGrantResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
 
     ResponseEntity<String> response =
         restTemplate.exchange(

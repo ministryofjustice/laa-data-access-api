@@ -38,7 +38,6 @@ import uk.gov.justice.laa.dstew.access.command.caseworker.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.testutils.ApplicationLifecycle;
 import uk.gov.justice.laa.dstew.access.testutils.ApplicationTestDataSeeder;
 import uk.gov.justice.laa.dstew.access.testutils.GeneratedRequestFactory;
-import uk.gov.justice.laa.dstew.access.testutils.massdata.ApplicationLifecycleSelector;
 import uk.gov.justice.laa.dstew.access.testutils.massdata.GenerationSummary;
 import uk.gov.justice.laa.dstew.access.testutils.massdata.MassDataConfiguration;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
@@ -98,7 +97,6 @@ class GenerateAxonMassDataDumpTest extends AbstractApplicationTestSeederIntegrat
     List<UUID> caseworkerIds = initialiseCaseworkers(25);
     String runId = UUID.randomUUID().toString().substring(0, 8);
     GeneratedRequestFactory requests = new GeneratedRequestFactory(runId);
-    ApplicationLifecycleSelector lifecycleSelector = new ApplicationLifecycleSelector();
     ApplicationTestDataSeeder seeder = newSeeder();
     GenerationSummary summary = new GenerationSummary();
     List<String> failures = Collections.synchronizedList(new ArrayList<>());
@@ -113,7 +111,6 @@ class GenerateAxonMassDataDumpTest extends AbstractApplicationTestSeederIntegrat
                   applicationIndex,
                   configuration,
                   requests,
-                  lifecycleSelector,
                   seeder,
                   caseworkerIds,
                   summary,
@@ -179,7 +176,6 @@ class GenerateAxonMassDataDumpTest extends AbstractApplicationTestSeederIntegrat
       int index,
       MassDataConfiguration configuration,
       GeneratedRequestFactory requests,
-      ApplicationLifecycleSelector lifecycleSelector,
       ApplicationTestDataSeeder seeder,
       List<UUID> caseworkerIds,
       GenerationSummary summary,
@@ -190,7 +186,7 @@ class GenerateAxonMassDataDumpTest extends AbstractApplicationTestSeederIntegrat
             .create(
                 configuration.seed().orElseGet(() -> ThreadLocalRandom.current().nextLong())
                     ^ index);
-    ApplicationLifecycle lifecycle = lifecycleSelector.select(random);
+    ApplicationLifecycle lifecycle = ApplicationLifecycle.select(random);
     summary.submitted();
     try {
       if (lifecycle.assignCaseworker()) {
