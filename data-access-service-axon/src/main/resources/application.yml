@@ -68,6 +68,7 @@ laa:
         unprotected-uris:
           - /error
           - /actuator/health
+          - /actuator/health/**
           - /actuator/info
           - /actuator/prometheus
           - /actuator/metrics/**
