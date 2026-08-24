@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import uk.gov.justice.laa.dstew.access.command.caseworker.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 
 /** Validates and dispatches a single Application assignment command. */
 @Service
@@ -24,6 +25,7 @@ public class AssignCaseworkerUseCase {
 
   /** Validates and assigns the caseworker to one Application. */
   @Transactional
+  @AllowApiCaseworker
   public void assign(
       UUID caseworkerId, UUID applicationId, String serialisedRequest, String eventDescription) {
     if (!caseworkerRepository.existsById(caseworkerId)) {

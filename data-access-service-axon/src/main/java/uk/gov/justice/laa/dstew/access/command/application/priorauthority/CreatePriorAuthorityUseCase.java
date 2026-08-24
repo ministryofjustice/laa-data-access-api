@@ -5,6 +5,7 @@ import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.FindPriorAuthorityBySubmissionIdQuery;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
+import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 
 /**
  * Validates application eligibility and dispatches a create-prior-authority command, waiting for
@@ -30,6 +31,7 @@ public class CreatePriorAuthorityUseCase {
    *     {@code false} on timeout — the command has still committed.
    * @throws RuntimeException propagated from validation if the application is not granted
    */
+  @AllowApiCaseworker
   public boolean execute(CreatePriorAuthorityCommand command) {
     dispatcher.dispatch(new ValidateApplicationGrantedCommand(command.applicationId()));
     return projectionGateway.awaitProjection(

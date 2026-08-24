@@ -8,8 +8,10 @@ import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 
 @SpringBootTest(
     classes = DataAccessServiceAxonApplication.class,
@@ -21,6 +23,7 @@ import org.springframework.http.ResponseEntity;
       "spring.datasource.url=jdbc:h2:mem:axon-health;DB_CLOSE_DELAY=-1"
     })
 @AutoConfigureTestRestTemplate
+@Import(TestJwtDecoderConfig.class)
 class InMemoryHealthTest {
 
   @LocalServerPort private int port;
