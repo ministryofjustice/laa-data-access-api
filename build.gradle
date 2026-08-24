@@ -35,6 +35,10 @@ ext['jackson-bom.version'] = '3.1.5'
 ext['netty.version'] = '4.2.17.Final'
 //CRLF Injection (new) [High Severity][https://security.snyk.io/vuln/SNYK-JAVA-IOMICROMETER-19233327] in io.micrometer:micrometer-core@1.17.0
 ext['micrometer.version'] = '1.17.1'
+//Upgrade io.micrometer:micrometer-tracing-bridge-brave@1.7.0 to io.micrometer:micrometer-tracing-bridge-brave@1.7.1 to fix
+//✗ Allocation of Resources Without Limits or Throttling (new) [Medium Severity][https://security.snyk.io/vuln/SNYK-JAVA-IOMICROMETER-19233332] in io.micrometer:micrometer-tracing-bridge-brave@1.7.0
+//        introduced by io.micrometer:micrometer-tracing-bridge-brave@1.7.0
+ext['micrometer-tracing-bridge-brave.version']   = '1.7.1'
 
 
 def requiredJavaVersion = 25
