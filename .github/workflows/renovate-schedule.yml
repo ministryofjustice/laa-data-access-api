@@ -1,7 +1,5 @@
 name: renovate-schedule.yml
 on:
-  schedule:
-    - cron: '0 3 * * 1'  # Weekly on Monday at 3am
   workflow_dispatch:
     inputs:
       dryRun:
