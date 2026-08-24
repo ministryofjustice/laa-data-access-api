@@ -227,6 +227,7 @@ runs:
           --set db.postgresqlReleaseName="${RELEASE_NAME}-postgresql" \
           --values "${VALUES_FILE}" \
           --install \
+          --timeout 10m0s \
           --wait; then
           echo "[axon] Helm deployment failed for release ${AXON_RELEASE_NAME}."
           exit 1
