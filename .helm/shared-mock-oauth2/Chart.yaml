@@ -3,4 +3,4 @@ name: shared-mock-oauth2
 description: Shared Mock OAuth2 Server for UAT environment
 type: application
 version: 1.0.0
-appVersion: "2.1.10"
+appVersion: "6.0.2"

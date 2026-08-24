@@ -17,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -34,6 +35,7 @@ import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetailsRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
+import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 
 /**
  * Verifies that when the application-projection tracking processor is stopped the controller
@@ -56,6 +58,7 @@ import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
       "application.projection.timeout=200ms"
     })
 @AutoConfigureTestRestTemplate
+@Import(TestJwtDecoderConfig.class)
 @DirtiesContext(methodMode = DirtiesContext.MethodMode.AFTER_METHOD)
 class ProjectionTimeoutInMemoryTest {
 
@@ -80,6 +83,7 @@ class ProjectionTimeoutInMemoryTest {
     HttpHeaders headers = new HttpHeaders();
     headers.set("X-Service-Name", "CIVIL_APPLY");
     headers.set("X-Schema-Version", "1");
+    headers.setBearerAuth(TestJwtDecoderConfig.BEARER_TOKEN);
 
     long startMs = System.currentTimeMillis();
     ResponseEntity<Void> response =
@@ -295,6 +299,7 @@ class ProjectionTimeoutInMemoryTest {
     HttpHeaders headers = new HttpHeaders();
     headers.set("X-Service-Name", "CIVIL_APPLY");
     headers.set("X-Schema-Version", "1");
+    headers.setBearerAuth(TestJwtDecoderConfig.BEARER_TOKEN);
     return headers;
   }
 }
