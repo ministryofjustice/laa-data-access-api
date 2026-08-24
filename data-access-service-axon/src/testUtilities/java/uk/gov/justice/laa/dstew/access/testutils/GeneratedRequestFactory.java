@@ -35,20 +35,25 @@ public class GeneratedRequestFactory {
   }
 
   public MakeDecisionRequest decision(UUID proceedingId) {
+    return decision(proceedingId, DecisionStatus.REFUSED);
+  }
+
+  public MakeDecisionRequest decision(UUID proceedingId, DecisionStatus decisionStatus) {
     return MakeDecisionRequest.builder()
-        .overallDecision(DecisionStatus.REFUSED)
+        .overallDecision(decisionStatus)
         .proceedings(
             List.of(
                 MakeDecisionProceedingRequest.builder()
                     .proceedingId(proceedingId)
                     .meritsDecision(
                         MeritsDecisionDetailsRequest.builder()
-                            .decision(MeritsDecisionStatus.REFUSED)
-                            .reason("Mass-data refusal")
-                            .justification("Mass-data generated refusal")
+                            .decision(MeritsDecisionStatus.valueOf(decisionStatus.name()))
+                            .reason("Mass-data " + decisionStatus.name().toLowerCase())
+                            .justification(
+                                "Mass-data generated " + decisionStatus.name().toLowerCase())
                             .build())
                     .build()))
-        .applicationVersion(0L)
+        .applicationVersion(1L)
         .certificate(Map.of("source", "mass-data"))
         .build();
   }

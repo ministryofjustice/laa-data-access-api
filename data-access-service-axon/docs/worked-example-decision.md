@@ -166,4 +166,5 @@ explicitly routed to a caseworker. Direct lookup by identifier continues to retu
 Application while its outcome is still null.
 
 The general `PATCH /api/v0/applications/{id}/decision` operation remains available for caseworker
-Decisions; it is not the auto-grant outcome contract.
+Decisions after the `MANUAL` auto-grant outcome is recorded. It rejects Applications whose
+auto-grant outcome remains `PENDING` or is `AUTOGRANTED`; it is not the auto-grant outcome contract.

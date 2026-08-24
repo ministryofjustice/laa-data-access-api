@@ -28,7 +28,6 @@ class MakeDecisionCommandMapperTest {
         MakeDecisionRequest.builder()
             .applicationVersion(3L)
             .overallDecision(DecisionStatus.REFUSED)
-            .autoGranted(false)
             .proceedings(
                 List.of(
                     MakeDecisionProceedingRequest.builder()
@@ -51,7 +50,6 @@ class MakeDecisionCommandMapperTest {
     assertThat(command.applicationId()).isEqualTo(applicationId);
     assertThat(command.expectedApplicationVersion()).isEqualTo(3L);
     assertThat(command.overallDecision()).isEqualTo("REFUSED");
-    assertThat(command.autoGranted()).isFalse();
     assertThat(command.certificate()).containsEntry("reference", "CERT-1");
     assertThat(command.eventDescription()).isEqualTo("Decision recorded");
     assertThat(command.occurredAt()).isBetween(before, Instant.now());
@@ -75,7 +73,6 @@ class MakeDecisionCommandMapperTest {
         MakeDecisionRequest.builder()
             .applicationVersion(0L)
             .overallDecision(DecisionStatus.REFUSED)
-            .autoGranted(false)
             .proceedings(null)
             .build();
 
@@ -91,7 +88,6 @@ class MakeDecisionCommandMapperTest {
         MakeDecisionRequest.builder()
             .applicationVersion(0L)
             .overallDecision(DecisionStatus.REFUSED)
-            .autoGranted(false)
             .proceedings(
                 List.of(
                     MakeDecisionProceedingRequest.builder()

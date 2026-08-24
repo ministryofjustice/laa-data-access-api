@@ -6,6 +6,7 @@ import org.axonframework.messaging.eventhandling.annotation.EventHandler;
 import org.axonframework.messaging.eventhandling.replay.annotation.ResetHandler;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
+import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
@@ -17,6 +18,7 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationD
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 
 /**
  * Independently replayable tracking projection that maintains {@code application_list_index}.
@@ -98,12 +100,21 @@ public class ApplicationListIndexProjection {
    */
   @EventHandler
   public void on(ApplicationDecisionMadeEvent event, EventMessage message) {
+    ApplicationStatus applicationStatus;
+    if (event.overallDecision() == null || event.overallDecision().isBlank()) {
+      applicationStatus = null;
+
+    } else {
+      applicationStatus =
+          DecisionValue.valueOf(event.overallDecision()).equals(DecisionValue.REFUSED)
+              ? ApplicationStatus.APPLICATION_REFUSED
+              : ApplicationStatus.APPLICATION_GRANTED;
+    }
     listIndexRepository
         .findById(event.applicationId())
         .ifPresent(
             row -> {
-              row.setStatus(
-                  event.overallDecision() != null ? event.overallDecision() : row.getStatus());
+              row.setStatus(applicationStatus != null ? applicationStatus.name() : row.getStatus());
               row.setAutoGranted(event.autoGranted());
               row.setStreamVersion(event.applicationVersion());
               row.setModifiedAt(event.occurredAt());

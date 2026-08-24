@@ -6,7 +6,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.json.JsonMapper;
-import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
+import uk.gov.justice.laa.dstew.access.command.application.decision.RecordAutoGrantedOutcomeCommand;
 import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantedOutcomeRequest;
@@ -35,13 +35,9 @@ class AutoGrantOutcomeCommandMapperTest {
         new AutoGrantedOutcomeRequest(
             AutoGrantOutcome.AUTOGRANTED, Map.of("certificateNumber", "AUTO-2126"));
 
-    var command = (MakeApplicationDecisionCommand) mapper.toCommand(id, request);
+    var command = (RecordAutoGrantedOutcomeCommand) mapper.toCommand(id, request);
 
     assertThat(command.applicationId()).isEqualTo(id);
-    assertThat(command.overallDecision()).isEqualTo("GRANTED");
-    assertThat(command.autoGranted()).isTrue();
-    assertThat(command.fromAutoGrantOutcome()).isTrue();
-    assertThat(command.proceedings()).isEmpty();
     assertThat(command.certificate()).containsEntry("certificateNumber", "AUTO-2126");
   }
 }

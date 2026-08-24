@@ -54,13 +54,12 @@ import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 class ApplicationAggregateTest {
 
   private AxonTestFixture fixture;
-  private ApplicationCreationDetailsFactory factory;
   private ApplicationDataStore applicationDataStore;
   private ApplicationUpdateDetailsFactory updateDetailsFactory;
 
   @BeforeEach
   void setUp() {
-    factory =
+    ApplicationCreationDetailsFactory factory =
         new ApplicationCreationDetailsFactory(null, null) {
           @Override
           public ApplicationCreationDetails prepare(CreateApplicationCommand command) {
@@ -189,20 +188,23 @@ class ApplicationAggregateTest {
     UUID applicationId = UUID.randomUUID();
     UUID proceedingId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-07-19T10:15:00Z");
+    Instant readyAt = Instant.parse("2026-07-19T10:00:00Z");
     ApplicationCreationDetails details = detailsWithProceeding(applicationId, proceedingId);
     ApplicationCreatedEvent created = applicationCreatedEvent(applicationId, details);
-    ApplicationDataPayload current = ApplicationDataPayload.from(details);
-    when(applicationDataStore.get(applicationId, 0L)).thenReturn(current);
+    ApplicationDataPayload current =
+        ApplicationDataPayload.from(details).withManualAssessmentRequired();
+    when(applicationDataStore.get(applicationId, 1L)).thenReturn(current);
     when(applicationDataStore.append(any(), anyLong(), any(), any(), any())).thenReturn("hash");
 
     fixture
         .given()
-        .events(created)
+        .events(
+            created, new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, 1L, readyAt))
         .when()
         .command(
             new MakeApplicationDecisionCommand(
                 applicationId,
-                0L,
+                1L,
                 "REFUSED",
                 false,
                 List.of(
@@ -214,7 +216,58 @@ class ApplicationAggregateTest {
         .then()
         .events(
             new ApplicationDecisionMadeEvent(
-                applicationId, 1L, 1L, "REFUSED", AutoGrantedState.MANUAL, occurredAt));
+                applicationId, 2L, 2L, "REFUSED", AutoGrantedState.MANUAL, occurredAt));
+  }
+
+  @Test
+  void givenPendingAutoGrantOutcome_whenDecisionMade_thenRejectsWithoutReadingData() {
+    UUID applicationId = UUID.randomUUID();
+    UUID proceedingId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-19T10:15:00Z");
+    ApplicationCreationDetails details = detailsWithProceeding(applicationId, proceedingId);
+
+    fixture
+        .given()
+        .events(applicationCreatedEvent(applicationId, details))
+        .when()
+        .command(
+            new MakeApplicationDecisionCommand(
+                applicationId,
+                0L,
+                "REFUSED",
+                List.of(
+                    new MakeDecisionProceeding(proceedingId, "REFUSED", "reason", "justification")),
+                null,
+                "{\"overallDecision\":\"REFUSED\"}",
+                "Decision recorded",
+                occurredAt))
+        .then()
+        .exception(ApplicationAutoGrantOutcomeConflictException.class)
+        .noEvents();
+  }
+
+  @Test
+  void givenAutoGrantedApplication_whenDecisionMade_thenRejectsWithoutReadingData() {
+    UUID applicationId = UUID.randomUUID();
+    UUID proceedingId = UUID.randomUUID();
+    ApplicationCreationDetails details = detailsWithProceeding(applicationId, proceedingId);
+
+    fixture
+        .given()
+        .events(
+            applicationCreatedEvent(applicationId, details),
+            new ApplicationDecisionMadeEvent(
+                applicationId,
+                1L,
+                1L,
+                "GRANTED",
+                AutoGrantedState.AUTOGRANTED,
+                Instant.parse("2026-07-19T10:00:00Z")))
+        .when()
+        .command(decisionCommand(applicationId, 1L, proceedingId, "REFUSED", "justification", null))
+        .then()
+        .exception(ApplicationAutoGrantOutcomeConflictException.class)
+        .noEvents();
   }
 
   @Test
@@ -222,16 +275,19 @@ class ApplicationAggregateTest {
     UUID applicationId = UUID.randomUUID();
     UUID proceedingId = UUID.randomUUID();
     ApplicationCreationDetails details = detailsWithProceeding(applicationId, proceedingId);
-    when(applicationDataStore.get(applicationId, 0L))
-        .thenReturn(ApplicationDataPayload.from(details));
+    when(applicationDataStore.get(applicationId, 1L))
+        .thenReturn(ApplicationDataPayload.from(details).withManualAssessmentRequired());
     when(applicationDataStore.append(any(), anyLong(), any(), any(), any()))
         .thenThrow(new IllegalStateException("application data unavailable"));
 
     fixture
         .given()
-        .events(applicationCreatedEvent(applicationId, details))
+        .events(
+            applicationCreatedEvent(applicationId, details),
+            new ApplicationReadyForManualAssessmentEvent(
+                applicationId, 1L, 1L, Instant.parse("2026-07-19T10:00:00Z")))
         .when()
-        .command(decisionCommand(applicationId, 0L, proceedingId, "REFUSED", "justification", null))
+        .command(decisionCommand(applicationId, 1L, proceedingId, "REFUSED", "justification", null))
         .then()
         .exception(IllegalStateException.class, "application data unavailable")
         .noEvents();
@@ -416,14 +472,19 @@ class ApplicationAggregateTest {
   @Test
   void givenEmptyProceedingsAndMissingGrantedCertificate_whenDecisionMade_thenReportsBothErrors() {
     UUID applicationId = UUID.randomUUID();
+    ApplicationCreationDetails details = applicationCreationDetails(applicationId);
+    when(applicationDataStore.get(applicationId, 1L))
+        .thenReturn(ApplicationDataPayload.from(details).withManualAssessmentRequired());
 
     fixture
         .given()
-        .events(applicationCreatedEvent(applicationId))
+        .events(
+            applicationCreatedEvent(applicationId, details),
+            new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, 1L, Instant.now()))
         .when()
         .command(
             new MakeApplicationDecisionCommand(
-                applicationId, 0L, "GRANTED", false, List.of(), null, "{}", null, Instant.now()))
+                applicationId, 1L, "GRANTED", false, List.of(), null, "{}", null, Instant.now()))
         .then()
         .exception(ValidationException.class)
         .noEvents();
@@ -434,12 +495,16 @@ class ApplicationAggregateTest {
     UUID applicationId = UUID.randomUUID();
     UUID proceedingId = UUID.randomUUID();
     ApplicationCreationDetails details = detailsWithProceeding(applicationId, proceedingId);
+    when(applicationDataStore.get(applicationId, 1L))
+        .thenReturn(ApplicationDataPayload.from(details).withManualAssessmentRequired());
 
     fixture
         .given()
-        .events(applicationCreatedEvent(applicationId, details))
+        .events(
+            applicationCreatedEvent(applicationId, details),
+            new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, 1L, Instant.now()))
         .when()
-        .command(decisionCommand(applicationId, 0L, proceedingId, "REFUSED", null, null))
+        .command(decisionCommand(applicationId, 1L, proceedingId, "REFUSED", null, null))
         .then()
         .exception(ValidationException.class)
         .noEvents();
@@ -450,17 +515,21 @@ class ApplicationAggregateTest {
     UUID applicationId = UUID.randomUUID();
     UUID proceedingId = UUID.randomUUID();
     ApplicationCreationDetails details = detailsWithProceeding(applicationId, proceedingId);
+    when(applicationDataStore.get(applicationId, 1L))
+        .thenReturn(ApplicationDataPayload.from(details).withManualAssessmentRequired());
     MakeDecisionProceeding proceeding =
         new MakeDecisionProceeding(proceedingId, "REFUSED", "reason", "justification");
 
     fixture
         .given()
-        .events(applicationCreatedEvent(applicationId, details))
+        .events(
+            applicationCreatedEvent(applicationId, details),
+            new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, 1L, Instant.now()))
         .when()
         .command(
             new MakeApplicationDecisionCommand(
                 applicationId,
-                0L,
+                1L,
                 "REFUSED",
                 false,
                 List.of(proceeding, proceeding),

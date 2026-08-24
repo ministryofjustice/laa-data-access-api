@@ -13,20 +13,22 @@ public record MakeApplicationDecisionCommand(
     @TargetEntityId UUID applicationId,
     long expectedApplicationVersion,
     String overallDecision,
-    Boolean autoGranted,
     List<MakeDecisionProceeding> proceedings,
     Map<String, Object> certificate,
     String serialisedRequest,
     String eventDescription,
-    Instant occurredAt,
-    boolean fromAutoGrantOutcome) {
+    Instant occurredAt) {
 
-  /** Backwards-compatible constructor for the general caseworker Decision endpoint. */
+  /**
+   * Legacy constructor retained while callers migrate away from the removed automatic-grant flag.
+   * Normal decisions always represent manual assessment.
+   */
+  @Deprecated(forRemoval = true)
   public MakeApplicationDecisionCommand(
       UUID applicationId,
       long expectedApplicationVersion,
       String overallDecision,
-      Boolean autoGranted,
+      Boolean ignoredAutoGranted,
       List<MakeDecisionProceeding> proceedings,
       Map<String, Object> certificate,
       String serialisedRequest,
@@ -36,13 +38,11 @@ public record MakeApplicationDecisionCommand(
         applicationId,
         expectedApplicationVersion,
         overallDecision,
-        autoGranted,
         proceedings,
         certificate,
         serialisedRequest,
         eventDescription,
-        occurredAt,
-        false);
+        occurredAt);
   }
 
   public MakeApplicationDecisionCommand {
