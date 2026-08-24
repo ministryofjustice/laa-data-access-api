@@ -70,11 +70,10 @@ class AxonProfileConfigurationTest {
             "org.springframework.boot.autoconfigure.security.oauth2.resource.servlet."
                 + "OAuth2ResourceServerAutoConfiguration");
     assertThat(property(properties, "spring.autoconfigure.exclude[4]"))
-        .isEqualTo("uk.gov.laa.springboot.oauth2.SecurityFilterChainAutoConfiguration");
-    assertThat(property(properties, "spring.autoconfigure.exclude[5]"))
         .isEqualTo(
             "uk.gov.laa.springboot.oauth2."
                 + "MultiTenantJwtAuthenticationManagerResolverAutoConfiguration");
+    assertThat(property(properties, "spring.autoconfigure.exclude[5]")).isNull();
     assertThat(property(properties, "feature.disable-security")).isEqualTo(true);
     assertThat(property(properties, "server.port")).isEqualTo("${SERVER_PORT:8082}");
   }
