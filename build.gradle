@@ -38,8 +38,8 @@ ext['micrometer.version'] = '1.17.1'
 //Upgrade io.micrometer:micrometer-tracing-bridge-brave@1.7.0 to io.micrometer:micrometer-tracing-bridge-brave@1.7.1 to fix
 //✗ Allocation of Resources Without Limits or Throttling (new) [Medium Severity][https://security.snyk.io/vuln/SNYK-JAVA-IOMICROMETER-19233332] in io.micrometer:micrometer-tracing-bridge-brave@1.7.0
 //        introduced by io.micrometer:micrometer-tracing-bridge-brave@1.7.0
-ext['micrometer-tracing-bridge-brave.version']   = '1.7.1'
-
+// Note: Spring Boot manages this artifact via the micrometer-tracing BOM property.
+ext['micrometer-tracing.version'] = '1.7.1'
 
 def requiredJavaVersion = 25
 def currentJavaVersion = JavaVersion.current().majorVersion.toInteger()
