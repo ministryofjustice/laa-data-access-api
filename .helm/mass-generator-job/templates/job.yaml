@@ -38,6 +38,8 @@ spec:
             {{- if eq .Values.spring.profile "preview" }}
             - name: DB_NAME
               value: "postgres"
+            - name: DB_USERNAME
+              value: "postgres"
             - name: DB_HOST
               value: {{ .Values.db.postgresqlReleaseName }}
             - name: DB_PASSWORD
