@@ -14,6 +14,7 @@ import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRe
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -27,11 +28,15 @@ import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.model.IndividualsResponse;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
+import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 
 /** Full HTTP/Postgres/Axon integration tests for the GET /individuals endpoint. */
 @Testcontainers
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(
+    webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+    properties = {"feature.enable-dev-token=true"})
 @AutoConfigureTestRestTemplate
+@Import(TestJwtDecoderConfig.class)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class GetIndividualsIntegrationTest {
 
@@ -71,8 +76,14 @@ class GetIndividualsIntegrationTest {
 
   @Test
   void givenMissingServiceNameHeader_whenGetIndividuals_thenReturnsBadRequest() {
+    HttpHeaders headers = new HttpHeaders();
+    headers.setBearerAuth(TestJwtDecoderConfig.BEARER_TOKEN);
     ResponseEntity<Void> response =
-        restTemplate.getForEntity("http://localhost:" + port + "/api/v0/individuals", Void.class);
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/individuals",
+            HttpMethod.GET,
+            new HttpEntity<>(headers),
+            Void.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
   }
@@ -104,12 +115,14 @@ class GetIndividualsIntegrationTest {
     HttpHeaders headers = new HttpHeaders();
     headers.set("X-Service-Name", "CIVIL_APPLY");
     headers.set("X-Schema-Version", "1");
+    headers.setBearerAuth(TestJwtDecoderConfig.BEARER_TOKEN);
     return headers;
   }
 
   private HttpHeaders serviceNameHeader() {
     HttpHeaders headers = new HttpHeaders();
     headers.set("X-Service-Name", "CIVIL_APPLY");
+    headers.setBearerAuth(TestJwtDecoderConfig.BEARER_TOKEN);
     return headers;
   }
 }
