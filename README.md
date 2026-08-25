@@ -524,7 +524,7 @@ You can check the database to see the generated data or use swagger to execute e
 
 The Axon mass-data generator runs as an opt-in Testcontainers integration test. It creates data through the service command-side use cases, validates the resulting projections, and exports a PostgreSQL custom-format dump with JSON metadata.
 
-Generate a dump with a reproducible ten-application run:
+Generate  a dump with a reproducible ten-application run:
 
 ```bash
 ./gradlew :data-access-service-axon:generateAxonMassDataDump \
