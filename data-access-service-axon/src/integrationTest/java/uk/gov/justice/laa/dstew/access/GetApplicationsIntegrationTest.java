@@ -14,6 +14,7 @@ import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRe
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -26,11 +27,15 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
+import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 
 /** Full HTTP/Postgres/Axon integration tests for the GET /applications (list) endpoint. */
 @Testcontainers
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(
+    webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+    properties = {"feature.enable-dev-token=true"})
 @AutoConfigureTestRestTemplate
+@Import(TestJwtDecoderConfig.class)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class GetApplicationsIntegrationTest {
 
@@ -53,7 +58,7 @@ class GetApplicationsIntegrationTest {
         restTemplate.exchange(
             "http://localhost:" + port + "/api/v0/applications",
             HttpMethod.GET,
-            new HttpEntity<>(new HttpHeaders()),
+            new HttpEntity<>(headers()),
             ApplicationSummaryResponse.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -74,7 +79,7 @@ class GetApplicationsIntegrationTest {
         restTemplate.exchange(
             "http://localhost:" + port + "/api/v0/applications?status=APPLICATION_SUBMITTED",
             HttpMethod.GET,
-            new HttpEntity<>(new HttpHeaders()),
+            new HttpEntity<>(headers()),
             ApplicationSummaryResponse.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -110,6 +115,7 @@ class GetApplicationsIntegrationTest {
     HttpHeaders headers = new HttpHeaders();
     headers.set("X-Service-Name", "CIVIL_APPLY");
     headers.set("X-Schema-Version", "1");
+    headers.setBearerAuth(TestJwtDecoderConfig.BEARER_TOKEN);
     return headers;
   }
 }
