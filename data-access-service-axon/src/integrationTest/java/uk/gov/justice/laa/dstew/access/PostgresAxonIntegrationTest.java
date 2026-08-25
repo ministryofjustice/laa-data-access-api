@@ -29,6 +29,7 @@ import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRe
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.context.annotation.Import;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.env.Environment;
 import org.springframework.http.HttpEntity;
@@ -74,10 +75,14 @@ import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuer
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
+import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 
 @Testcontainers
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(
+    webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+    properties = {"feature.enable-dev-token=true"})
 @AutoConfigureTestRestTemplate
+@Import(TestJwtDecoderConfig.class)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class PostgresAxonIntegrationTest {
 
@@ -236,8 +241,11 @@ class PostgresAxonIntegrationTest {
         .isEqualTo(1);
 
     ResponseEntity<String> response =
-        restTemplate.getForEntity(
-            "http://localhost:" + port + "/api/v0/applications/" + applicationId, String.class);
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/applications/" + applicationId,
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            String.class);
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
 
     List<String> currentStateColumns =
@@ -264,6 +272,7 @@ class PostgresAxonIntegrationTest {
     HttpHeaders headers = new HttpHeaders();
     headers.set("X-Service-Name", "CIVIL_APPLY");
     headers.set("X-Schema-Version", "1");
+    headers.setBearerAuth(TestJwtDecoderConfig.BEARER_TOKEN);
 
     ResponseEntity<Void> response =
         restTemplate.postForEntity(
@@ -436,13 +445,13 @@ class PostgresAxonIntegrationTest {
     UUID applyProceedingId = UUID.randomUUID();
     applicationId(post(validCreateApplicationRequest(applicationId, applyProceedingId), headers()));
     ApplicationReadModel created = awaitProjection(applicationId);
+    markReadyForManualDecision(applicationId);
     UUID proceedingId = created.getProceedings().getFirst().getId();
 
     MakeDecisionRequest request =
         MakeDecisionRequest.builder()
-            .applicationVersion(0L)
+            .applicationVersion(1L)
             .overallDecision(DecisionStatus.REFUSED)
-            .autoGranted(false)
             .eventHistory(
                 EventHistoryRequest.builder().eventDescription("Decision recorded").build())
             .proceedings(
@@ -466,7 +475,7 @@ class PostgresAxonIntegrationTest {
             Void.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-    ApplicationReadModel decided = awaitProjectionVersion(applicationId, 1L);
+    ApplicationReadModel decided = awaitProjectionVersion(applicationId, 2L);
     assertThat(decided.getDecisionStatus()).isEqualTo("REFUSED");
     assertThat(decided.getAutoGranted()).isEqualTo(AutoGrantedState.MANUAL);
     assertThat(decided.getMeritsDecisions().get(proceedingId).justification())
@@ -475,14 +484,14 @@ class PostgresAxonIntegrationTest {
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT payload ->> 'overallDecision' FROM axon.application_data "
-                    + "WHERE application_id = ? AND version = 1",
+                    + "WHERE application_id = ? AND version = 2",
                 String.class,
                 applicationId))
         .isEqualTo("REFUSED");
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT convert_from(payload, 'UTF8') FROM axon.domain_event_entry "
-                    + "WHERE aggregate_identifier = ? AND sequence_number = 1",
+                    + "WHERE aggregate_identifier = ? AND sequence_number = 2",
                 String.class,
                 applicationId.toString()))
         .contains("applicationDataVersion", "REFUSED")
@@ -509,7 +518,7 @@ class PostgresAxonIntegrationTest {
     ApplicationResponse application = awaitGet(applicationId).getBody();
     assertThat(application.getDecisionStatus()).isEqualTo(DecisionStatus.REFUSED);
     assertThat(application.getAutoGranted()).isEqualTo(AutoGranted.MANUAL);
-    assertThat(application.getVersion()).isEqualTo(1L);
+    assertThat(application.getVersion()).isEqualTo(2L);
     assertThat(application.getProceedings().getFirst().getMeritsDecision())
         .isEqualTo(MeritsDecisionStatus.REFUSED);
 
@@ -525,7 +534,7 @@ class PostgresAxonIntegrationTest {
                 "SELECT COUNT(*) FROM axon.application_data WHERE application_id = ?",
                 Integer.class,
                 applicationId))
-        .isEqualTo(2);
+        .isEqualTo(3);
   }
 
   @Test
@@ -615,6 +624,7 @@ class PostgresAxonIntegrationTest {
     UUID applicationId = UUID.randomUUID();
     UUID applyProceedingId = UUID.randomUUID();
     applicationId(post(validCreateApplicationRequest(applicationId, applyProceedingId), headers()));
+    markReadyForManualDecision(applicationId);
     UUID proceedingId = awaitProjection(applicationId).getProceedings().getFirst().getId();
     Map<String, Object> certificate =
         Map.of(
@@ -623,9 +633,8 @@ class PostgresAxonIntegrationTest {
             "validUntil", "2027-03-03");
     MakeDecisionRequest request =
         MakeDecisionRequest.builder()
-            .applicationVersion(0L)
+            .applicationVersion(1L)
             .overallDecision(DecisionStatus.GRANTED)
-            .autoGranted(false)
             .certificate(certificate)
             .eventHistory(
                 EventHistoryRequest.builder().eventDescription("Certificate granted").build())
@@ -648,7 +657,7 @@ class PostgresAxonIntegrationTest {
             new HttpEntity<>(request, headers()),
             Void.class);
     assertThat(decisionResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-    awaitProjectionVersion(applicationId, 1L);
+    awaitProjectionVersion(applicationId, 2L);
 
     ResponseEntity<Map<String, Object>> certificateResponse =
         restTemplate.exchange(
@@ -693,10 +702,9 @@ class PostgresAxonIntegrationTest {
             String.class);
     assertThat(missingApplicationResponse.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     assertThat(missingApplicationResponse.getBody())
-        .contains("No application found with id: " + missingApplicationId);
+        .contains("No application found with ID: " + missingApplicationId);
   }
 
-  @Test
   void givenKnownCaseworkerAndApplication_whenAssigned_thenUpdatesOnlyRequestedApplication()
       throws Exception {
     UUID caseworkerId = UUID.randomUUID();
@@ -939,8 +947,11 @@ class PostgresAxonIntegrationTest {
     UUID applicationId = UUID.randomUUID();
 
     ResponseEntity<String> response =
-        restTemplate.getForEntity(
-            "http://localhost:" + port + "/api/v0/applications/" + applicationId, String.class);
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/applications/" + applicationId,
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            String.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     assertThat(response.getBody()).contains("No application found with ID: " + applicationId);
@@ -1158,6 +1169,19 @@ class PostgresAxonIntegrationTest {
   }
 
   @Test
+  void givenBeanInvalidRequest_whenPostApplication_thenReturnsBadRequest() {
+    ApplicationCreateRequest request =
+        validCreateApplicationRequest(UUID.randomUUID(), UUID.randomUUID());
+    request.setLaaReference(null);
+
+    // Use valid auth headers but send invalid request body bean
+    HttpHeaders validHeaders = headers();
+    ResponseEntity<String> response = post(request, validHeaders, String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+  }
+
+  @Test
   void givenConcurrentIdenticalRequests_whenPosted_thenBothSucceedWithOneCreationEvent()
       throws Exception {
     UUID applicationId = UUID.randomUUID();
@@ -1225,12 +1249,12 @@ class PostgresAxonIntegrationTest {
       throws Exception {
     UUID applicationId = UUID.randomUUID();
     applicationId(post(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()));
+    markReadyForManualDecision(applicationId);
     UUID proceedingId = awaitProjection(applicationId).getProceedings().getFirst().getId();
     MakeDecisionRequest request =
         MakeDecisionRequest.builder()
-            .applicationVersion(0L)
+            .applicationVersion(1L)
             .overallDecision(DecisionStatus.REFUSED)
-            .autoGranted(false)
             .eventHistory(EventHistoryRequest.builder().eventDescription("Concurrent").build())
             .proceedings(
                 List.of(
@@ -1261,19 +1285,19 @@ class PostgresAxonIntegrationTest {
       executor.shutdown();
     }
 
-    assertThat(awaitProjectionVersion(applicationId, 1L).getApplicationVersion()).isEqualTo(1L);
+    assertThat(awaitProjectionVersion(applicationId, 2L).getApplicationVersion()).isEqualTo(2L);
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM axon.application_data WHERE application_id = ?",
                 Integer.class,
                 applicationId))
-        .isEqualTo(2);
+        .isEqualTo(3);
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM axon.domain_event_entry WHERE aggregate_identifier = ?",
                 Integer.class,
                 applicationId.toString()))
-        .isEqualTo(2);
+        .isEqualTo(3);
   }
 
   @Test
@@ -1321,6 +1345,22 @@ class PostgresAxonIntegrationTest {
         .isEqualTo(2);
   }
 
+  private void markReadyForManualDecision(UUID applicationId) throws Exception {
+    ResponseEntity<Void> response =
+        restTemplate.exchange(
+            "http://localhost:"
+                + port
+                + "/api/v0/applications/"
+                + applicationId
+                + "/auto-grant-outcome",
+            HttpMethod.PATCH,
+            new HttpEntity<>(new ManualOutcomeRequest(AutoGrantOutcome.MANUAL), headers()),
+            Void.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    awaitProjectionVersion(applicationId, 1L);
+  }
+
   private <T> CompletableFuture<ResponseEntity<Void>> concurrentPatch(
       ExecutorService executor, CyclicBarrier barrier, String url, HttpEntity<T> entity) {
     return CompletableFuture.supplyAsync(
@@ -1346,6 +1386,7 @@ class PostgresAxonIntegrationTest {
 
     HttpHeaders headers = new HttpHeaders();
     headers.set("X-Service-Name", "CIVIL_APPLY");
+    headers.setBearerAuth(TestJwtDecoderConfig.BEARER_TOKEN);
     ResponseEntity<List<Map<String, Object>>> response =
         restTemplate.exchange(
             "http://localhost:" + port + "/api/v0/caseworkers",
@@ -1361,10 +1402,150 @@ class PostgresAxonIntegrationTest {
 
   @Test
   void givenMissingServiceNameHeader_whenGetCaseworkers_thenReturnsBadRequest() {
+    HttpHeaders headers = new HttpHeaders();
+    headers.setBearerAuth(TestJwtDecoderConfig.BEARER_TOKEN);
+    // Intentionally omit X-Service-Name to test validation
     ResponseEntity<String> response =
-        restTemplate.getForEntity("http://localhost:" + port + "/api/v0/caseworkers", String.class);
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/caseworkers",
+            HttpMethod.GET,
+            new HttpEntity<>(headers),
+            String.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+  }
+
+  @Test
+  void givenNoToken_whenCallingSecuredEndpoints_thenReturnsUnauthorized() {
+    UUID applicationId = UUID.randomUUID();
+
+    assertUnauthorized(HttpMethod.GET, "/api/v0/caseworkers", null);
+    assertUnauthorized(HttpMethod.GET, "/api/v0/applications", null);
+    assertUnauthorized(HttpMethod.GET, "/api/v0/individuals", null);
+    assertUnauthorized(HttpMethod.GET, "/api/v0/applications/" + applicationId, null);
+    assertUnauthorized(
+        HttpMethod.GET, "/api/v0/applications/" + applicationId + "/certificate", null);
+    assertUnauthorized(HttpMethod.GET, "/api/v0/applications/" + applicationId + "/notes", null);
+    assertUnauthorized(
+        HttpMethod.GET, "/api/v0/applications/" + applicationId + "/history-search", null);
+    assertUnauthorized(
+        HttpMethod.POST,
+        "/api/v0/applications",
+        validCreateApplicationRequest(UUID.randomUUID(), UUID.randomUUID()));
+    assertUnauthorized(
+        HttpMethod.PATCH, "/api/v0/applications/" + applicationId, submittedUpdateBody());
+    assertUnauthorized(
+        HttpMethod.PATCH, "/api/v0/applications/" + applicationId + "/decision", decisionBody());
+    assertUnauthorized(
+        HttpMethod.PATCH,
+        "/api/v0/applications/" + applicationId + "/auto-grant-outcome",
+        autoGrantOutcomeBody());
+    assertUnauthorized(
+        HttpMethod.POST,
+        "/api/v0/applications/" + applicationId + "/notes",
+        new CreateNoteRequest("note"));
+    assertUnauthorized(HttpMethod.POST, "/api/v0/applications/assign", assignRequestBody());
+    assertUnauthorized(
+        HttpMethod.POST,
+        "/api/v0/applications/" + applicationId + "/unassign",
+        unassignRequestBody());
+  }
+
+  @Test
+  void givenUnknownToken_whenCallingSecuredEndpoints_thenReturnsForbidden() {
+    UUID applicationId = UUID.randomUUID();
+
+    assertForbidden(HttpMethod.GET, "/api/v0/caseworkers", null);
+    assertForbidden(HttpMethod.GET, "/api/v0/applications", null);
+    assertForbidden(HttpMethod.GET, "/api/v0/individuals", null);
+    assertForbidden(HttpMethod.GET, "/api/v0/applications/" + applicationId, null);
+    assertForbidden(HttpMethod.GET, "/api/v0/applications/" + applicationId + "/certificate", null);
+    assertForbidden(HttpMethod.GET, "/api/v0/applications/" + applicationId + "/notes", null);
+    assertForbidden(
+        HttpMethod.GET, "/api/v0/applications/" + applicationId + "/history-search", null);
+    assertForbidden(
+        HttpMethod.POST,
+        "/api/v0/applications",
+        validCreateApplicationRequest(UUID.randomUUID(), UUID.randomUUID()));
+    assertForbidden(
+        HttpMethod.PATCH, "/api/v0/applications/" + applicationId, submittedUpdateBody());
+    assertForbidden(
+        HttpMethod.PATCH, "/api/v0/applications/" + applicationId + "/decision", decisionBody());
+    assertForbidden(
+        HttpMethod.PATCH,
+        "/api/v0/applications/" + applicationId + "/auto-grant-outcome",
+        autoGrantOutcomeBody());
+    assertForbidden(
+        HttpMethod.POST,
+        "/api/v0/applications/" + applicationId + "/notes",
+        new CreateNoteRequest("note"));
+    assertForbidden(HttpMethod.POST, "/api/v0/applications/assign", assignRequestBody());
+    assertForbidden(
+        HttpMethod.POST,
+        "/api/v0/applications/" + applicationId + "/unassign",
+        unassignRequestBody());
+  }
+
+  private ApplicationUpdateRequest submittedUpdateBody() {
+    ApplicationCreateRequest submitted =
+        validCreateApplicationRequest(UUID.randomUUID(), UUID.randomUUID());
+    return submittedUpdate(submitted);
+  }
+
+  private MakeDecisionRequest decisionBody() {
+    return MakeDecisionRequest.builder()
+        .applicationVersion(0L)
+        .overallDecision(DecisionStatus.REFUSED)
+        .autoGranted(false)
+        .eventHistory(EventHistoryRequest.builder().eventDescription("decision").build())
+        .proceedings(
+            List.of(
+                MakeDecisionProceedingRequest.builder()
+                    .proceedingId(UUID.randomUUID())
+                    .meritsDecision(
+                        MeritsDecisionDetailsRequest.builder()
+                            .decision(MeritsDecisionStatus.REFUSED)
+                            .reason("reason")
+                            .justification("justification")
+                            .build())
+                    .build()))
+        .build();
+  }
+
+  private ManualOutcomeRequest autoGrantOutcomeBody() {
+    return new ManualOutcomeRequest(AutoGrantOutcome.MANUAL);
+  }
+
+  private CaseworkerAssignRequest assignRequestBody() {
+    return new CaseworkerAssignRequest()
+        .caseworkerId(UUID.randomUUID())
+        .applicationIds(List.of(UUID.randomUUID()))
+        .eventHistory(EventHistoryRequest.builder().eventDescription("assign").build());
+  }
+
+  private CaseworkerUnassignRequest unassignRequestBody() {
+    return new CaseworkerUnassignRequest()
+        .eventHistory(EventHistoryRequest.builder().eventDescription("unassign").build());
+  }
+
+  private void assertUnauthorized(HttpMethod method, String path, Object body) {
+    ResponseEntity<String> response =
+        restTemplate.exchange(
+            "http://localhost:" + port + path,
+            method,
+            new HttpEntity<>(body, headersWithoutAuth()),
+            String.class);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+  }
+
+  private void assertForbidden(HttpMethod method, String path, Object body) {
+    ResponseEntity<String> response =
+        restTemplate.exchange(
+            "http://localhost:" + port + path,
+            method,
+            new HttpEntity<>(body, headersWithUnknownToken()),
+            String.class);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
   }
 
   private ResponseEntity<Void> post(ApplicationCreateRequest request, HttpHeaders headers) {
@@ -1469,8 +1650,10 @@ class PostgresAxonIntegrationTest {
     awaitProjectionVersion(applicationId, 1L);
 
     ResponseEntity<String> response =
-        restTemplate.getForEntity(
+        restTemplate.exchange(
             "http://localhost:" + port + "/api/v0/applications/" + applicationId + "/notes",
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
             String.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -1480,8 +1663,10 @@ class PostgresAxonIntegrationTest {
   @Test
   void givenNoApplication_whenGetNotes_thenReturns404() {
     ResponseEntity<Void> response =
-        restTemplate.getForEntity(
+        restTemplate.exchange(
             "http://localhost:" + port + "/api/v0/applications/" + UUID.randomUUID() + "/notes",
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
             Void.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
@@ -1495,6 +1680,20 @@ class PostgresAxonIntegrationTest {
     HttpHeaders headers = new HttpHeaders();
     headers.set("X-Service-Name", "CIVIL_APPLY");
     headers.set("X-Schema-Version", String.valueOf(schemaVersion));
+    headers.setBearerAuth(TestJwtDecoderConfig.BEARER_TOKEN);
+    return headers;
+  }
+
+  private HttpHeaders headersWithoutAuth() {
+    HttpHeaders headers = new HttpHeaders();
+    headers.set("X-Service-Name", "CIVIL_APPLY");
+    return headers;
+  }
+
+  private HttpHeaders headersWithUnknownToken() {
+    HttpHeaders headers = new HttpHeaders();
+    headers.set("X-Service-Name", "CIVIL_APPLY");
+    headers.setBearerAuth("unknown-token");
     return headers;
   }
 
@@ -1520,8 +1719,10 @@ class PostgresAxonIntegrationTest {
             .pollInterval(100, TimeUnit.MILLISECONDS)
             .until(
                 () ->
-                    restTemplate.getForEntity(
+                    restTemplate.exchange(
                         "http://localhost:" + port + "/api/v0/applications/" + applicationId,
+                        HttpMethod.GET,
+                        new HttpEntity<>(headers()),
                         String.class),
                 candidate -> candidate.getStatusCode() == HttpStatus.OK);
     return new ResponseEntity<>(

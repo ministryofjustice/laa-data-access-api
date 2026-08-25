@@ -29,6 +29,8 @@ components:
       enum:
         - APPLICATION_IN_PROGRESS
         - APPLICATION_SUBMITTED
+        - APPLICATION_GRANTED
+        - APPLICATION_REFUSED
       description: Application statuses
 
     DomainEventType:

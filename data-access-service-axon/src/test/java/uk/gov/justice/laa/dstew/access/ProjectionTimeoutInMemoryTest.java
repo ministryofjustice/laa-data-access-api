@@ -17,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -34,6 +35,7 @@ import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetailsRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
+import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 
 /**
  * Verifies that when the application-projection tracking processor is stopped the controller
@@ -56,6 +58,7 @@ import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
       "application.projection.timeout=200ms"
     })
 @AutoConfigureTestRestTemplate
+@Import(TestJwtDecoderConfig.class)
 @DirtiesContext(methodMode = DirtiesContext.MethodMode.AFTER_METHOD)
 class ProjectionTimeoutInMemoryTest {
 
@@ -80,6 +83,7 @@ class ProjectionTimeoutInMemoryTest {
     HttpHeaders headers = new HttpHeaders();
     headers.set("X-Service-Name", "CIVIL_APPLY");
     headers.set("X-Schema-Version", "1");
+    headers.setBearerAuth(TestJwtDecoderConfig.BEARER_TOKEN);
 
     long startMs = System.currentTimeMillis();
     ResponseEntity<Void> response =
@@ -131,7 +135,20 @@ class ProjectionTimeoutInMemoryTest {
                 .postForEntity(
                     "/api/v0/applications", new HttpEntity<>(createRequest, headers), Void.class)
                 .getStatusCode())
-        .isEqualTo(HttpStatus.CREATED);
+        .isIn(HttpStatus.CREATED, HttpStatus.ACCEPTED);
+    await()
+        .atMost(Duration.ofSeconds(5))
+        .untilAsserted(
+            () ->
+                assertThat(
+                        restTemplate
+                            .exchange(
+                                "/api/v0/applications/" + applicationId,
+                                HttpMethod.GET,
+                                new HttpEntity<>(headers),
+                                ApplicationResponse.class)
+                            .getBody())
+                    .isNotNull());
 
     StreamingEventProcessor processor =
         axonConfiguration
@@ -201,7 +218,20 @@ class ProjectionTimeoutInMemoryTest {
                 .postForEntity(
                     "/api/v0/applications", new HttpEntity<>(createRequest, headers), Void.class)
                 .getStatusCode())
-        .isEqualTo(HttpStatus.CREATED);
+        .isIn(HttpStatus.CREATED, HttpStatus.ACCEPTED);
+    await()
+        .atMost(Duration.ofSeconds(5))
+        .untilAsserted(
+            () ->
+                assertThat(
+                        restTemplate
+                            .exchange(
+                                "/api/v0/applications/" + applicationId,
+                                HttpMethod.GET,
+                                new HttpEntity<>(headers),
+                                ApplicationResponse.class)
+                            .getBody())
+                    .isNotNull());
     ApplicationResponse created =
         restTemplate
             .exchange(
@@ -213,6 +243,31 @@ class ProjectionTimeoutInMemoryTest {
     assertThat(created).isNotNull();
     UUID proceedingId = created.getProceedings().getFirst().getProceedingId();
 
+    assertThat(
+            restTemplate
+                .exchange(
+                    "/api/v0/applications/" + applicationId + "/auto-grant-outcome",
+                    HttpMethod.PATCH,
+                    new HttpEntity<>(new ManualOutcomeRequest(AutoGrantOutcome.MANUAL), headers),
+                    Void.class)
+                .getStatusCode())
+        .isEqualTo(HttpStatus.NO_CONTENT);
+    await()
+        .atMost(Duration.ofSeconds(5))
+        .untilAsserted(
+            () -> {
+              ResponseEntity<ApplicationResponse> currentRead =
+                  restTemplate.exchange(
+                      "/api/v0/applications/" + applicationId,
+                      HttpMethod.GET,
+                      new HttpEntity<>(headers),
+                      ApplicationResponse.class);
+              assertThat(currentRead.getBody()).isNotNull();
+              assertThat(currentRead.getBody().getAutoGranted())
+                  .isEqualTo(uk.gov.justice.laa.dstew.access.model.AutoGranted.MANUAL);
+              assertThat(currentRead.getBody().getVersion()).isEqualTo(1L);
+            });
+
     StreamingEventProcessor processor =
         axonConfiguration
             .getComponents(StreamingEventProcessor.class)
@@ -220,15 +275,15 @@ class ProjectionTimeoutInMemoryTest {
     processor.shutdown().join();
     MakeDecisionRequest decisionRequest =
         MakeDecisionRequest.builder()
-            .applicationVersion(0L)
+            .applicationVersion(1L)
             .overallDecision(DecisionStatus.GRANTED)
-            .autoGranted(true)
             .certificate(
                 Map.of(
                     "certificateNumber", "AUTO-2099",
                     "issueDate", "2026-08-04",
                     "validUntil", "2027-08-04"))
-            .eventHistory(EventHistoryRequest.builder().eventDescription("Auto-granted").build())
+            .eventHistory(
+                EventHistoryRequest.builder().eventDescription("Decision recorded").build())
             .proceedings(
                 List.of(
                     MakeDecisionProceedingRequest.builder()
@@ -264,14 +319,14 @@ class ProjectionTimeoutInMemoryTest {
     assertThat(first.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
     assertThat(staleRead.getBody()).isNotNull();
     assertThat(staleRead.getBody().getAutoGranted())
-        .isEqualTo(uk.gov.justice.laa.dstew.access.model.AutoGranted.PENDING);
+        .isEqualTo(uk.gov.justice.laa.dstew.access.model.AutoGranted.MANUAL);
     assertThat(repeated.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM domain_event_entry WHERE aggregate_identifier = ?",
                 Integer.class,
                 applicationId.toString()))
-        .isEqualTo(2);
+        .isEqualTo(3);
 
     processor.start().join();
     await()
@@ -286,8 +341,8 @@ class ProjectionTimeoutInMemoryTest {
                       ApplicationResponse.class);
               assertThat(currentRead.getBody()).isNotNull();
               assertThat(currentRead.getBody().getAutoGranted())
-                  .isEqualTo(uk.gov.justice.laa.dstew.access.model.AutoGranted.AUTOGRANTED);
-              assertThat(currentRead.getBody().getVersion()).isEqualTo(1L);
+                  .isEqualTo(uk.gov.justice.laa.dstew.access.model.AutoGranted.MANUAL);
+              assertThat(currentRead.getBody().getVersion()).isEqualTo(2L);
             });
   }
 
@@ -295,6 +350,7 @@ class ProjectionTimeoutInMemoryTest {
     HttpHeaders headers = new HttpHeaders();
     headers.set("X-Service-Name", "CIVIL_APPLY");
     headers.set("X-Schema-Version", "1");
+    headers.setBearerAuth(TestJwtDecoderConfig.BEARER_TOKEN);
     return headers;
   }
 }

@@ -10,6 +10,7 @@ import org.axonframework.messaging.queryhandling.annotation.QueryHandler;
 import org.springframework.stereotype.Component;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
+import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
@@ -117,7 +118,7 @@ public class ApplicationHistoryProjection {
     append(
         message,
         event.applicationId(),
-        "GRANTED".equals(event.overallDecision())
+        DecisionValue.GRANTED.name().equals(event.overallDecision())
             ? "APPLICATION_MAKE_DECISION_GRANTED"
             : "APPLICATION_MAKE_DECISION_REFUSED",
         serialise(event),
@@ -197,7 +198,7 @@ public class ApplicationHistoryProjection {
       java.util.Map<String, Object> reconstructedPayload = new java.util.HashMap<>();
       reconstructedPayload.put("eventDescription", description);
       if (assignment && thinPayload.get("caseworkerId") != null) {
-        reconstructedPayload.put("caseworkerId", thinPayload.get("caseworkerId").asText());
+        reconstructedPayload.put("caseworkerId", thinPayload.get("caseworkerId").asString());
       }
       return ApplicationHistoryReadModel.builder()
           .eventId(history.getEventId())

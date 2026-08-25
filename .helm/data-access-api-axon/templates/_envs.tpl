@@ -52,6 +52,73 @@ Persistent environments use shared RDS, isolated via a dedicated Axon schema.
 {{- end }}
 
 {{/*
+  Define OAuth2/Entra ID environment variables for authentication
+
+  UAT/Testing: Always uses shared mock-oauth2 (NO real Entra ID)
+  Production: Uses real Azure Entra ID from secrets
+*/}}
+{{- define "axonOauth2Config" }}
+{{- if and .Values.mockOAuth2 .Values.mockOAuth2.sharedInstance .Values.mockOAuth2.sharedInstance.enabled }}
+- name: ENTRA_ISSUER_URI
+  value: "http://{{ .Values.mockOAuth2.sharedInstance.serviceName }}.{{ .Values.mockOAuth2.sharedInstance.namespace }}.svc.cluster.local:9999/entra"
+- name: ENTRA_JWK_SET_URI
+  value: "http://{{ .Values.mockOAuth2.sharedInstance.serviceName }}.{{ .Values.mockOAuth2.sharedInstance.namespace }}.svc.cluster.local:9999/entra/jwks"
+- name: ENTRA_AUD
+  value: "laa-data-access-api"
+{{- else }}
+- name: ENTRA_ISSUER_URI
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: ENTRA_ISSUER_URI
+- name: ENTRA_JWK_SET_URI
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: ENTRA_JWK_SET_URI
+- name: ENTRA_AUD
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: ENTRA_AUD
+{{- end }}
+{{- end }}
+
+{{/*
+  Define feature environment variables for flags
+*/}}
+{{- define "axonFeatureConfig" }}
+{{- if and .Values.featureFlags (hasKey .Values.featureFlags "enable_dev_token") }}
+- name: FEATURE_ENABLE_DEV_TOKEN
+  value: {{ .Values.featureFlags.enable_dev_token | quote }}
+{{- else }}
+- name: FEATURE_ENABLE_DEV_TOKEN
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: FEATURE_ENABLE_DEV_TOKEN
+{{- end }}
+{{- if and .Values.featureFlags (hasKey .Values.featureFlags "disable_security") }}
+- name: FEATURE_DISABLE_SECURITY
+  value: {{ .Values.featureFlags.disable_security | quote }}
+{{- else }}
+- name: FEATURE_DISABLE_SECURITY
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: FEATURE_DISABLE_SECURITY
+{{- end }}
+{{- if .Values.featureFlags }}
+{{- range $key, $value := .Values.featureFlags }}
+{{- if and (ne $key "enable_dev_token") (ne $key "disable_security") }}
+- name: FEATURE_{{ upper $key }}
+  value: {{ $value | quote }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{/*
   Define Sentry environment variables
 */}}
 {{- define "axonSentryConfig" }}

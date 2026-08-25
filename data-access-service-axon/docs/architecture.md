@@ -89,6 +89,9 @@ overwriting a decision based on stale state. The aggregate chooses the next
 - `true` means an automatically granted Decision was recorded, so the Application remains outside
   manual work.
 
+Caseworkers can make a Decision only after the manual outcome has been recorded. The general
+decision command rejects Applications with a `PENDING` or `AUTOGRANTED` autoGrant state.
+
 `PATCH /api/v0/applications/{id}/auto-grant-outcome` records either terminal outcome. The
 `MANUAL` variant records the false outcome without changing `APPLICATION_SUBMITTED`; the
 `AUTOGRANTED` variant records the complete granted Decision and sets the true outcome. Both require

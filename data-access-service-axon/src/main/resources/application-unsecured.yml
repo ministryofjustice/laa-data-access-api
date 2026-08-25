@@ -1,2 +1,11 @@
+spring:
+  autoconfigure:
+    exclude:
+      - org.axonframework.springboot.autoconfig.XStreamAutoConfiguration
+      - org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
+      - org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration
+      - org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration
+      - uk.gov.laa.springboot.oauth2.MultiTenantJwtAuthenticationManagerResolverAutoConfiguration
+
 feature:
   disable-security: true

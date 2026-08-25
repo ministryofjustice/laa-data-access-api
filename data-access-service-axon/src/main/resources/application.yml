@@ -54,10 +54,30 @@ application:
       threshold: ${ASSESSMENT_RECONCILIATION_THRESHOLD:15m}
       interval: ${ASSESSMENT_RECONCILIATION_INTERVAL:5m}
 
+laa:
+  springboot:
+    starter:
+      oauth2:
+        resourceserver:
+          jwt:
+            tenants:
+              - issuer-uri: ${ENTRA_ISSUER_URI}
+                audiences:
+                  - ${ENTRA_AUD}
+        authorized-roles: '[{"name": "LAA_CASEWORKER", "uris": ["/api/**"]}]'
+        unprotected-uris:
+          - /error
+          - /actuator/health
+          - /actuator/health/**
+          - /actuator/info
+          - /actuator/prometheus
+          - /actuator/metrics/**
+          - /swagger-ui/**
+          - /v3/api-docs/**
+
 logging:
   level:
     com.azure.spring: INFO
-    uk.gov.justice.laa.dstew.access.config.SecurityConfig: WARN
 
 management:
   endpoints:
@@ -70,3 +90,7 @@ management:
 springdoc:
   api-docs:
     version: openapi_3_1
+
+feature:
+  enable-dev-token: ${FEATURE_ENABLE_DEV_TOKEN:false}
+  disable-security: ${FEATURE_DISABLE_SECURITY:false}

@@ -236,9 +236,9 @@ jobs:
             raw="$1"
             cleaned=$(echo "$raw" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9-' '-' | sed 's/^-*//; s/-*$//; s/--*/-/g')
             if [ -z "$cleaned" ]; then cleaned="feat-env"; fi
-            if [ ${#cleaned} -gt 53 ]; then
+            if [ ${#cleaned} -gt 48 ]; then
               hash_suffix=$(printf "%s" "$cleaned" | shasum | cut -c1-8)
-              prefix=$(printf "%s" "$cleaned" | cut -c1-44 | sed 's/-*$//')
+              prefix=$(printf "%s" "$cleaned" | cut -c1-39 | sed 's/-*$//')
               cleaned="${prefix}-${hash_suffix}"
             fi
             echo "$cleaned"
@@ -286,6 +286,7 @@ jobs:
           release-name-override: ${{ matrix.release_name }}
           extra-env: ${{ matrix.extra_env }}
           image-tag: ${{ needs.release.outputs.published_artifact_version }}
+          axon-image-tag: ${{ format('{0}-axon', needs.release.outputs.published_artifact_version) }}
 
   deploy-staging:
     runs-on: ubuntu-latest

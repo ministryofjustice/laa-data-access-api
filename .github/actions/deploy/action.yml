@@ -33,6 +33,10 @@ inputs:
     description: "Docker image tag for the Axon service (e.g. <version>-axon). When provided, the Axon (CQRS) service is also deployed as a separate Helm release. Non-prod only."
     required: false
     default: ""
+  deploy-axon:
+    description: "Whether to deploy the Axon service."
+    required: false
+    default: 'false'
 
 runs:
   using: "composite"

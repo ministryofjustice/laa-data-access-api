@@ -20,6 +20,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -40,12 +41,8 @@ import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantedOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
-import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
 import uk.gov.justice.laa.dstew.access.model.IndividualsResponse;
-import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceedingRequest;
-import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
-import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetailsRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadRepository;
@@ -53,6 +50,7 @@ import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuer
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
+import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 
 @SpringBootTest(
     classes = DataAccessServiceAxonApplication.class,
@@ -65,6 +63,7 @@ import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedAppli
       "spring.datasource.url=jdbc:h2:mem:axon-create;DB_CLOSE_DELAY=-1"
     })
 @AutoConfigureTestRestTemplate
+@Import(TestJwtDecoderConfig.class)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class CreateApplicationInMemoryTest {
 
@@ -125,7 +124,11 @@ class CreateApplicationInMemoryTest {
     UUID applicationId = UUID.randomUUID();
 
     ResponseEntity<String> response =
-        restTemplate.getForEntity("/api/v0/applications/" + applicationId, String.class);
+        restTemplate.exchange(
+            "/api/v0/applications/" + applicationId,
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            String.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     assertThat(response.getBody()).contains("No application found with ID: " + applicationId);
@@ -189,9 +192,14 @@ class CreateApplicationInMemoryTest {
 
   @Test
   void givenMissingServiceName_whenGetApplicationHistory_thenReturnsBadRequest() {
+    HttpHeaders headers = new HttpHeaders();
+    headers.setBearerAuth(TestJwtDecoderConfig.BEARER_TOKEN);
     ResponseEntity<String> response =
-        restTemplate.getForEntity(
-            "/api/v0/applications/" + UUID.randomUUID() + "/history-search", String.class);
+        restTemplate.exchange(
+            "/api/v0/applications/" + UUID.randomUUID() + "/history-search",
+            HttpMethod.GET,
+            new HttpEntity<>(headers),
+            String.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
   }
@@ -253,6 +261,7 @@ class CreateApplicationInMemoryTest {
     HttpHeaders headers = new HttpHeaders();
     headers.set("X-Service-Name", "CIVIL_APPLY");
     headers.set("X-Schema-Version", "1");
+    headers.setBearerAuth(TestJwtDecoderConfig.BEARER_TOKEN);
 
     ResponseEntity<Void> response =
         restTemplate.postForEntity(
@@ -406,7 +415,6 @@ class CreateApplicationInMemoryTest {
                 ApplicationResponse.class)
             .getBody();
     assertThat(created).isNotNull();
-    UUID proceedingId = created.getProceedings().getFirst().getProceedingId();
     var request =
         new AutoGrantedOutcomeRequest(
             AutoGrantOutcome.AUTOGRANTED, Map.of("certificateNumber", "AUTO-2126"));
@@ -503,30 +511,16 @@ class CreateApplicationInMemoryTest {
             new HttpEntity<>(
                 validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()),
             Void.class));
-    UUID proceedingId = awaitProjection(applicationId).getProceedings().getFirst().getId();
-    MakeDecisionRequest decision =
-        MakeDecisionRequest.builder()
-            .applicationVersion(0L)
-            .overallDecision(DecisionStatus.GRANTED)
-            .autoGranted(true)
-            .certificate(java.util.Map.of("certificateNumber", "AUTO-1"))
-            .eventHistory(EventHistoryRequest.builder().eventDescription("Auto-granted").build())
-            .proceedings(
-                List.of(
-                    MakeDecisionProceedingRequest.builder()
-                        .proceedingId(proceedingId)
-                        .meritsDecision(
-                            MeritsDecisionDetailsRequest.builder()
-                                .decision(MeritsDecisionStatus.GRANTED)
-                                .justification("All automatic checks passed")
-                                .build())
-                        .build()))
-            .build();
-    restTemplate.exchange(
-        "/api/v0/applications/" + applicationId + "/decision",
-        HttpMethod.PATCH,
-        new HttpEntity<>(decision, headers()),
-        Void.class);
+    ResponseEntity<Void> autoGrantResponse =
+        restTemplate.exchange(
+            "/api/v0/applications/" + applicationId + "/auto-grant-outcome",
+            HttpMethod.PATCH,
+            new HttpEntity<>(
+                new AutoGrantedOutcomeRequest(
+                    AutoGrantOutcome.AUTOGRANTED, java.util.Map.of("certificateNumber", "AUTO-1")),
+                headers()),
+            Void.class);
+    assertThat(autoGrantResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
 
     ResponseEntity<String> response =
         restTemplate.exchange(
@@ -563,6 +557,7 @@ class CreateApplicationInMemoryTest {
     HttpHeaders headers = new HttpHeaders();
     headers.set("X-Service-Name", "CIVIL_APPLY");
     headers.set("X-Schema-Version", "1");
+    headers.setBearerAuth(TestJwtDecoderConfig.BEARER_TOKEN);
     HttpEntity<ApplicationCreateRequest> request =
         new HttpEntity<>(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers);
 
@@ -590,6 +585,7 @@ class CreateApplicationInMemoryTest {
     HttpHeaders headers = new HttpHeaders();
     headers.set("X-Service-Name", "CIVIL_APPLY");
     headers.set("X-Schema-Version", "1");
+    headers.setBearerAuth(TestJwtDecoderConfig.BEARER_TOKEN);
 
     ResponseEntity<Void> firstResponse =
         restTemplate.postForEntity(
@@ -803,8 +799,10 @@ class CreateApplicationInMemoryTest {
   @Test
   void givenNoMatchingApplications_whenGetApplicationsFilteredByLaaReference_thenReturnsEmpty() {
     ResponseEntity<ApplicationSummaryResponse> response =
-        restTemplate.getForEntity(
+        restTemplate.exchange(
             "/api/v0/applications?laaReference=DOES-NOT-EXIST-12345",
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
             ApplicationSummaryResponse.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -826,7 +824,11 @@ class CreateApplicationInMemoryTest {
     awaitProjection(createdApplicationId);
 
     ResponseEntity<ApplicationSummaryResponse> response =
-        restTemplate.getForEntity("/api/v0/applications", ApplicationSummaryResponse.class);
+        restTemplate.exchange(
+            "/api/v0/applications",
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            ApplicationSummaryResponse.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(response.getBody().getApplications())
@@ -874,7 +876,11 @@ class CreateApplicationInMemoryTest {
             Optional::isPresent);
 
     ResponseEntity<ApplicationSummaryResponse> response =
-        restTemplate.getForEntity("/api/v0/applications", ApplicationSummaryResponse.class);
+        restTemplate.exchange(
+            "/api/v0/applications",
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            ApplicationSummaryResponse.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(response.getBody().getApplications())
@@ -894,6 +900,7 @@ class CreateApplicationInMemoryTest {
     HttpHeaders headers = new HttpHeaders();
     headers.set("X-Service-Name", "CIVIL_APPLY");
     headers.set("X-Schema-Version", "1");
+    headers.setBearerAuth(TestJwtDecoderConfig.BEARER_TOKEN);
     return headers;
   }
 

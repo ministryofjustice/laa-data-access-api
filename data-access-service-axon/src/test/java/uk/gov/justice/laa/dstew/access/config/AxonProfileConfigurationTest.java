@@ -56,6 +56,24 @@ class AxonProfileConfigurationTest {
         .isEqualTo("${DB_USERNAME:${SPRING_DATASOURCE_USERNAME:laa_user}}");
     assertAxonPersistence(properties);
     assertEnvironmentIntegrationProperties(properties);
+    assertThat(property(properties, "spring.autoconfigure.exclude[0]"))
+        .isEqualTo("org.axonframework.springboot.autoconfig.XStreamAutoConfiguration");
+    assertThat(property(properties, "spring.autoconfigure.exclude[1]"))
+        .isEqualTo(
+            "org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration");
+    assertThat(property(properties, "spring.autoconfigure.exclude[2]"))
+        .isEqualTo(
+            "org.springframework.boot.actuate.autoconfigure.security.servlet."
+                + "ManagementWebSecurityAutoConfiguration");
+    assertThat(property(properties, "spring.autoconfigure.exclude[3]"))
+        .isEqualTo(
+            "org.springframework.boot.autoconfigure.security.oauth2.resource.servlet."
+                + "OAuth2ResourceServerAutoConfiguration");
+    assertThat(property(properties, "spring.autoconfigure.exclude[4]"))
+        .isEqualTo(
+            "uk.gov.laa.springboot.oauth2."
+                + "MultiTenantJwtAuthenticationManagerResolverAutoConfiguration");
+    assertThat(property(properties, "spring.autoconfigure.exclude[5]")).isNull();
     assertThat(property(properties, "feature.disable-security")).isEqualTo(true);
     assertThat(property(properties, "server.port")).isEqualTo("${SERVER_PORT:8082}");
   }
@@ -75,10 +93,10 @@ class AxonProfileConfigurationTest {
         .isEqualTo("${AWS_REGION:eu-west-2}");
     assertThat(property(properties, "spring.security.oauth2.resourceserver.jwt.issuer-uri"))
         .isEqualTo("${ENTRA_ISSUER_URI}");
-    assertThat(property(properties, "spring.security.oauth2.resourceserver.jwt.jwk-set-uri"))
-        .isEqualTo("${ENTRA_JWK_SET_URI}");
     assertThat(property(properties, "spring.security.oauth2.resourceserver.jwt.audience"))
         .isEqualTo("${ENTRA_AUD}");
+    assertThat(property(properties, "spring.security.oauth2.resourceserver.jwt.jwk-set-uri"))
+        .isEqualTo("${ENTRA_JWK_SET_URI}");
   }
 
   private static List<PropertySource<?>> loadProfile(String resource) throws IOException {
