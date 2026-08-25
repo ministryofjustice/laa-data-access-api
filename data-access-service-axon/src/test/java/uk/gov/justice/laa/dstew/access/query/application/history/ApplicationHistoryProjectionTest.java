@@ -1,7 +1,9 @@
 package uk.gov.justice.laa.dstew.access.query.application.history;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -306,6 +308,22 @@ class ApplicationHistoryProjectionTest {
     assertThat(saved.getOccurredAt()).isEqualTo(occurredAt);
     assertThat(saved.getEventData()).contains("\"status\":\"PENDING\"");
     assertThat(saved.getEventData()).contains("\"dataVersion\":0");
+  }
+
+  @Test
+  void
+      givenLegacyPriorAuthorityCreatedEventWithNullType_whenHandled_thenSkipsSaveWithoutThrowing() {
+    UUID submissionId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-08-05T10:00:00Z");
+    var legacyEvent =
+        new PriorAuthorityCreatedEvent(
+            submissionId, applicationId, null, 0L, "fp", "PENDING", 1, occurredAt);
+    var msg = message(legacyEvent, "legacy-pa-event-id");
+
+    projection.on(legacyEvent, msg);
+
+    verify(paRepository, never()).save(any());
   }
 
   @Test

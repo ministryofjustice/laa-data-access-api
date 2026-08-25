@@ -9,6 +9,8 @@ import org.axonframework.messaging.eventhandling.EventMessage;
 import org.axonframework.messaging.eventhandling.annotation.EventHandler;
 import org.axonframework.messaging.eventhandling.replay.annotation.ResetHandler;
 import org.axonframework.messaging.queryhandling.annotation.QueryHandler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
@@ -29,6 +31,8 @@ import uk.gov.justice.laa.dstew.access.config.interceptor.ServiceNameMetadataDis
 @Component
 @Namespace("application-history-projection")
 public class ApplicationHistoryProjection {
+
+  private static final Logger LOG = LoggerFactory.getLogger(ApplicationHistoryProjection.class);
 
   private final ApplicationHistoryReadRepository applicationHistoryReadRepository;
   private final ObjectMapper objectMapper;
@@ -167,6 +171,13 @@ public class ApplicationHistoryProjection {
   /** Records the creation of a PriorAuthority submission in the PA history table. */
   @EventHandler
   public void on(PriorAuthorityCreatedEvent event, EventMessage message) {
+    if (event.priorAuthorityType() == null) {
+      LOG.warn(
+          "Skipping PA history row for legacy PriorAuthorityCreatedEvent missing priorAuthorityType"
+              + " [eventId={}]",
+          message.identifier());
+      return;
+    }
     Object serviceName =
         message.metadata().get(ServiceNameMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY);
     priorAuthorityHistoryReadRepository.save(
