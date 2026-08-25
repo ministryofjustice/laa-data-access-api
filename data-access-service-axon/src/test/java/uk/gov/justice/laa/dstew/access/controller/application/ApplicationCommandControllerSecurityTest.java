@@ -2,7 +2,6 @@ package uk.gov.justice.laa.dstew.access.controller.application;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
@@ -11,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.assertj.core.api.Assertions;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringBootConfiguration;
@@ -44,7 +44,6 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.Create
 import uk.gov.justice.laa.dstew.access.command.application.ready.RecordAutoGrantOutcomeUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.config.SecurityConfig;
-import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
 import uk.gov.laa.springboot.oauth2.testsupport.StubJwtDecoder;
 import uk.gov.laa.springboot.oauth2.testsupport.StubJwtToken;
 
@@ -67,7 +66,6 @@ class ApplicationCommandControllerSecurityTest {
   @Autowired private TestRestTemplate restTemplate;
 
   @MockitoBean private RetryingCommandDispatcher dispatcher;
-  @MockitoBean private SubscriptionProjectionGateway projectionGateway;
   @MockitoBean private MakeApplicationDecisionUseCase makeDecisionUseCase;
   @MockitoBean private CreateNoteUseCase createNoteUseCase;
   @MockitoBean private UnassignCaseworkerUseCase unassignCaseworkerUseCase;
@@ -94,17 +92,14 @@ class ApplicationCommandControllerSecurityTest {
         restTemplate.exchange(
             url(), HttpMethod.POST, new HttpEntity<>(validRequest(), headers), String.class);
 
-    org.assertj.core.api.Assertions.assertThat(response.getStatusCode())
-        .isEqualTo(HttpStatus.UNAUTHORIZED);
+    Assertions.assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
 
-    verifyNoInteractions(commandMapper, dispatcher, projectionGateway);
+    verifyNoInteractions(commandMapper, dispatcher);
   }
 
+  @Disabled("Disabled until OBO roles are configured correctly")
   @Test
-  void givenAuthenticatedUserWithoutCaseworkerRole_whenCreateApplication_thenReturnsCreated() {
-    // TODO this currently passes because roles are added automatically as OBO not configured to
-    // assign roles correctly.
-    // Should be changed to a negative test once that work is complete
+  void givenAuthenticatedUserWithoutCaseworkerRole_whenCreateApplication_thenReturnsUnauthorized() {
     when(commandMapper.toCommand(any(), anyInt())).thenReturn(validCommand());
 
     HttpHeaders headers = new HttpHeaders();
@@ -116,9 +111,9 @@ class ApplicationCommandControllerSecurityTest {
         restTemplate.exchange(
             url(), HttpMethod.POST, new HttpEntity<>(validRequest(), headers), String.class);
 
-    Assertions.assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    Assertions.assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
 
-    verify(dispatcher).dispatch(any(CreateApplicationCommand.class));
+    verifyNoInteractions(commandMapper, dispatcher);
   }
 
   private CreateApplicationCommand validCommand() {
