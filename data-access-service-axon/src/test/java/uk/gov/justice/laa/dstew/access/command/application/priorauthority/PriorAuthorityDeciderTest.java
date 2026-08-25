@@ -25,6 +25,7 @@ class PriorAuthorityDeciderTest {
         new CreatePriorAuthorityCommand(
             submissionId,
             applicationId,
+            "EXPERT",
             new PriorAuthorityContent("EXPERT", null, null, null, null),
             "{}",
             1,
@@ -39,6 +40,7 @@ class PriorAuthorityDeciderTest {
     PriorAuthorityCreatedEvent event = result.get();
     assertThat(event.submissionId()).isEqualTo(submissionId);
     assertThat(event.applicationId()).isEqualTo(applicationId);
+    assertThat(event.priorAuthorityType()).isEqualTo("EXPERT");
     assertThat(event.dataVersion()).isEqualTo(0L);
     assertThat(event.requestFingerprint()).isEqualTo(fingerprint);
     assertThat(event.status()).isEqualTo(PriorAuthorityStatus.PENDING.name());
@@ -53,7 +55,7 @@ class PriorAuthorityDeciderTest {
     PriorAuthorityState state = stateAfterCreate(submissionId, fingerprint);
     CreatePriorAuthorityCommand command =
         new CreatePriorAuthorityCommand(
-            submissionId, UUID.randomUUID(), null, "{}", 1, "pa-schema", OCCURRED_AT);
+            submissionId, UUID.randomUUID(), null, null, "{}", 1, "pa-schema", OCCURRED_AT);
 
     Optional<PriorAuthorityCreatedEvent> result =
         PriorAuthorityDecider.decideCreate(state, command, fingerprint);
@@ -69,6 +71,7 @@ class PriorAuthorityDeciderTest {
         new CreatePriorAuthorityCommand(
             submissionId,
             UUID.randomUUID(),
+            null,
             null,
             "{\"different\":true}",
             1,

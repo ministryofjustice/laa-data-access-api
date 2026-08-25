@@ -50,6 +50,7 @@ class ContentSchemaValidationDispatchInterceptorTest {
         new CreatePriorAuthorityCommand(
             UUID.randomUUID(),
             UUID.randomUUID(),
+            "COUNSEL",
             new PriorAuthorityContent(
                 "COUNSEL",
                 "Need specialist counsel",

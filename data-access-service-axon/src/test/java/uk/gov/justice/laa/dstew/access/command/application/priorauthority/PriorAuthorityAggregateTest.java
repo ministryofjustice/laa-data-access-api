@@ -66,7 +66,14 @@ class PriorAuthorityAggregateTest {
 
     CreatePriorAuthorityCommand command =
         new CreatePriorAuthorityCommand(
-            submissionId, applicationId, content, serialisedRequest, 1, "pa-schema", occurredAt);
+            submissionId,
+            applicationId,
+            "EXPERT",
+            content,
+            serialisedRequest,
+            1,
+            "pa-schema",
+            occurredAt);
 
     fixture
         .given()
@@ -78,6 +85,7 @@ class PriorAuthorityAggregateTest {
             new PriorAuthorityCreatedEvent(
                 submissionId,
                 applicationId,
+                "EXPERT",
                 0L,
                 fingerprint,
                 PriorAuthorityStatus.PENDING.name(),
@@ -115,6 +123,7 @@ class PriorAuthorityAggregateTest {
         new PriorAuthorityCreatedEvent(
             submissionId,
             applicationId,
+            "EXPERT",
             0L,
             fingerprint,
             PriorAuthorityStatus.PENDING.name(),
@@ -125,6 +134,7 @@ class PriorAuthorityAggregateTest {
         new CreatePriorAuthorityCommand(
             submissionId,
             applicationId,
+            "EXPERT",
             new PriorAuthorityContent("EXPERT", null, null, null, null),
             serialisedRequest,
             1,
@@ -149,6 +159,7 @@ class PriorAuthorityAggregateTest {
         new PriorAuthorityCreatedEvent(
             submissionId,
             applicationId,
+            "EXPERT",
             0L,
             fingerprint,
             PriorAuthorityStatus.PENDING.name(),
@@ -159,6 +170,7 @@ class PriorAuthorityAggregateTest {
         new CreatePriorAuthorityCommand(
             submissionId,
             applicationId,
+            "COUNSEL",
             new PriorAuthorityContent("COUNSEL", null, null, null, null),
             "{\"priorAuthorityType\":\"COUNSEL\"}",
             1,

@@ -120,6 +120,13 @@ class CreatePriorAuthorityUseCaseTest {
 
   private CreatePriorAuthorityCommand stubCommand() {
     return new CreatePriorAuthorityCommand(
-        UUID.randomUUID(), UUID.randomUUID(), null, "{}", 1, "PriorAuthority.json", Instant.now());
+        UUID.randomUUID(),
+        UUID.randomUUID(),
+        null,
+        null,
+        "{}",
+        1,
+        "PriorAuthority.json",
+        Instant.now());
   }
 }

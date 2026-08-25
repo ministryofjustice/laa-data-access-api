@@ -26,6 +26,13 @@ class CreatePriorAuthorityCommandMapperTest {
       new CreatePriorAuthorityCommandMapper(JsonMapper.builder().build());
 
   @Test
+  void givenExpertRequest_whenMapped_thenCommandCarriesPriorAuthorityType() {
+    var request = expertRequest();
+    var command = mapper.toCommand(UUID.randomUUID(), request);
+    assertThat(command.priorAuthorityType()).isEqualTo("EXPERT");
+  }
+
+  @Test
   void givenExpertRequest_whenMapped_thenMapsAllExpertFields() {
     CreatePriorAuthorityCommand command = mapper.toCommand(UUID.randomUUID(), expertRequest());
 

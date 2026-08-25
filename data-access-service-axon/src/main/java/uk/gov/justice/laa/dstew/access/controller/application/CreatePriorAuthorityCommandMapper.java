@@ -34,6 +34,7 @@ public class CreatePriorAuthorityCommandMapper {
     return new CreatePriorAuthorityCommand(
         submissionId,
         applicationId,
+        enumName(request.getPriorAuthorityType()),
         content,
         serialise(request),
         1,
