@@ -100,7 +100,7 @@ jobs:
           set -euo pipefail
 
           PG_RELEASE="${RELEASE_NAME}-postgresql"
-          SNAPSHOT_FILE="snapshot-${RELEASE_NAME}-$(date -u +%Y%m%dT%H%M%SZ).sql"
+          SNAPSHOT_FILE="snapshot-${RELEASE_NAME}-$(date -u +%Y%m%dT%H%M%SZ).sql.gz"
 
           echo "Locating PostgreSQL pod for release: $PG_RELEASE"
           PG_POD=$(kubectl get pod \
@@ -122,7 +122,7 @@ jobs:
           echo "Running pg_dump..."
           kubectl exec "$PG_POD" -n "$KUBE_NAMESPACE" -- \
             bash -c "PGPASSWORD='${PG_PASSWORD}' pg_dump -U postgres postgres" \
-            > "$SNAPSHOT_FILE"
+            | gzip > "$SNAPSHOT_FILE"
 
           if [ ! -s "$SNAPSHOT_FILE" ]; then
             echo "Snapshot file is empty" >&2
