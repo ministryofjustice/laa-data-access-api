@@ -12,7 +12,7 @@ import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsQuer
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsResult;
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
 import uk.gov.justice.laa.dstew.access.query.application.FindNotesForApplicationQuery;
-import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadModel;
+import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryResult;
 import uk.gov.justice.laa.dstew.access.query.application.history.FindApplicationHistoryQuery;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 
@@ -55,11 +55,9 @@ public class ApplicationQueryUseCase {
 
   /** Returns domain-event history for an application. */
   @AllowApiCaseworker
-  public List<ApplicationHistoryReadModel> getApplicationHistory(
-      UUID id, List<String> requestedTypes) {
+  public ApplicationHistoryResult getApplicationHistory(UUID id, List<String> requestedTypes) {
     return queryGateway
-        .queryMany(
-            new FindApplicationHistoryQuery(id, requestedTypes), ApplicationHistoryReadModel.class)
+        .query(new FindApplicationHistoryQuery(id, requestedTypes), ApplicationHistoryResult.class)
         .join();
   }
 

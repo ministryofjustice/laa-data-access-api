@@ -1,6 +1,8 @@
 package uk.gov.justice.laa.dstew.access.query.application.history;
 
 import java.time.Instant;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.axonframework.messaging.core.annotation.Namespace;
 import org.axonframework.messaging.eventhandling.EventMessage;
@@ -19,6 +21,7 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationD
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
 import uk.gov.justice.laa.dstew.access.config.interceptor.ServiceNameMetadataDispatchInterceptor;
 
@@ -30,15 +33,18 @@ public class ApplicationHistoryProjection {
   private final ApplicationHistoryReadRepository applicationHistoryReadRepository;
   private final ObjectMapper objectMapper;
   private final ApplicationDataStore applicationDataStore;
+  private final PriorAuthorityHistoryReadRepository priorAuthorityHistoryReadRepository;
 
   /** Creates the history projection with its persistence and reconstruction dependencies. */
   public ApplicationHistoryProjection(
       ApplicationHistoryReadRepository applicationHistoryReadRepository,
       ObjectMapper objectMapper,
-      ApplicationDataStore applicationDataStore) {
+      ApplicationDataStore applicationDataStore,
+      PriorAuthorityHistoryReadRepository priorAuthorityHistoryReadRepository) {
     this.applicationHistoryReadRepository = applicationHistoryReadRepository;
     this.objectMapper = objectMapper;
     this.applicationDataStore = applicationDataStore;
+    this.priorAuthorityHistoryReadRepository = priorAuthorityHistoryReadRepository;
   }
 
   /**
@@ -158,15 +164,42 @@ public class ApplicationHistoryProjection {
         event.occurredAt());
   }
 
+  /** Records the creation of a PriorAuthority submission in the PA history table. */
+  @EventHandler
+  public void on(PriorAuthorityCreatedEvent event, EventMessage message) {
+    Object serviceName =
+        message.metadata().get(ServiceNameMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY);
+    priorAuthorityHistoryReadRepository.save(
+        PriorAuthorityHistoryReadModel.builder()
+            .eventId(message.identifier())
+            .applicationId(event.applicationId())
+            .submissionId(event.submissionId())
+            .priorAuthorityType(event.priorAuthorityType())
+            .eventType("PRIOR_AUTHORITY_CREATED")
+            .eventData(
+                serialise(
+                    Map.of(
+                        "status", event.status(),
+                        "dataVersion", event.dataVersion())))
+            .serviceName(serviceName == null ? null : serviceName.toString())
+            .occurredAt(event.occurredAt())
+            .build());
+  }
+
   /** Returns chronologically ordered history rows matching the requested public event types. */
   @QueryHandler
-  public java.util.List<ApplicationHistoryReadModel> handle(FindApplicationHistoryQuery query) {
-    return applicationHistoryReadRepository
-        .findAllByApplicationIdOrderByOccurredAtAsc(query.applicationId())
-        .stream()
-        .filter(history -> query.eventTypes().contains(history.getEventType()))
-        .map(this::hydrateEventDescription)
-        .toList();
+  public ApplicationHistoryResult handle(FindApplicationHistoryQuery query) {
+    List<ApplicationHistoryReadModel> applicationEvents =
+        applicationHistoryReadRepository
+            .findAllByApplicationIdOrderByOccurredAtAsc(query.applicationId())
+            .stream()
+            .filter(h -> query.eventTypes().contains(h.getEventType()))
+            .map(this::hydrateEventDescription)
+            .toList();
+    List<PriorAuthorityHistoryReadModel> paEvents =
+        priorAuthorityHistoryReadRepository.findAllByApplicationIdOrderByOccurredAtAsc(
+            query.applicationId());
+    return new ApplicationHistoryResult(applicationEvents, paEvents);
   }
 
   private ApplicationHistoryReadModel hydrateEventDescription(ApplicationHistoryReadModel history) {
@@ -216,6 +249,7 @@ public class ApplicationHistoryProjection {
   @ResetHandler
   public void reset() {
     applicationHistoryReadRepository.deleteAllInBatch();
+    priorAuthorityHistoryReadRepository.deleteAllInBatch();
   }
 
   private void append(

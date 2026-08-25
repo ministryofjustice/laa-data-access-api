@@ -53,12 +53,16 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.AutoGranted;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantedOutcomeRequest;
+import uk.gov.justice.laa.dstew.access.model.BillingType;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.CreateNoteRequest;
+import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityRequest;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
+import uk.gov.justice.laa.dstew.access.model.ExpertCosts;
+import uk.gov.justice.laa.dstew.access.model.ExpertDetails;
 import uk.gov.justice.laa.dstew.access.model.InvolvedChildResponse;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceedingRequest;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
@@ -67,6 +71,8 @@ import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetailsRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.OpponentResponse;
+import uk.gov.justice.laa.dstew.access.model.PriorAuthorityHistoryGroup;
+import uk.gov.justice.laa.dstew.access.model.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.model.ProviderResponse;
 import uk.gov.justice.laa.dstew.access.model.ScopeLimitationResponse;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
@@ -74,6 +80,7 @@ import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadReposito
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadRepository;
+import uk.gov.justice.laa.dstew.access.query.application.history.PriorAuthorityHistoryReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 
@@ -102,6 +109,8 @@ class PostgresAxonIntegrationTest {
   @Autowired private ApplicationReadRepository applicationReadRepository;
 
   @Autowired private ApplicationHistoryReadRepository applicationHistoryReadRepository;
+
+  @Autowired private PriorAuthorityHistoryReadRepository priorAuthorityHistoryReadRepository;
 
   @Autowired private LinkedApplicationGroupReadRepository groupReadRepository;
 
@@ -1671,6 +1680,89 @@ class PostgresAxonIntegrationTest {
             Void.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+  }
+
+  @Test
+  void givenApplicationWithPriorAuthority_whenGetHistory_thenReturnsPriorAuthoritiesSection()
+      throws Exception {
+    UUID applicationId = UUID.randomUUID();
+    applicationId(post(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()));
+    awaitProjection(applicationId);
+
+    restTemplate.exchange(
+        "http://localhost:"
+            + port
+            + "/api/v0/applications/"
+            + applicationId
+            + "/auto-grant-outcome",
+        HttpMethod.PATCH,
+        new HttpEntity<>(
+            new AutoGrantedOutcomeRequest(
+                AutoGrantOutcome.AUTOGRANTED, Map.of("certificateNumber", "PA-CERT-001")),
+            headers()),
+        Void.class);
+    awaitProjectionVersion(applicationId, 1L);
+
+    ResponseEntity<String> paResponse =
+        restTemplate.postForEntity(
+            "http://localhost:"
+                + port
+                + "/api/v0/applications/"
+                + applicationId
+                + "/prior-authority",
+            new HttpEntity<>(fixedRateExpertRequest(), headers()),
+            String.class);
+    assertThat(paResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    UUID submissionId =
+        UUID.fromString(objectMapper.readTree(paResponse.getBody()).get("submissionId").asText());
+
+    await()
+        .atMost(10, TimeUnit.SECONDS)
+        .pollInterval(50, TimeUnit.MILLISECONDS)
+        .until(
+            () ->
+                priorAuthorityHistoryReadRepository.findAllByApplicationIdOrderByOccurredAtAsc(
+                    applicationId),
+            rows -> rows.size() == 1);
+
+    ResponseEntity<ApplicationHistoryResponse> historyResponse =
+        restTemplate.exchange(
+            "http://localhost:"
+                + port
+                + "/api/v0/applications/"
+                + applicationId
+                + "/history-search",
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            ApplicationHistoryResponse.class);
+    assertThat(historyResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+    assertThat(historyResponse.getBody().getPriorAuthorities()).hasSize(1);
+    PriorAuthorityHistoryGroup group = historyResponse.getBody().getPriorAuthorities().get(0);
+    assertThat(group.getSubmissionId()).isEqualTo(submissionId);
+    assertThat(group.getPriorAuthorityType()).isEqualTo(PriorAuthorityType.EXPERT);
+    assertThat(group.getEvents()).hasSize(1);
+    assertThat(group.getEvents().get(0).getEventType()).isEqualTo("PRIOR_AUTHORITY_CREATED");
+    assertThat(historyResponse.getBody().getEvents()).isNotEmpty();
+  }
+
+  private CreatePriorAuthorityRequest fixedRateExpertRequest() {
+    return CreatePriorAuthorityRequest.builder()
+        .priorAuthorityType(PriorAuthorityType.EXPERT)
+        .justification("Expert witness required")
+        .expertDetails(
+            ExpertDetails.builder()
+                .expertType("Pathologist")
+                .expertFullName("Dr. Fixed Rate")
+                .expertPostcode("EC1A 1BB")
+                .expertCosts(
+                    ExpertCosts.builder()
+                        .billingType(BillingType.FIXED_RATE)
+                        .totalAmount(900.0)
+                        .costsSharedWithOtherParties(false)
+                        .build())
+                .build())
+        .build();
   }
 
   private HttpHeaders headers() {

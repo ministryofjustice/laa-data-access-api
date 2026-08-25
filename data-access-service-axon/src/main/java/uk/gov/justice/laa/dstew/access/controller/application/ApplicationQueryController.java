@@ -28,9 +28,9 @@ import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsQuery;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsResult;
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
-import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadModel;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
+import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryResult;
 import uk.gov.justice.laa.dstew.access.usecase.application.ApplicationQueryUseCase;
 
 /** HTTP query adapter for Application reads. */
@@ -52,9 +52,8 @@ public class ApplicationQueryController implements ApplicationQueryApi {
    *     uk.gov.justice.laa.dstew.access.model.ApplicationResponse}
    * @param getAllResponseMapper maps application summaries to {@link
    *     uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse}
-   * @param historyResponseMapper maps a list of {@link
-   *     uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadModel} to
-   *     {@link uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse}
+   * @param historyResponseMapper maps {@link ApplicationHistoryResult} to {@link
+   *     uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse}
    * @param notesResponseMapper maps notes to {@link ApplicationNotesResponse}
    */
   public ApplicationQueryController(
@@ -144,7 +143,7 @@ public class ApplicationQueryController implements ApplicationQueryApi {
         (eventType == null || eventType.isEmpty())
             ? Arrays.stream(DomainEventType.values()).map(DomainEventType::getValue).toList()
             : eventType.stream().map(DomainEventType::getValue).toList();
-    List<ApplicationHistoryReadModel> history =
+    ApplicationHistoryResult history =
         applicationQueryUseCase.getApplicationHistory(id, requestedTypes);
     return ResponseEntity.ok(historyResponseMapper.toResponse(history));
   }
