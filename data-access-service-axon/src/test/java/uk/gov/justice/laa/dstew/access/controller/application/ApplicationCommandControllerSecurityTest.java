@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.controller.application;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
@@ -100,7 +101,10 @@ class ApplicationCommandControllerSecurityTest {
   }
 
   @Test
-  void givenAuthenticatedUserWithoutCaseworkerRole_whenCreateApplication_thenReturnsAccepted() {
+  void givenAuthenticatedUserWithoutCaseworkerRole_whenCreateApplication_thenReturnsCreated() {
+    // TODO this currently passes because roles are added automatically as OBO not configured to
+    // assign roles correctly.
+    // Should be changed to a negative test once that work is complete
     when(commandMapper.toCommand(any(), anyInt())).thenReturn(validCommand());
 
     HttpHeaders headers = new HttpHeaders();
@@ -112,10 +116,9 @@ class ApplicationCommandControllerSecurityTest {
         restTemplate.exchange(
             url(), HttpMethod.POST, new HttpEntity<>(validRequest(), headers), String.class);
 
-    Assertions.assertThat(response.getStatusCode())
-        .isEqualTo(HttpStatus.CREATED);
+    Assertions.assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
 
-    verifyNoInteractions(dispatcher);
+    verify(dispatcher).dispatch(any(CreateApplicationCommand.class));
   }
 
   private CreateApplicationCommand validCommand() {
