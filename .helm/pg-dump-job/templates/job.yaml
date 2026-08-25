@@ -17,12 +17,30 @@ spec:
         app.kubernetes.io/name: pg-dump-job
         app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
+      # IRSA service account grants the pod S3 write access without passing credentials.
+      # To switch to a single image with both pg_dump and aws CLI, collapse the
+      # initContainer and container into one, remove the volume, and update values.yaml.
+      serviceAccountName: laa-data-access-uat-irsa
       restartPolicy: Never
-      containers:
+      volumes:
+        - name: dump
+          emptyDir: {}
+      initContainers:
         - name: pg-dump
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          image: "{{ .Values.pgDump.image.repository }}:{{ .Values.pgDump.image.tag }}"
           imagePullPolicy: IfNotPresent
-          command: ["/bin/sh", "-c", "pg_dump -U postgres -h $DB_HOST postgres 2>/dev/null"]
+          command:
+            - /bin/sh
+            - -c
+            - |
+              pg_dump -U postgres -h "$DB_HOST" postgres 2>/dev/null | gzip > /dump/snapshot.sql.gz
+              if [ ! -s /dump/snapshot.sql.gz ]; then
+                echo "pg_dump produced an empty snapshot" >&2
+                exit 1
+              fi
+          volumeMounts:
+            - name: dump
+              mountPath: /dump
           securityContext:
             runAsNonRoot: true
             runAsUser: 1001
@@ -33,7 +51,7 @@ spec:
             capabilities:
               drop: ["ALL"]
           resources:
-            {{- toYaml .Values.resources | nindent 12 }}
+            {{- toYaml .Values.resources.pgDump | nindent 12 }}
           env:
             - name: DB_HOST
               value: {{ .Values.db.host }}
@@ -42,3 +60,28 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.db.secretName }}
                   key: postgres-password
+      containers:
+        - name: aws-upload
+          image: "{{ .Values.awsUpload.image.repository }}:{{ .Values.awsUpload.image.tag }}"
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+            - -c
+            - |
+              S3_KEY="{{ .Values.awsUpload.s3.prefix }}/$(date -u +%Y%m%dT%H%M%SZ)/snapshot.sql.gz"
+              aws s3 cp /dump/snapshot.sql.gz "s3://{{ .Values.awsUpload.s3.bucket }}/$S3_KEY"
+              echo "Snapshot uploaded to s3://{{ .Values.awsUpload.s3.bucket }}/$S3_KEY"
+          volumeMounts:
+            - name: dump
+              mountPath: /dump
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            seccompProfile:
+              type: RuntimeDefault
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            {{- toYaml .Values.resources.awsUpload | nindent 12 }}
