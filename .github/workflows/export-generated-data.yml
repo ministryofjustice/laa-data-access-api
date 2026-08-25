@@ -41,17 +41,17 @@ jobs:
         run: |
           set -euo pipefail
 
-          HELM_RELEASE="${RELEASE_NAME}-mass-generator"
-          JOB_NAME="${RELEASE_NAME}-mass-generator-job"
+          HELM_RELEASE="${RELEASE_NAME}-mass-generator-job"
+          JOB_NAME="${HELM_RELEASE}-job"
 
           # Retrieve the image tag from the existing mass generator deployment
-          IMAGE_TAG=$(kubectl get deployment "${HELM_RELEASE}-mass-generator" \
+          IMAGE_TAG=$(kubectl get deployment "${RELEASE_NAME}-mass-generator-mass-generator" \
             -n "$KUBE_NAMESPACE" \
             -o jsonpath='{.spec.template.spec.containers[0].image}' \
             | cut -d: -f2)
 
           if [ -z "$IMAGE_TAG" ]; then
-            echo "Could not retrieve image tag from deployment ${HELM_RELEASE}-mass-generator" >&2
+            echo "Could not retrieve image tag from deployment ${RELEASE_NAME}-mass-generator-mass-generator" >&2
             exit 1
           fi
 
@@ -61,7 +61,7 @@ jobs:
           kubectl delete job "$JOB_NAME" -n "$KUBE_NAMESPACE" --ignore-not-found
 
           # Deploy the mass generator job via its own isolated Helm chart
-          helm upgrade "$JOB_NAME" .helm/mass-generator-job \
+          helm upgrade "$HELM_RELEASE" .helm/mass-generator-job \
             --namespace "$KUBE_NAMESPACE" \
             --set image.repository="${ECR_REGISTRY}/${ECR_REPOSITORY}" \
             --set image.tag="${IMAGE_TAG}" \
@@ -72,7 +72,7 @@ jobs:
             --wait
 
           echo "Waiting for mass generator job to complete..."
-          kubectl wait job "$JOB_NAME-job" \
+          kubectl wait job "$JOB_NAME" \
             -n "$KUBE_NAMESPACE" \
             --for=condition=complete \
             --timeout=3600s
@@ -100,29 +100,45 @@ jobs:
           set -euo pipefail
 
           PG_RELEASE="${RELEASE_NAME}-postgresql"
+          HELM_RELEASE="${RELEASE_NAME}-pg-dump"
+          JOB_NAME="${HELM_RELEASE}-job"
           SNAPSHOT_FILE="snapshot-${RELEASE_NAME}-$(date -u +%Y%m%dT%H%M%SZ).sql.gz"
 
-          echo "Locating PostgreSQL pod for release: $PG_RELEASE"
-          PG_POD=$(kubectl get pod \
+          # Retrieve the PostgreSQL image from the existing StatefulSet to ensure version match
+          PG_IMAGE=$(kubectl get statefulset "$PG_RELEASE" \
             -n "$KUBE_NAMESPACE" \
-            -l "app.kubernetes.io/instance=${PG_RELEASE}" \
-            -o jsonpath='{.items[0].metadata.name}')
+            -o jsonpath='{.spec.template.spec.containers[0].image}')
 
-          if [ -z "$PG_POD" ]; then
-            echo "No PostgreSQL pod found for release ${PG_RELEASE}" >&2
+          if [ -z "$PG_IMAGE" ]; then
+            echo "Could not retrieve image from StatefulSet ${PG_RELEASE}" >&2
             exit 1
           fi
 
-          echo "Found pod: $PG_POD"
+          PG_IMAGE_REPO=$(echo "$PG_IMAGE" | cut -d: -f1)
+          PG_IMAGE_TAG=$(echo "$PG_IMAGE" | cut -d: -f2)
+          echo "Using PostgreSQL image: $PG_IMAGE"
 
-          PG_PASSWORD=$(kubectl get secret "$PG_RELEASE" \
+          # Delete any previous job to allow re-runs
+          kubectl delete job "$JOB_NAME" -n "$KUBE_NAMESPACE" --ignore-not-found
+
+          # Deploy the pg_dump job via its own isolated Helm chart
+          helm upgrade "$HELM_RELEASE" .helm/pg-dump-job \
+            --namespace "$KUBE_NAMESPACE" \
+            --set image.repository="$PG_IMAGE_REPO" \
+            --set image.tag="$PG_IMAGE_TAG" \
+            --set db.host="$PG_RELEASE" \
+            --set db.secretName="$PG_RELEASE" \
+            --install \
+            --wait
+
+          echo "Waiting for pg_dump job to complete..."
+          kubectl wait job "$JOB_NAME" \
             -n "$KUBE_NAMESPACE" \
-            -o jsonpath='{.data.postgres-password}' | base64 -d)
+            --for=condition=complete \
+            --timeout=300s
 
-          echo "Running pg_dump..."
-          kubectl exec "$PG_POD" -n "$KUBE_NAMESPACE" -- \
-            bash -c "PGPASSWORD='${PG_PASSWORD}' pg_dump -U postgres postgres" \
-            | gzip > "$SNAPSHOT_FILE"
+          echo "Capturing pg_dump output..."
+          kubectl logs "job/$JOB_NAME" -n "$KUBE_NAMESPACE" | gzip > "$SNAPSHOT_FILE"
 
           if [ ! -s "$SNAPSHOT_FILE" ]; then
             echo "Snapshot file is empty" >&2
