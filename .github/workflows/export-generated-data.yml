@@ -91,14 +91,46 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           report-name: export-smoke-test-report
 
-      # TODO: Take a pg_dump snapshot from the ephemeral PostgreSQL pod
-      # The PostgreSQL release is named: ${RELEASE_NAME}-postgresql
-      # Pod selector: app.kubernetes.io/instance=${RELEASE_NAME}-postgresql
-      # Credentials are in the Kubernetes secret: ${RELEASE_NAME}-postgresql
-      #   key: postgres-password
-      # Example command:
-      #   kubectl exec -n "$KUBE_NAMESPACE" "$PG_POD" -- \
-      #     pg_dump -U postgres postgres > snapshot.sql
+      - name: Take pg_dump snapshot
+        id: pg_dump
+        shell: bash
+        env:
+          KUBE_NAMESPACE: ${{ secrets.KUBE_NAMESPACE }}
+        run: |
+          set -euo pipefail
+
+          PG_RELEASE="${RELEASE_NAME}-postgresql"
+          SNAPSHOT_FILE="snapshot-${RELEASE_NAME}-$(date -u +%Y%m%dT%H%M%SZ).sql.gz"
+
+          echo "Locating PostgreSQL pod for release: $PG_RELEASE"
+          PG_POD=$(kubectl get pod \
+            -n "$KUBE_NAMESPACE" \
+            -l "app.kubernetes.io/instance=${PG_RELEASE}" \
+            -o jsonpath='{.items[0].metadata.name}')
+
+          if [ -z "$PG_POD" ]; then
+            echo "No PostgreSQL pod found for release ${PG_RELEASE}" >&2
+            exit 1
+          fi
+
+          echo "Found pod: $PG_POD"
+
+          PG_PASSWORD=$(kubectl get secret "$PG_RELEASE" \
+            -n "$KUBE_NAMESPACE" \
+            -o jsonpath='{.data.postgres-password}' | base64 -d)
+
+          echo "Running pg_dump..."
+          kubectl exec "$PG_POD" -n "$KUBE_NAMESPACE" -- \
+            bash -c "PGPASSWORD='${PG_PASSWORD}' pg_dump -U postgres postgres" \
+            | gzip > "$SNAPSHOT_FILE"
+
+          if [ ! -s "$SNAPSHOT_FILE" ]; then
+            echo "Snapshot file is empty" >&2
+            exit 1
+          fi
+
+          echo "Snapshot written to: $SNAPSHOT_FILE ($(wc -c < "$SNAPSHOT_FILE") bytes)"
+          echo "snapshot-file=$SNAPSHOT_FILE" >> "$GITHUB_OUTPUT"
 
       # TODO: Export snapshot (e.g. upload to S3)
-      # aws s3 cp snapshot.sql s3://your-bucket/snapshots/${RELEASE_NAME}/snapshot.sql
+      # aws s3 cp "${{ steps.pg_dump.outputs.snapshot-file }}" s3://your-bucket/snapshots/${RELEASE_NAME}/
