@@ -9,6 +9,7 @@ import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequest
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringBootConfiguration;
@@ -111,8 +112,8 @@ class ApplicationCommandControllerSecurityTest {
         restTemplate.exchange(
             url(), HttpMethod.POST, new HttpEntity<>(validRequest(), headers), String.class);
 
-    org.assertj.core.api.Assertions.assertThat(response.getStatusCode())
-        .isEqualTo(HttpStatus.ACCEPTED);
+    Assertions.assertThat(response.getStatusCode())
+        .isEqualTo(HttpStatus.CREATED);
 
     verifyNoInteractions(dispatcher);
   }

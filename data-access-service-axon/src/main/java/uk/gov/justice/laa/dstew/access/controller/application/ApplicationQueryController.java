@@ -5,7 +5,6 @@ import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -23,13 +22,12 @@ import uk.gov.justice.laa.dstew.access.model.DocumentDownloadResponse;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
-import uk.gov.justice.laa.dstew.access.query.application.ApplicationNotesResult;
-import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsQuery;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsResult;
-import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadModel;
+import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
+import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
 import uk.gov.justice.laa.dstew.access.usecase.application.ApplicationQueryUseCase;
@@ -62,14 +60,12 @@ public class ApplicationQueryController implements ApplicationQueryApi {
       GetApplicationResponseMapper responseMapper,
       GetAllApplicationsResponseMapper getAllResponseMapper,
       GetApplicationHistoryResponseMapper historyResponseMapper,
-      GetAllNotesForApplicationResponseMapper notesResponseMapper,
-      SubscriptionProjectionGateway projectionGateway) {
+      GetAllNotesForApplicationResponseMapper notesResponseMapper) {
     this.applicationQueryUseCase = applicationQueryUseCase;
     this.responseMapper = responseMapper;
     this.getAllResponseMapper = getAllResponseMapper;
     this.historyResponseMapper = historyResponseMapper;
     this.notesResponseMapper = notesResponseMapper;
-    this.projectionGateway = projectionGateway;
   }
 
   /**
@@ -120,10 +116,7 @@ public class ApplicationQueryController implements ApplicationQueryApi {
   @LogMethodArguments
   @LogMethodResponse
   public ResponseEntity<ApplicationResponse> getApplicationById(ServiceName serviceName, UUID id) {
-    ApplicationReadModel application =
-        findApplication(id)
-            .orElseThrow(
-                () -> new ResourceNotFoundException("No application found with ID: " + id));
+    ApplicationReadModel application = applicationQueryUseCase.getApplicationById(id);
     return ResponseEntity.ok(responseMapper.toResponse(application));
   }
 

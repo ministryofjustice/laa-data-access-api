@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.command.application;
 
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
+import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 
 /**
  * Dispatches a create-application command and waits for the projection to confirm the application
