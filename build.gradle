@@ -1,6 +1,6 @@
 plugins {
     id("java")
-    id 'com.diffplug.spotless' version '7.0.2' apply false
+    id 'com.diffplug.spotless' version '8.10.0' apply false
 }
 
 repositories {
@@ -57,7 +57,7 @@ subprojects {
     afterEvaluate {
         if (plugins.hasPlugin('checkstyle')) {
             checkstyle {
-                toolVersion = '13.8.0'
+                toolVersion = '14.0.0'
             }
         }
     }
