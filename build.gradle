@@ -7,36 +7,6 @@ repositories {
     mavenCentral()
 }
 
-ext['logback.version'] = '1.5.36'
-//[Medium Severity][https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHETOMCATEMBED-17733895] in org.apache.tomcat.embed:tomcat-embed-core@11.0.22
-//        introduced by org.apache.tomcat.embed:tomcat-embed-core@11.0.22
-//        ✗ Always-Incorrect Control Flow Implementation (new) [Medium Severity][https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHETOMCATEMBED-17734715] in org.apache.tomcat.embed:tomcat-embed-core@11.0.22
-//        introduced by org.apache.tomcat.embed:tomcat-embed-core@11.0.22
-//        ✗ Always-Incorrect Control Flow Implementation (new) [Medium Severity][https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHETOMCATEMBED-17734718] in org.apache.tomcat.embed:tomcat-embed-core@11.0.22
-//        introduced by org.apache.tomcat.embed:tomcat-embed-core@11.0.22
-//        ✗ Improper Authentication (new) [High Severity][https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHETOMCATEMBED-17732890] in org.apache.tomcat.embed:tomcat-embed-core@11.0.22
-//        introduced by org.apache.tomcat.embed:tomcat-embed-core@11.0.22
-//        ✗ Detection of Error Condition Without Action (new) [High Severity][https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHETOMCATEMBED-17733746] in org.apache.tomcat.embed:tomcat-embed-core@11.0.22
-//        introduced by org.apache.tomcat.embed:tomcat-embed-core@11.0.22
-ext['tomcat.version'] = '11.0.23'
-
-// ✗ Improperly Controlled Modification of Dynamically-Determined Object Attributes [Medium Severity][https://security.snyk.io/vuln/SNYK-JAVA-COMFASTERXMLJACKSONCORE-17457695] (CVE-2026-54515)
-//        introduced by com.fasterxml.jackson.core:jackson-databind@2.21.4
-// Note: this overrides the Jackson 2.x BOM only; the Jackson 3.x BOM is controlled by 'jackson-bom.version'.
-ext['jackson-2-bom.version'] = '2.21.5'
-
-// Upgrade managed Log4j 2 dependencies from 2.25.4 to 2.25.5 to fix
-//  ✗ Improper Encoding or Escaping of Output (new) [Medium Severity][https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHELOGGINGLOG4J-17954276]
-ext['log4j2.version'] = '2.25.5'
-//Incorrect Authorization (new) [High Severity][https://security.snyk.io/vuln/SNYK-JAVA-TOOLSJACKSONCORE-17972609] in tools.jackson.core:jackson-databind@3.1.4
-ext['jackson-bom.version'] = '3.1.5'
-//  Upgrade io.netty:netty-codec-http@4.2.17.Final
-//  [High Severity][https://security.snyk.io/vuln/SNYK-JAVA-IONETTY-18956131] in io.netty:netty-codec-http@4.2.16.Final
-ext['netty.version'] = '4.2.17.Final'
-//CRLF Injection (new) [High Severity][https://security.snyk.io/vuln/SNYK-JAVA-IOMICROMETER-19233327] in io.micrometer:micrometer-core@1.17.0
-ext['micrometer.version'] = '1.17.1'
-
-
 def requiredJavaVersion = 25
 def currentJavaVersion = JavaVersion.current().majorVersion.toInteger()
 

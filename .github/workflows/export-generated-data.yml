@@ -41,17 +41,17 @@ jobs:
         run: |
           set -euo pipefail
 
-          HELM_RELEASE="${RELEASE_NAME}-mass-generator"
-          JOB_NAME="${RELEASE_NAME}-mass-generator-job"
+          HELM_RELEASE="${RELEASE_NAME}-mass-generator-job"
+          JOB_NAME="${HELM_RELEASE}-job"
 
           # Retrieve the image tag from the existing mass generator deployment
-          IMAGE_TAG=$(kubectl get deployment "${HELM_RELEASE}-mass-generator" \
+          IMAGE_TAG=$(kubectl get deployment "${RELEASE_NAME}-mass-generator-mass-generator" \
             -n "$KUBE_NAMESPACE" \
             -o jsonpath='{.spec.template.spec.containers[0].image}' \
             | cut -d: -f2)
 
           if [ -z "$IMAGE_TAG" ]; then
-            echo "Could not retrieve image tag from deployment ${HELM_RELEASE}-mass-generator" >&2
+            echo "Could not retrieve image tag from deployment ${RELEASE_NAME}-mass-generator-mass-generator" >&2
             exit 1
           fi
 
@@ -61,7 +61,7 @@ jobs:
           kubectl delete job "$JOB_NAME" -n "$KUBE_NAMESPACE" --ignore-not-found
 
           # Deploy the mass generator job via its own isolated Helm chart
-          helm upgrade "$JOB_NAME" .helm/mass-generator-job \
+          helm upgrade "$HELM_RELEASE" .helm/mass-generator-job \
             --namespace "$KUBE_NAMESPACE" \
             --set image.repository="${ECR_REGISTRY}/${ECR_REPOSITORY}" \
             --set image.tag="${IMAGE_TAG}" \
@@ -72,7 +72,7 @@ jobs:
             --wait
 
           echo "Waiting for mass generator job to complete..."
-          kubectl wait job "$JOB_NAME-job" \
+          kubectl wait job "$JOB_NAME" \
             -n "$KUBE_NAMESPACE" \
             --for=condition=complete \
             --timeout=3600s
@@ -91,14 +91,72 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           report-name: export-smoke-test-report
 
-      # TODO: Take a pg_dump snapshot from the ephemeral PostgreSQL pod
-      # The PostgreSQL release is named: ${RELEASE_NAME}-postgresql
-      # Pod selector: app.kubernetes.io/instance=${RELEASE_NAME}-postgresql
-      # Credentials are in the Kubernetes secret: ${RELEASE_NAME}-postgresql
-      #   key: postgres-password
-      # Example command:
-      #   kubectl exec -n "$KUBE_NAMESPACE" "$PG_POD" -- \
-      #     pg_dump -U postgres postgres > snapshot.sql
+      - name: Take and upload pg_dump snapshot
+        id: pg_dump
+        shell: bash
+        env:
+          KUBE_NAMESPACE: ${{ secrets.KUBE_NAMESPACE }}
+        run: |
+          set -euo pipefail
 
-      # TODO: Export snapshot (e.g. upload to S3)
-      # aws s3 cp snapshot.sql s3://your-bucket/snapshots/${RELEASE_NAME}/snapshot.sql
+          PG_RELEASE="${RELEASE_NAME}-postgresql"
+
+          # Retrieve the actual bucket name from the Kubernetes secret
+          S3_BUCKET=$(kubectl get secret s3-bucket-output \
+            -n "$KUBE_NAMESPACE" \
+            -o jsonpath='{.data.bucket_name}' | base64 -d)
+
+          if [ -z "$S3_BUCKET" ]; then
+            echo "Could not retrieve bucket name from secret s3-bucket-output" >&2
+            exit 1
+          fi
+
+          TIMESTAMP=$(date -u +%Y%m%dT%H%M%SZ)
+          SNAPSHOT_FILE="snapshot-${RELEASE_NAME}-${TIMESTAMP}.sql.gz"
+          S3_KEY="snapshots/${RELEASE_NAME}/${TIMESTAMP}/snapshot.sql.gz"
+
+          # Get PostgreSQL password from Kubernetes secret
+          PG_PASSWORD=$(kubectl get secret "$PG_RELEASE" \
+            -n "$KUBE_NAMESPACE" \
+            -o jsonpath='{.data.postgres-password}' | base64 -d)
+          echo "::add-mask::$PG_PASSWORD"
+
+          # Port-forward PostgreSQL to localhost; trap ensures cleanup on exit
+          PORT_FORWARD_PID=""
+          cleanup() {
+            [ -n "$PORT_FORWARD_PID" ] && kill "$PORT_FORWARD_PID" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          kubectl port-forward "pod/${PG_RELEASE}-0" 5432:5432 \
+            -n "$KUBE_NAMESPACE" &
+          PORT_FORWARD_PID=$!
+
+          echo "Waiting for port-forward to be ready..."
+          for i in $(seq 1 15); do
+            if PGPASSWORD="$PG_PASSWORD" pg_isready -h localhost -p 5432 -U postgres 2>/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+
+          if ! PGPASSWORD="$PG_PASSWORD" pg_isready -h localhost -p 5432 -U postgres 2>/dev/null; then
+            echo "Port-forward to PostgreSQL did not become ready in time" >&2
+            exit 1
+          fi
+
+          echo "Running pg_dump..."
+          PGPASSWORD="$PG_PASSWORD" pg_dump -U postgres -h localhost -p 5432 postgres \
+            | gzip > "$SNAPSHOT_FILE"
+
+          if [ ! -s "$SNAPSHOT_FILE" ]; then
+            echo "Snapshot file is empty" >&2
+            exit 1
+          fi
+
+          echo "Snapshot written: $SNAPSHOT_FILE ($(wc -c < "$SNAPSHOT_FILE") bytes)"
+
+          echo "Uploading to s3://${S3_BUCKET}/${S3_KEY}..."
+          aws s3 cp "$SNAPSHOT_FILE" "s3://${S3_BUCKET}/${S3_KEY}"
+
+          echo "Snapshot uploaded to s3://${S3_BUCKET}/${S3_KEY}"
