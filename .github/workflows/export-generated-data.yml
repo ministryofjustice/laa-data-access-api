@@ -75,7 +75,14 @@ jobs:
           kubectl wait job "$JOB_NAME" \
             -n "$KUBE_NAMESPACE" \
             --for=condition=complete \
+            --for=condition=failed \
             --timeout=3600s
+
+          if kubectl get job "$JOB_NAME" -n "$KUBE_NAMESPACE" \
+            -o jsonpath='{.status.conditions[?(@.type=="Failed")].status}' | grep -q "True"; then
+            echo "Mass generator job failed" >&2
+            exit 1
+          fi
 
           echo "Mass generator job completed successfully"
 
