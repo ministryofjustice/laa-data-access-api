@@ -81,4 +81,15 @@ class GetIndividualsResponseMapperTest {
     assertThat(response.getIndividuals()).isEmpty();
     assertThat(response.getPaging().getItemsReturned()).isEqualTo(0);
   }
+
+  @Test
+  void givenClientWithNullAddresses_whenMapped_thenCorrespondenceAddressIsNull() {
+    ApplicationClient client =
+        ApplicationClient.builder().firstName("Ada").lastName("Lovelace").build();
+
+    IndividualsResponse response =
+        mapper.toResponse(new FindIndividualsResult(client, 1, 10, 1, true));
+
+    assertThat(response.getIndividuals().get(0).getCorrespondenceAddress()).isNull();
+  }
 }

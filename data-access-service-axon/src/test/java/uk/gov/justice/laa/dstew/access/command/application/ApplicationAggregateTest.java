@@ -989,6 +989,41 @@ class ApplicationAggregateTest {
         .noEvents();
   }
 
+  @Test
+  void givenApplicationLinkedEvent_whenAggregateReconstituted_thenHandlerIsInvoked() {
+    UUID applicationId = UUID.randomUUID();
+
+    fixture
+        .given()
+        .events(
+            applicationCreatedEvent(applicationId),
+            new ApplicationLinkedEvent(
+                applicationId, UUID.randomUUID(), Instant.parse("2026-07-22T10:00:00Z")))
+        .when()
+        .command(new ValidateApplicationExistsCommand(applicationId))
+        .then()
+        .noEvents();
+  }
+
+  @Test
+  void givenNullStatusUpdate_whenUpdated_thenUsesExistingStatus() {
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-22T11:00:00Z");
+    ApplicationDataPayload currentPayload =
+        ApplicationDataPayload.from(applicationCreationDetails(applicationId));
+    when(applicationDataStore.get(applicationId, 0L)).thenReturn(currentPayload);
+    when(updateDetailsFactory.prepare(any(), any(), anyBoolean())).thenReturn(currentPayload);
+    when(applicationDataStore.append(any(), anyLong(), any(), any(), any())).thenReturn("hash");
+
+    fixture
+        .given()
+        .events(applicationCreatedEvent(applicationId))
+        .when()
+        .command(new UpdateApplicationCommand(applicationId, null, Map.of(), "{}", occurredAt))
+        .then()
+        .success();
+  }
+
   @AfterEach
   void tearDown() {
     fixture.stop();

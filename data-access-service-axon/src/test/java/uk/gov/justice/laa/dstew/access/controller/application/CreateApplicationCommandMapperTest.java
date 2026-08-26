@@ -1,10 +1,16 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
@@ -54,6 +60,21 @@ class CreateApplicationCommandMapperTest {
     assertThat(command.laaReference()).isEqualTo("LAA-123");
     assertThat(command.applicationContent()).containsEntry("key", "value");
     assertThat(command.schemaVersion()).isEqualTo(2);
+  }
+
+  @Test
+  void givenSerialisationFails_whenMapped_thenThrowsIllegalStateException() throws Exception {
+    ObjectMapper mockMapper = mock(ObjectMapper.class);
+    CreateApplicationCommandMapper failingMapper = new CreateApplicationCommandMapper(mockMapper);
+    ApplicationCreateRequest request =
+        ApplicationCreateRequest.builder()
+            .id(UUID.randomUUID())
+            .applicationContent(Map.of())
+            .build();
+    when(mockMapper.writeValueAsString(any())).thenThrow(new JacksonException("boom") {});
+
+    assertThatThrownBy(() -> failingMapper.toCommand(request, 1))
+        .isInstanceOf(IllegalStateException.class);
   }
 
   private ApplicationCreateRequest request(UUID id) {
