@@ -31,6 +31,7 @@ import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataS
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeDecisionProceeding;
+import uk.gov.justice.laa.dstew.access.command.application.decision.RecordAutoGrantedOutcomeCommand;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.CreateLinkedApplicationGroupCommand;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupRequested;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.ValidateApplicationExistsCommand;
@@ -1022,6 +1023,44 @@ class ApplicationAggregateTest {
         .command(new UpdateApplicationCommand(applicationId, null, Map.of(), "{}", occurredAt))
         .then()
         .success();
+  }
+
+  @Test
+  void givenManuallyAssessedApplication_whenAutoGrantOutcomeRecorded_thenThrowsConflict() {
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-19T10:15:00Z");
+
+    fixture
+        .given()
+        .events(
+            applicationCreatedEvent(applicationId),
+            new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, 1L, occurredAt))
+        .when()
+        .command(new RecordAutoGrantedOutcomeCommand(applicationId, Map.of(), "{}", occurredAt))
+        .then()
+        .exception(ApplicationAutoGrantOutcomeConflictException.class)
+        .noEvents();
+  }
+
+  @Test
+  void givenAutoGrantedApplicationWithMismatchedPayload_whenOutcomeRecorded_thenThrowsConflict() {
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-19T10:15:00Z");
+    when(applicationDataStore.get(applicationId, 1L))
+        .thenReturn(ApplicationDataPayload.from(applicationCreationDetails(applicationId)));
+
+    fixture
+        .given()
+        .events(
+            applicationCreatedEvent(applicationId),
+            new ApplicationDecisionMadeEvent(
+                applicationId, 1L, 1L, "GRANTED", AutoGrantedState.AUTOGRANTED, occurredAt))
+        .when()
+        .command(
+            new RecordAutoGrantedOutcomeCommand(applicationId, Map.of(), "{different}", occurredAt))
+        .then()
+        .exception(ApplicationAutoGrantOutcomeConflictException.class)
+        .noEvents();
   }
 
   @AfterEach
