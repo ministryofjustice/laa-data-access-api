@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Component;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
 import uk.gov.justice.laa.dstew.access.config.interceptor.ServiceNameMetadataDispatchInterceptor;
@@ -21,6 +22,7 @@ import uk.gov.justice.laa.dstew.access.config.interceptor.ServiceNameMetadataDis
 @Component
 @ConditionalOnBean(ApplicationSubmittedPublisher.class)
 @Namespace("application-submitted-publisher")
+@ExcludeFromGeneratedCodeCoverage
 public class ApplicationSubmittedEventRouter {
 
   private static final Logger LOG = LoggerFactory.getLogger(ApplicationSubmittedEventRouter.class);

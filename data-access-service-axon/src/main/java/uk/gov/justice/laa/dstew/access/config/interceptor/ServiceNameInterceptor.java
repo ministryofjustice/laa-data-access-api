@@ -6,11 +6,13 @@ import java.util.UUID;
 import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.config.ServiceNameContext;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 
 /** Captures the X-Service-Name HTTP header for the duration of an API request. */
 @Component
+@ExcludeFromGeneratedCodeCoverage
 public class ServiceNameInterceptor implements HandlerInterceptor {
 
   public static final String CORRELATION_ID_HEADER = "X-Correlation-Id";
