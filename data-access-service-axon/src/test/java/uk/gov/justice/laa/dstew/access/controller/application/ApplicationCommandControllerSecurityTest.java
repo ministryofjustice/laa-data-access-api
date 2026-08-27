@@ -37,6 +37,7 @@ import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationUseC
 import uk.gov.justice.laa.dstew.access.command.application.assignment.AssignCaseworkerUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.UnassignCaseworkerUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionUseCase;
+import uk.gov.justice.laa.dstew.access.command.application.document.UploadDocumentUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.ready.RecordAutoGrantOutcomeUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationUseCase;
@@ -71,6 +72,7 @@ class ApplicationCommandControllerSecurityTest {
   @MockitoBean private AssignCaseworkerUseCase assignCaseworkerUseCase;
   @MockitoBean private RecordAutoGrantOutcomeUseCase recordAutoGrantOutcomeUseCase;
   @MockitoBean private UpdateApplicationUseCase updateApplicationUseCase;
+  @MockitoBean private UploadDocumentUseCase uploadDocumentUseCase;
   @MockitoBean private CreateApplicationCommandMapper commandMapper;
   @MockitoBean private MakeDecisionCommandMapper decisionCommandMapper;
   @MockitoBean private AssignCaseworkerRequestMapper assignCaseworkerRequestMapper;

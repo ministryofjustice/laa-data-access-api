@@ -27,6 +27,7 @@ import uk.gov.justice.laa.dstew.access.command.application.assignment.UnassignCa
 import uk.gov.justice.laa.dstew.access.command.application.assignment.UnassignCaseworkerUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionUseCase;
+import uk.gov.justice.laa.dstew.access.command.application.document.UploadDocumentUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand;
@@ -47,6 +48,7 @@ class ApplicationCommandControllerTest {
   private AssignCaseworkerUseCase assignCaseworkerUseCase;
   private RecordAutoGrantOutcomeUseCase recordAutoGrantOutcomeUseCase;
   private UpdateApplicationUseCase updateApplicationUseCase;
+  private UploadDocumentUseCase uploadDocumentUseCase;
   private CreateApplicationCommandMapper commandMapper;
   private MakeDecisionCommandMapper decisionCommandMapper;
   private AssignCaseworkerRequestMapper assignCaseworkerRequestMapper;
@@ -67,6 +69,7 @@ class ApplicationCommandControllerTest {
     assignCaseworkerUseCase = mock(AssignCaseworkerUseCase.class);
     recordAutoGrantOutcomeUseCase = mock(RecordAutoGrantOutcomeUseCase.class);
     updateApplicationUseCase = mock(UpdateApplicationUseCase.class);
+    uploadDocumentUseCase = mock(UploadDocumentUseCase.class);
     commandMapper = mock(CreateApplicationCommandMapper.class);
     decisionCommandMapper = mock(MakeDecisionCommandMapper.class);
     assignCaseworkerRequestMapper = mock(AssignCaseworkerRequestMapper.class);
@@ -83,6 +86,7 @@ class ApplicationCommandControllerTest {
             assignCaseworkerUseCase,
             recordAutoGrantOutcomeUseCase,
             updateApplicationUseCase,
+            uploadDocumentUseCase,
             commandMapper,
             decisionCommandMapper,
             assignCaseworkerRequestMapper,

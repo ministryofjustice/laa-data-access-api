@@ -11,9 +11,13 @@ import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConf
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationGroupInvariantException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException;
+import uk.gov.justice.laa.dstew.access.exception.FileConflictException;
+import uk.gov.justice.laa.dstew.access.exception.FileLengthRequiredException;
 import uk.gov.justice.laa.dstew.access.exception.InvalidApplicationStateException;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.exception.VirusDetectedException;
+import uk.gov.justice.laa.dstew.access.exception.VirusScanException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /** Translates command-side failures to the existing HTTP validation contract. */
@@ -109,6 +113,43 @@ public class ApplicationExceptionHandler {
         .body(
             ProblemDetail.forStatusAndDetail(
                 HttpStatus.UNPROCESSABLE_CONTENT, exception.getMessage()));
+  }
+
+  /** Returns 409 when a file with the same name already exists in SDS. */
+  @ExceptionHandler(FileConflictException.class)
+  ResponseEntity<ProblemDetail> handleFileConflictException(FileConflictException exception) {
+    ProblemDetail problemDetail =
+        ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage());
+    problemDetail.setTitle("Conflict");
+    return ResponseEntity.status(HttpStatus.CONFLICT).body(problemDetail);
+  }
+
+  /** Returns 411 when file content length is missing from the SDS request. */
+  @ExceptionHandler(FileLengthRequiredException.class)
+  ResponseEntity<ProblemDetail> handleFileLengthRequiredException(
+      FileLengthRequiredException exception) {
+    ProblemDetail problemDetail =
+        ProblemDetail.forStatusAndDetail(HttpStatus.LENGTH_REQUIRED, exception.getMessage());
+    problemDetail.setTitle("Length Required");
+    return ResponseEntity.status(HttpStatus.LENGTH_REQUIRED).body(problemDetail);
+  }
+
+  /** Returns 400 when a virus is detected in an uploaded file by SDS. */
+  @ExceptionHandler(VirusDetectedException.class)
+  ResponseEntity<ProblemDetail> handleVirusDetectedException(VirusDetectedException exception) {
+    ProblemDetail problemDetail =
+        ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, exception.getMessage());
+    problemDetail.setTitle("Virus Detected");
+    return ResponseEntity.badRequest().body(problemDetail);
+  }
+
+  /** Returns 500 when SDS virus scan gives an unexpected result. */
+  @ExceptionHandler(VirusScanException.class)
+  ResponseEntity<ProblemDetail> handleVirusScanException(VirusScanException exception) {
+    ProblemDetail problemDetail =
+        ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR, exception.getMessage());
+    problemDetail.setTitle("Virus Scan Error");
+    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(problemDetail);
   }
 
   private ResponseEntity<ProblemDetail> validationError(List<String> errors) {
