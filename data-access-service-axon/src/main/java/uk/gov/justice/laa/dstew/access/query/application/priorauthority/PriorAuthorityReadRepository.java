@@ -4,5 +4,7 @@ import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 /** Persistence interface for the current prior-authority projection. */
-public interface PriorAuthorityReadRepository
-    extends JpaRepository<PriorAuthorityReadModel, UUID> {}
+public interface PriorAuthorityReadRepository extends JpaRepository<PriorAuthorityReadModel, UUID> {
+
+  java.util.List<PriorAuthorityReadModel> findAllByApplicationId(UUID applicationId);
+}

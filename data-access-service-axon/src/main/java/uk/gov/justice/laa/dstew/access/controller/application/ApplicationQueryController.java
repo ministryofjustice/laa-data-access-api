@@ -24,6 +24,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
+import uk.gov.justice.laa.dstew.access.model.PriorAuthorityResponse;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
@@ -31,6 +32,7 @@ import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsQuer
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsResult;
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadModel;
+import uk.gov.justice.laa.dstew.access.query.application.priorauthority.GetPriorAuthorityUseCase;
 import uk.gov.justice.laa.dstew.access.usecase.application.ApplicationQueryUseCase;
 
 /** HTTP query adapter for Application reads. */
@@ -44,6 +46,7 @@ public class ApplicationQueryController {
   private final GetApplicationHistoryResponseMapper historyResponseMapper;
   private final GetAllNotesForApplicationResponseMapper notesResponseMapper;
   private final SubscriptionProjectionGateway projectionGateway;
+  private final GetPriorAuthorityUseCase getPriorAuthorityUseCase;
 
   /**
    * Constructs the controller with its query gateway and response mappers.
@@ -64,13 +67,15 @@ public class ApplicationQueryController {
       GetAllApplicationsResponseMapper getAllResponseMapper,
       GetApplicationHistoryResponseMapper historyResponseMapper,
       GetAllNotesForApplicationResponseMapper notesResponseMapper,
-      SubscriptionProjectionGateway projectionGateway) {
+      SubscriptionProjectionGateway projectionGateway,
+      GetPriorAuthorityUseCase getPriorAuthorityUseCase) {
     this.applicationQueryUseCase = applicationQueryUseCase;
     this.responseMapper = responseMapper;
     this.getAllResponseMapper = getAllResponseMapper;
     this.historyResponseMapper = historyResponseMapper;
     this.notesResponseMapper = notesResponseMapper;
     this.projectionGateway = projectionGateway;
+    this.getPriorAuthorityUseCase = getPriorAuthorityUseCase;
   }
 
   /**
@@ -150,6 +155,15 @@ public class ApplicationQueryController {
     ApplicationNotesResponse response =
         notesResponseMapper.toResponse(applicationQueryUseCase.getNotesForApplication(id).notes());
     return ResponseEntity.ok(response);
+  }
+
+  /** Returns all prior-authority requests for the requested Application. */
+  @GetMapping("/{id}/prior-authorities")
+  public ResponseEntity<List<PriorAuthorityResponse>> getPriorAuthoritiesForApplication(
+      @PathVariable UUID id) {
+    List<PriorAuthorityResponse> result =
+        getPriorAuthorityUseCase.getPriorAuthoritiesForApplication(id);
+    return ResponseEntity.ok(result);
   }
 
   private Optional<ApplicationReadModel> findApplicationAwaitingProjection(UUID applicationId) {

@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.query.application.priorauthority;
 
+import java.util.List;
 import java.util.Optional;
 import org.axonframework.messaging.core.annotation.Namespace;
 import org.axonframework.messaging.eventhandling.annotation.EventHandler;
@@ -24,6 +25,14 @@ public class PriorAuthorityProjection {
   @QueryHandler
   public Optional<PriorAuthorityReadModel> handle(FindPriorAuthorityBySubmissionIdQuery query) {
     return repository.findById(query.submissionId());
+  }
+
+  /**
+   * Returns the current-state projections for all prior-authority submissions for an application.
+   */
+  @QueryHandler
+  public List<PriorAuthorityReadModel> handle(FindPriorAuthoritiesByApplicationIdQuery query) {
+    return repository.findAllByApplicationId(query.applicationId());
   }
 
   /** Creates the current-state row from a prior-authority creation event. */

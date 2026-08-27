@@ -28,12 +28,18 @@ class ApplicationQueryControllerTest {
 
   private ApplicationQueryUseCase applicationQueryUseCase;
   private GetApplicationHistoryResponseMapper historyResponseMapper;
+  private uk.gov.justice.laa.dstew.access.query.application.priorauthority.GetPriorAuthorityUseCase
+      getPriorAuthorityUseCase;
   private ApplicationQueryController controller;
 
   @BeforeEach
   void setUp() {
     applicationQueryUseCase = mock(ApplicationQueryUseCase.class);
     historyResponseMapper = mock(GetApplicationHistoryResponseMapper.class);
+    getPriorAuthorityUseCase =
+        mock(
+            uk.gov.justice.laa.dstew.access.query.application.priorauthority
+                .GetPriorAuthorityUseCase.class);
     controller =
         new ApplicationQueryController(
             applicationQueryUseCase,
@@ -41,7 +47,8 @@ class ApplicationQueryControllerTest {
             mock(GetAllApplicationsResponseMapper.class),
             historyResponseMapper,
             mock(GetAllNotesForApplicationResponseMapper.class),
-            mock(SubscriptionProjectionGateway.class));
+            mock(SubscriptionProjectionGateway.class),
+            getPriorAuthorityUseCase);
   }
 
   @Test
@@ -108,5 +115,18 @@ class ApplicationQueryControllerTest {
         ApplicationOrderBy.ASC,
         null,
         null);
+  }
+
+  @Test
+  void givenApplicationId_whenGetPriorAuthoritiesForApplication_thenCallsUseCaseAndReturnsList() {
+    UUID id = UUID.randomUUID();
+    uk.gov.justice.laa.dstew.access.model.PriorAuthorityResponse pa =
+        new uk.gov.justice.laa.dstew.access.model.PriorAuthorityResponse();
+    when(getPriorAuthorityUseCase.getPriorAuthoritiesForApplication(eq(id)))
+        .thenReturn(List.of(pa));
+
+    var response = controller.getPriorAuthoritiesForApplication(id);
+
+    assertThat(response.getBody()).containsExactly(pa);
   }
 }

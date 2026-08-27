@@ -22,6 +22,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.DocumentDownloadResponse;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
+import uk.gov.justice.laa.dstew.access.model.PriorAuthorityResponse;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.service.applications.SdsService;
 import uk.gov.justice.laa.dstew.access.service.domainevents.GetDomainEventService;
@@ -118,6 +119,12 @@ public class ApplicationQueryController implements ApplicationQueryApi {
   public ResponseEntity<Map<String, Object>> getCertificate(
       @NotNull ServiceName serviceName, UUID applicationId) {
     return ResponseEntity.ok(getCertificateUseCase.execute(applicationId).certificateContent());
+  }
+
+  @Override
+  public ResponseEntity<List<PriorAuthorityResponse>> getPriorAuthoritiesForApplication(
+      ServiceName serviceName, UUID id) {
+    return null;
   }
 
   @Hidden

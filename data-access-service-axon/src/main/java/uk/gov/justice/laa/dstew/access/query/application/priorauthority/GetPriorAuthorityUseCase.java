@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.query.application.priorauthority;
 
+import java.util.List;
 import java.util.UUID;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.springframework.stereotype.Service;
@@ -44,6 +45,26 @@ public class GetPriorAuthorityUseCase {
     PriorAuthorityDataPayload payload =
         priorAuthorityDataStore.get(priorAuthorityId, priorAuthority.getDataVersion());
     return toResponse(priorAuthority, payload.content());
+  }
+
+  /** Retrieves all Prior Authority requests for the supplied application id. */
+  public List<PriorAuthorityResponse> getPriorAuthoritiesForApplication(UUID applicationId) {
+    List<PriorAuthorityReadModel> priorAuthorities =
+        queryGateway
+            .queryMany(
+                new FindPriorAuthoritiesByApplicationIdQuery(applicationId),
+                PriorAuthorityReadModel.class)
+            .join();
+
+    return priorAuthorities.stream()
+        .map(
+            priorAuthority -> {
+              PriorAuthorityDataPayload payload =
+                  priorAuthorityDataStore.get(
+                      priorAuthority.getSubmissionId(), priorAuthority.getDataVersion());
+              return toResponse(priorAuthority, payload.content());
+            })
+        .toList();
   }
 
   private PriorAuthorityResponse toResponse(
