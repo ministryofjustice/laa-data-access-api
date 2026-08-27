@@ -5,17 +5,17 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
-import uk.gov.justice.laa.dstew.access.api.PriorAuthorityApi;
+import uk.gov.justice.laa.dstew.access.api.PriorAuthoritiesApi;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityResponse;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.GetPriorAuthorityUseCase;
 
 /** HTTP query adapter for retrieving Prior Authority requests. */
 @RestController
-public class PriorAuthorityQueryController implements PriorAuthorityApi {
+public class PriorAuthoritiesQueryController implements PriorAuthoritiesApi {
   private final GetPriorAuthorityUseCase getPriorAuthorityUseCase;
 
-  public PriorAuthorityQueryController(GetPriorAuthorityUseCase getPriorAuthorityUseCase) {
+  public PriorAuthoritiesQueryController(GetPriorAuthorityUseCase getPriorAuthorityUseCase) {
     this.getPriorAuthorityUseCase = getPriorAuthorityUseCase;
   }
 
@@ -28,7 +28,7 @@ public class PriorAuthorityQueryController implements PriorAuthorityApi {
    */
   @Override
   @Operation(security = @SecurityRequirement(name = "BearerAuth"))
-  public ResponseEntity<PriorAuthorityResponse> getPriorAuthority(
+  public ResponseEntity<PriorAuthorityResponse> getPriorAuthorities(
       ServiceName serviceName, UUID priorAuthorityId) {
     return ResponseEntity.ok(getPriorAuthorityUseCase.getPriorAuthority(priorAuthorityId));
   }
