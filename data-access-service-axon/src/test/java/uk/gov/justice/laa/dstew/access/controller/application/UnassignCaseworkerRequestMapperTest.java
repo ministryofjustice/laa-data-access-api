@@ -1,10 +1,16 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
 import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
@@ -39,5 +45,18 @@ class UnassignCaseworkerRequestMapperTest {
 
     assertThat(payload.get("eventHistory").isNull()).isTrue();
     assertThat(command.eventDescription()).isNull();
+  }
+
+  @Test
+  void givenSerialisationFails_whenMapped_thenThrowsIllegalStateException() throws Exception {
+    ObjectMapper mockMapper = mock(ObjectMapper.class);
+    UnassignCaseworkerRequestMapper failingMapper = new UnassignCaseworkerRequestMapper(mockMapper);
+    when(mockMapper.writeValueAsString(any())).thenThrow(new JacksonException("boom") {});
+
+    assertThatThrownBy(
+            () ->
+                failingMapper.toCommand(
+                    UUID.randomUUID(), CaseworkerUnassignRequest.builder().build()))
+        .isInstanceOf(IllegalStateException.class);
   }
 }
