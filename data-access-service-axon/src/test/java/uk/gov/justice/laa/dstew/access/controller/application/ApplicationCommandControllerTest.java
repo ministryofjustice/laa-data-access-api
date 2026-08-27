@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationCommand;
@@ -36,6 +37,7 @@ import uk.gov.justice.laa.dstew.access.command.application.ready.RecordAutoGrant
 import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
+import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
 import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
 
 /** Verifies that each controller endpoint delegates to the appropriate use case. */
@@ -202,6 +204,21 @@ class ApplicationCommandControllerTest {
     verify(createNoteUseCase, never()).execute(any());
     verify(unassignCaseworkerUseCase, never()).execute(any());
     verify(createApplicationUseCase, never()).execute(any());
+  }
+
+  @Test
+  void givenValidFile_whenUploadDocument_thenDelegatesToUseCaseAndReturns201() {
+    UUID id = UUID.randomUUID();
+    MockMultipartFile file =
+        new MockMultipartFile("file", "test.pdf", "application/pdf", "content".getBytes());
+    DocumentUploadResponse expected = mock(DocumentUploadResponse.class);
+    when(uploadDocumentUseCase.execute(id, file)).thenReturn(expected);
+
+    ResponseEntity<DocumentUploadResponse> response = controller.uploadDocument(null, id, file);
+
+    verify(uploadDocumentUseCase).execute(id, file);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    assertThat(response.getBody()).isEqualTo(expected);
   }
 
   private CreateApplicationCommand stubCreateCommand() {
