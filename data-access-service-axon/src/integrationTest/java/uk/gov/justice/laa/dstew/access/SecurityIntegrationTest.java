@@ -71,7 +71,7 @@ class SecurityIntegrationTest {
 
     assertUnauthorized(HttpMethod.GET, "/api/v0/caseworkers", null);
     assertUnauthorized(HttpMethod.GET, "/api/v0/applications", null);
-    assertUnauthorized(HttpMethod.GET, "/api/v0/prior-authority/" + applicationId, null);
+    assertUnauthorized(HttpMethod.GET, "/api/v0/prior-authorities/" + applicationId, null);
     assertUnauthorized(HttpMethod.GET, "/api/v0/individuals", null);
     assertUnauthorized(
         HttpMethod.POST,
@@ -151,7 +151,7 @@ class SecurityIntegrationTest {
     ResponseEntity<String> priorAuthorityResponse =
         exchangeString(
             HttpMethod.GET,
-            "/api/v0/prior-authority/" + UUID.randomUUID(),
+            "/api/v0/prior-authorities/" + UUID.randomUUID(),
             new HttpEntity<>(headers));
 
     assertThat(priorAuthorityResponse.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);

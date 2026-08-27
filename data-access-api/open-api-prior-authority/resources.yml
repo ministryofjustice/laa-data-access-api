@@ -1,10 +1,10 @@
 paths:
-  /api/v0/prior-authority/{priorAuthorityId}:
+  /api/v0/prior-authorities/{priorAuthorityId}:
     get:
       tags:
-        - prior-authority
+        - prior-authorities
       summary: Retrieve a Prior Authority request by priorAuthorityId
-      operationId: getPriorAuthority
+      operationId: getPriorAuthorities
       parameters:
         - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
         - name: priorAuthorityId
