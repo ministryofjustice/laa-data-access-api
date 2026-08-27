@@ -8,10 +8,17 @@ import org.springframework.web.bind.annotation.RestController;
 import uk.gov.justice.laa.dstew.access.api.PriorAuthorityApi;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityResponse;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
+import uk.gov.justice.laa.dstew.access.query.application.priorauthority.GetPriorAuthorityUseCase;
 
 /** HTTP query adapter for retrieving Prior Authority requests. */
 @RestController
 public class PriorAuthorityQueryController implements PriorAuthorityApi {
+  private final GetPriorAuthorityUseCase getPriorAuthorityUseCase;
+
+  public PriorAuthorityQueryController(GetPriorAuthorityUseCase getPriorAuthorityUseCase) {
+    this.getPriorAuthorityUseCase = getPriorAuthorityUseCase;
+  }
+
   /**
    * Retrieves the Prior Authority request identified by the supplied UUID.
    *
@@ -23,6 +30,6 @@ public class PriorAuthorityQueryController implements PriorAuthorityApi {
   @Operation(security = @SecurityRequirement(name = "BearerAuth"))
   public ResponseEntity<PriorAuthorityResponse> getPriorAuthority(
       ServiceName serviceName, UUID priorAuthorityId) {
-    return ResponseEntity.ok(new PriorAuthorityResponse());
+    return ResponseEntity.ok(getPriorAuthorityUseCase.getPriorAuthority(priorAuthorityId));
   }
 }

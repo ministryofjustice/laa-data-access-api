@@ -128,7 +128,7 @@ class SecurityIntegrationTest {
   }
 
   @Test
-  void givenCaseworkerDevToken_whenGetSecuredEndpoints_thenReturnsOk() {
+  void givenCaseworkerDevToken_whenGetUnknownPriorAuthority_thenReturnsNotFound() {
     UUID firstId = UUID.randomUUID();
     UUID secondId = UUID.randomUUID();
     jdbcTemplate.update(
@@ -154,7 +154,7 @@ class SecurityIntegrationTest {
             "/api/v0/prior-authority/" + UUID.randomUUID(),
             new HttpEntity<>(headers));
 
-    assertThat(priorAuthorityResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(priorAuthorityResponse.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
   }
 
   private ApplicationUpdateRequest updateRequest() {
