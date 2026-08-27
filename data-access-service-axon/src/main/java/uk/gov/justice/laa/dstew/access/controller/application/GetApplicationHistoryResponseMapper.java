@@ -1,10 +1,7 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
 import java.time.ZoneOffset;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.UUID;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -16,7 +13,8 @@ import uk.gov.justice.laa.dstew.access.model.PriorAuthorityHistoryGroup;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryResult;
-import uk.gov.justice.laa.dstew.access.query.application.history.PriorAuthorityHistoryReadModel;
+import uk.gov.justice.laa.dstew.access.query.application.history.PriorAuthorityHistoryEventResult;
+import uk.gov.justice.laa.dstew.access.query.application.history.PriorAuthorityHistoryGroupResult;
 
 /** Maps the Axon application-history projection to the shared HTTP response contract. */
 @Component
@@ -30,44 +28,28 @@ public class GetApplicationHistoryResponseMapper {
 
   /** Maps history rows in their repository-provided chronological order. */
   public ApplicationHistoryResponse toResponse(ApplicationHistoryResult result) {
-    var events = result.applicationEvents().stream().map(this::toEvent).toList();
-    var paGroups = toPaGroups(result.priorAuthorityEvents());
-    return ApplicationHistoryResponse.builder().events(events).priorAuthorities(paGroups).build();
+    var applicationEvents = result.applicationEvents().stream().map(this::toEvent).toList();
+    var priorAuthorityGroups = result.priorAuthorities().stream().map(this::toPaGroup).toList();
+    return ApplicationHistoryResponse.builder()
+        .events(applicationEvents)
+        .priorAuthorities(priorAuthorityGroups)
+        .build();
   }
 
-  private List<PriorAuthorityHistoryGroup> toPaGroups(List<PriorAuthorityHistoryReadModel> rows) {
-    return rows.stream()
-        .collect(
-            Collectors.groupingBy(
-                PriorAuthorityHistoryReadModel::getSubmissionId,
-                LinkedHashMap::new,
-                Collectors.toList()))
-        .entrySet()
-        .stream()
-        .map(
-            entry -> {
-              List<PriorAuthorityHistoryReadModel> groupRows = entry.getValue();
-              return PriorAuthorityHistoryGroup.builder()
-                  .submissionId(entry.getKey())
-                  .priorAuthorityType(
-                      PriorAuthorityType.fromValue(groupRows.getFirst().getPriorAuthorityType()))
-                  .events(
-                      groupRows.stream()
-                          .sorted(
-                              Comparator.comparing(PriorAuthorityHistoryReadModel::getOccurredAt))
-                          .map(this::toPaEvent)
-                          .toList())
-                  .build();
-            })
-        .toList();
+  private PriorAuthorityHistoryGroup toPaGroup(PriorAuthorityHistoryGroupResult group) {
+    return PriorAuthorityHistoryGroup.builder()
+        .submissionId(group.submissionId())
+        .priorAuthorityType(PriorAuthorityType.fromValue(group.priorAuthorityType()))
+        .events(group.events().stream().map(this::toPaEvent).toList())
+        .build();
   }
 
-  private PriorAuthorityEventResponse toPaEvent(PriorAuthorityHistoryReadModel row) {
+  private PriorAuthorityEventResponse toPaEvent(PriorAuthorityHistoryEventResult event) {
     return PriorAuthorityEventResponse.builder()
-        .eventType(row.getEventType())
-        .createdAt(row.getOccurredAt().atOffset(ZoneOffset.UTC))
-        .createdBy(row.getServiceName() == null ? "UNKNOWN" : row.getServiceName())
-        .eventDescription(null)
+        .eventType(event.eventType())
+        .createdAt(event.occurredAt().atOffset(ZoneOffset.UTC))
+        .createdBy(event.serviceName() == null ? "UNKNOWN" : event.serviceName())
+        .eventDescription(event.eventDescription())
         .build();
   }
 
@@ -94,13 +76,15 @@ public class GetApplicationHistoryResponseMapper {
     }
   }
 
-  private java.util.UUID caseworkerId(String requestPayload) {
+  private UUID caseworkerId(String requestPayload) {
     if (requestPayload == null || requestPayload.isBlank()) {
       return null;
     }
     try {
-      JsonNode id = objectMapper.readTree(requestPayload).get("caseworkerId");
-      return id == null || id.isNull() ? null : java.util.UUID.fromString(id.asText());
+      JsonNode caseworkerIdNode = objectMapper.readTree(requestPayload).get("caseworkerId");
+      return caseworkerIdNode == null || caseworkerIdNode.isNull()
+          ? null
+          : UUID.fromString(caseworkerIdNode.asText());
     } catch (Exception exception) {
       return null;
     }

@@ -44,12 +44,14 @@ class ApplicationHistoryProjectionTest {
   void setUp() {
     repository = mock(ApplicationHistoryReadRepository.class);
     applicationDataStore = mock(ApplicationDataStore.class);
-    PriorAuthorityHistoryReadRepository paRepository =
-        mock(PriorAuthorityHistoryReadRepository.class);
-    this.paRepository = paRepository;
+    paRepository = mock(PriorAuthorityHistoryReadRepository.class);
     projection =
         new ApplicationHistoryProjection(
-            repository, objectMapper, applicationDataStore, paRepository);
+            repository,
+            objectMapper,
+            applicationDataStore,
+            paRepository,
+            new PriorAuthorityHistoryAssembler());
   }
 
   @Test
@@ -311,56 +313,51 @@ class ApplicationHistoryProjectionTest {
   }
 
   @Test
-  void
-      givenLegacyPriorAuthorityCreatedEventWithNullType_whenHandled_thenSkipsSaveWithoutThrowing() {
-    UUID submissionId = UUID.randomUUID();
-    UUID applicationId = UUID.randomUUID();
-    Instant occurredAt = Instant.parse("2026-08-05T10:00:00Z");
-    var legacyEvent =
-        new PriorAuthorityCreatedEvent(
-            submissionId, applicationId, null, 0L, "fp", "PENDING", 1, occurredAt);
-    var msg = message(legacyEvent, "legacy-pa-event-id");
-
-    projection.on(legacyEvent, msg);
-
-    verify(paRepository, never()).save(any());
-  }
-
-  @Test
   void givenApplicationWithPriorAuthorities_whenQueried_thenReturnsBothEventSets() {
     UUID applicationId = UUID.randomUUID();
-    var appEvent =
+    UUID submissionId = UUID.randomUUID();
+    var applicationEvent =
         history(applicationId, "APPLICATION_CREATED", Instant.parse("2026-08-05T09:00:00Z"));
-    var paEvent = paHistoryReadModel(applicationId, UUID.randomUUID());
+    var priorAuthorityEvent = paHistoryReadModel(applicationId, submissionId);
     when(repository.findAllByApplicationIdOrderByOccurredAtAsc(applicationId))
-        .thenReturn(List.of(appEvent));
+        .thenReturn(List.of(applicationEvent));
     when(paRepository.findAllByApplicationIdOrderByOccurredAtAsc(applicationId))
-        .thenReturn(List.of(paEvent));
+        .thenReturn(List.of(priorAuthorityEvent));
 
     var result =
         projection.handle(
             new FindApplicationHistoryQuery(applicationId, List.of("APPLICATION_CREATED")));
 
-    assertThat(result).isInstanceOf(ApplicationHistoryResult.class);
     assertThat(result.applicationEvents()).hasSize(1);
-    assertThat(result.priorAuthorityEvents()).hasSize(1);
+    assertThat(result.priorAuthorities())
+        .singleElement()
+        .satisfies(
+            group -> {
+              assertThat(group.submissionId()).isEqualTo(submissionId);
+              assertThat(group.priorAuthorityType()).isEqualTo("EXPERT");
+              assertThat(group.events())
+                  .extracting(PriorAuthorityHistoryEventResult::eventType)
+                  .containsExactly("PRIOR_AUTHORITY_CREATED");
+            });
   }
 
   @Test
   void givenPriorAuthorityEvents_whenQueried_thenPaEventsNotFilteredByEventTypeParam() {
     UUID applicationId = UUID.randomUUID();
-    var paEvent = paHistoryReadModel(applicationId, UUID.randomUUID());
+    var priorAuthorityEvent = paHistoryReadModel(applicationId, UUID.randomUUID());
     when(repository.findAllByApplicationIdOrderByOccurredAtAsc(applicationId))
         .thenReturn(List.of());
     when(paRepository.findAllByApplicationIdOrderByOccurredAtAsc(applicationId))
-        .thenReturn(List.of(paEvent));
+        .thenReturn(List.of(priorAuthorityEvent));
 
     var result =
         projection.handle(
             new FindApplicationHistoryQuery(applicationId, List.of("APPLICATION_CREATED")));
 
     assertThat(result.applicationEvents()).isEmpty();
-    assertThat(result.priorAuthorityEvents()).hasSize(1);
+    assertThat(result.priorAuthorities())
+        .singleElement()
+        .satisfies(group -> assertThat(group.events()).hasSize(1));
   }
 
   @Test

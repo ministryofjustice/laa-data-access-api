@@ -38,17 +38,20 @@ public class ApplicationHistoryProjection {
   private final ObjectMapper objectMapper;
   private final ApplicationDataStore applicationDataStore;
   private final PriorAuthorityHistoryReadRepository priorAuthorityHistoryReadRepository;
+  private final PriorAuthorityHistoryAssembler priorAuthorityHistoryAssembler;
 
   /** Creates the history projection with its persistence and reconstruction dependencies. */
   public ApplicationHistoryProjection(
       ApplicationHistoryReadRepository applicationHistoryReadRepository,
       ObjectMapper objectMapper,
       ApplicationDataStore applicationDataStore,
-      PriorAuthorityHistoryReadRepository priorAuthorityHistoryReadRepository) {
+      PriorAuthorityHistoryReadRepository priorAuthorityHistoryReadRepository,
+      PriorAuthorityHistoryAssembler priorAuthorityHistoryAssembler) {
     this.applicationHistoryReadRepository = applicationHistoryReadRepository;
     this.objectMapper = objectMapper;
     this.applicationDataStore = applicationDataStore;
     this.priorAuthorityHistoryReadRepository = priorAuthorityHistoryReadRepository;
+    this.priorAuthorityHistoryAssembler = priorAuthorityHistoryAssembler;
   }
 
   /**
@@ -171,13 +174,6 @@ public class ApplicationHistoryProjection {
   /** Records the creation of a PriorAuthority submission in the PA history table. */
   @EventHandler
   public void on(PriorAuthorityCreatedEvent event, EventMessage message) {
-    if (event.priorAuthorityType() == null) {
-      LOG.warn(
-          "Skipping PA history row for legacy PriorAuthorityCreatedEvent missing priorAuthorityType"
-              + " [eventId={}]",
-          message.identifier());
-      return;
-    }
     Object serviceName =
         message.metadata().get(ServiceNameMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY);
     priorAuthorityHistoryReadRepository.save(
@@ -207,10 +203,12 @@ public class ApplicationHistoryProjection {
             .filter(h -> query.eventTypes().contains(h.getEventType()))
             .map(this::hydrateEventDescription)
             .toList();
-    List<PriorAuthorityHistoryReadModel> paEvents =
+    List<PriorAuthorityHistoryReadModel> priorAuthorityRows =
         priorAuthorityHistoryReadRepository.findAllByApplicationIdOrderByOccurredAtAsc(
             query.applicationId());
-    return new ApplicationHistoryResult(applicationEvents, paEvents);
+    List<PriorAuthorityHistoryGroupResult> priorAuthorityGroups =
+        priorAuthorityHistoryAssembler.assemble(priorAuthorityRows);
+    return new ApplicationHistoryResult(applicationEvents, priorAuthorityGroups);
   }
 
   private ApplicationHistoryReadModel hydrateEventDescription(ApplicationHistoryReadModel history) {
