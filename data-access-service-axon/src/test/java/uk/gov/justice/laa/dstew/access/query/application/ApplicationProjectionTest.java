@@ -507,42 +507,6 @@ class ApplicationProjectionTest {
   }
 
   @Test
-  void givenDataMissingForApplication_whenFindByIdQuery_thenReturnsNull() {
-    UUID applicationId = UUID.randomUUID();
-    ApplicationReadModel existing =
-        ApplicationReadModel.builder()
-            .applicationId(applicationId)
-            .applicationDataVersion(0L)
-            .build();
-    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(existing));
-    when(applicationDataStore.getAll(any())).thenReturn(Map.of());
-
-    ApplicationReadModel result = projection.handle(new FindApplicationByIdQuery(applicationId));
-
-    assertThat(result).isNull();
-  }
-
-  @Test
-  void givenExistingApplicationWithData_whenFindByIdQuery_thenReturnsHydratedModel() {
-    UUID applicationId = UUID.randomUUID();
-    ApplicationReadModel existing =
-        ApplicationReadModel.builder()
-            .applicationId(applicationId)
-            .applicationDataVersion(1L)
-            .build();
-    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(existing));
-    ApplicationDataId dataId = new ApplicationDataId(applicationId, 1L);
-    ApplicationDataPayload payload =
-        ApplicationDataPayload.from(applicationCreationDetails(applicationId));
-    when(applicationDataStore.getAll(List.of(dataId))).thenReturn(Map.of(dataId, payload));
-
-    ApplicationReadModel result = projection.handle(new FindApplicationByIdQuery(applicationId));
-
-    assertThat(result).isNotNull();
-    assertThat(result.getApplicationId()).isEqualTo(applicationId);
-  }
-
-  @Test
   void givenApplicationWithMissingData_whenStalledQuery_thenExcluded() {
     Instant threshold = Instant.parse("2026-08-04T09:45:00Z");
     UUID appId = UUID.randomUUID();

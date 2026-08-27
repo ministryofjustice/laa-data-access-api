@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.axonframework.eventsourcing.eventstore.EventStore;
 import org.axonframework.messaging.core.MessageStream;
@@ -157,6 +158,80 @@ class ApplicationEventStoreReplayServiceTest {
         .hasCause(streamFailure);
   }
 
+  @Test
+  void skipsEmptyStreamEntriesBeforeReplayingAvailableEvents() {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationCreatedEvent event =
+        applicationCreatedEvent(applicationId, 1L, Instant.parse("2026-08-19T10:15:30Z"));
+    MessageStream.Entry<EventMessage> entry = mockEntry(eventMessage(event));
+    MessageStream<EventMessage> stream = mock(MessageStream.class);
+    when(eventStore.open(any(), isNull())).thenReturn(stream);
+    when(stream.hasNextAvailable()).thenReturn(true, true, false);
+    when(stream.next()).thenReturn(Optional.empty()).thenReturn(Optional.of(entry));
+    when(stream.error()).thenReturn(Optional.empty());
+    when(applicationDataStore.get(applicationId, 1L)).thenReturn(applicationData("LAA-987"));
+
+    assertThat(service.replay(applicationId)).isPresent();
+
+    verify(stream).close();
+  }
+
+  @Test
+  void ignoresUnknownEventTypesDuringReplay() {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationCreatedEvent event =
+        applicationCreatedEvent(applicationId, 1L, Instant.parse("2026-08-19T10:15:30Z"));
+    when(eventStore.open(any(), isNull()))
+        .thenReturn(
+            MessageStream.fromItems(
+                eventMessageWithType("UnknownEvent", "irrelevant"), eventMessage(event)));
+    when(applicationDataStore.get(applicationId, 1L)).thenReturn(applicationData("LAA-987"));
+
+    assertThat(service.replay(applicationId)).isPresent();
+  }
+
+  @Test
+  void returnsEmptyWhenTheReplayedApplicationDataIsNull() {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationCreatedEvent event =
+        applicationCreatedEvent(applicationId, 1L, Instant.parse("2026-08-19T10:15:30Z"));
+    when(eventStore.open(any(), isNull()))
+        .thenReturn(MessageStream.<EventMessage>fromItems(eventMessage(event)));
+    when(applicationDataStore.get(applicationId, 1L)).thenReturn(null);
+
+    assertThat(service.replay(applicationId)).isEmpty();
+  }
+
+  @Test
+  void wrapsFailuresApplyingKnownEvents() {
+    UUID applicationId = UUID.randomUUID();
+    when(eventStore.open(any(), isNull()))
+        .thenReturn(
+            MessageStream.fromItems(eventMessageWithType("ApplicationCreatedEvent", "invalid")));
+
+    assertThatThrownBy(() -> service.replay(applicationId))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Unable to apply event ApplicationCreatedEvent during replay");
+  }
+
+  @Test
+  void retainsAutoGrantedStateWhenAnUpdateDoesNotEnterSubmitted() {
+    ApplicationReadModel model = new ApplicationReadModel();
+    model.setAutoGranted(AutoGrantedState.AUTOGRANTED);
+    ApplicationUpdatedEvent event =
+        new ApplicationUpdatedEvent(
+            UUID.randomUUID(),
+            2L,
+            3L,
+            "APPLICATION_DRAFT",
+            "APPLICATION_DRAFT",
+            Instant.parse("2026-08-19T10:01:00Z"));
+
+    ApplicationReadModelApplier.apply(model, event);
+
+    assertThat(model.getAutoGranted()).isEqualTo(AutoGrantedState.AUTOGRANTED);
+  }
+
   private static ApplicationCreatedEvent applicationCreatedEvent(
       UUID applicationId, long applicationDataVersion, Instant occurredAt) {
     return new ApplicationCreatedEvent(
@@ -251,6 +326,17 @@ class ApplicationEventStoreReplayServiceTest {
 
   private EventMessage eventMessage(ApplicationCreatedEvent event) {
     return eventMessage(event, event.occurredAt());
+  }
+
+  private EventMessage eventMessageWithType(String typeName, Object event) {
+    return new GenericEventMessage(
+        UUID.randomUUID().toString(), new MessageType(typeName), event, Map.of(), Instant.now());
+  }
+
+  private MessageStream.Entry<EventMessage> mockEntry(EventMessage event) {
+    MessageStream.Entry<EventMessage> entry = mock(MessageStream.Entry.class);
+    when(entry.message()).thenReturn(event);
+    return entry;
   }
 
   private ApplicationDataPayload applicationData(String laaReference) {

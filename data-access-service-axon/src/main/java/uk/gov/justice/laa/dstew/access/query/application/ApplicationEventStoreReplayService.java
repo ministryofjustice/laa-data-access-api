@@ -144,7 +144,7 @@ public class ApplicationEventStoreReplayService {
     try {
       ApplicationDataPayload data =
           applicationDataStore.get(applicationId, model.getApplicationDataVersion());
-      return Optional.of(hydrate(model, data));
+      return Optional.ofNullable(hydrate(model, data));
     } catch (IllegalStateException exception) {
       return Optional.empty();
     }
