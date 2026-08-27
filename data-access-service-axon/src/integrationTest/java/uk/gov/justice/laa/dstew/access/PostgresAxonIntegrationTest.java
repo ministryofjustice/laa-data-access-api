@@ -1746,6 +1746,73 @@ class PostgresAxonIntegrationTest {
     assertThat(historyResponse.getBody().getEvents()).isNotEmpty();
   }
 
+  @Test
+  void
+      givenConflictingPriorAuthorityTypeRowsInDb_whenGetHistory_thenReturnsHttp500WithStableProblemDetail()
+          throws Exception {
+    UUID applicationId = UUID.randomUUID();
+    UUID submissionId = UUID.randomUUID();
+
+    jdbcTemplate.update(
+        """
+        INSERT INTO axon.prior_authority_history
+            (event_id, application_id, submission_id, prior_authority_type,
+             event_type, event_data, service_name, occurred_at)
+        VALUES (?, ?, ?, ?, ?, ?::jsonb, ?, ?)
+        """,
+        "conflict-evt-1",
+        applicationId,
+        submissionId,
+        "EXPERT",
+        "PRIOR_AUTHORITY_CREATED",
+        "{\"status\":\"PENDING\",\"dataVersion\":0}",
+        "CIVIL_APPLY",
+        OffsetDateTime.parse("2026-08-01T09:00:00Z"));
+
+    jdbcTemplate.update(
+        """
+        INSERT INTO axon.prior_authority_history
+            (event_id, application_id, submission_id, prior_authority_type,
+             event_type, event_data, service_name, occurred_at)
+        VALUES (?, ?, ?, ?, ?, ?::jsonb, ?, ?)
+        """,
+        "conflict-evt-2",
+        applicationId,
+        submissionId,
+        "COUNSEL",
+        "PRIOR_AUTHORITY_CREATED",
+        "{\"status\":\"PENDING\",\"dataVersion\":0}",
+        "CIVIL_APPLY",
+        OffsetDateTime.parse("2026-08-01T10:00:00Z"));
+
+    try {
+      ResponseEntity<String> response =
+          restTemplate.exchange(
+              "http://localhost:"
+                  + port
+                  + "/api/v0/applications/"
+                  + applicationId
+                  + "/history-search",
+              HttpMethod.GET,
+              new HttpEntity<>(headers()),
+              String.class);
+
+      assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+      var responseBody = objectMapper.readTree(response.getBody());
+      assertThat(responseBody.get("status").asInt()).isEqualTo(500);
+      assertThat(responseBody.get("detail").asText())
+          .isEqualTo("Application history data is inconsistent");
+      assertThat(response.getBody()).doesNotContain(applicationId.toString());
+      assertThat(response.getBody()).doesNotContain(submissionId.toString());
+      assertThat(response.getBody()).doesNotContain("conflicting");
+    } finally {
+      jdbcTemplate.update(
+          "DELETE FROM axon.prior_authority_history WHERE event_id IN (?, ?)",
+          "conflict-evt-1",
+          "conflict-evt-2");
+    }
+  }
+
   private CreatePriorAuthorityRequest fixedRateExpertRequest() {
     return CreatePriorAuthorityRequest.builder()
         .priorAuthorityType(PriorAuthorityType.EXPERT)
