@@ -4,7 +4,7 @@ info:
   version: 1.0.0
 
 security:
-  - bearerAuth: []
+  - BearerAuth: []
 
 paths:
   /api/v0/applications:
@@ -44,7 +44,7 @@ paths:
 
 components:
   securitySchemes:
-    bearerAuth:
+    BearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
