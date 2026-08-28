@@ -51,20 +51,35 @@ public class GetPriorAuthorityUseCase {
     PriorAuthorityResponse response = new PriorAuthorityResponse();
     response.setPriorAuthorityId(priorAuthority.getSubmissionId());
     response.setApplicationId(priorAuthority.getApplicationId());
-    response.setPriorAuthorityType(
-        PriorAuthorityResponse.PriorAuthorityTypeEnum.fromValue(content.priorAuthorityType()));
+
     response.setJustification(content.justification());
     response.setStatus(priorAuthority.getStatus());
 
-    switch (content.priorAuthorityType()) {
-      case "EXPERT" -> response.setExpertDetails(toExpertDetails(content));
-      case "COUNSEL" -> response.setCounselDetails(toCounselDetails(content));
-      case "DISBURSEMENT" -> response.setDisbursementDetails(toDisbursementDetails(content));
-      default ->
-          throw new IllegalStateException(
-              "Unknown prior authority type: " + content.priorAuthorityType());
+    if (content.priorAuthorityType() == null || content.priorAuthorityType().isEmpty()) {
+      response.setPriorAuthorityType(null);
+      response.setCounselDetails(null);
+      response.setDisbursementDetails(null);
+      response.setExpertDetails(null);
+      return response;
     }
-    return response;
+
+    PriorAuthorityResponse.PriorAuthorityTypeEnum priorAuthorityType =
+        PriorAuthorityResponse.PriorAuthorityTypeEnum.fromValue(content.priorAuthorityType());
+    response.setPriorAuthorityType(priorAuthorityType);
+    return switch (priorAuthorityType) {
+      case PriorAuthorityResponse.PriorAuthorityTypeEnum.EXPERT -> {
+        response.setExpertDetails(toExpertDetails(content));
+        yield response;
+      }
+      case PriorAuthorityResponse.PriorAuthorityTypeEnum.COUNSEL -> {
+        response.setCounselDetails(toCounselDetails(content));
+        yield response;
+      }
+      case PriorAuthorityResponse.PriorAuthorityTypeEnum.DISBURSEMENT -> {
+        response.setDisbursementDetails(toDisbursementDetails(content));
+        yield response;
+      }
+    };
   }
 
   private ExpertDetails toExpertDetails(PriorAuthorityContent content) {
