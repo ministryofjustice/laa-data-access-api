@@ -48,12 +48,10 @@ public class ApplicationQueryController implements ApplicationQueryApi {
    * Constructs the controller with its query gateway and response mappers.
    *
    * @param applicationQueryUseCase secured application read use case
-   * @param responseMapper maps a single {@link ApplicationReadModel} to {@link
-   *     uk.gov.justice.laa.dstew.access.model.ApplicationResponse}
-   * @param getAllResponseMapper maps application summaries to {@link
-   *     uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse}
+   * @param responseMapper maps a single {@link ApplicationReadModel} to {@link ApplicationResponse}
+   * @param getAllResponseMapper maps application summaries to {@link ApplicationSummaryResponse}
    * @param historyResponseMapper maps {@link ApplicationHistoryResult} to {@link
-   *     uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse}
+   *     ApplicationHistoryResponse}
    * @param notesResponseMapper maps notes to {@link ApplicationNotesResponse}
    */
   public ApplicationQueryController(

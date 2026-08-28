@@ -3,7 +3,6 @@ package uk.gov.justice.laa.dstew.access.usecase.application;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
@@ -12,15 +11,21 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryIntegrityException;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryResult;
 
+@ExtendWith(MockitoExtension.class)
 class ApplicationQueryUseCaseIntegrityTest {
 
-  private final QueryGateway queryGateway = mock(QueryGateway.class);
-  private final ApplicationQueryUseCase useCase = new ApplicationQueryUseCase(queryGateway);
+  @Mock private QueryGateway queryGateway;
+
+  @InjectMocks private ApplicationQueryUseCase useCase;
 
   @ParameterizedTest(name = "{0} CompletionException wrapper(s)")
   @ValueSource(ints = {1, 2})

@@ -1,9 +1,6 @@
 package uk.gov.justice.laa.dstew.access.query.application.history;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -13,12 +10,17 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.assertj.core.groups.Tuple;
 import org.axonframework.messaging.core.MessageType;
 import org.axonframework.messaging.eventhandling.EventMessage;
 import org.axonframework.messaging.eventhandling.GenericEventMessage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
@@ -29,22 +31,25 @@ import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataS
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
+import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityCreatedEvent;
 import uk.gov.justice.laa.dstew.access.config.interceptor.ServiceNameMetadataDispatchInterceptor;
 
+@ExtendWith(MockitoExtension.class)
 class ApplicationHistoryProjectionTest {
 
+  @Mock private ApplicationDataStore applicationDataStore;
+
+  @Mock private ApplicationHistoryReadRepository repository;
+
+  @Mock private PriorAuthorityHistoryReadRepository paRepository;
+
+  @InjectMocks private ApplicationHistoryProjection projection;
+
   private final ObjectMapper objectMapper = JsonMapper.builder().build();
-  private ApplicationHistoryReadRepository repository;
-  private ApplicationDataStore applicationDataStore;
-  private PriorAuthorityHistoryReadRepository paRepository;
-  private ApplicationHistoryProjection projection;
 
   @BeforeEach
   void setUp() {
-    repository = mock(ApplicationHistoryReadRepository.class);
-    applicationDataStore = mock(ApplicationDataStore.class);
-    paRepository = mock(PriorAuthorityHistoryReadRepository.class);
     projection =
         new ApplicationHistoryProjection(
             repository,
@@ -55,8 +60,7 @@ class ApplicationHistoryProjectionTest {
   }
 
   @Test
-  void givenGroupCreatedEvent_whenHandled_thenStoresDistinctHistoryForEveryMember()
-      throws Exception {
+  void givenGroupCreatedEvent_whenHandled_thenStoresDistinctHistoryForEveryMember() {
     UUID leadId = UUID.randomUUID();
     UUID memberId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-07-15T08:00:00Z");
@@ -76,10 +80,8 @@ class ApplicationHistoryProjectionTest {
             ApplicationHistoryReadModel::getApplicationId,
             ApplicationHistoryReadModel::getEventType)
         .containsExactlyInAnyOrder(
-            org.assertj.core.groups.Tuple.tuple(
-                "group-event-id:" + leadId, leadId, "APPLICATION_GROUP_CREATED"),
-            org.assertj.core.groups.Tuple.tuple(
-                "group-event-id:" + memberId, memberId, "APPLICATION_GROUP_JOINED"));
+            Tuple.tuple("group-event-id:" + leadId, leadId, "APPLICATION_GROUP_CREATED"),
+            Tuple.tuple("group-event-id:" + memberId, memberId, "APPLICATION_GROUP_JOINED"));
     for (ApplicationHistoryReadModel history : captor.getAllValues()) {
       var payload = objectMapper.readTree(history.getRequestPayload());
       assertThat(payload.get("groupId").asString()).isEqualTo(leadId.toString());
@@ -245,9 +247,7 @@ class ApplicationHistoryProjectionTest {
   void givenNoteCreatedEvent_whenHandled_thenStoresNoteCreatedHistory() {
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-07-20T10:00:00Z");
-    uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent event =
-        new uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent(
-            applicationId, 1L, occurredAt);
+    NoteCreatedEvent event = new NoteCreatedEvent(applicationId, 1L, occurredAt);
 
     projection.on(event, message(event, "note-event-id"));
 
@@ -262,9 +262,7 @@ class ApplicationHistoryProjectionTest {
   @Test
   void givenNoteHistory_whenQueried_thenReconstructsNoteText() throws Exception {
     UUID applicationId = UUID.randomUUID();
-    uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent event =
-        new uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent(
-            applicationId, 1L, Instant.now());
+    NoteCreatedEvent event = new NoteCreatedEvent(applicationId, 1L, Instant.now());
     projection.on(event, message(event, "note-event-id"));
     ArgumentCaptor<ApplicationHistoryReadModel> captor =
         ArgumentCaptor.forClass(ApplicationHistoryReadModel.class);
