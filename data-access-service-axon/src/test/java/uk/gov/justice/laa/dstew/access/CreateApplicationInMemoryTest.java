@@ -110,13 +110,16 @@ class CreateApplicationInMemoryTest {
   }
 
   @Test
-  void givenAxonApplication_whenOpenApiRequested_thenDocumentsCreateApplication() {
+  void givenAxonControllers_whenOpenApiRequested_thenDocumentsBearerSecuredEndpoints() {
     ResponseEntity<String> response = restTemplate.getForEntity("/v3/api-docs", String.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(response.getBody())
         .contains("\"openapi\":\"3.1")
-        .contains("\"/api/v0/applications\"");
+        .contains("\"/api/v0/applications\"")
+        .contains("\"/api/v0/caseworkers\"")
+        .contains("\"/api/v0/individuals\"")
+        .contains("\"bearerAuth\":[]");
   }
 
   @Test
