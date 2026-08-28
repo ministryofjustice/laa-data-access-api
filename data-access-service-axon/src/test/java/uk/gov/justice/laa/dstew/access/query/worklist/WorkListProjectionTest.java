@@ -15,6 +15,9 @@ import org.axonframework.messaging.eventhandling.GenericEventMessage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityCreatedEvent;
@@ -47,6 +50,7 @@ class WorkListProjectionTest {
     assertThat(row.getAssignmentBoundaryType()).isEqualTo("DIRECT");
     assertThat(row.getAssignmentVersion()).isZero();
     assertThat(row.getItemVersion()).isEqualTo(3L);
+    assertThat(row.getSubmittedAt()).isEqualTo(occurredAt);
   }
 
   @Test
@@ -71,6 +75,37 @@ class WorkListProjectionTest {
     assertThat(captor.getValue().getParentApplicationId()).isEqualTo(applicationId);
     assertThat(captor.getValue().getAssignmentBoundaryId()).isEqualTo(submissionId);
     assertThat(captor.getValue().getAssignmentVersion()).isZero();
+    assertThat(captor.getValue().getSubmittedAt()).isEqualTo(Instant.parse("2026-08-28T10:00:00Z"));
+  }
+
+  @Test
+  void givenWorkListQuery_whenHandled_thenPagesWithOldestSubmissionFirst() {
+    WorkListItemReadModel item =
+        new WorkListItemReadModel(
+            WorkItemType.APPLICATION,
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            null,
+            Instant.parse("2026-08-28T10:00:00Z"),
+            1L,
+            0L);
+    when(
+            items.findAll(
+                org.mockito.ArgumentMatchers.<Specification<WorkListItemReadModel>>any(),
+                org.mockito.ArgumentMatchers.any(Pageable.class)))
+        .thenReturn(new PageImpl<>(java.util.List.of(item)));
+
+    FindWorkListItemsResult result =
+        projection.handle(new FindWorkListItemsQuery(null, null, true, null, null));
+
+    ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
+    verify(items)
+        .findAll(org.mockito.ArgumentMatchers.<Specification<WorkListItemReadModel>>any(), pageable.capture());
+    assertThat(result.items()).containsExactly(item);
+    assertThat(result.requestedPage()).isEqualTo(1);
+    assertThat(result.requestedPageSize()).isEqualTo(20);
+    assertThat(pageable.getValue().getSort().getOrderFor("submittedAt").getDirection())
+        .isEqualTo(org.springframework.data.domain.Sort.Direction.ASC);
   }
 
   @Test

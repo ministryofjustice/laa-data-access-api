@@ -26,7 +26,7 @@ public class WorkListProjection {
     this.items = items;
   }
 
-  /** Returns a database-filtered page of active work, newest update first. */
+  /** Returns a database-filtered page of active work, oldest submission first. */
   @QueryHandler
   public FindWorkListItemsResult handle(FindWorkListItemsQuery query) {
     Page<WorkListItemReadModel> page =
@@ -35,7 +35,7 @@ public class WorkListProjection {
             PageRequest.of(
                 query.page() - 1,
                 query.pageSize(),
-                Sort.by(Sort.Direction.DESC, "updatedAt")
+                Sort.by(Sort.Direction.ASC, "submittedAt")
                     .and(Sort.by(Sort.Direction.ASC, "id.itemType"))
                     .and(Sort.by(Sort.Direction.ASC, "id.itemId"))));
     return new FindWorkListItemsResult(

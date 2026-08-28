@@ -44,6 +44,7 @@ import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.IndividualsResponse;
 import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
+import uk.gov.justice.laa.dstew.access.model.WorkQueueResponse;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
@@ -361,6 +362,23 @@ class CreateApplicationInMemoryTest {
     ApplicationReadModel projected = awaitApplicationVersion(applicationId, 1L);
     assertThat(projected.getStatus()).isEqualTo(ApplicationStatus.APPLICATION_SUBMITTED.name());
     assertThat(projected.getAutoGranted()).isEqualTo(AutoGrantedState.MANUAL);
+
+    await()
+        .atMost(10, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              ResponseEntity<WorkQueueResponse> workQueue =
+                  restTemplate.exchange(
+                      "/api/v0/work-queue?unassigned=true",
+                      HttpMethod.GET,
+                      new HttpEntity<>(headers()),
+                      WorkQueueResponse.class);
+              assertThat(workQueue.getStatusCode()).isEqualTo(HttpStatus.OK);
+              assertThat(workQueue.getBody()).isNotNull();
+              assertThat(workQueue.getBody().getItems())
+                  .extracting(item -> item.getApplicationId())
+                  .contains(applicationId);
+            });
 
     ResponseEntity<ApplicationResponse> direct =
         restTemplate.exchange(
