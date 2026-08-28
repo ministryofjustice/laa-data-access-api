@@ -28,8 +28,6 @@ import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsResu
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadModel;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
-import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
-import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
 import uk.gov.justice.laa.dstew.access.usecase.application.ApplicationQueryUseCase;
 
 /** HTTP query adapter for Application reads. */
@@ -161,10 +159,5 @@ public class ApplicationQueryController implements ApplicationQueryApi {
   public ResponseEntity<DocumentDownloadResponse> downloadDocument(
       ServiceName serviceName, UUID id, String documentId) {
     return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
-  }
-
-  private Optional<ApplicationReadModel> findApplicationAwaitingProjection(UUID applicationId) {
-    return projectionGateway.findProjection(
-        new FindApplicationByIdQuery(applicationId), ApplicationReadModel.class);
   }
 }
