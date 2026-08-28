@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.config;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.oauth2.client.AuthorizedClientServiceOAuth2AuthorizedClientManager;
@@ -17,23 +18,18 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
 /** Configures the OAuth2 client used to acquire tokens for outbound SDS API calls. */
 @Configuration
+@EnableConfigurationProperties(SdsOauth2Properties.class)
 @ExcludeFromGeneratedCodeCoverage
 public class SdsOauth2Config {
 
   @Value("${app.sds-api.client-registration-id}")
   private String clientRegistrationId;
 
-  @Value("${spring.security.oauth2.client.registration.moj-identity.client-id}")
-  private String clientId;
+  private final SdsOauth2Properties oauth2Properties;
 
-  @Value("${spring.security.oauth2.client.registration.moj-identity.client-secret}")
-  private String clientSecret;
-
-  @Value("${spring.security.oauth2.client.registration.moj-identity.scope}")
-  private String scope;
-
-  @Value("${spring.security.oauth2.client.provider.moj-identity.token-uri}")
-  private String tokenUri;
+  public SdsOauth2Config(SdsOauth2Properties oauth2Properties) {
+    this.oauth2Properties = oauth2Properties;
+  }
 
   /**
    * Provides an {@link OAuth2AuthorizedClientManager} configured for SDS client-credentials flow.
@@ -46,11 +42,11 @@ public class SdsOauth2Config {
   public OAuth2AuthorizedClientManager sdsOauth2AuthorizedClientManager() {
     ClientRegistration registration =
         ClientRegistration.withRegistrationId(clientRegistrationId)
-            .clientId(clientId)
-            .clientSecret(clientSecret)
-            .scope(scope)
+            .clientId(oauth2Properties.getClientId())
+            .clientSecret(oauth2Properties.getClientSecret())
+            .scope(oauth2Properties.getScope())
             .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
-            .tokenUri(tokenUri)
+            .tokenUri(oauth2Properties.getTokenUri())
             .build();
 
     ClientRegistrationRepository clientRegistrationRepository =
