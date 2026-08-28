@@ -4,8 +4,6 @@ import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.oauth2.client.ClientAuthorizationException;
 import org.springframework.security.oauth2.client.OAuth2AuthorizeRequest;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
@@ -19,9 +17,6 @@ import uk.gov.justice.laa.dstew.access.exception.TokenProviderException;
 @RequiredArgsConstructor
 public class TokenProvider {
 
-  static final String CACHE_NAME = "tokenCache";
-  static final String CACHE_KEY = "'sdsAccessToken'";
-
   @Value("${app.sds-api.client-registration-id}")
   private String clientRegistrationId;
 
@@ -32,11 +27,11 @@ public class TokenProvider {
   private final OAuth2AuthorizedClientManager authorizedClientManager;
 
   /**
-   * Get SDS API access token. Result is cached under {@value CACHE_NAME}.
+   * Get SDS API access token. Token caching and refresh are handled natively by {@link
+   * OAuth2AuthorizedClientManager}.
    *
    * @return the access token
    */
-  @Cacheable(value = CACHE_NAME, key = CACHE_KEY)
   public OAuth2AccessToken getTokenFromProvider() {
     try {
       OAuth2AuthorizedClient authorizedClient =
@@ -52,9 +47,6 @@ public class TokenProvider {
       throw new TokenProviderException(clientAuthorizationException.getMessage());
     }
   }
-
-  @CacheEvict(value = CACHE_NAME, key = CACHE_KEY)
-  public void evictToken() {}
 
   private OAuth2AuthorizeRequest buildAuthorizeRequest() {
     return OAuth2AuthorizeRequest.withClientRegistrationId(clientRegistrationId)
