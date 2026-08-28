@@ -5,6 +5,7 @@ import org.axonframework.modelling.entity.EntityMissingForInstanceCommandHandler
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.oauth2.client.ClientAuthorizationException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConflictException;
@@ -149,6 +150,17 @@ public class ApplicationExceptionHandler {
     ProblemDetail problemDetail =
         ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR, exception.getMessage());
     problemDetail.setTitle("Virus Scan Error");
+    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(problemDetail);
+  }
+
+  /** Returns 500 when the SDS OAuth2 token cannot be obtained. */
+  @ExceptionHandler(ClientAuthorizationException.class)
+  ResponseEntity<ProblemDetail> handleClientAuthorizationException(
+      ClientAuthorizationException exception) {
+    ProblemDetail problemDetail =
+        ProblemDetail.forStatusAndDetail(
+            HttpStatus.INTERNAL_SERVER_ERROR,
+            "Failed to obtain access token for an external service");
     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(problemDetail);
   }
 

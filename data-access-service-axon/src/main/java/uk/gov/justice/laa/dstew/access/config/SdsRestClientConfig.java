@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -12,6 +13,8 @@ import org.springframework.http.HttpRequest;
 import org.springframework.http.client.ClientHttpRequestExecution;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.ClientHttpResponse;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClientManager;
+import org.springframework.security.oauth2.client.web.client.OAuth2ClientHttpRequestInterceptor;
 import org.springframework.web.client.RestClient;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
@@ -26,8 +29,18 @@ public class SdsRestClientConfig {
    */
   @Bean("sdsRestClient")
   RestClient sdsRestClient(
-      RestClient.Builder builder, @Value("${app.sds-api.url}") String sdsApiUrl) {
-    return builder.baseUrl(sdsApiUrl).requestInterceptor(new SdsLoggingInterceptor()).build();
+      RestClient.Builder builder,
+      @Value("${app.sds-api.url}") String sdsApiUrl,
+      @Value("${app.sds-api.client-registration-id}") String clientRegistrationId,
+      @Qualifier("sdsOauth2AuthorizedClientManager")
+          OAuth2AuthorizedClientManager authorizedClientManager) {
+    var oauth2Interceptor = new OAuth2ClientHttpRequestInterceptor(authorizedClientManager);
+    oauth2Interceptor.setClientRegistrationIdResolver(request -> clientRegistrationId);
+    return builder
+        .baseUrl(sdsApiUrl)
+        .requestInterceptor(new SdsLoggingInterceptor())
+        .requestInterceptor(oauth2Interceptor)
+        .build();
   }
 
   @Slf4j

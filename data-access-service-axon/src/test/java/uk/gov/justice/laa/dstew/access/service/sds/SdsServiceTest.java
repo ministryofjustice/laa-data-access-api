@@ -5,7 +5,6 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOf
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.endsWith;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -13,7 +12,6 @@ import static org.mockito.Mockito.when;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import org.junit.jupiter.api.BeforeEach;
@@ -24,7 +22,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
@@ -49,14 +46,11 @@ class SdsServiceTest {
 
   @Mock private RestClient sdsRestClient;
 
-  @Mock private TokenService tokenService;
-
   @InjectMocks private SdsService sdsService;
 
   @BeforeEach
   void setUp() {
     ReflectionTestUtils.setField(sdsService, "bucketName", "test-bucket");
-    lenient().when(tokenService.getSdsAccessToken()).thenReturn("mock-token");
   }
 
   @Test
@@ -73,13 +67,6 @@ class SdsServiceTest {
 
     when(sdsRestClient.post()).thenReturn(requestBodyUriSpec);
     when(requestBodyUriSpec.uri(endsWith("/save_file"))).thenReturn(requestBodySpec);
-    when(requestBodySpec.headers(any()))
-        .thenAnswer(
-            invocation -> {
-              Consumer<HttpHeaders> headersConsumer = invocation.getArgument(0);
-              headersConsumer.accept(new HttpHeaders());
-              return requestBodySpec;
-            });
     when(requestBodySpec.contentType(MediaType.MULTIPART_FORM_DATA)).thenReturn(requestBodySpec);
     when(requestBodySpec.body(any(MultiValueMap.class))).thenReturn(requestBodySpec);
     when(requestBodySpec.retrieve()).thenReturn(responseSpec);
@@ -89,7 +76,6 @@ class SdsServiceTest {
     DocumentUploadResponse actualResponse = sdsService.saveFile(applicationId, file);
 
     assertThat(actualResponse).isEqualTo(expectedResponse);
-    verify(tokenService).getSdsAccessToken();
     verify(sdsRestClient).post();
     verify(requestBodyUriSpec).uri(endsWith("/save_file"));
   }
@@ -107,13 +93,6 @@ class SdsServiceTest {
 
     when(sdsRestClient.post()).thenReturn(requestBodyUriSpec);
     when(requestBodyUriSpec.uri(endsWith("/save_file"))).thenReturn(requestBodySpec);
-    when(requestBodySpec.headers(any()))
-        .thenAnswer(
-            invocation -> {
-              Consumer<HttpHeaders> headersConsumer = invocation.getArgument(0);
-              headersConsumer.accept(new HttpHeaders());
-              return requestBodySpec;
-            });
     when(requestBodySpec.contentType(MediaType.MULTIPART_FORM_DATA)).thenReturn(requestBodySpec);
     when(requestBodySpec.body(any(MultiValueMap.class))).thenReturn(requestBodySpec);
     when(requestBodySpec.retrieve()).thenReturn(responseSpec);
@@ -139,13 +118,6 @@ class SdsServiceTest {
 
     when(sdsRestClient.post()).thenReturn(requestBodyUriSpec);
     when(requestBodyUriSpec.uri(endsWith("/save_file"))).thenReturn(requestBodySpec);
-    when(requestBodySpec.headers(any()))
-        .thenAnswer(
-            invocation -> {
-              Consumer<HttpHeaders> headersConsumer = invocation.getArgument(0);
-              headersConsumer.accept(new HttpHeaders());
-              return requestBodySpec;
-            });
     when(requestBodySpec.contentType(MediaType.MULTIPART_FORM_DATA)).thenReturn(requestBodySpec);
     when(requestBodySpec.body(any(MultiValueMap.class))).thenReturn(requestBodySpec);
     when(requestBodySpec.retrieve()).thenReturn(responseSpec);
@@ -171,13 +143,6 @@ class SdsServiceTest {
 
     when(sdsRestClient.post()).thenReturn(requestBodyUriSpec);
     when(requestBodyUriSpec.uri(endsWith("/save_file"))).thenReturn(requestBodySpec);
-    when(requestBodySpec.headers(any()))
-        .thenAnswer(
-            invocation -> {
-              Consumer<HttpHeaders> headersConsumer = invocation.getArgument(0);
-              headersConsumer.accept(new HttpHeaders());
-              return requestBodySpec;
-            });
     when(requestBodySpec.contentType(MediaType.MULTIPART_FORM_DATA)).thenReturn(requestBodySpec);
     when(requestBodySpec.body(any(MultiValueMap.class))).thenReturn(requestBodySpec);
     when(requestBodySpec.retrieve()).thenReturn(responseSpec);
@@ -203,13 +168,6 @@ class SdsServiceTest {
 
     when(sdsRestClient.post()).thenReturn(requestBodyUriSpec);
     when(requestBodyUriSpec.uri(endsWith("/save_file"))).thenReturn(requestBodySpec);
-    when(requestBodySpec.headers(any()))
-        .thenAnswer(
-            invocation -> {
-              Consumer<HttpHeaders> headersConsumer = invocation.getArgument(0);
-              headersConsumer.accept(new HttpHeaders());
-              return requestBodySpec;
-            });
     when(requestBodySpec.contentType(MediaType.MULTIPART_FORM_DATA)).thenReturn(requestBodySpec);
     when(requestBodySpec.body(any(MultiValueMap.class))).thenReturn(requestBodySpec);
     when(requestBodySpec.retrieve()).thenReturn(responseSpec);
@@ -236,13 +194,6 @@ class SdsServiceTest {
 
     when(sdsRestClient.put()).thenReturn(requestBodyUriSpec);
     when(requestBodyUriSpec.uri(endsWith("/save_or_update_file"))).thenReturn(requestBodySpec);
-    when(requestBodySpec.headers(any()))
-        .thenAnswer(
-            invocation -> {
-              Consumer<HttpHeaders> headersConsumer = invocation.getArgument(0);
-              headersConsumer.accept(new HttpHeaders());
-              return requestBodySpec;
-            });
     when(requestBodySpec.contentType(MediaType.MULTIPART_FORM_DATA)).thenReturn(requestBodySpec);
     when(requestBodySpec.body(any(MultiValueMap.class))).thenReturn(requestBodySpec);
     when(requestBodySpec.retrieve()).thenReturn(responseSpec);
@@ -252,7 +203,6 @@ class SdsServiceTest {
     DocumentUpdateResponse actualResponse = sdsService.saveOrUpdateFile(applicationId, file);
 
     assertThat(actualResponse).isEqualTo(expectedResponse);
-    verify(tokenService).getSdsAccessToken();
     verify(sdsRestClient).put();
     verify(requestBodyUriSpec).uri(endsWith("/save_or_update_file"));
   }
@@ -270,13 +220,6 @@ class SdsServiceTest {
 
     when(sdsRestClient.get()).thenReturn(requestHeadersUriSpec);
     when(requestHeadersUriSpec.uri(any(Function.class))).thenReturn(requestHeadersSpec);
-    when(requestHeadersSpec.headers(any()))
-        .thenAnswer(
-            invocation -> {
-              Consumer<HttpHeaders> headersConsumer = invocation.getArgument(0);
-              headersConsumer.accept(new HttpHeaders());
-              return requestHeadersSpec;
-            });
     when(requestHeadersSpec.accept(MediaType.APPLICATION_JSON)).thenReturn(requestHeadersSpec);
     when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
     when(responseSpec.onStatus(
@@ -287,7 +230,6 @@ class SdsServiceTest {
     DocumentDownloadResponse actualResponse = sdsService.getFile(applicationId, documentId);
 
     assertThat(actualResponse).isEqualTo(expectedResponse);
-    verify(tokenService).getSdsAccessToken();
     verify(sdsRestClient).get();
   }
 
@@ -303,13 +245,6 @@ class SdsServiceTest {
 
     when(sdsRestClient.get()).thenReturn(requestHeadersUriSpec);
     when(requestHeadersUriSpec.uri(any(Function.class))).thenReturn(requestHeadersSpec);
-    when(requestHeadersSpec.headers(any()))
-        .thenAnswer(
-            invocation -> {
-              Consumer<HttpHeaders> headersConsumer = invocation.getArgument(0);
-              headersConsumer.accept(new HttpHeaders());
-              return requestHeadersSpec;
-            });
     when(requestHeadersSpec.accept(MediaType.APPLICATION_JSON)).thenReturn(requestHeadersSpec);
     when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
     when(responseSpec.onStatus(
@@ -339,13 +274,6 @@ class SdsServiceTest {
 
     when(sdsRestClient.delete()).thenReturn(requestHeadersUriSpec);
     when(requestHeadersUriSpec.uri(any(Function.class))).thenReturn(requestHeadersSpec);
-    when(requestHeadersSpec.headers(any()))
-        .thenAnswer(
-            invocation -> {
-              Consumer<HttpHeaders> headersConsumer = invocation.getArgument(0);
-              headersConsumer.accept(new HttpHeaders());
-              return requestHeadersSpec;
-            });
     when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
     when(responseSpec.body(any(ParameterizedTypeReference.class))).thenReturn(sdsResults);
 
@@ -354,7 +282,6 @@ class SdsServiceTest {
     assertThat(response.getResults()).isNotNull();
     assertThat(response.getResults().size()).isEqualTo(2);
     assertThat(response.getResults().stream().allMatch(r -> r.getStatus() == 204)).isTrue();
-    verify(tokenService).getSdsAccessToken();
     verify(sdsRestClient).delete();
   }
 
@@ -370,13 +297,6 @@ class SdsServiceTest {
 
     when(sdsRestClient.delete()).thenReturn(requestHeadersUriSpec);
     when(requestHeadersUriSpec.uri(any(Function.class))).thenReturn(requestHeadersSpec);
-    when(requestHeadersSpec.headers(any()))
-        .thenAnswer(
-            invocation -> {
-              Consumer<HttpHeaders> headersConsumer = invocation.getArgument(0);
-              headersConsumer.accept(new HttpHeaders());
-              return requestHeadersSpec;
-            });
     when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
     when(responseSpec.body(any(ParameterizedTypeReference.class))).thenReturn(null);
 
@@ -397,13 +317,6 @@ class SdsServiceTest {
 
     when(sdsRestClient.get()).thenReturn(requestHeadersUriSpec);
     when(requestHeadersUriSpec.uri(endsWith("/health"))).thenReturn(requestHeadersSpec);
-    when(requestHeadersSpec.headers(any()))
-        .thenAnswer(
-            invocation -> {
-              Consumer<HttpHeaders> headersConsumer = invocation.getArgument(0);
-              headersConsumer.accept(new HttpHeaders());
-              return requestHeadersSpec;
-            });
     when(requestHeadersSpec.accept(MediaType.APPLICATION_JSON)).thenReturn(requestHeadersSpec);
     when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
     when(responseSpec.body(SdsHealthResponse.class)).thenReturn(expectedResponse);
@@ -411,7 +324,6 @@ class SdsServiceTest {
     SdsHealthResponse actualResponse = sdsService.getHealth();
 
     assertThat(actualResponse).isEqualTo(expectedResponse);
-    verify(tokenService).getSdsAccessToken();
     verify(sdsRestClient).get();
     verify(requestHeadersUriSpec).uri(endsWith("/health"));
   }
@@ -435,13 +347,6 @@ class SdsServiceTest {
 
     when(sdsRestClient.get()).thenReturn(requestHeadersUriSpec);
     when(requestHeadersUriSpec.uri(any(Function.class))).thenReturn(requestHeadersSpec);
-    when(requestHeadersSpec.headers(any()))
-        .thenAnswer(
-            invocation -> {
-              Consumer<HttpHeaders> headersConsumer = invocation.getArgument(0);
-              headersConsumer.accept(new HttpHeaders());
-              return requestHeadersSpec;
-            });
     when(requestHeadersSpec.accept(MediaType.APPLICATION_JSON)).thenReturn(requestHeadersSpec);
     when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
     when(responseSpec.onStatus(predicateCaptor.capture(), handlerCaptor.capture()))
@@ -480,13 +385,6 @@ class SdsServiceTest {
 
     when(sdsRestClient.post()).thenReturn(requestBodyUriSpec);
     when(requestBodyUriSpec.uri(endsWith("/save_file"))).thenReturn(requestBodySpec);
-    when(requestBodySpec.headers(any()))
-        .thenAnswer(
-            invocation -> {
-              Consumer<HttpHeaders> headersConsumer = invocation.getArgument(0);
-              headersConsumer.accept(new HttpHeaders());
-              return requestBodySpec;
-            });
     when(requestBodySpec.contentType(MediaType.MULTIPART_FORM_DATA)).thenReturn(requestBodySpec);
     when(requestBodySpec.body(any(MultiValueMap.class))).thenReturn(requestBodySpec);
     when(requestBodySpec.retrieve()).thenReturn(responseSpec);

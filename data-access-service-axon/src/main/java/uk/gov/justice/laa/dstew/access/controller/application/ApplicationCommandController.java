@@ -185,7 +185,7 @@ public class ApplicationCommandController {
   @PostMapping(value = "/{id}/upload-document", consumes = "multipart/form-data")
   public ResponseEntity<DocumentUploadResponse> uploadDocument(
       @RequestHeader("X-Service-Name") ServiceName serviceName,
-      @PathVariable UUID applicationId,
+      @PathVariable("id") UUID applicationId,
       @RequestParam("file") MultipartFile file) {
     DocumentUploadResponse response = uploadDocumentUseCase.execute(applicationId, file);
     return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED).body(response);

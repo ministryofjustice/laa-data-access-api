@@ -51,8 +51,6 @@ public class SdsService {
   @Qualifier("sdsRestClient")
   private final RestClient sdsRestClient;
 
-  private final TokenService tokenService;
-
   @Value("${app.sds-api.bucket-name}")
   private String bucketName;
 
@@ -75,7 +73,6 @@ public class SdsService {
             sdsRestClient
                 .post()
                 .uri(SAVE_FILE_ENDPOINT)
-                .headers(headers -> headers.setBearerAuth(tokenService.getSdsAccessToken()))
                 .contentType(MULTIPART_FORM_DATA)
                 .body(builder.build())
                 .retrieve()
@@ -103,7 +100,6 @@ public class SdsService {
             sdsRestClient
                 .put()
                 .uri(SAVE_OR_UPDATE_FILE_ENDPOINT)
-                .headers(headers -> headers.setBearerAuth(tokenService.getSdsAccessToken()))
                 .contentType(MULTIPART_FORM_DATA)
                 .body(builder.build())
                 .retrieve())
@@ -125,7 +121,6 @@ public class SdsService {
         .uri(
             uriBuilder ->
                 uriBuilder.path(GET_FILE_ENDPOINT).queryParam(FILE_KEY_PARAM, fileKey).build())
-        .headers(headers -> headers.setBearerAuth(tokenService.getSdsAccessToken()))
         .accept(APPLICATION_JSON)
         .retrieve()
         .onStatus(
@@ -156,7 +151,6 @@ public class SdsService {
                   fileKeys.forEach(key -> deleteFilesUri.queryParam(FILE_KEYS_PARAM, key));
                   return deleteFilesUri.build();
                 })
-            .headers(headers -> headers.setBearerAuth(tokenService.getSdsAccessToken()))
             .retrieve()
             .body(
                 new org.springframework.core.ParameterizedTypeReference<Map<String, Integer>>() {});
@@ -188,7 +182,6 @@ public class SdsService {
     return sdsRestClient
         .get()
         .uri(HEALTH_ENDPOINT)
-        .headers(headers -> headers.setBearerAuth(tokenService.getSdsAccessToken()))
         .accept(APPLICATION_JSON)
         .retrieve()
         .body(SdsHealthResponse.class);
