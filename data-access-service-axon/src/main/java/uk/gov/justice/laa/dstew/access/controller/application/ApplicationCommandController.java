@@ -11,16 +11,13 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.AssignCaseworkerUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.UnassignCaseworkerUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionUseCase;
-import uk.gov.justice.laa.dstew.access.command.application.document.UploadDocumentUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ReadyApplicationResult;
@@ -32,7 +29,6 @@ import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
 import uk.gov.justice.laa.dstew.access.model.CreateNoteRequest;
-import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 
@@ -48,7 +44,6 @@ public class ApplicationCommandController {
   private final AssignCaseworkerUseCase assignCaseworkerUseCase;
   private final RecordAutoGrantOutcomeUseCase recordAutoGrantOutcomeUseCase;
   private final UpdateApplicationUseCase updateApplicationUseCase;
-  private final UploadDocumentUseCase uploadDocumentUseCase;
   private final CreateApplicationCommandMapper commandMapper;
   private final MakeDecisionCommandMapper decisionCommandMapper;
   private final AssignCaseworkerRequestMapper assignCaseworkerRequestMapper;
@@ -66,7 +61,6 @@ public class ApplicationCommandController {
       AssignCaseworkerUseCase assignCaseworkerUseCase,
       RecordAutoGrantOutcomeUseCase recordAutoGrantOutcomeUseCase,
       UpdateApplicationUseCase updateApplicationUseCase,
-      UploadDocumentUseCase uploadDocumentUseCase,
       CreateApplicationCommandMapper commandMapper,
       MakeDecisionCommandMapper decisionCommandMapper,
       AssignCaseworkerRequestMapper assignCaseworkerRequestMapper,
@@ -81,7 +75,6 @@ public class ApplicationCommandController {
     this.assignCaseworkerUseCase = assignCaseworkerUseCase;
     this.recordAutoGrantOutcomeUseCase = recordAutoGrantOutcomeUseCase;
     this.updateApplicationUseCase = updateApplicationUseCase;
-    this.uploadDocumentUseCase = uploadDocumentUseCase;
     this.commandMapper = commandMapper;
     this.decisionCommandMapper = decisionCommandMapper;
     this.assignCaseworkerRequestMapper = assignCaseworkerRequestMapper;
@@ -179,15 +172,5 @@ public class ApplicationCommandController {
       @Valid @RequestBody ApplicationUpdateRequest request) {
     updateApplicationUseCase.execute(updateApplicationCommandMapper.toCommand(id, request));
     return ResponseEntity.noContent().build();
-  }
-
-  /** Uploads a document to SDS and returns the file key and checksum. */
-  @PostMapping(value = "/{id}/upload-document", consumes = "multipart/form-data")
-  public ResponseEntity<DocumentUploadResponse> uploadDocument(
-      @RequestHeader("X-Service-Name") ServiceName serviceName,
-      @PathVariable("id") UUID applicationId,
-      @RequestParam("file") MultipartFile file) {
-    DocumentUploadResponse response = uploadDocumentUseCase.execute(applicationId, file);
-    return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED).body(response);
   }
 }
