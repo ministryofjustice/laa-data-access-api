@@ -2,23 +2,21 @@ package uk.gov.justice.laa.dstew.access.controller.individual;
 
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import uk.gov.justice.laa.dstew.access.api.IndividualsApi;
 import uk.gov.justice.laa.dstew.access.model.IncludedAdditionalData;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.model.IndividualsResponse;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.query.individual.FindIndividualsQuery;
 import uk.gov.justice.laa.dstew.access.query.individual.FindIndividualsResult;
+import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
+import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
 import uk.gov.justice.laa.dstew.access.usecase.individuals.GetAllIndividualsUseCase;
 
 /** HTTP query adapter for individual searches. */
 @RestController
-@RequestMapping("/api/v0/individuals")
-public class IndividualsController {
+public class IndividualsController implements IndividualsApi {
 
   private final GetAllIndividualsUseCase getAllIndividualsUseCase;
   private final GetIndividualsResponseMapper responseMapper;
@@ -31,14 +29,16 @@ public class IndividualsController {
   }
 
   /** Returns a filtered, paginated list of individuals from current application data. */
-  @GetMapping
+  @Override
+  @LogMethodArguments
+  @LogMethodResponse
   public ResponseEntity<IndividualsResponse> getIndividuals(
-      @RequestHeader("X-Service-Name") ServiceName serviceName,
-      @RequestParam(required = false) IncludedAdditionalData include,
-      @RequestParam(required = false) Integer page,
-      @RequestParam(required = false) Integer pageSize,
-      @RequestParam(required = false) UUID applicationId,
-      @RequestParam(name = "individualType", required = false) IndividualType type) {
+      ServiceName serviceName,
+      IncludedAdditionalData include,
+      Integer page,
+      Integer pageSize,
+      UUID applicationId,
+      IndividualType type) {
     FindIndividualsResult result =
         getAllIndividualsUseCase.execute(
             new FindIndividualsQuery(

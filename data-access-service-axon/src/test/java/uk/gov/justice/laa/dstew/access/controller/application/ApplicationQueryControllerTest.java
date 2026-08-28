@@ -97,6 +97,8 @@ class ApplicationQueryControllerTest {
   @Test
   void givenNonNullMatterTypeSortByOrderBy_whenGetApplications_thenCallsUseCaseWithNames() {
     controller.getApplications(
+        ServiceName.CIVIL_APPLY,
+        null,
         null,
         null,
         null,
