@@ -213,7 +213,7 @@ class GetApplicationHistoryResponseMapperTest {
             .occurredAt(Instant.parse("2026-07-19T10:15:30Z"))
             .build();
 
-    var response = mapper.toResponse(List.of(history));
+    var response = mapper.toResponse(new ApplicationHistoryResult(List.of(history), List.of()));
 
     assertThat(response.getEvents())
         .singleElement()
@@ -236,7 +236,7 @@ class GetApplicationHistoryResponseMapperTest {
             .occurredAt(Instant.parse("2026-07-19T10:15:30Z"))
             .build();
 
-    var response = mapper.toResponse(List.of(history));
+    var response = mapper.toResponse(new ApplicationHistoryResult(List.of(history), List.of()));
 
     assertThat(response.getEvents())
         .singleElement()
@@ -259,7 +259,7 @@ class GetApplicationHistoryResponseMapperTest {
             .occurredAt(Instant.parse("2026-07-19T10:15:30Z"))
             .build();
 
-    var response = mapper.toResponse(List.of(history));
+    var response = mapper.toResponse(new ApplicationHistoryResult(List.of(history), List.of()));
 
     assertThat(response.getEvents())
         .singleElement()
@@ -283,7 +283,7 @@ class GetApplicationHistoryResponseMapperTest {
             .occurredAt(Instant.parse("2026-07-19T10:15:30Z"))
             .build();
 
-    var response = mapper.toResponse(List.of(history));
+    var response = mapper.toResponse(new ApplicationHistoryResult(List.of(history), List.of()));
 
     assertThat(response.getEvents())
         .singleElement()
