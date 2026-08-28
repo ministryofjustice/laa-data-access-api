@@ -16,4 +16,6 @@ public class PriorAuthorityState {
   String requestFingerprint;
   String status;
   int schemaVersion;
+  UUID caseworkerId;
+  long assignmentVersion;
 }

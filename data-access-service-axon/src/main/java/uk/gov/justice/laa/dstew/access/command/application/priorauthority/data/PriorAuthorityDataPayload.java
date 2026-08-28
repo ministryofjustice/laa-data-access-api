@@ -10,4 +10,20 @@ public record PriorAuthorityDataPayload(
     UUID applicationId,
     PriorAuthorityContent content,
     String serialisedRequest,
-    Instant submittedAt) {}
+    Instant submittedAt,
+    String assignmentDescription) {
+  public PriorAuthorityDataPayload(
+      UUID submissionId,
+      UUID applicationId,
+      PriorAuthorityContent content,
+      String serialisedRequest,
+      Instant submittedAt) {
+    this(submissionId, applicationId, content, serialisedRequest, submittedAt, null);
+  }
+
+  /** Returns a new immutable payload version with assignment audit text. */
+  public PriorAuthorityDataPayload withAssignment(String description) {
+    return new PriorAuthorityDataPayload(
+        submissionId, applicationId, content, serialisedRequest, submittedAt, description);
+  }
+}

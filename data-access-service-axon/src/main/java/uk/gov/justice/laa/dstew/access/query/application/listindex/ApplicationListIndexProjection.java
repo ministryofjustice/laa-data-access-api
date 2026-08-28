@@ -18,6 +18,9 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationD
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 
 /**
@@ -191,6 +194,36 @@ public class ApplicationListIndexProjection {
               row.setProjectionPosition(message.identifier().hashCode());
               listIndexRepository.save(row);
             });
+  }
+
+  /** Mirrors generic direct application assignment without making this search index authoritative. */
+  @EventHandler
+  public void on(WorkItemAssigned event, EventMessage message) {
+    if (event.workItemId().type() != WorkItemType.APPLICATION) {
+      return;
+    }
+    listIndexRepository.findById(event.workItemId().id()).ifPresent(row -> {
+      row.setCaseworkerId(event.caseworkerId());
+      row.setStreamVersion(event.itemVersion());
+      row.setModifiedAt(event.occurredAt());
+      row.setProjectionPosition(message.identifier().hashCode());
+      listIndexRepository.save(row);
+    });
+  }
+
+  /** Mirrors generic direct application unassignment without making this search index authoritative. */
+  @EventHandler
+  public void on(WorkItemUnassigned event, EventMessage message) {
+    if (event.workItemId().type() != WorkItemType.APPLICATION) {
+      return;
+    }
+    listIndexRepository.findById(event.workItemId().id()).ifPresent(row -> {
+      row.setCaseworkerId(null);
+      row.setStreamVersion(event.itemVersion());
+      row.setModifiedAt(event.occurredAt());
+      row.setProjectionPosition(message.identifier().hashCode());
+      listIndexRepository.save(row);
+    });
   }
 
   /**

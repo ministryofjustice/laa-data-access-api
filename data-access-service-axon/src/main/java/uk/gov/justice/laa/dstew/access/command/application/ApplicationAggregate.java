@@ -35,6 +35,12 @@ import uk.gov.justice.laa.dstew.access.command.application.ready.ReadyApplicatio
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdateDetailsFactory;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationCommand;
+import uk.gov.justice.laa.dstew.access.command.worklist.DirectWorkItemAssignmentCommand;
+import uk.gov.justice.laa.dstew.access.command.worklist.DirectWorkItemUnassignmentCommand;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
@@ -191,6 +197,48 @@ public class ApplicationAggregate {
         command.serialisedRequest(),
         command.occurredAt());
     eventAppender.append(event);
+  }
+
+  /** Handles a generic direct assignment once durable routing selected this standalone aggregate. */
+  @CommandHandler
+  void handle(
+      DirectWorkItemAssignmentCommand command,
+      ApplicationDataStore applicationDataStore,
+      EventAppender eventAppender) {
+    requireApplicationExists(command.aggregateId());
+    validateDirectWorkItem(command.workItemId().type(), command.workItemId().id(), command.expectedAssignmentVersion());
+    if (state.caseworkerId != null) {
+      throw new WorkItemAssignmentConflictException(command.workItemId(), "it is already assigned");
+    }
+    long nextDataVersion = state.applicationDataVersion + 1;
+    applicationDataStore.append(
+        applicationId, nextDataVersion,
+        applicationDataStore.get(applicationId, state.applicationDataVersion).withAssignment(command.eventDescription()),
+        command.serialisedRequest(), command.occurredAt());
+    eventAppender.append(new WorkItemAssigned(
+        command.workItemId(), applicationId, null, state.applicationVersion + 1, nextDataVersion,
+        state.assignmentVersion + 1, command.caseworkerId(), command.occurredAt()));
+  }
+
+  /** Handles explicit generic direct unassignment; an already-open item is a conflict. */
+  @CommandHandler
+  void handle(
+      DirectWorkItemUnassignmentCommand command,
+      ApplicationDataStore applicationDataStore,
+      EventAppender eventAppender) {
+    requireApplicationExists(command.aggregateId());
+    validateDirectWorkItem(command.workItemId().type(), command.workItemId().id(), command.expectedAssignmentVersion());
+    if (state.caseworkerId == null) {
+      throw new WorkItemAssignmentConflictException(command.workItemId(), "it is already unassigned");
+    }
+    long nextDataVersion = state.applicationDataVersion + 1;
+    applicationDataStore.append(
+        applicationId, nextDataVersion,
+        applicationDataStore.get(applicationId, state.applicationDataVersion).withAssignment(command.eventDescription()),
+        command.serialisedRequest(), command.occurredAt());
+    eventAppender.append(new WorkItemUnassigned(
+        command.workItemId(), applicationId, null, state.applicationVersion + 1, nextDataVersion,
+        state.assignmentVersion + 1, command.occurredAt()));
   }
 
   /** Appends a note to the application's immutable data without advancing the decision version. */
@@ -379,6 +427,20 @@ public class ApplicationAggregate {
     }
   }
 
+  private void validateDirectWorkItem(WorkItemType type, UUID workItemId, long expectedAssignmentVersion) {
+    if (type != WorkItemType.APPLICATION || !applicationId.equals(workItemId)) {
+      throw new ResourceNotFoundException("No application work item found with id: " + workItemId);
+    }
+    if (state.autoGranted != AutoGrantedState.MANUAL || state.overallDecision != null) {
+      throw new ResourceNotFoundException("Application work item is not active: " + workItemId);
+    }
+    if (expectedAssignmentVersion != state.assignmentVersion) {
+      throw new WorkItemAssignmentConflictException(
+          new uk.gov.justice.laa.dstew.access.command.worklist.WorkItemId(type, workItemId),
+          "the assignment version is stale");
+    }
+  }
+
   @EventSourcingHandler
   void on(LinkedApplicationGroupRequested event) {
     ApplicationEvolve.apply(state, event);
@@ -402,6 +464,16 @@ public class ApplicationAggregate {
 
   @EventSourcingHandler
   void on(ApplicationUnassignedFromCaseworkerEvent event) {
+    ApplicationEvolve.apply(state, event);
+  }
+
+  @EventSourcingHandler
+  void on(WorkItemAssigned event) {
+    ApplicationEvolve.apply(state, event);
+  }
+
+  @EventSourcingHandler
+  void on(WorkItemUnassigned event) {
     ApplicationEvolve.apply(state, event);
   }
 

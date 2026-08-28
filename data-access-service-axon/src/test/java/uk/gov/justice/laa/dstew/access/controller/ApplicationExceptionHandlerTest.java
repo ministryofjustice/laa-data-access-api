@@ -13,6 +13,9 @@ import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictExcep
 import uk.gov.justice.laa.dstew.access.exception.InvalidApplicationStateException;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemId;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 class ApplicationExceptionHandlerTest {
@@ -78,6 +81,16 @@ class ApplicationExceptionHandlerTest {
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
     assertThat(response.getBody().getDetail())
         .isEqualTo("Application with id " + applicationId + " and version 4 not found");
+  }
+
+  @Test
+  void givenWorkItemAssignmentConflict_whenHandled_thenReturnsConflict() {
+    var response =
+        handler.handleWorkItemAssignmentConflictException(
+            new WorkItemAssignmentConflictException(
+                new WorkItemId(WorkItemType.APPLICATION, UUID.randomUUID()), "it is already assigned"));
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
   }
 
   @Test

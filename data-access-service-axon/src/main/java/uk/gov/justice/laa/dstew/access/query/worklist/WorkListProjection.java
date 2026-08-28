@@ -14,7 +14,9 @@ import uk.gov.justice.laa.dstew.access.command.application.assignment.Applicatio
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 
 /** Replayable projection of active work; it is never consulted to route a command. */
 @Component
@@ -104,6 +106,32 @@ public class WorkListProjection {
               item.setProjectionPosition(message.identifier().hashCode());
               items.save(item);
             });
+  }
+
+  /** Applies a generic direct assignment to the event's immutable work-item identity. */
+  @EventHandler
+  public void on(WorkItemAssigned event, EventMessage message) {
+    items.findById(new WorkListItemId(event.workItemId().type(), event.workItemId().id()))
+        .ifPresent(item -> {
+          item.setAssigneeId(event.caseworkerId());
+          item.setItemVersion(event.itemVersion());
+          item.setUpdatedAt(event.occurredAt());
+          item.setProjectionPosition(message.identifier().hashCode());
+          items.save(item);
+        });
+  }
+
+  /** Applies a generic direct unassignment to the event's immutable work-item identity. */
+  @EventHandler
+  public void on(WorkItemUnassigned event, EventMessage message) {
+    items.findById(new WorkListItemId(event.workItemId().type(), event.workItemId().id()))
+        .ifPresent(item -> {
+          item.setAssigneeId(null);
+          item.setItemVersion(event.itemVersion());
+          item.setUpdatedAt(event.occurredAt());
+          item.setProjectionPosition(message.identifier().hashCode());
+          items.save(item);
+        });
   }
 
   /** Deletes all disposable rows before event-stream replay. */

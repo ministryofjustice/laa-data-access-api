@@ -11,6 +11,8 @@ import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApp
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 
 /** Event-fold functions for {@link ApplicationState}. */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
@@ -62,12 +64,30 @@ public final class ApplicationEvolve {
     state.applicationVersion = event.applicationVersion();
     state.applicationDataVersion = event.applicationDataVersion();
     state.caseworkerId = event.caseworkerId();
+    state.assignmentVersion++;
   }
 
   /** Applies an {@link ApplicationUnassignedFromCaseworkerEvent} to the given state. */
   public static void apply(ApplicationState state, ApplicationUnassignedFromCaseworkerEvent event) {
     state.applicationVersion = event.applicationVersion();
     state.applicationDataVersion = event.applicationDataVersion();
+    state.caseworkerId = null;
+    state.assignmentVersion++;
+  }
+
+  /** Applies a generic direct assignment event to the owning application state. */
+  public static void apply(ApplicationState state, WorkItemAssigned event) {
+    state.applicationVersion = event.itemVersion();
+    state.applicationDataVersion = event.dataVersion();
+    state.assignmentVersion = event.assignmentVersion();
+    state.caseworkerId = event.caseworkerId();
+  }
+
+  /** Applies a generic direct unassignment event to the owning application state. */
+  public static void apply(ApplicationState state, WorkItemUnassigned event) {
+    state.applicationVersion = event.itemVersion();
+    state.applicationDataVersion = event.dataVersion();
+    state.assignmentVersion = event.assignmentVersion();
     state.caseworkerId = null;
   }
 
