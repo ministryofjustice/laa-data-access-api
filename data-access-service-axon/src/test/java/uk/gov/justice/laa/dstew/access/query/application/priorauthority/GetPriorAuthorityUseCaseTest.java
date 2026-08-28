@@ -26,7 +26,9 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.ExpertCosts;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.ExpertDetails;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
-import uk.gov.justice.laa.dstew.access.model.PriorAuthorityResponse;
+import uk.gov.justice.laa.dstew.access.query.application.priorauthority.model.CounselType;
+import uk.gov.justice.laa.dstew.access.query.application.priorauthority.model.PriorAuthorityResult;
+import uk.gov.justice.laa.dstew.access.query.application.priorauthority.model.PriorAuthorityType;
 
 class GetPriorAuthorityUseCaseTest {
 
@@ -63,18 +65,16 @@ class GetPriorAuthorityUseCaseTest {
             new PriorAuthorityDataPayload(
                 submissionId, applicationId, content, "{}", Instant.parse("2026-08-26T10:00:00Z")));
 
-    PriorAuthorityResponse response = useCase.getPriorAuthority(submissionId);
+    PriorAuthorityResult response = useCase.getPriorAuthority(submissionId);
 
-    assertThat(response.getPriorAuthorityId()).isEqualTo(submissionId);
-    assertThat(response.getApplicationId()).isEqualTo(applicationId);
-    assertThat(response.getPriorAuthorityType())
-        .isEqualTo(PriorAuthorityResponse.PriorAuthorityTypeEnum.COUNSEL);
-    assertThat(response.getJustification()).isEqualTo("Counsel is required");
-    assertThat(response.getStatus()).isEqualTo("PENDING");
-    assertThat(response.getCounselDetails().getCounselType().getValue())
-        .isEqualTo("TWO_JUNIOR_COUNSEL");
-    assertThat(response.getExpertDetails()).isNull();
-    assertThat(response.getDisbursementDetails()).isNull();
+    assertThat(response.priorAuthorityId()).isEqualTo(submissionId);
+    assertThat(response.applicationId()).isEqualTo(applicationId);
+    assertThat(response.priorAuthorityType()).isEqualTo(PriorAuthorityType.COUNSEL);
+    assertThat(response.justification()).isEqualTo("Counsel is required");
+    assertThat(response.status()).isEqualTo("PENDING");
+    assertThat(response.counselDetails().counselType()).isEqualTo(CounselType.TWO_JUNIOR_COUNSEL);
+    assertThat(response.expertDetails()).isNull();
+    assertThat(response.disbursementDetails()).isNull();
     verify(dataStore).get(submissionId, 4L);
   }
 
@@ -82,7 +82,7 @@ class GetPriorAuthorityUseCaseTest {
   @MethodSource("supportedPriorAuthorityTypes")
   void givenSupportedPriorAuthorityType_whenRetrieved_thenHydratesOnlyMatchingDetails(
       PriorAuthorityContent content,
-      PriorAuthorityResponse.PriorAuthorityTypeEnum expectedType,
+      PriorAuthorityType expectedType,
       boolean hasExpertDetails,
       boolean hasCounselDetails,
       boolean hasDisbursementDetails) {
@@ -96,12 +96,12 @@ class GetPriorAuthorityUseCaseTest {
         .thenReturn(
             new PriorAuthorityDataPayload(submissionId, null, content, "{}", Instant.now()));
 
-    PriorAuthorityResponse response = useCase.getPriorAuthority(submissionId);
+    PriorAuthorityResult response = useCase.getPriorAuthority(submissionId);
 
-    assertThat(response.getPriorAuthorityType()).isEqualTo(expectedType);
-    assertThat(response.getExpertDetails() != null).isEqualTo(hasExpertDetails);
-    assertThat(response.getCounselDetails() != null).isEqualTo(hasCounselDetails);
-    assertThat(response.getDisbursementDetails() != null).isEqualTo(hasDisbursementDetails);
+    assertThat(response.priorAuthorityType()).isEqualTo(expectedType);
+    assertThat(response.expertDetails() != null).isEqualTo(hasExpertDetails);
+    assertThat(response.counselDetails() != null).isEqualTo(hasCounselDetails);
+    assertThat(response.disbursementDetails() != null).isEqualTo(hasDisbursementDetails);
   }
 
   private static Stream<Arguments> supportedPriorAuthorityTypes() {
@@ -113,13 +113,13 @@ class GetPriorAuthorityUseCaseTest {
                 new ExpertDetails("PSYCHIATRIST", "Jane Doe", "AB1 2CD", null),
                 null,
                 null),
-            PriorAuthorityResponse.PriorAuthorityTypeEnum.EXPERT,
+            PriorAuthorityType.EXPERT,
             true,
             false,
             false),
         Arguments.of(
             new PriorAuthorityContent("EXPERT", "Expert is required", null, null, null),
-            PriorAuthorityResponse.PriorAuthorityTypeEnum.EXPERT,
+            PriorAuthorityType.EXPERT,
             false,
             false,
             false),
@@ -130,13 +130,13 @@ class GetPriorAuthorityUseCaseTest {
                 null,
                 new CounselDetails("TWO_JUNIOR_COUNSEL"),
                 null),
-            PriorAuthorityResponse.PriorAuthorityTypeEnum.COUNSEL,
+            PriorAuthorityType.COUNSEL,
             false,
             true,
             false),
         Arguments.of(
             new PriorAuthorityContent("COUNSEL", "Counsel is required", null, null, null),
-            PriorAuthorityResponse.PriorAuthorityTypeEnum.COUNSEL,
+            PriorAuthorityType.COUNSEL,
             false,
             false,
             false),
@@ -147,13 +147,13 @@ class GetPriorAuthorityUseCaseTest {
                 null,
                 null,
                 new DisbursementDetails("Travel", BigDecimal.TEN)),
-            PriorAuthorityResponse.PriorAuthorityTypeEnum.DISBURSEMENT,
+            PriorAuthorityType.DISBURSEMENT,
             false,
             false,
             true),
         Arguments.of(
             new PriorAuthorityContent("DISBURSEMENT", "Disbursement is required", null, null, null),
-            PriorAuthorityResponse.PriorAuthorityTypeEnum.DISBURSEMENT,
+            PriorAuthorityType.DISBURSEMENT,
             false,
             false,
             false),
@@ -195,14 +195,13 @@ class GetPriorAuthorityUseCaseTest {
         .thenReturn(
             new PriorAuthorityDataPayload(submissionId, null, content, "{}", Instant.now()));
 
-    PriorAuthorityResponse response = useCase.getPriorAuthority(submissionId);
+    PriorAuthorityResult response = useCase.getPriorAuthority(submissionId);
 
-    assertThat(response.getExpertDetails().getExpertCosts().getBillingType().getValue())
-        .isEqualTo("FIXED_RATE");
-    assertThat(response.getExpertDetails().getExpertCosts().getHourlyRate()).isNull();
-    assertThat(response.getExpertDetails().getExpertCosts().getTimeRequested()).isNull();
-    assertThat(response.getExpertDetails().getExpertCosts().getTotalAmount()).isEqualTo(10.0);
-    assertThat(response.getExpertDetails().getExpertCosts().getApportionment()).isNull();
+    assertThat(response.expertDetails().expertCosts().billingType().name()).isEqualTo("FIXED_RATE");
+    assertThat(response.expertDetails().expertCosts().hourlyRate()).isNull();
+    assertThat(response.expertDetails().expertCosts().timeRequested()).isNull();
+    assertThat(response.expertDetails().expertCosts().totalAmount()).isEqualTo(BigDecimal.TEN);
+    assertThat(response.expertDetails().expertCosts().apportionment()).isNull();
   }
 
   @Test

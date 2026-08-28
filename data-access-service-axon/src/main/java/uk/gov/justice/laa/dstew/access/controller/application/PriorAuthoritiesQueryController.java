@@ -14,9 +14,13 @@ import uk.gov.justice.laa.dstew.access.query.application.priorauthority.GetPrior
 @RestController
 public class PriorAuthoritiesQueryController implements PriorAuthoritiesApi {
   private final GetPriorAuthorityUseCase getPriorAuthorityUseCase;
+  private final GetPriorAuthorityResponseMapper getPriorAuthorityResponseMapper;
 
-  public PriorAuthoritiesQueryController(GetPriorAuthorityUseCase getPriorAuthorityUseCase) {
+  public PriorAuthoritiesQueryController(
+      GetPriorAuthorityUseCase getPriorAuthorityUseCase,
+      GetPriorAuthorityResponseMapper getPriorAuthorityResponseMapper) {
     this.getPriorAuthorityUseCase = getPriorAuthorityUseCase;
+    this.getPriorAuthorityResponseMapper = getPriorAuthorityResponseMapper;
   }
 
   /**
@@ -30,6 +34,8 @@ public class PriorAuthoritiesQueryController implements PriorAuthoritiesApi {
   @Operation(security = @SecurityRequirement(name = "BearerAuth"))
   public ResponseEntity<PriorAuthorityResponse> getPriorAuthorities(
       ServiceName serviceName, UUID priorAuthorityId) {
-    return ResponseEntity.ok(getPriorAuthorityUseCase.getPriorAuthority(priorAuthorityId));
+    return ResponseEntity.ok(
+        getPriorAuthorityResponseMapper.toResponse(
+            getPriorAuthorityUseCase.getPriorAuthority(priorAuthorityId)));
   }
 }
