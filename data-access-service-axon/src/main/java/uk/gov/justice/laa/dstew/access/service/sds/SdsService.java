@@ -4,6 +4,9 @@ import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.http.MediaType.APPLICATION_OCTET_STREAM;
 import static org.springframework.http.MediaType.MULTIPART_FORM_DATA;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.UncheckedIOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,10 +22,7 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.util.UriBuilder;
 import uk.gov.justice.laa.dstew.access.exception.FileConflictException;
-import uk.gov.justice.laa.dstew.access.exception.FileLengthRequiredException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
-import uk.gov.justice.laa.dstew.access.exception.VirusDetectedException;
-import uk.gov.justice.laa.dstew.access.exception.VirusScanException;
 import uk.gov.justice.laa.dstew.access.model.DocumentDeleteResponse;
 import uk.gov.justice.laa.dstew.access.model.DocumentDeleteResult;
 import uk.gov.justice.laa.dstew.access.model.DocumentDownloadResponse;
@@ -51,6 +51,10 @@ public class SdsService {
   @Qualifier("sdsRestClient")
   private final RestClient sdsRestClient;
 
+  private final SdsUploadResponseHandler sdsUploadResponseHandler;
+
+  private final ObjectMapper objectMapper;
+
   @Value("${app.sds-api.bucket-name}")
   private String bucketName;
 
@@ -69,7 +73,8 @@ public class SdsService {
 
     MultipartBodyBuilder builder = buildMultipartBody(file, bodyMap);
 
-    return handleUploadErrors(
+    return sdsUploadResponseHandler
+        .handle(
             sdsRestClient
                 .post()
                 .uri(SAVE_FILE_ENDPOINT)
@@ -96,7 +101,8 @@ public class SdsService {
         Map.of(BUCKET_NAME_FIELD, bucketName, FOLDER_FIELD, applicationId.toString());
     MultipartBodyBuilder builder = buildMultipartBody(file, bodyMap);
 
-    return handleUploadErrors(
+    return sdsUploadResponseHandler
+        .handle(
             sdsRestClient
                 .put()
                 .uri(SAVE_OR_UPDATE_FILE_ENDPOINT)
@@ -191,45 +197,15 @@ public class SdsService {
     return applicationId.toString() + PATH_SEPARATOR + documentId;
   }
 
-  private RestClient.ResponseSpec handleUploadErrors(RestClient.ResponseSpec spec) {
-    return spec.onStatus(
-            status -> status.isSameCodeAs(HttpStatus.LENGTH_REQUIRED),
-            (req, res) -> {
-              throw new FileLengthRequiredException("File content length is required");
-            })
-        .onStatus(
-            status -> status.value() == 422,
-            (req, res) -> {
-              throw new VirusDetectedException("Virus detected in uploaded file");
-            })
-        .onStatus(
-            status ->
-                !status.is2xxSuccessful()
-                    && !status.isSameCodeAs(HttpStatus.CONFLICT)
-                    && !status.isSameCodeAs(HttpStatus.LENGTH_REQUIRED)
-                    && status.value() != 422,
-            (req, res) -> {
-              throw new VirusScanException(
-                  "Unexpected response from SDS virus scan: " + res.getStatusCode());
-            });
-  }
-
   private MultipartBodyBuilder buildMultipartBody(
       MultipartFile file, Map<String, String> bodyFields) {
-    MultipartBodyBuilder builder = new MultipartBodyBuilder();
-    builder.part("file", file.getResource()).contentType(APPLICATION_OCTET_STREAM);
-
-    StringBuilder jsonBody = new StringBuilder("{");
-    bodyFields.forEach(
-        (key, value) -> {
-          if (jsonBody.length() > 1) {
-            jsonBody.append(",");
-          }
-          jsonBody.append(String.format("\"%s\":\"%s\"", key, value));
-        });
-    jsonBody.append("}");
-
-    builder.part("body", jsonBody.toString());
-    return builder;
+    try {
+      MultipartBodyBuilder builder = new MultipartBodyBuilder();
+      builder.part("file", file.getResource()).contentType(APPLICATION_OCTET_STREAM);
+      builder.part("body", objectMapper.writeValueAsString(bodyFields));
+      return builder;
+    } catch (JsonProcessingException e) {
+      throw new UncheckedIOException(e);
+    }
   }
 }
