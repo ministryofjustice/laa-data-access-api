@@ -45,6 +45,7 @@ class WorkListProjectionTest {
     assertThat(row.getParentApplicationId()).isNull();
     assertThat(row.getAssigneeId()).isNull();
     assertThat(row.getAssignmentBoundaryType()).isEqualTo("DIRECT");
+    assertThat(row.getAssignmentVersion()).isZero();
     assertThat(row.getItemVersion()).isEqualTo(3L);
   }
 
@@ -69,6 +70,7 @@ class WorkListProjectionTest {
     assertThat(captor.getValue().getApplicationId()).isEqualTo(applicationId);
     assertThat(captor.getValue().getParentApplicationId()).isEqualTo(applicationId);
     assertThat(captor.getValue().getAssignmentBoundaryId()).isEqualTo(submissionId);
+    assertThat(captor.getValue().getAssignmentVersion()).isZero();
   }
 
   @Test

@@ -39,6 +39,8 @@ paths:
     $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1{id}~1delete-document"
   /api/v0/applications/{id}/prior-authority:
     $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1{id}~1prior-authority"
+  /api/v0/work-queue:
+    $ref: "./open-api-work-queue/resources.yml#/paths/~1api~1v0~1work-queue"
   /api/v0/sds/health:
     $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1sds~1health"
 
@@ -113,3 +115,9 @@ components:
       $ref: "./open-api-applications/components.yml#/components/schemas/CreatePriorAuthorityRequest"
     CreatePriorAuthorityResponse:
       $ref: "./open-api-applications/components.yml#/components/schemas/CreatePriorAuthorityResponse"
+    WorkQueueItemType:
+      $ref: "./open-api-work-queue/components.yml#/components/schemas/WorkQueueItemType"
+    WorkQueueItem:
+      $ref: "./open-api-work-queue/components.yml#/components/schemas/WorkQueueItem"
+    WorkQueueResponse:
+      $ref: "./open-api-work-queue/components.yml#/components/schemas/WorkQueueResponse"

@@ -4,6 +4,10 @@ import org.axonframework.messaging.core.annotation.Namespace;
 import org.axonframework.messaging.eventhandling.EventMessage;
 import org.axonframework.messaging.eventhandling.annotation.EventHandler;
 import org.axonframework.messaging.eventhandling.replay.annotation.ResetHandler;
+import org.axonframework.messaging.queryhandling.annotation.QueryHandler;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
@@ -20,6 +24,22 @@ public class WorkListProjection {
 
   public WorkListProjection(WorkListItemReadRepository items) {
     this.items = items;
+  }
+
+  /** Returns a database-filtered page of active work, newest update first. */
+  @QueryHandler
+  public FindWorkListItemsResult handle(FindWorkListItemsQuery query) {
+    Page<WorkListItemReadModel> page =
+        items.findAll(
+            WorkListItemSpecification.from(query),
+            PageRequest.of(
+                query.page() - 1,
+                query.pageSize(),
+                Sort.by(Sort.Direction.DESC, "updatedAt")
+                    .and(Sort.by(Sort.Direction.ASC, "id.itemType"))
+                    .and(Sort.by(Sort.Direction.ASC, "id.itemId"))));
+    return new FindWorkListItemsResult(
+        page.getContent(), page.getTotalElements(), query.page(), query.pageSize());
   }
 
   /** A manual-assessment outcome activates one application work item. */

@@ -71,6 +71,7 @@ public class WorkListItemReadModel {
     this.updatedAt = updatedAt;
     this.assignmentBoundaryType = "DIRECT";
     this.assignmentBoundaryId = itemId;
+    this.assignmentVersion = 0L;
     this.itemVersion = itemVersion;
     this.projectionPosition = projectionPosition;
   }
