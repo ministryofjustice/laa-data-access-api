@@ -8,7 +8,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -30,6 +29,7 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
+import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.exception.FileConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.DocumentDeleteResponse;

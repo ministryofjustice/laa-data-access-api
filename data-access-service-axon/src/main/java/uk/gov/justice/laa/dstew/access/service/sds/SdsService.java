@@ -4,9 +4,6 @@ import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.http.MediaType.APPLICATION_OCTET_STREAM;
 import static org.springframework.http.MediaType.MULTIPART_FORM_DATA;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.UncheckedIOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +18,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.util.UriBuilder;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.exception.FileConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.DocumentDeleteResponse;
@@ -204,8 +203,8 @@ public class SdsService {
       builder.part("file", file.getResource()).contentType(APPLICATION_OCTET_STREAM);
       builder.part("body", objectMapper.writeValueAsString(bodyFields));
       return builder;
-    } catch (JsonProcessingException e) {
-      throw new UncheckedIOException(e);
+    } catch (JacksonException e) {
+      throw new IllegalStateException("Unable to serialise SDS request body", e);
     }
   }
 }
