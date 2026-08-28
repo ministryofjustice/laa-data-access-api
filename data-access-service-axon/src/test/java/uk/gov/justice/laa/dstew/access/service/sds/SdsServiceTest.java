@@ -4,6 +4,7 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.endsWith;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -29,6 +30,7 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
+import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.exception.FileConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
@@ -252,6 +254,60 @@ class SdsServiceTest {
     assertThat(actualResponse).isEqualTo(expectedResponse);
     verify(sdsRestClient).get();
     verify(requestHeadersUriSpec).uri(endsWith("/health"));
+  }
+
+  @SuppressWarnings("unchecked")
+  @Test
+  void givenSaveFileConflictPredicate_whenInvoked_thenMatchesConflictStatusAndHandlerThrows()
+      throws Exception {
+    UUID applicationId = UUID.randomUUID();
+    MockMultipartFile file =
+        new MockMultipartFile(
+            "file", "test-file.pdf", "application/pdf", "test content".getBytes());
+
+    RestClient.RequestBodyUriSpec requestBodyUriSpec = mock(RestClient.RequestBodyUriSpec.class);
+    RestClient.RequestBodySpec requestBodySpec = mock(RestClient.RequestBodySpec.class);
+    RestClient.ResponseSpec responseSpec = mock(RestClient.ResponseSpec.class);
+
+    ArgumentCaptor<Predicate<HttpStatusCode>> predicateCaptor =
+        ArgumentCaptor.forClass(Predicate.class);
+    ArgumentCaptor<RestClient.ResponseSpec.ErrorHandler> handlerCaptor =
+        ArgumentCaptor.forClass(RestClient.ResponseSpec.ErrorHandler.class);
+
+    when(sdsRestClient.post()).thenReturn(requestBodyUriSpec);
+    when(requestBodyUriSpec.uri(endsWith("/save_file"))).thenReturn(requestBodySpec);
+    when(requestBodySpec.contentType(MediaType.MULTIPART_FORM_DATA)).thenReturn(requestBodySpec);
+    when(requestBodySpec.body(any(MultiValueMap.class))).thenReturn(requestBodySpec);
+    when(requestBodySpec.retrieve()).thenReturn(responseSpec);
+    when(responseSpec.onStatus(predicateCaptor.capture(), handlerCaptor.capture()))
+        .thenReturn(responseSpec);
+    when(sdsUploadResponseHandler.handle(responseSpec)).thenReturn(responseSpec);
+    when(responseSpec.body(DocumentUploadResponse.class))
+        .thenReturn(mock(DocumentUploadResponse.class));
+
+    sdsService.saveFile(applicationId, file);
+
+    Predicate<HttpStatusCode> conflictPredicate = predicateCaptor.getValue();
+    assertThat(conflictPredicate.test(HttpStatus.CONFLICT)).isTrue();
+    assertThat(conflictPredicate.test(HttpStatus.OK)).isFalse();
+
+    assertThatExceptionOfType(FileConflictException.class)
+        .isThrownBy(() -> handlerCaptor.getValue().handle(null, null))
+        .withMessage("File already exists in SDS");
+  }
+
+  @Test
+  void givenObjectMapperFails_whenBuildingMultipartBody_thenThrowIllegalStateException() {
+    UUID applicationId = UUID.randomUUID();
+    MockMultipartFile file =
+        new MockMultipartFile(
+            "file", "test-file.pdf", "application/pdf", "test content".getBytes());
+
+    doThrow(mock(JacksonException.class)).when(objectMapper).writeValueAsString(any());
+
+    assertThatExceptionOfType(IllegalStateException.class)
+        .isThrownBy(() -> sdsService.saveFile(applicationId, file))
+        .withMessage("Unable to serialise SDS request body");
   }
 
   @SuppressWarnings("unchecked")
