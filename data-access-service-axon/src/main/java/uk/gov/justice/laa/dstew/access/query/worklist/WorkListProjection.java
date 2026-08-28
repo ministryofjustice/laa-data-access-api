@@ -1,0 +1,95 @@
+package uk.gov.justice.laa.dstew.access.query.worklist;
+
+import org.axonframework.messaging.core.annotation.Namespace;
+import org.axonframework.messaging.eventhandling.EventMessage;
+import org.axonframework.messaging.eventhandling.annotation.EventHandler;
+import org.axonframework.messaging.eventhandling.replay.annotation.ResetHandler;
+import org.springframework.stereotype.Component;
+import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
+import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
+import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
+
+/** Replayable projection of active work; it is never consulted to route a command. */
+@Component
+@Namespace("work-list-projection")
+public class WorkListProjection {
+  private final WorkListItemReadRepository items;
+
+  public WorkListProjection(WorkListItemReadRepository items) {
+    this.items = items;
+  }
+
+  /** A manual-assessment outcome activates one application work item. */
+  @EventHandler
+  public void on(ApplicationReadyForManualAssessmentEvent event, EventMessage message) {
+    items.save(
+        new WorkListItemReadModel(
+            WorkItemType.APPLICATION,
+            event.applicationId(),
+            event.applicationId(),
+            null,
+            event.occurredAt(),
+            event.applicationVersion(),
+            message.identifier().hashCode()));
+  }
+
+  /** PA creation directly activates one PA work item under its parent application. */
+  @EventHandler
+  public void on(PriorAuthorityCreatedEvent event, EventMessage message) {
+    items.save(
+        new WorkListItemReadModel(
+            WorkItemType.PRIOR_AUTHORITY,
+            event.submissionId(),
+            event.applicationId(),
+            event.applicationId(),
+            event.occurredAt(),
+            event.dataVersion(),
+            message.identifier().hashCode()));
+  }
+
+  /** A terminal application decision removes only its application work row. */
+  @EventHandler
+  public void on(ApplicationDecisionMadeEvent event) {
+    items.deleteByIdItemTypeAndIdItemId(WorkItemType.APPLICATION, event.applicationId());
+  }
+
+  /** Mirrors legacy direct assignment into the new projection during migration. */
+  @EventHandler
+  public void on(ApplicationAssignedToCaseworkerEvent event, EventMessage message) {
+    items
+        .findById(new WorkListItemId(WorkItemType.APPLICATION, event.applicationId()))
+        .ifPresent(
+            item -> {
+              item.setAssigneeId(event.caseworkerId());
+              item.setItemVersion(event.applicationVersion());
+              item.setUpdatedAt(event.occurredAt());
+              item.setProjectionPosition(message.identifier().hashCode());
+              items.save(item);
+            });
+  }
+
+  /** Mirrors legacy direct unassignment into the new projection during migration. */
+  @EventHandler
+  public void on(ApplicationUnassignedFromCaseworkerEvent event, EventMessage message) {
+    items
+        .findById(new WorkListItemId(WorkItemType.APPLICATION, event.applicationId()))
+        .ifPresent(
+            item -> {
+              item.setAssigneeId(null);
+              item.setItemVersion(event.applicationVersion());
+              item.setUpdatedAt(event.occurredAt());
+              item.setProjectionPosition(message.identifier().hashCode());
+              items.save(item);
+            });
+  }
+
+  /** Deletes all disposable rows before event-stream replay. */
+  @ResetHandler
+  public void reset() {
+    items.deleteAllInBatch();
+  }
+}
+
