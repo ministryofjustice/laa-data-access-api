@@ -62,6 +62,7 @@ spec:
               value: {{ .Values.aws.region | quote }}
             {{ include "axonFeatureConfig" . | nindent 12 }}
             {{ include "axonOauth2Config" . | nindent 12 }}
+            {{ include "axonSdsApiConfig" . | nindent 12 }}
             {{- if .Values.aws.integrationEvents.enabled }}
             - name: APPLICATION_INTEGRATION_EVENTS_TOPIC_ARN
               valueFrom:
