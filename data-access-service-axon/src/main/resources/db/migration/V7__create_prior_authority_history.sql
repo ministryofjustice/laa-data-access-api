@@ -9,5 +9,5 @@ CREATE TABLE prior_authority_history (
     occurred_at           TIMESTAMPTZ    NOT NULL
 );
 
-CREATE INDEX prior_authority_history_application_id_idx
-    ON prior_authority_history (application_id);
+CREATE INDEX prior_authority_history_application_id_occurred_at_idx
+    ON prior_authority_history (application_id, occurred_at);
