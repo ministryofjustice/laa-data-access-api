@@ -61,25 +61,35 @@ public class WorkItemRouteProjection {
   @EventHandler
   @Transactional
   public void on(LinkedApplicationGroupCreatedEvent event) {
-    event.memberApplicationIds().forEach(id -> moveToGroup(id, event.groupId(), event.occurredAt()));
+    event.memberApplicationIds().forEach(id -> moveToGroup(id, event.groupId(), 1L, event.occurredAt()));
   }
 
   /** Makes a subsequently added member route to the established group. */
   @EventHandler
   @Transactional
   public void on(MemberAddedToGroupEvent event) {
-    moveToGroup(event.memberId(), event.groupId(), event.occurredAt());
+    long nextMembershipVersion =
+        routes.findAllByGroupId(event.groupId()).stream()
+            .mapToLong(WorkItemRoute::getMembershipVersion)
+            .max()
+            .orElse(1L)
+            + 1L;
+    routes.findAllByGroupId(event.groupId()).forEach(
+        route -> route.moveTo(WorkItemRouteKind.LINKED_GROUP, event.groupId(), event.groupId(),
+            nextMembershipVersion, event.occurredAt()));
+    moveToGroup(event.memberId(), event.groupId(), nextMembershipVersion, event.occurredAt());
   }
 
-  private void moveToGroup(UUID applicationId, UUID groupId, java.time.Instant occurredAt) {
+  private void moveToGroup(
+      UUID applicationId, UUID groupId, long membershipVersion, java.time.Instant occurredAt) {
     WorkItemRoute route =
         routes
-            .findByIdWorkItemTypeAndIdWorkItemId(WorkItemType.APPLICATION, applicationId)
+            .findByWorkItemId(applicationId)
             .orElseThrow(
                 () ->
                     new IllegalStateException(
                         "Cannot route application without a direct route: " + applicationId));
-    route.moveTo(WorkItemRouteKind.LINKED_GROUP, groupId, groupId, 0L, occurredAt);
+    route.moveTo(WorkItemRouteKind.LINKED_GROUP, groupId, groupId, membershipVersion, occurredAt);
     routes.save(route);
   }
 }

@@ -8,10 +8,13 @@ import uk.gov.justice.laa.dstew.access.query.PaginationHelper;
 public record FindWorkListItemsQuery(
     UUID assignedTo, WorkItemType itemType, Boolean unassigned, Integer page, Integer pageSize) {
 
-  /** Validates mutually exclusive queue views and normalises one-based pagination. */
+  /** Defaults to unassigned items when no assignee is requested and normalises pagination. */
   public FindWorkListItemsQuery {
     if (assignedTo != null && Boolean.TRUE.equals(unassigned)) {
       throw new IllegalArgumentException("assignedTo and unassigned=true cannot be used together");
+    }
+    if (assignedTo == null && unassigned == null) {
+      unassigned = true;
     }
     page = PaginationHelper.validatePage(page);
     pageSize = PaginationHelper.validatePageSize(pageSize);

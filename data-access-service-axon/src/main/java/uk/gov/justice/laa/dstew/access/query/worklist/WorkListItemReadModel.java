@@ -5,10 +5,13 @@ import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 
 /** Disposable tracking row representing exactly one active work item. */
@@ -28,6 +31,19 @@ public class WorkListItemReadModel {
 
   @Column(name = "laa_reference")
   private String laaReference;
+
+  @Column(name = "used_delegated_functions")
+  private Boolean usedDelegatedFunctions;
+
+  @Column(name = "category_of_law")
+  private String categoryOfLaw;
+
+  @JdbcTypeCode(SqlTypes.JSON)
+  @Column(name = "matter_types")
+  private List<String> matterTypes;
+
+  @Column(name = "application_status")
+  private String applicationStatus;
 
   @Column(name = "submitted_at")
   private Instant submittedAt;

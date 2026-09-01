@@ -168,7 +168,7 @@ class PostgresAxonIntegrationTest {
             """,
             String.class);
 
-    assertThat(appliedVersions).containsExactly("1", "2", "3", "4", "5");
+    assertThat(appliedVersions).containsExactly("1", "2", "3", "4", "5", "6", "7");
     assertThat(tables)
         .containsExactly(
             "application_current_state",
@@ -181,8 +181,24 @@ class PostgresAxonIntegrationTest {
             "linked_application_group_current_state",
             "prior_authority_current_state",
             "prior_authority_data",
-            "token_entry");
+            "token_entry",
+            "work_item_route",
+            "work_list_item");
     assertThat(sequences).containsExactly("aggregate-event-global-index-sequence");
+    assertThat(
+            jdbcTemplate.queryForList(
+                """
+                SELECT key_column_usage.column_name
+                FROM information_schema.table_constraints
+                JOIN information_schema.key_column_usage
+                  USING (constraint_catalog, constraint_schema, constraint_name)
+                WHERE table_constraints.table_schema = 'axon'
+                  AND table_constraints.table_name = 'work_item_route'
+                  AND table_constraints.constraint_type = 'PRIMARY KEY'
+                ORDER BY key_column_usage.ordinal_position
+                """,
+                String.class))
+        .containsExactly("work_item_id");
     assertThat(
             jdbcTemplate.queryForObject(
                 """

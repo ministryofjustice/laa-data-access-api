@@ -30,6 +30,11 @@ public class AxonEventProcessingConfig {
   }
 
   @Bean
+  EventProcessorDefinition linkedGroupWorkItemLifecycleProcessor() {
+    return pooledStreamingProcessor("linked-group-work-item-lifecycle");
+  }
+
+  @Bean
   EventProcessorDefinition priorAuthorityProjectionProcessor() {
     return pooledStreamingProcessor("prior-authority-projection");
   }

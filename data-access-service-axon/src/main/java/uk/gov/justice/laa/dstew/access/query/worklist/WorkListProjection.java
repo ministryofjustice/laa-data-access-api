@@ -1,5 +1,7 @@
 package uk.gov.justice.laa.dstew.access.query.worklist;
 
+import java.util.Objects;
+import java.util.stream.Stream;
 import org.axonframework.messaging.core.annotation.Namespace;
 import org.axonframework.messaging.eventhandling.EventMessage;
 import org.axonframework.messaging.eventhandling.annotation.EventHandler;
@@ -9,9 +11,15 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
+import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedGroupAssigned;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedGroupMemberWorkItemChanged;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedGroupUnassigned;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
@@ -23,9 +31,12 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 @Namespace("work-list-projection")
 public class WorkListProjection {
   private final WorkListItemReadRepository items;
+  private final ApplicationDataStore applicationDataStore;
 
-  public WorkListProjection(WorkListItemReadRepository items) {
+  public WorkListProjection(
+      WorkListItemReadRepository items, ApplicationDataStore applicationDataStore) {
     this.items = items;
+    this.applicationDataStore = applicationDataStore;
   }
 
   /** Returns a database-filtered page of active work, oldest submission first. */
@@ -47,7 +58,9 @@ public class WorkListProjection {
   /** A manual-assessment outcome activates one application work item. */
   @EventHandler
   public void on(ApplicationReadyForManualAssessmentEvent event, EventMessage message) {
-    items.save(
+    ApplicationDataPayload data =
+        applicationDataStore.get(event.applicationId(), event.applicationDataVersion());
+    WorkListItemReadModel item =
         new WorkListItemReadModel(
             WorkItemType.APPLICATION,
             event.applicationId(),
@@ -55,7 +68,18 @@ public class WorkListProjection {
             null,
             event.occurredAt(),
             event.applicationVersion(),
-            message.identifier().hashCode()));
+            message.identifier().hashCode());
+    item.setLaaReference(data.laaReference());
+    item.setUsedDelegatedFunctions(data.usedDelegatedFunctions());
+    item.setCategoryOfLaw(data.categoryOfLaw());
+    item.setMatterTypes(
+        (data.proceedings() == null ? Stream.<Proceeding>empty() : data.proceedings().stream())
+            .map(proceeding -> proceeding.getMatterType())
+            .filter(Objects::nonNull)
+            .distinct()
+            .toList());
+    item.setApplicationStatus("APPLICATION_SUBMITTED");
+    items.save(item);
   }
 
   /** PA creation directly activates one PA work item under its parent application. */
@@ -115,6 +139,7 @@ public class WorkListProjection {
         .ifPresent(item -> {
           item.setAssigneeId(event.caseworkerId());
           item.setItemVersion(event.itemVersion());
+          item.setAssignmentVersion(event.assignmentVersion());
           item.setUpdatedAt(event.occurredAt());
           item.setProjectionPosition(message.identifier().hashCode());
           items.save(item);
@@ -128,10 +153,71 @@ public class WorkListProjection {
         .ifPresent(item -> {
           item.setAssigneeId(null);
           item.setItemVersion(event.itemVersion());
+          item.setAssignmentVersion(event.assignmentVersion());
           item.setUpdatedAt(event.occurredAt());
           item.setProjectionPosition(message.identifier().hashCode());
           items.save(item);
         });
+  }
+
+  /** Applies an explicit group-owned member eligibility effect. */
+  @EventHandler
+  public void on(LinkedGroupMemberWorkItemChanged event, EventMessage message) {
+    if (!event.active()) {
+      items.deleteByIdItemTypeAndIdItemId(WorkItemType.APPLICATION, event.applicationId());
+      return;
+    }
+    items.findById(new WorkListItemId(WorkItemType.APPLICATION, event.applicationId()))
+        .ifPresent(
+            item -> {
+              item.setAssignmentBoundaryType("LINKED_GROUP");
+              item.setAssignmentBoundaryId(event.groupId());
+              item.setGroupId(event.groupId());
+              item.setAssigneeId(event.caseworkerId());
+              item.setAssignmentVersion(event.assignmentVersion());
+              item.setUpdatedAt(event.occurredAt());
+              item.setProjectionPosition(message.identifier().hashCode());
+              items.save(item);
+            });
+  }
+
+  /** Applies a shared assignee to exactly the immutable active-member set in the event. */
+  @EventHandler
+  public void on(LinkedGroupAssigned event, EventMessage message) {
+    updateLinkedGroupAssignee(
+        event.groupId(), event.affectedApplicationIds(), event.caseworkerId(), event.assignmentVersion(),
+        event.occurredAt(), message.identifier().hashCode());
+  }
+
+  /** Clears the shared assignee for exactly the immutable active-member set in the event. */
+  @EventHandler
+  public void on(LinkedGroupUnassigned event, EventMessage message) {
+    updateLinkedGroupAssignee(
+        event.groupId(), event.affectedApplicationIds(), null, event.assignmentVersion(),
+        event.occurredAt(), message.identifier().hashCode());
+  }
+
+  private void updateLinkedGroupAssignee(
+      java.util.UUID groupId,
+      java.util.List<java.util.UUID> applicationIds,
+      java.util.UUID assigneeId,
+      long assignmentVersion,
+      java.time.Instant occurredAt,
+      long projectionPosition) {
+    applicationIds.forEach(
+        applicationId ->
+            items.findById(new WorkListItemId(WorkItemType.APPLICATION, applicationId))
+                .ifPresent(
+                    item -> {
+                      item.setAssignmentBoundaryType("LINKED_GROUP");
+                      item.setAssignmentBoundaryId(groupId);
+                      item.setGroupId(groupId);
+                      item.setAssigneeId(assigneeId);
+                      item.setAssignmentVersion(assignmentVersion);
+                      item.setUpdatedAt(occurredAt);
+                      item.setProjectionPosition(projectionPosition);
+                      items.save(item);
+                    }));
   }
 
   /** Deletes all disposable rows before event-stream replay. */

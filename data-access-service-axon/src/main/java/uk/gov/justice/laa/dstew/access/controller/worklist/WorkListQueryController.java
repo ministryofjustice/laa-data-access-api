@@ -2,17 +2,19 @@ package uk.gov.justice.laa.dstew.access.controller.worklist;
 
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
-import uk.gov.justice.laa.dstew.access.api.WorkQueueQueryApi;
+import uk.gov.justice.laa.dstew.access.api.WorkListQueryApi;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
-import uk.gov.justice.laa.dstew.access.model.WorkQueueItemType;
-import uk.gov.justice.laa.dstew.access.model.WorkQueueResponse;
+import uk.gov.justice.laa.dstew.access.model.ServiceName;
+import uk.gov.justice.laa.dstew.access.model.WorkListItemType;
+import uk.gov.justice.laa.dstew.access.model.WorkListResponse;
 import uk.gov.justice.laa.dstew.access.query.worklist.FindWorkListItemsQuery;
 import uk.gov.justice.laa.dstew.access.usecase.worklist.WorkListQueryUseCase;
 
 /** HTTP adapter for the replayable work-list projection. */
 @RestController
-public class WorkListQueryController implements WorkQueueQueryApi {
+public class WorkListQueryController implements WorkListQueryApi {
 
   private final WorkListQueryUseCase workListQueryUseCase;
   private final WorkListResponseMapper responseMapper;
@@ -23,10 +25,15 @@ public class WorkListQueryController implements WorkQueueQueryApi {
     this.responseMapper = responseMapper;
   }
 
-  /** Returns an open or personal active-work view, filtered and paged by the database. */
+  /** Returns unassigned items by default or items assigned to the requested caseworker. */
   @Override
-  public ResponseEntity<WorkQueueResponse> getWorkQueueItems(
-      UUID assignedTo, Boolean unassigned, WorkQueueItemType itemType, Integer page, Integer pageSize) {
+  public ResponseEntity<WorkListResponse> getWorkListItems(
+      @RequestHeader("X-Service-Name") ServiceName serviceName,
+      UUID assignedTo,
+      Boolean unassigned,
+      WorkListItemType itemType,
+      Integer page,
+      Integer pageSize) {
     return responseMapper.toResponse(
         workListQueryUseCase.findItems(
             new FindWorkListItemsQuery(
@@ -37,4 +44,3 @@ public class WorkListQueryController implements WorkQueueQueryApi {
                 pageSize)));
   }
 }
-

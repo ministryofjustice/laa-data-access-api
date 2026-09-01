@@ -1,22 +1,26 @@
 package uk.gov.justice.laa.dstew.access.controller.worklist;
 
 import java.time.ZoneOffset;
+import java.util.Objects;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
+import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.PagingResponse;
-import uk.gov.justice.laa.dstew.access.model.WorkQueueItem;
-import uk.gov.justice.laa.dstew.access.model.WorkQueueItemType;
-import uk.gov.justice.laa.dstew.access.model.WorkQueueResponse;
+import uk.gov.justice.laa.dstew.access.model.WorkListItem;
+import uk.gov.justice.laa.dstew.access.model.WorkListItemType;
+import uk.gov.justice.laa.dstew.access.model.WorkListResponse;
 import uk.gov.justice.laa.dstew.access.query.worklist.FindWorkListItemsResult;
 import uk.gov.justice.laa.dstew.access.query.worklist.WorkListItemReadModel;
 
-/** Maps active work-list projection rows to the public work-queue contract. */
+/** Maps active work-list projection rows to the public work-list contract. */
 @Component
 public class WorkListResponseMapper {
 
   /** Maps one database-paged query result without consulting command-side routes. */
-  public ResponseEntity<WorkQueueResponse> toResponse(FindWorkListItemsResult result) {
-    WorkQueueResponse response = new WorkQueueResponse();
+  public ResponseEntity<WorkListResponse> toResponse(FindWorkListItemsResult result) {
+    WorkListResponse response = new WorkListResponse();
     response.setItems(result.items().stream().map(this::toItem).toList());
 
     PagingResponse paging = new PagingResponse();
@@ -28,21 +32,49 @@ public class WorkListResponseMapper {
     return ResponseEntity.ok(response);
   }
 
-  private WorkQueueItem toItem(WorkListItemReadModel item) {
-    WorkQueueItem response = new WorkQueueItem();
+  private WorkListItem toItem(WorkListItemReadModel item) {
+    WorkListItem response = new WorkListItem();
     response.setItemId(item.getId().getItemId());
-    response.setItemType(WorkQueueItemType.valueOf(item.getId().getItemType().name()));
-    response.setApplicationId(item.getApplicationId());
+    response.setItemType(WorkListItemType.valueOf(item.getId().getItemType().name()));
     response.setParentApplicationId(item.getParentApplicationId());
     response.setAssignedTo(item.getAssigneeId());
     response.setAssignmentVersion(item.getAssignmentVersion());
     response.setAssignmentBoundaryType(
-        WorkQueueItem.AssignmentBoundaryTypeEnum.valueOf(item.getAssignmentBoundaryType()));
-    response.setGroupId(item.getGroupId());
+        WorkListItem.AssignmentBoundaryTypeEnum.valueOf(item.getAssignmentBoundaryType()));
     response.setSubmittedAt(
         item.getSubmittedAt() == null ? null : item.getSubmittedAt().atOffset(ZoneOffset.UTC));
     response.setLaaReference(item.getLaaReference());
+    response.setUsedDelegatedFunctions(item.getUsedDelegatedFunctions());
+    response.setCategoryOfLaw(toCategoryOfLaw(item.getCategoryOfLaw()));
+    response.setMatterTypes(
+        item.getMatterTypes() == null
+            ? null
+            : item.getMatterTypes().stream().map(this::toMatterType).filter(Objects::nonNull).toList());
+    response.setApplicationStatus(
+        item.getApplicationStatus() == null
+            ? null
+            : ApplicationStatus.valueOf(item.getApplicationStatus()));
     return response;
+  }
+
+  private CategoryOfLaw toCategoryOfLaw(String categoryOfLaw) {
+    try {
+      return categoryOfLaw == null
+          ? null
+          : CategoryOfLaw.valueOf(categoryOfLaw.toUpperCase().replace(" ", "_"));
+    } catch (IllegalArgumentException exception) {
+      return null;
+    }
+  }
+
+  private MatterType toMatterType(String matterType) {
+    try {
+      return matterType == null
+          ? null
+          : MatterType.valueOf(matterType.toUpperCase().replace(" ", "_"));
+    } catch (IllegalArgumentException exception) {
+      return null;
+    }
   }
 }
 

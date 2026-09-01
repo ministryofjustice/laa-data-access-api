@@ -1,10 +1,10 @@
 package uk.gov.justice.laa.dstew.access.command.worklist.route;
 
 import jakarta.persistence.Column;
-import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import java.time.Instant;
@@ -19,7 +19,13 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 @Getter
 @NoArgsConstructor
 public class WorkItemRoute {
-  @EmbeddedId private WorkItemRouteId id;
+  @Id
+  @Column(name = "work_item_id", nullable = false)
+  private UUID workItemId;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "work_item_type", nullable = false)
+  private WorkItemType workItemType;
 
   @Enumerated(EnumType.STRING)
   @Column(name = "route_kind", nullable = false)
@@ -53,7 +59,8 @@ public class WorkItemRoute {
       UUID groupId,
       long membershipVersion,
       Instant occurredAt) {
-    this.id = new WorkItemRouteId(type, workItemId);
+    this.workItemId = workItemId;
+    this.workItemType = type;
     this.routeKind = routeKind;
     this.aggregateId = aggregateId;
     this.groupId = groupId;

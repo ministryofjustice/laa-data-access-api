@@ -1,5 +1,7 @@
 package uk.gov.justice.laa.dstew.access.query.worklist;
 
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import java.io.Serializable;
 import java.util.UUID;
 import lombok.EqualsAndHashCode;
@@ -12,6 +14,7 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 @EqualsAndHashCode
 @Getter
 public class WorkListItemId implements Serializable {
+  @Enumerated(EnumType.STRING)
   WorkItemType itemType;
   UUID itemId;
 

@@ -32,6 +32,26 @@ public class LinkedApplicationGroupAggregate {
         .forEach(e -> eventAppender.append(e));
   }
 
+  @CommandHandler
+  void handle(ActivateLinkedGroupMemberWorkItemCommand command, EventAppender eventAppender) {
+    eventAppender.append(LinkedApplicationGroupDecider.decideActivate(state, command));
+  }
+
+  @CommandHandler
+  void handle(DeactivateLinkedGroupMemberWorkItemCommand command, EventAppender eventAppender) {
+    eventAppender.append(LinkedApplicationGroupDecider.decideDeactivate(state, command));
+  }
+
+  @CommandHandler
+  void handle(AssignLinkedGroupWorkItemCommand command, EventAppender eventAppender) {
+    eventAppender.append(LinkedApplicationGroupDecider.decideAssign(state, command));
+  }
+
+  @CommandHandler
+  void handle(UnassignLinkedGroupWorkItemCommand command, EventAppender eventAppender) {
+    eventAppender.append(LinkedApplicationGroupDecider.decideUnassign(state, command));
+  }
+
   @EventSourcingHandler
   void on(LinkedApplicationGroupCreatedEvent event) {
     LinkedApplicationGroupEvolve.apply(state, event);
@@ -40,6 +60,21 @@ public class LinkedApplicationGroupAggregate {
 
   @EventSourcingHandler
   void on(MemberAddedToGroupEvent event) {
+    LinkedApplicationGroupEvolve.apply(state, event);
+  }
+
+  @EventSourcingHandler
+  void on(LinkedGroupMemberWorkItemChanged event) {
+    LinkedApplicationGroupEvolve.apply(state, event);
+  }
+
+  @EventSourcingHandler
+  void on(LinkedGroupAssigned event) {
+    LinkedApplicationGroupEvolve.apply(state, event);
+  }
+
+  @EventSourcingHandler
+  void on(LinkedGroupUnassigned event) {
     LinkedApplicationGroupEvolve.apply(state, event);
   }
 

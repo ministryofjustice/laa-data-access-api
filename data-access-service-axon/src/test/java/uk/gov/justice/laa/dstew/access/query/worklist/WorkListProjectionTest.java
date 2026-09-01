@@ -18,27 +18,45 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedGroupAssigned;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedGroupMemberWorkItemChanged;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemId;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 
 class WorkListProjectionTest {
   private WorkListItemReadRepository items;
+  private ApplicationDataStore applicationDataStore;
   private WorkListProjection projection;
 
   @BeforeEach
   void setUp() {
     items = mock(WorkListItemReadRepository.class);
-    projection = new WorkListProjection(items);
+    applicationDataStore = mock(ApplicationDataStore.class);
+    projection = new WorkListProjection(items, applicationDataStore);
   }
 
   @Test
   void givenManualApplication_whenHandled_thenCreatesUnassignedApplicationWorkItem() {
     UUID applicationId = UUID.randomUUID();
-    Instant occurredAt = Instant.parse("2026-08-28T10:00:00Z");
 
+    ApplicationDataPayload data = mock(ApplicationDataPayload.class);
+    Proceeding proceeding = mock(Proceeding.class);
+    when(applicationDataStore.get(applicationId, 5L)).thenReturn(data);
+    when(data.laaReference()).thenReturn("LAA-123456");
+    when(data.usedDelegatedFunctions()).thenReturn(true);
+    when(data.categoryOfLaw()).thenReturn("FAMILY");
+    when(data.proceedings()).thenReturn(java.util.List.of(proceeding));
+    when(proceeding.getMatterType()).thenReturn("SPECIAL_CHILDREN_ACT");
+
+    Instant occurredAt = Instant.parse("2026-08-28T10:00:00Z");
     projection.on(new ApplicationReadyForManualAssessmentEvent(applicationId, 3L, 5L, occurredAt), message());
 
     ArgumentCaptor<WorkListItemReadModel> captor = ArgumentCaptor.forClass(WorkListItemReadModel.class);
@@ -47,6 +65,11 @@ class WorkListProjectionTest {
     assertThat(row.getApplicationId()).isEqualTo(applicationId);
     assertThat(row.getParentApplicationId()).isNull();
     assertThat(row.getAssigneeId()).isNull();
+    assertThat(row.getLaaReference()).isEqualTo("LAA-123456");
+    assertThat(row.getUsedDelegatedFunctions()).isTrue();
+    assertThat(row.getCategoryOfLaw()).isEqualTo("FAMILY");
+    assertThat(row.getMatterTypes()).containsExactly("SPECIAL_CHILDREN_ACT");
+    assertThat(row.getApplicationStatus()).isEqualTo("APPLICATION_SUBMITTED");
     assertThat(row.getAssignmentBoundaryType()).isEqualTo("DIRECT");
     assertThat(row.getAssignmentVersion()).isZero();
     assertThat(row.getItemVersion()).isEqualTo(3L);
@@ -96,7 +119,7 @@ class WorkListProjectionTest {
         .thenReturn(new PageImpl<>(java.util.List.of(item)));
 
     FindWorkListItemsResult result =
-        projection.handle(new FindWorkListItemsQuery(null, null, true, null, null));
+        projection.handle(new FindWorkListItemsQuery(null, null, null, null, null));
 
     ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
     verify(items)
@@ -128,12 +151,60 @@ class WorkListProjectionTest {
   }
 
   @Test
+  void givenActiveWorkItem_whenGenericallyAssigned_thenUpdatesItsAssignmentVersion() {
+    UUID applicationId = UUID.randomUUID();
+    WorkListItemReadModel row =
+        new WorkListItemReadModel(
+            WorkItemType.APPLICATION, applicationId, applicationId, null, Instant.now(), 1L, 0L);
+    when(items.findById(new WorkListItemId(WorkItemType.APPLICATION, applicationId)))
+        .thenReturn(Optional.of(row));
+
+    projection.on(
+        new WorkItemAssigned(
+            new WorkItemId(WorkItemType.APPLICATION, applicationId),
+            applicationId,
+            null,
+            2L,
+            2L,
+            1L,
+            UUID.randomUUID(),
+            Instant.now()),
+        message());
+
+    assertThat(row.getAssignmentVersion()).isEqualTo(1L);
+  }
+
+  @Test
   void givenFinalApplicationDecision_whenHandled_thenDeletesOnlyItsApplicationWorkItem() {
     UUID applicationId = UUID.randomUUID();
 
     projection.on(new ApplicationDecisionMadeEvent(applicationId, 2L, 3L, "REFUSED", null, Instant.now()));
 
     verify(items).deleteByIdItemTypeAndIdItemId(WorkItemType.APPLICATION, applicationId);
+  }
+
+  @Test
+  void givenActiveLinkedMember_whenGroupAssignmentHandled_thenUpdatesOnlyTheEventMemberSet() {
+    UUID applicationId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+    WorkListItemReadModel row =
+        new WorkListItemReadModel(
+            WorkItemType.APPLICATION, applicationId, applicationId, null, Instant.now(), 1L, 0L);
+    when(items.findById(new WorkListItemId(WorkItemType.APPLICATION, applicationId)))
+        .thenReturn(Optional.of(row));
+
+    projection.on(
+        new LinkedGroupMemberWorkItemChanged(groupId, applicationId, true, 1L, 0L, null, Instant.now()),
+        message());
+    projection.on(new LinkedGroupAssigned(groupId, java.util.List.of(applicationId), 1L, 1L,
+        caseworkerId, Instant.now()), message());
+
+    assertThat(row.getAssignmentBoundaryType()).isEqualTo("LINKED_GROUP");
+    assertThat(row.getAssignmentBoundaryId()).isEqualTo(groupId);
+    assertThat(row.getGroupId()).isEqualTo(groupId);
+    assertThat(row.getAssigneeId()).isEqualTo(caseworkerId);
+    assertThat(row.getAssignmentVersion()).isEqualTo(1L);
   }
 
   @Test

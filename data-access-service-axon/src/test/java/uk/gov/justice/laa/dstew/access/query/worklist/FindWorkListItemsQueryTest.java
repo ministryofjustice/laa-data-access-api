@@ -15,10 +15,21 @@ class FindWorkListItemsQueryTest {
 
     assertThat(query.page()).isEqualTo(1);
     assertThat(query.pageSize()).isEqualTo(20);
+    assertThat(query.unassigned()).isTrue();
   }
 
   @Test
-  void rejectsConflictingOpenAndPersonalQueueFilters() {
+  void acceptsAssignedToWithoutAnUnassignedFilter() {
+    UUID caseworkerId = UUID.randomUUID();
+
+    FindWorkListItemsQuery query = new FindWorkListItemsQuery(caseworkerId, null, null, null, null);
+
+    assertThat(query.assignedTo()).isEqualTo(caseworkerId);
+    assertThat(query.unassigned()).isNull();
+  }
+
+  @Test
+  void rejectsConflictingUnassignedAndAssignedToFilters() {
     assertThatThrownBy(
             () -> new FindWorkListItemsQuery(UUID.randomUUID(), null, true, 1, 20))
         .isInstanceOf(IllegalArgumentException.class)

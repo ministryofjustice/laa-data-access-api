@@ -44,7 +44,7 @@ import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.IndividualsResponse;
 import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
-import uk.gov.justice.laa.dstew.access.model.WorkQueueResponse;
+import uk.gov.justice.laa.dstew.access.model.WorkListResponse;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
@@ -367,16 +367,16 @@ class CreateApplicationInMemoryTest {
         .atMost(10, TimeUnit.SECONDS)
         .untilAsserted(
             () -> {
-              ResponseEntity<WorkQueueResponse> workQueue =
+              ResponseEntity<WorkListResponse> workList =
                   restTemplate.exchange(
-                      "/api/v0/work-queue?unassigned=true",
+                      "/api/v0/work-list",
                       HttpMethod.GET,
                       new HttpEntity<>(headers()),
-                      WorkQueueResponse.class);
-              assertThat(workQueue.getStatusCode()).isEqualTo(HttpStatus.OK);
-              assertThat(workQueue.getBody()).isNotNull();
-              assertThat(workQueue.getBody().getItems())
-                  .extracting(item -> item.getApplicationId())
+                      WorkListResponse.class);
+              assertThat(workList.getStatusCode()).isEqualTo(HttpStatus.OK);
+              assertThat(workList.getBody()).isNotNull();
+              assertThat(workList.getBody().getItems())
+                  .extracting(item -> item.getItemId())
                   .contains(applicationId);
             });
 
