@@ -6,18 +6,24 @@ import static org.awaitility.Awaitility.await;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validLinkedCreateApplicationRequest;
 
+import java.io.IOException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Stream;
 import org.axonframework.eventsourcing.eventstore.EventStorageEngine;
 import org.axonframework.eventsourcing.eventstore.jpa.AggregateBasedJpaEventStorageEngine;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
@@ -32,6 +38,8 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.springframework.context.annotation.Import;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.env.Environment;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -147,7 +155,7 @@ class PostgresAxonIntegrationTest {
   }
 
   @Test
-  void givenFreshDatabase_whenFlywayRuns_thenCreatesOnlyTheCurrentSchema() {
+  void givenFreshDatabase_whenFlywayRuns_thenCreatesOnlyTheCurrentSchema() throws IOException {
     List<String> appliedVersions =
         jdbcTemplate.queryForList(
             """
@@ -177,7 +185,7 @@ class PostgresAxonIntegrationTest {
             """,
             String.class);
 
-    assertThat(appliedVersions).containsExactly("1", "2", "3", "4", "5", "6");
+    assertThat(appliedVersions).containsExactlyElementsOf(expectedMigrationVersions());
     assertThat(tables)
         .containsExactly(
             "application_current_state",
@@ -1963,5 +1971,21 @@ class PostgresAxonIntegrationTest {
     assertThat(eventCount).isZero();
     assertThat(applicationReadRepository.findById(applicationId)).isEmpty();
     assertThat(applicationHistoryReadRepository.countByApplicationId(applicationId)).isZero();
+  }
+
+  private static List<String> expectedMigrationVersions() throws IOException {
+    Resource[] resources =
+        new PathMatchingResourcePatternResolver().getResources("classpath:db/migration/V*__*.sql");
+    return Stream.of(resources)
+        .map(Resource::getFilename)
+        .map(PostgresAxonIntegrationTest::extractVersionNumber)
+        .flatMap(Optional::stream)
+        .sorted(Comparator.comparingInt(Integer::parseInt))
+        .toList();
+  }
+
+  private static Optional<String> extractVersionNumber(String filename) {
+    Matcher matcher = Pattern.compile("V(\\d+)__").matcher(filename);
+    return matcher.find() ? Optional.of(matcher.group(1)) : Optional.empty();
   }
 }
