@@ -45,6 +45,7 @@ import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityResponse;
 import uk.gov.justice.laa.dstew.access.model.DisbursementDetails;
 import uk.gov.justice.laa.dstew.access.model.ExpertCosts;
 import uk.gov.justice.laa.dstew.access.model.ExpertDetails;
+import uk.gov.justice.laa.dstew.access.model.PriorAuthorityResponse;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.model.TimeRequested;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
@@ -150,8 +151,31 @@ class PriorAuthorityIntegrationTest {
             .findById(submissionId)
             .orElseThrow(() -> new AssertionError("Prior authority projection not found"));
     assertThat(projection.getApplicationId()).isEqualTo(applicationId);
+    assertThat(projection.getDataVersion()).isZero();
     assertThat(projection.getStatus()).isEqualTo("PENDING");
     assertThat(projection.getCreatedAt()).isNotNull();
+
+    ResponseEntity<String> getResponse =
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/prior-authority/" + submissionId,
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            String.class);
+
+    assertThat(getResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+    PriorAuthorityResponse priorAuthority =
+        objectMapper.readValue(getResponse.getBody(), PriorAuthorityResponse.class);
+    assertThat(priorAuthority.getPriorAuthorityId()).isEqualTo(submissionId);
+    assertThat(priorAuthority.getApplicationId()).isEqualTo(applicationId);
+    assertThat(priorAuthority.getPriorAuthorityType())
+        .isEqualTo(PriorAuthorityResponse.PriorAuthorityTypeEnum.EXPERT);
+    assertThat(priorAuthority.getJustification())
+        .isEqualTo("Expert witness required for specialist evidence");
+    assertThat(priorAuthority.getStatus()).isEqualTo("PENDING");
+    assertThat(priorAuthority.getExpertDetails().getExpertType()).isEqualTo("Forensic Accountant");
+    assertThat(priorAuthority.getExpertDetails().getExpertCosts().getHourlyRate()).isEqualTo(300.0);
+    assertThat(priorAuthority.getCounselDetails()).isNull();
+    assertThat(priorAuthority.getDisbursementDetails()).isNull();
   }
 
   @Test

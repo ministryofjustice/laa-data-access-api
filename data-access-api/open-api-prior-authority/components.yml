@@ -1,0 +1,75 @@
+components:
+  schemas:
+    PriorAuthorityResponse:
+      type: object
+      required:
+        - priorAuthorityType
+        - priorAuthorityId
+        - applicationId
+        - justification
+      properties:
+        priorAuthorityType:
+          type: string
+          description: One of EXPERT, DISBURSEMENT, COUNSEL
+          enum: [EXPERT, DISBURSEMENT, COUNSEL]
+        priorAuthorityId:
+          type: string
+          format: uuid
+        applicationId:
+          type: string
+          format: uuid
+        matterType:
+          type: string
+          description: Retrieved from application by applicationId
+        justification:
+          type: string
+          maxLength: 10000
+        decision:
+          type: string
+          description: Decision on the request. Uses GRANT/REFUSE to match decision API.
+          enum: [GRANT, REFUSE]
+        decisionJustification:
+          type: string
+        uploadedDocuments:
+          type: array
+          items:
+            $ref: "#/components/schemas/UploadedDocument"
+        expertDetails:
+          description: Optional expert details (present when priorAuthorityType is EXPERT)
+          $ref: "../open-api-applications/components.yml#/components/schemas/ExpertDetails"
+        counselDetails:
+          description: Optional counsel details (present when priorAuthorityType is COUNSEL)
+          $ref: "../open-api-applications/components.yml#/components/schemas/CounselDetails"
+        disbursementDetails:
+          description: Optional disbursement details (present when priorAuthorityType is DISBURSEMENT)
+          $ref: "../open-api-applications/components.yml#/components/schemas/DisbursementDetails"
+        status:
+          type: string
+          description: Status of the prior authority request (business values to be confirmed)
+        assignedTo:
+          type: string
+          format: uuid
+        officeCode:
+          type: string
+
+    UploadedDocument:
+      type: object
+      required:
+        - documentId
+        - fileName
+        - uploadedAt
+      properties:
+        documentId:
+          type: string
+          format: uuid
+        fileName:
+          type: string
+        contentType:
+          type: string
+        size:
+          type: integer
+          format: int64
+        uploadedAt:
+          type: string
+          format: date-time
+
