@@ -7,15 +7,20 @@ import org.axonframework.modelling.entity.EntityMissingForInstanceCommandHandler
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.oauth2.client.ClientAuthorizationException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationGroupInvariantException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException;
+import uk.gov.justice.laa.dstew.access.exception.FileConflictException;
+import uk.gov.justice.laa.dstew.access.exception.FileLengthRequiredException;
 import uk.gov.justice.laa.dstew.access.exception.InvalidApplicationStateException;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.exception.VirusDetectedException;
+import uk.gov.justice.laa.dstew.access.exception.VirusScanException;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryIntegrityException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
@@ -113,6 +118,54 @@ public class ApplicationExceptionHandler {
         .body(
             ProblemDetail.forStatusAndDetail(
                 HttpStatus.UNPROCESSABLE_CONTENT, exception.getMessage()));
+  }
+
+  /** Returns 409 when a file with the same name already exists in SDS. */
+  @ExceptionHandler(FileConflictException.class)
+  ResponseEntity<ProblemDetail> handleFileConflictException(FileConflictException exception) {
+    ProblemDetail problemDetail =
+        ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage());
+    problemDetail.setTitle("Conflict");
+    return ResponseEntity.status(HttpStatus.CONFLICT).body(problemDetail);
+  }
+
+  /** Returns 411 when file content length is missing from the SDS request. */
+  @ExceptionHandler(FileLengthRequiredException.class)
+  ResponseEntity<ProblemDetail> handleFileLengthRequiredException(
+      FileLengthRequiredException exception) {
+    ProblemDetail problemDetail =
+        ProblemDetail.forStatusAndDetail(HttpStatus.LENGTH_REQUIRED, exception.getMessage());
+    problemDetail.setTitle("Length Required");
+    return ResponseEntity.status(HttpStatus.LENGTH_REQUIRED).body(problemDetail);
+  }
+
+  /** Returns 400 when a virus is detected in an uploaded file by SDS. */
+  @ExceptionHandler(VirusDetectedException.class)
+  ResponseEntity<ProblemDetail> handleVirusDetectedException(VirusDetectedException exception) {
+    ProblemDetail problemDetail =
+        ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, exception.getMessage());
+    problemDetail.setTitle("Virus Detected");
+    return ResponseEntity.badRequest().body(problemDetail);
+  }
+
+  /** Returns 500 when SDS virus scan gives an unexpected result. */
+  @ExceptionHandler(VirusScanException.class)
+  ResponseEntity<ProblemDetail> handleVirusScanException(VirusScanException exception) {
+    ProblemDetail problemDetail =
+        ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR, exception.getMessage());
+    problemDetail.setTitle("Virus Scan Error");
+    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(problemDetail);
+  }
+
+  /** Returns 500 when the SDS OAuth2 token cannot be obtained. */
+  @ExceptionHandler(ClientAuthorizationException.class)
+  ResponseEntity<ProblemDetail> handleClientAuthorizationException(
+      ClientAuthorizationException exception) {
+    ProblemDetail problemDetail =
+        ProblemDetail.forStatusAndDetail(
+            HttpStatus.INTERNAL_SERVER_ERROR,
+            "Failed to obtain access token for an external service");
+    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(problemDetail);
   }
 
   /** Returns HTTP 500 with a stable, safe detail when application-history data is inconsistent. */

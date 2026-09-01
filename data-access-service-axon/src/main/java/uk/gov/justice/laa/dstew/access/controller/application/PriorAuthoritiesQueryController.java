@@ -32,7 +32,7 @@ public class PriorAuthoritiesQueryController implements PriorAuthoritiesApi {
    */
   @Override
   @Operation(security = @SecurityRequirement(name = "BearerAuth"))
-  public ResponseEntity<PriorAuthorityResponse> getPriorAuthorities(
+  public ResponseEntity<PriorAuthorityResponse> getPriorAuthority(
       ServiceName serviceName, UUID priorAuthorityId) {
     return ResponseEntity.ok(
         getPriorAuthorityResponseMapper.toResponse(

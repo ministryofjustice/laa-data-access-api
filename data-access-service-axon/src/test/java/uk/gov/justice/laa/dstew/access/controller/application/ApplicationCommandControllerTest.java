@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationCommand;
@@ -28,6 +29,7 @@ import uk.gov.justice.laa.dstew.access.command.application.assignment.UnassignCa
 import uk.gov.justice.laa.dstew.access.command.application.assignment.UnassignCaseworkerUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionUseCase;
+import uk.gov.justice.laa.dstew.access.command.application.document.UploadDocumentUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.CreatePriorAuthorityCommand;
@@ -40,6 +42,7 @@ import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicat
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityRequest;
 import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityResponse;
+import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
 import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
 
 /** Verifies that each controller endpoint delegates to the appropriate use case. */
@@ -53,6 +56,7 @@ class ApplicationCommandControllerTest {
   private RecordAutoGrantOutcomeUseCase recordAutoGrantOutcomeUseCase;
   private UpdateApplicationUseCase updateApplicationUseCase;
   private CreatePriorAuthorityUseCase createPriorAuthorityUseCase;
+  private UploadDocumentUseCase uploadDocumentUseCase;
   private CreateApplicationCommandMapper commandMapper;
   private MakeDecisionCommandMapper decisionCommandMapper;
   private AssignCaseworkerRequestMapper assignCaseworkerRequestMapper;
@@ -75,6 +79,7 @@ class ApplicationCommandControllerTest {
     recordAutoGrantOutcomeUseCase = mock(RecordAutoGrantOutcomeUseCase.class);
     updateApplicationUseCase = mock(UpdateApplicationUseCase.class);
     createPriorAuthorityUseCase = mock(CreatePriorAuthorityUseCase.class);
+    uploadDocumentUseCase = mock(UploadDocumentUseCase.class);
     commandMapper = mock(CreateApplicationCommandMapper.class);
     decisionCommandMapper = mock(MakeDecisionCommandMapper.class);
     assignCaseworkerRequestMapper = mock(AssignCaseworkerRequestMapper.class);
@@ -93,6 +98,7 @@ class ApplicationCommandControllerTest {
             recordAutoGrantOutcomeUseCase,
             updateApplicationUseCase,
             createPriorAuthorityUseCase,
+            uploadDocumentUseCase,
             commandMapper,
             decisionCommandMapper,
             assignCaseworkerRequestMapper,
@@ -255,6 +261,21 @@ class ApplicationCommandControllerTest {
     assertThat(response.getBody().getSubmissionId()).isEqualTo(submissionId);
     assertThat(response.getHeaders().getLocation()).isNotNull();
     assertThat(response.getHeaders().getLocation().toString()).endsWith("/" + submissionId);
+  }
+
+  @Test
+  void givenValidFile_whenUploadDocument_thenDelegatesToUseCaseAndReturns201() {
+    UUID id = UUID.randomUUID();
+    MockMultipartFile file =
+        new MockMultipartFile("file", "test.pdf", "application/pdf", "content".getBytes());
+    DocumentUploadResponse expected = mock(DocumentUploadResponse.class);
+    when(uploadDocumentUseCase.execute(id, file)).thenReturn(expected);
+
+    ResponseEntity<DocumentUploadResponse> response = controller.uploadDocument(null, id, file);
+
+    verify(uploadDocumentUseCase).execute(id, file);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    assertThat(response.getBody()).isEqualTo(expected);
   }
 
   private CreateApplicationCommand stubCreateCommand() {

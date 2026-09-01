@@ -17,6 +17,7 @@ import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationUseC
 import uk.gov.justice.laa.dstew.access.command.application.assignment.AssignCaseworkerUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.UnassignCaseworkerUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionUseCase;
+import uk.gov.justice.laa.dstew.access.command.application.document.UploadDocumentUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.CreatePriorAuthorityCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.CreatePriorAuthorityUseCase;
@@ -53,6 +54,7 @@ public class ApplicationCommandController
   private final RecordAutoGrantOutcomeUseCase recordAutoGrantOutcomeUseCase;
   private final UpdateApplicationUseCase updateApplicationUseCase;
   private final CreatePriorAuthorityUseCase createPriorAuthorityUseCase;
+  private final UploadDocumentUseCase uploadDocumentUseCase;
   private final CreateApplicationCommandMapper commandMapper;
   private final MakeDecisionCommandMapper decisionCommandMapper;
   private final AssignCaseworkerRequestMapper assignCaseworkerRequestMapper;
@@ -72,6 +74,7 @@ public class ApplicationCommandController
       RecordAutoGrantOutcomeUseCase recordAutoGrantOutcomeUseCase,
       UpdateApplicationUseCase updateApplicationUseCase,
       CreatePriorAuthorityUseCase createPriorAuthorityUseCase,
+      UploadDocumentUseCase uploadDocumentUseCase,
       CreateApplicationCommandMapper commandMapper,
       MakeDecisionCommandMapper decisionCommandMapper,
       AssignCaseworkerRequestMapper assignCaseworkerRequestMapper,
@@ -88,6 +91,7 @@ public class ApplicationCommandController
     this.recordAutoGrantOutcomeUseCase = recordAutoGrantOutcomeUseCase;
     this.updateApplicationUseCase = updateApplicationUseCase;
     this.createPriorAuthorityUseCase = createPriorAuthorityUseCase;
+    this.uploadDocumentUseCase = uploadDocumentUseCase;
     this.commandMapper = commandMapper;
     this.decisionCommandMapper = decisionCommandMapper;
     this.assignCaseworkerRequestMapper = assignCaseworkerRequestMapper;
@@ -208,13 +212,13 @@ public class ApplicationCommandController
         : ResponseEntity.accepted().location(location).body(body);
   }
 
-  @Hidden
   @Override
   @LogMethodArguments
   @LogMethodResponse
   public ResponseEntity<DocumentUploadResponse> uploadDocument(
-      ServiceName serviceName, UUID id, MultipartFile file) {
-    return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+      ServiceName serviceName, UUID applicationId, MultipartFile file) {
+    DocumentUploadResponse response = uploadDocumentUseCase.execute(applicationId, file);
+    return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
   @Hidden

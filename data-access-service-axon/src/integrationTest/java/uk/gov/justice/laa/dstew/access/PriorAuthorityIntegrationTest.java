@@ -157,7 +157,7 @@ class PriorAuthorityIntegrationTest {
 
     ResponseEntity<String> getResponse =
         restTemplate.exchange(
-            "http://localhost:" + port + "/api/v0/prior-authority/" + submissionId,
+            "http://localhost:" + port + "/api/v0/prior-authorities/" + submissionId,
             HttpMethod.GET,
             new HttpEntity<>(headers()),
             String.class);
