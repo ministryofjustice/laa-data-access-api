@@ -131,4 +131,63 @@ class PriorAuthorityProjectionTest {
 
     verify(repository).deleteAllInBatch();
   }
+
+  @Test
+  void givenDraftSavedEvent_whenNoExistingRow_thenCreatesNewRowAndEmits() {
+    UUID submissionId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-08-19T10:00:00Z");
+    uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDraftSavedEvent
+        event =
+            new uk.gov.justice.laa.dstew.access.command.application.priorauthority
+                .PriorAuthorityDraftSavedEvent(
+                submissionId, applicationId, 0L, "fp", "IN_PROGRESS", 1, occurredAt);
+
+    when(repository.findById(submissionId)).thenReturn(Optional.empty());
+    when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+    projection.on(event, queryUpdateEmitter);
+
+    InOrder order = inOrder(repository, queryUpdateEmitter);
+    order.verify(repository).save(any(PriorAuthorityReadModel.class));
+    order
+        .verify(queryUpdateEmitter)
+        .emit(any(Class.class), any(Predicate.class), any(PriorAuthorityReadModel.class));
+  }
+
+  @Test
+  void givenDraftSavedEvent_whenExistingRow_thenUpdatesVersionAndStatusAndEmits() {
+    UUID submissionId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-08-19T10:00:00Z");
+    PriorAuthorityReadModel existing =
+        PriorAuthorityReadModel.builder()
+            .submissionId(submissionId)
+            .applicationId(applicationId)
+            .dataVersion(0L)
+            .status("IN_PROGRESS")
+            .createdAt(occurredAt)
+            .build();
+    uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDraftSavedEvent
+        event =
+            new uk.gov.justice.laa.dstew.access.command.application.priorauthority
+                .PriorAuthorityDraftSavedEvent(
+                submissionId, applicationId, 1L, "fp2", "IN_PROGRESS", 1, occurredAt);
+
+    when(repository.findById(submissionId)).thenReturn(Optional.of(existing));
+    when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+    PriorAuthorityReadModel[] savedCapture = new PriorAuthorityReadModel[1];
+    when(repository.save(any()))
+        .thenAnswer(
+            invocation -> {
+              savedCapture[0] = invocation.getArgument(0);
+              return savedCapture[0];
+            });
+
+    projection.on(event, queryUpdateEmitter);
+
+    assertThat(savedCapture[0].getDataVersion()).isEqualTo(1L);
+    assertThat(savedCapture[0].getCreatedAt()).isEqualTo(occurredAt);
+  }
 }

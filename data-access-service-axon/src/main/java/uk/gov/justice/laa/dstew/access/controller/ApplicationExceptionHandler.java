@@ -16,6 +16,7 @@ import uk.gov.justice.laa.dstew.access.exception.FileConflictException;
 import uk.gov.justice.laa.dstew.access.exception.FileLengthRequiredException;
 import uk.gov.justice.laa.dstew.access.exception.InvalidApplicationStateException;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
+import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityNotInProgressException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.exception.VirusDetectedException;
 import uk.gov.justice.laa.dstew.access.exception.VirusScanException;
@@ -96,6 +97,19 @@ public class ApplicationExceptionHandler {
       ApplicationVersionConflictException exception) {
     return ResponseEntity.status(HttpStatus.CONFLICT)
         .body(ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage()));
+  }
+
+  /** Returns a 409 when a prior-authority is not in a submittable (IN_PROGRESS) state. */
+  @ExceptionHandler(PriorAuthorityNotInProgressException.class)
+  ResponseEntity<ProblemDetail> handlePriorAuthorityNotInProgressException(
+      PriorAuthorityNotInProgressException exception) {
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(
+            ProblemDetail.forStatusAndDetail(
+                HttpStatus.CONFLICT,
+                "Prior authority "
+                    + exception.getSubmissionId()
+                    + " is not in a submittable state"));
   }
 
   /** Returns a conflict when manual readiness would overwrite an automatic grant. */

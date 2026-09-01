@@ -24,4 +24,70 @@ paths:
         '403': { description: Forbidden }
         '404': { description: Prior Authority not found }
         '500': { description: Internal server error }
+    put:
+      tags:
+        - prior-authority-draft-command
+      summary: Update an existing Prior Authority draft
+      operationId: updatePriorAuthorityDraft
+      parameters:
+        - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
+        - name: priorAuthorityId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "../open-api-applications/components.yml#/components/schemas/SavePriorAuthorityDraftRequest"
+      responses:
+        '204':
+          description: Prior Authority draft updated
+        '401': { description: Unauthorized }
+        '403': { description: Forbidden }
+        '404': { description: Prior Authority not found }
+        '500': { description: Internal server error }
+
+  /api/v0/prior-authorities/{priorAuthorityId}/submit:
+    post:
+      tags:
+        - prior-authority-draft-command
+      summary: Submit an in-progress Prior Authority draft, sealing its content
+      operationId: submitPriorAuthorityDraft
+      parameters:
+        - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
+        - name: priorAuthorityId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '201':
+          description: Prior Authority draft submitted and projection readable
+          headers:
+            Location:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "../open-api-applications/components.yml#/components/schemas/SubmitPriorAuthorityDraftResponse"
+        '202':
+          description: Prior Authority draft submitted but projection not yet readable
+          headers:
+            Location:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "../open-api-applications/components.yml#/components/schemas/SubmitPriorAuthorityDraftResponse"
+        '401': { description: Unauthorized }
+        '403': { description: Forbidden }
+        '404': { description: Prior Authority not found }
+        '409': { description: Prior Authority is not in a submittable state }
 

@@ -607,3 +607,44 @@ components:
         submittedAt:
           type: string
           format: date-time
+
+    SavePriorAuthorityDraftRequest:
+      type: object
+      properties:
+        priorAuthorityType:
+          $ref: "#/components/schemas/PriorAuthorityType"
+        justification:
+          type: string
+          maxLength: 10000
+        expertDetails:
+          $ref: "#/components/schemas/ExpertDetails"
+        counselDetails:
+          $ref: "#/components/schemas/CounselDetails"
+        disbursementDetails:
+          $ref: "#/components/schemas/DisbursementDetails"
+
+    SavePriorAuthorityDraftResponse:
+      type: object
+      required:
+        - submissionId
+        - savedAt
+      properties:
+        submissionId:
+          type: string
+          format: uuid
+        savedAt:
+          type: string
+          format: date-time
+
+    SubmitPriorAuthorityDraftResponse:
+      type: object
+      required:
+        - submissionId
+        - submittedAt
+      properties:
+        submissionId:
+          type: string
+          format: uuid
+        submittedAt:
+          type: string
+          format: date-time

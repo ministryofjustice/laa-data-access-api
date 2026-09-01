@@ -9,7 +9,10 @@ import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
+import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityNotInProgressException;
 import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
+import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
 
 /**
  * Event-sourced consistency boundary for a PriorAuthority submission.
@@ -55,8 +58,64 @@ public class PriorAuthorityAggregate {
         .ifPresent(e -> eventAppender.append(e));
   }
 
+  @CommandHandler
+  void handle(
+      SavePriorAuthorityDraftCommand command,
+      PriorAuthorityDataStore dataStore,
+      EventAppender eventAppender) {
+    if (PriorAuthorityStatus.PENDING.name().equals(state.status)) {
+      throw new PriorAuthorityNotInProgressException(command.submissionId());
+    }
+    long nextVersion = this.submissionId == null ? 0L : state.dataVersion + 1;
+    UUID applicationId =
+        command.applicationId() != null ? command.applicationId() : state.applicationId;
+    PriorAuthorityDataPayload payload =
+        new PriorAuthorityDataPayload(
+            command.submissionId(),
+            applicationId,
+            command.content(),
+            command.serialisedRequest(),
+            command.occurredAt());
+    String fingerprint =
+        dataStore.append(
+            command.submissionId(),
+            nextVersion,
+            applicationId,
+            payload,
+            command.serialisedRequest(),
+            command.occurredAt());
+    eventAppender.append(
+        PriorAuthorityDecider.decideSaveDraft(command, fingerprint, nextVersion, applicationId));
+  }
+
+  @CommandHandler
+  void handle(
+      SubmitPriorAuthorityDraftCommand command,
+      PriorAuthorityDataStore dataStore,
+      JsonSchemaValidator jsonSchemaValidator,
+      EventAppender eventAppender) {
+    if (!PriorAuthorityStatus.IN_PROGRESS.name().equals(state.status)) {
+      throw new PriorAuthorityNotInProgressException(command.submissionId());
+    }
+    PriorAuthorityDataPayload payload = dataStore.get(command.submissionId(), state.dataVersion);
+    jsonSchemaValidator.validate(payload.content(), "PriorAuthority.json", state.schemaVersion);
+    eventAppender.append(PriorAuthorityDecider.decideSubmit(command, state));
+  }
+
   @EventSourcingHandler
   void on(PriorAuthorityCreatedEvent event) {
+    PriorAuthorityEvolve.apply(state, event);
+    this.submissionId = state.submissionId;
+  }
+
+  @EventSourcingHandler
+  void on(PriorAuthorityDraftSavedEvent event) {
+    PriorAuthorityEvolve.apply(state, event);
+    this.submissionId = state.submissionId;
+  }
+
+  @EventSourcingHandler
+  void on(PriorAuthoritySubmittedEvent event) {
     PriorAuthorityEvolve.apply(state, event);
     this.submissionId = state.submissionId;
   }
