@@ -29,6 +29,9 @@ public class PriorAuthorityReadModel {
   @Column(name = "application_id")
   private UUID applicationId;
 
+  @Column(name = "data_version")
+  private long dataVersion;
+
   private String status;
 
   @Column(name = "created_at")

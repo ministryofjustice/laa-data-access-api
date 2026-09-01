@@ -34,6 +34,7 @@ public class PriorAuthorityProjection {
             PriorAuthorityReadModel.builder()
                 .submissionId(event.submissionId())
                 .applicationId(event.applicationId())
+                .dataVersion(event.dataVersion())
                 .status(event.status())
                 .createdAt(event.occurredAt())
                 .build());
