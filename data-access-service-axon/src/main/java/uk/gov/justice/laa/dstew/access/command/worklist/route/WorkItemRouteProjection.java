@@ -61,7 +61,9 @@ public class WorkItemRouteProjection {
   @EventHandler
   @Transactional
   public void on(LinkedApplicationGroupCreatedEvent event) {
-    event.memberApplicationIds().forEach(id -> moveToGroup(id, event.groupId(), 1L, event.occurredAt()));
+    event
+        .memberApplicationIds()
+        .forEach(id -> moveToGroup(id, event.groupId(), 1L, event.occurredAt()));
   }
 
   /** Makes a subsequently added member route to the established group. */
@@ -70,13 +72,20 @@ public class WorkItemRouteProjection {
   public void on(MemberAddedToGroupEvent event) {
     long nextMembershipVersion =
         routes.findAllByGroupId(event.groupId()).stream()
-            .mapToLong(WorkItemRoute::getMembershipVersion)
-            .max()
-            .orElse(1L)
+                .mapToLong(WorkItemRoute::getMembershipVersion)
+                .max()
+                .orElse(1L)
             + 1L;
-    routes.findAllByGroupId(event.groupId()).forEach(
-        route -> route.moveTo(WorkItemRouteKind.LINKED_GROUP, event.groupId(), event.groupId(),
-            nextMembershipVersion, event.occurredAt()));
+    routes
+        .findAllByGroupId(event.groupId())
+        .forEach(
+            route ->
+                route.moveTo(
+                    WorkItemRouteKind.LINKED_GROUP,
+                    event.groupId(),
+                    event.groupId(),
+                    nextMembershipVersion,
+                    event.occurredAt()));
     moveToGroup(event.memberId(), event.groupId(), nextMembershipVersion, event.occurredAt());
   }
 
@@ -93,4 +102,3 @@ public class WorkItemRouteProjection {
     routes.save(route);
   }
 }
-

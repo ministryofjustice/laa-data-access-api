@@ -6,6 +6,9 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemId;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationGroupInvariantException;
@@ -15,9 +18,6 @@ import uk.gov.justice.laa.dstew.access.exception.FileLengthRequiredException;
 import uk.gov.justice.laa.dstew.access.exception.InvalidApplicationStateException;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
-import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
-import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemId;
-import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.exception.VirusDetectedException;
 import uk.gov.justice.laa.dstew.access.exception.VirusScanException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
@@ -92,7 +92,8 @@ class ApplicationExceptionHandlerTest {
     var response =
         handler.handleWorkItemAssignmentConflictException(
             new WorkItemAssignmentConflictException(
-                new WorkItemId(WorkItemType.APPLICATION, UUID.randomUUID()), "it is already assigned"));
+                new WorkItemId(WorkItemType.APPLICATION, UUID.randomUUID()),
+                "it is already assigned"));
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
   }

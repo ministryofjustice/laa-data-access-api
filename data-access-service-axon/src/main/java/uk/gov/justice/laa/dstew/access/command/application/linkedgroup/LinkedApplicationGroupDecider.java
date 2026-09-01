@@ -48,7 +48,8 @@ public final class LinkedApplicationGroupDecider {
   /** Derives a member activation only when the durable route version still matches membership. */
   public static LinkedGroupMemberWorkItemChanged decideActivate(
       LinkedApplicationGroupState state, ActivateLinkedGroupMemberWorkItemCommand command) {
-    validateMember(state, command.groupId(), command.applicationId(), command.expectedMembershipVersion());
+    validateMember(
+        state, command.groupId(), command.applicationId(), command.expectedMembershipVersion());
     return new LinkedGroupMemberWorkItemChanged(
         state.groupId,
         command.applicationId(),
@@ -62,9 +63,11 @@ public final class LinkedApplicationGroupDecider {
   /** Derives a member removal, clearing the shared assignee when it was the final active member. */
   public static LinkedGroupMemberWorkItemChanged decideDeactivate(
       LinkedApplicationGroupState state, DeactivateLinkedGroupMemberWorkItemCommand command) {
-    validateMember(state, command.groupId(), command.applicationId(), command.expectedMembershipVersion());
-    boolean finalMember = state.activeMemberApplicationIds.size() == 1
-        && state.activeMemberApplicationIds.contains(command.applicationId());
+    validateMember(
+        state, command.groupId(), command.applicationId(), command.expectedMembershipVersion());
+    boolean finalMember =
+        state.activeMemberApplicationIds.size() == 1
+            && state.activeMemberApplicationIds.contains(command.applicationId());
     return new LinkedGroupMemberWorkItemChanged(
         state.groupId,
         command.applicationId(),
@@ -79,7 +82,10 @@ public final class LinkedApplicationGroupDecider {
   public static LinkedGroupAssigned decideAssign(
       LinkedApplicationGroupState state, AssignLinkedGroupWorkItemCommand command) {
     validateAssignableMember(
-        state, command.groupId(), command.selectedApplicationId(), command.expectedMembershipVersion(),
+        state,
+        command.groupId(),
+        command.selectedApplicationId(),
+        command.expectedMembershipVersion(),
         command.expectedAssignmentVersion());
     if (state.caseworkerId != null) {
       throw conflict(command.selectedApplicationId(), "the linked group is already assigned");
@@ -97,7 +103,10 @@ public final class LinkedApplicationGroupDecider {
   public static LinkedGroupUnassigned decideUnassign(
       LinkedApplicationGroupState state, UnassignLinkedGroupWorkItemCommand command) {
     validateAssignableMember(
-        state, command.groupId(), command.selectedApplicationId(), command.expectedMembershipVersion(),
+        state,
+        command.groupId(),
+        command.selectedApplicationId(),
+        command.expectedMembershipVersion(),
         command.expectedAssignmentVersion());
     if (state.caseworkerId == null) {
       throw conflict(command.selectedApplicationId(), "the linked group is already unassigned");
@@ -111,8 +120,11 @@ public final class LinkedApplicationGroupDecider {
   }
 
   private static void validateAssignableMember(
-      LinkedApplicationGroupState state, java.util.UUID groupId, java.util.UUID applicationId,
-      long membershipVersion, long assignmentVersion) {
+      LinkedApplicationGroupState state,
+      java.util.UUID groupId,
+      java.util.UUID applicationId,
+      long membershipVersion,
+      long assignmentVersion) {
     validateMember(state, groupId, applicationId, membershipVersion);
     if (!state.activeMemberApplicationIds.contains(applicationId)) {
       throw new ResourceNotFoundException("Linked-group work item is not active: " + applicationId);
@@ -123,16 +135,21 @@ public final class LinkedApplicationGroupDecider {
   }
 
   private static void validateMember(
-      LinkedApplicationGroupState state, java.util.UUID groupId, java.util.UUID applicationId,
+      LinkedApplicationGroupState state,
+      java.util.UUID groupId,
+      java.util.UUID applicationId,
       long membershipVersion) {
-    if (state.groupId == null || !state.groupId.equals(groupId)
+    if (state.groupId == null
+        || !state.groupId.equals(groupId)
         || !state.memberApplicationIds.contains(applicationId)
         || membershipVersion != state.membershipVersion) {
-      throw new ResourceNotFoundException("No current linked-group route found for " + applicationId);
+      throw new ResourceNotFoundException(
+          "No current linked-group route found for " + applicationId);
     }
   }
 
-  private static WorkItemAssignmentConflictException conflict(java.util.UUID applicationId, String reason) {
+  private static WorkItemAssignmentConflictException conflict(
+      java.util.UUID applicationId, String reason) {
     return new WorkItemAssignmentConflictException(
         new WorkItemId(WorkItemType.APPLICATION, applicationId), reason);
   }

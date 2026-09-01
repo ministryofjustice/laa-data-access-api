@@ -53,12 +53,15 @@ class WorkListIntegrationTest {
   @Autowired private JdbcTemplate jdbcTemplate;
 
   @Test
-  void givenManualApplication_whenAssignedThenUnassigned_thenItsWorkListViewsAndConflictsAreConsistent() {
+  void
+      givenManualApplication_whenAssignedThenUnassigned_thenItsWorkListViewsAndConflictsAreConsistent() {
     UUID applicationId = UUID.randomUUID();
     UUID caseworkerId = UUID.randomUUID();
     createManualApplication(applicationId);
     jdbcTemplate.update(
-        "INSERT INTO axon.caseworkers (id, username) VALUES (?, ?)", caseworkerId, "caseworker@example.com");
+        "INSERT INTO axon.caseworkers (id, username) VALUES (?, ?)",
+        caseworkerId,
+        "caseworker@example.com");
 
     awaitWorkListContains("", applicationId, null, 0L);
 
@@ -93,13 +96,18 @@ class WorkListIntegrationTest {
     ResponseEntity<Void> created =
         restTemplate.postForEntity(
             "http://localhost:" + port + "/api/v0/applications",
-            new HttpEntity<>(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()),
+            new HttpEntity<>(
+                validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()),
             Void.class);
     assertThat(created.getStatusCode()).isEqualTo(HttpStatus.CREATED);
 
     ResponseEntity<Void> ready =
         restTemplate.exchange(
-            "http://localhost:" + port + "/api/v0/applications/" + applicationId + "/auto-grant-outcome",
+            "http://localhost:"
+                + port
+                + "/api/v0/applications/"
+                + applicationId
+                + "/auto-grant-outcome",
             HttpMethod.PATCH,
             new HttpEntity<>(new ManualOutcomeRequest(AutoGrantOutcome.MANUAL), headers()),
             Void.class);
@@ -127,18 +135,14 @@ class WorkListIntegrationTest {
                       item -> {
                         assertThat(item.getItemType()).isEqualTo(WorkListItemType.APPLICATION);
                         assertThat(item.getAssignedTo()).isEqualTo(expectedAssignee);
-                        assertThat(item.getAssignmentVersion()).isEqualTo(expectedAssignmentVersion);
+                        assertThat(item.getAssignmentVersion())
+                            .isEqualTo(expectedAssignmentVersion);
                       });
             });
   }
 
   private String assignmentUrl(UUID itemId, String operation) {
-    return "http://localhost:"
-        + port
-        + "/api/v0/work-list/"
-        + itemId
-        + "/"
-        + operation;
+    return "http://localhost:" + port + "/api/v0/work-list/" + itemId + "/" + operation;
   }
 
   private HttpHeaders headers() {
@@ -150,4 +154,3 @@ class WorkListIntegrationTest {
     return headers;
   }
 }
-

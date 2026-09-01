@@ -93,5 +93,3 @@ public class WorkListItemReadModel {
     this.projectionPosition = projectionPosition;
   }
 }
-
-

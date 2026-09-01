@@ -21,7 +21,6 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemId;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
-import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 
 class DirectApplicationWorkItemAssignmentTest {
   private AxonTestFixture fixture;
@@ -30,9 +29,14 @@ class DirectApplicationWorkItemAssignmentTest {
   @BeforeEach
   void setUp() {
     dataStore = org.mockito.Mockito.mock(ApplicationDataStore.class);
-    fixture = AxonTestFixture.with(EventSourcingConfigurer.create().registerEntity(
-        EventSourcedEntityModule.autodetected(UUID.class, ApplicationAggregate.class))
-        .componentRegistry(registry -> registry.registerComponent(ApplicationDataStore.class, c -> dataStore)));
+    fixture =
+        AxonTestFixture.with(
+            EventSourcingConfigurer.create()
+                .registerEntity(
+                    EventSourcedEntityModule.autodetected(UUID.class, ApplicationAggregate.class))
+                .componentRegistry(
+                    registry ->
+                        registry.registerComponent(ApplicationDataStore.class, c -> dataStore)));
   }
 
   @Test
@@ -45,13 +49,30 @@ class DirectApplicationWorkItemAssignmentTest {
     when(dataStore.get(id, 1L)).thenReturn(payload);
     when(dataStore.append(any(), anyLong(), any(), any(), any())).thenReturn("hash");
 
-    fixture.given().events(
-        created(id, when),
-        new ApplicationReadyForManualAssessmentEvent(id, 1L, 1L, when))
-        .when().command(new DirectWorkItemAssignmentCommand(id, new WorkItemId(WorkItemType.APPLICATION, id),
-            caseworkerId, 0L, "{}", "Assigned", when))
-        .then().events(new WorkItemAssigned(new WorkItemId(WorkItemType.APPLICATION, id), id, null,
-            2L, 2L, 1L, caseworkerId, when));
+    fixture
+        .given()
+        .events(created(id, when), new ApplicationReadyForManualAssessmentEvent(id, 1L, 1L, when))
+        .when()
+        .command(
+            new DirectWorkItemAssignmentCommand(
+                id,
+                new WorkItemId(WorkItemType.APPLICATION, id),
+                caseworkerId,
+                0L,
+                "{}",
+                "Assigned",
+                when))
+        .then()
+        .events(
+            new WorkItemAssigned(
+                new WorkItemId(WorkItemType.APPLICATION, id),
+                id,
+                null,
+                2L,
+                2L,
+                1L,
+                caseworkerId,
+                when));
   }
 
   @Test
@@ -60,27 +81,36 @@ class DirectApplicationWorkItemAssignmentTest {
     UUID caseworkerId = UUID.randomUUID();
     Instant when = Instant.parse("2026-08-28T10:00:00Z");
     WorkItemId item = new WorkItemId(WorkItemType.APPLICATION, id);
-    fixture.given().events(
-        created(id, when),
-        new ApplicationReadyForManualAssessmentEvent(id, 1L, 1L, when),
-        new WorkItemAssigned(item, id, null, 2L, 2L, 1L, caseworkerId, when))
-        .when().command(new DirectWorkItemAssignmentCommand(id, item, UUID.randomUUID(), 0L, "{}", "", when))
-        .then().exception(WorkItemAssignmentConflictException.class).noEvents();
+    fixture
+        .given()
+        .events(
+            created(id, when),
+            new ApplicationReadyForManualAssessmentEvent(id, 1L, 1L, when),
+            new WorkItemAssigned(item, id, null, 2L, 2L, 1L, caseworkerId, when))
+        .when()
+        .command(
+            new DirectWorkItemAssignmentCommand(id, item, UUID.randomUUID(), 0L, "{}", "", when))
+        .then()
+        .exception(WorkItemAssignmentConflictException.class)
+        .noEvents();
 
-    fixture.given().events(
-        created(id, when),
-        new ApplicationReadyForManualAssessmentEvent(id, 1L, 1L, when))
-        .when().command(new DirectWorkItemUnassignmentCommand(id, item, 0L, "{}", "", when))
-        .then().exception(WorkItemAssignmentConflictException.class).noEvents();
+    fixture
+        .given()
+        .events(created(id, when), new ApplicationReadyForManualAssessmentEvent(id, 1L, 1L, when))
+        .when()
+        .command(new DirectWorkItemUnassignmentCommand(id, item, 0L, "{}", "", when))
+        .then()
+        .exception(WorkItemAssignmentConflictException.class)
+        .noEvents();
   }
 
   @AfterEach
-  void tearDown() { fixture.stop(); }
+  void tearDown() {
+    fixture.stop();
+  }
 
   private ApplicationCreatedEvent created(UUID id, Instant occurredAt) {
     return new ApplicationCreatedEvent(
         id, 0L, "hash", "APPLICATION_SUBMITTED", 1, occurredAt, null, java.util.List.of());
   }
 }
-
-

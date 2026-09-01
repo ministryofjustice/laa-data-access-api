@@ -66,25 +66,41 @@ class LinkedApplicationGroupAggregateTest {
     UUID caseworkerId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-28T10:00:00Z");
     LinkedApplicationGroupCreatedEvent created =
-        new LinkedApplicationGroupCreatedEvent(groupId, groupId, List.of(groupId, memberId), occurredAt);
+        new LinkedApplicationGroupCreatedEvent(
+            groupId, groupId, List.of(groupId, memberId), occurredAt);
     LinkedGroupMemberWorkItemChanged active =
         new LinkedGroupMemberWorkItemChanged(groupId, memberId, true, 1L, 0L, null, occurredAt);
     LinkedGroupAssigned assigned =
         new LinkedGroupAssigned(groupId, List.of(memberId), 1L, 1L, caseworkerId, occurredAt);
 
-    fixture.given().events(created, active)
-        .when().command(new AssignLinkedGroupWorkItemCommand(
-            groupId, memberId, 1L, 0L, caseworkerId, occurredAt))
-        .then().events(assigned);
+    fixture
+        .given()
+        .events(created, active)
+        .when()
+        .command(
+            new AssignLinkedGroupWorkItemCommand(
+                groupId, memberId, 1L, 0L, caseworkerId, occurredAt))
+        .then()
+        .events(assigned);
 
-    fixture.given().events(created, active, assigned)
-        .when().command(new AssignLinkedGroupWorkItemCommand(
-            groupId, memberId, 1L, 1L, UUID.randomUUID(), occurredAt))
-        .then().exception(WorkItemAssignmentConflictException.class).noEvents();
+    fixture
+        .given()
+        .events(created, active, assigned)
+        .when()
+        .command(
+            new AssignLinkedGroupWorkItemCommand(
+                groupId, memberId, 1L, 1L, UUID.randomUUID(), occurredAt))
+        .then()
+        .exception(WorkItemAssignmentConflictException.class)
+        .noEvents();
 
-    fixture.given().events(created, active, assigned)
-        .when().command(new UnassignLinkedGroupWorkItemCommand(groupId, memberId, 1L, 1L, occurredAt))
-        .then().events(new LinkedGroupUnassigned(groupId, List.of(memberId), 1L, 2L, occurredAt));
+    fixture
+        .given()
+        .events(created, active, assigned)
+        .when()
+        .command(new UnassignLinkedGroupWorkItemCommand(groupId, memberId, 1L, 1L, occurredAt))
+        .then()
+        .events(new LinkedGroupUnassigned(groupId, List.of(memberId), 1L, 2L, occurredAt));
   }
 
   @Test

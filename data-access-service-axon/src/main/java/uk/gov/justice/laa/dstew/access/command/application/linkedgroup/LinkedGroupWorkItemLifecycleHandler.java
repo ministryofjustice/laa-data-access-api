@@ -57,4 +57,3 @@ public class LinkedGroupWorkItemLifecycleHandler {
         .filter(route -> route.getRouteKind() == WorkItemRouteKind.LINKED_GROUP);
   }
 }
-

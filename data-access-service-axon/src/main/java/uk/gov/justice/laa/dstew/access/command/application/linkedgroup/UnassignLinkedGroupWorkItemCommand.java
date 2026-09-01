@@ -13,4 +13,3 @@ public record UnassignLinkedGroupWorkItemCommand(
     long expectedMembershipVersion,
     long expectedAssignmentVersion,
     Instant occurredAt) {}
-

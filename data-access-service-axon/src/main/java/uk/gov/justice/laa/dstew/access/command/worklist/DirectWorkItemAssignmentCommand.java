@@ -15,4 +15,3 @@ public record DirectWorkItemAssignmentCommand(
     String serialisedRequest,
     String eventDescription,
     Instant occurredAt) {}
-

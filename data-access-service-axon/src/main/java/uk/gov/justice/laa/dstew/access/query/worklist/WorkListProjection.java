@@ -135,29 +135,33 @@ public class WorkListProjection {
   /** Applies a generic direct assignment to the event's immutable work-item identity. */
   @EventHandler
   public void on(WorkItemAssigned event, EventMessage message) {
-    items.findById(new WorkListItemId(event.workItemId().type(), event.workItemId().id()))
-        .ifPresent(item -> {
-          item.setAssigneeId(event.caseworkerId());
-          item.setItemVersion(event.itemVersion());
-          item.setAssignmentVersion(event.assignmentVersion());
-          item.setUpdatedAt(event.occurredAt());
-          item.setProjectionPosition(message.identifier().hashCode());
-          items.save(item);
-        });
+    items
+        .findById(new WorkListItemId(event.workItemId().type(), event.workItemId().id()))
+        .ifPresent(
+            item -> {
+              item.setAssigneeId(event.caseworkerId());
+              item.setItemVersion(event.itemVersion());
+              item.setAssignmentVersion(event.assignmentVersion());
+              item.setUpdatedAt(event.occurredAt());
+              item.setProjectionPosition(message.identifier().hashCode());
+              items.save(item);
+            });
   }
 
   /** Applies a generic direct unassignment to the event's immutable work-item identity. */
   @EventHandler
   public void on(WorkItemUnassigned event, EventMessage message) {
-    items.findById(new WorkListItemId(event.workItemId().type(), event.workItemId().id()))
-        .ifPresent(item -> {
-          item.setAssigneeId(null);
-          item.setItemVersion(event.itemVersion());
-          item.setAssignmentVersion(event.assignmentVersion());
-          item.setUpdatedAt(event.occurredAt());
-          item.setProjectionPosition(message.identifier().hashCode());
-          items.save(item);
-        });
+    items
+        .findById(new WorkListItemId(event.workItemId().type(), event.workItemId().id()))
+        .ifPresent(
+            item -> {
+              item.setAssigneeId(null);
+              item.setItemVersion(event.itemVersion());
+              item.setAssignmentVersion(event.assignmentVersion());
+              item.setUpdatedAt(event.occurredAt());
+              item.setProjectionPosition(message.identifier().hashCode());
+              items.save(item);
+            });
   }
 
   /** Applies an explicit group-owned member eligibility effect. */
@@ -167,7 +171,8 @@ public class WorkListProjection {
       items.deleteByIdItemTypeAndIdItemId(WorkItemType.APPLICATION, event.applicationId());
       return;
     }
-    items.findById(new WorkListItemId(WorkItemType.APPLICATION, event.applicationId()))
+    items
+        .findById(new WorkListItemId(WorkItemType.APPLICATION, event.applicationId()))
         .ifPresent(
             item -> {
               item.setAssignmentBoundaryType("LINKED_GROUP");
@@ -185,16 +190,24 @@ public class WorkListProjection {
   @EventHandler
   public void on(LinkedGroupAssigned event, EventMessage message) {
     updateLinkedGroupAssignee(
-        event.groupId(), event.affectedApplicationIds(), event.caseworkerId(), event.assignmentVersion(),
-        event.occurredAt(), message.identifier().hashCode());
+        event.groupId(),
+        event.affectedApplicationIds(),
+        event.caseworkerId(),
+        event.assignmentVersion(),
+        event.occurredAt(),
+        message.identifier().hashCode());
   }
 
   /** Clears the shared assignee for exactly the immutable active-member set in the event. */
   @EventHandler
   public void on(LinkedGroupUnassigned event, EventMessage message) {
     updateLinkedGroupAssignee(
-        event.groupId(), event.affectedApplicationIds(), null, event.assignmentVersion(),
-        event.occurredAt(), message.identifier().hashCode());
+        event.groupId(),
+        event.affectedApplicationIds(),
+        null,
+        event.assignmentVersion(),
+        event.occurredAt(),
+        message.identifier().hashCode());
   }
 
   private void updateLinkedGroupAssignee(
@@ -206,7 +219,8 @@ public class WorkListProjection {
       long projectionPosition) {
     applicationIds.forEach(
         applicationId ->
-            items.findById(new WorkListItemId(WorkItemType.APPLICATION, applicationId))
+            items
+                .findById(new WorkListItemId(WorkItemType.APPLICATION, applicationId))
                 .ifPresent(
                     item -> {
                       item.setAssignmentBoundaryType("LINKED_GROUP");
@@ -226,4 +240,3 @@ public class WorkListProjection {
     items.deleteAllInBatch();
   }
 }
-

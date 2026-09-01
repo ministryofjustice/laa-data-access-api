@@ -22,15 +22,25 @@ class WorkItemAssignmentCommandHandlerTest {
     CaseworkerRepository caseworkers = org.mockito.Mockito.mock(CaseworkerRepository.class);
     WorkItemRouteRepository routes = org.mockito.Mockito.mock(WorkItemRouteRepository.class);
     CommandGateway gateway = org.mockito.Mockito.mock(CommandGateway.class);
-    WorkItemAssignmentCommandHandler handler = new WorkItemAssignmentCommandHandler(caseworkers, routes, gateway);
+    WorkItemAssignmentCommandHandler handler =
+        new WorkItemAssignmentCommandHandler(caseworkers, routes, gateway);
     UUID id = UUID.randomUUID();
     UUID caseworkerId = UUID.randomUUID();
     WorkItemId item = new WorkItemId(WorkItemType.APPLICATION, id);
-    AssignWorkItemCommand command = new AssignWorkItemCommand(item, caseworkerId, 0L, "{}", "", Instant.now());
+    AssignWorkItemCommand command =
+        new AssignWorkItemCommand(item, caseworkerId, 0L, "{}", "", Instant.now());
     when(caseworkers.existsById(caseworkerId)).thenReturn(true);
     when(routes.findByWorkItemId(id))
-        .thenReturn(Optional.of(new WorkItemRoute(WorkItemType.APPLICATION, id,
-            WorkItemRouteKind.STANDALONE, id, null, 0L, Instant.now())));
+        .thenReturn(
+            Optional.of(
+                new WorkItemRoute(
+                    WorkItemType.APPLICATION,
+                    id,
+                    WorkItemRouteKind.STANDALONE,
+                    id,
+                    null,
+                    0L,
+                    Instant.now())));
 
     handler.assign(
         id,
@@ -40,8 +50,10 @@ class WorkItemAssignmentCommandHandlerTest {
         command.eventDescription(),
         command.occurredAt());
 
-    verify(gateway).sendAndWait(new DirectWorkItemAssignmentCommand(
-        id, item, caseworkerId, 0L, "{}", "", command.occurredAt()));
+    verify(gateway)
+        .sendAndWait(
+            new DirectWorkItemAssignmentCommand(
+                id, item, caseworkerId, 0L, "{}", "", command.occurredAt()));
   }
 
   @Test
@@ -49,7 +61,8 @@ class WorkItemAssignmentCommandHandlerTest {
     CaseworkerRepository caseworkers = org.mockito.Mockito.mock(CaseworkerRepository.class);
     WorkItemRouteRepository routes = org.mockito.Mockito.mock(WorkItemRouteRepository.class);
     CommandGateway gateway = org.mockito.Mockito.mock(CommandGateway.class);
-    WorkItemAssignmentCommandHandler handler = new WorkItemAssignmentCommandHandler(caseworkers, routes, gateway);
+    WorkItemAssignmentCommandHandler handler =
+        new WorkItemAssignmentCommandHandler(caseworkers, routes, gateway);
     UUID submissionId = UUID.randomUUID();
     UUID caseworkerId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-09-01T10:00:00Z");
@@ -85,15 +98,18 @@ class WorkItemAssignmentCommandHandlerTest {
     CaseworkerRepository caseworkers = org.mockito.Mockito.mock(CaseworkerRepository.class);
     WorkItemRouteRepository routes = org.mockito.Mockito.mock(WorkItemRouteRepository.class);
     CommandGateway gateway = org.mockito.Mockito.mock(CommandGateway.class);
-    WorkItemAssignmentCommandHandler handler = new WorkItemAssignmentCommandHandler(caseworkers, routes, gateway);
+    WorkItemAssignmentCommandHandler handler =
+        new WorkItemAssignmentCommandHandler(caseworkers, routes, gateway);
     UUID id = UUID.randomUUID();
     WorkItemId item = new WorkItemId(WorkItemType.APPLICATION, id);
     when(caseworkers.existsById(org.mockito.ArgumentMatchers.any())).thenReturn(true);
-    when(routes.findByWorkItemId(id))
-        .thenReturn(Optional.empty());
+    when(routes.findByWorkItemId(id)).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> handler.assign(new AssignWorkItemCommand(
-        item, UUID.randomUUID(), 0L, "{}", "", Instant.now())))
+    assertThatThrownBy(
+            () ->
+                handler.assign(
+                    new AssignWorkItemCommand(
+                        item, UUID.randomUUID(), 0L, "{}", "", Instant.now())))
         .isInstanceOf(ResourceNotFoundException.class);
   }
 
@@ -102,7 +118,8 @@ class WorkItemAssignmentCommandHandlerTest {
     CaseworkerRepository caseworkers = org.mockito.Mockito.mock(CaseworkerRepository.class);
     WorkItemRouteRepository routes = org.mockito.Mockito.mock(WorkItemRouteRepository.class);
     CommandGateway gateway = org.mockito.Mockito.mock(CommandGateway.class);
-    WorkItemAssignmentCommandHandler handler = new WorkItemAssignmentCommandHandler(caseworkers, routes, gateway);
+    WorkItemAssignmentCommandHandler handler =
+        new WorkItemAssignmentCommandHandler(caseworkers, routes, gateway);
     UUID applicationId = UUID.randomUUID();
     UUID groupId = UUID.randomUUID();
     UUID caseworkerId = UUID.randomUUID();
@@ -110,13 +127,22 @@ class WorkItemAssignmentCommandHandlerTest {
     Instant occurredAt = Instant.parse("2026-08-28T10:00:00Z");
     when(caseworkers.existsById(caseworkerId)).thenReturn(true);
     when(routes.findByWorkItemId(applicationId))
-        .thenReturn(Optional.of(new WorkItemRoute(WorkItemType.APPLICATION, applicationId,
-            WorkItemRouteKind.LINKED_GROUP, groupId, groupId, 3L, occurredAt)));
+        .thenReturn(
+            Optional.of(
+                new WorkItemRoute(
+                    WorkItemType.APPLICATION,
+                    applicationId,
+                    WorkItemRouteKind.LINKED_GROUP,
+                    groupId,
+                    groupId,
+                    3L,
+                    occurredAt)));
 
     handler.assign(new AssignWorkItemCommand(item, caseworkerId, 2L, "{}", "", occurredAt));
 
-    verify(gateway).sendAndWait(
-        new AssignLinkedGroupWorkItemCommand(groupId, applicationId, 3L, 2L, caseworkerId, occurredAt));
+    verify(gateway)
+        .sendAndWait(
+            new AssignLinkedGroupWorkItemCommand(
+                groupId, applicationId, 3L, 2L, caseworkerId, occurredAt));
   }
 }
-

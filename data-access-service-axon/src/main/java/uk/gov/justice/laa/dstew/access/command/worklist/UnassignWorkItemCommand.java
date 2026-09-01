@@ -15,4 +15,3 @@ public record UnassignWorkItemCommand(
     Objects.requireNonNull(occurredAt, "occurredAt must not be null");
   }
 }
-

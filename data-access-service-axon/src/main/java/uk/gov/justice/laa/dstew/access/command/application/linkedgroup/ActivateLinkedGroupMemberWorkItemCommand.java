@@ -12,4 +12,3 @@ public record ActivateLinkedGroupMemberWorkItemCommand(
     UUID applicationId,
     long expectedMembershipVersion,
     Instant occurredAt) {}
-

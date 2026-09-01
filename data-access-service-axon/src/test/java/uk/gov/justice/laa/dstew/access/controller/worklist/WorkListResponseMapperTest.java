@@ -43,15 +43,18 @@ class WorkListResponseMapperTest {
     assertThat(response.getBody().getPaging().getPage()).isEqualTo(2);
     assertThat(response.getBody().getPaging().getPageSize()).isEqualTo(10);
     assertThat(response.getBody().getPaging().getTotalRecords()).isEqualTo(1);
-    assertThat(response.getBody().getItems()).singleElement().satisfies(mapped -> {
-      assertThat(mapped.getItemId()).isEqualTo(itemId);
-      assertThat(mapped.getItemType().getValue()).isEqualTo("PRIOR_AUTHORITY");
-      assertThat(mapped.getParentApplicationId()).isEqualTo(applicationId);
-      assertThat(mapped.getAssignedTo()).isEqualTo(caseworkerId);
-      assertThat(mapped.getAssignmentVersion()).isEqualTo(3L);
-      assertThat(mapped.getAssignmentBoundaryType().getValue()).isEqualTo("DIRECT");
-      assertThat(mapped.getLaaReference()).isEqualTo("LAA-123");
-    });
+    assertThat(response.getBody().getItems())
+        .singleElement()
+        .satisfies(
+            mapped -> {
+              assertThat(mapped.getItemId()).isEqualTo(itemId);
+              assertThat(mapped.getItemType().getValue()).isEqualTo("PRIOR_AUTHORITY");
+              assertThat(mapped.getParentApplicationId()).isEqualTo(applicationId);
+              assertThat(mapped.getAssignedTo()).isEqualTo(caseworkerId);
+              assertThat(mapped.getAssignmentVersion()).isEqualTo(3L);
+              assertThat(mapped.getAssignmentBoundaryType().getValue()).isEqualTo("DIRECT");
+              assertThat(mapped.getLaaReference()).isEqualTo("LAA-123");
+            });
   }
 
   @Test
@@ -74,13 +77,15 @@ class WorkListResponseMapperTest {
         new WorkListResponseMapper()
             .toResponse(new FindWorkListItemsResult(List.of(item), 1L, 1, 20));
 
-    assertThat(response.getBody().getItems()).singleElement().satisfies(mapped -> {
-      assertThat(mapped.getUsedDelegatedFunctions()).isTrue();
-      assertThat(mapped.getCategoryOfLaw()).isEqualTo(CategoryOfLaw.FAMILY);
-      assertThat(mapped.getMatterTypes()).containsExactly(MatterType.SPECIAL_CHILDREN_ACT);
-      assertThat(mapped.getApplicationStatus()).isEqualTo(ApplicationStatus.APPLICATION_SUBMITTED);
-    });
+    assertThat(response.getBody().getItems())
+        .singleElement()
+        .satisfies(
+            mapped -> {
+              assertThat(mapped.getUsedDelegatedFunctions()).isTrue();
+              assertThat(mapped.getCategoryOfLaw()).isEqualTo(CategoryOfLaw.FAMILY);
+              assertThat(mapped.getMatterTypes()).containsExactly(MatterType.SPECIAL_CHILDREN_ACT);
+              assertThat(mapped.getApplicationStatus())
+                  .isEqualTo(ApplicationStatus.APPLICATION_SUBMITTED);
+            });
   }
 }
-
-

@@ -22,4 +22,3 @@ public class WorkListQueryUseCase {
     return queryGateway.query(query, FindWorkListItemsResult.class).join();
   }
 }
-

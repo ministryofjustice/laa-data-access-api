@@ -12,4 +12,3 @@ public record DeactivateLinkedGroupMemberWorkItemCommand(
     UUID applicationId,
     long expectedMembershipVersion,
     Instant occurredAt) {}
-

@@ -30,10 +30,8 @@ class FindWorkListItemsQueryTest {
 
   @Test
   void rejectsConflictingUnassignedAndAssignedToFilters() {
-    assertThatThrownBy(
-            () -> new FindWorkListItemsQuery(UUID.randomUUID(), null, true, 1, 20))
+    assertThatThrownBy(() -> new FindWorkListItemsQuery(UUID.randomUUID(), null, true, 1, 20))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("assignedTo and unassigned=true cannot be used together");
   }
 }
-

@@ -14,4 +14,3 @@ public record LinkedGroupUnassigned(
     long membershipVersion,
     long assignmentVersion,
     Instant occurredAt) {}
-

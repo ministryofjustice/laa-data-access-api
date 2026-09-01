@@ -8,4 +8,3 @@ public record FindWorkListItemsResult(
     long totalElements,
     int requestedPage,
     int requestedPageSize) {}
-

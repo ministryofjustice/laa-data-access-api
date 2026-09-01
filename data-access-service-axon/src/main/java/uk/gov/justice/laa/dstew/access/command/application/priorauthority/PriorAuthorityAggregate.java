@@ -77,12 +77,23 @@ public class PriorAuthorityAggregate {
       throw new WorkItemAssignmentConflictException(command.workItemId(), "it is already assigned");
     }
     long nextDataVersion = state.dataVersion + 1;
-    dataStore.append(submissionId, nextDataVersion, state.applicationId,
+    dataStore.append(
+        submissionId,
+        nextDataVersion,
+        state.applicationId,
         dataStore.get(submissionId, state.dataVersion).withAssignment(command.eventDescription()),
-        command.serialisedRequest(), command.occurredAt());
-    eventAppender.append(new WorkItemAssigned(
-        command.workItemId(), null, submissionId, nextDataVersion, nextDataVersion,
-        state.assignmentVersion + 1, command.caseworkerId(), command.occurredAt()));
+        command.serialisedRequest(),
+        command.occurredAt());
+    eventAppender.append(
+        new WorkItemAssigned(
+            command.workItemId(),
+            null,
+            submissionId,
+            nextDataVersion,
+            nextDataVersion,
+            state.assignmentVersion + 1,
+            command.caseworkerId(),
+            command.occurredAt()));
   }
 
   /** Explicitly clears a direct PA assignment; already-open work is a conflict. */
@@ -97,22 +108,36 @@ public class PriorAuthorityAggregate {
         command.workItemId().id(),
         command.expectedAssignmentVersion());
     if (state.caseworkerId == null) {
-      throw new WorkItemAssignmentConflictException(command.workItemId(), "it is already unassigned");
+      throw new WorkItemAssignmentConflictException(
+          command.workItemId(), "it is already unassigned");
     }
     long nextDataVersion = state.dataVersion + 1;
-    dataStore.append(submissionId, nextDataVersion, state.applicationId,
+    dataStore.append(
+        submissionId,
+        nextDataVersion,
+        state.applicationId,
         dataStore.get(submissionId, state.dataVersion).withAssignment(command.eventDescription()),
-        command.serialisedRequest(), command.occurredAt());
-    eventAppender.append(new WorkItemUnassigned(
-        command.workItemId(), null, submissionId, nextDataVersion, nextDataVersion,
-        state.assignmentVersion + 1, command.occurredAt()));
+        command.serialisedRequest(),
+        command.occurredAt());
+    eventAppender.append(
+        new WorkItemUnassigned(
+            command.workItemId(),
+            null,
+            submissionId,
+            nextDataVersion,
+            nextDataVersion,
+            state.assignmentVersion + 1,
+            command.occurredAt()));
   }
 
   private void validateWorkItem(
       UUID aggregateId, WorkItemType type, UUID workItemId, long expectedAssignmentVersion) {
-    if (submissionId == null || !submissionId.equals(aggregateId) || type != WorkItemType.PRIOR_AUTHORITY
+    if (submissionId == null
+        || !submissionId.equals(aggregateId)
+        || type != WorkItemType.PRIOR_AUTHORITY
         || !submissionId.equals(workItemId)) {
-      throw new ResourceNotFoundException("No prior-authority work item found with id: " + workItemId);
+      throw new ResourceNotFoundException(
+          "No prior-authority work item found with id: " + workItemId);
     }
     if (expectedAssignmentVersion != state.assignmentVersion) {
       throw new WorkItemAssignmentConflictException(

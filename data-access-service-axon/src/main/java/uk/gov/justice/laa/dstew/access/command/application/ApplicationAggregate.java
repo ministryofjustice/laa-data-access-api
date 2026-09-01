@@ -199,25 +199,41 @@ public class ApplicationAggregate {
     eventAppender.append(event);
   }
 
-  /** Handles a generic direct assignment once durable routing selected this standalone aggregate. */
+  /**
+   * Handles a generic direct assignment once durable routing selected this standalone aggregate.
+   */
   @CommandHandler
   void handle(
       DirectWorkItemAssignmentCommand command,
       ApplicationDataStore applicationDataStore,
       EventAppender eventAppender) {
     requireApplicationExists(command.aggregateId());
-    validateDirectWorkItem(command.workItemId().type(), command.workItemId().id(), command.expectedAssignmentVersion());
+    validateDirectWorkItem(
+        command.workItemId().type(),
+        command.workItemId().id(),
+        command.expectedAssignmentVersion());
     if (state.caseworkerId != null) {
       throw new WorkItemAssignmentConflictException(command.workItemId(), "it is already assigned");
     }
     long nextDataVersion = state.applicationDataVersion + 1;
     applicationDataStore.append(
-        applicationId, nextDataVersion,
-        applicationDataStore.get(applicationId, state.applicationDataVersion).withAssignment(command.eventDescription()),
-        command.serialisedRequest(), command.occurredAt());
-    eventAppender.append(new WorkItemAssigned(
-        command.workItemId(), applicationId, null, state.applicationVersion + 1, nextDataVersion,
-        state.assignmentVersion + 1, command.caseworkerId(), command.occurredAt()));
+        applicationId,
+        nextDataVersion,
+        applicationDataStore
+            .get(applicationId, state.applicationDataVersion)
+            .withAssignment(command.eventDescription()),
+        command.serialisedRequest(),
+        command.occurredAt());
+    eventAppender.append(
+        new WorkItemAssigned(
+            command.workItemId(),
+            applicationId,
+            null,
+            state.applicationVersion + 1,
+            nextDataVersion,
+            state.assignmentVersion + 1,
+            command.caseworkerId(),
+            command.occurredAt()));
   }
 
   /** Handles explicit generic direct unassignment; an already-open item is a conflict. */
@@ -227,18 +243,32 @@ public class ApplicationAggregate {
       ApplicationDataStore applicationDataStore,
       EventAppender eventAppender) {
     requireApplicationExists(command.aggregateId());
-    validateDirectWorkItem(command.workItemId().type(), command.workItemId().id(), command.expectedAssignmentVersion());
+    validateDirectWorkItem(
+        command.workItemId().type(),
+        command.workItemId().id(),
+        command.expectedAssignmentVersion());
     if (state.caseworkerId == null) {
-      throw new WorkItemAssignmentConflictException(command.workItemId(), "it is already unassigned");
+      throw new WorkItemAssignmentConflictException(
+          command.workItemId(), "it is already unassigned");
     }
     long nextDataVersion = state.applicationDataVersion + 1;
     applicationDataStore.append(
-        applicationId, nextDataVersion,
-        applicationDataStore.get(applicationId, state.applicationDataVersion).withAssignment(command.eventDescription()),
-        command.serialisedRequest(), command.occurredAt());
-    eventAppender.append(new WorkItemUnassigned(
-        command.workItemId(), applicationId, null, state.applicationVersion + 1, nextDataVersion,
-        state.assignmentVersion + 1, command.occurredAt()));
+        applicationId,
+        nextDataVersion,
+        applicationDataStore
+            .get(applicationId, state.applicationDataVersion)
+            .withAssignment(command.eventDescription()),
+        command.serialisedRequest(),
+        command.occurredAt());
+    eventAppender.append(
+        new WorkItemUnassigned(
+            command.workItemId(),
+            applicationId,
+            null,
+            state.applicationVersion + 1,
+            nextDataVersion,
+            state.assignmentVersion + 1,
+            command.occurredAt()));
   }
 
   /** Appends a note to the application's immutable data without advancing the decision version. */
@@ -427,7 +457,8 @@ public class ApplicationAggregate {
     }
   }
 
-  private void validateDirectWorkItem(WorkItemType type, UUID workItemId, long expectedAssignmentVersion) {
+  private void validateDirectWorkItem(
+      WorkItemType type, UUID workItemId, long expectedAssignmentVersion) {
     if (type != WorkItemType.APPLICATION || !applicationId.equals(workItemId)) {
       throw new ResourceNotFoundException("No application work item found with id: " + workItemId);
     }

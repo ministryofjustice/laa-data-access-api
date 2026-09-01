@@ -29,9 +29,15 @@ class DirectPriorAuthorityWorkItemAssignmentTest {
   @BeforeEach
   void setUp() {
     dataStore = org.mockito.Mockito.mock(PriorAuthorityDataStore.class);
-    fixture = AxonTestFixture.with(EventSourcingConfigurer.create().registerEntity(
-        EventSourcedEntityModule.autodetected(UUID.class, PriorAuthorityAggregate.class))
-        .componentRegistry(registry -> registry.registerComponent(PriorAuthorityDataStore.class, c -> dataStore)));
+    fixture =
+        AxonTestFixture.with(
+            EventSourcingConfigurer.create()
+                .registerEntity(
+                    EventSourcedEntityModule.autodetected(
+                        UUID.class, PriorAuthorityAggregate.class))
+                .componentRegistry(
+                    registry ->
+                        registry.registerComponent(PriorAuthorityDataStore.class, c -> dataStore)));
   }
 
   @Test
@@ -47,14 +53,27 @@ class DirectPriorAuthorityWorkItemAssignmentTest {
     when(dataStore.get(submissionId, 1L)).thenReturn(payload);
     when(dataStore.append(any(), anyLong(), any(), any(), any(), any())).thenReturn("hash");
 
-    fixture.given().events(created(submissionId, applicationId, when))
-        .when().command(new DirectPriorAuthorityWorkItemAssignmentCommand(submissionId, item, caseworkerId, 0L, "{}", "Assigned", when))
-        .then().events(new WorkItemAssigned(item, null, submissionId, 1L, 1L, 1L, caseworkerId, when));
+    fixture
+        .given()
+        .events(created(submissionId, applicationId, when))
+        .when()
+        .command(
+            new DirectPriorAuthorityWorkItemAssignmentCommand(
+                submissionId, item, caseworkerId, 0L, "{}", "Assigned", when))
+        .then()
+        .events(new WorkItemAssigned(item, null, submissionId, 1L, 1L, 1L, caseworkerId, when));
 
-    fixture.given().events(created(submissionId, applicationId, when),
-        new WorkItemAssigned(item, null, submissionId, 1L, 1L, 1L, caseworkerId, when))
-        .when().command(new DirectPriorAuthorityWorkItemUnassignmentCommand(submissionId, item, 1L, "{}", "Unassigned", when))
-        .then().events(new WorkItemUnassigned(item, null, submissionId, 2L, 2L, 2L, when));
+    fixture
+        .given()
+        .events(
+            created(submissionId, applicationId, when),
+            new WorkItemAssigned(item, null, submissionId, 1L, 1L, 1L, caseworkerId, when))
+        .when()
+        .command(
+            new DirectPriorAuthorityWorkItemUnassignmentCommand(
+                submissionId, item, 1L, "{}", "Unassigned", when))
+        .then()
+        .events(new WorkItemUnassigned(item, null, submissionId, 2L, 2L, 2L, when));
   }
 
   @Test
@@ -64,18 +83,27 @@ class DirectPriorAuthorityWorkItemAssignmentTest {
     UUID caseworkerId = UUID.randomUUID();
     Instant when = Instant.parse("2026-08-28T10:00:00Z");
     WorkItemId item = new WorkItemId(WorkItemType.PRIOR_AUTHORITY, submissionId);
-    fixture.given().events(created(submissionId, applicationId, when),
-        new WorkItemAssigned(item, null, submissionId, 1L, 1L, 1L, caseworkerId, when))
-        .when().command(new DirectPriorAuthorityWorkItemAssignmentCommand(submissionId, item, UUID.randomUUID(), 1L, "{}", "", when))
-        .then().exception(WorkItemAssignmentConflictException.class).noEvents();
+    fixture
+        .given()
+        .events(
+            created(submissionId, applicationId, when),
+            new WorkItemAssigned(item, null, submissionId, 1L, 1L, 1L, caseworkerId, when))
+        .when()
+        .command(
+            new DirectPriorAuthorityWorkItemAssignmentCommand(
+                submissionId, item, UUID.randomUUID(), 1L, "{}", "", when))
+        .then()
+        .exception(WorkItemAssignmentConflictException.class)
+        .noEvents();
   }
 
   private PriorAuthorityCreatedEvent created(UUID submissionId, UUID applicationId, Instant when) {
-    return new PriorAuthorityCreatedEvent(submissionId, applicationId, 0L, "hash", "PENDING", 1, when);
+    return new PriorAuthorityCreatedEvent(
+        submissionId, applicationId, 0L, "hash", "PENDING", 1, when);
   }
 
   @AfterEach
-  void tearDown() { fixture.stop(); }
+  void tearDown() {
+    fixture.stop();
+  }
 }
-
-

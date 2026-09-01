@@ -15,4 +15,3 @@ public record LinkedGroupMemberWorkItemChanged(
     long assignmentVersion,
     UUID caseworkerId,
     Instant occurredAt) {}
-

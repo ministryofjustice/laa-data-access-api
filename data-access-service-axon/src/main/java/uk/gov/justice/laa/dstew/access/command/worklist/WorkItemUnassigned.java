@@ -15,5 +15,3 @@ public record WorkItemUnassigned(
     long dataVersion,
     long assignmentVersion,
     Instant occurredAt) {}
-
-

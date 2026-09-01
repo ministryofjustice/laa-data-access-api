@@ -11,4 +11,3 @@ public interface WorkItemRouteRepository extends JpaRepository<WorkItemRoute, UU
 
   List<WorkItemRoute> findAllByGroupId(UUID groupId);
 }
-

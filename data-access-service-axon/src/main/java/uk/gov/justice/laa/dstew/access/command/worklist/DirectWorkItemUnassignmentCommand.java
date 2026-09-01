@@ -14,4 +14,3 @@ public record DirectWorkItemUnassignmentCommand(
     String serialisedRequest,
     String eventDescription,
     Instant occurredAt) {}
-

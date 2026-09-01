@@ -24,7 +24,8 @@ public final class LinkedApplicationGroupEvolve {
   }
 
   /** Applies one member's eligibility change and any required final-member assignee clear. */
-  public static void apply(LinkedApplicationGroupState state, LinkedGroupMemberWorkItemChanged event) {
+  public static void apply(
+      LinkedApplicationGroupState state, LinkedGroupMemberWorkItemChanged event) {
     if (event.active()) {
       state.activeMemberApplicationIds.add(event.applicationId());
     } else {

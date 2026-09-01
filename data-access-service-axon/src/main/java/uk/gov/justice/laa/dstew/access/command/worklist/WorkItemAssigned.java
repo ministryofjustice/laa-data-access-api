@@ -16,5 +16,3 @@ public record WorkItemAssigned(
     long assignmentVersion,
     UUID caseworkerId,
     Instant occurredAt) {}
-
-

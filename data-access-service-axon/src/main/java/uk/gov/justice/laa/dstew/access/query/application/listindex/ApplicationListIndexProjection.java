@@ -196,34 +196,44 @@ public class ApplicationListIndexProjection {
             });
   }
 
-  /** Mirrors generic direct application assignment without making this search index authoritative. */
+  /**
+   * Mirrors generic direct application assignment without making this search index authoritative.
+   */
   @EventHandler
   public void on(WorkItemAssigned event, EventMessage message) {
     if (event.workItemId().type() != WorkItemType.APPLICATION) {
       return;
     }
-    listIndexRepository.findById(event.workItemId().id()).ifPresent(row -> {
-      row.setCaseworkerId(event.caseworkerId());
-      row.setStreamVersion(event.itemVersion());
-      row.setModifiedAt(event.occurredAt());
-      row.setProjectionPosition(message.identifier().hashCode());
-      listIndexRepository.save(row);
-    });
+    listIndexRepository
+        .findById(event.workItemId().id())
+        .ifPresent(
+            row -> {
+              row.setCaseworkerId(event.caseworkerId());
+              row.setStreamVersion(event.itemVersion());
+              row.setModifiedAt(event.occurredAt());
+              row.setProjectionPosition(message.identifier().hashCode());
+              listIndexRepository.save(row);
+            });
   }
 
-  /** Mirrors generic direct application unassignment without making this search index authoritative. */
+  /**
+   * Mirrors generic direct application unassignment without making this search index authoritative.
+   */
   @EventHandler
   public void on(WorkItemUnassigned event, EventMessage message) {
     if (event.workItemId().type() != WorkItemType.APPLICATION) {
       return;
     }
-    listIndexRepository.findById(event.workItemId().id()).ifPresent(row -> {
-      row.setCaseworkerId(null);
-      row.setStreamVersion(event.itemVersion());
-      row.setModifiedAt(event.occurredAt());
-      row.setProjectionPosition(message.identifier().hashCode());
-      listIndexRepository.save(row);
-    });
+    listIndexRepository
+        .findById(event.workItemId().id())
+        .ifPresent(
+            row -> {
+              row.setCaseworkerId(null);
+              row.setStreamVersion(event.itemVersion());
+              row.setModifiedAt(event.occurredAt());
+              row.setProjectionPosition(message.identifier().hashCode());
+              listIndexRepository.save(row);
+            });
   }
 
   /**

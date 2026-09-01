@@ -77,15 +77,24 @@ public class WorkItemAssignmentCommandHandler {
     if (command.workItemId().type() == WorkItemType.PRIOR_AUTHORITY) {
       commandGateway.sendAndWait(
           new DirectPriorAuthorityWorkItemAssignmentCommand(
-              route.getAggregateId(), command.workItemId(), command.caseworkerId(),
-              command.expectedAssignmentVersion(), command.serialisedRequest(),
-              command.eventDescription(), command.occurredAt()));
+              route.getAggregateId(),
+              command.workItemId(),
+              command.caseworkerId(),
+              command.expectedAssignmentVersion(),
+              command.serialisedRequest(),
+              command.eventDescription(),
+              command.occurredAt()));
       return;
     }
-    commandGateway.sendAndWait(new DirectWorkItemAssignmentCommand(
-        route.getAggregateId(), command.workItemId(), command.caseworkerId(),
-        command.expectedAssignmentVersion(), command.serialisedRequest(),
-        command.eventDescription(), command.occurredAt()));
+    commandGateway.sendAndWait(
+        new DirectWorkItemAssignmentCommand(
+            route.getAggregateId(),
+            command.workItemId(),
+            command.caseworkerId(),
+            command.expectedAssignmentVersion(),
+            command.serialisedRequest(),
+            command.eventDescription(),
+            command.occurredAt()));
   }
 
   /** Dispatches an explicit direct unassignment; it deliberately never retries a conflict. */
@@ -130,13 +139,22 @@ public class WorkItemAssignmentCommandHandler {
     if (command.workItemId().type() == WorkItemType.PRIOR_AUTHORITY) {
       commandGateway.sendAndWait(
           new DirectPriorAuthorityWorkItemUnassignmentCommand(
-              route.getAggregateId(), command.workItemId(), command.expectedAssignmentVersion(),
-              command.serialisedRequest(), command.eventDescription(), command.occurredAt()));
+              route.getAggregateId(),
+              command.workItemId(),
+              command.expectedAssignmentVersion(),
+              command.serialisedRequest(),
+              command.eventDescription(),
+              command.occurredAt()));
       return;
     }
-    commandGateway.sendAndWait(new DirectWorkItemUnassignmentCommand(
-        route.getAggregateId(), command.workItemId(), command.expectedAssignmentVersion(),
-        command.serialisedRequest(), command.eventDescription(), command.occurredAt()));
+    commandGateway.sendAndWait(
+        new DirectWorkItemUnassignmentCommand(
+            route.getAggregateId(),
+            command.workItemId(),
+            command.expectedAssignmentVersion(),
+            command.serialisedRequest(),
+            command.eventDescription(),
+            command.occurredAt()));
   }
 
   private WorkItemRoute route(WorkItemId workItemId) {
@@ -160,6 +178,3 @@ public class WorkItemAssignmentCommandHandler {
     }
   }
 }
-
-
-

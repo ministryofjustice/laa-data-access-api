@@ -19,18 +19,27 @@ class LinkedGroupWorkItemLifecycleHandlerTest {
   void activatesOnlyAnApplicationWhoseDurableRouteResolvesToTheGroup() {
     WorkItemRouteRepository routes = org.mockito.Mockito.mock(WorkItemRouteRepository.class);
     CommandGateway gateway = org.mockito.Mockito.mock(CommandGateway.class);
-    LinkedGroupWorkItemLifecycleHandler handler = new LinkedGroupWorkItemLifecycleHandler(routes, gateway);
+    LinkedGroupWorkItemLifecycleHandler handler =
+        new LinkedGroupWorkItemLifecycleHandler(routes, gateway);
     UUID applicationId = UUID.randomUUID();
     UUID groupId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-28T10:00:00Z");
     when(routes.findByWorkItemId(applicationId))
-        .thenReturn(Optional.of(new WorkItemRoute(WorkItemType.APPLICATION, applicationId,
-            WorkItemRouteKind.LINKED_GROUP, groupId, groupId, 2L, occurredAt)));
+        .thenReturn(
+            Optional.of(
+                new WorkItemRoute(
+                    WorkItemType.APPLICATION,
+                    applicationId,
+                    WorkItemRouteKind.LINKED_GROUP,
+                    groupId,
+                    groupId,
+                    2L,
+                    occurredAt)));
 
     handler.on(new ApplicationReadyForManualAssessmentEvent(applicationId, 3L, 4L, occurredAt));
 
-    verify(gateway).sendAndWait(
-        new ActivateLinkedGroupMemberWorkItemCommand(groupId, applicationId, 2L, occurredAt));
+    verify(gateway)
+        .sendAndWait(
+            new ActivateLinkedGroupMemberWorkItemCommand(groupId, applicationId, 2L, occurredAt));
   }
 }
-

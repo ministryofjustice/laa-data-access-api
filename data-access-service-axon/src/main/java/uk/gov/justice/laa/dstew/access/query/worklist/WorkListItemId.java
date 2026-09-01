@@ -16,6 +16,7 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 public class WorkListItemId implements Serializable {
   @Enumerated(EnumType.STRING)
   WorkItemType itemType;
+
   UUID itemId;
 
   public WorkListItemId(WorkItemType itemType, UUID itemId) {
@@ -23,4 +24,3 @@ public class WorkListItemId implements Serializable {
     this.itemId = itemId;
   }
 }
-

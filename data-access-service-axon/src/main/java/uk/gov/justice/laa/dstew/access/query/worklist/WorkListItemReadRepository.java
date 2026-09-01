@@ -11,4 +11,3 @@ public interface WorkListItemReadRepository
         JpaSpecificationExecutor<WorkListItemReadModel> {
   void deleteByIdItemTypeAndIdItemId(WorkItemType itemType, UUID itemId);
 }
-

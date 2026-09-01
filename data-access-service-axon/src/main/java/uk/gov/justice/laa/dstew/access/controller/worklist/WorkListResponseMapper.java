@@ -49,7 +49,10 @@ public class WorkListResponseMapper {
     response.setMatterTypes(
         item.getMatterTypes() == null
             ? null
-            : item.getMatterTypes().stream().map(this::toMatterType).filter(Objects::nonNull).toList());
+            : item.getMatterTypes().stream()
+                .map(this::toMatterType)
+                .filter(Objects::nonNull)
+                .toList());
     response.setApplicationStatus(
         item.getApplicationStatus() == null
             ? null
@@ -77,4 +80,3 @@ public class WorkListResponseMapper {
     }
   }
 }
-

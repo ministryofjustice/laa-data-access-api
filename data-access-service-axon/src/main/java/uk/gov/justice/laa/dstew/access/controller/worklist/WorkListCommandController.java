@@ -49,7 +49,8 @@ public class WorkListCommandController implements WorkListCommandApi {
     return ResponseEntity.ok().build();
   }
 
-  private String eventDescription(uk.gov.justice.laa.dstew.access.model.EventHistoryRequest eventHistory) {
+  private String eventDescription(
+      uk.gov.justice.laa.dstew.access.model.EventHistoryRequest eventHistory) {
     return eventHistory == null ? null : eventHistory.getEventDescription();
   }
 
@@ -57,7 +58,8 @@ public class WorkListCommandController implements WorkListCommandApi {
     try {
       return objectMapper.writeValueAsString(request);
     } catch (JacksonException exception) {
-      throw new IllegalStateException("Unable to serialise work-list assignment request", exception);
+      throw new IllegalStateException(
+          "Unable to serialise work-list assignment request", exception);
     }
   }
 }

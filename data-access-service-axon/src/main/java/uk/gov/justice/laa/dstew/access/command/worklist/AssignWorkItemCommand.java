@@ -19,5 +19,3 @@ public record AssignWorkItemCommand(
     Objects.requireNonNull(occurredAt, "occurredAt must not be null");
   }
 }
-
-

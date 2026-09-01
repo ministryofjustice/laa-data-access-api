@@ -20,4 +20,3 @@ public record FindWorkListItemsQuery(
     pageSize = PaginationHelper.validatePageSize(pageSize);
   }
 }
-

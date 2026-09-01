@@ -57,9 +57,11 @@ class WorkListProjectionTest {
     when(proceeding.getMatterType()).thenReturn("SPECIAL_CHILDREN_ACT");
 
     Instant occurredAt = Instant.parse("2026-08-28T10:00:00Z");
-    projection.on(new ApplicationReadyForManualAssessmentEvent(applicationId, 3L, 5L, occurredAt), message());
+    projection.on(
+        new ApplicationReadyForManualAssessmentEvent(applicationId, 3L, 5L, occurredAt), message());
 
-    ArgumentCaptor<WorkListItemReadModel> captor = ArgumentCaptor.forClass(WorkListItemReadModel.class);
+    ArgumentCaptor<WorkListItemReadModel> captor =
+        ArgumentCaptor.forClass(WorkListItemReadModel.class);
     verify(items).save(captor.capture());
     WorkListItemReadModel row = captor.getValue();
     assertThat(row.getApplicationId()).isEqualTo(applicationId);
@@ -92,7 +94,8 @@ class WorkListProjectionTest {
             Instant.parse("2026-08-28T10:00:00Z")),
         message());
 
-    ArgumentCaptor<WorkListItemReadModel> captor = ArgumentCaptor.forClass(WorkListItemReadModel.class);
+    ArgumentCaptor<WorkListItemReadModel> captor =
+        ArgumentCaptor.forClass(WorkListItemReadModel.class);
     verify(items).save(captor.capture());
     assertThat(captor.getValue().getApplicationId()).isEqualTo(applicationId);
     assertThat(captor.getValue().getParentApplicationId()).isEqualTo(applicationId);
@@ -112,10 +115,9 @@ class WorkListProjectionTest {
             Instant.parse("2026-08-28T10:00:00Z"),
             1L,
             0L);
-    when(
-            items.findAll(
-                org.mockito.ArgumentMatchers.<Specification<WorkListItemReadModel>>any(),
-                org.mockito.ArgumentMatchers.any(Pageable.class)))
+    when(items.findAll(
+            org.mockito.ArgumentMatchers.<Specification<WorkListItemReadModel>>any(),
+            org.mockito.ArgumentMatchers.any(Pageable.class)))
         .thenReturn(new PageImpl<>(java.util.List.of(item)));
 
     FindWorkListItemsResult result =
@@ -123,7 +125,9 @@ class WorkListProjectionTest {
 
     ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
     verify(items)
-        .findAll(org.mockito.ArgumentMatchers.<Specification<WorkListItemReadModel>>any(), pageable.capture());
+        .findAll(
+            org.mockito.ArgumentMatchers.<Specification<WorkListItemReadModel>>any(),
+            pageable.capture());
     assertThat(result.items()).containsExactly(item);
     assertThat(result.requestedPage()).isEqualTo(1);
     assertThat(result.requestedPageSize()).isEqualTo(20);
@@ -142,7 +146,8 @@ class WorkListProjectionTest {
         .thenReturn(Optional.of(row));
 
     projection.on(
-        new ApplicationAssignedToCaseworkerEvent(applicationId, 2L, 3L, caseworkerId, Instant.now()),
+        new ApplicationAssignedToCaseworkerEvent(
+            applicationId, 2L, 3L, caseworkerId, Instant.now()),
         message());
 
     assertThat(row.getAssigneeId()).isEqualTo(caseworkerId);
@@ -178,7 +183,8 @@ class WorkListProjectionTest {
   void givenFinalApplicationDecision_whenHandled_thenDeletesOnlyItsApplicationWorkItem() {
     UUID applicationId = UUID.randomUUID();
 
-    projection.on(new ApplicationDecisionMadeEvent(applicationId, 2L, 3L, "REFUSED", null, Instant.now()));
+    projection.on(
+        new ApplicationDecisionMadeEvent(applicationId, 2L, 3L, "REFUSED", null, Instant.now()));
 
     verify(items).deleteByIdItemTypeAndIdItemId(WorkItemType.APPLICATION, applicationId);
   }
@@ -195,10 +201,13 @@ class WorkListProjectionTest {
         .thenReturn(Optional.of(row));
 
     projection.on(
-        new LinkedGroupMemberWorkItemChanged(groupId, applicationId, true, 1L, 0L, null, Instant.now()),
+        new LinkedGroupMemberWorkItemChanged(
+            groupId, applicationId, true, 1L, 0L, null, Instant.now()),
         message());
-    projection.on(new LinkedGroupAssigned(groupId, java.util.List.of(applicationId), 1L, 1L,
-        caseworkerId, Instant.now()), message());
+    projection.on(
+        new LinkedGroupAssigned(
+            groupId, java.util.List.of(applicationId), 1L, 1L, caseworkerId, Instant.now()),
+        message());
 
     assertThat(row.getAssignmentBoundaryType()).isEqualTo("LINKED_GROUP");
     assertThat(row.getAssignmentBoundaryId()).isEqualTo(groupId);
@@ -219,4 +228,3 @@ class WorkListProjectionTest {
         "test-id", new MessageType(String.class), "test", Map.of(), Instant.now());
   }
 }
-

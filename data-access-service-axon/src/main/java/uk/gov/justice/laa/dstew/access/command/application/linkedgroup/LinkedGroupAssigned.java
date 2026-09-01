@@ -15,4 +15,3 @@ public record LinkedGroupAssigned(
     long assignmentVersion,
     UUID caseworkerId,
     Instant occurredAt) {}
-
