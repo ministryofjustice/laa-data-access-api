@@ -5,11 +5,13 @@ import org.axonframework.messaging.core.correlation.CorrelationDataProvider;
 import org.axonframework.messaging.core.correlation.SimpleCorrelationDataProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.config.interceptor.ContentSchemaValidationDispatchInterceptor;
 import uk.gov.justice.laa.dstew.access.config.interceptor.ServiceNameMetadataDispatchInterceptor;
 
 /** Configures the default Axon command bus with dispatch interceptors and metadata correlation. */
 @Configuration
+@ExcludeFromGeneratedCodeCoverage
 public class AxonCommandBusConfig {
 
   /** Copies the request service name from commands onto the events they cause. */

@@ -5,6 +5,8 @@ import static org.awaitility.Awaitility.await;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validLinkedCreateApplicationRequest;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -111,13 +113,25 @@ class CreateApplicationInMemoryTest {
   }
 
   @Test
-  void givenAxonApplication_whenOpenApiRequested_thenDocumentsCreateApplication() {
+  void givenAxonControllers_whenOpenApiRequested_thenDocumentsBearerSecuredEndpoints()
+      throws Exception {
     ResponseEntity<String> response = restTemplate.getForEntity("/v3/api-docs", String.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(response.getBody())
         .contains("\"openapi\":\"3.1")
-        .contains("\"/api/v0/applications\"");
+        .contains("\"/api/v0/applications\"")
+        .contains("\"/api/v0/caseworkers\"")
+        .contains("\"/api/v0/individuals\"");
+
+    JsonNode openApi = new ObjectMapper().readTree(response.getBody());
+    assertThat(openApi.at("/components/securitySchemes/BearerAuth/type").asText())
+        .isEqualTo("http");
+    assertThat(openApi.at("/components/securitySchemes/BearerAuth/scheme").asText())
+        .isEqualTo("bearer");
+    assertThat(openApi.at("/components/securitySchemes/bearerAuth").isMissingNode()).isTrue();
+    assertThat(openApi.at("/paths/~1api~1v0~1individuals/get/security/0/BearerAuth").isArray())
+        .isTrue();
   }
 
   @Test

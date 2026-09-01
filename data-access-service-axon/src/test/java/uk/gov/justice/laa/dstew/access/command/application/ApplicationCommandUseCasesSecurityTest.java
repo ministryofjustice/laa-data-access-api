@@ -14,10 +14,12 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.UnassignCaseworkerUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionUseCase;
+import uk.gov.justice.laa.dstew.access.command.application.document.UploadDocumentUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.ready.RecordAutoGrantOutcomeUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
+import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
 import uk.gov.justice.laa.dstew.access.utils.BaseSecuredUseCaseTest;
 import uk.gov.justice.laa.dstew.access.utils.TestSecurityConfig;
 
@@ -29,6 +31,7 @@ import uk.gov.justice.laa.dstew.access.utils.TestSecurityConfig;
       CreateNoteUseCase.class,
       UnassignCaseworkerUseCase.class,
       RecordAutoGrantOutcomeUseCase.class,
+      UploadDocumentUseCase.class,
       TestSecurityConfig.class
     })
 @ImportAutoConfiguration(
@@ -41,10 +44,11 @@ class ApplicationCommandUseCasesSecurityTest extends BaseSecuredUseCaseTest {
   @Autowired private CreateNoteUseCase createNoteUseCase;
   @Autowired private UnassignCaseworkerUseCase unassignCaseworkerUseCase;
   @Autowired private RecordAutoGrantOutcomeUseCase recordAutoGrantOutcomeUseCase;
+  @Autowired private UploadDocumentUseCase uploadDocumentUseCase;
 
   @MockitoBean private RetryingCommandDispatcher dispatcher;
-
   @MockitoBean private SubscriptionProjectionGateway projectionGateway;
+  @MockitoBean private SdsService sdsService;
 
   @Test
   void givenNoRole_whenExecuteSecuredCommandUseCases_thenThrowsAuthorizationDeniedException() {
@@ -57,8 +61,9 @@ class ApplicationCommandUseCasesSecurityTest extends BaseSecuredUseCaseTest {
     assertDenied(() -> unassignCaseworkerUseCase.execute(null));
     assertDenied(() -> recordAutoGrantOutcomeUseCase.recordReady(null));
     assertDenied(() -> recordAutoGrantOutcomeUseCase.record(new Object()));
+    assertDenied(() -> uploadDocumentUseCase.execute(null, null));
 
-    verifyNoInteractions(dispatcher, projectionGateway);
+    verifyNoInteractions(dispatcher, projectionGateway, sdsService);
   }
 
   @Test
@@ -73,8 +78,9 @@ class ApplicationCommandUseCasesSecurityTest extends BaseSecuredUseCaseTest {
     assertDenied(() -> unassignCaseworkerUseCase.execute(null));
     assertDenied(() -> recordAutoGrantOutcomeUseCase.recordReady(null));
     assertDenied(() -> recordAutoGrantOutcomeUseCase.record(new Object()));
+    assertDenied(() -> uploadDocumentUseCase.execute(null, null));
 
-    verifyNoInteractions(dispatcher, projectionGateway);
+    verifyNoInteractions(dispatcher, projectionGateway, sdsService);
   }
 
   private void assertDenied(ThrowingInvocation invocation) {

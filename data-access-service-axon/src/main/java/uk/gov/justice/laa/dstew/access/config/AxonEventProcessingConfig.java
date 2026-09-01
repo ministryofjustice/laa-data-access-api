@@ -4,9 +4,11 @@ import org.axonframework.extension.spring.config.EventProcessorDefinition;
 import org.axonframework.messaging.eventhandling.processing.errorhandling.PropagatingErrorHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
 /** Defines isolated processors for projections and the synchronous linked-application router. */
 @Configuration
+@ExcludeFromGeneratedCodeCoverage
 public class AxonEventProcessingConfig {
 
   @Bean

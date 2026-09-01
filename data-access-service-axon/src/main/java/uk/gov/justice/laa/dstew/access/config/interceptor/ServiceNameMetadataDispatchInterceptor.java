@@ -10,11 +10,13 @@ import org.axonframework.messaging.core.unitofwork.ProcessingContext;
 import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.support.ScopeNotActiveException;
 import org.springframework.stereotype.Component;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.config.ServiceNameContext;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 
 /** Adds the request's service name to every command dispatched by this service. */
 @Component
+@ExcludeFromGeneratedCodeCoverage
 public class ServiceNameMetadataDispatchInterceptor
     implements MessageDispatchInterceptor<CommandMessage> {
 

@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationProvider;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Opponent;
@@ -13,6 +14,7 @@ import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreationDe
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 
 /** Sensitive application data stored outside the Axon event stream. */
+@ExcludeFromGeneratedCodeCoverage
 public record ApplicationDataPayload(
     String laaReference,
     ApplicationClient client,

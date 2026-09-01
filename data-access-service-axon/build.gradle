@@ -2,6 +2,7 @@ import org.gradle.api.tasks.testing.logging.TestLogEvent
 
 plugins {
     id 'java'
+    id 'jacoco'
     id 'checkstyle'
     id 'uk.gov.justice.service.laa.laa-spring-boot-gradle-plugin'
 }
@@ -41,6 +42,8 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-flyway'
+    implementation 'org.springframework.security:spring-security-oauth2-client'
+    implementation 'org.springframework.boot:spring-boot-starter-restclient'
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
     implementation 'uk.gov.justice.service.laa:laa-spring-boot-starter-oauth2'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
@@ -79,12 +82,16 @@ dependencies {
 
 test {
     useJUnitPlatform()
+    finalizedBy jacocoTestReport
 }
 
 tasks.named('integrationTest') {
     dependsOn tasks.named('testUtilitiesClasses')
     useJUnitPlatform()
     exclude 'uk/gov/justice/laa/dstew/access/GenerateAxonMassDataDumpTest.class'
+    jacoco {
+        destinationFile = layout.buildDirectory.file("jacoco/integrationTest.exec").get().asFile
+    }
 }
 
 tasks.register('generateAxonMassDataDump', Test) {
@@ -108,5 +115,93 @@ tasks.register('generateAxonMassDataDump', Test) {
         if (project.hasProperty(it)) {
             systemProperty it, project.property(it)
         }
+    }
+}
+
+jacoco {
+    toolVersion = "0.8.13"
+}
+
+jacocoTestReport {
+    dependsOn test
+    reports {
+        xml.required = true
+        html.required = true
+        csv.required = false
+    }
+    afterEvaluate {
+        classDirectories.setFrom(files(classDirectories.files.collect {
+            fileTree(dir: it, exclude: ['**/DataAccessServiceAxonApplication.class', '**/generated/**', '**/*Generated*.*', '**/*_.class'])
+        }))
+    }
+}
+
+jacocoTestCoverageVerification {
+    dependsOn integrationTest
+
+    executionData(
+        layout.buildDirectory.file("jacoco/test.exec"),
+        layout.buildDirectory.file("jacoco/integrationTest.exec")
+    )
+
+    afterEvaluate {
+        classDirectories.setFrom(files(sourceSets.main.output.classesDirs.collect {
+            fileTree(dir: it, exclude: ['**/DataAccessServiceAxonApplication.class', '**/generated/**', '**/*Generated*.*', '**/*_.class'])
+        }))
+    }
+
+    violationRules {
+        failOnViolation = true
+
+        rule {
+            element = 'CLASS'
+            limit {
+                counter = 'LINE'
+                minimum = 0.9
+            }
+            limit {
+                counter = 'BRANCH'
+                minimum = 0.9
+            }
+        }
+    }
+}
+
+spotlessApply.mustRunAfter clean
+build.mustRunAfter spotlessApply
+tasks.named('integrationTest').configure { mustRunAfter build }
+jacocoTestCoverageVerification.mustRunAfter tasks.named('integrationTest')
+
+tasks.register('preflightCheck') {
+    description = 'Runs clean, spotlessApply, build, integrationTest and jacocoTestCoverageVerification'
+    group = 'verification'
+    dependsOn clean, spotlessApply, build, tasks.named('integrationTest'), jacocoTestCoverageVerification, combinedCoverageReport
+}
+
+tasks.register('combinedCoverageReport', JacocoReport) {
+    description = 'Generates a combined JaCoCo coverage report for unit tests and integration tests'
+    group = 'verification'
+    dependsOn test, tasks.named('integrationTest')
+
+    executionData(
+        layout.buildDirectory.file('jacoco/test.exec'),
+        layout.buildDirectory.file('jacoco/integrationTest.exec')
+    )
+
+    sourceDirectories.from(sourceSets.main.allJava.srcDirs)
+    classDirectories.from(files(sourceSets.main.output.classesDirs).asFileTree.matching {
+        exclude '**/DataAccessServiceAxonApplication.class', '**/generated/**', '**/*Generated*.*', '**/*_.class'
+    })
+
+    reports {
+        xml.required = true
+        xml.outputLocation = layout.buildDirectory.file('reports/jacoco/combined/combined.xml')
+        html.required = true
+        html.outputLocation = layout.buildDirectory.dir('reports/jacoco/combined/html')
+        csv.required = false
+    }
+
+    doLast {
+        logger.lifecycle("Combined coverage report written to: ${reports.html.outputLocation.get().asFile.toURI()}")
     }
 }

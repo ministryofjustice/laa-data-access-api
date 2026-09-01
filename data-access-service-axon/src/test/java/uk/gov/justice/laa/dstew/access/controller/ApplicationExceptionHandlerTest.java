@@ -10,12 +10,16 @@ import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConf
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationGroupInvariantException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException;
+import uk.gov.justice.laa.dstew.access.exception.FileConflictException;
+import uk.gov.justice.laa.dstew.access.exception.FileLengthRequiredException;
 import uk.gov.justice.laa.dstew.access.exception.InvalidApplicationStateException;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemId;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
+import uk.gov.justice.laa.dstew.access.exception.VirusDetectedException;
+import uk.gov.justice.laa.dstew.access.exception.VirusScanException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 class ApplicationExceptionHandlerTest {
@@ -161,5 +165,45 @@ class ApplicationExceptionHandlerTest {
             "Prior authority submission ID "
                 + submissionId
                 + " already exists with different creation data");
+  }
+
+  @Test
+  void givenFileConflict_whenHandled_thenReturnsConflict() {
+    var response =
+        handler.handleFileConflictException(
+            new FileConflictException("File already exists in SDS"));
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+    assertThat(response.getBody().getDetail()).isEqualTo("File already exists in SDS");
+  }
+
+  @Test
+  void givenFileLengthRequired_whenHandled_thenReturnsLengthRequired() {
+    var response =
+        handler.handleFileLengthRequiredException(
+            new FileLengthRequiredException("File content length is required"));
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.LENGTH_REQUIRED);
+    assertThat(response.getBody().getDetail()).isEqualTo("File content length is required");
+  }
+
+  @Test
+  void givenVirusDetected_whenHandled_thenReturnsBadRequest() {
+    var response =
+        handler.handleVirusDetectedException(
+            new VirusDetectedException("Virus detected in uploaded file"));
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(response.getBody().getDetail()).isEqualTo("Virus detected in uploaded file");
+  }
+
+  @Test
+  void givenVirusScanError_whenHandled_thenReturnsInternalServerError() {
+    var response =
+        handler.handleVirusScanException(
+            new VirusScanException("Virus scan gave a non-standard result"));
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+    assertThat(response.getBody().getDetail()).isEqualTo("Virus scan gave a non-standard result");
   }
 }

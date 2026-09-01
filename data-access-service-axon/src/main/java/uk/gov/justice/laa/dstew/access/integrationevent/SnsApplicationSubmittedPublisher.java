@@ -5,8 +5,10 @@ import software.amazon.awssdk.services.sns.model.MessageAttributeValue;
 import software.amazon.awssdk.services.sns.model.PublishRequest;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
 /** AWS SNS adapter for {@link ApplicationSubmittedEvent}. */
+@ExcludeFromGeneratedCodeCoverage
 public class SnsApplicationSubmittedPublisher implements ApplicationSubmittedPublisher {
 
   private final SnsClient snsClient;

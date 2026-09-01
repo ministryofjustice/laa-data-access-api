@@ -13,6 +13,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 
 /**
@@ -32,6 +33,7 @@ import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@ExcludeFromGeneratedCodeCoverage
 public class ApplicationListIndexReadModel {
 
   @Id

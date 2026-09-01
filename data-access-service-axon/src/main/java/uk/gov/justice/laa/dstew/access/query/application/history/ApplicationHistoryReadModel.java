@@ -12,6 +12,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
 /** Append-only audit entry emitted by the Application event stream. */
 @Entity
@@ -20,6 +21,7 @@ import org.hibernate.type.SqlTypes;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@ExcludeFromGeneratedCodeCoverage
 public class ApplicationHistoryReadModel {
 
   @Id

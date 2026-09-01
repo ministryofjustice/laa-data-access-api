@@ -1,0 +1,27 @@
+paths:
+  /api/v0/prior-authorities/{priorAuthorityId}:
+    get:
+      tags:
+        - prior-authorities
+      summary: Retrieve a Prior Authority request by priorAuthorityId
+      operationId: getPriorAuthority
+      parameters:
+        - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
+        - name: priorAuthorityId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Prior Authority found
+          content:
+            application/json:
+              schema:
+                $ref: "./components.yml#/components/schemas/PriorAuthorityResponse"
+        '401': { description: Unauthorized }
+        '403': { description: Forbidden }
+        '404': { description: Prior Authority not found }
+        '500': { description: Internal server error }
+
