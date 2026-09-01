@@ -91,7 +91,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           report-name: export-smoke-test-report
 
-      - name: Take pg_dump snapshot
+      - name: Take and upload pg_dump snapshot
         id: pg_dump
         shell: bash
         env:
@@ -100,53 +100,63 @@ jobs:
           set -euo pipefail
 
           PG_RELEASE="${RELEASE_NAME}-postgresql"
-          HELM_RELEASE="${RELEASE_NAME}-pg-dump"
-          JOB_NAME="${HELM_RELEASE}-job"
-          SNAPSHOT_FILE="snapshot-${RELEASE_NAME}-$(date -u +%Y%m%dT%H%M%SZ).sql.gz"
 
-          # Retrieve the PostgreSQL image from the existing StatefulSet to ensure version match
-          PG_IMAGE=$(kubectl get statefulset "$PG_RELEASE" \
+          # Retrieve the actual bucket name from the Kubernetes secret
+          S3_BUCKET=$(kubectl get secret s3-bucket-output \
             -n "$KUBE_NAMESPACE" \
-            -o jsonpath='{.spec.template.spec.containers[0].image}')
+            -o jsonpath='{.data.bucket_name}' | base64 -d)
 
-          if [ -z "$PG_IMAGE" ]; then
-            echo "Could not retrieve image from StatefulSet ${PG_RELEASE}" >&2
+          if [ -z "$S3_BUCKET" ]; then
+            echo "Could not retrieve bucket name from secret s3-bucket-output" >&2
             exit 1
           fi
 
-          PG_IMAGE_REPO=$(echo "$PG_IMAGE" | cut -d: -f1)
-          PG_IMAGE_TAG=$(echo "$PG_IMAGE" | cut -d: -f2)
-          echo "Using PostgreSQL image: $PG_IMAGE"
+          TIMESTAMP=$(date -u +%Y%m%dT%H%M%SZ)
+          SNAPSHOT_FILE="snapshot-${RELEASE_NAME}-${TIMESTAMP}.sql.gz"
+          S3_KEY="snapshots/${RELEASE_NAME}/${TIMESTAMP}/snapshot.sql.gz"
 
-          # Delete any previous job to allow re-runs
-          kubectl delete job "$JOB_NAME" -n "$KUBE_NAMESPACE" --ignore-not-found
-
-          # Deploy the pg_dump job via its own isolated Helm chart
-          helm upgrade "$HELM_RELEASE" .helm/pg-dump-job \
-            --namespace "$KUBE_NAMESPACE" \
-            --set image.repository="$PG_IMAGE_REPO" \
-            --set image.tag="$PG_IMAGE_TAG" \
-            --set db.host="$PG_RELEASE" \
-            --set db.secretName="$PG_RELEASE" \
-            --install \
-            --wait
-
-          echo "Waiting for pg_dump job to complete..."
-          kubectl wait job "$JOB_NAME" \
+          # Get PostgreSQL password from Kubernetes secret
+          PG_PASSWORD=$(kubectl get secret "$PG_RELEASE" \
             -n "$KUBE_NAMESPACE" \
-            --for=condition=complete \
-            --timeout=300s
+            -o jsonpath='{.data.postgres-password}' | base64 -d)
+          echo "::add-mask::$PG_PASSWORD"
 
-          echo "Capturing pg_dump output..."
-          kubectl logs "job/$JOB_NAME" -n "$KUBE_NAMESPACE" | gzip > "$SNAPSHOT_FILE"
+          # Port-forward PostgreSQL to localhost; trap ensures cleanup on exit
+          PORT_FORWARD_PID=""
+          cleanup() {
+            [ -n "$PORT_FORWARD_PID" ] && kill "$PORT_FORWARD_PID" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          kubectl port-forward "pod/${PG_RELEASE}-0" 5432:5432 \
+            -n "$KUBE_NAMESPACE" &
+          PORT_FORWARD_PID=$!
+
+          echo "Waiting for port-forward to be ready..."
+          for i in $(seq 1 15); do
+            if PGPASSWORD="$PG_PASSWORD" pg_isready -h localhost -p 5432 -U postgres 2>/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+
+          if ! PGPASSWORD="$PG_PASSWORD" pg_isready -h localhost -p 5432 -U postgres 2>/dev/null; then
+            echo "Port-forward to PostgreSQL did not become ready in time" >&2
+            exit 1
+          fi
+
+          echo "Running pg_dump..."
+          PGPASSWORD="$PG_PASSWORD" pg_dump -U postgres -h localhost -p 5432 postgres \
+            | gzip > "$SNAPSHOT_FILE"
 
           if [ ! -s "$SNAPSHOT_FILE" ]; then
             echo "Snapshot file is empty" >&2
             exit 1
           fi
 
-          echo "Snapshot written to: $SNAPSHOT_FILE ($(wc -c < "$SNAPSHOT_FILE") bytes)"
-          echo "snapshot-file=$SNAPSHOT_FILE" >> "$GITHUB_OUTPUT"
+          echo "Snapshot written: $SNAPSHOT_FILE ($(wc -c < "$SNAPSHOT_FILE") bytes)"
 
-      # TODO: Export snapshot (e.g. upload to S3)
-      # aws s3 cp "${{ steps.pg_dump.outputs.snapshot-file }}" s3://your-bucket/snapshots/${RELEASE_NAME}/
+          echo "Uploading to s3://${S3_BUCKET}/${S3_KEY}..."
+          aws s3 cp "$SNAPSHOT_FILE" "s3://${S3_BUCKET}/${S3_KEY}"
+
+          echo "Snapshot uploaded to s3://${S3_BUCKET}/${S3_KEY}"

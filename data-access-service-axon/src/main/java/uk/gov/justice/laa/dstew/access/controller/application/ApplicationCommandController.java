@@ -1,24 +1,25 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.Min;
+import io.swagger.v3.oas.annotations.Hidden;
 import java.net.URI;
+import java.time.ZoneOffset;
+import java.util.List;
 import java.util.UUID;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+import uk.gov.justice.laa.dstew.access.api.ApplicationAutoGrantOutcomeCommandApi;
+import uk.gov.justice.laa.dstew.access.api.ApplicationCommandApi;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.AssignCaseworkerUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.UnassignCaseworkerUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteUseCase;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.CreatePriorAuthorityCommand;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.CreatePriorAuthorityUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ReadyApplicationResult;
 import uk.gov.justice.laa.dstew.access.command.application.ready.RecordAutoGrantOutcomeUseCase;
@@ -29,13 +30,20 @@ import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
 import uk.gov.justice.laa.dstew.access.model.CreateNoteRequest;
+import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityRequest;
+import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityResponse;
+import uk.gov.justice.laa.dstew.access.model.DocumentDeleteResponse;
+import uk.gov.justice.laa.dstew.access.model.DocumentUpdateResponse;
+import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
+import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
+import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
 
 /** HTTP command adapter for Application writes. */
 @RestController
-@RequestMapping("/api/v0/applications")
-public class ApplicationCommandController {
+public class ApplicationCommandController
+    implements ApplicationCommandApi, ApplicationAutoGrantOutcomeCommandApi {
 
   private final CreateApplicationUseCase createApplicationUseCase;
   private final MakeApplicationDecisionUseCase makeDecisionUseCase;
@@ -44,6 +52,7 @@ public class ApplicationCommandController {
   private final AssignCaseworkerUseCase assignCaseworkerUseCase;
   private final RecordAutoGrantOutcomeUseCase recordAutoGrantOutcomeUseCase;
   private final UpdateApplicationUseCase updateApplicationUseCase;
+  private final CreatePriorAuthorityUseCase createPriorAuthorityUseCase;
   private final CreateApplicationCommandMapper commandMapper;
   private final MakeDecisionCommandMapper decisionCommandMapper;
   private final AssignCaseworkerRequestMapper assignCaseworkerRequestMapper;
@@ -51,6 +60,7 @@ public class ApplicationCommandController {
   private final CreateNoteCommandMapper createNoteCommandMapper;
   private final AutoGrantOutcomeCommandMapper autoGrantOutcomeCommandMapper;
   private final UpdateApplicationCommandMapper updateApplicationCommandMapper;
+  private final CreatePriorAuthorityCommandMapper createPriorAuthorityCommandMapper;
 
   /** Creates the command adapter. */
   public ApplicationCommandController(
@@ -61,13 +71,15 @@ public class ApplicationCommandController {
       AssignCaseworkerUseCase assignCaseworkerUseCase,
       RecordAutoGrantOutcomeUseCase recordAutoGrantOutcomeUseCase,
       UpdateApplicationUseCase updateApplicationUseCase,
+      CreatePriorAuthorityUseCase createPriorAuthorityUseCase,
       CreateApplicationCommandMapper commandMapper,
       MakeDecisionCommandMapper decisionCommandMapper,
       AssignCaseworkerRequestMapper assignCaseworkerRequestMapper,
       UnassignCaseworkerRequestMapper unassignCaseworkerRequestMapper,
       CreateNoteCommandMapper createNoteCommandMapper,
       AutoGrantOutcomeCommandMapper autoGrantOutcomeCommandMapper,
-      UpdateApplicationCommandMapper updateApplicationCommandMapper) {
+      UpdateApplicationCommandMapper updateApplicationCommandMapper,
+      CreatePriorAuthorityCommandMapper createPriorAuthorityCommandMapper) {
     this.createApplicationUseCase = createApplicationUseCase;
     this.makeDecisionUseCase = makeDecisionUseCase;
     this.createNoteUseCase = createNoteUseCase;
@@ -75,6 +87,7 @@ public class ApplicationCommandController {
     this.assignCaseworkerUseCase = assignCaseworkerUseCase;
     this.recordAutoGrantOutcomeUseCase = recordAutoGrantOutcomeUseCase;
     this.updateApplicationUseCase = updateApplicationUseCase;
+    this.createPriorAuthorityUseCase = createPriorAuthorityUseCase;
     this.commandMapper = commandMapper;
     this.decisionCommandMapper = decisionCommandMapper;
     this.assignCaseworkerRequestMapper = assignCaseworkerRequestMapper;
@@ -82,13 +95,15 @@ public class ApplicationCommandController {
     this.createNoteCommandMapper = createNoteCommandMapper;
     this.autoGrantOutcomeCommandMapper = autoGrantOutcomeCommandMapper;
     this.updateApplicationCommandMapper = updateApplicationCommandMapper;
+    this.createPriorAuthorityCommandMapper = createPriorAuthorityCommandMapper;
   }
 
   /** Assigns a caseworker to one or more Applications after validating the complete batch. */
-  @PostMapping("/assign")
+  @Override
+  @LogMethodArguments
+  @LogMethodResponse
   public ResponseEntity<Void> assignCaseworker(
-      @RequestHeader("X-Service-Name") ServiceName serviceName,
-      @Valid @RequestBody CaseworkerAssignRequest request) {
+      ServiceName serviceName, CaseworkerAssignRequest request) {
     var assignment = assignCaseworkerRequestMapper.toAssignment(request);
     assignCaseworkerUseCase.assign(
         assignment.caseworkerId(),
@@ -99,31 +114,31 @@ public class ApplicationCommandController {
   }
 
   /** Removes the current caseworker assignment from an Application. */
-  @PostMapping("/{id}/unassign")
+  @Override
+  @LogMethodArguments
+  @LogMethodResponse
   public ResponseEntity<Void> unassignCaseworker(
-      @RequestHeader("X-Service-Name") ServiceName serviceName,
-      @PathVariable UUID id,
-      @Valid @RequestBody CaseworkerUnassignRequest request) {
+      ServiceName serviceName, UUID id, CaseworkerUnassignRequest request) {
     unassignCaseworkerUseCase.execute(unassignCaseworkerRequestMapper.toCommand(id, request));
     return ResponseEntity.ok().build();
   }
 
   /** Applies an overall and per-proceeding decision to an existing Application version. */
-  @PatchMapping("/{id}/decision")
+  @Override
+  @LogMethodArguments
+  @LogMethodResponse
   public ResponseEntity<Void> makeDecision(
-      @RequestHeader("X-Service-Name") ServiceName serviceName,
-      @PathVariable UUID id,
-      @Valid @RequestBody MakeDecisionRequest request) {
+      ServiceName serviceName, UUID id, MakeDecisionRequest request) {
     makeDecisionUseCase.execute(decisionCommandMapper.toCommand(id, request));
     return ResponseEntity.noContent().build();
   }
 
   /** Records either terminal outcome of deciding whether an Application can be auto-granted. */
-  @PatchMapping("/{id}/auto-grant-outcome")
+  @Override
+  @LogMethodArguments
+  @LogMethodResponse
   public ResponseEntity<Void> recordAutoGrantOutcome(
-      @RequestHeader("X-Service-Name") ServiceName serviceName,
-      @PathVariable UUID id,
-      @Valid @RequestBody AutoGrantOutcomeRequest request) {
+      ServiceName serviceName, UUID id, AutoGrantOutcomeRequest request) {
     Object command = autoGrantOutcomeCommandMapper.toCommand(id, request);
     if (command instanceof MarkApplicationReadyCommand readyCommand) {
       ReadyApplicationResult result = recordAutoGrantOutcomeUseCase.recordReady(readyCommand);
@@ -136,22 +151,21 @@ public class ApplicationCommandController {
   }
 
   /** Appends a note to an existing Application. */
-  @PostMapping("/{id}/notes")
-  public ResponseEntity<Void> createNote(
-      @RequestHeader("X-Service-Name") ServiceName serviceName,
-      @PathVariable UUID id,
-      @Valid @RequestBody CreateNoteRequest request) {
+  @Override
+  @LogMethodArguments
+  @LogMethodResponse
+  public ResponseEntity<Void> createApplicationNotes(
+      ServiceName serviceName, UUID id, CreateNoteRequest request) {
     createNoteUseCase.execute(createNoteCommandMapper.toCommand(id, request));
     return ResponseEntity.noContent().build();
   }
 
   /** Dispatches create directly to Axon and returns 201 once the projection is readable. */
-  @PostMapping
+  @Override
+  @LogMethodArguments
+  @LogMethodResponse
   public ResponseEntity<Void> createApplication(
-      @RequestHeader("X-Service-Name") ServiceName serviceName,
-      @RequestHeader(value = "X-Schema-Version", required = false, defaultValue = "1") @Min(1)
-          int schemaVersion,
-      @Valid @RequestBody ApplicationCreateRequest request) {
+      ServiceName serviceName, ApplicationCreateRequest request, Integer schemaVersion) {
     CreateApplicationCommand command = commandMapper.toCommand(request, schemaVersion);
     URI location =
         ServletUriComponentsBuilder.fromCurrentRequest()
@@ -165,12 +179,59 @@ public class ApplicationCommandController {
   }
 
   /** Replaces an existing Application's content and optional status. */
-  @PatchMapping("/{id}")
+  @Override
+  @LogMethodArguments
+  @LogMethodResponse
   public ResponseEntity<Void> updateApplication(
-      @RequestHeader("X-Service-Name") ServiceName serviceName,
-      @PathVariable UUID id,
-      @Valid @RequestBody ApplicationUpdateRequest request) {
+      ServiceName serviceName, UUID id, ApplicationUpdateRequest request) {
     updateApplicationUseCase.execute(updateApplicationCommandMapper.toCommand(id, request));
     return ResponseEntity.noContent().build();
+  }
+
+  @Override
+  @LogMethodArguments
+  @LogMethodResponse
+  public ResponseEntity<CreatePriorAuthorityResponse> createPriorAuthority(
+      ServiceName serviceName, UUID id, CreatePriorAuthorityRequest request) {
+    CreatePriorAuthorityCommand command = createPriorAuthorityCommandMapper.toCommand(id, request);
+    URI location =
+        ServletUriComponentsBuilder.fromCurrentRequest()
+            .path("/{submissionId}")
+            .buildAndExpand(command.submissionId())
+            .toUri();
+    CreatePriorAuthorityResponse body =
+        new CreatePriorAuthorityResponse(
+            command.submissionId(), command.occurredAt().atOffset(ZoneOffset.UTC));
+    boolean projected = createPriorAuthorityUseCase.execute(command);
+    return projected
+        ? ResponseEntity.created(location).body(body)
+        : ResponseEntity.accepted().location(location).body(body);
+  }
+
+  @Hidden
+  @Override
+  @LogMethodArguments
+  @LogMethodResponse
+  public ResponseEntity<DocumentUploadResponse> uploadDocument(
+      ServiceName serviceName, UUID id, MultipartFile file) {
+    return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+  }
+
+  @Hidden
+  @Override
+  @LogMethodArguments
+  @LogMethodResponse
+  public ResponseEntity<DocumentUpdateResponse> updateDocument(
+      ServiceName serviceName, UUID id, MultipartFile file) {
+    return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+  }
+
+  @Hidden
+  @Override
+  @LogMethodArguments
+  @LogMethodResponse
+  public ResponseEntity<DocumentDeleteResponse> deleteDocument(
+      ServiceName serviceName, UUID id, List<String> documentIds) {
+    return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
   }
 }

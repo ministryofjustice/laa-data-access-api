@@ -107,4 +107,44 @@ class ApplicationContentParserTest {
         .extracting("errors")
         .isEqualTo(List.of("submittedAt: must be an ISO-8601 instant"));
   }
+
+  @Test
+  void givenProceedingsWithoutUsedDelegatedFunctions_whenParse_thenUsedDfIsNull() {
+    Map<String, Object> rawContent =
+        Map.of(
+            "submittedAt",
+            "2026-01-15T10:20:30Z",
+            "proceedings",
+            List.of(
+                Map.of(
+                    "id",
+                    UUID.randomUUID().toString(),
+                    "leadProceeding",
+                    true,
+                    "code",
+                    "SE003",
+                    "description",
+                    "Test proceeding")));
+
+    ParsedAppContentDetails result = parser.parse(rawContent);
+
+    assertThat(result.usedDelegatedFunctions()).isNull();
+  }
+
+  @Test
+  void givenEmptyProceedingsList_whenParse_thenProceedingsAreEmpty() {
+    Map<String, Object> rawContent =
+        Map.of(
+            "submittedAt",
+            "2026-01-15T10:20:30Z",
+            "proceedings",
+            List.of(),
+            "opponents",
+            List.of(Map.of()));
+
+    ParsedAppContentDetails result = parser.parse(rawContent);
+
+    assertThat(result.proceedings()).isEmpty();
+    assertThat(result.opponents()).isNotNull();
+  }
 }

@@ -21,9 +21,11 @@ import java.util.function.Predicate;
 import org.axonframework.messaging.queryhandling.QueryUpdateEmitter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
@@ -393,5 +395,183 @@ class ApplicationProjectionTest {
     when(data.submittedAt()).thenReturn(submittedAt);
     when(data.autoGranted()).thenReturn(AutoGrantedState.fromDecisionFlag(autoGranted));
     return data;
+  }
+
+  @Test
+  void givenRefusedDecisionEvent_whenHandled_thenSetsApplicationRefusedStatus() {
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-20T08:00:00Z");
+    ApplicationReadModel existing =
+        ApplicationReadModel.builder().applicationId(applicationId).build();
+    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(existing));
+    when(applicationReadRepository.save(existing)).thenReturn(existing);
+
+    projection.on(
+        new ApplicationDecisionMadeEvent(
+            applicationId, 3L, 4L, "REFUSED", AutoGrantedState.MANUAL, occurredAt),
+        queryUpdateEmitter);
+
+    assertThat(existing.getStatus()).isEqualTo("APPLICATION_REFUSED");
+  }
+
+  @Test
+  void givenApplicationWithNullSubmittedAt_whenStalledAssessmentQuery_thenExcluded() {
+    Instant threshold = Instant.parse("2026-08-04T09:45:00Z");
+    UUID appId = UUID.randomUUID();
+    ApplicationReadModel app = reconciliationReadModel(appId);
+    when(applicationReadRepository.findAllByStatus("APPLICATION_SUBMITTED"))
+        .thenReturn(List.of(app));
+    // PENDING auto-grant but null submittedAt — must be excluded by the submittedAt != null filter
+    ApplicationDataPayload data = reconciliationData(null, null);
+    when(applicationDataStore.getAll(any())).thenReturn(Map.of(dataId(app), data));
+
+    StalledAssessments result = projection.handle(new FindStalledAssessmentsQuery(threshold));
+
+    assertThat(result.applications()).isEmpty();
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void givenLastUpdatedSortAndDescOrder_whenFindAllQuery_thenPagedWithCorrectSort() {
+    ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+    when(listIndexRepository.findAll(any(Specification.class), pageableCaptor.capture()))
+        .thenReturn(new PageImpl<>(List.of()));
+    when(groupReadRepository.findAllByLeadApplicationIdIn(any())).thenReturn(List.of());
+
+    projection.handle(
+        new FindAllApplicationsQuery(
+            null, null, null, null, null, null, "LAST_UPDATED_DATE", "DESC", 1, 20));
+
+    Sort sort = pageableCaptor.getValue().getSort();
+    assertThat(sort.getOrderFor("modifiedAt")).isNotNull();
+    assertThat(sort.getOrderFor("modifiedAt").getDirection()).isEqualTo(Sort.Direction.DESC);
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void givenApplicationWithLeadId_whenFindAllQuery_thenGroupFetchedByLeadId() {
+    UUID appId = UUID.randomUUID();
+    UUID leadId = UUID.randomUUID();
+    ApplicationListIndexReadModel indexRow =
+        ApplicationListIndexReadModel.builder().applicationId(appId).build();
+    when(listIndexRepository.findAll(any(Specification.class), any(Pageable.class)))
+        .thenReturn(new PageImpl<>(List.of(indexRow)));
+
+    ApplicationReadModel state =
+        ApplicationReadModel.builder()
+            .applicationId(appId)
+            .applicationDataVersion(0L)
+            .leadApplicationId(leadId)
+            .modifiedAt(Instant.EPOCH)
+            .build();
+    when(applicationReadRepository.findAllById(List.of(appId))).thenReturn(List.of(state));
+
+    ApplicationDataId dataId = new ApplicationDataId(appId, 0L);
+    ApplicationDataPayload payload = ApplicationDataPayload.from(applicationCreationDetails(appId));
+    when(applicationDataStore.getAll(List.of(dataId))).thenReturn(Map.of(dataId, payload));
+
+    ArgumentCaptor<List<UUID>> leadIdsCaptor = ArgumentCaptor.forClass(List.class);
+    when(groupReadRepository.findAllByLeadApplicationIdIn(leadIdsCaptor.capture()))
+        .thenReturn(List.of());
+
+    projection.handle(
+        new FindAllApplicationsQuery(null, null, null, null, null, null, null, null, 1, 20));
+
+    assertThat(leadIdsCaptor.getValue()).containsExactly(leadId);
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void givenDataMissingForStateRow_whenFindAllQuery_thenExcludesFromResult() {
+    UUID appId = UUID.randomUUID();
+    ApplicationListIndexReadModel indexRow =
+        ApplicationListIndexReadModel.builder().applicationId(appId).build();
+    when(listIndexRepository.findAll(any(Specification.class), any(Pageable.class)))
+        .thenReturn(new PageImpl<>(List.of(indexRow)));
+
+    ApplicationReadModel state =
+        ApplicationReadModel.builder()
+            .applicationId(appId)
+            .applicationDataVersion(0L)
+            .modifiedAt(Instant.EPOCH)
+            .build();
+    when(applicationReadRepository.findAllById(List.of(appId))).thenReturn(List.of(state));
+    when(applicationDataStore.getAll(any())).thenReturn(Map.of());
+    when(groupReadRepository.findAllByLeadApplicationIdIn(any())).thenReturn(List.of());
+
+    FindAllApplicationsResult result =
+        projection.handle(
+            new FindAllApplicationsQuery(null, null, null, null, null, null, null, null, 1, 20));
+
+    assertThat(result.applications()).isEmpty();
+  }
+
+  @Test
+  void givenDataMissingForApplication_whenFindByIdQuery_thenReturnsNull() {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationReadModel existing =
+        ApplicationReadModel.builder()
+            .applicationId(applicationId)
+            .applicationDataVersion(0L)
+            .build();
+    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(existing));
+    when(applicationDataStore.getAll(any())).thenReturn(Map.of());
+
+    ApplicationReadModel result = projection.handle(new FindApplicationByIdQuery(applicationId));
+
+    assertThat(result).isNull();
+  }
+
+  @Test
+  void givenExistingApplicationWithData_whenFindByIdQuery_thenReturnsHydratedModel() {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationReadModel existing =
+        ApplicationReadModel.builder()
+            .applicationId(applicationId)
+            .applicationDataVersion(1L)
+            .build();
+    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(existing));
+    ApplicationDataId dataId = new ApplicationDataId(applicationId, 1L);
+    ApplicationDataPayload payload =
+        ApplicationDataPayload.from(applicationCreationDetails(applicationId));
+    when(applicationDataStore.getAll(List.of(dataId))).thenReturn(Map.of(dataId, payload));
+
+    ApplicationReadModel result = projection.handle(new FindApplicationByIdQuery(applicationId));
+
+    assertThat(result).isNotNull();
+    assertThat(result.getApplicationId()).isEqualTo(applicationId);
+  }
+
+  @Test
+  void givenApplicationWithMissingData_whenStalledQuery_thenExcluded() {
+    Instant threshold = Instant.parse("2026-08-04T09:45:00Z");
+    UUID appId = UUID.randomUUID();
+    ApplicationReadModel app = reconciliationReadModel(appId);
+    when(applicationReadRepository.findAllByStatus("APPLICATION_SUBMITTED"))
+        .thenReturn(List.of(app));
+    // getAll returns empty map — data not found for this application
+    when(applicationDataStore.getAll(any())).thenReturn(Map.of());
+
+    StalledAssessments result = projection.handle(new FindStalledAssessmentsQuery(threshold));
+
+    assertThat(result.applications()).isEmpty();
+  }
+
+  @Test
+  void givenNullDataFromStore_whenFindNotesQuery_thenReturnsEmptyNotes() {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationReadModel existing =
+        ApplicationReadModel.builder()
+            .applicationId(applicationId)
+            .applicationDataVersion(0L)
+            .build();
+    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(existing));
+    when(applicationDataStore.get(applicationId, 0L)).thenReturn(null);
+
+    ApplicationNotesResult result =
+        projection.handle(new FindNotesForApplicationQuery(applicationId));
+
+    assertThat(result).isNotNull();
+    assertThat(result.notes()).isEmpty();
   }
 }
