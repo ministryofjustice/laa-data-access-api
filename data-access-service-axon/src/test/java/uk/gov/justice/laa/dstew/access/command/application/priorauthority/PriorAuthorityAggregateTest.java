@@ -181,4 +181,114 @@ class PriorAuthorityAggregateTest {
   void tearDown() {
     fixture.stop();
   }
+
+  @Test
+  void givenNewAggregate_whenSaveDraft_thenPersistsVersion0AndEmitsDraftSavedEvent() {
+    UUID submissionId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
+    PriorAuthorityContent content = new PriorAuthorityContent(null, null, null, null, null);
+    String serialisedRequest = "{}";
+    String fingerprint = PayloadFingerprint.compute(serialisedRequest);
+
+    when(dataStore.append(
+            eq(submissionId),
+            eq(0L),
+            eq(applicationId),
+            any(),
+            eq(serialisedRequest),
+            eq(occurredAt)))
+        .thenReturn(fingerprint);
+
+    SavePriorAuthorityDraftCommand command =
+        new SavePriorAuthorityDraftCommand(
+            submissionId,
+            applicationId,
+            content,
+            serialisedRequest,
+            1,
+            "PriorAuthority.json",
+            occurredAt);
+
+    fixture
+        .given()
+        .noPriorActivity()
+        .when()
+        .command(command)
+        .then()
+        .events(
+            new PriorAuthorityDraftSavedEvent(
+                submissionId,
+                applicationId,
+                0L,
+                fingerprint,
+                PriorAuthorityStatus.IN_PROGRESS.name(),
+                1,
+                occurredAt));
+
+    ArgumentCaptor<PriorAuthorityDataPayload> payloadCaptor =
+        ArgumentCaptor.forClass(PriorAuthorityDataPayload.class);
+    verify(dataStore)
+        .append(
+            eq(submissionId),
+            eq(0L),
+            eq(applicationId),
+            payloadCaptor.capture(),
+            eq(serialisedRequest),
+            eq(occurredAt));
+    PriorAuthorityDataPayload persisted = payloadCaptor.getValue();
+    assertThat(persisted.submissionId()).isEqualTo(submissionId);
+    assertThat(persisted.applicationId()).isEqualTo(applicationId);
+  }
+
+  @Test
+  void givenExistingDraftAggregate_whenSaveDraft_thenIncrementsVersionAndEmitsDraftSavedEvent() {
+    UUID submissionId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
+    String firstRequest = "{}";
+    String firstFingerprint = PayloadFingerprint.compute(firstRequest);
+    String secondRequest = "{\"justification\":\"need expert\"}";
+    String secondFingerprint = PayloadFingerprint.compute(secondRequest);
+
+    PriorAuthorityDraftSavedEvent existingEvent =
+        new PriorAuthorityDraftSavedEvent(
+            submissionId,
+            applicationId,
+            0L,
+            firstFingerprint,
+            PriorAuthorityStatus.IN_PROGRESS.name(),
+            1,
+            occurredAt);
+
+    when(dataStore.append(
+            eq(submissionId), eq(1L), eq(applicationId), any(), eq(secondRequest), eq(occurredAt)))
+        .thenReturn(secondFingerprint);
+
+    SavePriorAuthorityDraftCommand command =
+        new SavePriorAuthorityDraftCommand(
+            submissionId,
+            null,
+            new PriorAuthorityContent(null, "need expert", null, null, null),
+            secondRequest,
+            1,
+            "PriorAuthority.json",
+            occurredAt);
+
+    fixture
+        .given()
+        .events(existingEvent)
+        .when()
+        .command(command)
+        .then()
+        .events(
+            new PriorAuthorityDraftSavedEvent(
+                submissionId,
+                applicationId,
+                1L,
+                secondFingerprint,
+                PriorAuthorityStatus.IN_PROGRESS.name(),
+                1,
+                occurredAt));
+  }
 }

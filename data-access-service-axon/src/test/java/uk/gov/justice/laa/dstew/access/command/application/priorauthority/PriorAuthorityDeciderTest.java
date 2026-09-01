@@ -99,4 +99,54 @@ class PriorAuthorityDeciderTest {
     state.schemaVersion = 1;
     return state;
   }
+
+  @Test
+  void givenCommand_whenDecideSaveDraft_thenReturnsEventWithInProgressStatus() {
+    UUID submissionId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    SavePriorAuthorityDraftCommand command =
+        new SavePriorAuthorityDraftCommand(
+            submissionId,
+            applicationId,
+            new PriorAuthorityContent(null, null, null, null, null),
+            "{}",
+            1,
+            "PriorAuthority.json",
+            OCCURRED_AT);
+    String fingerprint = "draft-fingerprint";
+
+    PriorAuthorityDraftSavedEvent event =
+        PriorAuthorityDecider.decideSaveDraft(command, fingerprint, 0L, applicationId);
+
+    assertThat(event.submissionId()).isEqualTo(submissionId);
+    assertThat(event.applicationId()).isEqualTo(applicationId);
+    assertThat(event.dataVersion()).isEqualTo(0L);
+    assertThat(event.requestFingerprint()).isEqualTo(fingerprint);
+    assertThat(event.status()).isEqualTo(PriorAuthorityStatus.IN_PROGRESS.name());
+    assertThat(event.schemaVersion()).isEqualTo(1);
+    assertThat(event.occurredAt()).isEqualTo(OCCURRED_AT);
+  }
+
+  @Test
+  void givenUpdateCommand_whenDecideSaveDraft_thenUsesSuppliedVersionAndApplicationId() {
+    UUID submissionId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    SavePriorAuthorityDraftCommand command =
+        new SavePriorAuthorityDraftCommand(
+            submissionId,
+            null,
+            null,
+            "{\"justification\":\"x\"}",
+            1,
+            "PriorAuthority.json",
+            OCCURRED_AT);
+    String fingerprint = "updated-fingerprint";
+
+    PriorAuthorityDraftSavedEvent event =
+        PriorAuthorityDecider.decideSaveDraft(command, fingerprint, 3L, applicationId);
+
+    assertThat(event.dataVersion()).isEqualTo(3L);
+    assertThat(event.applicationId()).isEqualTo(applicationId);
+    assertThat(event.status()).isEqualTo(PriorAuthorityStatus.IN_PROGRESS.name());
+  }
 }

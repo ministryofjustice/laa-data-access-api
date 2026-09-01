@@ -8,6 +8,8 @@ import org.axonframework.messaging.queryhandling.QueryUpdateEmitter;
 import org.axonframework.messaging.queryhandling.annotation.QueryHandler;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDraftSavedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
 
 /** Independently replayable projection of the current state of each prior-authority submission. */
 @Component
@@ -38,6 +40,47 @@ public class PriorAuthorityProjection {
                 .status(event.status())
                 .createdAt(event.occurredAt())
                 .build());
+    queryUpdateEmitter.emit(
+        FindPriorAuthorityBySubmissionIdQuery.class,
+        query -> query.submissionId().equals(event.submissionId()),
+        saved);
+  }
+
+  /** Creates or updates the current-state row from a prior-authority draft saved event. */
+  @EventHandler
+  public void on(PriorAuthorityDraftSavedEvent event, QueryUpdateEmitter queryUpdateEmitter) {
+    PriorAuthorityReadModel model =
+        repository
+            .findById(event.submissionId())
+            .orElseGet(
+                () ->
+                    PriorAuthorityReadModel.builder()
+                        .submissionId(event.submissionId())
+                        .applicationId(event.applicationId())
+                        .createdAt(event.occurredAt())
+                        .build());
+    model.setDataVersion(event.dataVersion());
+    model.setStatus(event.status());
+    PriorAuthorityReadModel saved = repository.save(model);
+    queryUpdateEmitter.emit(
+        FindPriorAuthorityBySubmissionIdQuery.class,
+        query -> query.submissionId().equals(event.submissionId()),
+        saved);
+  }
+
+  /** Updates the current-state row status to PENDING when the draft is submitted. */
+  @EventHandler
+  public void on(PriorAuthoritySubmittedEvent event, QueryUpdateEmitter queryUpdateEmitter) {
+    PriorAuthorityReadModel model =
+        repository
+            .findById(event.submissionId())
+            .orElseThrow(
+                () ->
+                    new IllegalStateException(
+                        "Cannot apply submitted event: draft projection not found for "
+                            + event.submissionId()));
+    model.setStatus(event.status());
+    PriorAuthorityReadModel saved = repository.save(model);
     queryUpdateEmitter.emit(
         FindPriorAuthorityBySubmissionIdQuery.class,
         query -> query.submissionId().equals(event.submissionId()),

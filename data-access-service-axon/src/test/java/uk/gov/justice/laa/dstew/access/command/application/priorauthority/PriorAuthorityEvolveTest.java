@@ -35,4 +35,30 @@ class PriorAuthorityEvolveTest {
     assertThat(state.getStatus()).isEqualTo(PriorAuthorityStatus.PENDING.name());
     assertThat(state.getSchemaVersion()).isEqualTo(2);
   }
+
+  @Test
+  void givenDraftSavedEvent_whenApply_thenMutatesAllSixStateFields() {
+    PriorAuthorityState state = new PriorAuthorityState();
+    UUID submissionId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
+    PriorAuthorityDraftSavedEvent event =
+        new PriorAuthorityDraftSavedEvent(
+            submissionId,
+            applicationId,
+            1L,
+            "draft-fingerprint",
+            PriorAuthorityStatus.IN_PROGRESS.name(),
+            3,
+            occurredAt);
+
+    PriorAuthorityEvolve.apply(state, event);
+
+    assertThat(state.getSubmissionId()).isEqualTo(submissionId);
+    assertThat(state.getApplicationId()).isEqualTo(applicationId);
+    assertThat(state.getDataVersion()).isEqualTo(1L);
+    assertThat(state.getRequestFingerprint()).isEqualTo("draft-fingerprint");
+    assertThat(state.getStatus()).isEqualTo(PriorAuthorityStatus.IN_PROGRESS.name());
+    assertThat(state.getSchemaVersion()).isEqualTo(3);
+  }
 }

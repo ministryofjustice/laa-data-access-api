@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.command.application.priorauthority;
 
 import java.util.Optional;
+import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
@@ -34,5 +35,38 @@ public final class PriorAuthorityDecider {
             PriorAuthorityStatus.PENDING.name(),
             command.schemaVersion(),
             command.occurredAt()));
+  }
+
+  /**
+   * Returns a {@link PriorAuthorityDraftSavedEvent} for the given draft save command, using the
+   * supplied fingerprint, data version and resolved application ID.
+   */
+  public static PriorAuthorityDraftSavedEvent decideSaveDraft(
+      SavePriorAuthorityDraftCommand command,
+      String fingerprint,
+      long dataVersion,
+      UUID applicationId) {
+    return new PriorAuthorityDraftSavedEvent(
+        command.submissionId(),
+        applicationId,
+        dataVersion,
+        fingerprint,
+        PriorAuthorityStatus.IN_PROGRESS.name(),
+        command.schemaVersion(),
+        command.occurredAt());
+  }
+
+  /**
+   * Returns a {@link PriorAuthoritySubmittedEvent} — a thin pointer with no personal data — for the
+   * given submit command, using the current state's application ID and data version.
+   */
+  public static PriorAuthoritySubmittedEvent decideSubmit(
+      SubmitPriorAuthorityDraftCommand command, PriorAuthorityState state) {
+    return new PriorAuthoritySubmittedEvent(
+        command.submissionId(),
+        state.applicationId,
+        state.dataVersion,
+        PriorAuthorityStatus.PENDING.name(),
+        command.occurredAt());
   }
 }
