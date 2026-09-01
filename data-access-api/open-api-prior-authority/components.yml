@@ -7,6 +7,8 @@ components:
         - priorAuthorityId
         - applicationId
         - justification
+        - decision
+        - decisionJustification
       properties:
         priorAuthorityType:
           type: string

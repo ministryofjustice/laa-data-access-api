@@ -4,7 +4,7 @@ paths:
       tags:
         - prior-authorities
       summary: Retrieve a Prior Authority request by priorAuthorityId
-      operationId: getPriorAuthorities
+      operationId: getPriorAuthority
       parameters:
         - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
         - name: priorAuthorityId
