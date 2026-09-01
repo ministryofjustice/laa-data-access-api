@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.query.application.history;
 
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -9,8 +10,6 @@ import org.axonframework.messaging.eventhandling.EventMessage;
 import org.axonframework.messaging.eventhandling.annotation.EventHandler;
 import org.axonframework.messaging.eventhandling.replay.annotation.ResetHandler;
 import org.axonframework.messaging.queryhandling.annotation.QueryHandler;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
@@ -31,8 +30,6 @@ import uk.gov.justice.laa.dstew.access.config.interceptor.ServiceNameMetadataDis
 @Component
 @Namespace("application-history-projection")
 public class ApplicationHistoryProjection {
-
-  private static final Logger LOG = LoggerFactory.getLogger(ApplicationHistoryProjection.class);
 
   private final ApplicationHistoryReadRepository applicationHistoryReadRepository;
   private final ObjectMapper objectMapper;
@@ -230,14 +227,14 @@ public class ApplicationHistoryProjection {
             .applicationId(history.getApplicationId())
             .eventType(history.getEventType())
             .requestPayload(
-                objectMapper.writeValueAsString(java.util.Map.of("noteText", lastNote.noteText())))
+                objectMapper.writeValueAsString(Map.of("noteText", lastNote.noteText())))
             .serviceName(history.getServiceName())
             .occurredAt(history.getOccurredAt())
             .build();
       }
       String description =
           decision ? data.decisionEventDescription() : data.assignmentEventDescription();
-      java.util.Map<String, Object> reconstructedPayload = new java.util.HashMap<>();
+      Map<String, Object> reconstructedPayload = new HashMap<>();
       reconstructedPayload.put("eventDescription", description);
       if (assignment && thinPayload.get("caseworkerId") != null) {
         reconstructedPayload.put("caseworkerId", thinPayload.get("caseworkerId").asString());
