@@ -29,6 +29,7 @@ import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplication
 import uk.gov.justice.laa.dstew.access.command.application.ready.ReadyApplicationResult;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationCommand;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationGroupInvariantException;
@@ -125,12 +126,47 @@ public final class ApplicationDecider {
         command.occurredAt());
   }
 
+  /** Ensures a standalone manual decision is made by its current assignment owner. */
+  public static void validateManualDecisionAssignment(
+      ApplicationState state, MakeApplicationDecisionCommand command) {
+    if (command.expectedApplicationVersion() != state.applicationVersion) {
+      throw new ApplicationVersionConflictException(
+          command.applicationId(), command.expectedApplicationVersion());
+    }
+    if (state.autoGranted != AutoGrantedState.MANUAL) {
+      throw new ApplicationAutoGrantOutcomeConflictException(command.applicationId());
+    }
+    // Deprecated constructors are retained for internal migration compatibility. The HTTP use case
+    // rejects a missing caseworker before this aggregate is dispatched.
+    if (command.caseworkerId() == null) {
+      return;
+    }
+    if (state.overallDecision != null) {
+      throw assignmentConflict(command, "it is not an active manual work item");
+    }
+    if (state.caseworkerId == null) {
+      throw assignmentConflict(command, "it is unassigned");
+    }
+    if (!state.caseworkerId.equals(command.caseworkerId())) {
+      throw assignmentConflict(command, "the supplied caseworker is not its current assignee");
+    }
+  }
+
   /** Validates an ordinary decision, which always records manual assessment. */
   public static ApplicationDecisionMadeEvent decideDecision(
       ApplicationState state,
       MakeApplicationDecisionCommand command,
       ApplicationDataPayload current) {
     return decideDecision(state, command, current, AutoGrantedState.MANUAL);
+  }
+
+  private static WorkItemAssignmentConflictException assignmentConflict(
+      MakeApplicationDecisionCommand command, String reason) {
+    return new WorkItemAssignmentConflictException(
+        new uk.gov.justice.laa.dstew.access.command.worklist.WorkItemId(
+            uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType.APPLICATION,
+            command.applicationId()),
+        reason);
   }
 
   /** Returns an {@link ApplicationAssignedToCaseworkerEvent}. */

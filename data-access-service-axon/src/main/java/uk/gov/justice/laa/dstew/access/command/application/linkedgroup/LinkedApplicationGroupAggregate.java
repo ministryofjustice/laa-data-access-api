@@ -52,6 +52,12 @@ public class LinkedApplicationGroupAggregate {
     eventAppender.append(LinkedApplicationGroupDecider.decideUnassign(state, command));
   }
 
+  /** Validates assignment ownership for a member decision without emitting an event. */
+  @CommandHandler
+  void handle(ValidateLinkedGroupDecisionAssignmentCommand command) {
+    LinkedApplicationGroupDecider.validateDecisionAssignment(state, command);
+  }
+
   @EventSourcingHandler
   void on(LinkedApplicationGroupCreatedEvent event) {
     LinkedApplicationGroupEvolve.apply(state, event);

@@ -266,7 +266,8 @@ components:
         - overallDecision
         - proceedings
         - eventHistory
-        - applicationVersion
+        - expectedApplicationVersion
+        - caseworkerId
       properties:
         overallDecision:
           $ref: "#/components/schemas/DecisionStatus"
@@ -285,10 +286,15 @@ components:
           type: boolean
           default: false
           description: Whether the decision was made by the auto-grant process
-        applicationVersion:
+        expectedApplicationVersion:
           type: integer
           format: int64
-          description: Version of application being decided, used for concurrency control
+          minimum: 0
+          description: Expected version of the application being decided, used for concurrency control
+        caseworkerId:
+          type: string
+          format: uuid
+          description: Caseworker requesting the manual decision; temporary until derived from the authenticated principal
 
     AutoGrantOutcome:
       type: string

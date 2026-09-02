@@ -8,7 +8,7 @@ CREATE TABLE work_item_route (
     route_version BIGINT NOT NULL DEFAULT 0,
     created_at TIMESTAMPTZ NOT NULL,
     updated_at TIMESTAMPTZ NOT NULL,
-    PRIMARY KEY (work_item_type, work_item_id),
+    PRIMARY KEY (work_item_id),
     CONSTRAINT chk_work_item_route_kind CHECK (
         route_kind IN ('STANDALONE', 'PENDING_LINKED_GROUP', 'LINKED_GROUP', 'TRANSITIONING')
     )

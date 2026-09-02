@@ -119,6 +119,23 @@ public final class LinkedApplicationGroupDecider {
         command.occurredAt());
   }
 
+  /** Validates the current group's authority for a selected member's manual decision. */
+  public static void validateDecisionAssignment(
+      LinkedApplicationGroupState state, ValidateLinkedGroupDecisionAssignmentCommand command) {
+    validateMember(
+        state, command.groupId(), command.applicationId(), command.expectedMembershipVersion());
+    if (!state.activeMemberApplicationIds.contains(command.applicationId())) {
+      throw conflict(command.applicationId(), "the linked-group work item is not active");
+    }
+    if (state.caseworkerId == null) {
+      throw conflict(command.applicationId(), "the linked group is unassigned");
+    }
+    if (command.caseworkerId() == null || !state.caseworkerId.equals(command.caseworkerId())) {
+      throw conflict(
+          command.applicationId(), "the supplied caseworker is not the linked group's assignee");
+    }
+  }
+
   private static void validateAssignableMember(
       LinkedApplicationGroupState state,
       java.util.UUID groupId,

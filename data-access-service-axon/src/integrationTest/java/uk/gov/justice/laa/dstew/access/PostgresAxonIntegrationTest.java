@@ -168,7 +168,7 @@ class PostgresAxonIntegrationTest {
             """,
             String.class);
 
-    assertThat(appliedVersions).containsExactly("1", "2", "3", "4", "5", "6", "7", "8", "9");
+    assertThat(appliedVersions).containsExactly("1", "2", "3", "4", "5", "6", "7", "9");
     assertThat(tables)
         .containsExactly(
             "application_current_state",
@@ -466,7 +466,8 @@ class PostgresAxonIntegrationTest {
 
     MakeDecisionRequest request =
         MakeDecisionRequest.builder()
-            .applicationVersion(1L)
+            .expectedApplicationVersion(1L)
+            .caseworkerId(UUID.randomUUID())
             .overallDecision(DecisionStatus.REFUSED)
             .eventHistory(
                 EventHistoryRequest.builder().eventDescription("Decision recorded").build())
@@ -649,7 +650,8 @@ class PostgresAxonIntegrationTest {
             "validUntil", "2027-03-03");
     MakeDecisionRequest request =
         MakeDecisionRequest.builder()
-            .applicationVersion(1L)
+            .expectedApplicationVersion(1L)
+            .caseworkerId(UUID.randomUUID())
             .overallDecision(DecisionStatus.GRANTED)
             .certificate(certificate)
             .eventHistory(
@@ -1269,7 +1271,8 @@ class PostgresAxonIntegrationTest {
     UUID proceedingId = awaitProjection(applicationId).getProceedings().getFirst().getId();
     MakeDecisionRequest request =
         MakeDecisionRequest.builder()
-            .applicationVersion(1L)
+            .expectedApplicationVersion(1L)
+            .caseworkerId(UUID.randomUUID())
             .overallDecision(DecisionStatus.REFUSED)
             .eventHistory(EventHistoryRequest.builder().eventDescription("Concurrent").build())
             .proceedings(
@@ -1510,7 +1513,8 @@ class PostgresAxonIntegrationTest {
 
   private MakeDecisionRequest decisionBody() {
     return MakeDecisionRequest.builder()
-        .applicationVersion(0L)
+        .expectedApplicationVersion(0L)
+        .caseworkerId(UUID.randomUUID())
         .overallDecision(DecisionStatus.REFUSED)
         .autoGranted(false)
         .eventHistory(EventHistoryRequest.builder().eventDescription("decision").build())

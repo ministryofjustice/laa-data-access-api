@@ -42,7 +42,6 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConfli
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConflictException;
-import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 
 /** Event-sourced consistency boundary for an Application and its owned child state. */
@@ -340,13 +339,7 @@ public class ApplicationAggregate {
   }
 
   private void validateManualDecision(MakeApplicationDecisionCommand command) {
-    if (command.expectedApplicationVersion() != state.applicationVersion) {
-      throw new ApplicationVersionConflictException(
-          command.applicationId(), command.expectedApplicationVersion());
-    }
-    if (state.autoGranted != AutoGrantedState.MANUAL) {
-      throw new ApplicationAutoGrantOutcomeConflictException(command.applicationId());
-    }
+    ApplicationDecider.validateManualDecisionAssignment(state, command);
   }
 
   private void validateAutomaticOutcome(
@@ -392,6 +385,7 @@ public class ApplicationAggregate {
             .toList();
     return new MakeApplicationDecisionCommand(
         command.applicationId(),
+        null,
         state.applicationVersion,
         DecisionValue.GRANTED.name(),
         grantedProceedings,

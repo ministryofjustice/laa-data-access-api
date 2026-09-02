@@ -9,14 +9,18 @@ import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 public class MakeApplicationDecisionUseCase {
 
   private final RetryingCommandDispatcher dispatcher;
+  private final AssignmentInvariantService assignmentInvariantService;
 
-  public MakeApplicationDecisionUseCase(RetryingCommandDispatcher dispatcher) {
+  public MakeApplicationDecisionUseCase(
+      RetryingCommandDispatcher dispatcher, AssignmentInvariantService assignmentInvariantService) {
     this.dispatcher = dispatcher;
+    this.assignmentInvariantService = assignmentInvariantService;
   }
 
-  /** Dispatches the command to the application aggregate. */
+  /** Resolves assignment authority before dispatching the command to the application aggregate. */
   @AllowApiCaseworker
   public void execute(MakeApplicationDecisionCommand command) {
+    assignmentInvariantService.validate(command);
     dispatcher.dispatch(command);
   }
 }

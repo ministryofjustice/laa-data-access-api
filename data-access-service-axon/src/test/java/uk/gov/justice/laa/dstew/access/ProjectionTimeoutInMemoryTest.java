@@ -275,7 +275,8 @@ class ProjectionTimeoutInMemoryTest {
     processor.shutdown().join();
     MakeDecisionRequest decisionRequest =
         MakeDecisionRequest.builder()
-            .applicationVersion(1L)
+            .expectedApplicationVersion(1L)
+            .caseworkerId(UUID.randomUUID())
             .overallDecision(DecisionStatus.GRANTED)
             .certificate(
                 Map.of(

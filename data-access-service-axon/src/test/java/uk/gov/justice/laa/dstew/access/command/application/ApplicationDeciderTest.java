@@ -271,6 +271,48 @@ class ApplicationDeciderTest {
         .isInstanceOf(ValidationException.class);
   }
 
+  @Test
+  void
+      givenActiveManualApplicationAssignedToCaller_whenValidatingManualDecision_thenAllowsDecision() {
+    UUID applicationId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+    ApplicationState state = stateAfterCreate(applicationId, "fp", 1);
+    state.autoGranted = AutoGrantedState.MANUAL;
+    state.caseworkerId = caseworkerId;
+
+    ApplicationDecider.validateManualDecisionAssignment(
+        state,
+        new MakeApplicationDecisionCommand(
+            applicationId, caseworkerId, 0L, "REFUSED", List.of(), null, "{}", null, TIMESTAMP));
+  }
+
+  @Test
+  void
+      givenActiveManualApplicationAssignedToAnotherCaseworker_whenValidatingManualDecision_thenConflicts() {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationState state = stateAfterCreate(applicationId, "fp", 1);
+    state.autoGranted = AutoGrantedState.MANUAL;
+    state.caseworkerId = UUID.randomUUID();
+
+    assertThatThrownBy(
+            () ->
+                ApplicationDecider.validateManualDecisionAssignment(
+                    state,
+                    new MakeApplicationDecisionCommand(
+                        applicationId,
+                        UUID.randomUUID(),
+                        0L,
+                        "REFUSED",
+                        List.of(),
+                        null,
+                        "{}",
+                        null,
+                        TIMESTAMP)))
+        .isInstanceOf(
+            uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException
+                .class);
+  }
+
   // ── decideAssign ───────────────────────────────────────────────────────────────
 
   @Test

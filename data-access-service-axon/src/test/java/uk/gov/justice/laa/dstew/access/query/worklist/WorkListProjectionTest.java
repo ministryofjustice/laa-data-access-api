@@ -2,6 +2,8 @@ package uk.gov.justice.laa.dstew.access.query.worklist;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -180,13 +182,18 @@ class WorkListProjectionTest {
   }
 
   @Test
-  void givenFinalApplicationDecision_whenHandled_thenDeletesOnlyItsApplicationWorkItem() {
+  void
+      givenFinalApplicationDecision_whenReplayed_thenDeletesOnlyItsApplicationWorkItemIdempotently() {
     UUID applicationId = UUID.randomUUID();
+    ApplicationDecisionMadeEvent event =
+        new ApplicationDecisionMadeEvent(applicationId, 2L, 3L, "REFUSED", null, Instant.now());
 
-    projection.on(
-        new ApplicationDecisionMadeEvent(applicationId, 2L, 3L, "REFUSED", null, Instant.now()));
+    projection.on(event);
+    projection.on(event);
 
-    verify(items).deleteByIdItemTypeAndIdItemId(WorkItemType.APPLICATION, applicationId);
+    verify(items, times(2)).deleteByIdItemTypeAndIdItemId(WorkItemType.APPLICATION, applicationId);
+    verify(items, never())
+        .deleteByIdItemTypeAndIdItemId(WorkItemType.PRIOR_AUTHORITY, applicationId);
   }
 
   @Test
