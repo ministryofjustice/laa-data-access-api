@@ -98,7 +98,10 @@ class PriorAuthorityDraftIntegrationTest {
 
     ResponseEntity<String> draftResponse =
         restTemplate.exchange(
-            draftUrl(submissionId), HttpMethod.GET, new HttpEntity<>(headers()), String.class);
+            priorAuthorityUrl(submissionId),
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            String.class);
     assertThat(draftResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
     PriorAuthorityResponse draft =
         objectMapper.readValue(draftResponse.getBody(), PriorAuthorityResponse.class);
@@ -179,7 +182,10 @@ class PriorAuthorityDraftIntegrationTest {
 
     ResponseEntity<String> draftResponse =
         restTemplate.exchange(
-            draftUrl(submissionId), HttpMethod.GET, new HttpEntity<>(headers()), String.class);
+            priorAuthorityUrl(submissionId),
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            String.class);
     PriorAuthorityResponse draft =
         objectMapper.readValue(draftResponse.getBody(), PriorAuthorityResponse.class);
     assertThat(draft.getJustification()).isEqualTo("Updated justification");
@@ -285,12 +291,12 @@ class PriorAuthorityDraftIntegrationTest {
   }
 
   @Test
-  void givenNoDraft_whenGetPriorAuthorityDraft_thenReturnsNotFound() {
+  void givenNoDraft_whenGetPriorAuthority_thenReturnsNotFound() {
     UUID nonexistentSubmissionId = UUID.randomUUID();
 
     ResponseEntity<String> response =
         restTemplate.exchange(
-            draftUrl(nonexistentSubmissionId),
+            priorAuthorityUrl(nonexistentSubmissionId),
             HttpMethod.GET,
             new HttpEntity<>(headers()),
             String.class);
@@ -402,10 +408,6 @@ class PriorAuthorityDraftIntegrationTest {
 
   private String submitUrl(UUID submissionId) {
     return priorAuthorityUrl(submissionId) + "/submit";
-  }
-
-  private String draftUrl(UUID submissionId) {
-    return priorAuthorityUrl(submissionId) + "/draft";
   }
 
   private HttpHeaders headers() {

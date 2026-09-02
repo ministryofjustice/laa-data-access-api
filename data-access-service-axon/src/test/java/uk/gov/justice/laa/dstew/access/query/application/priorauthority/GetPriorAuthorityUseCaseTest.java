@@ -3,12 +3,14 @@ package uk.gov.justice.laa.dstew.access.query.application.priorauthority;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
@@ -20,6 +22,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.CounselDetails;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.DisbursementDetails;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.ExpertCosts;
@@ -33,14 +36,16 @@ import uk.gov.justice.laa.dstew.access.query.application.priorauthority.model.Pr
 class GetPriorAuthorityUseCaseTest {
 
   private PriorAuthorityDataStore dataStore;
+  private PriorAuthorityDraftStore draftStore;
   private QueryGateway queryGateway;
   private GetPriorAuthorityUseCase useCase;
 
   @BeforeEach
   void setUp() {
     dataStore = org.mockito.Mockito.mock(PriorAuthorityDataStore.class);
+    draftStore = org.mockito.Mockito.mock(PriorAuthorityDraftStore.class);
     queryGateway = org.mockito.Mockito.mock(QueryGateway.class);
-    useCase = new GetPriorAuthorityUseCase(dataStore, queryGateway);
+    useCase = new GetPriorAuthorityUseCase(dataStore, draftStore, queryGateway);
   }
 
   @Test
@@ -210,10 +215,46 @@ class GetPriorAuthorityUseCaseTest {
     when(queryGateway.query(
             any(FindPriorAuthorityBySubmissionIdQuery.class), eq(PriorAuthorityReadModel.class)))
         .thenReturn(CompletableFuture.completedFuture(null));
+    when(draftStore.find(submissionId)).thenReturn(Optional.empty());
 
     assertThatExceptionOfType(ResourceNotFoundException.class)
         .isThrownBy(() -> useCase.getPriorAuthority(submissionId))
         .withMessage("No prior authority found with ID: " + submissionId);
+  }
+
+  @Test
+  void givenInProgressDraft_whenRetrieved_thenFallsBackToDraftStoreWithInProgressStatus() {
+    UUID submissionId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    PriorAuthorityContent content =
+        new PriorAuthorityContent(
+            "EXPERT",
+            "Expert is required",
+            new ExpertDetails("PSYCHIATRIST", "Jane Doe", "AB1 2CD", null),
+            null,
+            null);
+    when(queryGateway.query(
+            any(FindPriorAuthorityBySubmissionIdQuery.class), eq(PriorAuthorityReadModel.class)))
+        .thenReturn(CompletableFuture.completedFuture(null));
+    when(draftStore.find(submissionId))
+        .thenReturn(
+            Optional.of(
+                new PriorAuthorityDataPayload(
+                    submissionId,
+                    applicationId,
+                    content,
+                    "{}",
+                    Instant.parse("2026-08-26T10:00:00Z"))));
+
+    PriorAuthorityResult result = useCase.getPriorAuthority(submissionId);
+
+    assertThat(result.priorAuthorityId()).isEqualTo(submissionId);
+    assertThat(result.applicationId()).isEqualTo(applicationId);
+    assertThat(result.status()).isEqualTo("IN_PROGRESS");
+    assertThat(result.priorAuthorityType()).isEqualTo(PriorAuthorityType.EXPERT);
+    assertThat(result.expertDetails()).isNotNull();
+    assertThat(result.expertDetails().expertFullName()).isEqualTo("Jane Doe");
+    verify(dataStore, org.mockito.Mockito.never()).get(any(), anyLong());
   }
 
   @Test
