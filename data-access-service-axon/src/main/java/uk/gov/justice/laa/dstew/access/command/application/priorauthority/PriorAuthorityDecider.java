@@ -38,18 +38,29 @@ public final class PriorAuthorityDecider {
   }
 
   /**
-   * Returns a {@link PriorAuthorityDraftSavedEvent} for the given draft save command, using the
-   * supplied fingerprint, data version and resolved application ID.
+   * Returns a {@link PriorAuthorityDraftStartedEvent} for the first save of a new draft, using the
+   * supplied fingerprint and resolved application ID.
+   */
+  public static PriorAuthorityDraftStartedEvent decideStartDraft(
+      SavePriorAuthorityDraftCommand command, String fingerprint, UUID applicationId) {
+    return new PriorAuthorityDraftStartedEvent(
+        command.submissionId(),
+        applicationId,
+        fingerprint,
+        PriorAuthorityStatus.IN_PROGRESS.name(),
+        command.schemaVersion(),
+        command.occurredAt());
+  }
+
+  /**
+   * Returns a {@link PriorAuthorityDraftSavedEvent} for an update to an existing draft, using the
+   * supplied fingerprint and resolved application ID.
    */
   public static PriorAuthorityDraftSavedEvent decideSaveDraft(
-      SavePriorAuthorityDraftCommand command,
-      String fingerprint,
-      long dataVersion,
-      UUID applicationId) {
+      SavePriorAuthorityDraftCommand command, String fingerprint, UUID applicationId) {
     return new PriorAuthorityDraftSavedEvent(
         command.submissionId(),
         applicationId,
-        dataVersion,
         fingerprint,
         PriorAuthorityStatus.IN_PROGRESS.name(),
         command.schemaVersion(),
@@ -58,14 +69,15 @@ public final class PriorAuthorityDecider {
 
   /**
    * Returns a {@link PriorAuthoritySubmittedEvent} — a thin pointer with no personal data — for the
-   * given submit command, using the current state's application ID and data version.
+   * given submit command. The submitted content is always appended as version 0 of {@code
+   * prior_authority_data}, since a submission's draft content is not itself versioned.
    */
   public static PriorAuthoritySubmittedEvent decideSubmit(
       SubmitPriorAuthorityDraftCommand command, PriorAuthorityState state) {
     return new PriorAuthoritySubmittedEvent(
         command.submissionId(),
         state.applicationId,
-        state.dataVersion,
+        0L,
         PriorAuthorityStatus.PENDING.name(),
         command.occurredAt());
   }

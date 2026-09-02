@@ -9,6 +9,7 @@ import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityNotInProgressException;
 import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
@@ -61,12 +62,11 @@ public class PriorAuthorityAggregate {
   @CommandHandler
   void handle(
       SavePriorAuthorityDraftCommand command,
-      PriorAuthorityDataStore dataStore,
+      PriorAuthorityDraftStore draftStore,
       EventAppender eventAppender) {
     if (PriorAuthorityStatus.PENDING.name().equals(state.status)) {
       throw new PriorAuthorityNotInProgressException(command.submissionId());
     }
-    long nextVersion = this.submissionId == null ? 0L : state.dataVersion + 1;
     UUID applicationId =
         command.applicationId() != null ? command.applicationId() : state.applicationId;
     PriorAuthorityDataPayload payload =
@@ -77,33 +77,52 @@ public class PriorAuthorityAggregate {
             command.serialisedRequest(),
             command.occurredAt());
     String fingerprint =
-        dataStore.append(
+        draftStore.upsert(
             command.submissionId(),
-            nextVersion,
             applicationId,
             payload,
             command.serialisedRequest(),
             command.occurredAt());
-    eventAppender.append(
-        PriorAuthorityDecider.decideSaveDraft(command, fingerprint, nextVersion, applicationId));
+    if (this.submissionId == null) {
+      eventAppender.append(
+          PriorAuthorityDecider.decideStartDraft(command, fingerprint, applicationId));
+    } else {
+      eventAppender.append(
+          PriorAuthorityDecider.decideSaveDraft(command, fingerprint, applicationId));
+    }
   }
 
   @CommandHandler
   void handle(
       SubmitPriorAuthorityDraftCommand command,
+      PriorAuthorityDraftStore draftStore,
       PriorAuthorityDataStore dataStore,
       JsonSchemaValidator jsonSchemaValidator,
       EventAppender eventAppender) {
     if (!PriorAuthorityStatus.IN_PROGRESS.name().equals(state.status)) {
       throw new PriorAuthorityNotInProgressException(command.submissionId());
     }
-    PriorAuthorityDataPayload payload = dataStore.get(command.submissionId(), state.dataVersion);
+    PriorAuthorityDataPayload payload = draftStore.get(command.submissionId());
     jsonSchemaValidator.validate(payload.content(), "PriorAuthority.json", state.schemaVersion);
+    dataStore.append(
+        command.submissionId(),
+        0L,
+        state.applicationId,
+        payload,
+        payload.serialisedRequest(),
+        command.occurredAt());
     eventAppender.append(PriorAuthorityDecider.decideSubmit(command, state));
+    draftStore.delete(command.submissionId());
   }
 
   @EventSourcingHandler
   void on(PriorAuthorityCreatedEvent event) {
+    PriorAuthorityEvolve.apply(state, event);
+    this.submissionId = state.submissionId;
+  }
+
+  @EventSourcingHandler
+  void on(PriorAuthorityDraftStartedEvent event) {
     PriorAuthorityEvolve.apply(state, event);
     this.submissionId = state.submissionId;
   }

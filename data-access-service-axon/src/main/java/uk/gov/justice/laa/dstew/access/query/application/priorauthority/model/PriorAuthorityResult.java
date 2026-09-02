@@ -1,7 +1,9 @@
 package uk.gov.justice.laa.dstew.access.query.application.priorauthority.model;
 
 import java.util.UUID;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
 
 /** Typed result of retrieving a prior-authority submission. */
@@ -18,12 +20,33 @@ public record PriorAuthorityResult(
   /** Builds the use-case result from the current-state projection and versioned content. */
   public static PriorAuthorityResult from(
       PriorAuthorityReadModel priorAuthority, PriorAuthorityContent content) {
-    PriorAuthorityType priorAuthorityType = PriorAuthorityType.from(content.priorAuthorityType());
-    return new PriorAuthorityResult(
+    return build(
         priorAuthority.getSubmissionId(),
         priorAuthority.getApplicationId(),
-        content.justification(),
         priorAuthority.getStatus(),
+        content);
+  }
+
+  /**
+   * Builds the use-case result for an in-progress draft, whose content may be partial since it has
+   * not yet been schema-validated.
+   */
+  public static PriorAuthorityResult fromDraft(PriorAuthorityDataPayload payload) {
+    return build(
+        payload.submissionId(),
+        payload.applicationId(),
+        PriorAuthorityStatus.IN_PROGRESS.name(),
+        payload.content());
+  }
+
+  private static PriorAuthorityResult build(
+      UUID priorAuthorityId, UUID applicationId, String status, PriorAuthorityContent content) {
+    PriorAuthorityType priorAuthorityType = PriorAuthorityType.from(content.priorAuthorityType());
+    return new PriorAuthorityResult(
+        priorAuthorityId,
+        applicationId,
+        content.justification(),
+        status,
         priorAuthorityType,
         priorAuthorityType == PriorAuthorityType.EXPERT ? toExpertDetails(content) : null,
         priorAuthorityType == PriorAuthorityType.COUNSEL ? toCounselDetails(content) : null,

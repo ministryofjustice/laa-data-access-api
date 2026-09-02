@@ -133,17 +133,16 @@ class PriorAuthorityProjectionTest {
   }
 
   @Test
-  void givenDraftSavedEvent_whenNoExistingRow_thenCreatesNewRowAndEmits() {
+  void givenSubmittedEvent_whenHandled_thenCreatesRowAndEmits() {
     UUID submissionId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-19T10:00:00Z");
-    uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDraftSavedEvent
+    uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent
         event =
             new uk.gov.justice.laa.dstew.access.command.application.priorauthority
-                .PriorAuthorityDraftSavedEvent(
-                submissionId, applicationId, 0L, "fp", "IN_PROGRESS", 1, occurredAt);
+                .PriorAuthoritySubmittedEvent(
+                submissionId, applicationId, 0L, "PENDING", occurredAt);
 
-    when(repository.findById(submissionId)).thenReturn(Optional.empty());
     when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
     projection.on(event, queryUpdateEmitter);
@@ -156,27 +155,15 @@ class PriorAuthorityProjectionTest {
   }
 
   @Test
-  void givenDraftSavedEvent_whenExistingRow_thenUpdatesVersionAndStatusAndEmits() {
+  void givenSubmittedEvent_whenHandled_thenSavesExactFields() {
     UUID submissionId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-19T10:00:00Z");
-    PriorAuthorityReadModel existing =
-        PriorAuthorityReadModel.builder()
-            .submissionId(submissionId)
-            .applicationId(applicationId)
-            .dataVersion(0L)
-            .status("IN_PROGRESS")
-            .createdAt(occurredAt)
-            .build();
-    uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDraftSavedEvent
+    uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent
         event =
             new uk.gov.justice.laa.dstew.access.command.application.priorauthority
-                .PriorAuthorityDraftSavedEvent(
-                submissionId, applicationId, 1L, "fp2", "IN_PROGRESS", 1, occurredAt);
-
-    when(repository.findById(submissionId)).thenReturn(Optional.of(existing));
-    when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
-
+                .PriorAuthoritySubmittedEvent(
+                submissionId, applicationId, 0L, "PENDING", occurredAt);
     PriorAuthorityReadModel[] savedCapture = new PriorAuthorityReadModel[1];
     when(repository.save(any()))
         .thenAnswer(
@@ -187,7 +174,10 @@ class PriorAuthorityProjectionTest {
 
     projection.on(event, queryUpdateEmitter);
 
-    assertThat(savedCapture[0].getDataVersion()).isEqualTo(1L);
+    assertThat(savedCapture[0].getSubmissionId()).isEqualTo(submissionId);
+    assertThat(savedCapture[0].getApplicationId()).isEqualTo(applicationId);
+    assertThat(savedCapture[0].getDataVersion()).isEqualTo(0L);
+    assertThat(savedCapture[0].getStatus()).isEqualTo("PENDING");
     assertThat(savedCapture[0].getCreatedAt()).isEqualTo(occurredAt);
   }
 }

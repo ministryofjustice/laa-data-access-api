@@ -101,7 +101,7 @@ class PriorAuthorityDeciderTest {
   }
 
   @Test
-  void givenCommand_whenDecideSaveDraft_thenReturnsEventWithInProgressStatus() {
+  void givenCommand_whenDecideStartDraft_thenReturnsEventWithInProgressStatus() {
     UUID submissionId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     SavePriorAuthorityDraftCommand command =
@@ -115,12 +115,11 @@ class PriorAuthorityDeciderTest {
             OCCURRED_AT);
     String fingerprint = "draft-fingerprint";
 
-    PriorAuthorityDraftSavedEvent event =
-        PriorAuthorityDecider.decideSaveDraft(command, fingerprint, 0L, applicationId);
+    PriorAuthorityDraftStartedEvent event =
+        PriorAuthorityDecider.decideStartDraft(command, fingerprint, applicationId);
 
     assertThat(event.submissionId()).isEqualTo(submissionId);
     assertThat(event.applicationId()).isEqualTo(applicationId);
-    assertThat(event.dataVersion()).isEqualTo(0L);
     assertThat(event.requestFingerprint()).isEqualTo(fingerprint);
     assertThat(event.status()).isEqualTo(PriorAuthorityStatus.IN_PROGRESS.name());
     assertThat(event.schemaVersion()).isEqualTo(1);
@@ -128,7 +127,7 @@ class PriorAuthorityDeciderTest {
   }
 
   @Test
-  void givenUpdateCommand_whenDecideSaveDraft_thenUsesSuppliedVersionAndApplicationId() {
+  void givenUpdateCommand_whenDecideSaveDraft_thenUsesResolvedApplicationId() {
     UUID submissionId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     SavePriorAuthorityDraftCommand command =
@@ -143,10 +142,27 @@ class PriorAuthorityDeciderTest {
     String fingerprint = "updated-fingerprint";
 
     PriorAuthorityDraftSavedEvent event =
-        PriorAuthorityDecider.decideSaveDraft(command, fingerprint, 3L, applicationId);
+        PriorAuthorityDecider.decideSaveDraft(command, fingerprint, applicationId);
 
-    assertThat(event.dataVersion()).isEqualTo(3L);
     assertThat(event.applicationId()).isEqualTo(applicationId);
+    assertThat(event.requestFingerprint()).isEqualTo(fingerprint);
     assertThat(event.status()).isEqualTo(PriorAuthorityStatus.IN_PROGRESS.name());
+  }
+
+  @Test
+  void givenSubmitCommand_whenDecideSubmit_thenAlwaysUsesDataVersionZero() {
+    UUID submissionId = UUID.randomUUID();
+    PriorAuthorityState state = new PriorAuthorityState();
+    state.applicationId = UUID.randomUUID();
+    SubmitPriorAuthorityDraftCommand command =
+        new SubmitPriorAuthorityDraftCommand(submissionId, OCCURRED_AT);
+
+    PriorAuthoritySubmittedEvent event = PriorAuthorityDecider.decideSubmit(command, state);
+
+    assertThat(event.submissionId()).isEqualTo(submissionId);
+    assertThat(event.applicationId()).isEqualTo(state.applicationId);
+    assertThat(event.dataVersion()).isEqualTo(0L);
+    assertThat(event.status()).isEqualTo(PriorAuthorityStatus.PENDING.name());
+    assertThat(event.occurredAt()).isEqualTo(OCCURRED_AT);
   }
 }

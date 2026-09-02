@@ -45,6 +45,8 @@ paths:
     $ref: "./open-api-prior-authority/resources.yml#/paths/~1api~1v0~1prior-authorities~1{priorAuthorityId}"
   /api/v0/prior-authorities/{priorAuthorityId}/submit:
     $ref: "./open-api-prior-authority/resources.yml#/paths/~1api~1v0~1prior-authorities~1{priorAuthorityId}~1submit"
+  /api/v0/prior-authorities/{priorAuthorityId}/draft:
+    $ref: "./open-api-prior-authority/resources.yml#/paths/~1api~1v0~1prior-authorities~1{priorAuthorityId}~1draft"
   /api/v0/sds/health:
     $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1sds~1health"
 

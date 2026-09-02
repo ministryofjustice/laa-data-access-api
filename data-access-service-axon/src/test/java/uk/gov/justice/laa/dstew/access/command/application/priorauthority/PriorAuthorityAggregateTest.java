@@ -20,20 +20,27 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
+import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityNotInProgressException;
 import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
+import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
 
 /** Integration tests for {@link PriorAuthorityAggregate} using the Axon test fixture. */
 class PriorAuthorityAggregateTest {
 
   private AxonTestFixture fixture;
   private PriorAuthorityDataStore dataStore;
+  private PriorAuthorityDraftStore draftStore;
+  private JsonSchemaValidator jsonSchemaValidator;
 
   @BeforeEach
   void setUp() {
     dataStore = mock(PriorAuthorityDataStore.class);
+    draftStore = mock(PriorAuthorityDraftStore.class);
+    jsonSchemaValidator = mock(JsonSchemaValidator.class);
     fixture =
         AxonTestFixture.with(
             EventSourcingConfigurer.create()
@@ -42,8 +49,13 @@ class PriorAuthorityAggregateTest {
                         UUID.class, PriorAuthorityAggregate.class))
                 .componentRegistry(
                     registry ->
-                        registry.registerComponent(
-                            PriorAuthorityDataStore.class, configuration -> dataStore)));
+                        registry
+                            .registerComponent(
+                                PriorAuthorityDataStore.class, configuration -> dataStore)
+                            .registerComponent(
+                                PriorAuthorityDraftStore.class, configuration -> draftStore)
+                            .registerComponent(
+                                JsonSchemaValidator.class, configuration -> jsonSchemaValidator)));
   }
 
   @Test
@@ -183,7 +195,7 @@ class PriorAuthorityAggregateTest {
   }
 
   @Test
-  void givenNewAggregate_whenSaveDraft_thenPersistsVersion0AndEmitsDraftSavedEvent() {
+  void givenNewAggregate_whenSaveDraft_thenWritesDraftAndEmitsDraftStartedEvent() {
     UUID submissionId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
@@ -191,13 +203,8 @@ class PriorAuthorityAggregateTest {
     String serialisedRequest = "{}";
     String fingerprint = PayloadFingerprint.compute(serialisedRequest);
 
-    when(dataStore.append(
-            eq(submissionId),
-            eq(0L),
-            eq(applicationId),
-            any(),
-            eq(serialisedRequest),
-            eq(occurredAt)))
+    when(draftStore.upsert(
+            eq(submissionId), eq(applicationId), any(), eq(serialisedRequest), eq(occurredAt)))
         .thenReturn(fingerprint);
 
     SavePriorAuthorityDraftCommand command =
@@ -217,10 +224,9 @@ class PriorAuthorityAggregateTest {
         .command(command)
         .then()
         .events(
-            new PriorAuthorityDraftSavedEvent(
+            new PriorAuthorityDraftStartedEvent(
                 submissionId,
                 applicationId,
-                0L,
                 fingerprint,
                 PriorAuthorityStatus.IN_PROGRESS.name(),
                 1,
@@ -228,10 +234,9 @@ class PriorAuthorityAggregateTest {
 
     ArgumentCaptor<PriorAuthorityDataPayload> payloadCaptor =
         ArgumentCaptor.forClass(PriorAuthorityDataPayload.class);
-    verify(dataStore)
-        .append(
+    verify(draftStore)
+        .upsert(
             eq(submissionId),
-            eq(0L),
             eq(applicationId),
             payloadCaptor.capture(),
             eq(serialisedRequest),
@@ -242,7 +247,7 @@ class PriorAuthorityAggregateTest {
   }
 
   @Test
-  void givenExistingDraftAggregate_whenSaveDraft_thenIncrementsVersionAndEmitsDraftSavedEvent() {
+  void givenExistingDraftAggregate_whenSaveDraft_thenEmitsDraftSavedEvent() {
     UUID submissionId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
@@ -251,18 +256,17 @@ class PriorAuthorityAggregateTest {
     String secondRequest = "{\"justification\":\"need expert\"}";
     String secondFingerprint = PayloadFingerprint.compute(secondRequest);
 
-    PriorAuthorityDraftSavedEvent existingEvent =
-        new PriorAuthorityDraftSavedEvent(
+    PriorAuthorityDraftStartedEvent existingEvent =
+        new PriorAuthorityDraftStartedEvent(
             submissionId,
             applicationId,
-            0L,
             firstFingerprint,
             PriorAuthorityStatus.IN_PROGRESS.name(),
             1,
             occurredAt);
 
-    when(dataStore.append(
-            eq(submissionId), eq(1L), eq(applicationId), any(), eq(secondRequest), eq(occurredAt)))
+    when(draftStore.upsert(
+            eq(submissionId), eq(applicationId), any(), eq(secondRequest), eq(occurredAt)))
         .thenReturn(secondFingerprint);
 
     SavePriorAuthorityDraftCommand command =
@@ -285,10 +289,107 @@ class PriorAuthorityAggregateTest {
             new PriorAuthorityDraftSavedEvent(
                 submissionId,
                 applicationId,
-                1L,
                 secondFingerprint,
                 PriorAuthorityStatus.IN_PROGRESS.name(),
                 1,
                 occurredAt));
+  }
+
+  @Test
+  void givenDraftInProgress_whenSubmit_thenAppendsVersion0AndEmitsSubmittedEventAndDeletesDraft() {
+    UUID submissionId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant startedAt = Instant.parse("2026-08-01T10:00:00Z");
+    Instant submittedAt = Instant.parse("2026-08-02T10:00:00Z");
+    String serialisedRequest = "{\"priorAuthorityType\":\"EXPERT\"}";
+    String fingerprint = PayloadFingerprint.compute(serialisedRequest);
+    PriorAuthorityContent content = new PriorAuthorityContent("EXPERT", null, null, null, null);
+    PriorAuthorityDataPayload draftPayload =
+        new PriorAuthorityDataPayload(
+            submissionId, applicationId, content, serialisedRequest, startedAt);
+
+    PriorAuthorityDraftStartedEvent existingEvent =
+        new PriorAuthorityDraftStartedEvent(
+            submissionId,
+            applicationId,
+            fingerprint,
+            PriorAuthorityStatus.IN_PROGRESS.name(),
+            1,
+            startedAt);
+
+    when(draftStore.get(submissionId)).thenReturn(draftPayload);
+
+    SubmitPriorAuthorityDraftCommand command =
+        new SubmitPriorAuthorityDraftCommand(submissionId, submittedAt);
+
+    fixture
+        .given()
+        .events(existingEvent)
+        .when()
+        .command(command)
+        .then()
+        .events(
+            new PriorAuthoritySubmittedEvent(
+                submissionId, applicationId, 0L, PriorAuthorityStatus.PENDING.name(), submittedAt));
+
+    verify(jsonSchemaValidator).validate(content, "PriorAuthority.json", 1);
+    verify(dataStore)
+        .append(submissionId, 0L, applicationId, draftPayload, serialisedRequest, submittedAt);
+    verify(draftStore).delete(submissionId);
+  }
+
+  @Test
+  void givenPendingSubmission_whenSaveDraft_thenThrowsNotInProgress() {
+    UUID submissionId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
+    String serialisedRequest = "{\"priorAuthorityType\":\"EXPERT\"}";
+    String fingerprint = PayloadFingerprint.compute(serialisedRequest);
+
+    PriorAuthorityCreatedEvent existingEvent =
+        new PriorAuthorityCreatedEvent(
+            submissionId,
+            applicationId,
+            0L,
+            fingerprint,
+            PriorAuthorityStatus.PENDING.name(),
+            1,
+            occurredAt);
+
+    SavePriorAuthorityDraftCommand command =
+        new SavePriorAuthorityDraftCommand(
+            submissionId,
+            null,
+            new PriorAuthorityContent(null, null, null, null, null),
+            "{}",
+            1,
+            "PriorAuthority.json",
+            occurredAt);
+
+    fixture
+        .given()
+        .events(existingEvent)
+        .when()
+        .command(command)
+        .then()
+        .exception(PriorAuthorityNotInProgressException.class)
+        .noEvents();
+  }
+
+  @Test
+  void givenNoDraftInProgress_whenSubmit_thenThrowsNotInProgress() {
+    UUID submissionId = UUID.randomUUID();
+
+    SubmitPriorAuthorityDraftCommand command =
+        new SubmitPriorAuthorityDraftCommand(submissionId, Instant.now());
+
+    fixture
+        .given()
+        .noPriorActivity()
+        .when()
+        .command(command)
+        .then()
+        .exception(PriorAuthorityNotInProgressException.class)
+        .noEvents();
   }
 }

@@ -5,9 +5,9 @@ import java.util.UUID;
 import org.axonframework.eventsourcing.annotation.EventTag;
 import org.axonframework.messaging.eventhandling.annotation.Event;
 
-/** Event produced when an existing Prior Authority draft is updated. */
+/** Event produced when a Prior Authority draft is first created. */
 @Event
-public record PriorAuthorityDraftSavedEvent(
+public record PriorAuthorityDraftStartedEvent(
     @EventTag(key = "PriorAuthorityAggregate") UUID submissionId,
     UUID applicationId,
     String requestFingerprint,

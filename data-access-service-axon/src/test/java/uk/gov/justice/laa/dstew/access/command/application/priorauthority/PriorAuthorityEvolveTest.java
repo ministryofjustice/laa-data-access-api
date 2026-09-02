@@ -37,16 +37,15 @@ class PriorAuthorityEvolveTest {
   }
 
   @Test
-  void givenDraftSavedEvent_whenApply_thenMutatesAllSixStateFields() {
+  void givenDraftStartedEvent_whenApply_thenMutatesStateFields() {
     PriorAuthorityState state = new PriorAuthorityState();
     UUID submissionId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
-    PriorAuthorityDraftSavedEvent event =
-        new PriorAuthorityDraftSavedEvent(
+    PriorAuthorityDraftStartedEvent event =
+        new PriorAuthorityDraftStartedEvent(
             submissionId,
             applicationId,
-            1L,
             "draft-fingerprint",
             PriorAuthorityStatus.IN_PROGRESS.name(),
             3,
@@ -56,9 +55,50 @@ class PriorAuthorityEvolveTest {
 
     assertThat(state.getSubmissionId()).isEqualTo(submissionId);
     assertThat(state.getApplicationId()).isEqualTo(applicationId);
-    assertThat(state.getDataVersion()).isEqualTo(1L);
     assertThat(state.getRequestFingerprint()).isEqualTo("draft-fingerprint");
     assertThat(state.getStatus()).isEqualTo(PriorAuthorityStatus.IN_PROGRESS.name());
     assertThat(state.getSchemaVersion()).isEqualTo(3);
+  }
+
+  @Test
+  void givenDraftSavedEvent_whenApply_thenMutatesStateFields() {
+    PriorAuthorityState state = new PriorAuthorityState();
+    UUID submissionId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
+    PriorAuthorityDraftSavedEvent event =
+        new PriorAuthorityDraftSavedEvent(
+            submissionId,
+            applicationId,
+            "draft-fingerprint",
+            PriorAuthorityStatus.IN_PROGRESS.name(),
+            3,
+            occurredAt);
+
+    PriorAuthorityEvolve.apply(state, event);
+
+    assertThat(state.getSubmissionId()).isEqualTo(submissionId);
+    assertThat(state.getApplicationId()).isEqualTo(applicationId);
+    assertThat(state.getRequestFingerprint()).isEqualTo("draft-fingerprint");
+    assertThat(state.getStatus()).isEqualTo(PriorAuthorityStatus.IN_PROGRESS.name());
+    assertThat(state.getSchemaVersion()).isEqualTo(3);
+  }
+
+  @Test
+  void givenSubmittedEvent_whenApply_thenMutatesStateFields() {
+    PriorAuthorityState state = new PriorAuthorityState();
+    UUID submissionId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
+    PriorAuthoritySubmittedEvent event =
+        new PriorAuthoritySubmittedEvent(
+            submissionId, applicationId, 0L, PriorAuthorityStatus.PENDING.name(), occurredAt);
+
+    PriorAuthorityEvolve.apply(state, event);
+
+    assertThat(state.getSubmissionId()).isEqualTo(submissionId);
+    assertThat(state.getApplicationId()).isEqualTo(applicationId);
+    assertThat(state.getDataVersion()).isEqualTo(0L);
+    assertThat(state.getStatus()).isEqualTo(PriorAuthorityStatus.PENDING.name());
   }
 }
