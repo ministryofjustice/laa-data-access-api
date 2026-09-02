@@ -139,7 +139,7 @@ class ApplicationHistoryProjectionTest {
         projection.handle(
             new FindApplicationHistoryQuery(applicationId, List.of("APPLICATION_CREATED")));
 
-    assertThat(result.applicationEvents()).containsExactly(created);
+    assertThat(result.applicationHistoryEvents()).containsExactly(created);
   }
 
   @Test
@@ -167,7 +167,7 @@ class ApplicationHistoryProjectionTest {
             new FindApplicationHistoryQuery(
                 applicationId, List.of("ASSIGN_APPLICATION_TO_CASEWORKER")));
 
-    assertThat(result.applicationEvents())
+    assertThat(result.applicationHistoryEvents())
         .singleElement()
         .satisfies(
             history -> {
@@ -208,7 +208,8 @@ class ApplicationHistoryProjectionTest {
             new FindApplicationHistoryQuery(
                 applicationId, List.of("UNASSIGN_APPLICATION_TO_CASEWORKER")));
 
-    var payload = objectMapper.readTree(result.applicationEvents().getFirst().getRequestPayload());
+    var payload =
+        objectMapper.readTree(result.applicationHistoryEvents().getFirst().getRequestPayload());
     assertThat(payload.get("eventDescription").asString()).isEqualTo("Returned to queue");
     assertThat(payload.get("caseworkerId")).isNull();
   }
@@ -239,7 +240,8 @@ class ApplicationHistoryProjectionTest {
             new FindApplicationHistoryQuery(
                 applicationId, List.of("APPLICATION_MAKE_DECISION_GRANTED")));
 
-    var payload = objectMapper.readTree(result.applicationEvents().getFirst().getRequestPayload());
+    var payload =
+        objectMapper.readTree(result.applicationHistoryEvents().getFirst().getRequestPayload());
     assertThat(payload.get("eventDescription").asString()).isEqualTo("Decision recorded");
   }
 
@@ -280,7 +282,8 @@ class ApplicationHistoryProjectionTest {
         projection.handle(
             new FindApplicationHistoryQuery(applicationId, List.of("APPLICATION_NOTE_CREATED")));
 
-    var payload = objectMapper.readTree(result.applicationEvents().getFirst().getRequestPayload());
+    var payload =
+        objectMapper.readTree(result.applicationHistoryEvents().getFirst().getRequestPayload());
     assertThat(payload.get("noteText").asString()).isEqualTo("My note text");
   }
 
@@ -326,8 +329,8 @@ class ApplicationHistoryProjectionTest {
         projection.handle(
             new FindApplicationHistoryQuery(applicationId, List.of("APPLICATION_CREATED")));
 
-    assertThat(result.applicationEvents()).hasSize(1);
-    assertThat(result.priorAuthorities())
+    assertThat(result.applicationHistoryEvents()).hasSize(1);
+    assertThat(result.priorAuthorityHistoryGroups())
         .singleElement()
         .satisfies(
             group -> {
@@ -352,8 +355,8 @@ class ApplicationHistoryProjectionTest {
         projection.handle(
             new FindApplicationHistoryQuery(applicationId, List.of("APPLICATION_CREATED")));
 
-    assertThat(result.applicationEvents()).isEmpty();
-    assertThat(result.priorAuthorities())
+    assertThat(result.applicationHistoryEvents()).isEmpty();
+    assertThat(result.priorAuthorityHistoryGroups())
         .singleElement()
         .satisfies(group -> assertThat(group.events()).hasSize(1));
   }

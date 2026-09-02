@@ -28,8 +28,9 @@ public class GetApplicationHistoryResponseMapper {
 
   /** Maps history rows in their repository-provided chronological order. */
   public ApplicationHistoryResponse toResponse(ApplicationHistoryResult result) {
-    var applicationEvents = result.applicationEvents().stream().map(this::toEvent).toList();
-    var priorAuthorityGroups = result.priorAuthorities().stream().map(this::toPaGroup).toList();
+    var applicationEvents = result.applicationHistoryEvents().stream().map(this::toEvent).toList();
+    var priorAuthorityGroups =
+        result.priorAuthorityHistoryGroups().stream().map(this::toPaGroup).toList();
     return ApplicationHistoryResponse.builder()
         .events(applicationEvents)
         .priorAuthorities(priorAuthorityGroups)
