@@ -4,12 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import org.axonframework.eventsourcing.configuration.EventSourcedEntityModule;
 import org.axonframework.eventsourcing.configuration.EventSourcingConfigurer;
@@ -27,6 +29,7 @@ import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictE
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityNotInProgressException;
 import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
+import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /** Integration tests for {@link PriorAuthorityAggregate} using the Axon test fixture. */
 class PriorAuthorityAggregateTest {
@@ -336,6 +339,50 @@ class PriorAuthorityAggregateTest {
     verify(dataStore)
         .append(submissionId, 0L, applicationId, draftPayload, serialisedRequest, submittedAt);
     verify(draftStore).delete(submissionId);
+  }
+
+  @Test
+  void
+      givenSchemaInvalidDraft_whenSubmit_thenThrowsValidationExceptionAndNeitherAppendsNorDeletesDraft() {
+    UUID submissionId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant startedAt = Instant.parse("2026-08-01T10:00:00Z");
+    Instant submittedAt = Instant.parse("2026-08-02T10:00:00Z");
+    String serialisedRequest = "{\"priorAuthorityType\":\"EXPERT\"}";
+    String fingerprint = PayloadFingerprint.compute(serialisedRequest);
+    PriorAuthorityContent content = new PriorAuthorityContent("EXPERT", null, null, null, null);
+    PriorAuthorityDataPayload draftPayload =
+        new PriorAuthorityDataPayload(
+            submissionId, applicationId, content, serialisedRequest, startedAt);
+
+    PriorAuthorityDraftStartedEvent existingEvent =
+        new PriorAuthorityDraftStartedEvent(
+            submissionId,
+            applicationId,
+            fingerprint,
+            PriorAuthorityStatus.IN_PROGRESS.name(),
+            1,
+            startedAt);
+
+    when(draftStore.get(submissionId)).thenReturn(draftPayload);
+    doThrow(new ValidationException(List.of("expertDetails is required")))
+        .when(jsonSchemaValidator)
+        .validate(content, "PriorAuthority.json", 1);
+
+    SubmitPriorAuthorityDraftCommand command =
+        new SubmitPriorAuthorityDraftCommand(submissionId, submittedAt);
+
+    fixture
+        .given()
+        .events(existingEvent)
+        .when()
+        .command(command)
+        .then()
+        .exception(ValidationException.class)
+        .noEvents();
+
+    verify(dataStore, never()).append(any(), anyLong(), any(), any(), any(), any());
+    verify(draftStore, never()).delete(any());
   }
 
   @Test

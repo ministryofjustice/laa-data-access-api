@@ -17,9 +17,15 @@ public class SavePriorAuthorityDraftUseCase {
     this.dispatcher = dispatcher;
   }
 
-  /** Dispatches the save-draft command to create a new draft submission. */
+  /**
+   * Validates the application is granted, then dispatches the save-draft command to create a new
+   * draft submission.
+   *
+   * @throws RuntimeException propagated from validation if the application is not granted
+   */
   @AllowApiCaseworker
   public boolean create(SavePriorAuthorityDraftCommand command) {
+    dispatcher.dispatch(new ValidateApplicationGrantedCommand(command.applicationId()));
     dispatcher.dispatch(command);
     return true;
   }
