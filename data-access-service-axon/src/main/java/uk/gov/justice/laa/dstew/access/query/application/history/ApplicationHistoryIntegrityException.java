@@ -29,13 +29,8 @@ public class ApplicationHistoryIntegrityException extends RuntimeException {
   public ApplicationHistoryIntegrityException(
       UUID applicationId, UUID submissionId, String reason) {
     super(
-        "Application history integrity failure"
-            + " [applicationId="
-            + applicationId
-            + ", submissionId="
-            + submissionId
-            + "]: "
-            + reason);
+        "Application history integrity failure [applicationId=%s, submissionId=%s]: %s"
+            .formatted(applicationId, submissionId, reason));
     this.applicationId = applicationId;
     this.submissionId = submissionId;
     this.reason = reason;
