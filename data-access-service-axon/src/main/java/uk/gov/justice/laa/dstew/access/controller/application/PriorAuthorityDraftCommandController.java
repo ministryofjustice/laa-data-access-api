@@ -45,10 +45,10 @@ public class PriorAuthorityDraftCommandController implements PriorAuthorityDraft
   @Operation(security = @SecurityRequirement(name = "BearerAuth"))
   public ResponseEntity<SavePriorAuthorityDraftResponse> savePriorAuthorityDraft(
       ServiceName serviceName,
-      UUID id,
+      UUID applicationId,
       SavePriorAuthorityDraftRequest savePriorAuthorityDraftRequest) {
     SavePriorAuthorityDraftCommand command =
-        commandMapper.toCreateCommand(id, savePriorAuthorityDraftRequest);
+        commandMapper.toCreateCommand(applicationId, savePriorAuthorityDraftRequest);
     URI location =
         ServletUriComponentsBuilder.fromCurrentContextPath()
             .path("/api/v0/prior-authority/{submissionId}")

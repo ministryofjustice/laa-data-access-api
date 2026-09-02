@@ -577,7 +577,7 @@ paths:
         '400': { description: Validation failed }
         '404': { description: Application not found }
 
-  /api/v0/applications/{id}/prior-authority/draft:
+  /api/v0/applications/{applicationId}/prior-authority/draft:
     post:
       tags:
         - prior-authority-draft-command
@@ -585,8 +585,9 @@ paths:
       operationId: savePriorAuthorityDraft
       parameters:
         - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
-        - name: id
+        - name: applicationId
           in: path
+          description: The application's ID
           required: true
           schema:
             type: string

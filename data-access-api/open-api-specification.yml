@@ -39,8 +39,8 @@ paths:
     $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1{id}~1delete-document"
   /api/v0/applications/{id}/prior-authority:
     $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1{id}~1prior-authority"
-  /api/v0/applications/{id}/prior-authority/draft:
-    $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1{id}~1prior-authority~1draft"
+  /api/v0/applications/{applicationId}/prior-authority/draft:
+    $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1{applicationId}~1prior-authority~1draft"
   /api/v0/prior-authorities/{priorAuthorityId}:
     $ref: "./open-api-prior-authority/resources.yml#/paths/~1api~1v0~1prior-authorities~1{priorAuthorityId}"
   /api/v0/prior-authorities/{priorAuthorityId}/submit:
