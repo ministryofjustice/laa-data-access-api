@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.query.application.linkedgroup;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -39,6 +40,32 @@ class LinkedApplicationGroupProjectionTest {
             groupId, leadId, members, Instant.parse("2026-07-15T08:00:00Z")));
 
     verify(groupReadRepository).save(any(LinkedApplicationGroupReadModel.class));
+  }
+
+  @Test
+  void givenGroupCreatedEvent_whenHandled_thenSavesExactFields() {
+    UUID groupId = UUID.randomUUID();
+    UUID leadId = UUID.randomUUID();
+    UUID memberId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-15T08:00:00Z");
+    LinkedApplicationGroupReadModel[] saved = new LinkedApplicationGroupReadModel[1];
+    doAnswer(
+            inv -> {
+              saved[0] = inv.getArgument(0);
+              return saved[0];
+            })
+        .when(groupReadRepository)
+        .save(any());
+
+    projection.on(
+        new LinkedApplicationGroupCreatedEvent(
+            groupId, leadId, List.of(leadId, memberId), occurredAt));
+
+    assertThat(saved[0].getGroupId()).isEqualTo(groupId);
+    assertThat(saved[0].getLeadApplicationId()).isEqualTo(leadId);
+    assertThat(saved[0].getMemberIds()).containsExactly(leadId, memberId);
+    assertThat(saved[0].getCreatedAt()).isEqualTo(occurredAt);
+    assertThat(saved[0].getModifiedAt()).isEqualTo(occurredAt);
   }
 
   @Test

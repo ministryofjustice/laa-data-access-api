@@ -71,6 +71,7 @@ class SecurityIntegrationTest {
 
     assertUnauthorized(HttpMethod.GET, "/api/v0/caseworkers", null);
     assertUnauthorized(HttpMethod.GET, "/api/v0/applications", null);
+    assertUnauthorized(HttpMethod.GET, "/api/v0/prior-authorities/" + applicationId, null);
     assertUnauthorized(HttpMethod.GET, "/api/v0/individuals", null);
     assertUnauthorized(
         HttpMethod.POST,
@@ -127,7 +128,7 @@ class SecurityIntegrationTest {
   }
 
   @Test
-  void givenCaseworkerDevToken_whenGetCaseworkers_thenReturnsOk() {
+  void givenCaseworkerDevToken_whenGetUnknownPriorAuthority_thenReturnsNotFound() {
     UUID firstId = UUID.randomUUID();
     UUID secondId = UUID.randomUUID();
     jdbcTemplate.update(
@@ -146,6 +147,14 @@ class SecurityIntegrationTest {
     assertThat(response.getBody())
         .extracting(item -> item.get("username"))
         .contains("alice@example.com", "bob@example.com");
+
+    ResponseEntity<String> priorAuthorityResponse =
+        exchangeString(
+            HttpMethod.GET,
+            "/api/v0/prior-authorities/" + UUID.randomUUID(),
+            new HttpEntity<>(headers));
+
+    assertThat(priorAuthorityResponse.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
   }
 
   private ApplicationUpdateRequest updateRequest() {

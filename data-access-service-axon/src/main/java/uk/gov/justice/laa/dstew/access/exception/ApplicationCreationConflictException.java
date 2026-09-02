@@ -1,8 +1,10 @@
 package uk.gov.justice.laa.dstew.access.exception;
 
 import java.util.UUID;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
 /** Thrown when an application ID is reused with a different creation payload or schema version. */
+@ExcludeFromGeneratedCodeCoverage
 public class ApplicationCreationConflictException extends RuntimeException {
 
   private final UUID applicationId;

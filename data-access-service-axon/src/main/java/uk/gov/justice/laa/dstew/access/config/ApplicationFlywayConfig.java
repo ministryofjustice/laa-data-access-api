@@ -9,6 +9,7 @@ import org.springframework.boot.sql.init.dependency.DatabaseInitializationDepend
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
 /**
  * Runs the Axon schema migrations without Flyway's configuration-properties converter.
@@ -21,6 +22,7 @@ import org.springframework.context.annotation.Import;
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnProperty(name = "spring.flyway.enabled", havingValue = "true", matchIfMissing = true)
 @Import(DatabaseInitializationDependencyConfigurer.class)
+@ExcludeFromGeneratedCodeCoverage
 public class ApplicationFlywayConfig {
 
   @Value("${axon.db.schema:axon}")

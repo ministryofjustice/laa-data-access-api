@@ -4,6 +4,7 @@ import org.springframework.boot.autoconfigure.task.TaskExecutionAutoConfiguratio
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
 /**
  * Provides the application executor before JPA bootstrap resolves async executors.
@@ -13,6 +14,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
  * from re-entering Axon's JPA auto-configuration while Boot is creating its own executor.
  */
 @Configuration(proxyBeanMethods = false)
+@ExcludeFromGeneratedCodeCoverage
 public class TaskExecutionConfig {
 
   @Bean(name = TaskExecutionAutoConfiguration.APPLICATION_TASK_EXECUTOR_BEAN_NAME)

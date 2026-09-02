@@ -98,4 +98,93 @@ class GetApplicationHistoryResponseMapperTest {
         .containsExactly(
             DomainEventType.APPLICATION_GROUP_CREATED, DomainEventType.APPLICATION_GROUP_JOINED);
   }
+
+  @Test
+  void givenNullPayload_whenMapped_thenEventDescriptionAndCaseworkerIdAreNull() {
+    ApplicationHistoryReadModel history =
+        ApplicationHistoryReadModel.builder()
+            .eventId("event-id")
+            .applicationId(UUID.randomUUID())
+            .eventType("APPLICATION_CREATED")
+            .requestPayload(null)
+            .serviceName("CIVIL_APPLY")
+            .occurredAt(Instant.parse("2026-07-19T10:15:30Z"))
+            .build();
+
+    var response = mapper.toResponse(List.of(history));
+
+    assertThat(response.getEvents())
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getEventDescription()).isNull();
+              assertThat(event.getCaseworkerId()).isNull();
+            });
+  }
+
+  @Test
+  void givenBlankPayload_whenMapped_thenEventDescriptionAndCaseworkerIdAreNull() {
+    ApplicationHistoryReadModel history =
+        ApplicationHistoryReadModel.builder()
+            .eventId("event-id")
+            .applicationId(UUID.randomUUID())
+            .eventType("APPLICATION_CREATED")
+            .requestPayload("   ")
+            .serviceName("CIVIL_APPLY")
+            .occurredAt(Instant.parse("2026-07-19T10:15:30Z"))
+            .build();
+
+    var response = mapper.toResponse(List.of(history));
+
+    assertThat(response.getEvents())
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getEventDescription()).isNull();
+              assertThat(event.getCaseworkerId()).isNull();
+            });
+  }
+
+  @Test
+  void givenPayloadWithJsonNullFields_whenMapped_thenEventDescriptionAndCaseworkerIdAreNull() {
+    ApplicationHistoryReadModel history =
+        ApplicationHistoryReadModel.builder()
+            .eventId("event-id")
+            .applicationId(UUID.randomUUID())
+            .eventType("APPLICATION_CREATED")
+            .requestPayload("{\"eventDescription\":null,\"caseworkerId\":null}")
+            .serviceName("CIVIL_APPLY")
+            .occurredAt(Instant.parse("2026-07-19T10:15:30Z"))
+            .build();
+
+    var response = mapper.toResponse(List.of(history));
+
+    assertThat(response.getEvents())
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getEventDescription()).isNull();
+              assertThat(event.getCaseworkerId()).isNull();
+            });
+  }
+
+  @Test
+  void givenPayloadWithValidCaseworkerId_whenMapped_thenCaseworkerIdIsMapped() {
+    UUID caseworkerId = UUID.randomUUID();
+    ApplicationHistoryReadModel history =
+        ApplicationHistoryReadModel.builder()
+            .eventId("event-id")
+            .applicationId(UUID.randomUUID())
+            .eventType("APPLICATION_CREATED")
+            .requestPayload("{\"caseworkerId\":\"" + caseworkerId + "\"}")
+            .serviceName("CIVIL_APPLY")
+            .occurredAt(Instant.parse("2026-07-19T10:15:30Z"))
+            .build();
+
+    var response = mapper.toResponse(List.of(history));
+
+    assertThat(response.getEvents())
+        .singleElement()
+        .satisfies(event -> assertThat(event.getCaseworkerId()).isEqualTo(caseworkerId));
+  }
 }

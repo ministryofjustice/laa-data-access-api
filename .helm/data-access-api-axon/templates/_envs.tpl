@@ -82,6 +82,26 @@ Persistent environments use shared RDS, isolated via a dedicated Axon schema.
       name: laa-data-access-api-secrets
       key: ENTRA_AUD
 {{- end }}
+- name: AUTH_CLIENT_ID
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: AUTH_CLIENT_ID
+- name: AUTH_CLIENT_SECRET
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: AUTH_CLIENT_SECRET
+- name: AUTH_SCOPE
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: AUTH_SCOPE
+- name: AUTH_TENANT_ID
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: AUTH_TENANT_ID
 {{- end }}
 
 {{/*
@@ -116,6 +136,32 @@ Persistent environments use shared RDS, isolated via a dedicated Axon schema.
 {{- end }}
 {{- end }}
 {{- end }}
+{{- end }}
+
+{{/*
+  Define SDS API environment variables
+*/}}
+{{- define "axonSdsApiConfig" }}
+- name: SDS_API_URL
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: SDS_API_URL
+- name: SDS_API_BUCKET
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: SDS_API_BUCKET
+- name: SDS_API_CLIENT_REGISTRATION_ID
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: SDS_API_CLIENT_REGISTRATION_ID
+- name: SDS_API_PRINCIPAL_NAME
+  valueFrom:
+    secretKeyRef:
+      name: laa-data-access-api-secrets
+      key: SDS_API_PRINCIPAL_NAME
 {{- end }}
 
 {{/*

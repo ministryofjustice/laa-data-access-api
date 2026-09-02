@@ -32,6 +32,7 @@ import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataP
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
 
 class ApplicationListIndexProjectionTest {
 
@@ -308,5 +309,69 @@ class ApplicationListIndexProjectionTest {
     projection.reset();
 
     verify(listIndexRepository).deleteAllInBatch();
+  }
+
+  // -------------------------------------------------------------------------
+  // ApplicationUpdatedEvent
+  // -------------------------------------------------------------------------
+
+  @Test
+  void givenUpdatedEvent_whenHandled_thenRefreshesFilterFieldsFromDataStore() {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationListIndexReadModel existing =
+        ApplicationListIndexReadModel.builder()
+            .applicationId(applicationId)
+            .status("APPLICATION_SUBMITTED")
+            .streamVersion(1L)
+            .build();
+    when(listIndexRepository.findById(applicationId)).thenReturn(Optional.of(existing));
+    ApplicationDataPayload payload =
+        ApplicationDataPayload.from(applicationCreationDetails(applicationId));
+    when(applicationDataStore.get(applicationId, 3L)).thenReturn(payload);
+
+    projection.on(
+        new ApplicationUpdatedEvent(
+            applicationId, 2L, 3L, "APPLICATION_SUBMITTED", "APPLICATION_UPDATED", Instant.now()),
+        anyMessage());
+
+    assertThat(existing.getStatus()).isEqualTo("APPLICATION_UPDATED");
+    assertThat(existing.getStreamVersion()).isEqualTo(2L);
+    verify(listIndexRepository).save(existing);
+  }
+
+  @Test
+  void givenUpdatedEventForUnknownApplication_whenHandled_thenDoesNothing() {
+    UUID applicationId = UUID.randomUUID();
+    when(listIndexRepository.findById(applicationId)).thenReturn(Optional.empty());
+
+    projection.on(
+        new ApplicationUpdatedEvent(applicationId, 2L, 3L, "prev", "new", Instant.now()),
+        anyMessage());
+
+    verify(listIndexRepository, never()).save(any());
+  }
+
+  // -------------------------------------------------------------------------
+  // ApplicationDecisionMadeEvent — REFUSED branch
+  // -------------------------------------------------------------------------
+
+  @Test
+  void givenRefusedDecision_whenHandled_thenStatusIsApplicationRefused() {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationListIndexReadModel existing =
+        ApplicationListIndexReadModel.builder()
+            .applicationId(applicationId)
+            .status("APPLICATION_SUBMITTED")
+            .streamVersion(0L)
+            .build();
+    when(listIndexRepository.findById(applicationId)).thenReturn(Optional.of(existing));
+
+    projection.on(
+        new ApplicationDecisionMadeEvent(
+            applicationId, 3L, 4L, "REFUSED", AutoGrantedState.MANUAL, Instant.now()),
+        anyMessage());
+
+    assertThat(existing.getStatus()).isEqualTo("APPLICATION_REFUSED");
+    verify(listIndexRepository).save(existing);
   }
 }

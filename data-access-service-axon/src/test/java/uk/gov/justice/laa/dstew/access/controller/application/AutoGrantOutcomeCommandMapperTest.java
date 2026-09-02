@@ -1,10 +1,16 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
 import uk.gov.justice.laa.dstew.access.command.application.decision.RecordAutoGrantedOutcomeCommand;
 import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand;
@@ -39,5 +45,38 @@ class AutoGrantOutcomeCommandMapperTest {
 
     assertThat(command.applicationId()).isEqualTo(id);
     assertThat(command.certificate()).containsEntry("certificateNumber", "AUTO-2126");
+  }
+
+  @Test
+  void givenAutoGrantedRequestWithWrongOutcome_whenMapped_thenThrowsIllegalArgumentException() {
+    UUID id = UUID.randomUUID();
+    var request = new AutoGrantedOutcomeRequest(AutoGrantOutcome.MANUAL, Map.of());
+
+    assertThatThrownBy(() -> mapper.toCommand(id, request))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Auto-grant outcome does not match its payload");
+  }
+
+  @Test
+  void givenMismatchedDiscriminator_whenMapped_thenThrowsIllegalArgumentException() {
+    UUID id = UUID.randomUUID();
+    var request = new ManualOutcomeRequest(AutoGrantOutcome.AUTOGRANTED);
+
+    assertThatThrownBy(() -> mapper.toCommand(id, request))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Auto-grant outcome does not match its payload");
+  }
+
+  @Test
+  void givenSerialisationFails_whenMapped_thenThrowsIllegalStateException() throws Exception {
+    ObjectMapper mockMapper = mock(ObjectMapper.class);
+    AutoGrantOutcomeCommandMapper failingMapper = new AutoGrantOutcomeCommandMapper(mockMapper);
+    when(mockMapper.writeValueAsString(any())).thenThrow(new JacksonException("boom") {});
+
+    assertThatThrownBy(
+            () ->
+                failingMapper.toCommand(
+                    UUID.randomUUID(), new ManualOutcomeRequest(AutoGrantOutcome.MANUAL)))
+        .isInstanceOf(IllegalStateException.class);
   }
 }

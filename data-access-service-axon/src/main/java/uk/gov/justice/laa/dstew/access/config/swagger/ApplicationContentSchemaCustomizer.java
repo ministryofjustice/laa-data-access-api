@@ -13,6 +13,7 @@ import java.util.Map;
 import org.springdoc.core.customizers.OpenApiCustomizer;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
 /**
  * Registers versioned applicationContent JSON Schemas in OpenAPI. Rewrites relative schema
@@ -20,6 +21,7 @@ import org.springframework.stereotype.Component;
  * the latest APPLY schema.
  */
 @Component
+@ExcludeFromGeneratedCodeCoverage
 public class ApplicationContentSchemaCustomizer implements OpenApiCustomizer {
 
   /**

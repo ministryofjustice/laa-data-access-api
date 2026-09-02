@@ -4,8 +4,10 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
 /** Utility for computing a stable SHA-256 fingerprint of a serialised payload. */
+@ExcludeFromGeneratedCodeCoverage
 public final class PayloadFingerprint {
 
   private PayloadFingerprint() {}

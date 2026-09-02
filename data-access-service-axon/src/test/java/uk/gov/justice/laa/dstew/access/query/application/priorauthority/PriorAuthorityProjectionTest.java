@@ -68,6 +68,7 @@ class PriorAuthorityProjectionTest {
 
     assertThat(savedCapture[0].getSubmissionId()).isEqualTo(submissionId);
     assertThat(savedCapture[0].getApplicationId()).isEqualTo(applicationId);
+    assertThat(savedCapture[0].getDataVersion()).isEqualTo(1L);
     assertThat(savedCapture[0].getStatus()).isEqualTo("SUBMITTED");
     assertThat(savedCapture[0].getCreatedAt()).isEqualTo(occurredAt);
   }

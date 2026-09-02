@@ -4,11 +4,13 @@ import jakarta.validation.Validator;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import tools.jackson.databind.ObjectMapper;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationContentParser;
 import uk.gov.justice.laa.dstew.access.applicationcontent.PayloadValidator;
 
 /** Wires the copied application-content stack without coupling it to Spring. */
 @Configuration
+@ExcludeFromGeneratedCodeCoverage
 public class CreateApplicationConfig {
 
   @Bean

@@ -117,6 +117,49 @@ class CreatePriorAuthorityCommandMapperTest {
         .hasCauseInstanceOf(JacksonException.class);
   }
 
+  @Test
+  void givenNullExpertCosts_whenMapped_thenExpertCostsIsNull() {
+    CreatePriorAuthorityCommand command =
+        mapper.toCommand(
+            UUID.randomUUID(),
+            CreatePriorAuthorityRequest.builder()
+                .priorAuthorityType(PriorAuthorityType.EXPERT)
+                .expertDetails(
+                    uk.gov.justice.laa.dstew.access.model.ExpertDetails.builder()
+                        .expertType("Forensic Accountant")
+                        .build())
+                .build());
+
+    assertThat(command.content().expertDetails().expertCosts()).isNull();
+  }
+
+  @Test
+  void givenExpertCostsWithNullSubFields_whenMapped_thenNullsPreserved() {
+    CreatePriorAuthorityCommand command =
+        mapper.toCommand(
+            UUID.randomUUID(),
+            CreatePriorAuthorityRequest.builder()
+                .priorAuthorityType(PriorAuthorityType.EXPERT)
+                .expertDetails(
+                    uk.gov.justice.laa.dstew.access.model.ExpertDetails.builder()
+                        .expertType("Forensic Accountant")
+                        .expertCosts(
+                            uk.gov.justice.laa.dstew.access.model.ExpertCosts.builder()
+                                .billingType(null)
+                                .hourlyRate(null)
+                                .timeRequested(null)
+                                .totalAmount(null)
+                                .apportionment(null)
+                                .build())
+                        .build())
+                .build());
+
+    assertThat(command.content().expertDetails().expertCosts().billingType()).isNull();
+    assertThat(command.content().expertDetails().expertCosts().hourlyRate()).isNull();
+    assertThat(command.content().expertDetails().expertCosts().timeRequested()).isNull();
+    assertThat(command.content().expertDetails().expertCosts().apportionment()).isNull();
+  }
+
   private CreatePriorAuthorityRequest expertRequest() {
     return CreatePriorAuthorityRequest.builder()
         .priorAuthorityType(PriorAuthorityType.EXPERT)

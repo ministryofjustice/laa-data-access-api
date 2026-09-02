@@ -13,6 +13,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationProvider;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Opponent;
@@ -27,6 +28,7 @@ import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationMerit
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@ExcludeFromGeneratedCodeCoverage
 public class ApplicationReadModel {
 
   @Id

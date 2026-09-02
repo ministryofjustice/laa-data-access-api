@@ -7,8 +7,10 @@ import org.axonframework.messaging.eventhandling.processing.streaming.StreamingE
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
 /** Exposes Axon projection health independently from unassessed-Application age. */
+@ExcludeFromGeneratedCodeCoverage
 @Component
 public class AxonProcessorMetrics implements ApplicationRunner {
 

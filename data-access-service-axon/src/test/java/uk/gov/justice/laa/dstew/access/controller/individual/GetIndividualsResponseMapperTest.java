@@ -49,4 +49,47 @@ class GetIndividualsResponseMapperTest {
     assertThat(response.getPaging().getTotalRecords()).isEqualTo(1);
     assertThat(response.getPaging().getItemsReturned()).isEqualTo(1);
   }
+
+  @Test
+  void givenClientWithIncludeClientDetailsFalse_whenMapped_thenExcludesPrivateFields() {
+    ApplicationClient client =
+        ApplicationClient.builder()
+            .firstName("Ada")
+            .lastName("Lovelace")
+            .dateOfBirth(LocalDate.of(1815, 12, 10))
+            .lastNameAtBirth("Byron")
+            .appliedPreviously(true)
+            .build();
+
+    IndividualsResponse response =
+        mapper.toResponse(new FindIndividualsResult(client, 1, 10, 1, false));
+
+    IndividualResponse mapped = response.getIndividuals().get(0);
+    assertThat(mapped.getFirstName()).isEqualTo("Ada");
+    assertThat(mapped.getLastName()).isEqualTo("Lovelace");
+    assertThat(mapped.getType().name()).isEqualTo("CLIENT");
+    assertThat(mapped.getLastNameAtBirth()).isNull();
+    assertThat(mapped.getAppliedPreviously()).isNull();
+    assertThat(mapped.getCorrespondenceAddress()).isNullOrEmpty();
+  }
+
+  @Test
+  void givenNullClient_whenMapped_thenReturnsEmptyIndividuals() {
+    IndividualsResponse response =
+        mapper.toResponse(new FindIndividualsResult(null, 1, 10, 0, false));
+
+    assertThat(response.getIndividuals()).isEmpty();
+    assertThat(response.getPaging().getItemsReturned()).isEqualTo(0);
+  }
+
+  @Test
+  void givenClientWithNullAddresses_whenMapped_thenCorrespondenceAddressIsNull() {
+    ApplicationClient client =
+        ApplicationClient.builder().firstName("Ada").lastName("Lovelace").build();
+
+    IndividualsResponse response =
+        mapper.toResponse(new FindIndividualsResult(client, 1, 10, 1, true));
+
+    assertThat(response.getIndividuals().get(0).getCorrespondenceAddress()).isNull();
+  }
 }
