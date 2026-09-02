@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.oauth2.client.ClientAuthorizationException;
+import org.springframework.security.oauth2.core.OAuth2Error;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationGroupInvariantException;
@@ -14,6 +16,7 @@ import uk.gov.justice.laa.dstew.access.exception.FileConflictException;
 import uk.gov.justice.laa.dstew.access.exception.FileLengthRequiredException;
 import uk.gov.justice.laa.dstew.access.exception.InvalidApplicationStateException;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
+import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityNotInProgressException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.exception.VirusDetectedException;
 import uk.gov.justice.laa.dstew.access.exception.VirusScanException;
@@ -192,5 +195,30 @@ class ApplicationExceptionHandlerTest {
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
     assertThat(response.getBody().getDetail()).isEqualTo("Virus scan gave a non-standard result");
+  }
+
+  @Test
+  void givenPriorAuthorityNotInProgress_whenHandled_thenReturnsConflict() {
+    UUID submissionId = UUID.randomUUID();
+
+    var response =
+        handler.handlePriorAuthorityNotInProgressException(
+            new PriorAuthorityNotInProgressException(submissionId));
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+    assertThat(response.getBody().getDetail())
+        .isEqualTo("Prior authority " + submissionId + " is not in a submittable state");
+  }
+
+  @Test
+  void givenClientAuthorizationFailure_whenHandled_thenReturnsInternalServerError() {
+    var response =
+        handler.handleClientAuthorizationException(
+            new ClientAuthorizationException(
+                new OAuth2Error("invalid_token"), "sds-client", "Token request failed"));
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+    assertThat(response.getBody().getDetail())
+        .isEqualTo("Failed to obtain access token for an external service");
   }
 }
