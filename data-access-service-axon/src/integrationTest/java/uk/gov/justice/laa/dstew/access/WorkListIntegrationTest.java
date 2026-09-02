@@ -31,8 +31,14 @@ import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantedOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityRequest;
 import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityResponse;
+import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.DisbursementDetails;
+import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
+import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceedingRequest;
+import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
+import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetailsRequest;
+import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.model.WorkListAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.WorkListItemType;
@@ -106,6 +112,75 @@ class WorkListIntegrationTest {
             Void.class);
     assertThat(unassigned.getStatusCode()).isEqualTo(HttpStatus.OK);
     awaitWorkListContains("", applicationId, null, 2L);
+  }
+
+  @Test
+  void
+      givenManualApplicationAssignedToCaseworker_whenDecided_thenItIsRemovedFromTheWorkQueue()
+          throws Exception {
+    UUID applicationId = UUID.randomUUID();
+    UUID proceedingId = UUID.randomUUID();
+    UUID caseworkerId = createCaseworker("decider@example.com");
+    ResponseEntity<Void> created =
+        restTemplate.postForEntity(
+            "http://localhost:" + port + "/api/v0/applications",
+            new HttpEntity<>(validCreateApplicationRequest(applicationId, proceedingId), headers()),
+            Void.class);
+    assertThat(created.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+
+    ResponseEntity<Void> ready =
+        restTemplate.exchange(
+            "http://localhost:"
+                + port
+                + "/api/v0/applications/"
+                + applicationId
+                + "/auto-grant-outcome",
+            HttpMethod.PATCH,
+            new HttpEntity<>(new ManualOutcomeRequest(AutoGrantOutcome.MANUAL), headers()),
+            Void.class);
+    assertThat(ready.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    awaitWorkListContains("", applicationId, null, 0L);
+
+    assertThat(assign(applicationId, caseworkerId).getStatusCode()).isEqualTo(HttpStatus.OK);
+    awaitWorkListContains("?assignedTo=" + caseworkerId, applicationId, caseworkerId, 1L);
+
+    MakeDecisionRequest decision =
+        MakeDecisionRequest.builder()
+            .expectedApplicationVersion(2L)
+            .caseworkerId(caseworkerId)
+            .overallDecision(DecisionStatus.REFUSED)
+            .eventHistory(EventHistoryRequest.builder().eventDescription("Decision recorded").build())
+            .proceedings(
+                java.util.List.of(
+                    MakeDecisionProceedingRequest.builder()
+                        .proceedingId(proceedingId)
+                        .meritsDecision(
+                            MeritsDecisionDetailsRequest.builder()
+                                .decision(MeritsDecisionStatus.REFUSED)
+                                .reason("Insufficient evidence")
+                                .justification("The evidence did not meet the test")
+                                .build())
+                        .build()))
+            .build();
+    ResponseEntity<Void> decided =
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/applications/" + applicationId + "/decision",
+            HttpMethod.PATCH,
+            new HttpEntity<>(decision, headers()),
+            Void.class);
+    assertThat(decided.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+
+    await()
+        .atMost(15, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              assertThat(getWorkList("").getItems())
+                  .extracting(item -> item.getItemId())
+                  .doesNotContain(applicationId);
+              assertThat(getWorkList("?assignedTo=" + caseworkerId).getItems())
+                  .extracting(item -> item.getItemId())
+                  .doesNotContain(applicationId);
+            });
   }
 
   @Test
