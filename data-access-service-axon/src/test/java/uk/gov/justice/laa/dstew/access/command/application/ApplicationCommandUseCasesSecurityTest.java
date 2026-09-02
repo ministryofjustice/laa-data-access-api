@@ -13,7 +13,6 @@ import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.command.application.assignment.UnassignCaseworkerUseCase;
-import uk.gov.justice.laa.dstew.access.command.application.decision.AssignmentInvariantService;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.document.UploadDocumentUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteUseCase;
@@ -48,7 +47,6 @@ class ApplicationCommandUseCasesSecurityTest extends BaseSecuredUseCaseTest {
   @Autowired private UploadDocumentUseCase uploadDocumentUseCase;
 
   @MockitoBean private RetryingCommandDispatcher dispatcher;
-  @MockitoBean private AssignmentInvariantService assignmentInvariantService;
   @MockitoBean private SubscriptionProjectionGateway projectionGateway;
   @MockitoBean private SdsService sdsService;
 
@@ -65,7 +63,7 @@ class ApplicationCommandUseCasesSecurityTest extends BaseSecuredUseCaseTest {
     assertDenied(() -> recordAutoGrantOutcomeUseCase.record(new Object()));
     assertDenied(() -> uploadDocumentUseCase.execute(null, null));
 
-    verifyNoInteractions(dispatcher, assignmentInvariantService, projectionGateway, sdsService);
+    verifyNoInteractions(dispatcher, projectionGateway, sdsService);
   }
 
   @Test
@@ -82,7 +80,7 @@ class ApplicationCommandUseCasesSecurityTest extends BaseSecuredUseCaseTest {
     assertDenied(() -> recordAutoGrantOutcomeUseCase.record(new Object()));
     assertDenied(() -> uploadDocumentUseCase.execute(null, null));
 
-    verifyNoInteractions(dispatcher, assignmentInvariantService, projectionGateway, sdsService);
+    verifyNoInteractions(dispatcher, projectionGateway, sdsService);
   }
 
   private void assertDenied(ThrowingInvocation invocation) {

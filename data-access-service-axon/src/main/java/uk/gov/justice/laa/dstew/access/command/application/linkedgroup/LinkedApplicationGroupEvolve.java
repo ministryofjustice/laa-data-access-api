@@ -31,19 +31,6 @@ public final class LinkedApplicationGroupEvolve {
     } else {
       state.activeMemberApplicationIds.remove(event.applicationId());
     }
-    state.assignmentVersion = event.assignmentVersion();
-    state.caseworkerId = event.caseworkerId();
   }
 
-  /** Applies the shared group assignee and its authoritative version. */
-  public static void apply(LinkedApplicationGroupState state, LinkedGroupAssigned event) {
-    state.assignmentVersion = event.assignmentVersion();
-    state.caseworkerId = event.caseworkerId();
-  }
-
-  /** Clears the shared group assignee and applies its authoritative version. */
-  public static void apply(LinkedApplicationGroupState state, LinkedGroupUnassigned event) {
-    state.assignmentVersion = event.assignmentVersion();
-    state.caseworkerId = null;
-  }
 }

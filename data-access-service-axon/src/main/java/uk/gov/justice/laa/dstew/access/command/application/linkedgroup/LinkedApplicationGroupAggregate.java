@@ -42,22 +42,6 @@ public class LinkedApplicationGroupAggregate {
     eventAppender.append(LinkedApplicationGroupDecider.decideDeactivate(state, command));
   }
 
-  @CommandHandler
-  void handle(AssignLinkedGroupWorkItemCommand command, EventAppender eventAppender) {
-    eventAppender.append(LinkedApplicationGroupDecider.decideAssign(state, command));
-  }
-
-  @CommandHandler
-  void handle(UnassignLinkedGroupWorkItemCommand command, EventAppender eventAppender) {
-    eventAppender.append(LinkedApplicationGroupDecider.decideUnassign(state, command));
-  }
-
-  /** Validates assignment ownership for a member decision without emitting an event. */
-  @CommandHandler
-  void handle(ValidateLinkedGroupDecisionAssignmentCommand command) {
-    LinkedApplicationGroupDecider.validateDecisionAssignment(state, command);
-  }
-
   @EventSourcingHandler
   void on(LinkedApplicationGroupCreatedEvent event) {
     LinkedApplicationGroupEvolve.apply(state, event);
@@ -71,16 +55,6 @@ public class LinkedApplicationGroupAggregate {
 
   @EventSourcingHandler
   void on(LinkedGroupMemberWorkItemChanged event) {
-    LinkedApplicationGroupEvolve.apply(state, event);
-  }
-
-  @EventSourcingHandler
-  void on(LinkedGroupAssigned event) {
-    LinkedApplicationGroupEvolve.apply(state, event);
-  }
-
-  @EventSourcingHandler
-  void on(LinkedGroupUnassigned event) {
     LinkedApplicationGroupEvolve.apply(state, event);
   }
 

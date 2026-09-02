@@ -9,7 +9,6 @@ import java.util.Optional;
 import java.util.UUID;
 import org.axonframework.messaging.commandhandling.gateway.CommandGateway;
 import org.junit.jupiter.api.Test;
-import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.AssignLinkedGroupWorkItemCommand;
 import uk.gov.justice.laa.dstew.access.command.caseworker.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.command.worklist.route.WorkItemRoute;
 import uk.gov.justice.laa.dstew.access.command.worklist.route.WorkItemRouteKind;
@@ -114,7 +113,7 @@ class WorkItemAssignmentCommandHandlerTest {
   }
 
   @Test
-  void routesLinkedApplicationByApplicationIdToTheResolvedGroupAuthority() {
+  void rejectsLinkedApplicationRoutes() {
     CaseworkerRepository caseworkers = org.mockito.Mockito.mock(CaseworkerRepository.class);
     WorkItemRouteRepository routes = org.mockito.Mockito.mock(WorkItemRouteRepository.class);
     CommandGateway gateway = org.mockito.Mockito.mock(CommandGateway.class);
@@ -138,11 +137,8 @@ class WorkItemAssignmentCommandHandlerTest {
                     3L,
                     occurredAt)));
 
-    handler.assign(new AssignWorkItemCommand(item, caseworkerId, 2L, "{}", "", occurredAt));
-
-    verify(gateway)
-        .sendAndWait(
-            new AssignLinkedGroupWorkItemCommand(
-                groupId, applicationId, 3L, 2L, caseworkerId, occurredAt));
+    assertThatThrownBy(
+            () -> handler.assign(new AssignWorkItemCommand(item, caseworkerId, 2L, "{}", "", occurredAt)))
+        .isInstanceOf(ResourceNotFoundException.class);
   }
 }

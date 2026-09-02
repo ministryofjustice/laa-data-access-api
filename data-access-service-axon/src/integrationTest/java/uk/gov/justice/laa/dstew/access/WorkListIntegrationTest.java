@@ -115,9 +115,8 @@ class WorkListIntegrationTest {
   }
 
   @Test
-  void
-      givenManualApplicationAssignedToCaseworker_whenDecided_thenItIsRemovedFromTheWorkQueue()
-          throws Exception {
+  void givenManualApplicationAssignedToCaseworker_whenDecided_thenItIsRemovedFromTheWorkQueue()
+      throws Exception {
     UUID applicationId = UUID.randomUUID();
     UUID proceedingId = UUID.randomUUID();
     UUID caseworkerId = createCaseworker("decider@example.com");
@@ -149,7 +148,8 @@ class WorkListIntegrationTest {
             .expectedApplicationVersion(2L)
             .caseworkerId(caseworkerId)
             .overallDecision(DecisionStatus.REFUSED)
-            .eventHistory(EventHistoryRequest.builder().eventDescription("Decision recorded").build())
+            .eventHistory(
+                EventHistoryRequest.builder().eventDescription("Decision recorded").build())
             .proceedings(
                 java.util.List.of(
                     MakeDecisionProceedingRequest.builder()

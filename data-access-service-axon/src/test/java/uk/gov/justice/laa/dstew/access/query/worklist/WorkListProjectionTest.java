@@ -25,8 +25,6 @@ import uk.gov.justice.laa.dstew.access.command.application.assignment.Applicatio
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
-import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedGroupAssigned;
-import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedGroupMemberWorkItemChanged;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
@@ -196,32 +194,6 @@ class WorkListProjectionTest {
         .deleteByIdItemTypeAndIdItemId(WorkItemType.PRIOR_AUTHORITY, applicationId);
   }
 
-  @Test
-  void givenActiveLinkedMember_whenGroupAssignmentHandled_thenUpdatesOnlyTheEventMemberSet() {
-    UUID applicationId = UUID.randomUUID();
-    UUID groupId = UUID.randomUUID();
-    UUID caseworkerId = UUID.randomUUID();
-    WorkListItemReadModel row =
-        new WorkListItemReadModel(
-            WorkItemType.APPLICATION, applicationId, applicationId, null, Instant.now(), 1L, 0L);
-    when(items.findById(new WorkListItemId(WorkItemType.APPLICATION, applicationId)))
-        .thenReturn(Optional.of(row));
-
-    projection.on(
-        new LinkedGroupMemberWorkItemChanged(
-            groupId, applicationId, true, 1L, 0L, null, Instant.now()),
-        message());
-    projection.on(
-        new LinkedGroupAssigned(
-            groupId, java.util.List.of(applicationId), 1L, 1L, caseworkerId, Instant.now()),
-        message());
-
-    assertThat(row.getAssignmentBoundaryType()).isEqualTo("LINKED_GROUP");
-    assertThat(row.getAssignmentBoundaryId()).isEqualTo(groupId);
-    assertThat(row.getGroupId()).isEqualTo(groupId);
-    assertThat(row.getAssigneeId()).isEqualTo(caseworkerId);
-    assertThat(row.getAssignmentVersion()).isEqualTo(1L);
-  }
 
   @Test
   void givenReset_whenHandled_thenDeletesTheDisposableProjection() {

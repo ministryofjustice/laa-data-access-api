@@ -3,9 +3,6 @@ package uk.gov.justice.laa.dstew.access.command.application.linkedgroup;
 import java.util.List;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
-import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
-import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemId;
-import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 
 /** Decision functions for linked-group commands. */
@@ -55,100 +52,20 @@ public final class LinkedApplicationGroupDecider {
         command.applicationId(),
         true,
         state.membershipVersion,
-        state.assignmentVersion,
-        state.caseworkerId,
         command.occurredAt());
   }
 
-  /** Derives a member removal, clearing the shared assignee when it was the final active member. */
+  /** Derives a member removal. */
   public static LinkedGroupMemberWorkItemChanged decideDeactivate(
       LinkedApplicationGroupState state, DeactivateLinkedGroupMemberWorkItemCommand command) {
     validateMember(
         state, command.groupId(), command.applicationId(), command.expectedMembershipVersion());
-    boolean finalMember =
-        state.activeMemberApplicationIds.size() == 1
-            && state.activeMemberApplicationIds.contains(command.applicationId());
     return new LinkedGroupMemberWorkItemChanged(
         state.groupId,
         command.applicationId(),
         false,
         state.membershipVersion,
-        state.assignmentVersion,
-        finalMember ? null : state.caseworkerId,
         command.occurredAt());
-  }
-
-  /** Derives an immutable all-active-member assignment transition. */
-  public static LinkedGroupAssigned decideAssign(
-      LinkedApplicationGroupState state, AssignLinkedGroupWorkItemCommand command) {
-    validateAssignableMember(
-        state,
-        command.groupId(),
-        command.selectedApplicationId(),
-        command.expectedMembershipVersion(),
-        command.expectedAssignmentVersion());
-    if (state.caseworkerId != null) {
-      throw conflict(command.selectedApplicationId(), "the linked group is already assigned");
-    }
-    return new LinkedGroupAssigned(
-        state.groupId,
-        List.copyOf(state.activeMemberApplicationIds),
-        state.membershipVersion,
-        state.assignmentVersion + 1,
-        command.caseworkerId(),
-        command.occurredAt());
-  }
-
-  /** Derives an immutable all-active-member unassignment transition. */
-  public static LinkedGroupUnassigned decideUnassign(
-      LinkedApplicationGroupState state, UnassignLinkedGroupWorkItemCommand command) {
-    validateAssignableMember(
-        state,
-        command.groupId(),
-        command.selectedApplicationId(),
-        command.expectedMembershipVersion(),
-        command.expectedAssignmentVersion());
-    if (state.caseworkerId == null) {
-      throw conflict(command.selectedApplicationId(), "the linked group is already unassigned");
-    }
-    return new LinkedGroupUnassigned(
-        state.groupId,
-        List.copyOf(state.activeMemberApplicationIds),
-        state.membershipVersion,
-        state.assignmentVersion + 1,
-        command.occurredAt());
-  }
-
-  /** Validates the current group's authority for a selected member's manual decision. */
-  public static void validateDecisionAssignment(
-      LinkedApplicationGroupState state, ValidateLinkedGroupDecisionAssignmentCommand command) {
-    validateMember(
-        state, command.groupId(), command.applicationId(), command.expectedMembershipVersion());
-    if (!state.activeMemberApplicationIds.contains(command.applicationId())) {
-      throw conflict(command.applicationId(), "the linked-group work item is not active");
-    }
-    if (state.caseworkerId == null) {
-      throw conflict(command.applicationId(), "the linked group is unassigned");
-    }
-    if (command.caseworkerId() == null || !state.caseworkerId.equals(command.caseworkerId())) {
-      throw conflict(
-          command.applicationId(), "the supplied caseworker is not the linked group's assignee");
-    }
-  }
-
-  private static void validateAssignableMember(
-      LinkedApplicationGroupState state,
-      java.util.UUID groupId,
-      java.util.UUID applicationId,
-      long membershipVersion,
-      long assignmentVersion) {
-    validateMember(state, groupId, applicationId, membershipVersion);
-    if (!state.activeMemberApplicationIds.contains(applicationId)) {
-      throw new ResourceNotFoundException("Linked-group work item is not active: " + applicationId);
-    }
-    if (assignmentVersion != state.assignmentVersion) {
-      throw conflict(applicationId, "the assignment version is stale");
-    }
   }
 
   private static void validateMember(
@@ -165,9 +82,4 @@ public final class LinkedApplicationGroupDecider {
     }
   }
 
-  private static WorkItemAssignmentConflictException conflict(
-      java.util.UUID applicationId, String reason) {
-    return new WorkItemAssignmentConflictException(
-        new WorkItemId(WorkItemType.APPLICATION, applicationId), reason);
-  }
 }

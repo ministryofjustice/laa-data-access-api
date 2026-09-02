@@ -15,7 +15,5 @@ public class LinkedApplicationGroupState {
   UUID leadApplicationId;
   List<UUID> memberApplicationIds;
   Set<UUID> activeMemberApplicationIds = new LinkedHashSet<>();
-  UUID caseworkerId;
   long membershipVersion;
-  long assignmentVersion;
 }

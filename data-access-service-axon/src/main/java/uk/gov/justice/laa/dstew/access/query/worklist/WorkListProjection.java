@@ -17,9 +17,7 @@ import uk.gov.justice.laa.dstew.access.command.application.assignment.Applicatio
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
-import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedGroupAssigned;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedGroupMemberWorkItemChanged;
-import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedGroupUnassigned;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
@@ -178,60 +176,10 @@ public class WorkListProjection {
               item.setAssignmentBoundaryType("LINKED_GROUP");
               item.setAssignmentBoundaryId(event.groupId());
               item.setGroupId(event.groupId());
-              item.setAssigneeId(event.caseworkerId());
-              item.setAssignmentVersion(event.assignmentVersion());
               item.setUpdatedAt(event.occurredAt());
               item.setProjectionPosition(message.identifier().hashCode());
               items.save(item);
             });
-  }
-
-  /** Applies a shared assignee to exactly the immutable active-member set in the event. */
-  @EventHandler
-  public void on(LinkedGroupAssigned event, EventMessage message) {
-    updateLinkedGroupAssignee(
-        event.groupId(),
-        event.affectedApplicationIds(),
-        event.caseworkerId(),
-        event.assignmentVersion(),
-        event.occurredAt(),
-        message.identifier().hashCode());
-  }
-
-  /** Clears the shared assignee for exactly the immutable active-member set in the event. */
-  @EventHandler
-  public void on(LinkedGroupUnassigned event, EventMessage message) {
-    updateLinkedGroupAssignee(
-        event.groupId(),
-        event.affectedApplicationIds(),
-        null,
-        event.assignmentVersion(),
-        event.occurredAt(),
-        message.identifier().hashCode());
-  }
-
-  private void updateLinkedGroupAssignee(
-      java.util.UUID groupId,
-      java.util.List<java.util.UUID> applicationIds,
-      java.util.UUID assigneeId,
-      long assignmentVersion,
-      java.time.Instant occurredAt,
-      long projectionPosition) {
-    applicationIds.forEach(
-        applicationId ->
-            items
-                .findById(new WorkListItemId(WorkItemType.APPLICATION, applicationId))
-                .ifPresent(
-                    item -> {
-                      item.setAssignmentBoundaryType("LINKED_GROUP");
-                      item.setAssignmentBoundaryId(groupId);
-                      item.setGroupId(groupId);
-                      item.setAssigneeId(assigneeId);
-                      item.setAssignmentVersion(assignmentVersion);
-                      item.setUpdatedAt(occurredAt);
-                      item.setProjectionPosition(projectionPosition);
-                      items.save(item);
-                    }));
   }
 
   /** Deletes all disposable rows before event-stream replay. */

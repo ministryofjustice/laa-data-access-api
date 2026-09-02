@@ -126,6 +126,14 @@ public final class ApplicationDecider {
         command.occurredAt());
   }
 
+  /** Validates an ordinary decision, which always records manual assessment. */
+  public static ApplicationDecisionMadeEvent decideDecision(
+      ApplicationState state,
+      MakeApplicationDecisionCommand command,
+      ApplicationDataPayload current) {
+    return decideDecision(state, command, current, AutoGrantedState.MANUAL);
+  }
+
   /** Ensures a standalone manual decision is made by its current assignment owner. */
   public static void validateManualDecisionAssignment(
       ApplicationState state, MakeApplicationDecisionCommand command) {
@@ -150,14 +158,6 @@ public final class ApplicationDecider {
     if (!state.caseworkerId.equals(command.caseworkerId())) {
       throw assignmentConflict(command, "the supplied caseworker is not its current assignee");
     }
-  }
-
-  /** Validates an ordinary decision, which always records manual assessment. */
-  public static ApplicationDecisionMadeEvent decideDecision(
-      ApplicationState state,
-      MakeApplicationDecisionCommand command,
-      ApplicationDataPayload current) {
-    return decideDecision(state, command, current, AutoGrantedState.MANUAL);
   }
 
   private static WorkItemAssignmentConflictException assignmentConflict(

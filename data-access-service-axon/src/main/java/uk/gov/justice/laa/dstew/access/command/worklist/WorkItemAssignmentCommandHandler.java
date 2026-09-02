@@ -3,8 +3,6 @@ package uk.gov.justice.laa.dstew.access.command.worklist;
 import org.axonframework.messaging.commandhandling.gateway.CommandGateway;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.AssignLinkedGroupWorkItemCommand;
-import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.UnassignLinkedGroupWorkItemCommand;
 import uk.gov.justice.laa.dstew.access.command.caseworker.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.command.worklist.route.WorkItemRoute;
 import uk.gov.justice.laa.dstew.access.command.worklist.route.WorkItemRouteKind;
@@ -62,17 +60,6 @@ public class WorkItemAssignmentCommandHandler {
     if (!caseworkers.existsById(command.caseworkerId())) {
       throw new ResourceNotFoundException("No caseworker found with id: " + command.caseworkerId());
     }
-    if (route.getRouteKind() == WorkItemRouteKind.LINKED_GROUP) {
-      commandGateway.sendAndWait(
-          new AssignLinkedGroupWorkItemCommand(
-              route.getGroupId(),
-              command.workItemId().id(),
-              route.getMembershipVersion(),
-              command.expectedAssignmentVersion(),
-              command.caseworkerId(),
-              command.occurredAt()));
-      return;
-    }
     requireDirectRoute(route, command.workItemId());
     if (command.workItemId().type() == WorkItemType.PRIOR_AUTHORITY) {
       commandGateway.sendAndWait(
@@ -125,16 +112,6 @@ public class WorkItemAssignmentCommandHandler {
   }
 
   private void unassign(UnassignWorkItemCommand command, WorkItemRoute route) {
-    if (route.getRouteKind() == WorkItemRouteKind.LINKED_GROUP) {
-      commandGateway.sendAndWait(
-          new UnassignLinkedGroupWorkItemCommand(
-              route.getGroupId(),
-              command.workItemId().id(),
-              route.getMembershipVersion(),
-              command.expectedAssignmentVersion(),
-              command.occurredAt()));
-      return;
-    }
     requireDirectRoute(route, command.workItemId());
     if (command.workItemId().type() == WorkItemType.PRIOR_AUTHORITY) {
       commandGateway.sendAndWait(
