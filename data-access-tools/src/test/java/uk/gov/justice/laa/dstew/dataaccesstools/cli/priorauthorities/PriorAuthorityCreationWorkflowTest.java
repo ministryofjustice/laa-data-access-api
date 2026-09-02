@@ -17,7 +17,9 @@ class PriorAuthorityCreationWorkflowTest {
     DataAccessApiClient client =
         new DataAccessApiClient() {
           @Override
-          public void createApplication(String requestBody) {}
+          public UUID createApplication(String requestBody) {
+            return UUID.randomUUID();
+          }
 
           @Override
           public void recordManualOutcome(UUID applicationId) {}
@@ -26,8 +28,9 @@ class PriorAuthorityCreationWorkflowTest {
           public void makeDecision(UUID applicationId, String requestBody) {}
 
           @Override
-          public void createPriorAuthority(UUID applicationId, String requestBody) {
+          public UUID createPriorAuthority(UUID applicationId, String requestBody) {
             bodies.add(requestBody);
+            return UUID.randomUUID();
           }
         };
 
