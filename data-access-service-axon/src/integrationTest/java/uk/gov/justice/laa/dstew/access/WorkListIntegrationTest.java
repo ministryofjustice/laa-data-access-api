@@ -82,6 +82,13 @@ class WorkListIntegrationTest {
             Void.class);
     assertThat(assigned.getStatusCode()).isEqualTo(HttpStatus.OK);
     awaitWorkListContains("?assignedTo=" + caseworkerId, applicationId, caseworkerId, 1L);
+    await()
+        .atMost(15, TimeUnit.SECONDS)
+        .untilAsserted(
+            () ->
+                assertThat(getWorkList("").getItems())
+                    .extracting(item -> item.getItemId())
+                    .doesNotContain(applicationId));
 
     ResponseEntity<Void> duplicate =
         restTemplate.exchange(
@@ -134,6 +141,30 @@ class WorkListIntegrationTest {
                         assertThat(item.getAssignedTo()).isNull();
                       });
             });
+  }
+
+  @Test
+  void givenUnassignedWorkQueueItemsWithDifferentSubmissionTimes_whenListed_thenOldestIsFirst()
+      throws Exception {
+    UUID manualApplicationId = UUID.randomUUID();
+    UUID parentApplicationId = UUID.randomUUID();
+    createManualApplication(manualApplicationId);
+    awaitWorkListContains("", manualApplicationId, null, 0L);
+
+    createGrantedApplication(parentApplicationId);
+    UUID priorAuthorityId = createPriorAuthority(parentApplicationId);
+
+    await()
+        .atMost(15, TimeUnit.SECONDS)
+        .untilAsserted(
+            () ->
+                assertThat(getWorkList("").getItems())
+                    .filteredOn(
+                        item ->
+                            item.getItemId().equals(manualApplicationId)
+                                || item.getItemId().equals(priorAuthorityId))
+                    .extracting(item -> item.getItemId())
+                    .containsExactly(manualApplicationId, priorAuthorityId));
   }
 
   @Test
@@ -202,6 +233,113 @@ class WorkListIntegrationTest {
               assertThat(otherCaseworkerQueue.getItems())
                   .extracting(item -> item.getItemId())
                   .doesNotContain(claimedPriorAuthorityId);
+            });
+  }
+
+  @Test
+  void
+      givenMultiplePriorAuthoritiesAssignedToOneCaseworker_whenPersonalQueueIsViewed_thenAllAreReturned()
+          throws Exception {
+    UUID parentApplicationId = UUID.randomUUID();
+    UUID caseworkerId = createCaseworker("caseworker@example.com");
+    createGrantedApplication(parentApplicationId);
+    UUID firstPriorAuthorityId = createPriorAuthority(parentApplicationId);
+    UUID secondPriorAuthorityId = createPriorAuthority(parentApplicationId);
+
+    assertThat(assign(firstPriorAuthorityId, caseworkerId).getStatusCode())
+        .isEqualTo(HttpStatus.OK);
+    assertThat(assign(secondPriorAuthorityId, caseworkerId).getStatusCode())
+        .isEqualTo(HttpStatus.OK);
+
+    await()
+        .atMost(15, TimeUnit.SECONDS)
+        .untilAsserted(
+            () ->
+                assertThat(getWorkList("?assignedTo=" + caseworkerId).getItems())
+                    .filteredOn(
+                        item ->
+                            item.getItemId().equals(firstPriorAuthorityId)
+                                || item.getItemId().equals(secondPriorAuthorityId))
+                    .allSatisfy(
+                        item -> {
+                          assertThat(item.getItemType())
+                              .isEqualTo(WorkListItemType.PRIOR_AUTHORITY);
+                          assertThat(item.getParentApplicationId()).isEqualTo(parentApplicationId);
+                          assertThat(item.getAssignedTo()).isEqualTo(caseworkerId);
+                        })
+                    .extracting(item -> item.getItemId())
+                    .containsExactlyInAnyOrder(firstPriorAuthorityId, secondPriorAuthorityId));
+  }
+
+  @Test
+  void
+      givenInitialApplicationAndPriorAuthorityAssignedToOneCaseworker_whenPersonalQueueIsViewed_thenBothAreReturned()
+          throws Exception {
+    UUID manualApplicationId = UUID.randomUUID();
+    UUID parentApplicationId = UUID.randomUUID();
+    UUID caseworkerId = createCaseworker("caseworker@example.com");
+    createManualApplication(manualApplicationId);
+    createGrantedApplication(parentApplicationId);
+    UUID priorAuthorityId = createPriorAuthority(parentApplicationId);
+
+    assertThat(assign(manualApplicationId, caseworkerId).getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(assign(priorAuthorityId, caseworkerId).getStatusCode()).isEqualTo(HttpStatus.OK);
+
+    await()
+        .atMost(15, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              WorkListResponse personalQueue = getWorkList("?assignedTo=" + caseworkerId);
+              assertThat(personalQueue.getItems())
+                  .filteredOn(
+                      item ->
+                          item.getItemId().equals(manualApplicationId)
+                              || item.getItemId().equals(priorAuthorityId))
+                  .satisfiesExactlyInAnyOrder(
+                      item -> {
+                        assertThat(item.getItemId()).isEqualTo(manualApplicationId);
+                        assertThat(item.getItemType()).isEqualTo(WorkListItemType.APPLICATION);
+                        assertThat(item.getParentApplicationId()).isNull();
+                        assertThat(item.getAssignedTo()).isEqualTo(caseworkerId);
+                      },
+                      item -> {
+                        assertThat(item.getItemId()).isEqualTo(priorAuthorityId);
+                        assertThat(item.getItemType()).isEqualTo(WorkListItemType.PRIOR_AUTHORITY);
+                        assertThat(item.getParentApplicationId()).isEqualTo(parentApplicationId);
+                        assertThat(item.getAssignedTo()).isEqualTo(caseworkerId);
+                      });
+            });
+  }
+
+  @Test
+  void
+      givenInitialApplicationAndPriorAuthorityAssignedToDifferentCaseworkers_whenPersonalQueuesAreViewed_thenEachExcludesTheOthersWork()
+          throws Exception {
+    UUID manualApplicationId = UUID.randomUUID();
+    UUID parentApplicationId = UUID.randomUUID();
+    UUID initialApplicationCaseworkerId = createCaseworker("initial@example.com");
+    UUID priorAuthorityCaseworkerId = createCaseworker("prior-authority@example.com");
+    createManualApplication(manualApplicationId);
+    createGrantedApplication(parentApplicationId);
+    UUID priorAuthorityId = createPriorAuthority(parentApplicationId);
+
+    assertThat(assign(manualApplicationId, initialApplicationCaseworkerId).getStatusCode())
+        .isEqualTo(HttpStatus.OK);
+    assertThat(assign(priorAuthorityId, priorAuthorityCaseworkerId).getStatusCode())
+        .isEqualTo(HttpStatus.OK);
+
+    await()
+        .atMost(15, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              assertThat(getWorkList("?assignedTo=" + initialApplicationCaseworkerId).getItems())
+                  .extracting(item -> item.getItemId())
+                  .contains(manualApplicationId)
+                  .doesNotContain(priorAuthorityId);
+              assertThat(getWorkList("?assignedTo=" + priorAuthorityCaseworkerId).getItems())
+                  .extracting(item -> item.getItemId())
+                  .contains(priorAuthorityId)
+                  .doesNotContain(manualApplicationId);
             });
   }
 
@@ -340,6 +478,14 @@ class WorkListIntegrationTest {
 
   private String assignmentUrl(UUID itemId, String operation) {
     return "http://localhost:" + port + "/api/v0/work-list/" + itemId + "/" + operation;
+  }
+
+  private ResponseEntity<Void> assign(UUID itemId, UUID caseworkerId) {
+    return restTemplate.exchange(
+        assignmentUrl(itemId, "assign"),
+        HttpMethod.POST,
+        new HttpEntity<>(new WorkListAssignRequest(caseworkerId, 0L), headers()),
+        Void.class);
   }
 
   private HttpHeaders headers() {
