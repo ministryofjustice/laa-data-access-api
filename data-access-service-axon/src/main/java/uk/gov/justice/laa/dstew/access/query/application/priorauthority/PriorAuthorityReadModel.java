@@ -10,6 +10,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
 /** Replayable current-state read model for a prior-authority submission. */
 @Entity
@@ -18,6 +19,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@ExcludeFromGeneratedCodeCoverage
 public class PriorAuthorityReadModel {
 
   @Id
@@ -26,6 +28,9 @@ public class PriorAuthorityReadModel {
 
   @Column(name = "application_id")
   private UUID applicationId;
+
+  @Column(name = "data_version")
+  private long dataVersion;
 
   private String status;
 

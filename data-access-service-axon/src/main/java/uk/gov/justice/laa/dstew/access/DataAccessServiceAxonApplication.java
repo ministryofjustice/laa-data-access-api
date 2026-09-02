@@ -7,6 +7,7 @@ import org.springframework.boot.persistence.autoconfigure.EntityScan;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 /** Starts the standalone Axon-based data access proof of concept. */
+@ExcludeFromGeneratedCodeCoverage
 @SpringBootApplication(exclude = FlywayAutoConfiguration.class)
 @EnableScheduling
 @EntityScan(

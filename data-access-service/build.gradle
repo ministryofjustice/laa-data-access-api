@@ -290,6 +290,7 @@ dependencies {
     // Source: https://mvnrepository.com/artifact/com.azure.spring/spring-cloud-azure-starter-active-directory
     // Note: Version 7.0.0 may not be compatible with Spring Boot 4, check for updated version
     implementation 'com.azure.spring:spring-cloud-azure-starter-active-directory:7.2.0'
+    implementation 'org.apache.qpid:proton-j:0.35.0'
 
     implementation 'io.micrometer:micrometer-registry-prometheus'
     implementation 'io.micrometer:micrometer-tracing-bridge-brave'
@@ -305,6 +306,13 @@ dependencies {
     //[https://security.snyk.io/vuln/SNYK-JAVA-ORGPOSTGRESQL-17874248] in org.postgresql:postgresql@42.7.11 introduced by org.postgresql:postgresql@42.7.11
     runtimeOnly 'org.postgresql:postgresql:42.7.12'
     runtimeOnly "org.flywaydb:flyway-database-postgresql"
+
+    //[https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHEQPID-19315769] and related High severity CVEs in org.apache.qpid:proton-j@0.34.1 introduced by com.azure.spring:spring-cloud-azure-starter-active-directory
+    implementation 'org.apache.qpid:proton-j:0.35.0'
+    //[https://security.snyk.io/vuln/SNYK-JAVA-COMFASTERXMLJACKSONCORE-19477042] in com.fasterxml.jackson.core:jackson-databind@2.21.5 introduced by com.fasterxml.jackson.core:jackson-databind@2.21.5
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.21.6'
+    //[https://security.snyk.io/vuln/SNYK-JAVA-TOOLSJACKSONCORE-19477043] in tools.jackson.core:jackson-databind@3.1.5 introduced by tools.jackson.core:jackson-databind@3.1.5
+    implementation 'tools.jackson.core:jackson-databind:3.1.6'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-webflux'
     testImplementation 'org.instancio:instancio-junit:5.5.1'
