@@ -3,7 +3,6 @@ package uk.gov.justice.laa.dstew.access.command.application.linkedgroup;
 import java.util.List;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
-import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 
 /** Decision functions for linked-group commands. */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
@@ -40,45 +39,5 @@ public final class LinkedApplicationGroupDecider {
             command.leadApplicationId(),
             List.copyOf(command.memberApplicationIds()),
             command.occurredAt()));
-  }
-
-  /** Derives a member activation only when the durable route version still matches membership. */
-  public static LinkedGroupMemberWorkItemChanged decideActivate(
-      LinkedApplicationGroupState state, ActivateLinkedGroupMemberWorkItemCommand command) {
-    validateMember(
-        state, command.groupId(), command.applicationId(), command.expectedMembershipVersion());
-    return new LinkedGroupMemberWorkItemChanged(
-        state.groupId,
-        command.applicationId(),
-        true,
-        state.membershipVersion,
-        command.occurredAt());
-  }
-
-  /** Derives a member removal. */
-  public static LinkedGroupMemberWorkItemChanged decideDeactivate(
-      LinkedApplicationGroupState state, DeactivateLinkedGroupMemberWorkItemCommand command) {
-    validateMember(
-        state, command.groupId(), command.applicationId(), command.expectedMembershipVersion());
-    return new LinkedGroupMemberWorkItemChanged(
-        state.groupId,
-        command.applicationId(),
-        false,
-        state.membershipVersion,
-        command.occurredAt());
-  }
-
-  private static void validateMember(
-      LinkedApplicationGroupState state,
-      java.util.UUID groupId,
-      java.util.UUID applicationId,
-      long membershipVersion) {
-    if (state.groupId == null
-        || !state.groupId.equals(groupId)
-        || !state.memberApplicationIds.contains(applicationId)
-        || membershipVersion != state.membershipVersion) {
-      throw new ResourceNotFoundException(
-          "No current linked-group route found for " + applicationId);
-    }
   }
 }

@@ -1,9 +1,7 @@
 package uk.gov.justice.laa.dstew.access.command.application.linkedgroup;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 import lombok.NoArgsConstructor;
 
@@ -14,6 +12,4 @@ public class LinkedApplicationGroupState {
   UUID groupId;
   UUID leadApplicationId;
   List<UUID> memberApplicationIds;
-  Set<UUID> activeMemberApplicationIds = new LinkedHashSet<>();
-  long membershipVersion;
 }

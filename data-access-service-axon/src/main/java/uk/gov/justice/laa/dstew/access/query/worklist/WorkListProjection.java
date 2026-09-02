@@ -17,7 +17,6 @@ import uk.gov.justice.laa.dstew.access.command.application.assignment.Applicatio
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
-import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedGroupMemberWorkItemChanged;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
@@ -156,26 +155,6 @@ public class WorkListProjection {
               item.setAssigneeId(null);
               item.setItemVersion(event.itemVersion());
               item.setAssignmentVersion(event.assignmentVersion());
-              item.setUpdatedAt(event.occurredAt());
-              item.setProjectionPosition(message.identifier().hashCode());
-              items.save(item);
-            });
-  }
-
-  /** Applies an explicit group-owned member eligibility effect. */
-  @EventHandler
-  public void on(LinkedGroupMemberWorkItemChanged event, EventMessage message) {
-    if (!event.active()) {
-      items.deleteByIdItemTypeAndIdItemId(WorkItemType.APPLICATION, event.applicationId());
-      return;
-    }
-    items
-        .findById(new WorkListItemId(WorkItemType.APPLICATION, event.applicationId()))
-        .ifPresent(
-            item -> {
-              item.setAssignmentBoundaryType("LINKED_GROUP");
-              item.setAssignmentBoundaryId(event.groupId());
-              item.setGroupId(event.groupId());
               item.setUpdatedAt(event.occurredAt());
               item.setProjectionPosition(message.identifier().hashCode());
               items.save(item);
