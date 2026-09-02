@@ -32,5 +32,4 @@ public final class LinkedApplicationGroupEvolve {
       state.activeMemberApplicationIds.remove(event.applicationId());
     }
   }
-
 }

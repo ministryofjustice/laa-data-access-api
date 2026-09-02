@@ -81,5 +81,4 @@ public final class LinkedApplicationGroupDecider {
           "No current linked-group route found for " + applicationId);
     }
   }
-
 }

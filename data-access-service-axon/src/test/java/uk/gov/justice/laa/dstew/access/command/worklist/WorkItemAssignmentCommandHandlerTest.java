@@ -138,7 +138,9 @@ class WorkItemAssignmentCommandHandlerTest {
                     occurredAt)));
 
     assertThatThrownBy(
-            () -> handler.assign(new AssignWorkItemCommand(item, caseworkerId, 2L, "{}", "", occurredAt)))
+            () ->
+                handler.assign(
+                    new AssignWorkItemCommand(item, caseworkerId, 2L, "{}", "", occurredAt)))
         .isInstanceOf(ResourceNotFoundException.class);
   }
 }

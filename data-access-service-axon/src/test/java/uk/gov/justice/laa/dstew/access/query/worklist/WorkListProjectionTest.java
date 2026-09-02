@@ -194,7 +194,6 @@ class WorkListProjectionTest {
         .deleteByIdItemTypeAndIdItemId(WorkItemType.PRIOR_AUTHORITY, applicationId);
   }
 
-
   @Test
   void givenReset_whenHandled_thenDeletesTheDisposableProjection() {
     projection.reset();

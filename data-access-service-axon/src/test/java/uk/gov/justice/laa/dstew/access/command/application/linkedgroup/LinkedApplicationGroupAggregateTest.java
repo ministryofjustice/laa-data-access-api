@@ -58,7 +58,6 @@ class LinkedApplicationGroupAggregateTest {
         .noEvents();
   }
 
-
   @Test
   void givenGroupAlreadyExists_whenNewMemberJoins_thenEmitsMemberAddedEvent() {
     UUID groupId = UUID.randomUUID();

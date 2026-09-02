@@ -25,6 +25,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.annotation.DirtiesContext;
+import uk.gov.justice.laa.dstew.access.command.caseworker.Caseworker;
+import uk.gov.justice.laa.dstew.access.command.caseworker.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
@@ -35,6 +37,7 @@ import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetailsRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
+import uk.gov.justice.laa.dstew.access.model.WorkListAssignRequest;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 
 /**
@@ -67,6 +70,8 @@ class ProjectionTimeoutInMemoryTest {
   @Autowired private AxonConfiguration axonConfiguration;
 
   @Autowired private JdbcTemplate jdbcTemplate;
+
+  @Autowired private CaseworkerRepository caseworkers;
 
   @Test
   void givenStoppedProjectionProcessor_whenPostApplication_thenReturnsAcceptedWithLocation() {
@@ -273,10 +278,21 @@ class ProjectionTimeoutInMemoryTest {
             .getComponents(StreamingEventProcessor.class)
             .get("application-projection");
     processor.shutdown().join();
+    UUID caseworkerId = UUID.randomUUID();
+    caseworkers.save(new Caseworker(caseworkerId, "timeout-decider@example.com"));
+    assertThat(
+            restTemplate
+                .exchange(
+                    "/api/v0/work-list/" + applicationId + "/assign",
+                    HttpMethod.POST,
+                    new HttpEntity<>(new WorkListAssignRequest(caseworkerId, 0L), headers),
+                    Void.class)
+                .getStatusCode())
+        .isEqualTo(HttpStatus.OK);
     MakeDecisionRequest decisionRequest =
         MakeDecisionRequest.builder()
-            .expectedApplicationVersion(1L)
-            .caseworkerId(UUID.randomUUID())
+            .expectedApplicationVersion(2L)
+            .caseworkerId(caseworkerId)
             .overallDecision(DecisionStatus.GRANTED)
             .certificate(
                 Map.of(
@@ -327,7 +343,7 @@ class ProjectionTimeoutInMemoryTest {
                 "SELECT COUNT(*) FROM domain_event_entry WHERE aggregate_identifier = ?",
                 Integer.class,
                 applicationId.toString()))
-        .isEqualTo(3);
+        .isEqualTo(4);
 
     processor.start().join();
     await()
@@ -343,7 +359,7 @@ class ProjectionTimeoutInMemoryTest {
               assertThat(currentRead.getBody()).isNotNull();
               assertThat(currentRead.getBody().getAutoGranted())
                   .isEqualTo(uk.gov.justice.laa.dstew.access.model.AutoGranted.MANUAL);
-              assertThat(currentRead.getBody().getVersion()).isEqualTo(2L);
+              assertThat(currentRead.getBody().getVersion()).isEqualTo(3L);
             });
   }
 
