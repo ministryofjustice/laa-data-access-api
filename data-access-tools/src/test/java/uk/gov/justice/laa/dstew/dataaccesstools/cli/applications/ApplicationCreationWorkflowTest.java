@@ -32,8 +32,9 @@ class ApplicationCreationWorkflowTest {
     private final List<String> operations = new ArrayList<>();
 
     @Override
-    public void createApplication(String requestBody) {
+    public UUID createApplication(String requestBody) {
       operations.add("create");
+      return UUID.randomUUID();
     }
 
     @Override
@@ -47,7 +48,7 @@ class ApplicationCreationWorkflowTest {
     }
 
     @Override
-    public void createPriorAuthority(UUID applicationId, String requestBody) {
+    public UUID createPriorAuthority(UUID applicationId, String requestBody) {
       throw new UnsupportedOperationException();
     }
   }

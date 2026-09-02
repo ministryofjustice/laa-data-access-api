@@ -24,8 +24,11 @@ public final class HttpDataAccessApiClient implements DataAccessApiClient {
   }
 
   @Override
-  public void createApplication(String requestBody) {
-    execute("POST", "api/v0/applications", requestBody, "CIVIL_APPLY", Set.of(201));
+  public UUID createApplication(String requestBody) {
+    return locationId(
+        execute("POST", "api/v0/applications", requestBody, "CIVIL_APPLY", Set.of(201)),
+        "POST",
+        "api/v0/applications");
   }
 
   @Override
@@ -49,16 +52,13 @@ public final class HttpDataAccessApiClient implements DataAccessApiClient {
   }
 
   @Override
-  public void createPriorAuthority(UUID applicationId, String requestBody) {
-    execute(
-        "POST",
-        "api/v0/applications/" + applicationId + "/prior-authority",
-        requestBody,
-        "CIVIL_APPLY",
-        Set.of(201, 202));
+  public UUID createPriorAuthority(UUID applicationId, String requestBody) {
+    String path = "api/v0/applications/" + applicationId + "/prior-authority";
+    return locationId(
+        execute("POST", path, requestBody, "CIVIL_APPLY", Set.of(201, 202)), "POST", path);
   }
 
-  private void execute(
+  private HttpResponse<String> execute(
       String method, String path, String body, String serviceName, Set<Integer> acceptedStatuses) {
     HttpRequest request =
         HttpRequest.newBuilder(baseUri.resolve(path))
@@ -76,12 +76,32 @@ public final class HttpDataAccessApiClient implements DataAccessApiClient {
             "%s /%s returned HTTP %d: %s"
                 .formatted(method, path, response.statusCode(), safeBody(response.body())));
       }
+      return response;
     } catch (InterruptedException exception) {
       Thread.currentThread().interrupt();
       throw new ApiException(method + " /" + path + " interrupted", exception);
     } catch (IOException exception) {
       throw new ApiException(
           method + " /" + path + " failed: " + exception.getMessage(), exception);
+    }
+  }
+
+  private UUID locationId(HttpResponse<String> response, String method, String path) {
+    String location =
+        response
+            .headers()
+            .firstValue("Location")
+            .orElseThrow(
+                () -> new ApiException(method + " /" + path + " returned no Location header"));
+    try {
+      String locationPath = URI.create(location).getPath();
+      if (locationPath == null || locationPath.isBlank()) {
+        throw new IllegalArgumentException("Location path is blank");
+      }
+      return UUID.fromString(locationPath.substring(locationPath.lastIndexOf('/') + 1));
+    } catch (IllegalArgumentException exception) {
+      throw new ApiException(
+          method + " /" + path + " returned invalid Location header: " + location, exception);
     }
   }
 

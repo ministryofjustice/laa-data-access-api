@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.dataaccesstools.utils.client;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
@@ -17,6 +18,9 @@ import org.junit.jupiter.api.Test;
 class HttpDataAccessApiClientTest {
   private HttpServer server;
   private final List<Request> requests = new ArrayList<>();
+  private final UUID applicationId = UUID.randomUUID();
+  private final UUID priorAuthorityId = UUID.randomUUID();
+  private boolean includeLocation = true;
 
   @BeforeEach
   void startServer() throws IOException {
@@ -33,12 +37,11 @@ class HttpDataAccessApiClientTest {
   @Test
   void sendsRequiredAuthenticationAndServiceHeadersForEveryOperation() {
     HttpDataAccessApiClient client = new HttpDataAccessApiClient(baseUri());
-    UUID applicationId = UUID.randomUUID();
 
-    client.createApplication("{}");
+    assertEquals(applicationId, client.createApplication("{}"));
     client.recordManualOutcome(applicationId);
     client.makeDecision(applicationId, "{}");
-    client.createPriorAuthority(applicationId, "{}");
+    assertEquals(priorAuthorityId, client.createPriorAuthority(applicationId, "{}"));
 
     assertEquals(4, requests.size());
     requests.forEach(
@@ -50,6 +53,18 @@ class HttpDataAccessApiClientTest {
     assertEquals("/api/v0/applications", requests.get(0).path());
     assertEquals("PATCH", requests.get(1).method());
     assertEquals("{\"outcome\":\"MANUAL\"}", requests.get(1).body());
+  }
+
+  @Test
+  void rejectsSuccessfulCreationResponsesWithoutALocationHeader() {
+    includeLocation = false;
+
+    ApiException exception =
+        assertThrows(
+            ApiException.class,
+            () -> new HttpDataAccessApiClient(baseUri()).createApplication("{}"));
+
+    assertEquals("POST /api/v0/applications returned no Location header", exception.getMessage());
   }
 
   private URI baseUri() {
@@ -68,6 +83,17 @@ class HttpDataAccessApiClientTest {
     int status = exchange.getRequestURI().getPath().endsWith("auto-grant-outcome") ? 204 : 201;
     if (exchange.getRequestURI().getPath().endsWith("/decision")) {
       status = 200;
+    }
+    if (includeLocation && exchange.getRequestMethod().equals("POST")) {
+      UUID id =
+          exchange.getRequestURI().getPath().endsWith("/prior-authority")
+              ? priorAuthorityId
+              : applicationId;
+      exchange
+          .getResponseHeaders()
+          .set(
+              "Location",
+              baseUri().resolve(exchange.getRequestURI().getPath() + "/" + id).toString());
     }
     exchange.sendResponseHeaders(status, -1);
     exchange.close();
