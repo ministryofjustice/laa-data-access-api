@@ -250,7 +250,7 @@ class PriorAuthorityAggregateTest {
   }
 
   @Test
-  void givenExistingDraftAggregate_whenSaveDraft_thenEmitsDraftSavedEvent() {
+  void givenExistingDraftAggregate_whenSaveDraft_thenPersistsDraftAndEmitsNoEvent() {
     UUID submissionId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
@@ -282,20 +282,10 @@ class PriorAuthorityAggregateTest {
             "PriorAuthority.json",
             occurredAt);
 
-    fixture
-        .given()
-        .events(existingEvent)
-        .when()
-        .command(command)
-        .then()
-        .events(
-            new PriorAuthorityDraftSavedEvent(
-                submissionId,
-                applicationId,
-                secondFingerprint,
-                PriorAuthorityStatus.IN_PROGRESS.name(),
-                1,
-                occurredAt));
+    fixture.given().events(existingEvent).when().command(command).then().noEvents();
+
+    verify(draftStore)
+        .upsert(eq(submissionId), eq(applicationId), any(), eq(secondRequest), eq(occurredAt));
   }
 
   @Test

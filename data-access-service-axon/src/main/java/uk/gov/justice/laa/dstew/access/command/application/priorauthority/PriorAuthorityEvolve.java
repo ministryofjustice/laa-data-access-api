@@ -26,15 +26,6 @@ public final class PriorAuthorityEvolve {
     state.schemaVersion = event.schemaVersion();
   }
 
-  /** Applies a {@link PriorAuthorityDraftSavedEvent} to the given state. */
-  public static void apply(PriorAuthorityState state, PriorAuthorityDraftSavedEvent event) {
-    state.submissionId = event.submissionId();
-    state.applicationId = event.applicationId();
-    state.requestFingerprint = event.requestFingerprint();
-    state.status = event.status();
-    state.schemaVersion = event.schemaVersion();
-  }
-
   /** Applies a {@link PriorAuthoritySubmittedEvent} to the given state. */
   public static void apply(PriorAuthorityState state, PriorAuthoritySubmittedEvent event) {
     state.submissionId = event.submissionId();

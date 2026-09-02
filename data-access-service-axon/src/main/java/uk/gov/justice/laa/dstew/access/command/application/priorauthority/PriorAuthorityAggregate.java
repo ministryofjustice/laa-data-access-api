@@ -86,9 +86,6 @@ public class PriorAuthorityAggregate {
     if (this.submissionId == null) {
       eventAppender.append(
           PriorAuthorityDecider.decideStartDraft(command, fingerprint, applicationId));
-    } else {
-      eventAppender.append(
-          PriorAuthorityDecider.decideSaveDraft(command, fingerprint, applicationId));
     }
   }
 
@@ -123,12 +120,6 @@ public class PriorAuthorityAggregate {
 
   @EventSourcingHandler
   void on(PriorAuthorityDraftStartedEvent event) {
-    PriorAuthorityEvolve.apply(state, event);
-    this.submissionId = state.submissionId;
-  }
-
-  @EventSourcingHandler
-  void on(PriorAuthorityDraftSavedEvent event) {
     PriorAuthorityEvolve.apply(state, event);
     this.submissionId = state.submissionId;
   }

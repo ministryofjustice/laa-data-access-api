@@ -53,21 +53,6 @@ public final class PriorAuthorityDecider {
   }
 
   /**
-   * Returns a {@link PriorAuthorityDraftSavedEvent} for an update to an existing draft, using the
-   * supplied fingerprint and resolved application ID.
-   */
-  public static PriorAuthorityDraftSavedEvent decideSaveDraft(
-      SavePriorAuthorityDraftCommand command, String fingerprint, UUID applicationId) {
-    return new PriorAuthorityDraftSavedEvent(
-        command.submissionId(),
-        applicationId,
-        fingerprint,
-        PriorAuthorityStatus.IN_PROGRESS.name(),
-        command.schemaVersion(),
-        command.occurredAt());
-  }
-
-  /**
    * Returns a {@link PriorAuthoritySubmittedEvent} — a thin pointer with no personal data — for the
    * given submit command. The submitted content is always appended as version 0 of {@code
    * prior_authority_data}, since a submission's draft content is not itself versioned.

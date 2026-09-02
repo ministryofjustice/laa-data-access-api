@@ -127,29 +127,6 @@ class PriorAuthorityDeciderTest {
   }
 
   @Test
-  void givenUpdateCommand_whenDecideSaveDraft_thenUsesResolvedApplicationId() {
-    UUID submissionId = UUID.randomUUID();
-    UUID applicationId = UUID.randomUUID();
-    SavePriorAuthorityDraftCommand command =
-        new SavePriorAuthorityDraftCommand(
-            submissionId,
-            null,
-            null,
-            "{\"justification\":\"x\"}",
-            1,
-            "PriorAuthority.json",
-            OCCURRED_AT);
-    String fingerprint = "updated-fingerprint";
-
-    PriorAuthorityDraftSavedEvent event =
-        PriorAuthorityDecider.decideSaveDraft(command, fingerprint, applicationId);
-
-    assertThat(event.applicationId()).isEqualTo(applicationId);
-    assertThat(event.requestFingerprint()).isEqualTo(fingerprint);
-    assertThat(event.status()).isEqualTo(PriorAuthorityStatus.IN_PROGRESS.name());
-  }
-
-  @Test
   void givenSubmitCommand_whenDecideSubmit_thenAlwaysUsesDataVersionZero() {
     UUID submissionId = UUID.randomUUID();
     PriorAuthorityState state = new PriorAuthorityState();
