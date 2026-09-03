@@ -6,10 +6,9 @@ import org.axonframework.messaging.commandhandling.annotation.Command;
 import org.axonframework.modelling.annotation.TargetEntityId;
 
 /** Internal aggregate-targeted form of a generic direct unassignment command. */
-@Command(routingKey = "aggregateId")
+@Command(routingKey = "workItemId")
 public record DirectWorkItemUnassignmentCommand(
-    @TargetEntityId UUID aggregateId,
-    UUID workItemId,
+    @TargetEntityId UUID workItemId,
     long expectedAssignmentVersion,
     String serialisedRequest,
     String eventDescription,

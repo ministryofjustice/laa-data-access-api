@@ -68,8 +68,7 @@ public class PriorAuthorityAggregate {
       DirectPriorAuthorityWorkItemAssignmentCommand command,
       PriorAuthorityDataStore dataStore,
       EventAppender eventAppender) {
-    validateWorkItem(
-        command.aggregateId(), command.workItemId(), command.expectedAssignmentVersion());
+    validateWorkItem(command.workItemId(), command.expectedAssignmentVersion());
     if (state.caseworkerId != null) {
       throw new WorkItemAssignmentConflictException(command.workItemId(), "it is already assigned");
     }
@@ -98,8 +97,7 @@ public class PriorAuthorityAggregate {
       DirectPriorAuthorityWorkItemUnassignmentCommand command,
       PriorAuthorityDataStore dataStore,
       EventAppender eventAppender) {
-    validateWorkItem(
-        command.aggregateId(), command.workItemId(), command.expectedAssignmentVersion());
+    validateWorkItem(command.workItemId(), command.expectedAssignmentVersion());
     if (state.caseworkerId == null) {
       throw new WorkItemAssignmentConflictException(
           command.workItemId(), "it is already unassigned");
@@ -122,10 +120,8 @@ public class PriorAuthorityAggregate {
             command.occurredAt()));
   }
 
-  private void validateWorkItem(UUID aggregateId, UUID workItemId, long expectedAssignmentVersion) {
-    if (submissionId == null
-        || !submissionId.equals(aggregateId)
-        || !submissionId.equals(workItemId)) {
+  private void validateWorkItem(UUID workItemId, long expectedAssignmentVersion) {
+    if (submissionId == null || !submissionId.equals(workItemId)) {
       throw new ResourceNotFoundException(
           "No prior-authority work item found with id: " + workItemId);
     }

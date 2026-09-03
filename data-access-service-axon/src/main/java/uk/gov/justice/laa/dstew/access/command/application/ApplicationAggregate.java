@@ -210,7 +210,7 @@ public class ApplicationAggregate {
       DirectWorkItemAssignmentCommand command,
       ApplicationDataStore applicationDataStore,
       EventAppender eventAppender) {
-    requireApplicationExists(command.aggregateId());
+    requireApplicationExists(command.workItemId());
     validateDirectWorkItem(command.workItemId(), command.expectedAssignmentVersion());
     if (state.caseworkerId != null) {
       throw new WorkItemAssignmentConflictException(command.workItemId(), "it is already assigned");
@@ -250,7 +250,7 @@ public class ApplicationAggregate {
       DirectWorkItemUnassignmentCommand command,
       ApplicationDataStore applicationDataStore,
       EventAppender eventAppender) {
-    requireApplicationExists(command.aggregateId());
+    requireApplicationExists(command.workItemId());
     validateDirectWorkItem(command.workItemId(), command.expectedAssignmentVersion());
     if (state.caseworkerId == null) {
       throw new WorkItemAssignmentConflictException(

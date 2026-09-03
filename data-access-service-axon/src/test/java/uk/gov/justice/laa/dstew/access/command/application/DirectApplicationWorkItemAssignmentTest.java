@@ -53,8 +53,7 @@ class DirectApplicationWorkItemAssignmentTest {
         .given()
         .events(created(id, when), new ApplicationReadyForManualAssessmentEvent(id, 1L, 1L, when))
         .when()
-        .command(
-            new DirectWorkItemAssignmentCommand(id, id, caseworkerId, 0L, "{}", "Assigned", when))
+        .command(new DirectWorkItemAssignmentCommand(id, caseworkerId, 0L, "{}", "Assigned", when))
         .then()
         .events(
             new ApplicationAssignedToCaseworkerEvent(id, 2L, 2L, caseworkerId, when),
@@ -73,7 +72,7 @@ class DirectApplicationWorkItemAssignmentTest {
             new ApplicationReadyForManualAssessmentEvent(id, 1L, 1L, when),
             new ApplicationAssignedToCaseworkerEvent(id, 2L, 2L, caseworkerId, when))
         .when()
-        .command(new DirectWorkItemAssignmentCommand(id, id, UUID.randomUUID(), 0L, "{}", "", when))
+        .command(new DirectWorkItemAssignmentCommand(id, UUID.randomUUID(), 0L, "{}", "", when))
         .then()
         .exception(WorkItemAssignmentConflictException.class)
         .noEvents();
@@ -82,7 +81,7 @@ class DirectApplicationWorkItemAssignmentTest {
         .given()
         .events(created(id, when), new ApplicationReadyForManualAssessmentEvent(id, 1L, 1L, when))
         .when()
-        .command(new DirectWorkItemUnassignmentCommand(id, id, 0L, "{}", "", when))
+        .command(new DirectWorkItemUnassignmentCommand(id, 0L, "{}", "", when))
         .then()
         .exception(WorkItemAssignmentConflictException.class)
         .noEvents();

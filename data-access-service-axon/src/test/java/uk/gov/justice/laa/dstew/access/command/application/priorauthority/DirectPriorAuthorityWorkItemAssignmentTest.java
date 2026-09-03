@@ -54,7 +54,7 @@ class DirectPriorAuthorityWorkItemAssignmentTest {
         .when()
         .command(
             new DirectPriorAuthorityWorkItemAssignmentCommand(
-                submissionId, submissionId, caseworkerId, 0L, "{}", "Assigned", when))
+                submissionId, caseworkerId, 0L, "{}", "Assigned", when))
         .then()
         .events(
             new WorkItemAssigned(
@@ -76,7 +76,7 @@ class DirectPriorAuthorityWorkItemAssignmentTest {
         .when()
         .command(
             new DirectPriorAuthorityWorkItemAssignmentCommand(
-                submissionId, submissionId, UUID.randomUUID(), 1L, "{}", "", when))
+                submissionId, UUID.randomUUID(), 1L, "{}", "", when))
         .then()
         .exception(WorkItemAssignmentConflictException.class)
         .noEvents();

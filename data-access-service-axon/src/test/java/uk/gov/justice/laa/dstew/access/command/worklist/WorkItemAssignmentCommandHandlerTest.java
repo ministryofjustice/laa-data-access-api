@@ -35,7 +35,6 @@ class WorkItemAssignmentCommandHandlerTest {
                     WorkItemType.APPLICATION,
                     id,
                     WorkItemRouteKind.STANDALONE,
-                    id,
                     null,
                     0L,
                     Instant.now())));
@@ -51,7 +50,7 @@ class WorkItemAssignmentCommandHandlerTest {
     verify(gateway)
         .sendAndWait(
             new DirectWorkItemAssignmentCommand(
-                id, id, caseworkerId, 0L, "{}", "", command.occurredAt()));
+                id, caseworkerId, 0L, "{}", "", command.occurredAt()));
   }
 
   @Test
@@ -72,7 +71,6 @@ class WorkItemAssignmentCommandHandlerTest {
                     WorkItemType.PRIOR_AUTHORITY,
                     submissionId,
                     WorkItemRouteKind.STANDALONE,
-                    submissionId,
                     null,
                     0L,
                     occurredAt)));
@@ -82,7 +80,7 @@ class WorkItemAssignmentCommandHandlerTest {
     verify(gateway)
         .sendAndWait(
             new DirectPriorAuthorityWorkItemAssignmentCommand(
-                submissionId, submissionId, caseworkerId, 0L, "{}", "", occurredAt));
+                submissionId, caseworkerId, 0L, "{}", "", occurredAt));
   }
 
   @Test

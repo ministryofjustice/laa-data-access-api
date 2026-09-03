@@ -31,9 +31,6 @@ public class WorkItemRoute {
   @Column(name = "route_kind", nullable = false)
   private WorkItemRouteKind routeKind;
 
-  @Column(name = "aggregate_id", nullable = false)
-  private UUID aggregateId;
-
   @Column(name = "group_id")
   private UUID groupId;
 
@@ -55,14 +52,12 @@ public class WorkItemRoute {
       WorkItemType type,
       UUID workItemId,
       WorkItemRouteKind routeKind,
-      UUID aggregateId,
       UUID groupId,
       long membershipVersion,
       Instant occurredAt) {
     this.workItemId = workItemId;
     this.workItemType = type;
     this.routeKind = routeKind;
-    this.aggregateId = aggregateId;
     this.groupId = groupId;
     this.membershipVersion = membershipVersion;
     this.createdAt = occurredAt;

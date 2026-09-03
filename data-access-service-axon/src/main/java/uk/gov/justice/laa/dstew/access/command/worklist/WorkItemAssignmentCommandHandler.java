@@ -64,7 +64,6 @@ public class WorkItemAssignmentCommandHandler {
     if (route.getWorkItemType() == WorkItemType.PRIOR_AUTHORITY) {
       commandGateway.sendAndWait(
           new DirectPriorAuthorityWorkItemAssignmentCommand(
-              route.getAggregateId(),
               command.workItemId(),
               command.caseworkerId(),
               command.expectedAssignmentVersion(),
@@ -75,7 +74,6 @@ public class WorkItemAssignmentCommandHandler {
     }
     commandGateway.sendAndWait(
         new DirectWorkItemAssignmentCommand(
-            route.getAggregateId(),
             command.workItemId(),
             command.caseworkerId(),
             command.expectedAssignmentVersion(),
@@ -112,7 +110,6 @@ public class WorkItemAssignmentCommandHandler {
     if (route.getWorkItemType() == WorkItemType.PRIOR_AUTHORITY) {
       commandGateway.sendAndWait(
           new DirectPriorAuthorityWorkItemUnassignmentCommand(
-              route.getAggregateId(),
               command.workItemId(),
               command.expectedAssignmentVersion(),
               command.serialisedRequest(),
@@ -122,7 +119,6 @@ public class WorkItemAssignmentCommandHandler {
     }
     commandGateway.sendAndWait(
         new DirectWorkItemUnassignmentCommand(
-            route.getAggregateId(),
             command.workItemId(),
             command.expectedAssignmentVersion(),
             command.serialisedRequest(),
@@ -137,8 +133,7 @@ public class WorkItemAssignmentCommandHandler {
   }
 
   private void requireDirectRoute(WorkItemRoute route, java.util.UUID workItemId) {
-    if (route.getRouteKind() != WorkItemRouteKind.STANDALONE
-        || !route.getAggregateId().equals(workItemId)) {
+    if (route.getRouteKind() != WorkItemRouteKind.STANDALONE) {
       throw new ResourceNotFoundException("No direct work-item route found for " + workItemId);
     }
   }

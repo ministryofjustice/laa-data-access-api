@@ -30,7 +30,6 @@ public class WorkItemRouteProjection {
             WorkItemType.APPLICATION,
             event.applicationId(),
             WorkItemRouteKind.STANDALONE,
-            event.applicationId(),
             null,
             0L,
             event.occurredAt()));
@@ -54,7 +53,6 @@ public class WorkItemRouteProjection {
             WorkItemType.PRIOR_AUTHORITY,
             event.submissionId(),
             WorkItemRouteKind.STANDALONE,
-            event.submissionId(),
             null,
             0L,
             event.occurredAt()));

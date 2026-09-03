@@ -6,10 +6,9 @@ import org.axonframework.messaging.commandhandling.annotation.Command;
 import org.axonframework.modelling.annotation.TargetEntityId;
 
 /** Internal PA aggregate-targeted form of a generic direct assignment command. */
-@Command(routingKey = "aggregateId")
+@Command(routingKey = "workItemId")
 public record DirectPriorAuthorityWorkItemAssignmentCommand(
-    @TargetEntityId UUID aggregateId,
-    UUID workItemId,
+    @TargetEntityId UUID workItemId,
     UUID caseworkerId,
     long expectedAssignmentVersion,
     String serialisedRequest,
