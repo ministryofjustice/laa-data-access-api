@@ -44,19 +44,13 @@ class PriorAuthorityEvolveTest {
     Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
     PriorAuthorityDraftStartedEvent event =
         new PriorAuthorityDraftStartedEvent(
-            submissionId,
-            applicationId,
-            "draft-fingerprint",
-            PriorAuthorityStatus.IN_PROGRESS.name(),
-            3,
-            occurredAt);
+            submissionId, applicationId, "draft-fingerprint", 3, occurredAt);
 
     PriorAuthorityEvolve.apply(state, event);
 
     assertThat(state.getSubmissionId()).isEqualTo(submissionId);
     assertThat(state.getApplicationId()).isEqualTo(applicationId);
     assertThat(state.getRequestFingerprint()).isEqualTo("draft-fingerprint");
-    assertThat(state.getStatus()).isEqualTo(PriorAuthorityStatus.IN_PROGRESS.name());
     assertThat(state.getSchemaVersion()).isEqualTo(3);
   }
 

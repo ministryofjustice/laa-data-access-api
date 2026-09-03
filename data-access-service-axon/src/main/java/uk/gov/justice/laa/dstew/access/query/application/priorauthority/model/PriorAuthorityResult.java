@@ -3,7 +3,6 @@ package uk.gov.justice.laa.dstew.access.query.application.priorauthority.model;
 import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
 
 /** Typed result of retrieving a prior-authority submission. */
@@ -29,14 +28,10 @@ public record PriorAuthorityResult(
 
   /**
    * Builds the use-case result for an in-progress draft, whose content may be partial since it has
-   * not yet been schema-validated.
+   * not yet been schema-validated. A draft has no decision yet, so status is left {@code null}.
    */
   public static PriorAuthorityResult fromDraft(PriorAuthorityDataPayload payload) {
-    return build(
-        payload.submissionId(),
-        payload.applicationId(),
-        PriorAuthorityStatus.IN_PROGRESS.name(),
-        payload.content());
+    return build(payload.submissionId(), payload.applicationId(), null, payload.content());
   }
 
   private static PriorAuthorityResult build(

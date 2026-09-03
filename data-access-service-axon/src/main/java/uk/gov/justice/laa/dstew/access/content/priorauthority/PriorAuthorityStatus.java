@@ -5,7 +5,6 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 /** Processing status for a prior-authority submission. */
 @ExcludeFromGeneratedCodeCoverage
 public enum PriorAuthorityStatus {
-  IN_PROGRESS,
   PENDING,
   GRANTED,
   REFUSED

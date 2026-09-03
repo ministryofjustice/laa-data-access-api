@@ -101,7 +101,7 @@ class PriorAuthorityDeciderTest {
   }
 
   @Test
-  void givenCommand_whenDecideStartDraft_thenReturnsEventWithInProgressStatus() {
+  void givenCommand_whenDecideStartDraft_thenReturnsEventWithExpectedFields() {
     UUID submissionId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     SavePriorAuthorityDraftCommand command =
@@ -121,7 +121,6 @@ class PriorAuthorityDeciderTest {
     assertThat(event.submissionId()).isEqualTo(submissionId);
     assertThat(event.applicationId()).isEqualTo(applicationId);
     assertThat(event.requestFingerprint()).isEqualTo(fingerprint);
-    assertThat(event.status()).isEqualTo(PriorAuthorityStatus.IN_PROGRESS.name());
     assertThat(event.schemaVersion()).isEqualTo(1);
     assertThat(event.occurredAt()).isEqualTo(OCCURRED_AT);
   }

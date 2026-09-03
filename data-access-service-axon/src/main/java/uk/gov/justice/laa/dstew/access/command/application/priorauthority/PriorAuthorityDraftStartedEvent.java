@@ -11,6 +11,5 @@ public record PriorAuthorityDraftStartedEvent(
     @EventTag(key = "PriorAuthorityAggregate") UUID submissionId,
     UUID applicationId,
     String requestFingerprint,
-    String status,
     int schemaVersion,
     Instant occurredAt) {}

@@ -223,7 +223,7 @@ class GetPriorAuthorityUseCaseTest {
   }
 
   @Test
-  void givenInProgressDraft_whenRetrieved_thenFallsBackToDraftStoreWithInProgressStatus() {
+  void givenInProgressDraft_whenRetrieved_thenFallsBackToDraftStoreWithNullStatus() {
     UUID submissionId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     PriorAuthorityContent content =
@@ -250,7 +250,7 @@ class GetPriorAuthorityUseCaseTest {
 
     assertThat(result.priorAuthorityId()).isEqualTo(submissionId);
     assertThat(result.applicationId()).isEqualTo(applicationId);
-    assertThat(result.status()).isEqualTo("IN_PROGRESS");
+    assertThat(result.status()).isNull();
     assertThat(result.priorAuthorityType()).isEqualTo(PriorAuthorityType.EXPERT);
     assertThat(result.expertDetails()).isNotNull();
     assertThat(result.expertDetails().expertFullName()).isEqualTo("Jane Doe");

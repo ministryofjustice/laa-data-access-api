@@ -107,7 +107,7 @@ class PriorAuthorityDraftIntegrationTest {
         objectMapper.readValue(draftResponse.getBody(), PriorAuthorityResponse.class);
     assertThat(draft.getPriorAuthorityId()).isEqualTo(submissionId);
     assertThat(draft.getApplicationId()).isEqualTo(applicationId);
-    assertThat(draft.getStatus()).isEqualTo("IN_PROGRESS");
+    assertThat(draft.getStatus()).isNull();
     assertThat(draft.getPriorAuthorityType())
         .isEqualTo(PriorAuthorityResponse.PriorAuthorityTypeEnum.EXPERT);
   }

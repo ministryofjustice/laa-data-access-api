@@ -22,7 +22,6 @@ public final class PriorAuthorityEvolve {
     state.submissionId = event.submissionId();
     state.applicationId = event.applicationId();
     state.requestFingerprint = event.requestFingerprint();
-    state.status = event.status();
     state.schemaVersion = event.schemaVersion();
   }
 

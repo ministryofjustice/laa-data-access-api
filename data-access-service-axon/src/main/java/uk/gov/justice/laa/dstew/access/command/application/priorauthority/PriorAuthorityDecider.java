@@ -47,7 +47,6 @@ public final class PriorAuthorityDecider {
         command.submissionId(),
         applicationId,
         fingerprint,
-        PriorAuthorityStatus.IN_PROGRESS.name(),
         command.schemaVersion(),
         command.occurredAt());
   }

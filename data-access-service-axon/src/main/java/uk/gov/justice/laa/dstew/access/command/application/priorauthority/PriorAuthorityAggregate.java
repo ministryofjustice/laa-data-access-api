@@ -10,7 +10,6 @@ import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityNotInProgressException;
 import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
@@ -64,7 +63,7 @@ public class PriorAuthorityAggregate {
       SavePriorAuthorityDraftCommand command,
       PriorAuthorityDraftStore draftStore,
       EventAppender eventAppender) {
-    if (PriorAuthorityStatus.PENDING.name().equals(state.status)) {
+    if (this.submissionId != null && draftStore.find(command.submissionId()).isEmpty()) {
       throw new PriorAuthorityNotInProgressException(command.submissionId());
     }
     UUID applicationId =
@@ -96,10 +95,10 @@ public class PriorAuthorityAggregate {
       PriorAuthorityDataStore dataStore,
       JsonSchemaValidator jsonSchemaValidator,
       EventAppender eventAppender) {
-    if (!PriorAuthorityStatus.IN_PROGRESS.name().equals(state.status)) {
-      throw new PriorAuthorityNotInProgressException(command.submissionId());
-    }
-    PriorAuthorityDataPayload payload = draftStore.get(command.submissionId());
+    PriorAuthorityDataPayload payload =
+        draftStore
+            .find(command.submissionId())
+            .orElseThrow(() -> new PriorAuthorityNotInProgressException(command.submissionId()));
     jsonSchemaValidator.validate(payload.content(), "PriorAuthority.json", state.schemaVersion);
     dataStore.append(
         command.submissionId(),

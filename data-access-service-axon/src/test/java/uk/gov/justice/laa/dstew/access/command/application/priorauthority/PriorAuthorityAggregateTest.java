@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.axonframework.eventsourcing.configuration.EventSourcedEntityModule;
 import org.axonframework.eventsourcing.configuration.EventSourcingConfigurer;
@@ -228,12 +229,7 @@ class PriorAuthorityAggregateTest {
         .then()
         .events(
             new PriorAuthorityDraftStartedEvent(
-                submissionId,
-                applicationId,
-                fingerprint,
-                PriorAuthorityStatus.IN_PROGRESS.name(),
-                1,
-                occurredAt));
+                submissionId, applicationId, fingerprint, 1, occurredAt));
 
     ArgumentCaptor<PriorAuthorityDataPayload> payloadCaptor =
         ArgumentCaptor.forClass(PriorAuthorityDataPayload.class);
@@ -261,13 +257,16 @@ class PriorAuthorityAggregateTest {
 
     PriorAuthorityDraftStartedEvent existingEvent =
         new PriorAuthorityDraftStartedEvent(
+            submissionId, applicationId, firstFingerprint, 1, occurredAt);
+    PriorAuthorityDataPayload existingDraftPayload =
+        new PriorAuthorityDataPayload(
             submissionId,
             applicationId,
-            firstFingerprint,
-            PriorAuthorityStatus.IN_PROGRESS.name(),
-            1,
+            new PriorAuthorityContent(null, null, null, null, null),
+            firstRequest,
             occurredAt);
 
+    when(draftStore.find(submissionId)).thenReturn(Optional.of(existingDraftPayload));
     when(draftStore.upsert(
             eq(submissionId), eq(applicationId), any(), eq(secondRequest), eq(occurredAt)))
         .thenReturn(secondFingerprint);
@@ -302,15 +301,9 @@ class PriorAuthorityAggregateTest {
             submissionId, applicationId, content, serialisedRequest, startedAt);
 
     PriorAuthorityDraftStartedEvent existingEvent =
-        new PriorAuthorityDraftStartedEvent(
-            submissionId,
-            applicationId,
-            fingerprint,
-            PriorAuthorityStatus.IN_PROGRESS.name(),
-            1,
-            startedAt);
+        new PriorAuthorityDraftStartedEvent(submissionId, applicationId, fingerprint, 1, startedAt);
 
-    when(draftStore.get(submissionId)).thenReturn(draftPayload);
+    when(draftStore.find(submissionId)).thenReturn(Optional.of(draftPayload));
 
     SubmitPriorAuthorityDraftCommand command =
         new SubmitPriorAuthorityDraftCommand(submissionId, submittedAt);
@@ -346,15 +339,9 @@ class PriorAuthorityAggregateTest {
             submissionId, applicationId, content, serialisedRequest, startedAt);
 
     PriorAuthorityDraftStartedEvent existingEvent =
-        new PriorAuthorityDraftStartedEvent(
-            submissionId,
-            applicationId,
-            fingerprint,
-            PriorAuthorityStatus.IN_PROGRESS.name(),
-            1,
-            startedAt);
+        new PriorAuthorityDraftStartedEvent(submissionId, applicationId, fingerprint, 1, startedAt);
 
-    when(draftStore.get(submissionId)).thenReturn(draftPayload);
+    when(draftStore.find(submissionId)).thenReturn(Optional.of(draftPayload));
     doThrow(new ValidationException(List.of("expertDetails is required")))
         .when(jsonSchemaValidator)
         .validate(content, "PriorAuthority.json", 1);
