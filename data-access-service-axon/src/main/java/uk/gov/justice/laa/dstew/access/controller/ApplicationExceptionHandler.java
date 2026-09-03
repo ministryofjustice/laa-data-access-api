@@ -99,7 +99,7 @@ public class ApplicationExceptionHandler {
         .body(ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage()));
   }
 
-  /** Returns a 409 when a prior-authority is not in a submittable (IN_PROGRESS) state. */
+  /** Returns a 409 when a prior-authority has no in-progress draft to save or submit. */
   @ExceptionHandler(PriorAuthorityNotInProgressException.class)
   ResponseEntity<ProblemDetail> handlePriorAuthorityNotInProgressException(
       PriorAuthorityNotInProgressException exception) {
