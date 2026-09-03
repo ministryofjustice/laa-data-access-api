@@ -19,6 +19,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
 
 @ExtendWith(MockitoExtension.class)
 class PriorAuthorityProjectionTest {
@@ -134,11 +135,8 @@ class PriorAuthorityProjectionTest {
     UUID submissionId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-19T10:00:00Z");
-    uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent
-        event =
-            new uk.gov.justice.laa.dstew.access.command.application.priorauthority
-                .PriorAuthoritySubmittedEvent(
-                submissionId, applicationId, 0L, "PENDING", occurredAt);
+    PriorAuthoritySubmittedEvent event =
+        new PriorAuthoritySubmittedEvent(submissionId, applicationId, 0L, "PENDING", occurredAt);
 
     when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -156,11 +154,8 @@ class PriorAuthorityProjectionTest {
     UUID submissionId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-19T10:00:00Z");
-    uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent
-        event =
-            new uk.gov.justice.laa.dstew.access.command.application.priorauthority
-                .PriorAuthoritySubmittedEvent(
-                submissionId, applicationId, 0L, "PENDING", occurredAt);
+    PriorAuthoritySubmittedEvent event =
+        new PriorAuthoritySubmittedEvent(submissionId, applicationId, 0L, "PENDING", occurredAt);
     PriorAuthorityReadModel[] savedCapture = new PriorAuthorityReadModel[1];
     when(repository.save(any()))
         .thenAnswer(

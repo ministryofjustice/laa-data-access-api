@@ -16,7 +16,11 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.Create
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.UpdatePriorAuthorityDraftCommand;
 import uk.gov.justice.laa.dstew.access.model.Apportionment;
 import uk.gov.justice.laa.dstew.access.model.BillingType;
+import uk.gov.justice.laa.dstew.access.model.CounselDetails;
 import uk.gov.justice.laa.dstew.access.model.CounselType;
+import uk.gov.justice.laa.dstew.access.model.DisbursementDetails;
+import uk.gov.justice.laa.dstew.access.model.ExpertCosts;
+import uk.gov.justice.laa.dstew.access.model.ExpertDetails;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.model.SavePriorAuthorityDraftRequest;
 import uk.gov.justice.laa.dstew.access.model.TimeRequested;
@@ -142,10 +146,7 @@ class SavePriorAuthorityDraftCommandMapperTest {
             UUID.randomUUID(),
             SavePriorAuthorityDraftRequest.builder()
                 .priorAuthorityType(PriorAuthorityType.EXPERT)
-                .expertDetails(
-                    uk.gov.justice.laa.dstew.access.model.ExpertDetails.builder()
-                        .expertType("Forensic Accountant")
-                        .build())
+                .expertDetails(ExpertDetails.builder().expertType("Forensic Accountant").build())
                 .build());
 
     assertThat(command.content().expertDetails().expertCosts()).isNull();
@@ -159,10 +160,10 @@ class SavePriorAuthorityDraftCommandMapperTest {
             SavePriorAuthorityDraftRequest.builder()
                 .priorAuthorityType(PriorAuthorityType.EXPERT)
                 .expertDetails(
-                    uk.gov.justice.laa.dstew.access.model.ExpertDetails.builder()
+                    ExpertDetails.builder()
                         .expertType("Forensic Accountant")
                         .expertCosts(
-                            uk.gov.justice.laa.dstew.access.model.ExpertCosts.builder()
+                            ExpertCosts.builder()
                                 .billingType(null)
                                 .hourlyRate(null)
                                 .timeRequested(null)
@@ -183,12 +184,12 @@ class SavePriorAuthorityDraftCommandMapperTest {
         .priorAuthorityType(PriorAuthorityType.EXPERT)
         .justification("Need expert assessment")
         .expertDetails(
-            uk.gov.justice.laa.dstew.access.model.ExpertDetails.builder()
+            ExpertDetails.builder()
                 .expertType("Pathologist")
                 .expertFullName("Casey Expert")
                 .expertPostcode("AB1 2CD")
                 .expertCosts(
-                    uk.gov.justice.laa.dstew.access.model.ExpertCosts.builder()
+                    ExpertCosts.builder()
                         .billingType(BillingType.HOURLY)
                         .hourlyRate(300.0)
                         .timeRequested(TimeRequested.builder().hours(2).minutes(30).build())
@@ -209,9 +210,7 @@ class SavePriorAuthorityDraftCommandMapperTest {
         .priorAuthorityType(PriorAuthorityType.COUNSEL)
         .justification("Need specialist counsel")
         .counselDetails(
-            uk.gov.justice.laa.dstew.access.model.CounselDetails.builder()
-                .counselType(CounselType.KINGS_COUNSEL_ALONE)
-                .build())
+            CounselDetails.builder().counselType(CounselType.KINGS_COUNSEL_ALONE).build())
         .build();
   }
 
@@ -220,7 +219,7 @@ class SavePriorAuthorityDraftCommandMapperTest {
         .priorAuthorityType(PriorAuthorityType.DISBURSEMENT)
         .justification("Need interpreter costs")
         .disbursementDetails(
-            uk.gov.justice.laa.dstew.access.model.DisbursementDetails.builder()
+            DisbursementDetails.builder()
                 .disbursementPurpose("Interpreter")
                 .disbursementAmount(150.25)
                 .build())
