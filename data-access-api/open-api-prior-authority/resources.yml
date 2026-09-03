@@ -42,7 +42,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "../open-api-applications/components.yml#/components/schemas/SavePriorAuthorityDraftRequest"
+              $ref: "./components.yml#/components/schemas/SavePriorAuthorityDraftRequest"
       responses:
         '204':
           description: Prior Authority draft updated
@@ -75,7 +75,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "../open-api-applications/components.yml#/components/schemas/SubmitPriorAuthorityDraftResponse"
+                $ref: "./components.yml#/components/schemas/SubmitPriorAuthorityDraftResponse"
         '202':
           description: Prior Authority draft submitted but projection not yet readable
           headers:
@@ -85,9 +85,55 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "../open-api-applications/components.yml#/components/schemas/SubmitPriorAuthorityDraftResponse"
+                $ref: "./components.yml#/components/schemas/SubmitPriorAuthorityDraftResponse"
         '401': { description: Unauthorized }
         '403': { description: Forbidden }
         '404': { description: Prior Authority not found }
         '409': { description: Prior Authority is not in a submittable state }
+
+  /api/v0/applications/{applicationId}/prior-authority/draft:
+    post:
+      tags:
+        - prior-authority-draft-command
+      summary: Start or save a Prior Authority draft
+      operationId: savePriorAuthorityDraft
+      parameters:
+        - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
+        - name: applicationId
+          in: path
+          description: The application's ID
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./components.yml#/components/schemas/SavePriorAuthorityDraftRequest"
+      responses:
+        '201':
+          description: Prior Authority draft created and projection readable
+          headers:
+            Location:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "./components.yml#/components/schemas/SavePriorAuthorityDraftResponse"
+        '202':
+          description: Prior Authority draft submitted but projection not yet readable
+          headers:
+            Location:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "./components.yml#/components/schemas/SavePriorAuthorityDraftResponse"
+        '401': { description: Unauthorized }
+        '403': { description: Forbidden }
+        '404': { description: Application not found }
 
