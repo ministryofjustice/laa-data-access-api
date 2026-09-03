@@ -41,4 +41,47 @@ public final class ApplicationCreationWorkflow {
     }
     return new WorkflowResult(results);
   }
+
+  public WorkflowResult createManual(int count) {
+    List<WorkflowResult.ItemResult> results = new ArrayList<>();
+    for (int item = 0; item < count; item++) {
+      ApplicationRequestFactory.ApplicationData application = applicationFactory.create();
+      try {
+        client.createApplication(application.request());
+        client.recordManualOutcome(application.applicationId());
+        results.add(
+            new WorkflowResult.ItemResult(
+                application.applicationId().toString(),
+                true,
+                "MANUAL " + application.laaReference()));
+      } catch (RuntimeException exception) {
+        results.add(
+            new WorkflowResult.ItemResult(
+                application.applicationId().toString(), false, exception.getMessage()));
+      }
+    }
+    return new WorkflowResult(results);
+  }
+
+  public WorkflowResult createAutogranted(int count) {
+    List<WorkflowResult.ItemResult> results = new ArrayList<>();
+    for (int item = 0; item < count; item++) {
+      ApplicationRequestFactory.ApplicationData application = applicationFactory.create();
+      try {
+        client.createApplication(application.request());
+        client.recordAutograntedOutcome(
+            application.applicationId(), decisionFactory.createAutograntedOutcome(application));
+        results.add(
+            new WorkflowResult.ItemResult(
+                application.applicationId().toString(),
+                true,
+                "AUTOGRANTED " + application.laaReference()));
+      } catch (RuntimeException exception) {
+        results.add(
+            new WorkflowResult.ItemResult(
+                application.applicationId().toString(), false, exception.getMessage()));
+      }
+    }
+    return new WorkflowResult(results);
+  }
 }
