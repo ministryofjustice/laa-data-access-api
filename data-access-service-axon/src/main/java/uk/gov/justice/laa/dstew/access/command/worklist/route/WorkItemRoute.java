@@ -68,18 +68,4 @@ public class WorkItemRoute {
     this.createdAt = occurredAt;
     this.updatedAt = occurredAt;
   }
-
-  /** Changes authority as part of the subscribing event handler's unit of work. */
-  public void moveTo(
-      WorkItemRouteKind nextKind,
-      UUID nextAggregateId,
-      UUID nextGroupId,
-      long nextMembershipVersion,
-      Instant occurredAt) {
-    this.routeKind = nextKind;
-    this.aggregateId = nextAggregateId;
-    this.groupId = nextGroupId;
-    this.membershipVersion = nextMembershipVersion;
-    this.updatedAt = occurredAt;
-  }
 }

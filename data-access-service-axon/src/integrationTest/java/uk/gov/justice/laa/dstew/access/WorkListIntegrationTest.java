@@ -184,6 +184,28 @@ class WorkListIntegrationTest {
   }
 
   @Test
+  void givenSubmittedApplication_whenAutoGrantOutcomeIsGranted_thenItDoesNotReachTheWorkList() {
+    UUID applicationId = UUID.randomUUID();
+
+    createGrantedApplication(applicationId);
+
+    await()
+        .atMost(15, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              assertThat(
+                      jdbcTemplate.queryForObject(
+                          "SELECT status FROM axon.application_current_state WHERE application_id = ?",
+                          String.class,
+                          applicationId))
+                  .isEqualTo("APPLICATION_GRANTED");
+              assertThat(getWorkList("").getItems())
+                  .extracting(item -> item.getItemId())
+                  .doesNotContain(applicationId);
+            });
+  }
+
+  @Test
   void givenManualApplicationAndPriorAuthority_whenUnassigned_thenBothAppearInOpenApplications()
       throws Exception {
     UUID manualApplicationId = UUID.randomUUID();
@@ -216,6 +238,41 @@ class WorkListIntegrationTest {
                         assertThat(item.getAssignedTo()).isNull();
                       });
             });
+  }
+
+  @Test
+  void
+      givenClaimableAssignedAndCompletedWork_whenOpenApplicationsAreViewed_thenOnlyClaimableWorkIsReturned()
+          throws Exception {
+    UUID availableApplicationId = UUID.randomUUID();
+    UUID assignedApplicationId = UUID.randomUUID();
+    UUID completedApplicationId = UUID.randomUUID();
+    UUID parentApplicationId = UUID.randomUUID();
+    UUID caseworkerId = createCaseworker("claimable-work@example.com");
+    createManualApplication(availableApplicationId);
+    createManualApplication(assignedApplicationId);
+    createGrantedApplication(completedApplicationId);
+    createGrantedApplication(parentApplicationId);
+    UUID availablePriorAuthorityId = createPriorAuthority(parentApplicationId);
+    UUID assignedPriorAuthorityId = createPriorAuthority(parentApplicationId);
+
+    assertThat(assign(assignedApplicationId, caseworkerId).getStatusCode())
+        .isEqualTo(HttpStatus.OK);
+    assertThat(assign(assignedPriorAuthorityId, caseworkerId).getStatusCode())
+        .isEqualTo(HttpStatus.OK);
+
+    await()
+        .atMost(15, TimeUnit.SECONDS)
+        .untilAsserted(
+            () ->
+                assertThat(getWorkList("").getItems())
+                    .extracting(item -> item.getItemId())
+                    .contains(availableApplicationId, availablePriorAuthorityId)
+                    .doesNotContain(
+                        assignedApplicationId,
+                        assignedPriorAuthorityId,
+                        completedApplicationId,
+                        parentApplicationId));
   }
 
   @Test

@@ -111,36 +111,4 @@ class WorkItemAssignmentCommandHandlerTest {
                         item, UUID.randomUUID(), 0L, "{}", "", Instant.now())))
         .isInstanceOf(ResourceNotFoundException.class);
   }
-
-  @Test
-  void rejectsLinkedApplicationRoutes() {
-    CaseworkerRepository caseworkers = org.mockito.Mockito.mock(CaseworkerRepository.class);
-    WorkItemRouteRepository routes = org.mockito.Mockito.mock(WorkItemRouteRepository.class);
-    CommandGateway gateway = org.mockito.Mockito.mock(CommandGateway.class);
-    WorkItemAssignmentCommandHandler handler =
-        new WorkItemAssignmentCommandHandler(caseworkers, routes, gateway);
-    UUID applicationId = UUID.randomUUID();
-    UUID groupId = UUID.randomUUID();
-    UUID caseworkerId = UUID.randomUUID();
-    WorkItemId item = new WorkItemId(WorkItemType.APPLICATION, applicationId);
-    Instant occurredAt = Instant.parse("2026-08-28T10:00:00Z");
-    when(caseworkers.existsById(caseworkerId)).thenReturn(true);
-    when(routes.findByWorkItemId(applicationId))
-        .thenReturn(
-            Optional.of(
-                new WorkItemRoute(
-                    WorkItemType.APPLICATION,
-                    applicationId,
-                    WorkItemRouteKind.LINKED_GROUP,
-                    groupId,
-                    groupId,
-                    3L,
-                    occurredAt)));
-
-    assertThatThrownBy(
-            () ->
-                handler.assign(
-                    new AssignWorkItemCommand(item, caseworkerId, 2L, "{}", "", occurredAt)))
-        .isInstanceOf(ResourceNotFoundException.class);
-  }
 }
