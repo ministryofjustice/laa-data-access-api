@@ -19,7 +19,7 @@ public class PriorAuthorityDraftStore {
   /**
    * Inserts or updates the draft row for the given submission.
    *
-   * @param submissionId the prior-authority submission identifier
+   * @param priorAuthorityId the prior-authority submission identifier
    * @param applicationId the parent application identifier
    * @param payload the payload to persist
    * @param serialisedRequest the raw request responsible for this update
@@ -27,17 +27,20 @@ public class PriorAuthorityDraftStore {
    * @return the fingerprint of the serialised request
    */
   public String upsert(
-      UUID submissionId,
+      UUID priorAuthorityId,
       UUID applicationId,
       PriorAuthorityDataPayload payload,
       String serialisedRequest,
       Instant occurredAt) {
     String fingerprint = PayloadFingerprint.compute(serialisedRequest);
     Instant createdAt =
-        repository.findById(submissionId).map(PriorAuthorityDraft::getCreatedAt).orElse(occurredAt);
+        repository
+            .findById(priorAuthorityId)
+            .map(PriorAuthorityDraft::getCreatedAt)
+            .orElse(occurredAt);
     repository.saveAndFlush(
         PriorAuthorityDraft.builder()
-            .submissionId(submissionId)
+            .priorAuthorityId(priorAuthorityId)
             .applicationId(applicationId)
             .payload(payload)
             .payloadHash(fingerprint)
@@ -50,34 +53,34 @@ public class PriorAuthorityDraftStore {
   /**
    * Retrieves the current draft content for a prior-authority submission.
    *
-   * @param submissionId the prior-authority submission identifier
+   * @param priorAuthorityId the prior-authority submission identifier
    * @return the stored draft payload
    * @throws IllegalStateException when no draft exists for the given submission
    */
-  public PriorAuthorityDataPayload get(UUID submissionId) {
+  public PriorAuthorityDataPayload get(UUID priorAuthorityId) {
     return repository
-        .findById(submissionId)
+        .findById(priorAuthorityId)
         .map(PriorAuthorityDraft::getPayload)
         .orElseThrow(
-            () -> new IllegalStateException("No draft found for submission: " + submissionId));
+            () -> new IllegalStateException("No draft found for submission: " + priorAuthorityId));
   }
 
   /**
    * Retrieves the current draft content for a prior-authority submission, if one exists.
    *
-   * @param submissionId the prior-authority submission identifier
+   * @param priorAuthorityId the prior-authority submission identifier
    * @return the stored draft payload, or {@link Optional#empty()} when no draft exists
    */
-  public Optional<PriorAuthorityDataPayload> find(UUID submissionId) {
-    return repository.findById(submissionId).map(PriorAuthorityDraft::getPayload);
+  public Optional<PriorAuthorityDataPayload> find(UUID priorAuthorityId) {
+    return repository.findById(priorAuthorityId).map(PriorAuthorityDraft::getPayload);
   }
 
   /**
    * Deletes the draft row for a prior-authority submission, typically once it has been submitted.
    *
-   * @param submissionId the prior-authority submission identifier
+   * @param priorAuthorityId the prior-authority submission identifier
    */
-  public void delete(UUID submissionId) {
-    repository.deleteById(submissionId);
+  public void delete(UUID priorAuthorityId) {
+    repository.deleteById(priorAuthorityId);
   }
 }

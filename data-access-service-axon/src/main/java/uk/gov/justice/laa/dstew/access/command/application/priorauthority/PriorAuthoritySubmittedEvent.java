@@ -11,7 +11,7 @@ import org.axonframework.messaging.eventhandling.annotation.Event;
  */
 @Event
 public record PriorAuthoritySubmittedEvent(
-    @EventTag(key = "PriorAuthorityAggregate") UUID submissionId,
+    @EventTag(key = "PriorAuthorityAggregate") UUID priorAuthorityId,
     UUID applicationId,
     long dataVersion,
     String status,

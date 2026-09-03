@@ -85,13 +85,13 @@ class PriorAuthorityDraftIntegrationTest {
 
     assertThat(
             jdbcTemplate.queryForObject(
-                "SELECT application_id FROM axon.prior_authority_draft WHERE submission_id = ?",
+                "SELECT application_id FROM axon.prior_authority_draft WHERE prior_authority_id = ?",
                 UUID.class,
                 priorAuthorityId))
         .isEqualTo(applicationId);
     assertThat(
             jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.prior_authority_current_state WHERE submission_id = ?",
+                "SELECT COUNT(*) FROM axon.prior_authority_current_state WHERE prior_authority_id = ?",
                 Integer.class,
                 priorAuthorityId))
         .isZero();
@@ -214,20 +214,20 @@ class PriorAuthorityDraftIntegrationTest {
 
     assertThat(
             jdbcTemplate.queryForObject(
-                "SELECT status FROM axon.prior_authority_current_state WHERE submission_id = ?",
+                "SELECT status FROM axon.prior_authority_current_state WHERE prior_authority_id = ?",
                 String.class,
                 priorAuthorityId))
         .isEqualTo("PENDING");
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM axon.prior_authority_data"
-                    + " WHERE submission_id = ? AND data_version = 0",
+                    + " WHERE prior_authority_id = ? AND data_version = 0",
                 Integer.class,
                 priorAuthorityId))
         .isEqualTo(1);
     assertThat(
             jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.prior_authority_draft WHERE submission_id = ?",
+                "SELECT COUNT(*) FROM axon.prior_authority_draft WHERE prior_authority_id = ?",
                 Integer.class,
                 priorAuthorityId))
         .isZero();
@@ -261,19 +261,19 @@ class PriorAuthorityDraftIntegrationTest {
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     assertThat(
             jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.prior_authority_draft WHERE submission_id = ?",
+                "SELECT COUNT(*) FROM axon.prior_authority_draft WHERE prior_authority_id = ?",
                 Integer.class,
                 priorAuthorityId))
         .isEqualTo(1);
     assertThat(
             jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.prior_authority_current_state WHERE submission_id = ?",
+                "SELECT COUNT(*) FROM axon.prior_authority_current_state WHERE prior_authority_id = ?",
                 Integer.class,
                 priorAuthorityId))
         .isZero();
     assertThat(
             jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.prior_authority_data WHERE submission_id = ?",
+                "SELECT COUNT(*) FROM axon.prior_authority_data WHERE prior_authority_id = ?",
                 Integer.class,
                 priorAuthorityId))
         .isZero();

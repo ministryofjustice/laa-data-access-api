@@ -40,7 +40,7 @@ class SavePriorAuthorityDraftCommandMapperTest {
     var timeRequested = expertCosts.timeRequested();
     var apportionment = expertCosts.apportionment();
 
-    assertThat(command.submissionId()).isNotNull();
+    assertThat(command.priorAuthorityId()).isNotNull();
     assertThat(command.applicationId()).isEqualTo(applicationId);
     assertThat(command.content().priorAuthorityType()).isEqualTo("EXPERT");
     assertThat(command.content().justification()).isEqualTo("Need expert assessment");
@@ -112,12 +112,12 @@ class SavePriorAuthorityDraftCommandMapperTest {
   }
 
   @Test
-  void givenSubmissionId_whenUpdateMapped_thenSubmissionIdMatches() {
-    UUID submissionId = UUID.randomUUID();
+  void givenPriorAuthorityId_whenUpdateMapped_thenPriorAuthorityIdMatches() {
+    UUID priorAuthorityId = UUID.randomUUID();
     UpdatePriorAuthorityDraftCommand command =
-        mapper.toUpdateCommand(submissionId, expertRequest());
+        mapper.toUpdateCommand(priorAuthorityId, expertRequest());
 
-    assertThat(command.submissionId()).isEqualTo(submissionId);
+    assertThat(command.priorAuthorityId()).isEqualTo(priorAuthorityId);
   }
 
   @Test

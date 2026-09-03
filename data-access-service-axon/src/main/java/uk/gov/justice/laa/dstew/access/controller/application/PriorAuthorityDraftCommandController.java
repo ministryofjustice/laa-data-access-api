@@ -57,10 +57,10 @@ public class PriorAuthorityDraftCommandController implements PriorAuthorityDraft
     URI location =
         ServletUriComponentsBuilder.fromCurrentContextPath()
             .path("/api/v0/prior-authorities/{priorAuthorityId}")
-            .buildAndExpand(command.submissionId())
+            .buildAndExpand(command.priorAuthorityId())
             .toUri();
     SavePriorAuthorityDraftResponse response =
-        new SavePriorAuthorityDraftResponse(command.submissionId(), OffsetDateTime.now());
+        new SavePriorAuthorityDraftResponse(command.priorAuthorityId(), OffsetDateTime.now());
     boolean projected = createUseCase.execute(command);
     return projected
         ? ResponseEntity.created(location).body(response)

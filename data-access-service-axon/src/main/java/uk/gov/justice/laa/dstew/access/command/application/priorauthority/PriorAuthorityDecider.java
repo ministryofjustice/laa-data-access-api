@@ -19,16 +19,16 @@ public final class PriorAuthorityDecider {
   public static Optional<PriorAuthorityCreatedEvent> decideCreate(
       PriorAuthorityState state, CreatePriorAuthorityCommand command, String fingerprint) {
 
-    if (state.submissionId != null) {
+    if (state.priorAuthorityId != null) {
       if (state.requestFingerprint.equals(fingerprint)) {
         return Optional.empty();
       }
-      throw new PriorAuthorityCreationConflictException(command.submissionId());
+      throw new PriorAuthorityCreationConflictException(command.priorAuthorityId());
     }
 
     return Optional.of(
         new PriorAuthorityCreatedEvent(
-            command.submissionId(),
+            command.priorAuthorityId(),
             command.applicationId(),
             0L,
             fingerprint,
@@ -44,7 +44,7 @@ public final class PriorAuthorityDecider {
   public static PriorAuthorityDraftStartedEvent decideStartDraft(
       CreatePriorAuthorityDraftCommand command, String fingerprint, UUID applicationId) {
     return new PriorAuthorityDraftStartedEvent(
-        command.submissionId(),
+        command.priorAuthorityId(),
         applicationId,
         fingerprint,
         command.schemaVersion(),
@@ -59,7 +59,7 @@ public final class PriorAuthorityDecider {
   public static PriorAuthoritySubmittedEvent decideSubmit(
       SubmitPriorAuthorityDraftCommand command, PriorAuthorityState state) {
     return new PriorAuthoritySubmittedEvent(
-        command.submissionId(),
+        command.priorAuthorityId(),
         state.applicationId,
         0L,
         PriorAuthorityStatus.PENDING.name(),

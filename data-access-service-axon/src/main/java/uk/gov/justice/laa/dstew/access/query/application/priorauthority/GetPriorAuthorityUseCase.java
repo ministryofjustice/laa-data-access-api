@@ -44,7 +44,7 @@ public class GetPriorAuthorityUseCase {
     PriorAuthorityReadModel priorAuthority =
         queryGateway
             .query(
-                new FindPriorAuthorityBySubmissionIdQuery(priorAuthorityId),
+                new FindPriorAuthorityByPriorAuthorityIdQuery(priorAuthorityId),
                 PriorAuthorityReadModel.class)
             .join();
     if (priorAuthority == null) {

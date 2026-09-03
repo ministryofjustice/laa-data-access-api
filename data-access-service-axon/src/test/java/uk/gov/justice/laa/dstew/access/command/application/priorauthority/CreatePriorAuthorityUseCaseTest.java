@@ -20,7 +20,7 @@ import org.mockito.InOrder;
 import org.mockito.Mockito;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
-import uk.gov.justice.laa.dstew.access.query.application.priorauthority.FindPriorAuthorityBySubmissionIdQuery;
+import uk.gov.justice.laa.dstew.access.query.application.priorauthority.FindPriorAuthorityByPriorAuthorityIdQuery;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
@@ -84,7 +84,7 @@ class CreatePriorAuthorityUseCaseTest {
 
     verify(projectionGateway)
         .awaitProjection(
-            eq(new FindPriorAuthorityBySubmissionIdQuery(command.submissionId())),
+            eq(new FindPriorAuthorityByPriorAuthorityIdQuery(command.priorAuthorityId())),
             eq(PriorAuthorityReadModel.class),
             any());
   }

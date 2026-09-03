@@ -25,7 +25,7 @@ import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
-import uk.gov.justice.laa.dstew.access.query.application.priorauthority.FindPriorAuthorityBySubmissionIdQuery;
+import uk.gov.justice.laa.dstew.access.query.application.priorauthority.FindPriorAuthorityByPriorAuthorityIdQuery;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
@@ -70,7 +70,7 @@ class SubmitPriorAuthorityDraftUseCaseTest {
 
     verify(projectionGateway)
         .awaitProjection(
-            eq(new FindPriorAuthorityBySubmissionIdQuery(command.submissionId())),
+            eq(new FindPriorAuthorityByPriorAuthorityIdQuery(command.priorAuthorityId())),
             eq(PriorAuthorityReadModel.class),
             any());
   }
@@ -96,8 +96,8 @@ class SubmitPriorAuthorityDraftUseCaseTest {
   void givenDraftExists_whenSubmit_thenDispatchesValidationBeforeProjectionGateway() {
     SubmitPriorAuthorityDraftCommand command = stubCommand();
     UUID applicationId = UUID.randomUUID();
-    when(draftStore.find(command.submissionId()))
-        .thenReturn(Optional.of(stubDraftPayload(command.submissionId(), applicationId)));
+    when(draftStore.find(command.priorAuthorityId()))
+        .thenReturn(Optional.of(stubDraftPayload(command.priorAuthorityId(), applicationId)));
     when(projectionGateway.awaitProjection(any(), eq(PriorAuthorityReadModel.class), any()))
         .thenReturn(true);
 
@@ -111,7 +111,7 @@ class SubmitPriorAuthorityDraftUseCaseTest {
   @Test
   void givenNoDraftExists_whenSubmit_thenSkipsValidationAndStillDispatchesSubmitCommand() {
     SubmitPriorAuthorityDraftCommand command = stubCommand();
-    when(draftStore.find(command.submissionId())).thenReturn(Optional.empty());
+    when(draftStore.find(command.priorAuthorityId())).thenReturn(Optional.empty());
     when(projectionGateway.awaitProjection(any(), eq(PriorAuthorityReadModel.class), any()))
         .thenReturn(true);
 
@@ -125,8 +125,8 @@ class SubmitPriorAuthorityDraftUseCaseTest {
   void givenValidationFails_whenSubmit_thenPropagatesAndSkipsProjectionGateway() {
     SubmitPriorAuthorityDraftCommand command = stubCommand();
     UUID applicationId = UUID.randomUUID();
-    when(draftStore.find(command.submissionId()))
-        .thenReturn(Optional.of(stubDraftPayload(command.submissionId(), applicationId)));
+    when(draftStore.find(command.priorAuthorityId()))
+        .thenReturn(Optional.of(stubDraftPayload(command.priorAuthorityId(), applicationId)));
     ValidationException failure = new ValidationException(List.of("Application must be granted"));
     doThrow(failure)
         .when(dispatcher)
@@ -140,7 +140,9 @@ class SubmitPriorAuthorityDraftUseCaseTest {
     return new SubmitPriorAuthorityDraftCommand(UUID.randomUUID(), Instant.now());
   }
 
-  private static PriorAuthorityDataPayload stubDraftPayload(UUID submissionId, UUID applicationId) {
-    return new PriorAuthorityDataPayload(submissionId, applicationId, null, "{}", Instant.now());
+  private static PriorAuthorityDataPayload stubDraftPayload(
+      UUID priorAuthorityId, UUID applicationId) {
+    return new PriorAuthorityDataPayload(
+        priorAuthorityId, applicationId, null, "{}", Instant.now());
   }
 }

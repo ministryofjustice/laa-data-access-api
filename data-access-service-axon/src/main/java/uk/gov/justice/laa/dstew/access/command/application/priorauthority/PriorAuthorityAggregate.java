@@ -26,7 +26,7 @@ import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 public class PriorAuthorityAggregate {
 
-  private UUID submissionId;
+  private UUID priorAuthorityId;
   private final PriorAuthorityState state = new PriorAuthorityState();
 
   @CommandHandler
@@ -35,17 +35,17 @@ public class PriorAuthorityAggregate {
       PriorAuthorityDataStore dataStore,
       EventAppender eventAppender) {
     String fingerprint;
-    if (submissionId == null) {
+    if (priorAuthorityId == null) {
       PriorAuthorityDataPayload payload =
           new PriorAuthorityDataPayload(
-              command.submissionId(),
+              command.priorAuthorityId(),
               command.applicationId(),
               command.content(),
               command.serialisedRequest(),
               command.occurredAt());
       fingerprint =
           dataStore.append(
-              command.submissionId(),
+              command.priorAuthorityId(),
               0L,
               command.applicationId(),
               payload,
@@ -63,25 +63,25 @@ public class PriorAuthorityAggregate {
       CreatePriorAuthorityDraftCommand command,
       PriorAuthorityDraftStore draftStore,
       EventAppender eventAppender) {
-    if (this.submissionId != null && draftStore.find(command.submissionId()).isEmpty()) {
+    if (this.priorAuthorityId != null && draftStore.find(command.priorAuthorityId()).isEmpty()) {
       throw new ResourceNotFoundException(
-          "Prior Authority %s not found".formatted(command.submissionId()));
+          "Prior Authority %s not found".formatted(command.priorAuthorityId()));
     }
     PriorAuthorityDataPayload payload =
         new PriorAuthorityDataPayload(
-            command.submissionId(),
+            command.priorAuthorityId(),
             command.applicationId(),
             command.content(),
             command.serialisedRequest(),
             command.occurredAt());
     String fingerprint =
         draftStore.upsert(
-            command.submissionId(),
+            command.priorAuthorityId(),
             command.applicationId(),
             payload,
             command.serialisedRequest(),
             command.occurredAt());
-    if (this.submissionId == null) {
+    if (this.priorAuthorityId == null) {
       eventAppender.append(
           PriorAuthorityDecider.decideStartDraft(command, fingerprint, command.applicationId()));
     }
@@ -90,20 +90,20 @@ public class PriorAuthorityAggregate {
   @CommandHandler
   void handle(UpdatePriorAuthorityDraftCommand command, PriorAuthorityDraftStore draftStore) {
     draftStore
-        .find(command.submissionId())
+        .find(command.priorAuthorityId())
         .orElseThrow(
             () ->
                 new ResourceNotFoundException(
-                    "Prior Authority %s not found".formatted(command.submissionId())));
+                    "Prior Authority %s not found".formatted(command.priorAuthorityId())));
     PriorAuthorityDataPayload payload =
         new PriorAuthorityDataPayload(
-            command.submissionId(),
+            command.priorAuthorityId(),
             state.applicationId,
             command.content(),
             command.serialisedRequest(),
             command.occurredAt());
     draftStore.upsert(
-        command.submissionId(),
+        command.priorAuthorityId(),
         state.applicationId,
         payload,
         command.serialisedRequest(),
@@ -119,39 +119,39 @@ public class PriorAuthorityAggregate {
       EventAppender eventAppender) {
     PriorAuthorityDataPayload payload =
         draftStore
-            .find(command.submissionId())
+            .find(command.priorAuthorityId())
             .orElseThrow(
                 () ->
                     new ResourceNotFoundException(
-                        "Prior Authority %s not found".formatted(command.submissionId())));
+                        "Prior Authority %s not found".formatted(command.priorAuthorityId())));
     jsonSchemaValidator.validate(payload.content(), "PriorAuthority.json", state.schemaVersion);
     dataStore.append(
-        command.submissionId(),
+        command.priorAuthorityId(),
         0L,
         state.applicationId,
         payload,
         payload.serialisedRequest(),
         command.occurredAt());
     eventAppender.append(PriorAuthorityDecider.decideSubmit(command, state));
-    draftStore.delete(command.submissionId());
+    draftStore.delete(command.priorAuthorityId());
   }
 
   @EventSourcingHandler
   void on(PriorAuthorityCreatedEvent event) {
     PriorAuthorityEvolve.apply(state, event);
-    this.submissionId = state.submissionId;
+    this.priorAuthorityId = state.priorAuthorityId;
   }
 
   @EventSourcingHandler
   void on(PriorAuthorityDraftStartedEvent event) {
     PriorAuthorityEvolve.apply(state, event);
-    this.submissionId = state.submissionId;
+    this.priorAuthorityId = state.priorAuthorityId;
   }
 
   @EventSourcingHandler
   void on(PriorAuthoritySubmittedEvent event) {
     PriorAuthorityEvolve.apply(state, event);
-    this.submissionId = state.submissionId;
+    this.priorAuthorityId = state.priorAuthorityId;
   }
 
   @EntityCreator

@@ -31,10 +31,10 @@ class PriorAuthorityProjectionTest {
 
   @Test
   void givenCreatedEvent_whenHandled_thenSavesBeforeEmitting() {
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
     PriorAuthorityCreatedEvent event =
         new PriorAuthorityCreatedEvent(
-            submissionId, UUID.randomUUID(), 1L, "fp", "SUBMITTED", 1, Instant.now());
+            priorAuthorityId, UUID.randomUUID(), 1L, "fp", "SUBMITTED", 1, Instant.now());
     when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
     projection.on(event, queryUpdateEmitter);
@@ -48,12 +48,12 @@ class PriorAuthorityProjectionTest {
 
   @Test
   void givenCreatedEvent_whenHandled_thenSavesExactFields() {
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-19T10:00:00Z");
     PriorAuthorityCreatedEvent event =
         new PriorAuthorityCreatedEvent(
-            submissionId, applicationId, 1L, "fp", "SUBMITTED", 1, occurredAt);
+            priorAuthorityId, applicationId, 1L, "fp", "SUBMITTED", 1, occurredAt);
     PriorAuthorityReadModel[] savedCapture = new PriorAuthorityReadModel[1];
     when(repository.save(any()))
         .thenAnswer(
@@ -64,7 +64,7 @@ class PriorAuthorityProjectionTest {
 
     projection.on(event, queryUpdateEmitter);
 
-    assertThat(savedCapture[0].getSubmissionId()).isEqualTo(submissionId);
+    assertThat(savedCapture[0].getPriorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(savedCapture[0].getApplicationId()).isEqualTo(applicationId);
     assertThat(savedCapture[0].getDataVersion()).isEqualTo(1L);
     assertThat(savedCapture[0].getStatus()).isEqualTo("SUBMITTED");
@@ -73,12 +73,12 @@ class PriorAuthorityProjectionTest {
 
   @Test
   @SuppressWarnings("unchecked")
-  void givenCreatedEvent_whenHandled_thenEmittedPredicateMatchesOnlyEventSubmissionId() {
-    UUID submissionId = UUID.randomUUID();
+  void givenCreatedEvent_whenHandled_thenEmittedPredicateMatchesOnlyEventPriorAuthorityId() {
+    UUID priorAuthorityId = UUID.randomUUID();
     final UUID otherId = UUID.randomUUID();
     PriorAuthorityCreatedEvent event =
         new PriorAuthorityCreatedEvent(
-            submissionId, UUID.randomUUID(), 1L, "fp", "SUBMITTED", 1, Instant.now());
+            priorAuthorityId, UUID.randomUUID(), 1L, "fp", "SUBMITTED", 1, Instant.now());
     when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
     Predicate<?>[] capturedPredicate = new Predicate[1];
@@ -93,32 +93,33 @@ class PriorAuthorityProjectionTest {
     projection.on(event, queryUpdateEmitter);
 
     assertThat(capturedPredicate[0]).isNotNull();
-    Predicate<FindPriorAuthorityBySubmissionIdQuery> predicate =
-        (Predicate<FindPriorAuthorityBySubmissionIdQuery>) capturedPredicate[0];
-    assertThat(predicate.test(new FindPriorAuthorityBySubmissionIdQuery(submissionId))).isTrue();
-    assertThat(predicate.test(new FindPriorAuthorityBySubmissionIdQuery(otherId))).isFalse();
+    Predicate<FindPriorAuthorityByPriorAuthorityIdQuery> predicate =
+        (Predicate<FindPriorAuthorityByPriorAuthorityIdQuery>) capturedPredicate[0];
+    assertThat(predicate.test(new FindPriorAuthorityByPriorAuthorityIdQuery(priorAuthorityId)))
+        .isTrue();
+    assertThat(predicate.test(new FindPriorAuthorityByPriorAuthorityIdQuery(otherId))).isFalse();
   }
 
   @Test
-  void givenSubmissionId_whenQueryHandled_thenReturnsPresentWhenFound() {
-    UUID submissionId = UUID.randomUUID();
+  void givenPriorAuthorityId_whenQueryHandled_thenReturnsPresentWhenFound() {
+    UUID priorAuthorityId = UUID.randomUUID();
     PriorAuthorityReadModel model =
-        PriorAuthorityReadModel.builder().submissionId(submissionId).build();
-    when(repository.findById(submissionId)).thenReturn(Optional.of(model));
+        PriorAuthorityReadModel.builder().priorAuthorityId(priorAuthorityId).build();
+    when(repository.findById(priorAuthorityId)).thenReturn(Optional.of(model));
 
     Optional<PriorAuthorityReadModel> result =
-        projection.handle(new FindPriorAuthorityBySubmissionIdQuery(submissionId));
+        projection.handle(new FindPriorAuthorityByPriorAuthorityIdQuery(priorAuthorityId));
 
     assertThat(result).isPresent().contains(model);
   }
 
   @Test
-  void givenMissingSubmissionId_whenQueryHandled_thenReturnsEmpty() {
-    UUID submissionId = UUID.randomUUID();
-    when(repository.findById(submissionId)).thenReturn(Optional.empty());
+  void givenMissingPriorAuthorityId_whenQueryHandled_thenReturnsEmpty() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    when(repository.findById(priorAuthorityId)).thenReturn(Optional.empty());
 
     Optional<PriorAuthorityReadModel> result =
-        projection.handle(new FindPriorAuthorityBySubmissionIdQuery(submissionId));
+        projection.handle(new FindPriorAuthorityByPriorAuthorityIdQuery(priorAuthorityId));
 
     assertThat(result).isEmpty();
   }
@@ -132,11 +133,12 @@ class PriorAuthorityProjectionTest {
 
   @Test
   void givenSubmittedEvent_whenHandled_thenCreatesRowAndEmits() {
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-19T10:00:00Z");
     PriorAuthoritySubmittedEvent event =
-        new PriorAuthoritySubmittedEvent(submissionId, applicationId, 0L, "PENDING", occurredAt);
+        new PriorAuthoritySubmittedEvent(
+            priorAuthorityId, applicationId, 0L, "PENDING", occurredAt);
 
     when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -151,11 +153,12 @@ class PriorAuthorityProjectionTest {
 
   @Test
   void givenSubmittedEvent_whenHandled_thenSavesExactFields() {
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-19T10:00:00Z");
     PriorAuthoritySubmittedEvent event =
-        new PriorAuthoritySubmittedEvent(submissionId, applicationId, 0L, "PENDING", occurredAt);
+        new PriorAuthoritySubmittedEvent(
+            priorAuthorityId, applicationId, 0L, "PENDING", occurredAt);
     PriorAuthorityReadModel[] savedCapture = new PriorAuthorityReadModel[1];
     when(repository.save(any()))
         .thenAnswer(
@@ -166,7 +169,7 @@ class PriorAuthorityProjectionTest {
 
     projection.on(event, queryUpdateEmitter);
 
-    assertThat(savedCapture[0].getSubmissionId()).isEqualTo(submissionId);
+    assertThat(savedCapture[0].getPriorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(savedCapture[0].getApplicationId()).isEqualTo(applicationId);
     assertThat(savedCapture[0].getDataVersion()).isZero();
     assertThat(savedCapture[0].getStatus()).isEqualTo("PENDING");

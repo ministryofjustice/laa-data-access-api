@@ -23,8 +23,8 @@ import org.hibernate.type.SqlTypes;
 public class PriorAuthorityDraft {
 
   @Id
-  @Column(name = "submission_id")
-  private UUID submissionId;
+  @Column(name = "prior_authority_id")
+  private UUID priorAuthorityId;
 
   @Column(name = "application_id", nullable = false)
   private UUID applicationId;

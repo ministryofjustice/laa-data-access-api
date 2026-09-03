@@ -25,15 +25,15 @@ public class PriorAuthorityProjection {
 
   /** Returns the current-state projection for the requested prior-authority submission. */
   @QueryHandler
-  public Optional<PriorAuthorityReadModel> handle(FindPriorAuthorityBySubmissionIdQuery query) {
-    return repository.findById(query.submissionId());
+  public Optional<PriorAuthorityReadModel> handle(FindPriorAuthorityByPriorAuthorityIdQuery query) {
+    return repository.findById(query.priorAuthorityId());
   }
 
   /** Creates the current-state row from a prior-authority creation event. */
   @EventHandler
   public void on(PriorAuthorityCreatedEvent event, QueryUpdateEmitter queryUpdateEmitter) {
     createRow(
-        event.submissionId(),
+        event.priorAuthorityId(),
         event.applicationId(),
         event.dataVersion(),
         event.status(),
@@ -45,7 +45,7 @@ public class PriorAuthorityProjection {
   @EventHandler
   public void on(PriorAuthoritySubmittedEvent event, QueryUpdateEmitter queryUpdateEmitter) {
     createRow(
-        event.submissionId(),
+        event.priorAuthorityId(),
         event.applicationId(),
         event.dataVersion(),
         event.status(),
@@ -54,7 +54,7 @@ public class PriorAuthorityProjection {
   }
 
   private void createRow(
-      UUID submissionId,
+      UUID priorAuthorityId,
       UUID applicationId,
       long dataVersion,
       String status,
@@ -63,15 +63,15 @@ public class PriorAuthorityProjection {
     PriorAuthorityReadModel saved =
         repository.save(
             PriorAuthorityReadModel.builder()
-                .submissionId(submissionId)
+                .priorAuthorityId(priorAuthorityId)
                 .applicationId(applicationId)
                 .dataVersion(dataVersion)
                 .status(status)
                 .createdAt(createdAt)
                 .build());
     queryUpdateEmitter.emit(
-        FindPriorAuthorityBySubmissionIdQuery.class,
-        query -> query.submissionId().equals(submissionId),
+        FindPriorAuthorityByPriorAuthorityIdQuery.class,
+        query -> query.priorAuthorityId().equals(priorAuthorityId),
         saved);
   }
 

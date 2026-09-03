@@ -23,8 +23,8 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 public class PriorAuthorityReadModel {
 
   @Id
-  @Column(name = "submission_id")
-  private UUID submissionId;
+  @Column(name = "prior_authority_id")
+  private UUID priorAuthorityId;
 
   @Column(name = "application_id")
   private UUID applicationId;

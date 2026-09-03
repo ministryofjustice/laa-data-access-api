@@ -142,17 +142,17 @@ class ApplicationExceptionHandlerTest {
 
   @Test
   void givenConflictingPriorAuthorityCreation_whenHandled_thenReturnsStablePublicConflictMessage() {
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
 
     var response =
         handler.handlePriorAuthorityCreationConflictException(
-            new PriorAuthorityCreationConflictException(submissionId));
+            new PriorAuthorityCreationConflictException(priorAuthorityId));
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
     assertThat(response.getBody().getDetail())
         .isEqualTo(
             "Prior authority submission ID "
-                + submissionId
+                + priorAuthorityId
                 + " already exists with different creation data");
   }
 

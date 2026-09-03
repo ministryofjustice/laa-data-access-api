@@ -6,6 +6,6 @@ import org.axonframework.messaging.commandhandling.annotation.Command;
 import org.axonframework.modelling.annotation.TargetEntityId;
 
 /** Command that submits an in-progress Prior Authority draft, sealing its content. */
-@Command(routingKey = "submissionId")
+@Command(routingKey = "priorAuthorityId")
 public record SubmitPriorAuthorityDraftCommand(
-    @TargetEntityId UUID submissionId, Instant occurredAt) {}
+    @TargetEntityId UUID priorAuthorityId, Instant occurredAt) {}

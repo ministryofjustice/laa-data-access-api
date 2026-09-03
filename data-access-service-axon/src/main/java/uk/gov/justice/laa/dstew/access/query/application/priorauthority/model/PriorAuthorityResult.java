@@ -20,7 +20,7 @@ public record PriorAuthorityResult(
   public static PriorAuthorityResult from(
       PriorAuthorityReadModel priorAuthority, PriorAuthorityContent content) {
     return build(
-        priorAuthority.getSubmissionId(),
+        priorAuthority.getPriorAuthorityId(),
         priorAuthority.getApplicationId(),
         priorAuthority.getStatus(),
         content);
@@ -31,7 +31,7 @@ public record PriorAuthorityResult(
    * not yet been schema-validated. A draft has no decision yet, so status is left {@code null}.
    */
   public static PriorAuthorityResult fromDraft(PriorAuthorityDataPayload payload) {
-    return build(payload.submissionId(), payload.applicationId(), null, payload.content());
+    return build(payload.priorAuthorityId(), payload.applicationId(), null, payload.content());
   }
 
   private static PriorAuthorityResult build(

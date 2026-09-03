@@ -45,10 +45,10 @@ public class SavePriorAuthorityDraftCommandMapper {
 
   /** Creates a save-draft command for an existing draft identified by the given submission ID. */
   public UpdatePriorAuthorityDraftCommand toUpdateCommand(
-      UUID submissionId, SavePriorAuthorityDraftRequest request) {
+      UUID priorAuthorityId, SavePriorAuthorityDraftRequest request) {
     PriorAuthorityContent content = toContent(request);
     return new UpdatePriorAuthorityDraftCommand(
-        submissionId, content, serialise(request), 1, SCHEMA_VERSION_NAME, Instant.now());
+        priorAuthorityId, content, serialise(request), 1, SCHEMA_VERSION_NAME, Instant.now());
   }
 
   private PriorAuthorityContent toContent(SavePriorAuthorityDraftRequest request) {

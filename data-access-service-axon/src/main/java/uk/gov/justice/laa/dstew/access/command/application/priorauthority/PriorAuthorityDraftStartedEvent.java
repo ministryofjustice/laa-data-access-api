@@ -8,7 +8,7 @@ import org.axonframework.messaging.eventhandling.annotation.Event;
 /** Event produced when a Prior Authority draft is first created. */
 @Event
 public record PriorAuthorityDraftStartedEvent(
-    @EventTag(key = "PriorAuthorityAggregate") UUID submissionId,
+    @EventTag(key = "PriorAuthorityAggregate") UUID priorAuthorityId,
     UUID applicationId,
     String requestFingerprint,
     int schemaVersion,

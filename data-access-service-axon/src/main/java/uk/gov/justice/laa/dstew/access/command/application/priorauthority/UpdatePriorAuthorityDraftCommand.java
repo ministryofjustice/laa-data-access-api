@@ -7,9 +7,9 @@ import org.axonframework.modelling.annotation.TargetEntityId;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 
 /** Command that updates an existing Prior Authority draft in progress. */
-@Command(routingKey = "submissionId")
+@Command(routingKey = "priorAuthorityId")
 public record UpdatePriorAuthorityDraftCommand(
-    @TargetEntityId UUID submissionId,
+    @TargetEntityId UUID priorAuthorityId,
     PriorAuthorityContent content,
     String serialisedRequest,
     int schemaVersion,

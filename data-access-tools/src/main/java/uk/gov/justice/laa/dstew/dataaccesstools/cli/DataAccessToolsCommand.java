@@ -39,7 +39,7 @@ public final class DataAccessToolsCommand implements Callable<Integer> {
   }
 
   private static void getPrintf(WorkflowResult.ItemResult item) {
-    if (item.submissionId() == null) {
+    if (item.priorAuthorityId() == null) {
       System.out.printf(
           "%s: %s - %s%n",
           item.identifier(), item.succeeded() ? "SUCCESS" : "FAILED", item.detail());
@@ -50,7 +50,7 @@ public final class DataAccessToolsCommand implements Callable<Integer> {
         item.identifier(),
         item.succeeded() ? "SUCCESS" : "FAILED",
         item.detail(),
-        item.submissionId());
+        item.priorAuthorityId());
   }
 
   @Override

@@ -31,21 +31,21 @@ class PriorAuthorityDataStoreTest {
   @Test
   void
       givenPayload_whenAppended_thenStoresExactIdApplicationIdPayloadHashAndTimestampAndReturns64CharFingerprint() {
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     PriorAuthorityContent content = new PriorAuthorityContent("EXPERT", null, null, null, null);
     Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
     PriorAuthorityDataPayload payload =
         new PriorAuthorityDataPayload(
-            submissionId, applicationId, content, "request-json", occurredAt);
+            priorAuthorityId, applicationId, content, "request-json", occurredAt);
 
     String hash =
-        store.append(submissionId, 0L, applicationId, payload, "request-json", occurredAt);
+        store.append(priorAuthorityId, 0L, applicationId, payload, "request-json", occurredAt);
 
     ArgumentCaptor<PriorAuthorityData> captor = ArgumentCaptor.forClass(PriorAuthorityData.class);
     verify(repository).saveAndFlush(captor.capture());
     assertThat(hash).isEqualTo(PayloadFingerprint.compute("request-json")).hasSize(64);
-    assertThat(captor.getValue().getId()).isEqualTo(new PriorAuthorityDataId(submissionId, 0L));
+    assertThat(captor.getValue().getId()).isEqualTo(new PriorAuthorityDataId(priorAuthorityId, 0L));
     assertThat(captor.getValue().getApplicationId()).isEqualTo(applicationId);
     assertThat(captor.getValue().getPayload()).isEqualTo(payload);
     assertThat(captor.getValue().getPayloadHash()).isEqualTo(hash);
@@ -79,11 +79,11 @@ class PriorAuthorityDataStoreTest {
 
   @Test
   void givenStoredVersion_whenGet_thenReturnsPriorAuthorityDataPayload() {
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     PriorAuthorityDataPayload expectedPayload =
-        new PriorAuthorityDataPayload(submissionId, applicationId, null, "req", Instant.now());
-    PriorAuthorityDataId id = new PriorAuthorityDataId(submissionId, 2L);
+        new PriorAuthorityDataPayload(priorAuthorityId, applicationId, null, "req", Instant.now());
+    PriorAuthorityDataId id = new PriorAuthorityDataId(priorAuthorityId, 2L);
     when(repository.findById(id))
         .thenReturn(
             Optional.of(
@@ -93,19 +93,20 @@ class PriorAuthorityDataStoreTest {
                     .payload(expectedPayload)
                     .build()));
 
-    PriorAuthorityDataPayload result = store.get(submissionId, 2L);
+    PriorAuthorityDataPayload result = store.get(priorAuthorityId, 2L);
 
     assertThat(result).isEqualTo(expectedPayload);
   }
 
   @Test
   void givenMissingVersion_whenGet_thenThrowsExactIllegalStateException() {
-    UUID submissionId = UUID.randomUUID();
-    when(repository.findById(new PriorAuthorityDataId(submissionId, 7L)))
+    UUID priorAuthorityId = UUID.randomUUID();
+    when(repository.findById(new PriorAuthorityDataId(priorAuthorityId, 7L)))
         .thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> store.get(submissionId, 7L))
+    assertThatThrownBy(() -> store.get(priorAuthorityId, 7L))
         .isInstanceOf(IllegalStateException.class)
-        .hasMessage("Prior authority data not found for submission " + submissionId + " version 7");
+        .hasMessage(
+            "Prior authority data not found for submission " + priorAuthorityId + " version 7");
   }
 }

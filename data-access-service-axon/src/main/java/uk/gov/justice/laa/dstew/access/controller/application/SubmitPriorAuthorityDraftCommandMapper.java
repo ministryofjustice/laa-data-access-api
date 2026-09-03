@@ -10,7 +10,7 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.Submit
 public class SubmitPriorAuthorityDraftCommandMapper {
 
   /** Creates a submit command for the given submission ID. */
-  public SubmitPriorAuthorityDraftCommand toSubmitCommand(UUID submissionId) {
-    return new SubmitPriorAuthorityDraftCommand(submissionId, Instant.now());
+  public SubmitPriorAuthorityDraftCommand toSubmitCommand(UUID priorAuthorityId) {
+    return new SubmitPriorAuthorityDraftCommand(priorAuthorityId, Instant.now());
   }
 }

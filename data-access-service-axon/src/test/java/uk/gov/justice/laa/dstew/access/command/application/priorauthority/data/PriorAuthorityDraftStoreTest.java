@@ -27,23 +27,23 @@ class PriorAuthorityDraftStoreTest {
 
   @Test
   void givenNoExistingDraft_whenUpsert_thenInsertsRowAndReturnsFingerprint() {
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     PriorAuthorityContent content = new PriorAuthorityContent("EXPERT", null, null, null, null);
     Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
     PriorAuthorityDataPayload payload =
         new PriorAuthorityDataPayload(
-            submissionId, applicationId, content, "request-json", occurredAt);
+            priorAuthorityId, applicationId, content, "request-json", occurredAt);
 
-    when(repository.findById(submissionId)).thenReturn(Optional.empty());
+    when(repository.findById(priorAuthorityId)).thenReturn(Optional.empty());
 
     String fingerprint =
-        store.upsert(submissionId, applicationId, payload, "request-json", occurredAt);
+        store.upsert(priorAuthorityId, applicationId, payload, "request-json", occurredAt);
 
     assertThat(fingerprint).isEqualTo(PayloadFingerprint.compute("request-json")).hasSize(64);
     ArgumentCaptor<PriorAuthorityDraft> captor = ArgumentCaptor.forClass(PriorAuthorityDraft.class);
     verify(repository).saveAndFlush(captor.capture());
-    assertThat(captor.getValue().getSubmissionId()).isEqualTo(submissionId);
+    assertThat(captor.getValue().getPriorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(captor.getValue().getApplicationId()).isEqualTo(applicationId);
     assertThat(captor.getValue().getPayload()).isEqualTo(payload);
     assertThat(captor.getValue().getPayloadHash()).isEqualTo(fingerprint);
@@ -53,24 +53,24 @@ class PriorAuthorityDraftStoreTest {
 
   @Test
   void givenExistingDraft_whenUpsert_thenPreservesOriginalCreatedAtAndUpdatesUpdatedAt() {
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     Instant originalCreatedAt = Instant.parse("2026-08-01T10:00:00Z");
     Instant secondOccurredAt = Instant.parse("2026-08-02T11:00:00Z");
     PriorAuthorityDraft existing =
         PriorAuthorityDraft.builder()
-            .submissionId(submissionId)
+            .priorAuthorityId(priorAuthorityId)
             .applicationId(applicationId)
             .createdAt(originalCreatedAt)
             .updatedAt(originalCreatedAt)
             .build();
     PriorAuthorityDataPayload payload =
         new PriorAuthorityDataPayload(
-            submissionId, applicationId, null, "second-request", secondOccurredAt);
+            priorAuthorityId, applicationId, null, "second-request", secondOccurredAt);
 
-    when(repository.findById(submissionId)).thenReturn(Optional.of(existing));
+    when(repository.findById(priorAuthorityId)).thenReturn(Optional.of(existing));
 
-    store.upsert(submissionId, applicationId, payload, "second-request", secondOccurredAt);
+    store.upsert(priorAuthorityId, applicationId, payload, "second-request", secondOccurredAt);
 
     ArgumentCaptor<PriorAuthorityDraft> captor = ArgumentCaptor.forClass(PriorAuthorityDraft.class);
     verify(repository).saveAndFlush(captor.capture());
@@ -80,33 +80,34 @@ class PriorAuthorityDraftStoreTest {
 
   @Test
   void givenStoredDraft_whenGet_thenReturnsPayload() {
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
     PriorAuthorityDataPayload expectedPayload =
-        new PriorAuthorityDataPayload(submissionId, UUID.randomUUID(), null, "req", Instant.now());
-    when(repository.findById(submissionId))
+        new PriorAuthorityDataPayload(
+            priorAuthorityId, UUID.randomUUID(), null, "req", Instant.now());
+    when(repository.findById(priorAuthorityId))
         .thenReturn(Optional.of(PriorAuthorityDraft.builder().payload(expectedPayload).build()));
 
-    PriorAuthorityDataPayload result = store.get(submissionId);
+    PriorAuthorityDataPayload result = store.get(priorAuthorityId);
 
     assertThat(result).isEqualTo(expectedPayload);
   }
 
   @Test
   void givenNoDraft_whenGet_thenThrowsIllegalStateException() {
-    UUID submissionId = UUID.randomUUID();
-    when(repository.findById(submissionId)).thenReturn(Optional.empty());
+    UUID priorAuthorityId = UUID.randomUUID();
+    when(repository.findById(priorAuthorityId)).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> store.get(submissionId))
+    assertThatThrownBy(() -> store.get(priorAuthorityId))
         .isInstanceOf(IllegalStateException.class)
-        .hasMessage("No draft found for submission: " + submissionId);
+        .hasMessage("No draft found for submission: " + priorAuthorityId);
   }
 
   @Test
   void whenDelete_thenDelegatesToRepositoryDeleteById() {
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
 
-    store.delete(submissionId);
+    store.delete(priorAuthorityId);
 
-    verify(repository).deleteById(eq(submissionId));
+    verify(repository).deleteById(eq(priorAuthorityId));
   }
 }

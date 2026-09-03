@@ -6,7 +6,7 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityCont
 
 /** Sensitive data associated with one prior-authority submission. */
 public record PriorAuthorityDataPayload(
-    UUID submissionId,
+    UUID priorAuthorityId,
     UUID applicationId,
     PriorAuthorityContent content,
     String serialisedRequest,
