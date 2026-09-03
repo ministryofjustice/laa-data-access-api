@@ -15,11 +15,14 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
@@ -33,20 +36,14 @@ import uk.gov.justice.laa.dstew.access.query.application.priorauthority.model.Co
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.model.PriorAuthorityResult;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.model.PriorAuthorityType;
 
+@ExtendWith(MockitoExtension.class)
 class GetPriorAuthorityUseCaseTest {
 
-  private PriorAuthorityDataStore dataStore;
-  private PriorAuthorityDraftStore draftStore;
-  private QueryGateway queryGateway;
-  private GetPriorAuthorityUseCase useCase;
+  @Mock private PriorAuthorityDataStore dataStore;
+  @Mock private PriorAuthorityDraftStore draftStore;
+  @Mock private QueryGateway queryGateway;
 
-  @BeforeEach
-  void setUp() {
-    dataStore = org.mockito.Mockito.mock(PriorAuthorityDataStore.class);
-    draftStore = org.mockito.Mockito.mock(PriorAuthorityDraftStore.class);
-    queryGateway = org.mockito.Mockito.mock(QueryGateway.class);
-    useCase = new GetPriorAuthorityUseCase(dataStore, draftStore, queryGateway);
-  }
+  @InjectMocks private GetPriorAuthorityUseCase useCase;
 
   @Test
   void givenCounselPriorAuthority_whenRetrieved_thenHydratesStoredDataVersion() {

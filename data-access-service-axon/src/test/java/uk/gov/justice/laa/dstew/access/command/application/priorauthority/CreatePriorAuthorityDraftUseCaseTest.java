@@ -3,30 +3,28 @@ package uk.gov.justice.laa.dstew.access.command.application.priorauthority;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InOrder;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.Mockito;
+import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
+@ExtendWith(MockitoExtension.class)
 class CreatePriorAuthorityDraftUseCaseTest {
 
-  private RetryingCommandDispatcher dispatcher;
-  private CreatePriorAuthorityDraftUseCase useCase;
+  @Mock private RetryingCommandDispatcher dispatcher;
 
-  @BeforeEach
-  void setUp() {
-    dispatcher = mock(RetryingCommandDispatcher.class);
-    useCase = new CreatePriorAuthorityDraftUseCase(dispatcher);
-  }
+  @InjectMocks private CreatePriorAuthorityDraftUseCase useCase;
 
   @Test
   void givenCommand_whenExecute_thenDispatchesCommandDirectlyAndReturnsTrue() {

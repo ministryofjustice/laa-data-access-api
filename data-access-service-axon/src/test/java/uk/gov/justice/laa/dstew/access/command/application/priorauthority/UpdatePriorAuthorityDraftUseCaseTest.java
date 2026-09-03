@@ -1,24 +1,22 @@
 package uk.gov.justice.laa.dstew.access.command.application.priorauthority;
 
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 import java.time.Instant;
 import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 
+@ExtendWith(MockitoExtension.class)
 class UpdatePriorAuthorityDraftUseCaseTest {
 
-  private RetryingCommandDispatcher dispatcher;
-  private UpdatePriorAuthorityDraftUseCase useCase;
+  @Mock private RetryingCommandDispatcher dispatcher;
 
-  @BeforeEach
-  void setUp() {
-    dispatcher = mock(RetryingCommandDispatcher.class);
-    useCase = new UpdatePriorAuthorityDraftUseCase(dispatcher);
-  }
+  @InjectMocks private UpdatePriorAuthorityDraftUseCase useCase;
 
   @Test
   void givenCommand_whenExecute_thenDispatchesCommandDirectly() {

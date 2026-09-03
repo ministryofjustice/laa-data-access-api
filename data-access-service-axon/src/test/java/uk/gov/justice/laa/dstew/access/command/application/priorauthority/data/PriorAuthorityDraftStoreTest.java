@@ -3,33 +3,30 @@ package uk.gov.justice.laa.dstew.access.command.application.priorauthority.data;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 
+@ExtendWith(MockitoExtension.class)
 class PriorAuthorityDraftStoreTest {
 
-  private PriorAuthorityDraftRepository repository;
-  private PriorAuthorityDraftStore store;
+  @Mock private PriorAuthorityDraftRepository repository;
 
-  @BeforeEach
-  void setUp() {
-    repository = mock(PriorAuthorityDraftRepository.class);
-    store = new PriorAuthorityDraftStore(repository);
-  }
+  @InjectMocks private PriorAuthorityDraftStore store;
 
   @Test
-  void
-      givenNoExistingDraft_whenUpsert_thenInsertsRowWithOccurredAtAsCreatedAtAndReturnsFingerprint() {
+  void givenNoExistingDraft_whenUpsert_thenInsertsRowAndReturnsFingerprint() {
     UUID submissionId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     PriorAuthorityContent content = new PriorAuthorityContent("EXPERT", null, null, null, null);

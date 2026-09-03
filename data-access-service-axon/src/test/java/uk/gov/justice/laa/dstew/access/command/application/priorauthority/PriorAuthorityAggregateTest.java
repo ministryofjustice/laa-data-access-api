@@ -5,7 +5,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -20,7 +19,10 @@ import org.axonframework.test.fixture.AxonTestFixture;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
@@ -33,18 +35,16 @@ import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /** Integration tests for {@link PriorAuthorityAggregate} using the Axon test fixture. */
+@ExtendWith(MockitoExtension.class)
 class PriorAuthorityAggregateTest {
 
   private AxonTestFixture fixture;
-  private PriorAuthorityDataStore dataStore;
-  private PriorAuthorityDraftStore draftStore;
-  private JsonSchemaValidator jsonSchemaValidator;
+  @Mock private PriorAuthorityDataStore dataStore;
+  @Mock private PriorAuthorityDraftStore draftStore;
+  @Mock private JsonSchemaValidator jsonSchemaValidator;
 
   @BeforeEach
   void setUp() {
-    dataStore = mock(PriorAuthorityDataStore.class);
-    draftStore = mock(PriorAuthorityDraftStore.class);
-    jsonSchemaValidator = mock(JsonSchemaValidator.class);
     fixture =
         AxonTestFixture.with(
             EventSourcingConfigurer.create()

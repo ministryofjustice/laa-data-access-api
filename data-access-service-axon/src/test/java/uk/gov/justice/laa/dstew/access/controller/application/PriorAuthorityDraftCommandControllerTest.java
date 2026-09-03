@@ -1,7 +1,6 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -10,6 +9,10 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -26,27 +29,21 @@ import uk.gov.justice.laa.dstew.access.model.SavePriorAuthorityDraftResponse;
 import uk.gov.justice.laa.dstew.access.model.SubmitPriorAuthorityDraftResponse;
 
 /** Verifies that each controller endpoint delegates to the appropriate use case. */
+@ExtendWith(MockitoExtension.class)
 class PriorAuthorityDraftCommandControllerTest {
 
-  private CreatePriorAuthorityDraftUseCase createUseCase;
-  private UpdatePriorAuthorityDraftUseCase updateUseCase;
-  private SubmitPriorAuthorityDraftUseCase submitUseCase;
-  private SavePriorAuthorityDraftCommandMapper saveCommandMapper;
-  private SubmitPriorAuthorityDraftCommandMapper submitCommandMapper;
-  private PriorAuthorityDraftCommandController controller;
+  @Mock private CreatePriorAuthorityDraftUseCase createUseCase;
+  @Mock private UpdatePriorAuthorityDraftUseCase updateUseCase;
+  @Mock private SubmitPriorAuthorityDraftUseCase submitUseCase;
+  @Mock private SavePriorAuthorityDraftCommandMapper saveCommandMapper;
+  @Mock private SubmitPriorAuthorityDraftCommandMapper submitCommandMapper;
+
+  @InjectMocks private PriorAuthorityDraftCommandController controller;
 
   @BeforeEach
   void setUp() {
     RequestContextHolder.setRequestAttributes(
         new ServletRequestAttributes(new MockHttpServletRequest()));
-    createUseCase = mock(CreatePriorAuthorityDraftUseCase.class);
-    updateUseCase = mock(UpdatePriorAuthorityDraftUseCase.class);
-    submitUseCase = mock(SubmitPriorAuthorityDraftUseCase.class);
-    saveCommandMapper = mock(SavePriorAuthorityDraftCommandMapper.class);
-    submitCommandMapper = mock(SubmitPriorAuthorityDraftCommandMapper.class);
-    controller =
-        new PriorAuthorityDraftCommandController(
-            createUseCase, updateUseCase, submitUseCase, saveCommandMapper, submitCommandMapper);
   }
 
   @AfterEach

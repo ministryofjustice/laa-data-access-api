@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.inOrder;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -13,23 +12,21 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Predicate;
 import org.axonframework.messaging.queryhandling.QueryUpdateEmitter;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InOrder;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityCreatedEvent;
 
+@ExtendWith(MockitoExtension.class)
 class PriorAuthorityProjectionTest {
 
-  private PriorAuthorityReadRepository repository;
-  private QueryUpdateEmitter queryUpdateEmitter;
-  private PriorAuthorityProjection projection;
+  @Mock private PriorAuthorityReadRepository repository;
+  @Mock private QueryUpdateEmitter queryUpdateEmitter;
 
-  @BeforeEach
-  void setUp() {
-    repository = mock(PriorAuthorityReadRepository.class);
-    queryUpdateEmitter = mock(QueryUpdateEmitter.class);
-    projection = new PriorAuthorityProjection(repository);
-  }
+  @InjectMocks private PriorAuthorityProjection projection;
 
   @Test
   void givenCreatedEvent_whenHandled_thenSavesBeforeEmitting() {

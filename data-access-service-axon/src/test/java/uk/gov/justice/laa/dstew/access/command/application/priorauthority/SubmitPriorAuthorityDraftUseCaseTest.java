@@ -6,7 +6,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -15,10 +14,13 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InOrder;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.Mockito;
+import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
@@ -27,20 +29,14 @@ import uk.gov.justice.laa.dstew.access.query.application.priorauthority.FindPrio
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
+@ExtendWith(MockitoExtension.class)
 class SubmitPriorAuthorityDraftUseCaseTest {
 
-  private RetryingCommandDispatcher dispatcher;
-  private SubscriptionProjectionGateway projectionGateway;
-  private PriorAuthorityDraftStore draftStore;
-  private SubmitPriorAuthorityDraftUseCase useCase;
+  @Mock private RetryingCommandDispatcher dispatcher;
+  @Mock private SubscriptionProjectionGateway projectionGateway;
+  @Mock private PriorAuthorityDraftStore draftStore;
 
-  @BeforeEach
-  void setUp() {
-    dispatcher = mock(RetryingCommandDispatcher.class);
-    projectionGateway = mock(SubscriptionProjectionGateway.class);
-    draftStore = mock(PriorAuthorityDraftStore.class);
-    useCase = new SubmitPriorAuthorityDraftUseCase(dispatcher, projectionGateway, draftStore);
-  }
+  @InjectMocks private SubmitPriorAuthorityDraftUseCase useCase;
 
   @Test
   void givenCommand_whenProjectionConfirmed_thenReturnsTrue() {

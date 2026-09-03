@@ -6,8 +6,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityResponse;
@@ -15,20 +18,13 @@ import uk.gov.justice.laa.dstew.access.query.application.priorauthority.GetPrior
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.model.PriorAuthorityResult;
 
 /** Verifies that each controller endpoint delegates to the appropriate use case and mapper. */
+@ExtendWith(MockitoExtension.class)
 class PriorAuthoritiesQueryControllerTest {
 
-  private GetPriorAuthorityUseCase getPriorAuthorityUseCase;
-  private GetPriorAuthorityResponseMapper getPriorAuthorityResponseMapper;
-  private PriorAuthoritiesQueryController controller;
+  @Mock private GetPriorAuthorityUseCase getPriorAuthorityUseCase;
+  @Mock private GetPriorAuthorityResponseMapper getPriorAuthorityResponseMapper;
 
-  @BeforeEach
-  void setUp() {
-    getPriorAuthorityUseCase = mock(GetPriorAuthorityUseCase.class);
-    getPriorAuthorityResponseMapper = mock(GetPriorAuthorityResponseMapper.class);
-    controller =
-        new PriorAuthoritiesQueryController(
-            getPriorAuthorityUseCase, getPriorAuthorityResponseMapper);
-  }
+  @InjectMocks private PriorAuthoritiesQueryController controller;
 
   @Test
   void givenExistingPriorAuthority_whenGetPriorAuthority_thenDelegatesToUseCaseAndMapper() {
