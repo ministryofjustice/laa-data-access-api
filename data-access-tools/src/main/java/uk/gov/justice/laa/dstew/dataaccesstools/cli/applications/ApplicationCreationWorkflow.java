@@ -32,11 +32,12 @@ public final class ApplicationCreationWorkflow {
             new WorkflowResult.ItemResult(
                 application.applicationId().toString(),
                 true,
-                decision + " " + application.laaReference()));
+                decision + " " + application.laaReference(),
+                null));
       } catch (RuntimeException exception) {
         results.add(
             new WorkflowResult.ItemResult(
-                application.applicationId().toString(), false, exception.getMessage()));
+                application.applicationId().toString(), false, exception.getMessage(), null));
       }
     }
     return new WorkflowResult(results);

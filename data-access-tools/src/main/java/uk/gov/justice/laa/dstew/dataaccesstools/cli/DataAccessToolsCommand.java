@@ -36,14 +36,23 @@ public final class DataAccessToolsCommand implements Callable<Integer> {
   }
 
   public int print(WorkflowResult result) {
-    result
-        .items()
-        .forEach(
-            item ->
-                System.out.printf(
-                    "%s: %s - %s%n",
-                    item.identifier(), item.succeeded() ? "SUCCESS" : "FAILED", item.detail()));
+    result.items().forEach(DataAccessToolsCommand::getPrintf);
     return result.succeeded() ? 0 : 1;
+  }
+
+  private static void getPrintf(WorkflowResult.ItemResult item) {
+    if (item.submissionId() == null) {
+      System.out.printf(
+          "%s: %s - %s%n",
+          item.identifier(), item.succeeded() ? "SUCCESS" : "FAILED", item.detail());
+      return;
+    }
+    System.out.printf(
+        "%s: %s - %s -priorAuthorityID: %s%n",
+        item.identifier(),
+        item.succeeded() ? "SUCCESS" : "FAILED",
+        item.detail(),
+        item.submissionId());
   }
 
   @Override
