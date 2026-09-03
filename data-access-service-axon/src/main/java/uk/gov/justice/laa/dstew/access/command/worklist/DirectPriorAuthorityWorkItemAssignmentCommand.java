@@ -9,7 +9,7 @@ import org.axonframework.modelling.annotation.TargetEntityId;
 @Command(routingKey = "aggregateId")
 public record DirectPriorAuthorityWorkItemAssignmentCommand(
     @TargetEntityId UUID aggregateId,
-    WorkItemId workItemId,
+    UUID workItemId,
     UUID caseworkerId,
     long expectedAssignmentVersion,
     String serialisedRequest,

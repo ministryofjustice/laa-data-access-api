@@ -69,10 +69,7 @@ public class PriorAuthorityAggregate {
       PriorAuthorityDataStore dataStore,
       EventAppender eventAppender) {
     validateWorkItem(
-        command.aggregateId(),
-        command.workItemId().type(),
-        command.workItemId().id(),
-        command.expectedAssignmentVersion());
+        command.aggregateId(), command.workItemId(), command.expectedAssignmentVersion());
     if (state.caseworkerId != null) {
       throw new WorkItemAssignmentConflictException(command.workItemId(), "it is already assigned");
     }
@@ -87,8 +84,7 @@ public class PriorAuthorityAggregate {
     eventAppender.append(
         new WorkItemAssigned(
             command.workItemId(),
-            null,
-            submissionId,
+            WorkItemType.PRIOR_AUTHORITY,
             nextDataVersion,
             nextDataVersion,
             state.assignmentVersion + 1,
@@ -103,10 +99,7 @@ public class PriorAuthorityAggregate {
       PriorAuthorityDataStore dataStore,
       EventAppender eventAppender) {
     validateWorkItem(
-        command.aggregateId(),
-        command.workItemId().type(),
-        command.workItemId().id(),
-        command.expectedAssignmentVersion());
+        command.aggregateId(), command.workItemId(), command.expectedAssignmentVersion());
     if (state.caseworkerId == null) {
       throw new WorkItemAssignmentConflictException(
           command.workItemId(), "it is already unassigned");
@@ -122,27 +115,22 @@ public class PriorAuthorityAggregate {
     eventAppender.append(
         new WorkItemUnassigned(
             command.workItemId(),
-            null,
-            submissionId,
+            WorkItemType.PRIOR_AUTHORITY,
             nextDataVersion,
             nextDataVersion,
             state.assignmentVersion + 1,
             command.occurredAt()));
   }
 
-  private void validateWorkItem(
-      UUID aggregateId, WorkItemType type, UUID workItemId, long expectedAssignmentVersion) {
+  private void validateWorkItem(UUID aggregateId, UUID workItemId, long expectedAssignmentVersion) {
     if (submissionId == null
         || !submissionId.equals(aggregateId)
-        || type != WorkItemType.PRIOR_AUTHORITY
         || !submissionId.equals(workItemId)) {
       throw new ResourceNotFoundException(
           "No prior-authority work item found with id: " + workItemId);
     }
     if (expectedAssignmentVersion != state.assignmentVersion) {
-      throw new WorkItemAssignmentConflictException(
-          new uk.gov.justice.laa.dstew.access.command.worklist.WorkItemId(type, workItemId),
-          "the assignment version is stale");
+      throw new WorkItemAssignmentConflictException(workItemId, "the assignment version is stale");
     }
   }
 

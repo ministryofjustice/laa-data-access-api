@@ -4,8 +4,9 @@ import org.axonframework.messaging.core.annotation.Namespace;
 import org.axonframework.messaging.eventhandling.annotation.EventHandler;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 
 /**
@@ -20,10 +21,10 @@ public class WorkItemRouteProjection {
     this.routes = routes;
   }
 
-  /** Establishes direct command authority for an application. */
+  /** Establishes direct command authority when an application requires manual assessment. */
   @EventHandler
   @Transactional
-  public void on(ApplicationCreatedEvent event) {
+  public void on(ApplicationReadyForManualAssessmentEvent event) {
     routes.save(
         new WorkItemRoute(
             WorkItemType.APPLICATION,
@@ -33,6 +34,15 @@ public class WorkItemRouteProjection {
             null,
             0L,
             event.occurredAt()));
+  }
+
+  /**
+   * Removes application command authority after a terminal decision; absent routes are harmless.
+   */
+  @EventHandler
+  @Transactional
+  public void on(ApplicationDecisionMadeEvent event) {
+    routes.deleteById(event.applicationId());
   }
 
   /** Establishes direct prior-authority command ownership at creation. */

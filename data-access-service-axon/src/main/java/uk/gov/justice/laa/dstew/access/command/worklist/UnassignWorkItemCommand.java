@@ -2,10 +2,11 @@ package uk.gov.justice.laa.dstew.access.command.worklist;
 
 import java.time.Instant;
 import java.util.Objects;
+import java.util.UUID;
 
 /** Returns an assigned work item to the open work list. */
 public record UnassignWorkItemCommand(
-    WorkItemId workItemId,
+    UUID workItemId,
     long expectedAssignmentVersion,
     String serialisedRequest,
     String eventDescription,

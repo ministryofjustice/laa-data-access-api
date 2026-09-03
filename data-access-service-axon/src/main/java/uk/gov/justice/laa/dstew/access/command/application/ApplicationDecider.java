@@ -162,11 +162,7 @@ public final class ApplicationDecider {
 
   private static WorkItemAssignmentConflictException assignmentConflict(
       MakeApplicationDecisionCommand command, String reason) {
-    return new WorkItemAssignmentConflictException(
-        new uk.gov.justice.laa.dstew.access.command.worklist.WorkItemId(
-            uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType.APPLICATION,
-            command.applicationId()),
-        reason);
+    return new WorkItemAssignmentConflictException(command.applicationId(), reason);
   }
 
   /** Returns an {@link ApplicationAssignedToCaseworkerEvent}. */

@@ -47,7 +47,7 @@ public class WorkItemAssignmentCommandHandler {
     WorkItemRoute route = route(itemId);
     assign(
         new AssignWorkItemCommand(
-            new WorkItemId(route.getWorkItemType(), itemId),
+            itemId,
             caseworkerId,
             expectedAssignmentVersion,
             serialisedRequest,
@@ -61,7 +61,7 @@ public class WorkItemAssignmentCommandHandler {
       throw new ResourceNotFoundException("No caseworker found with id: " + command.caseworkerId());
     }
     requireDirectRoute(route, command.workItemId());
-    if (command.workItemId().type() == WorkItemType.PRIOR_AUTHORITY) {
+    if (route.getWorkItemType() == WorkItemType.PRIOR_AUTHORITY) {
       commandGateway.sendAndWait(
           new DirectPriorAuthorityWorkItemAssignmentCommand(
               route.getAggregateId(),
@@ -103,17 +103,13 @@ public class WorkItemAssignmentCommandHandler {
     WorkItemRoute route = route(itemId);
     unassign(
         new UnassignWorkItemCommand(
-            new WorkItemId(route.getWorkItemType(), itemId),
-            expectedAssignmentVersion,
-            serialisedRequest,
-            eventDescription,
-            occurredAt),
+            itemId, expectedAssignmentVersion, serialisedRequest, eventDescription, occurredAt),
         route);
   }
 
   private void unassign(UnassignWorkItemCommand command, WorkItemRoute route) {
     requireDirectRoute(route, command.workItemId());
-    if (command.workItemId().type() == WorkItemType.PRIOR_AUTHORITY) {
+    if (route.getWorkItemType() == WorkItemType.PRIOR_AUTHORITY) {
       commandGateway.sendAndWait(
           new DirectPriorAuthorityWorkItemUnassignmentCommand(
               route.getAggregateId(),
@@ -134,24 +130,16 @@ public class WorkItemAssignmentCommandHandler {
             command.occurredAt()));
   }
 
-  private WorkItemRoute route(WorkItemId workItemId) {
-    WorkItemRoute route = route(workItemId.id());
-    if (route.getWorkItemType() != workItemId.type()) {
-      throw new ResourceNotFoundException("No work-item route found for " + workItemId.id());
-    }
-    return route;
-  }
-
   private WorkItemRoute route(java.util.UUID itemId) {
     return routes
         .findByWorkItemId(itemId)
         .orElseThrow(() -> new ResourceNotFoundException("No work-item route found for " + itemId));
   }
 
-  private void requireDirectRoute(WorkItemRoute route, WorkItemId workItemId) {
+  private void requireDirectRoute(WorkItemRoute route, java.util.UUID workItemId) {
     if (route.getRouteKind() != WorkItemRouteKind.STANDALONE
-        || !route.getAggregateId().equals(workItemId.id())) {
-      throw new ResourceNotFoundException("No direct work-item route found for " + workItemId.id());
+        || !route.getAggregateId().equals(workItemId)) {
+      throw new ResourceNotFoundException("No direct work-item route found for " + workItemId);
     }
   }
 }

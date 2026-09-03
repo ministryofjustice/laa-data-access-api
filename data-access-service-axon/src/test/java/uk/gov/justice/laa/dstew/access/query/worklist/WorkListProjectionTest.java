@@ -2,7 +2,6 @@ package uk.gov.justice.laa.dstew.access.query.worklist;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -21,14 +20,12 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
-import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemId;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 
 class WorkListProjectionTest {
@@ -64,6 +61,8 @@ class WorkListProjectionTest {
         ArgumentCaptor.forClass(WorkListItemReadModel.class);
     verify(items).save(captor.capture());
     WorkListItemReadModel row = captor.getValue();
+    assertThat(row.getId()).isEqualTo(applicationId);
+    assertThat(row.getItemType()).isEqualTo(WorkItemType.APPLICATION);
     assertThat(row.getApplicationId()).isEqualTo(applicationId);
     assertThat(row.getParentApplicationId()).isNull();
     assertThat(row.getAssigneeId()).isNull();
@@ -136,44 +135,16 @@ class WorkListProjectionTest {
   }
 
   @Test
-  void givenActiveApplication_whenAssigned_thenUpdatesOnlyItsExistingWorkRow() {
-    UUID applicationId = UUID.randomUUID();
-    UUID caseworkerId = UUID.randomUUID();
-    WorkListItemReadModel row =
-        new WorkListItemReadModel(
-            WorkItemType.APPLICATION, applicationId, applicationId, null, Instant.now(), 1L, 0L);
-    when(items.findById(new WorkListItemId(WorkItemType.APPLICATION, applicationId)))
-        .thenReturn(Optional.of(row));
-
-    projection.on(
-        new ApplicationAssignedToCaseworkerEvent(
-            applicationId, 2L, 3L, caseworkerId, Instant.now()),
-        message());
-
-    assertThat(row.getAssigneeId()).isEqualTo(caseworkerId);
-    assertThat(row.getItemVersion()).isEqualTo(2L);
-    verify(items).save(row);
-  }
-
-  @Test
   void givenActiveWorkItem_whenGenericallyAssigned_thenUpdatesItsAssignmentVersion() {
     UUID applicationId = UUID.randomUUID();
     WorkListItemReadModel row =
         new WorkListItemReadModel(
             WorkItemType.APPLICATION, applicationId, applicationId, null, Instant.now(), 1L, 0L);
-    when(items.findById(new WorkListItemId(WorkItemType.APPLICATION, applicationId)))
-        .thenReturn(Optional.of(row));
+    when(items.findById(applicationId)).thenReturn(Optional.of(row));
 
     projection.on(
         new WorkItemAssigned(
-            new WorkItemId(WorkItemType.APPLICATION, applicationId),
-            applicationId,
-            null,
-            2L,
-            2L,
-            1L,
-            UUID.randomUUID(),
-            Instant.now()),
+            applicationId, WorkItemType.APPLICATION, 2L, 2L, 1L, UUID.randomUUID(), Instant.now()),
         message());
 
     assertThat(row.getAssignmentVersion()).isEqualTo(1L);
@@ -189,9 +160,7 @@ class WorkListProjectionTest {
     projection.on(event);
     projection.on(event);
 
-    verify(items, times(2)).deleteByIdItemTypeAndIdItemId(WorkItemType.APPLICATION, applicationId);
-    verify(items, never())
-        .deleteByIdItemTypeAndIdItemId(WorkItemType.PRIOR_AUTHORITY, applicationId);
+    verify(items, times(2)).deleteById(applicationId);
   }
 
   @Test

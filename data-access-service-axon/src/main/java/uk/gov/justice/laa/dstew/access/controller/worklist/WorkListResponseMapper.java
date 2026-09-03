@@ -34,8 +34,8 @@ public class WorkListResponseMapper {
 
   private WorkListItem toItem(WorkListItemReadModel item) {
     WorkListItem response = new WorkListItem();
-    response.setItemId(item.getId().getItemId());
-    response.setItemType(WorkListItemType.valueOf(item.getId().getItemType().name()));
+    response.setItemId(item.getId());
+    response.setItemType(WorkListItemType.valueOf(item.getItemType().name()));
     response.setParentApplicationId(item.getParentApplicationId());
     response.setAssignedTo(item.getAssigneeId());
     response.setAssignmentVersion(item.getAssignmentVersion());

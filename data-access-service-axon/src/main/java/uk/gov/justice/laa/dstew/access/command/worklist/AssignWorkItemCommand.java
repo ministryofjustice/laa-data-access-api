@@ -6,7 +6,7 @@ import java.util.UUID;
 
 /** Assigns an open work item through its authoritative assignment boundary. */
 public record AssignWorkItemCommand(
-    WorkItemId workItemId,
+    UUID workItemId,
     UUID caseworkerId,
     long expectedAssignmentVersion,
     String serialisedRequest,

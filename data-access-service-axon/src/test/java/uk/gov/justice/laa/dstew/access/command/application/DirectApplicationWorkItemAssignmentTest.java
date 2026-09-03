@@ -12,6 +12,7 @@ import org.axonframework.test.fixture.AxonTestFixture;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
@@ -19,7 +20,6 @@ import uk.gov.justice.laa.dstew.access.command.worklist.DirectWorkItemAssignment
 import uk.gov.justice.laa.dstew.access.command.worklist.DirectWorkItemUnassignmentCommand;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
-import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemId;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 
 class DirectApplicationWorkItemAssignmentTest {
@@ -54,25 +54,11 @@ class DirectApplicationWorkItemAssignmentTest {
         .events(created(id, when), new ApplicationReadyForManualAssessmentEvent(id, 1L, 1L, when))
         .when()
         .command(
-            new DirectWorkItemAssignmentCommand(
-                id,
-                new WorkItemId(WorkItemType.APPLICATION, id),
-                caseworkerId,
-                0L,
-                "{}",
-                "Assigned",
-                when))
+            new DirectWorkItemAssignmentCommand(id, id, caseworkerId, 0L, "{}", "Assigned", when))
         .then()
         .events(
-            new WorkItemAssigned(
-                new WorkItemId(WorkItemType.APPLICATION, id),
-                id,
-                null,
-                2L,
-                2L,
-                1L,
-                caseworkerId,
-                when));
+            new ApplicationAssignedToCaseworkerEvent(id, 2L, 2L, caseworkerId, when),
+            new WorkItemAssigned(id, WorkItemType.APPLICATION, 2L, 2L, 1L, caseworkerId, when));
   }
 
   @Test
@@ -80,16 +66,14 @@ class DirectApplicationWorkItemAssignmentTest {
     UUID id = UUID.randomUUID();
     UUID caseworkerId = UUID.randomUUID();
     Instant when = Instant.parse("2026-08-28T10:00:00Z");
-    WorkItemId item = new WorkItemId(WorkItemType.APPLICATION, id);
     fixture
         .given()
         .events(
             created(id, when),
             new ApplicationReadyForManualAssessmentEvent(id, 1L, 1L, when),
-            new WorkItemAssigned(item, id, null, 2L, 2L, 1L, caseworkerId, when))
+            new ApplicationAssignedToCaseworkerEvent(id, 2L, 2L, caseworkerId, when))
         .when()
-        .command(
-            new DirectWorkItemAssignmentCommand(id, item, UUID.randomUUID(), 0L, "{}", "", when))
+        .command(new DirectWorkItemAssignmentCommand(id, id, UUID.randomUUID(), 0L, "{}", "", when))
         .then()
         .exception(WorkItemAssignmentConflictException.class)
         .noEvents();
@@ -98,7 +82,7 @@ class DirectApplicationWorkItemAssignmentTest {
         .given()
         .events(created(id, when), new ApplicationReadyForManualAssessmentEvent(id, 1L, 1L, when))
         .when()
-        .command(new DirectWorkItemUnassignmentCommand(id, item, 0L, "{}", "", when))
+        .command(new DirectWorkItemUnassignmentCommand(id, id, 0L, "{}", "", when))
         .then()
         .exception(WorkItemAssignmentConflictException.class)
         .noEvents();

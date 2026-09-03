@@ -12,8 +12,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
@@ -46,8 +44,8 @@ public class WorkListProjection {
                 query.page() - 1,
                 query.pageSize(),
                 Sort.by(Sort.Direction.ASC, "submittedAt")
-                    .and(Sort.by(Sort.Direction.ASC, "id.itemType"))
-                    .and(Sort.by(Sort.Direction.ASC, "id.itemId"))));
+                    .and(Sort.by(Sort.Direction.ASC, "itemType"))
+                    .and(Sort.by(Sort.Direction.ASC, "id"))));
     return new FindWorkListItemsResult(
         page.getContent(), page.getTotalElements(), query.page(), query.pageSize());
   }
@@ -96,46 +94,17 @@ public class WorkListProjection {
   /** A terminal application decision removes only its application work row. */
   @EventHandler
   public void on(ApplicationDecisionMadeEvent event) {
-    items.deleteByIdItemTypeAndIdItemId(WorkItemType.APPLICATION, event.applicationId());
-  }
-
-  /** Mirrors legacy direct assignment into the new projection during migration. */
-  @EventHandler
-  public void on(ApplicationAssignedToCaseworkerEvent event, EventMessage message) {
-    items
-        .findById(new WorkListItemId(WorkItemType.APPLICATION, event.applicationId()))
-        .ifPresent(
-            item -> {
-              item.setAssigneeId(event.caseworkerId());
-              item.setItemVersion(event.applicationVersion());
-              item.setUpdatedAt(event.occurredAt());
-              item.setProjectionPosition(message.identifier().hashCode());
-              items.save(item);
-            });
-  }
-
-  /** Mirrors legacy direct unassignment into the new projection during migration. */
-  @EventHandler
-  public void on(ApplicationUnassignedFromCaseworkerEvent event, EventMessage message) {
-    items
-        .findById(new WorkListItemId(WorkItemType.APPLICATION, event.applicationId()))
-        .ifPresent(
-            item -> {
-              item.setAssigneeId(null);
-              item.setItemVersion(event.applicationVersion());
-              item.setUpdatedAt(event.occurredAt());
-              item.setProjectionPosition(message.identifier().hashCode());
-              items.save(item);
-            });
+    items.deleteById(event.applicationId());
   }
 
   /** Applies a generic direct assignment to the event's immutable work-item identity. */
   @EventHandler
   public void on(WorkItemAssigned event, EventMessage message) {
     items
-        .findById(new WorkListItemId(event.workItemId().type(), event.workItemId().id()))
+        .findById(event.workItemId())
         .ifPresent(
             item -> {
+              requireMatchingType(item, event.workItemType(), event.workItemId());
               item.setAssigneeId(event.caseworkerId());
               item.setItemVersion(event.itemVersion());
               item.setAssignmentVersion(event.assignmentVersion());
@@ -149,9 +118,10 @@ public class WorkListProjection {
   @EventHandler
   public void on(WorkItemUnassigned event, EventMessage message) {
     items
-        .findById(new WorkListItemId(event.workItemId().type(), event.workItemId().id()))
+        .findById(event.workItemId())
         .ifPresent(
             item -> {
+              requireMatchingType(item, event.workItemType(), event.workItemId());
               item.setAssigneeId(null);
               item.setItemVersion(event.itemVersion());
               item.setAssignmentVersion(event.assignmentVersion());
@@ -165,5 +135,12 @@ public class WorkListProjection {
   @ResetHandler
   public void reset() {
     items.deleteAllInBatch();
+  }
+
+  private void requireMatchingType(
+      WorkListItemReadModel item, WorkItemType eventType, java.util.UUID workItemId) {
+    if (item.getItemType() != eventType) {
+      throw new IllegalStateException("Work item type mismatch for " + workItemId);
+    }
   }
 }

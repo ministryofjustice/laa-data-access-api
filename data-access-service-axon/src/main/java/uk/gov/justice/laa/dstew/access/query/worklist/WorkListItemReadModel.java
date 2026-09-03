@@ -1,8 +1,10 @@
 package uk.gov.justice.laa.dstew.access.query.worklist;
 
 import jakarta.persistence.Column;
-import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.List;
@@ -21,7 +23,13 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 @Setter
 @NoArgsConstructor
 public class WorkListItemReadModel {
-  @EmbeddedId private WorkListItemId id;
+  @Id
+  @Column(name = "item_id", nullable = false)
+  private UUID id;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "item_type", nullable = false)
+  private WorkItemType itemType;
 
   @Column(name = "application_id", nullable = false)
   private UUID applicationId;
@@ -81,7 +89,8 @@ public class WorkListItemReadModel {
       Instant updatedAt,
       long itemVersion,
       long projectionPosition) {
-    this.id = new WorkListItemId(itemType, itemId);
+    this.id = itemId;
+    this.itemType = itemType;
     this.applicationId = applicationId;
     this.parentApplicationId = parentApplicationId;
     this.submittedAt = updatedAt;

@@ -166,6 +166,8 @@ public class ApplicationAggregate {
     ApplicationAssignedToCaseworkerEvent event = ApplicationDecider.decideAssign(state, command);
     var current = applicationDataStore.get(applicationId, state.applicationDataVersion);
     long nextDataVersion = state.applicationDataVersion + 1;
+    long nextApplicationVersion = state.applicationVersion + 1;
+    long nextAssignmentVersion = state.assignmentVersion + 1;
     applicationDataStore.append(
         applicationId,
         nextDataVersion,
@@ -189,6 +191,8 @@ public class ApplicationAggregate {
         ApplicationDecider.decideUnassign(state, command);
     var current = applicationDataStore.get(applicationId, state.applicationDataVersion);
     long nextDataVersion = state.applicationDataVersion + 1;
+    long nextApplicationVersion = state.applicationVersion + 1;
+    long nextAssignmentVersion = state.assignmentVersion + 1;
     applicationDataStore.append(
         applicationId,
         nextDataVersion,
@@ -207,14 +211,13 @@ public class ApplicationAggregate {
       ApplicationDataStore applicationDataStore,
       EventAppender eventAppender) {
     requireApplicationExists(command.aggregateId());
-    validateDirectWorkItem(
-        command.workItemId().type(),
-        command.workItemId().id(),
-        command.expectedAssignmentVersion());
+    validateDirectWorkItem(command.workItemId(), command.expectedAssignmentVersion());
     if (state.caseworkerId != null) {
       throw new WorkItemAssignmentConflictException(command.workItemId(), "it is already assigned");
     }
     long nextDataVersion = state.applicationDataVersion + 1;
+    long nextApplicationVersion = state.applicationVersion + 1;
+    long nextAssignmentVersion = state.assignmentVersion + 1;
     applicationDataStore.append(
         applicationId,
         nextDataVersion,
@@ -224,13 +227,19 @@ public class ApplicationAggregate {
         command.serialisedRequest(),
         command.occurredAt());
     eventAppender.append(
+        new ApplicationAssignedToCaseworkerEvent(
+            applicationId,
+            nextApplicationVersion,
+            nextDataVersion,
+            command.caseworkerId(),
+            command.occurredAt()));
+    eventAppender.append(
         new WorkItemAssigned(
             command.workItemId(),
-            applicationId,
-            null,
-            state.applicationVersion + 1,
+            WorkItemType.APPLICATION,
+            nextApplicationVersion,
             nextDataVersion,
-            state.assignmentVersion + 1,
+            nextAssignmentVersion,
             command.caseworkerId(),
             command.occurredAt()));
   }
@@ -242,15 +251,14 @@ public class ApplicationAggregate {
       ApplicationDataStore applicationDataStore,
       EventAppender eventAppender) {
     requireApplicationExists(command.aggregateId());
-    validateDirectWorkItem(
-        command.workItemId().type(),
-        command.workItemId().id(),
-        command.expectedAssignmentVersion());
+    validateDirectWorkItem(command.workItemId(), command.expectedAssignmentVersion());
     if (state.caseworkerId == null) {
       throw new WorkItemAssignmentConflictException(
           command.workItemId(), "it is already unassigned");
     }
     long nextDataVersion = state.applicationDataVersion + 1;
+    long nextApplicationVersion = state.applicationVersion + 1;
+    long nextAssignmentVersion = state.assignmentVersion + 1;
     applicationDataStore.append(
         applicationId,
         nextDataVersion,
@@ -260,13 +268,15 @@ public class ApplicationAggregate {
         command.serialisedRequest(),
         command.occurredAt());
     eventAppender.append(
+        new ApplicationUnassignedFromCaseworkerEvent(
+            applicationId, nextApplicationVersion, nextDataVersion, command.occurredAt()));
+    eventAppender.append(
         new WorkItemUnassigned(
             command.workItemId(),
-            applicationId,
-            null,
-            state.applicationVersion + 1,
+            WorkItemType.APPLICATION,
+            nextApplicationVersion,
             nextDataVersion,
-            state.assignmentVersion + 1,
+            nextAssignmentVersion,
             command.occurredAt()));
   }
 
@@ -451,18 +461,15 @@ public class ApplicationAggregate {
     }
   }
 
-  private void validateDirectWorkItem(
-      WorkItemType type, UUID workItemId, long expectedAssignmentVersion) {
-    if (type != WorkItemType.APPLICATION || !applicationId.equals(workItemId)) {
+  private void validateDirectWorkItem(UUID workItemId, long expectedAssignmentVersion) {
+    if (!applicationId.equals(workItemId)) {
       throw new ResourceNotFoundException("No application work item found with id: " + workItemId);
     }
     if (state.autoGranted != AutoGrantedState.MANUAL || state.overallDecision != null) {
       throw new ResourceNotFoundException("Application work item is not active: " + workItemId);
     }
     if (expectedAssignmentVersion != state.assignmentVersion) {
-      throw new WorkItemAssignmentConflictException(
-          new uk.gov.justice.laa.dstew.access.command.worklist.WorkItemId(type, workItemId),
-          "the assignment version is stale");
+      throw new WorkItemAssignmentConflictException(workItemId, "the assignment version is stale");
     }
   }
 

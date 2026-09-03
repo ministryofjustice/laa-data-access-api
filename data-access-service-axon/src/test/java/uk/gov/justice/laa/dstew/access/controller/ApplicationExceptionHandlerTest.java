@@ -7,8 +7,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
-import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemId;
-import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationGroupInvariantException;
@@ -91,9 +89,7 @@ class ApplicationExceptionHandlerTest {
   void givenWorkItemAssignmentConflict_whenHandled_thenReturnsConflict() {
     var response =
         handler.handleWorkItemAssignmentConflictException(
-            new WorkItemAssignmentConflictException(
-                new WorkItemId(WorkItemType.APPLICATION, UUID.randomUUID()),
-                "it is already assigned"));
+            new WorkItemAssignmentConflictException(UUID.randomUUID(), "it is already assigned"));
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
   }

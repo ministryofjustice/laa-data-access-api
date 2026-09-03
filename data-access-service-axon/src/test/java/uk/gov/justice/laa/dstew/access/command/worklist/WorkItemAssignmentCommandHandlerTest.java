@@ -25,9 +25,8 @@ class WorkItemAssignmentCommandHandlerTest {
         new WorkItemAssignmentCommandHandler(caseworkers, routes, gateway);
     UUID id = UUID.randomUUID();
     UUID caseworkerId = UUID.randomUUID();
-    WorkItemId item = new WorkItemId(WorkItemType.APPLICATION, id);
     AssignWorkItemCommand command =
-        new AssignWorkItemCommand(item, caseworkerId, 0L, "{}", "", Instant.now());
+        new AssignWorkItemCommand(id, caseworkerId, 0L, "{}", "", Instant.now());
     when(caseworkers.existsById(caseworkerId)).thenReturn(true);
     when(routes.findByWorkItemId(id))
         .thenReturn(
@@ -52,7 +51,7 @@ class WorkItemAssignmentCommandHandlerTest {
     verify(gateway)
         .sendAndWait(
             new DirectWorkItemAssignmentCommand(
-                id, item, caseworkerId, 0L, "{}", "", command.occurredAt()));
+                id, id, caseworkerId, 0L, "{}", "", command.occurredAt()));
   }
 
   @Test
@@ -83,13 +82,7 @@ class WorkItemAssignmentCommandHandlerTest {
     verify(gateway)
         .sendAndWait(
             new DirectPriorAuthorityWorkItemAssignmentCommand(
-                submissionId,
-                new WorkItemId(WorkItemType.PRIOR_AUTHORITY, submissionId),
-                caseworkerId,
-                0L,
-                "{}",
-                "",
-                occurredAt));
+                submissionId, submissionId, caseworkerId, 0L, "{}", "", occurredAt));
   }
 
   @Test
@@ -100,15 +93,13 @@ class WorkItemAssignmentCommandHandlerTest {
     WorkItemAssignmentCommandHandler handler =
         new WorkItemAssignmentCommandHandler(caseworkers, routes, gateway);
     UUID id = UUID.randomUUID();
-    WorkItemId item = new WorkItemId(WorkItemType.APPLICATION, id);
     when(caseworkers.existsById(org.mockito.ArgumentMatchers.any())).thenReturn(true);
     when(routes.findByWorkItemId(id)).thenReturn(Optional.empty());
 
     assertThatThrownBy(
             () ->
                 handler.assign(
-                    new AssignWorkItemCommand(
-                        item, UUID.randomUUID(), 0L, "{}", "", Instant.now())))
+                    new AssignWorkItemCommand(id, UUID.randomUUID(), 0L, "{}", "", Instant.now())))
         .isInstanceOf(ResourceNotFoundException.class);
   }
 }

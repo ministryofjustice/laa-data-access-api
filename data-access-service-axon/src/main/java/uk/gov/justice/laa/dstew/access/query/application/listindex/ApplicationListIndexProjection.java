@@ -201,11 +201,11 @@ public class ApplicationListIndexProjection {
    */
   @EventHandler
   public void on(WorkItemAssigned event, EventMessage message) {
-    if (event.workItemId().type() != WorkItemType.APPLICATION) {
+    if (event.workItemType() != WorkItemType.APPLICATION) {
       return;
     }
     listIndexRepository
-        .findById(event.workItemId().id())
+        .findById(event.workItemId())
         .ifPresent(
             row -> {
               row.setCaseworkerId(event.caseworkerId());
@@ -221,11 +221,11 @@ public class ApplicationListIndexProjection {
    */
   @EventHandler
   public void on(WorkItemUnassigned event, EventMessage message) {
-    if (event.workItemId().type() != WorkItemType.APPLICATION) {
+    if (event.workItemType() != WorkItemType.APPLICATION) {
       return;
     }
     listIndexRepository
-        .findById(event.workItemId().id())
+        .findById(event.workItemId())
         .ifPresent(
             row -> {
               row.setCaseworkerId(null);
