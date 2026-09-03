@@ -19,7 +19,6 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationSortBy;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
-import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadModel;
 import uk.gov.justice.laa.dstew.access.usecase.application.ApplicationQueryUseCase;
 
@@ -40,8 +39,7 @@ class ApplicationQueryControllerTest {
             mock(GetApplicationResponseMapper.class),
             mock(GetAllApplicationsResponseMapper.class),
             historyResponseMapper,
-            mock(GetAllNotesForApplicationResponseMapper.class),
-            mock(SubscriptionProjectionGateway.class));
+            mock(GetAllNotesForApplicationResponseMapper.class));
   }
 
   @Test

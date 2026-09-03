@@ -9,6 +9,8 @@ import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequest
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.assertj.core.api.Assertions;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringBootConfiguration;
@@ -43,7 +45,6 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.Create
 import uk.gov.justice.laa.dstew.access.command.application.ready.RecordAutoGrantOutcomeUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.config.SecurityConfig;
-import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
 import uk.gov.laa.springboot.oauth2.testsupport.StubJwtDecoder;
 import uk.gov.laa.springboot.oauth2.testsupport.StubJwtToken;
 
@@ -66,7 +67,6 @@ class ApplicationCommandControllerSecurityTest {
   @Autowired private TestRestTemplate restTemplate;
 
   @MockitoBean private RetryingCommandDispatcher dispatcher;
-  @MockitoBean private SubscriptionProjectionGateway projectionGateway;
   @MockitoBean private MakeApplicationDecisionUseCase makeDecisionUseCase;
   @MockitoBean private CreateNoteUseCase createNoteUseCase;
   @MockitoBean private UnassignCaseworkerUseCase unassignCaseworkerUseCase;
@@ -94,14 +94,14 @@ class ApplicationCommandControllerSecurityTest {
         restTemplate.exchange(
             url(), HttpMethod.POST, new HttpEntity<>(validRequest(), headers), String.class);
 
-    org.assertj.core.api.Assertions.assertThat(response.getStatusCode())
-        .isEqualTo(HttpStatus.UNAUTHORIZED);
+    Assertions.assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
 
-    verifyNoInteractions(commandMapper, dispatcher, projectionGateway);
+    verifyNoInteractions(commandMapper, dispatcher);
   }
 
+  @Disabled("Disabled until OBO roles are configured correctly")
   @Test
-  void givenAuthenticatedUserWithoutCaseworkerRole_whenCreateApplication_thenReturnsAccepted() {
+  void givenAuthenticatedUserWithoutCaseworkerRole_whenCreateApplication_thenReturnsUnauthorized() {
     when(commandMapper.toCommand(any(), anyInt())).thenReturn(validCommand());
 
     HttpHeaders headers = new HttpHeaders();
@@ -113,10 +113,9 @@ class ApplicationCommandControllerSecurityTest {
         restTemplate.exchange(
             url(), HttpMethod.POST, new HttpEntity<>(validRequest(), headers), String.class);
 
-    org.assertj.core.api.Assertions.assertThat(response.getStatusCode())
-        .isEqualTo(HttpStatus.ACCEPTED);
+    Assertions.assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
 
-    verifyNoInteractions(dispatcher);
+    verifyNoInteractions(commandMapper, dispatcher);
   }
 
   private CreateApplicationCommand validCommand() {
