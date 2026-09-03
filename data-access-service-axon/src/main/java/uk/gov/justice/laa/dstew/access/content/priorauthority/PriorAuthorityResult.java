@@ -17,7 +17,7 @@ public record PriorAuthorityResult(
   /** Builds the use-case result from the current-state projection and versioned content. */
   public static PriorAuthorityResult from(
       PriorAuthorityReadModel priorAuthority, PriorAuthorityContent content) {
-    PriorAuthorityType priorAuthorityType = PriorAuthorityType.from(content.priorAuthorityType());
+    PriorAuthorityType priorAuthorityType = content.priorAuthorityType();
     return new PriorAuthorityResult(
         priorAuthority.getSubmissionId(),
         priorAuthority.getApplicationId(),

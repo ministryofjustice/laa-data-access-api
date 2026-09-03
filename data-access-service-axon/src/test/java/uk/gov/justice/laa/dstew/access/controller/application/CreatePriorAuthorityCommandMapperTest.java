@@ -36,7 +36,9 @@ class CreatePriorAuthorityCommandMapperTest {
   void givenExpertRequest_whenMapped_thenMapsAllExpertFields() {
     CreatePriorAuthorityCommand command = mapper.toCommand(UUID.randomUUID(), expertRequest());
 
-    assertThat(command.content().priorAuthorityType()).isEqualTo("EXPERT");
+    assertThat(command.content().priorAuthorityType())
+        .isEqualTo(
+            uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType.EXPERT);
     assertThat(command.content().justification()).isEqualTo("Need expert assessment");
     assertThat(command.content().expertDetails()).isNotNull();
     assertThat(command.content().expertDetails().expertType()).isEqualTo("Pathologist");
@@ -68,7 +70,9 @@ class CreatePriorAuthorityCommandMapperTest {
   void givenCounselRequest_whenMapped_thenMapsCounselDetails() {
     CreatePriorAuthorityCommand command = mapper.toCommand(UUID.randomUUID(), counselRequest());
 
-    assertThat(command.content().priorAuthorityType()).isEqualTo("COUNSEL");
+    assertThat(command.content().priorAuthorityType())
+        .isEqualTo(
+            uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType.COUNSEL);
     assertThat(command.content().counselDetails()).isNotNull();
     assertThat(command.content().counselDetails().counselType().name())
         .isEqualTo("KINGS_COUNSEL_ALONE");
@@ -79,7 +83,9 @@ class CreatePriorAuthorityCommandMapperTest {
     CreatePriorAuthorityCommand command =
         mapper.toCommand(UUID.randomUUID(), disbursementRequest());
 
-    assertThat(command.content().priorAuthorityType()).isEqualTo("DISBURSEMENT");
+    assertThat(command.content().priorAuthorityType())
+        .isEqualTo(
+            uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType.DISBURSEMENT);
     assertThat(command.content().disbursementDetails()).isNotNull();
     assertThat(command.content().disbursementDetails().disbursementPurpose())
         .isEqualTo("Interpreter");

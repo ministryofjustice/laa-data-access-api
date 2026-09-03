@@ -1,7 +1,6 @@
 package uk.gov.justice.laa.dstew.access.query.application.priorauthority;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.inOrder;
@@ -28,7 +27,6 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.ExpertDetails;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
-import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 
 class PriorAuthorityProjectionTest {
 
@@ -128,7 +126,7 @@ class PriorAuthorityProjectionTest {
             .build();
     PriorAuthorityContent content =
         new PriorAuthorityContent(
-            "COUNSEL",
+            PriorAuthorityType.COUNSEL,
             "Counsel is required",
             null,
             new CounselDetails(CounselType.TWO_JUNIOR_COUNSEL),
@@ -153,13 +151,15 @@ class PriorAuthorityProjectionTest {
   @Test
   void givenSupportedAndAbsentDetails_whenQueryHandled_thenHydratesOnlyMatchingDetails() {
     assertThat(
-            handleContent(new PriorAuthorityContent("EXPERT", "Required", null, null, null))
+            handleContent(
+                    new PriorAuthorityContent(
+                        PriorAuthorityType.EXPERT, "Required", null, null, null))
                 .expertDetails())
         .isNull();
     assertThat(
             handleContent(
                     new PriorAuthorityContent(
-                        "EXPERT",
+                        PriorAuthorityType.EXPERT,
                         "Required",
                         new ExpertDetails("Accountant", "Ada Lovelace", "SW1A 1AA", null),
                         null,
@@ -168,13 +168,15 @@ class PriorAuthorityProjectionTest {
                 .expertFullName())
         .isEqualTo("Ada Lovelace");
     assertThat(
-            handleContent(new PriorAuthorityContent("COUNSEL", "Required", null, null, null))
+            handleContent(
+                    new PriorAuthorityContent(
+                        PriorAuthorityType.COUNSEL, "Required", null, null, null))
                 .counselDetails())
         .isNull();
     assertThat(
             handleContent(
                     new PriorAuthorityContent(
-                        "DISBURSEMENT",
+                        PriorAuthorityType.DISBURSEMENT,
                         "Required",
                         null,
                         null,
@@ -183,28 +185,23 @@ class PriorAuthorityProjectionTest {
                 .disbursementPurpose())
         .isEqualTo("Travel");
     assertThat(
-            handleContent(new PriorAuthorityContent("DISBURSEMENT", "Required", null, null, null))
+            handleContent(
+                    new PriorAuthorityContent(
+                        PriorAuthorityType.DISBURSEMENT, "Required", null, null, null))
                 .disbursementDetails())
         .isNull();
     assertThat(
             handleContent(new PriorAuthorityContent(null, "Required", null, null, null))
                 .priorAuthorityType())
         .isNull();
-    assertThat(
-            handleContent(new PriorAuthorityContent("", "Required", null, null, null))
-                .priorAuthorityType())
-        .isNull();
   }
 
   @Test
-  void givenMissingSubmissionId_whenQueryHandled_thenThrowsNotFound() {
+  void givenMissingSubmissionId_whenQueryHandled_thenReturnsNull() {
     UUID submissionId = UUID.randomUUID();
     when(repository.findById(submissionId)).thenReturn(Optional.empty());
 
-    assertThatExceptionOfType(ResourceNotFoundException.class)
-        .isThrownBy(
-            () -> projection.handle(new FindPriorAuthorityBySubmissionIdQuery(submissionId)))
-        .withMessage("No prior authority found with ID: " + submissionId);
+    assertThat(projection.handle(new FindPriorAuthorityBySubmissionIdQuery(submissionId))).isNull();
   }
 
   @Test
@@ -212,21 +209,19 @@ class PriorAuthorityProjectionTest {
     UUID submissionId = UUID.randomUUID();
     when(repository.existsById(submissionId)).thenReturn(true);
 
-    Optional<Boolean> result =
-        projection.handle(new PriorAuthorityExistsBySubmissionIdQuery(submissionId));
+    boolean result = projection.handle(new PriorAuthorityExistsBySubmissionIdQuery(submissionId));
 
-    assertThat(result).contains(Boolean.TRUE);
+    assertThat(result).isTrue();
   }
 
   @Test
-  void givenMissingSubmissionId_whenExistsQueryHandled_thenReturnsEmpty() {
+  void givenMissingSubmissionId_whenExistsQueryHandled_thenReturnsFalse() {
     UUID submissionId = UUID.randomUUID();
     when(repository.existsById(submissionId)).thenReturn(false);
 
-    Optional<Boolean> result =
-        projection.handle(new PriorAuthorityExistsBySubmissionIdQuery(submissionId));
+    boolean result = projection.handle(new PriorAuthorityExistsBySubmissionIdQuery(submissionId));
 
-    assertThat(result).isEmpty();
+    assertThat(result).isFalse();
   }
 
   @Test

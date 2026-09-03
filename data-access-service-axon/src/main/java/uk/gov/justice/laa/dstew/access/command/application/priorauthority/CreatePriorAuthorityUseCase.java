@@ -35,7 +35,6 @@ public class CreatePriorAuthorityUseCase {
     dispatcher.dispatch(new ValidateApplicationGrantedCommand(command.applicationId()));
     return projectionGateway.awaitProjection(
         new PriorAuthorityExistsBySubmissionIdQuery(command.submissionId()),
-        Boolean.class,
         () -> dispatcher.dispatch(command));
   }
 }

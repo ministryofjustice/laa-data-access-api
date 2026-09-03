@@ -21,6 +21,7 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.Create
 import uk.gov.justice.laa.dstew.access.content.priorauthority.CounselDetails;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.CounselType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
 
 class ContentSchemaValidationDispatchInterceptorTest {
@@ -53,7 +54,7 @@ class ContentSchemaValidationDispatchInterceptorTest {
             UUID.randomUUID(),
             "COUNSEL",
             new PriorAuthorityContent(
-                "COUNSEL",
+                PriorAuthorityType.COUNSEL,
                 "Need specialist counsel",
                 null,
                 new CounselDetails(CounselType.KINGS_COUNSEL_ALONE),

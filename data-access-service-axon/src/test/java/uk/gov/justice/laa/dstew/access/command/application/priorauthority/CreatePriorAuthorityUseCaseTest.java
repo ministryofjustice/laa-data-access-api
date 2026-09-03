@@ -39,7 +39,7 @@ class CreatePriorAuthorityUseCaseTest {
   @Test
   void givenValidApplication_whenProjectionConfirmed_thenReturnsTrue() {
     CreatePriorAuthorityCommand command = stubCommand();
-    when(projectionGateway.awaitProjection(any(), eq(Boolean.class), any())).thenReturn(true);
+    when(projectionGateway.awaitProjection(any(), any())).thenReturn(true);
 
     boolean result = useCase.execute(command);
 
@@ -49,7 +49,7 @@ class CreatePriorAuthorityUseCaseTest {
   @Test
   void givenValidApplication_whenProjectionTimeout_thenReturnsFalse() {
     CreatePriorAuthorityCommand command = stubCommand();
-    when(projectionGateway.awaitProjection(any(), eq(Boolean.class), any())).thenReturn(false);
+    when(projectionGateway.awaitProjection(any(), any())).thenReturn(false);
 
     boolean result = useCase.execute(command);
 
@@ -59,7 +59,7 @@ class CreatePriorAuthorityUseCaseTest {
   @Test
   void givenValidApplication_whenExecute_thenDispatchesValidationBeforeProjectionGateway() {
     CreatePriorAuthorityCommand command = stubCommand();
-    when(projectionGateway.awaitProjection(any(), eq(Boolean.class), any())).thenReturn(true);
+    when(projectionGateway.awaitProjection(any(), any())).thenReturn(true);
 
     useCase.execute(command);
 
@@ -67,21 +67,19 @@ class CreatePriorAuthorityUseCaseTest {
     order
         .verify(dispatcher)
         .dispatch(new ValidateApplicationGrantedCommand(command.applicationId()));
-    order.verify(projectionGateway).awaitProjection(any(), any(), any());
+    order.verify(projectionGateway).awaitProjection(any(), any());
   }
 
   @Test
-  void givenValidApplication_whenExecute_thenPassesExactQueryAndModelClass() {
+  void givenValidApplication_whenExecute_thenPassesExactQuery() {
     CreatePriorAuthorityCommand command = stubCommand();
-    when(projectionGateway.awaitProjection(any(), eq(Boolean.class), any())).thenReturn(true);
+    when(projectionGateway.awaitProjection(any(), any())).thenReturn(true);
 
     useCase.execute(command);
 
     verify(projectionGateway)
         .awaitProjection(
-            eq(new PriorAuthorityExistsBySubmissionIdQuery(command.submissionId())),
-            eq(Boolean.class),
-            any());
+            eq(new PriorAuthorityExistsBySubmissionIdQuery(command.submissionId())), any());
   }
 
   @Test
@@ -89,12 +87,12 @@ class CreatePriorAuthorityUseCaseTest {
     CreatePriorAuthorityCommand command = stubCommand();
     doAnswer(
             invocation -> {
-              Runnable action = invocation.getArgument(2);
+              Runnable action = invocation.getArgument(1);
               action.run();
               return true;
             })
         .when(projectionGateway)
-        .awaitProjection(any(), eq(Boolean.class), any());
+        .awaitProjection(any(), any());
 
     useCase.execute(command);
 
@@ -110,7 +108,7 @@ class CreatePriorAuthorityUseCaseTest {
         .dispatch(new ValidateApplicationGrantedCommand(command.applicationId()));
 
     assertThatThrownBy(() -> useCase.execute(command)).isSameAs(failure);
-    verify(projectionGateway, never()).awaitProjection(any(), any(), any());
+    verify(projectionGateway, never()).awaitProjection(any(), any());
   }
 
   private CreatePriorAuthorityCommand stubCommand() {

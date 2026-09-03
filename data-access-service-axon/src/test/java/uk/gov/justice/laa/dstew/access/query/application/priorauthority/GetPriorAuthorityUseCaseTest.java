@@ -44,15 +44,13 @@ class GetPriorAuthorityUseCaseTest {
   @Test
   void givenQueryReportsMissingPriorAuthority_whenRetrieved_thenThrowsNotFound() {
     UUID submissionId = UUID.randomUUID();
-    ResourceNotFoundException failure =
-        new ResourceNotFoundException("No prior authority found with ID: " + submissionId);
     when(queryGateway.query(
             eq(new FindPriorAuthorityBySubmissionIdQuery(submissionId)),
             eq(PriorAuthorityResult.class)))
-        .thenReturn(CompletableFuture.failedFuture(failure));
+        .thenReturn(CompletableFuture.completedFuture(null));
 
     assertThatExceptionOfType(ResourceNotFoundException.class)
         .isThrownBy(() -> useCase.getPriorAuthority(submissionId))
-        .isSameAs(failure);
+        .withMessage("No prior authority found with ID: " + submissionId);
   }
 }

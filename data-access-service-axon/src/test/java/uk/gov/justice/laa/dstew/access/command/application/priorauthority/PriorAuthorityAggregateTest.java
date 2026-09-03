@@ -22,6 +22,8 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
 import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 
@@ -51,7 +53,8 @@ class PriorAuthorityAggregateTest {
     UUID submissionId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
-    PriorAuthorityContent content = new PriorAuthorityContent("EXPERT", null, null, null, null);
+    PriorAuthorityContent content =
+        new PriorAuthorityContent(PriorAuthorityType.EXPERT, null, null, null, null);
     String serialisedRequest = "{\"priorAuthorityType\":\"EXPERT\"}";
     String fingerprint = PayloadFingerprint.compute(serialisedRequest);
 
@@ -135,7 +138,7 @@ class PriorAuthorityAggregateTest {
             submissionId,
             applicationId,
             "EXPERT",
-            new PriorAuthorityContent("EXPERT", null, null, null, null),
+            new PriorAuthorityContent(PriorAuthorityType.EXPERT, null, null, null, null),
             serialisedRequest,
             1,
             "pa-schema",
@@ -171,7 +174,7 @@ class PriorAuthorityAggregateTest {
             submissionId,
             applicationId,
             "COUNSEL",
-            new PriorAuthorityContent("COUNSEL", null, null, null, null),
+            new PriorAuthorityContent(PriorAuthorityType.COUNSEL, null, null, null, null),
             "{\"priorAuthorityType\":\"COUNSEL\"}",
             1,
             "pa-schema",

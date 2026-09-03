@@ -15,8 +15,10 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.DisbursementDetail
 import uk.gov.justice.laa.dstew.access.content.priorauthority.ExpertCosts;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.ExpertDetails;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.TimeRequested;
 import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityRequest;
+import uk.gov.justice.laa.dstew.access.util.EnumMapping;
 
 /** Maps the generated HTTP request model to the Axon create-prior-authority command. */
 @Component
@@ -46,7 +48,7 @@ public class CreatePriorAuthorityCommandMapper {
 
   private PriorAuthorityContent toContent(CreatePriorAuthorityRequest request) {
     return new PriorAuthorityContent(
-        enumName(request.getPriorAuthorityType()),
+        EnumMapping.map(request.getPriorAuthorityType(), PriorAuthorityType.class),
         request.getJustification(),
         toExpertDetails(request.getExpertDetails()),
         toCounselDetails(request.getCounselDetails()),
@@ -72,7 +74,7 @@ public class CreatePriorAuthorityCommandMapper {
     }
 
     return new ExpertCosts(
-        costs.getBillingType() == null ? null : BillingType.valueOf(costs.getBillingType().name()),
+        EnumMapping.map(costs.getBillingType(), BillingType.class),
         toBigDecimal(costs.getHourlyRate()),
         toTimeRequested(costs.getTimeRequested()),
         toBigDecimal(costs.getTotalAmount()),
@@ -103,10 +105,7 @@ public class CreatePriorAuthorityCommandMapper {
     if (details == null) {
       return null;
     }
-    return new CounselDetails(
-        details.getCounselType() == null
-            ? null
-            : CounselType.valueOf(details.getCounselType().name()));
+    return new CounselDetails(EnumMapping.map(details.getCounselType(), CounselType.class));
   }
 
   private DisbursementDetails toDisbursementDetails(
@@ -125,14 +124,6 @@ public class CreatePriorAuthorityCommandMapper {
     }
 
     return BigDecimal.valueOf(value);
-  }
-
-  private String enumName(Enum<?> value) {
-    if (value == null) {
-      return null;
-    }
-
-    return value.name();
   }
 
   private String serialise(CreatePriorAuthorityRequest request) {
