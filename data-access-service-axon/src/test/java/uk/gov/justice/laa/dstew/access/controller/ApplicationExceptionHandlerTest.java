@@ -16,7 +16,6 @@ import uk.gov.justice.laa.dstew.access.exception.FileConflictException;
 import uk.gov.justice.laa.dstew.access.exception.FileLengthRequiredException;
 import uk.gov.justice.laa.dstew.access.exception.InvalidApplicationStateException;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
-import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityNotInProgressException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.exception.VirusDetectedException;
 import uk.gov.justice.laa.dstew.access.exception.VirusScanException;
@@ -195,19 +194,6 @@ class ApplicationExceptionHandlerTest {
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
     assertThat(response.getBody().getDetail()).isEqualTo("Virus scan gave a non-standard result");
-  }
-
-  @Test
-  void givenPriorAuthorityNotInProgress_whenHandled_thenReturnsConflict() {
-    UUID submissionId = UUID.randomUUID();
-
-    var response =
-        handler.handlePriorAuthorityNotInProgressException(
-            new PriorAuthorityNotInProgressException(submissionId));
-
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-    assertThat(response.getBody().getDetail())
-        .isEqualTo("Prior authority " + submissionId + " is not in a submittable state");
   }
 
   @Test

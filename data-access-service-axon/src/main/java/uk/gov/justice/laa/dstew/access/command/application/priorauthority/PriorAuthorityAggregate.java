@@ -10,7 +10,6 @@ import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
-import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityNotInProgressException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
@@ -121,7 +120,10 @@ public class PriorAuthorityAggregate {
     PriorAuthorityDataPayload payload =
         draftStore
             .find(command.submissionId())
-            .orElseThrow(() -> new PriorAuthorityNotInProgressException(command.submissionId()));
+            .orElseThrow(
+                () ->
+                    new ResourceNotFoundException(
+                        "Prior Authority %s not found".formatted(command.submissionId())));
     jsonSchemaValidator.validate(payload.content(), "PriorAuthority.json", state.schemaVersion);
     dataStore.append(
         command.submissionId(),
