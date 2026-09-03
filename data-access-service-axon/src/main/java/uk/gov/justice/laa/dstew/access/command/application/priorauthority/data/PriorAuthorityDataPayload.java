@@ -10,14 +10,4 @@ public record PriorAuthorityDataPayload(
     UUID applicationId,
     PriorAuthorityContent content,
     String serialisedRequest,
-    Instant submittedAt,
-    String assignmentDescription) {
-  public PriorAuthorityDataPayload(
-      UUID submissionId,
-      UUID applicationId,
-      PriorAuthorityContent content,
-      String serialisedRequest,
-      Instant submittedAt) {
-    this(submissionId, applicationId, content, serialisedRequest, submittedAt, null);
-  }
-}
+    Instant submittedAt) {}
