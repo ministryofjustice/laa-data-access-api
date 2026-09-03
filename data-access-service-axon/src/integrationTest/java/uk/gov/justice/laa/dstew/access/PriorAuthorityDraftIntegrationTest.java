@@ -30,6 +30,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantedOutcomeRequest;
+import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityDraftRequest;
 import uk.gov.justice.laa.dstew.access.model.DisbursementDetails;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityResponse;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityType;
@@ -67,14 +68,15 @@ class PriorAuthorityDraftIntegrationTest {
   void givenGrantedApplication_whenSavePriorAuthorityDraft_thenPersistsDraftAndProjectsInProgress()
       throws Exception {
     UUID applicationId = grantedApplication();
-    SavePriorAuthorityDraftRequest request =
-        SavePriorAuthorityDraftRequest.builder()
+    CreatePriorAuthorityDraftRequest request =
+        CreatePriorAuthorityDraftRequest.builder()
+            .applicationId(applicationId)
             .priorAuthorityType(PriorAuthorityType.EXPERT)
             .build();
 
     ResponseEntity<String> response =
         restTemplate.postForEntity(
-            saveDraftUrl(applicationId), new HttpEntity<>(request, headers()), String.class);
+            saveDraftUrl(), new HttpEntity<>(request, headers()), String.class);
 
     assertThat(response.getStatusCode()).isIn(HttpStatus.CREATED, HttpStatus.ACCEPTED);
     SavePriorAuthorityDraftResponse body =
@@ -115,16 +117,15 @@ class PriorAuthorityDraftIntegrationTest {
   @Test
   void givenMissingApplication_whenSavePriorAuthorityDraft_thenReturnsNotFound() {
     UUID nonexistentApplicationId = UUID.randomUUID();
-    SavePriorAuthorityDraftRequest request =
-        SavePriorAuthorityDraftRequest.builder()
+    CreatePriorAuthorityDraftRequest request =
+        CreatePriorAuthorityDraftRequest.builder()
+            .applicationId(nonexistentApplicationId)
             .priorAuthorityType(PriorAuthorityType.EXPERT)
             .build();
 
     ResponseEntity<String> response =
         restTemplate.postForEntity(
-            saveDraftUrl(nonexistentApplicationId),
-            new HttpEntity<>(request, headers()),
-            String.class);
+            saveDraftUrl(), new HttpEntity<>(request, headers()), String.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     assertThat(
@@ -141,14 +142,15 @@ class PriorAuthorityDraftIntegrationTest {
     UUID applicationId = UUID.randomUUID();
     createApplication(applicationId, UUID.randomUUID());
     awaitApplicationProjection(applicationId);
-    SavePriorAuthorityDraftRequest request =
-        SavePriorAuthorityDraftRequest.builder()
+    CreatePriorAuthorityDraftRequest request =
+        CreatePriorAuthorityDraftRequest.builder()
+            .applicationId(applicationId)
             .priorAuthorityType(PriorAuthorityType.EXPERT)
             .build();
 
     ResponseEntity<String> response =
         restTemplate.postForEntity(
-            saveDraftUrl(applicationId), new HttpEntity<>(request, headers()), String.class);
+            saveDraftUrl(), new HttpEntity<>(request, headers()), String.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     assertThat(response.getBody()).contains("GRANTED");
@@ -312,15 +314,16 @@ class PriorAuthorityDraftIntegrationTest {
       String justification,
       DisbursementDetails disbursement)
       throws Exception {
-    SavePriorAuthorityDraftRequest request =
-        SavePriorAuthorityDraftRequest.builder()
+    CreatePriorAuthorityDraftRequest request =
+        CreatePriorAuthorityDraftRequest.builder()
+            .applicationId(applicationId)
             .priorAuthorityType(priorAuthorityType)
             .justification(justification)
             .disbursementDetails(disbursement)
             .build();
     ResponseEntity<String> response =
         restTemplate.postForEntity(
-            saveDraftUrl(applicationId), new HttpEntity<>(request, headers()), String.class);
+            saveDraftUrl(), new HttpEntity<>(request, headers()), String.class);
     assertThat(response.getStatusCode()).isIn(HttpStatus.CREATED, HttpStatus.ACCEPTED);
     return objectMapper
         .readValue(response.getBody(), SavePriorAuthorityDraftResponse.class)
@@ -396,12 +399,8 @@ class PriorAuthorityDraftIntegrationTest {
             projected -> projected != null && projected.getApplicationDataVersion() == version);
   }
 
-  private String saveDraftUrl(UUID applicationId) {
-    return "http://localhost:"
-        + port
-        + "/api/v0/applications/"
-        + applicationId
-        + "/prior-authority/draft";
+  private String saveDraftUrl() {
+    return "http://localhost:" + port + "/api/v0/prior-authorities";
   }
 
   private String priorAuthorityUrl(UUID priorAuthorityId) {

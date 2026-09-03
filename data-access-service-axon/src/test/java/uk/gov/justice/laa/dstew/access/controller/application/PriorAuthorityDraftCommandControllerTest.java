@@ -24,6 +24,7 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.Submit
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.SubmitPriorAuthorityDraftUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.UpdatePriorAuthorityDraftCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.UpdatePriorAuthorityDraftUseCase;
+import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityDraftRequest;
 import uk.gov.justice.laa.dstew.access.model.SavePriorAuthorityDraftRequest;
 import uk.gov.justice.laa.dstew.access.model.SavePriorAuthorityDraftResponse;
 import uk.gov.justice.laa.dstew.access.model.SubmitPriorAuthorityDraftResponse;
@@ -55,15 +56,16 @@ class PriorAuthorityDraftCommandControllerTest {
   void givenProjectedResult_whenSavePriorAuthorityDraft_thenReturnsCreatedResponse() {
     UUID applicationId = UUID.randomUUID();
     UUID priorAuthorityId = UUID.randomUUID();
-    SavePriorAuthorityDraftRequest request = new SavePriorAuthorityDraftRequest();
+    CreatePriorAuthorityDraftRequest request =
+        new CreatePriorAuthorityDraftRequest().applicationId(applicationId);
     CreatePriorAuthorityDraftCommand command =
         new CreatePriorAuthorityDraftCommand(
             priorAuthorityId, applicationId, null, "{}", 1, "PriorAuthority.json", Instant.now());
-    when(saveCommandMapper.toCreateCommand(applicationId, request)).thenReturn(command);
+    when(saveCommandMapper.toCreateCommand(request)).thenReturn(command);
     when(createUseCase.execute(command)).thenReturn(true);
 
     ResponseEntity<SavePriorAuthorityDraftResponse> response =
-        controller.savePriorAuthorityDraft(null, applicationId, request);
+        controller.savePriorAuthorityDraft(null, request);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
     assertThat(response.getBody()).isNotNull();
@@ -78,15 +80,16 @@ class PriorAuthorityDraftCommandControllerTest {
   void givenTimeoutResult_whenSavePriorAuthorityDraft_thenReturnsAcceptedResponse() {
     UUID applicationId = UUID.randomUUID();
     UUID priorAuthorityId = UUID.randomUUID();
-    SavePriorAuthorityDraftRequest request = new SavePriorAuthorityDraftRequest();
+    CreatePriorAuthorityDraftRequest request =
+        new CreatePriorAuthorityDraftRequest().applicationId(applicationId);
     CreatePriorAuthorityDraftCommand command =
         new CreatePriorAuthorityDraftCommand(
             priorAuthorityId, applicationId, null, "{}", 1, "PriorAuthority.json", Instant.now());
-    when(saveCommandMapper.toCreateCommand(applicationId, request)).thenReturn(command);
+    when(saveCommandMapper.toCreateCommand(request)).thenReturn(command);
     when(createUseCase.execute(command)).thenReturn(false);
 
     ResponseEntity<SavePriorAuthorityDraftResponse> response =
-        controller.savePriorAuthorityDraft(null, applicationId, request);
+        controller.savePriorAuthorityDraft(null, request);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
     verify(createUseCase).execute(command);

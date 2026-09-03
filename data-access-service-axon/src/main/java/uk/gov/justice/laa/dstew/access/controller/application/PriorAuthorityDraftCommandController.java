@@ -13,6 +13,7 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.Submit
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.SubmitPriorAuthorityDraftUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.UpdatePriorAuthorityDraftCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.UpdatePriorAuthorityDraftUseCase;
+import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityDraftRequest;
 import uk.gov.justice.laa.dstew.access.model.SavePriorAuthorityDraftRequest;
 import uk.gov.justice.laa.dstew.access.model.SavePriorAuthorityDraftResponse;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
@@ -49,11 +50,9 @@ public class PriorAuthorityDraftCommandController implements PriorAuthorityDraft
   @LogMethodArguments
   @LogMethodResponse
   public ResponseEntity<SavePriorAuthorityDraftResponse> savePriorAuthorityDraft(
-      ServiceName serviceName,
-      UUID applicationId,
-      SavePriorAuthorityDraftRequest savePriorAuthorityDraftRequest) {
+      ServiceName serviceName, CreatePriorAuthorityDraftRequest createPriorAuthorityDraftRequest) {
     CreatePriorAuthorityDraftCommand command =
-        saveCommandMapper.toCreateCommand(applicationId, savePriorAuthorityDraftRequest);
+        saveCommandMapper.toCreateCommand(createPriorAuthorityDraftRequest);
     URI location =
         ServletUriComponentsBuilder.fromCurrentContextPath()
             .path("/api/v0/prior-authorities/{priorAuthorityId}")

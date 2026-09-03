@@ -14,6 +14,8 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.ExpertCosts;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.ExpertDetails;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.TimeRequested;
+import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityDraftRequest;
+import uk.gov.justice.laa.dstew.access.model.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.model.SavePriorAuthorityDraftRequest;
 import uk.gov.justice.laa.dstew.access.util.RequestSerialiser;
 
@@ -31,11 +33,17 @@ public class SavePriorAuthorityDraftCommandMapper {
 
   /** Creates a save-draft command for a new draft, with a server-generated submission ID. */
   public CreatePriorAuthorityDraftCommand toCreateCommand(
-      UUID applicationId, SavePriorAuthorityDraftRequest request) {
-    PriorAuthorityContent content = toContent(request);
+      CreatePriorAuthorityDraftRequest request) {
+    PriorAuthorityContent content =
+        toContent(
+            request.getPriorAuthorityType(),
+            request.getJustification(),
+            request.getExpertDetails(),
+            request.getCounselDetails(),
+            request.getDisbursementDetails());
     return new CreatePriorAuthorityDraftCommand(
         UUID.randomUUID(),
-        applicationId,
+        request.getApplicationId(),
         content,
         serialise(request),
         1,
@@ -46,18 +54,29 @@ public class SavePriorAuthorityDraftCommandMapper {
   /** Creates a save-draft command for an existing draft identified by the given submission ID. */
   public UpdatePriorAuthorityDraftCommand toUpdateCommand(
       UUID priorAuthorityId, SavePriorAuthorityDraftRequest request) {
-    PriorAuthorityContent content = toContent(request);
+    PriorAuthorityContent content =
+        toContent(
+            request.getPriorAuthorityType(),
+            request.getJustification(),
+            request.getExpertDetails(),
+            request.getCounselDetails(),
+            request.getDisbursementDetails());
     return new UpdatePriorAuthorityDraftCommand(
         priorAuthorityId, content, serialise(request), 1, SCHEMA_VERSION_NAME, Instant.now());
   }
 
-  private PriorAuthorityContent toContent(SavePriorAuthorityDraftRequest request) {
+  private PriorAuthorityContent toContent(
+      PriorAuthorityType priorAuthorityType,
+      String justification,
+      uk.gov.justice.laa.dstew.access.model.ExpertDetails expertDetails,
+      uk.gov.justice.laa.dstew.access.model.CounselDetails counselDetails,
+      uk.gov.justice.laa.dstew.access.model.DisbursementDetails disbursementDetails) {
     return new PriorAuthorityContent(
-        enumName(request.getPriorAuthorityType()),
-        request.getJustification(),
-        toExpertDetails(request.getExpertDetails()),
-        toCounselDetails(request.getCounselDetails()),
-        toDisbursementDetails(request.getDisbursementDetails()));
+        enumName(priorAuthorityType),
+        justification,
+        toExpertDetails(expertDetails),
+        toCounselDetails(counselDetails),
+        toDisbursementDetails(disbursementDetails));
   }
 
   private ExpertDetails toExpertDetails(
@@ -140,7 +159,7 @@ public class SavePriorAuthorityDraftCommandMapper {
     return value.name();
   }
 
-  private String serialise(SavePriorAuthorityDraftRequest request) {
+  private String serialise(Object request) {
     return RequestSerialiser.serialise(objectMapper, request);
   }
 }

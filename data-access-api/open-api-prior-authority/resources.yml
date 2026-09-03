@@ -90,7 +90,7 @@ paths:
         '403': { description: Forbidden }
         '404': { description: Prior Authority not found }
 
-  /api/v0/applications/{applicationId}/prior-authority/draft:
+  /api/v0/prior-authorities:
     post:
       tags:
         - prior-authority-draft-command
@@ -98,19 +98,12 @@ paths:
       operationId: savePriorAuthorityDraft
       parameters:
         - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
-        - name: applicationId
-          in: path
-          description: The application's ID
-          required: true
-          schema:
-            type: string
-            format: uuid
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "./components.yml#/components/schemas/SavePriorAuthorityDraftRequest"
+              $ref: "./components.yml#/components/schemas/CreatePriorAuthorityDraftRequest"
       responses:
         '201':
           description: Prior Authority draft created and projection readable

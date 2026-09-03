@@ -71,6 +71,17 @@ components:
           type: string
           format: date-time
 
+    CreatePriorAuthorityDraftRequest:
+      allOf:
+        - type: object
+          required:
+            - applicationId
+          properties:
+            applicationId:
+              type: string
+              format: uuid
+        - $ref: "#/components/schemas/SavePriorAuthorityDraftRequest"
+
     SavePriorAuthorityDraftRequest:
       type: object
       properties:
