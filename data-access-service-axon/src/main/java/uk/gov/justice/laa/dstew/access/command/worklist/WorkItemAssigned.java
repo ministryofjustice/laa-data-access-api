@@ -11,7 +11,6 @@ public record WorkItemAssigned(
     @EventTag UUID workItemId,
     WorkItemType workItemType,
     long itemVersion,
-    long dataVersion,
     long assignmentVersion,
     UUID caseworkerId,
     String eventDescription,

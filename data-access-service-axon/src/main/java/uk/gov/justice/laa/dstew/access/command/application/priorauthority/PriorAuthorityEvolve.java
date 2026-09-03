@@ -21,14 +21,12 @@ public final class PriorAuthorityEvolve {
 
   /** Applies a generic direct PA assignment. */
   public static void apply(PriorAuthorityState state, WorkItemAssigned event) {
-    state.dataVersion = event.dataVersion();
     state.assignmentVersion = event.assignmentVersion();
     state.caseworkerId = event.caseworkerId();
   }
 
   /** Applies a generic direct PA unassignment. */
   public static void apply(PriorAuthorityState state, WorkItemUnassigned event) {
-    state.dataVersion = event.dataVersion();
     state.assignmentVersion = event.assignmentVersion();
     state.caseworkerId = null;
   }

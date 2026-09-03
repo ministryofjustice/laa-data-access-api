@@ -12,11 +12,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
-import uk.gov.justice.laa.dstew.access.command.worklist.DirectWorkItemAssignmentCommand;
-import uk.gov.justice.laa.dstew.access.command.worklist.DirectWorkItemUnassignmentCommand;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
+import uk.gov.justice.laa.dstew.access.command.worklist.assign.DirectWorkItemAssignmentCommand;
+import uk.gov.justice.laa.dstew.access.command.worklist.unassign.DirectWorkItemUnassignmentCommand;
 
 class DirectApplicationWorkItemAssignmentTest {
   private AxonTestFixture fixture;
@@ -48,12 +48,12 @@ class DirectApplicationWorkItemAssignmentTest {
         .then()
         .events(
             new WorkItemAssigned(
-                id, WorkItemType.APPLICATION, 1L, 1L, 1L, caseworkerId, "Assigned", when));
+                id, WorkItemType.APPLICATION, 1L, 1L, caseworkerId, "Assigned", when));
     verifyNoInteractions(dataStore);
   }
 
   @Test
-  void rejectsAStaleAssignmentAndAnAlreadyOpenUnassignment() {
+  void rejectsStaleAssignmentAndAlreadyOpenUnassignment() {
     UUID id = UUID.randomUUID();
     UUID caseworkerId = UUID.randomUUID();
     Instant when = Instant.parse("2026-08-28T10:00:00Z");

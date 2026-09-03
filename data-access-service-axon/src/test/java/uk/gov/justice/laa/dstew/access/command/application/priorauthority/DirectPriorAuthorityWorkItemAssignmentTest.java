@@ -1,8 +1,6 @@
 package uk.gov.justice.laa.dstew.access.command.application.priorauthority;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -12,12 +10,11 @@ import org.axonframework.test.fixture.AxonTestFixture;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
-import uk.gov.justice.laa.dstew.access.command.worklist.DirectPriorAuthorityWorkItemAssignmentCommand;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
+import uk.gov.justice.laa.dstew.access.command.worklist.assign.DirectPriorAuthorityWorkItemAssignmentCommand;
 
 class DirectPriorAuthorityWorkItemAssignmentTest {
   private AxonTestFixture fixture;
@@ -43,10 +40,6 @@ class DirectPriorAuthorityWorkItemAssignmentTest {
     UUID applicationId = UUID.randomUUID();
     UUID caseworkerId = UUID.randomUUID();
     Instant when = Instant.parse("2026-08-28T10:00:00Z");
-    PriorAuthorityDataPayload payload = org.mockito.Mockito.mock(PriorAuthorityDataPayload.class);
-    when(payload.withAssignment(any())).thenReturn(payload);
-    when(dataStore.get(submissionId, 0L)).thenReturn(payload);
-    when(dataStore.append(any(), anyLong(), any(), any(), any(), any())).thenReturn("hash");
 
     fixture
         .given()
@@ -60,12 +53,12 @@ class DirectPriorAuthorityWorkItemAssignmentTest {
             new WorkItemAssigned(
                 submissionId,
                 WorkItemType.PRIOR_AUTHORITY,
-                1L,
-                1L,
+                0L,
                 1L,
                 caseworkerId,
                 "Assigned",
                 when));
+    verifyNoInteractions(dataStore);
   }
 
   @Test
@@ -79,7 +72,7 @@ class DirectPriorAuthorityWorkItemAssignmentTest {
         .events(
             created(submissionId, applicationId, when),
             new WorkItemAssigned(
-                submissionId, WorkItemType.PRIOR_AUTHORITY, 1L, 1L, 1L, caseworkerId, "", when))
+                submissionId, WorkItemType.PRIOR_AUTHORITY, 1L, 1L, caseworkerId, "", when))
         .when()
         .command(
             new DirectPriorAuthorityWorkItemAssignmentCommand(

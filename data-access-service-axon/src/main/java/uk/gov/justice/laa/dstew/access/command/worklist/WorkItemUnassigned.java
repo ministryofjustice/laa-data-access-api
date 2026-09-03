@@ -11,7 +11,6 @@ public record WorkItemUnassigned(
     @EventTag UUID workItemId,
     WorkItemType workItemType,
     long itemVersion,
-    long dataVersion,
     long assignmentVersion,
     String eventDescription,
     Instant occurredAt) {}

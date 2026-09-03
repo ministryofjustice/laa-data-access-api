@@ -139,7 +139,6 @@ class ApplicationHistoryProjectionTest {
             WorkItemType.APPLICATION,
             1L,
             1L,
-            1L,
             caseworkerId,
             "Assigned for assessment",
             occurredAt);
@@ -177,7 +176,7 @@ class ApplicationHistoryProjectionTest {
     Instant occurredAt = Instant.parse("2026-07-20T09:00:00Z");
     WorkItemUnassigned event =
         new WorkItemUnassigned(
-            applicationId, WorkItemType.APPLICATION, 1L, 1L, 2L, "Returned to queue", occurredAt);
+            applicationId, WorkItemType.APPLICATION, 1L, 2L, "Returned to queue", occurredAt);
     projection.on(event, message(event, "unassignment-event"));
     ArgumentCaptor<ApplicationHistoryReadModel> captor =
         ArgumentCaptor.forClass(ApplicationHistoryReadModel.class);

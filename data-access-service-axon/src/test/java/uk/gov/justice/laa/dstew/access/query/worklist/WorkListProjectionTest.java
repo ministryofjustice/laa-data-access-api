@@ -147,7 +147,6 @@ class WorkListProjectionTest {
             applicationId,
             WorkItemType.APPLICATION,
             2L,
-            2L,
             1L,
             UUID.randomUUID(),
             "Assigned",

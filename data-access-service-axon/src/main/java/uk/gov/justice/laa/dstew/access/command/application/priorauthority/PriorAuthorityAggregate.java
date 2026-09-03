@@ -9,12 +9,12 @@ import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
-import uk.gov.justice.laa.dstew.access.command.worklist.DirectPriorAuthorityWorkItemAssignmentCommand;
-import uk.gov.justice.laa.dstew.access.command.worklist.DirectPriorAuthorityWorkItemUnassignmentCommand;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
+import uk.gov.justice.laa.dstew.access.command.worklist.assign.DirectPriorAuthorityWorkItemAssignmentCommand;
+import uk.gov.justice.laa.dstew.access.command.worklist.unassign.DirectPriorAuthorityWorkItemUnassignmentCommand;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 
@@ -64,28 +64,16 @@ public class PriorAuthorityAggregate {
 
   /** Assigns a newly created direct PA work item after durable route resolution. */
   @CommandHandler
-  void handle(
-      DirectPriorAuthorityWorkItemAssignmentCommand command,
-      PriorAuthorityDataStore dataStore,
-      EventAppender eventAppender) {
+  void handle(DirectPriorAuthorityWorkItemAssignmentCommand command, EventAppender eventAppender) {
     validateWorkItem(command.workItemId(), command.expectedAssignmentVersion());
     if (state.caseworkerId != null) {
       throw new WorkItemAssignmentConflictException(command.workItemId(), "it is already assigned");
     }
-    long nextDataVersion = state.dataVersion + 1;
-    dataStore.append(
-        submissionId,
-        nextDataVersion,
-        state.applicationId,
-        dataStore.get(submissionId, state.dataVersion).withAssignment(command.eventDescription()),
-        command.serialisedRequest(),
-        command.occurredAt());
     eventAppender.append(
         new WorkItemAssigned(
             command.workItemId(),
             WorkItemType.PRIOR_AUTHORITY,
-            nextDataVersion,
-            nextDataVersion,
+            state.dataVersion,
             state.assignmentVersion + 1,
             command.caseworkerId(),
             command.eventDescription(),
@@ -95,28 +83,17 @@ public class PriorAuthorityAggregate {
   /** Explicitly clears a direct PA assignment; already-open work is a conflict. */
   @CommandHandler
   void handle(
-      DirectPriorAuthorityWorkItemUnassignmentCommand command,
-      PriorAuthorityDataStore dataStore,
-      EventAppender eventAppender) {
+      DirectPriorAuthorityWorkItemUnassignmentCommand command, EventAppender eventAppender) {
     validateWorkItem(command.workItemId(), command.expectedAssignmentVersion());
     if (state.caseworkerId == null) {
       throw new WorkItemAssignmentConflictException(
           command.workItemId(), "it is already unassigned");
     }
-    long nextDataVersion = state.dataVersion + 1;
-    dataStore.append(
-        submissionId,
-        nextDataVersion,
-        state.applicationId,
-        dataStore.get(submissionId, state.dataVersion).withAssignment(command.eventDescription()),
-        command.serialisedRequest(),
-        command.occurredAt());
     eventAppender.append(
         new WorkItemUnassigned(
             command.workItemId(),
             WorkItemType.PRIOR_AUTHORITY,
-            nextDataVersion,
-            nextDataVersion,
+            state.dataVersion,
             state.assignmentVersion + 1,
             command.eventDescription(),
             command.occurredAt()));

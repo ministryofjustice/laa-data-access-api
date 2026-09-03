@@ -20,10 +20,4 @@ public record PriorAuthorityDataPayload(
       Instant submittedAt) {
     this(submissionId, applicationId, content, serialisedRequest, submittedAt, null);
   }
-
-  /** Returns a new immutable payload version with assignment audit text. */
-  public PriorAuthorityDataPayload withAssignment(String description) {
-    return new PriorAuthorityDataPayload(
-        submissionId, applicationId, content, serialisedRequest, submittedAt, description);
-  }
 }

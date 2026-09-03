@@ -31,12 +31,12 @@ import uk.gov.justice.laa.dstew.access.command.application.ready.ReadyApplicatio
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdateDetailsFactory;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationCommand;
-import uk.gov.justice.laa.dstew.access.command.worklist.DirectWorkItemAssignmentCommand;
-import uk.gov.justice.laa.dstew.access.command.worklist.DirectWorkItemUnassignmentCommand;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
+import uk.gov.justice.laa.dstew.access.command.worklist.assign.DirectWorkItemAssignmentCommand;
+import uk.gov.justice.laa.dstew.access.command.worklist.unassign.DirectWorkItemUnassignmentCommand;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 
@@ -168,7 +168,6 @@ public class ApplicationAggregate {
             command.workItemId(),
             WorkItemType.APPLICATION,
             state.applicationVersion,
-            state.applicationDataVersion,
             nextAssignmentVersion,
             command.caseworkerId(),
             command.eventDescription(),
@@ -190,7 +189,6 @@ public class ApplicationAggregate {
             command.workItemId(),
             WorkItemType.APPLICATION,
             state.applicationVersion,
-            state.applicationDataVersion,
             nextAssignmentVersion,
             command.eventDescription(),
             command.occurredAt()));

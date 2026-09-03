@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.command.worklist;
+package uk.gov.justice.laa.dstew.access.command.worklist.assign;
 
 import java.time.Instant;
 import java.util.Objects;

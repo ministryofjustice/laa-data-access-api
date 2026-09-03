@@ -225,14 +225,7 @@ class ApplicationProjectionTest {
 
     projection.on(
         new WorkItemAssigned(
-            applicationId,
-            WorkItemType.APPLICATION,
-            1L,
-            1L,
-            1L,
-            caseworkerId,
-            "Assigned",
-            occurredAt));
+            applicationId, WorkItemType.APPLICATION, 1L, 1L, caseworkerId, "Assigned", occurredAt));
 
     assertThat(existing.getCaseworkerId()).isEqualTo(caseworkerId);
     assertThat(existing.getApplicationVersion()).isEqualTo(1L);
@@ -257,7 +250,7 @@ class ApplicationProjectionTest {
 
     projection.on(
         new WorkItemUnassigned(
-            applicationId, WorkItemType.APPLICATION, 1L, 1L, 2L, "Returned to queue", occurredAt));
+            applicationId, WorkItemType.APPLICATION, 1L, 2L, "Returned to queue", occurredAt));
 
     assertThat(existing.getCaseworkerId()).isNull();
     assertThat(existing.getApplicationVersion()).isEqualTo(1L);
