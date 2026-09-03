@@ -19,10 +19,11 @@ public final class PriorAuthorityCreationWorkflow {
     var results = new ArrayList<WorkflowResult.ItemResult>();
     for (PriorAuthorityRequestFactory.PriorAuthorityRequest request : requestFactory.createAll()) {
       try {
-        client.createPriorAuthority(applicationId, request.request());
-        results.add(new WorkflowResult.ItemResult(request.type(), true, "created"));
+        var submissionId = client.createPriorAuthority(applicationId, request.request());
+        results.add(new WorkflowResult.ItemResult(request.type(), true, "created", submissionId));
       } catch (RuntimeException exception) {
-        results.add(new WorkflowResult.ItemResult(request.type(), false, exception.getMessage()));
+        results.add(
+            new WorkflowResult.ItemResult(request.type(), false, exception.getMessage(), null));
         break;
       }
     }

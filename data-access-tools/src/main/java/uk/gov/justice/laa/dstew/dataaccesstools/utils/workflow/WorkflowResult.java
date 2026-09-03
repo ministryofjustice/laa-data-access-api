@@ -7,5 +7,6 @@ public record WorkflowResult(List<ItemResult> items) {
     return items.stream().allMatch(ItemResult::succeeded);
   }
 
-  public record ItemResult(String identifier, boolean succeeded, String detail) {}
+  public record ItemResult(
+      String identifier, boolean succeeded, String detail, java.util.UUID submissionId) {}
 }
