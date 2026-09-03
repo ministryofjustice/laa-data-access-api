@@ -35,34 +35,30 @@ class SavePriorAuthorityDraftCommandMapperTest {
     UUID applicationId = UUID.randomUUID();
     CreatePriorAuthorityDraftCommand command =
         mapper.toCreateCommand(applicationId, expertRequest());
+    var expertDetails = command.content().expertDetails();
+    var expertCosts = expertDetails.expertCosts();
+    var timeRequested = expertCosts.timeRequested();
+    var apportionment = expertCosts.apportionment();
 
     assertThat(command.submissionId()).isNotNull();
     assertThat(command.applicationId()).isEqualTo(applicationId);
     assertThat(command.content().priorAuthorityType()).isEqualTo("EXPERT");
     assertThat(command.content().justification()).isEqualTo("Need expert assessment");
-    assertThat(command.content().expertDetails()).isNotNull();
-    assertThat(command.content().expertDetails().expertType()).isEqualTo("Pathologist");
-    assertThat(command.content().expertDetails().expertFullName()).isEqualTo("Casey Expert");
-    assertThat(command.content().expertDetails().expertPostcode()).isEqualTo("AB1 2CD");
-    assertThat(command.content().expertDetails().expertCosts()).isNotNull();
-    assertThat(command.content().expertDetails().expertCosts().billingType()).isEqualTo("HOURLY");
-    assertThat(command.content().expertDetails().expertCosts().hourlyRate())
-        .isEqualByComparingTo(BigDecimal.valueOf(300.0));
-    assertThat(command.content().expertDetails().expertCosts().timeRequested()).isNotNull();
-    assertThat(command.content().expertDetails().expertCosts().timeRequested().hours())
-        .isEqualTo(2);
-    assertThat(command.content().expertDetails().expertCosts().timeRequested().minutes())
-        .isEqualTo(30);
-    assertThat(command.content().expertDetails().expertCosts().totalAmount())
-        .isEqualByComparingTo(BigDecimal.valueOf(900.0));
-    assertThat(command.content().expertDetails().expertCosts().costsSharedWithOtherParties())
-        .isTrue();
-    assertThat(command.content().expertDetails().expertCosts().apportionment()).isNotNull();
-    assertThat(
-            command.content().expertDetails().expertCosts().apportionment().partiesSharingCosts())
-        .isEqualTo(2);
-    assertThat(command.content().expertDetails().expertCosts().apportionment().clientShareAmount())
-        .isEqualByComparingTo(BigDecimal.valueOf(450.0));
+    assertThat(expertDetails).isNotNull();
+    assertThat(expertDetails.expertType()).isEqualTo("Pathologist");
+    assertThat(expertDetails.expertFullName()).isEqualTo("Casey Expert");
+    assertThat(expertDetails.expertPostcode()).isEqualTo("AB1 2CD");
+    assertThat(expertCosts).isNotNull();
+    assertThat(expertCosts.billingType()).isEqualTo("HOURLY");
+    assertThat(expertCosts.hourlyRate()).isEqualByComparingTo(BigDecimal.valueOf(300.0));
+    assertThat(timeRequested).isNotNull();
+    assertThat(timeRequested.hours()).isEqualTo(2);
+    assertThat(timeRequested.minutes()).isEqualTo(30);
+    assertThat(expertCosts.totalAmount()).isEqualByComparingTo(BigDecimal.valueOf(900.0));
+    assertThat(expertCosts.costsSharedWithOtherParties()).isTrue();
+    assertThat(apportionment).isNotNull();
+    assertThat(apportionment.partiesSharingCosts()).isEqualTo(2);
+    assertThat(apportionment.clientShareAmount()).isEqualByComparingTo(BigDecimal.valueOf(450.0));
   }
 
   @Test
