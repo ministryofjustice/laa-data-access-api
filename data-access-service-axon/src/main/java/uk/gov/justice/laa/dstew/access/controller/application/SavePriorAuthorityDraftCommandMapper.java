@@ -21,6 +21,8 @@ import uk.gov.justice.laa.dstew.access.util.RequestSerialiser;
 @Component
 public class SavePriorAuthorityDraftCommandMapper {
 
+  private static final String SCHEMA_VERSION_NAME = "PriorAuthority.json";
+
   private final ObjectMapper objectMapper;
 
   public SavePriorAuthorityDraftCommandMapper(ObjectMapper objectMapper) {
@@ -37,7 +39,7 @@ public class SavePriorAuthorityDraftCommandMapper {
         content,
         serialise(request),
         1,
-        "PriorAuthority.json",
+        SCHEMA_VERSION_NAME,
         Instant.now());
   }
 
@@ -46,7 +48,7 @@ public class SavePriorAuthorityDraftCommandMapper {
       UUID submissionId, SavePriorAuthorityDraftRequest request) {
     PriorAuthorityContent content = toContent(request);
     return new UpdatePriorAuthorityDraftCommand(
-        submissionId, content, serialise(request), 1, "PriorAuthority.json", Instant.now());
+        submissionId, content, serialise(request), 1, SCHEMA_VERSION_NAME, Instant.now());
   }
 
   private PriorAuthorityContent toContent(SavePriorAuthorityDraftRequest request) {
