@@ -282,7 +282,7 @@ class PriorAuthorityDraftIntegrationTest {
   }
 
   @Test
-  void givenNoDraftInProgress_whenSubmitPriorAuthorityDraft_thenReturnsConflict() {
+  void givenNoDraftInProgress_whenSubmitPriorAuthorityDraft_thenReturnsNotFound() {
     UUID nonexistentPriorAuthorityId = UUID.randomUUID();
 
     ResponseEntity<String> response =
@@ -291,7 +291,7 @@ class PriorAuthorityDraftIntegrationTest {
             new HttpEntity<>(null, headers()),
             String.class);
 
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
   }
 
   @Test

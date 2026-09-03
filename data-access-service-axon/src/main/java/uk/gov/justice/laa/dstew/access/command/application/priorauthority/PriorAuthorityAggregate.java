@@ -63,10 +63,6 @@ public class PriorAuthorityAggregate {
       CreatePriorAuthorityDraftCommand command,
       PriorAuthorityDraftStore draftStore,
       EventAppender eventAppender) {
-    if (this.priorAuthorityId != null && draftStore.find(command.priorAuthorityId()).isEmpty()) {
-      throw new ResourceNotFoundException(
-          "Prior Authority %s not found".formatted(command.priorAuthorityId()));
-    }
     PriorAuthorityDataPayload payload =
         new PriorAuthorityDataPayload(
             command.priorAuthorityId(),
@@ -81,10 +77,8 @@ public class PriorAuthorityAggregate {
             payload,
             command.serialisedRequest(),
             command.occurredAt());
-    if (this.priorAuthorityId == null) {
-      eventAppender.append(
-          PriorAuthorityDecider.decideStartDraft(command, fingerprint, command.applicationId()));
-    }
+    eventAppender.append(
+        PriorAuthorityDecider.decideStartDraft(command, fingerprint, command.applicationId()));
   }
 
   @CommandHandler
