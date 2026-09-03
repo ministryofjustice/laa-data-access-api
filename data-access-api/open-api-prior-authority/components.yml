@@ -89,10 +89,10 @@ components:
     SavePriorAuthorityDraftResponse:
       type: object
       required:
-        - submissionId
+        - priorAuthorityId
         - savedAt
       properties:
-        submissionId:
+        priorAuthorityId:
           type: string
           format: uuid
         savedAt:
@@ -102,10 +102,10 @@ components:
     SubmitPriorAuthorityDraftResponse:
       type: object
       required:
-        - submissionId
+        - priorAuthorityId
         - submittedAt
       properties:
-        submissionId:
+        priorAuthorityId:
           type: string
           format: uuid
         submittedAt:

@@ -79,33 +79,33 @@ class PriorAuthorityDraftIntegrationTest {
     assertThat(response.getStatusCode()).isIn(HttpStatus.CREATED, HttpStatus.ACCEPTED);
     SavePriorAuthorityDraftResponse body =
         objectMapper.readValue(response.getBody(), SavePriorAuthorityDraftResponse.class);
-    UUID submissionId = body.getSubmissionId();
-    assertThat(submissionId).isNotNull();
+    UUID priorAuthorityId = body.getPriorAuthorityId();
+    assertThat(priorAuthorityId).isNotNull();
     assertThat(body.getSavedAt()).isNotNull();
 
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT application_id FROM axon.prior_authority_draft WHERE submission_id = ?",
                 UUID.class,
-                submissionId))
+                priorAuthorityId))
         .isEqualTo(applicationId);
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM axon.prior_authority_current_state WHERE submission_id = ?",
                 Integer.class,
-                submissionId))
+                priorAuthorityId))
         .isZero();
 
     ResponseEntity<String> draftResponse =
         restTemplate.exchange(
-            priorAuthorityUrl(submissionId),
+            priorAuthorityUrl(priorAuthorityId),
             HttpMethod.GET,
             new HttpEntity<>(headers()),
             String.class);
     assertThat(draftResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
     PriorAuthorityResponse draft =
         objectMapper.readValue(draftResponse.getBody(), PriorAuthorityResponse.class);
-    assertThat(draft.getPriorAuthorityId()).isEqualTo(submissionId);
+    assertThat(draft.getPriorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(draft.getApplicationId()).isEqualTo(applicationId);
     assertThat(draft.getStatus()).isNull();
     assertThat(draft.getPriorAuthorityType())
@@ -164,7 +164,7 @@ class PriorAuthorityDraftIntegrationTest {
   void givenExistingDraft_whenUpdatePriorAuthorityDraft_thenReturns204AndPersistsUpdatedContent()
       throws Exception {
     UUID applicationId = grantedApplication();
-    UUID submissionId = saveDraft(applicationId, PriorAuthorityType.EXPERT, null, null);
+    UUID priorAuthorityId = saveDraft(applicationId, PriorAuthorityType.EXPERT, null, null);
 
     SavePriorAuthorityDraftRequest updateRequest =
         SavePriorAuthorityDraftRequest.builder()
@@ -173,7 +173,7 @@ class PriorAuthorityDraftIntegrationTest {
             .build();
     ResponseEntity<Void> updateResponse =
         restTemplate.exchange(
-            priorAuthorityUrl(submissionId),
+            priorAuthorityUrl(priorAuthorityId),
             HttpMethod.PUT,
             new HttpEntity<>(updateRequest, headers()),
             Void.class);
@@ -182,7 +182,7 @@ class PriorAuthorityDraftIntegrationTest {
 
     ResponseEntity<String> draftResponse =
         restTemplate.exchange(
-            priorAuthorityUrl(submissionId),
+            priorAuthorityUrl(priorAuthorityId),
             HttpMethod.GET,
             new HttpEntity<>(headers()),
             String.class);
@@ -195,7 +195,7 @@ class PriorAuthorityDraftIntegrationTest {
   void givenDraftInProgress_whenSubmitPriorAuthorityDraft_thenTransitionsToPendingAndDeletesDraft()
       throws Exception {
     UUID applicationId = grantedApplication();
-    UUID submissionId =
+    UUID priorAuthorityId =
         saveDraft(
             applicationId,
             PriorAuthorityType.DISBURSEMENT,
@@ -204,37 +204,37 @@ class PriorAuthorityDraftIntegrationTest {
 
     ResponseEntity<String> response =
         restTemplate.postForEntity(
-            submitUrl(submissionId), new HttpEntity<>(null, headers()), String.class);
+            submitUrl(priorAuthorityId), new HttpEntity<>(null, headers()), String.class);
 
     assertThat(response.getStatusCode()).isIn(HttpStatus.CREATED, HttpStatus.ACCEPTED);
     SubmitPriorAuthorityDraftResponse body =
         objectMapper.readValue(response.getBody(), SubmitPriorAuthorityDraftResponse.class);
-    assertThat(body.getSubmissionId()).isEqualTo(submissionId);
+    assertThat(body.getPriorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(body.getSubmittedAt()).isNotNull();
 
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT status FROM axon.prior_authority_current_state WHERE submission_id = ?",
                 String.class,
-                submissionId))
+                priorAuthorityId))
         .isEqualTo("PENDING");
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM axon.prior_authority_data"
                     + " WHERE submission_id = ? AND data_version = 0",
                 Integer.class,
-                submissionId))
+                priorAuthorityId))
         .isEqualTo(1);
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM axon.prior_authority_draft WHERE submission_id = ?",
                 Integer.class,
-                submissionId))
+                priorAuthorityId))
         .isZero();
 
     ResponseEntity<String> getResponse =
         restTemplate.exchange(
-            priorAuthorityUrl(submissionId),
+            priorAuthorityUrl(priorAuthorityId),
             HttpMethod.GET,
             new HttpEntity<>(headers()),
             String.class);
@@ -252,51 +252,53 @@ class PriorAuthorityDraftIntegrationTest {
           throws Exception {
     UUID applicationId = grantedApplication();
     // Missing justification, which the full PriorAuthority schema requires at submit time.
-    UUID submissionId = saveDraft(applicationId, PriorAuthorityType.EXPERT, null, null);
+    UUID priorAuthorityId = saveDraft(applicationId, PriorAuthorityType.EXPERT, null, null);
 
     ResponseEntity<String> response =
         restTemplate.postForEntity(
-            submitUrl(submissionId), new HttpEntity<>(null, headers()), String.class);
+            submitUrl(priorAuthorityId), new HttpEntity<>(null, headers()), String.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM axon.prior_authority_draft WHERE submission_id = ?",
                 Integer.class,
-                submissionId))
+                priorAuthorityId))
         .isEqualTo(1);
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM axon.prior_authority_current_state WHERE submission_id = ?",
                 Integer.class,
-                submissionId))
+                priorAuthorityId))
         .isZero();
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM axon.prior_authority_data WHERE submission_id = ?",
                 Integer.class,
-                submissionId))
+                priorAuthorityId))
         .isZero();
   }
 
   @Test
   void givenNoDraftInProgress_whenSubmitPriorAuthorityDraft_thenReturnsConflict() {
-    UUID nonexistentSubmissionId = UUID.randomUUID();
+    UUID nonexistentPriorAuthorityId = UUID.randomUUID();
 
     ResponseEntity<String> response =
         restTemplate.postForEntity(
-            submitUrl(nonexistentSubmissionId), new HttpEntity<>(null, headers()), String.class);
+            submitUrl(nonexistentPriorAuthorityId),
+            new HttpEntity<>(null, headers()),
+            String.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
   }
 
   @Test
   void givenNoDraft_whenGetPriorAuthority_thenReturnsNotFound() {
-    UUID nonexistentSubmissionId = UUID.randomUUID();
+    UUID nonexistentPriorAuthorityId = UUID.randomUUID();
 
     ResponseEntity<String> response =
         restTemplate.exchange(
-            priorAuthorityUrl(nonexistentSubmissionId),
+            priorAuthorityUrl(nonexistentPriorAuthorityId),
             HttpMethod.GET,
             new HttpEntity<>(headers()),
             String.class);
@@ -322,7 +324,7 @@ class PriorAuthorityDraftIntegrationTest {
     assertThat(response.getStatusCode()).isIn(HttpStatus.CREATED, HttpStatus.ACCEPTED);
     return objectMapper
         .readValue(response.getBody(), SavePriorAuthorityDraftResponse.class)
-        .getSubmissionId();
+        .getPriorAuthorityId();
   }
 
   private DisbursementDetails validDisbursementRequest() {
@@ -402,12 +404,12 @@ class PriorAuthorityDraftIntegrationTest {
         + "/prior-authority/draft";
   }
 
-  private String priorAuthorityUrl(UUID submissionId) {
-    return "http://localhost:" + port + "/api/v0/prior-authorities/" + submissionId;
+  private String priorAuthorityUrl(UUID priorAuthorityId) {
+    return "http://localhost:" + port + "/api/v0/prior-authorities/" + priorAuthorityId;
   }
 
-  private String submitUrl(UUID submissionId) {
-    return priorAuthorityUrl(submissionId) + "/submit";
+  private String submitUrl(UUID priorAuthorityId) {
+    return priorAuthorityUrl(priorAuthorityId) + "/submit";
   }
 
   private HttpHeaders headers() {

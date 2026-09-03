@@ -54,11 +54,11 @@ class PriorAuthorityDraftCommandControllerTest {
   @Test
   void givenProjectedResult_whenSavePriorAuthorityDraft_thenReturnsCreatedResponse() {
     UUID applicationId = UUID.randomUUID();
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
     SavePriorAuthorityDraftRequest request = new SavePriorAuthorityDraftRequest();
     CreatePriorAuthorityDraftCommand command =
         new CreatePriorAuthorityDraftCommand(
-            submissionId, applicationId, null, "{}", 1, "PriorAuthority.json", Instant.now());
+            priorAuthorityId, applicationId, null, "{}", 1, "PriorAuthority.json", Instant.now());
     when(saveCommandMapper.toCreateCommand(applicationId, request)).thenReturn(command);
     when(createUseCase.execute(command)).thenReturn(true);
 
@@ -67,21 +67,21 @@ class PriorAuthorityDraftCommandControllerTest {
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
     assertThat(response.getBody()).isNotNull();
-    assertThat(response.getBody().getSubmissionId()).isEqualTo(submissionId);
+    assertThat(response.getBody().getPriorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(response.getHeaders().getLocation()).isNotNull();
     assertThat(response.getHeaders().getLocation().getPath())
-        .isEqualTo("/api/v0/prior-authorities/" + submissionId);
+        .isEqualTo("/api/v0/prior-authorities/" + priorAuthorityId);
     verify(createUseCase).execute(command);
   }
 
   @Test
   void givenTimeoutResult_whenSavePriorAuthorityDraft_thenReturnsAcceptedResponse() {
     UUID applicationId = UUID.randomUUID();
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
     SavePriorAuthorityDraftRequest request = new SavePriorAuthorityDraftRequest();
     CreatePriorAuthorityDraftCommand command =
         new CreatePriorAuthorityDraftCommand(
-            submissionId, applicationId, null, "{}", 1, "PriorAuthority.json", Instant.now());
+            priorAuthorityId, applicationId, null, "{}", 1, "PriorAuthority.json", Instant.now());
     when(saveCommandMapper.toCreateCommand(applicationId, request)).thenReturn(command);
     when(createUseCase.execute(command)).thenReturn(false);
 
@@ -94,15 +94,15 @@ class PriorAuthorityDraftCommandControllerTest {
 
   @Test
   void givenRequest_whenUpdatePriorAuthorityDraft_thenDelegatesToUseCaseAndReturnsNoContent() {
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
     SavePriorAuthorityDraftRequest request = new SavePriorAuthorityDraftRequest();
     UpdatePriorAuthorityDraftCommand command =
         new UpdatePriorAuthorityDraftCommand(
-            submissionId, null, "{}", 1, "PriorAuthority.json", Instant.now());
-    when(saveCommandMapper.toUpdateCommand(submissionId, request)).thenReturn(command);
+            priorAuthorityId, null, "{}", 1, "PriorAuthority.json", Instant.now());
+    when(saveCommandMapper.toUpdateCommand(priorAuthorityId, request)).thenReturn(command);
 
     ResponseEntity<Void> response =
-        controller.updatePriorAuthorityDraft(null, submissionId, request);
+        controller.updatePriorAuthorityDraft(null, priorAuthorityId, request);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
     verify(updateUseCase).execute(command);
@@ -110,33 +110,33 @@ class PriorAuthorityDraftCommandControllerTest {
 
   @Test
   void givenProjectionConfirmed_whenSubmitPriorAuthorityDraft_thenReturnsCreatedResponse() {
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
     SubmitPriorAuthorityDraftCommand command =
-        new SubmitPriorAuthorityDraftCommand(submissionId, Instant.now());
-    when(submitCommandMapper.toSubmitCommand(submissionId)).thenReturn(command);
+        new SubmitPriorAuthorityDraftCommand(priorAuthorityId, Instant.now());
+    when(submitCommandMapper.toSubmitCommand(priorAuthorityId)).thenReturn(command);
     when(submitUseCase.submit(command)).thenReturn(true);
 
     ResponseEntity<SubmitPriorAuthorityDraftResponse> response =
-        controller.submitPriorAuthorityDraft(null, submissionId);
+        controller.submitPriorAuthorityDraft(null, priorAuthorityId);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
     assertThat(response.getBody()).isNotNull();
-    assertThat(response.getBody().getSubmissionId()).isEqualTo(submissionId);
+    assertThat(response.getBody().getPriorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(response.getHeaders().getLocation()).isNotNull();
     assertThat(response.getHeaders().getLocation().getPath())
-        .isEqualTo("/api/v0/prior-authorities/" + submissionId);
+        .isEqualTo("/api/v0/prior-authorities/" + priorAuthorityId);
   }
 
   @Test
   void givenProjectionTimeout_whenSubmitPriorAuthorityDraft_thenReturnsAcceptedResponse() {
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
     SubmitPriorAuthorityDraftCommand command =
-        new SubmitPriorAuthorityDraftCommand(submissionId, Instant.now());
-    when(submitCommandMapper.toSubmitCommand(submissionId)).thenReturn(command);
+        new SubmitPriorAuthorityDraftCommand(priorAuthorityId, Instant.now());
+    when(submitCommandMapper.toSubmitCommand(priorAuthorityId)).thenReturn(command);
     when(submitUseCase.submit(command)).thenReturn(false);
 
     ResponseEntity<SubmitPriorAuthorityDraftResponse> response =
-        controller.submitPriorAuthorityDraft(null, submissionId);
+        controller.submitPriorAuthorityDraft(null, priorAuthorityId);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
   }
