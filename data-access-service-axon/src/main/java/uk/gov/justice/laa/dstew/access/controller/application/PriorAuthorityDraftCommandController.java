@@ -25,16 +25,19 @@ public class PriorAuthorityDraftCommandController implements PriorAuthorityDraft
 
   private final SavePriorAuthorityDraftUseCase saveUseCase;
   private final SubmitPriorAuthorityDraftUseCase submitUseCase;
-  private final SavePriorAuthorityDraftCommandMapper commandMapper;
+  private final SavePriorAuthorityDraftCommandMapper saveCommandMapper;
+  private final SubmitPriorAuthorityDraftCommandMapper submitCommandMapper;
 
   /** Creates the command adapter. */
   public PriorAuthorityDraftCommandController(
       SavePriorAuthorityDraftUseCase saveUseCase,
       SubmitPriorAuthorityDraftUseCase submitUseCase,
-      SavePriorAuthorityDraftCommandMapper commandMapper) {
+      SavePriorAuthorityDraftCommandMapper saveCommandMapper,
+      SubmitPriorAuthorityDraftCommandMapper submitCommandMapper) {
     this.saveUseCase = saveUseCase;
     this.submitUseCase = submitUseCase;
-    this.commandMapper = commandMapper;
+    this.saveCommandMapper = saveCommandMapper;
+    this.submitCommandMapper = submitCommandMapper;
   }
 
   /** Creates a new Prior Authority draft and returns 201 once the projection is readable. */
@@ -46,7 +49,7 @@ public class PriorAuthorityDraftCommandController implements PriorAuthorityDraft
       UUID applicationId,
       SavePriorAuthorityDraftRequest savePriorAuthorityDraftRequest) {
     CreatePriorAuthorityDraftCommand command =
-        commandMapper.toCreateCommand(applicationId, savePriorAuthorityDraftRequest);
+        saveCommandMapper.toCreateCommand(applicationId, savePriorAuthorityDraftRequest);
     URI location =
         ServletUriComponentsBuilder.fromCurrentContextPath()
             .path("/api/v0/prior-authorities/{priorAuthorityId}")
@@ -69,7 +72,7 @@ public class PriorAuthorityDraftCommandController implements PriorAuthorityDraft
       UUID priorAuthorityId,
       SavePriorAuthorityDraftRequest savePriorAuthorityDraftRequest) {
     UpdatePriorAuthorityDraftCommand command =
-        commandMapper.toUpdateCommand(priorAuthorityId, savePriorAuthorityDraftRequest);
+        saveCommandMapper.toUpdateCommand(priorAuthorityId, savePriorAuthorityDraftRequest);
     saveUseCase.update(command);
     return ResponseEntity.noContent().build();
   }
@@ -81,7 +84,7 @@ public class PriorAuthorityDraftCommandController implements PriorAuthorityDraft
   public ResponseEntity<SubmitPriorAuthorityDraftResponse> submitPriorAuthorityDraft(
       ServiceName serviceName, UUID priorAuthorityId) {
     SubmitPriorAuthorityDraftCommand command =
-        new SubmitPriorAuthorityDraftCommand(priorAuthorityId, java.time.Instant.now());
+        submitCommandMapper.toSubmitCommand(priorAuthorityId);
     URI location =
         ServletUriComponentsBuilder.fromCurrentContextPath()
             .path("/api/v0/prior-authorities/{priorAuthorityId}")
