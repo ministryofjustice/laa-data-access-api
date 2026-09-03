@@ -17,32 +17,32 @@ import org.mockito.Mockito;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
-class SavePriorAuthorityDraftUseCaseTest {
+class CreatePriorAuthorityDraftUseCaseTest {
 
   private RetryingCommandDispatcher dispatcher;
-  private SavePriorAuthorityDraftUseCase useCase;
+  private CreatePriorAuthorityDraftUseCase useCase;
 
   @BeforeEach
   void setUp() {
     dispatcher = mock(RetryingCommandDispatcher.class);
-    useCase = new SavePriorAuthorityDraftUseCase(dispatcher);
+    useCase = new CreatePriorAuthorityDraftUseCase(dispatcher);
   }
 
   @Test
-  void givenCommand_whenCreate_thenDispatchesCommandDirectlyAndReturnsTrue() {
-    CreatePriorAuthorityDraftCommand command = stubCreateCommand();
+  void givenCommand_whenExecute_thenDispatchesCommandDirectlyAndReturnsTrue() {
+    CreatePriorAuthorityDraftCommand command = stubCommand();
 
-    boolean result = useCase.create(command);
+    boolean result = useCase.execute(command);
 
     assertThat(result).isTrue();
     verify(dispatcher).dispatch(command);
   }
 
   @Test
-  void givenCommand_whenCreate_thenDispatchesValidationBeforeSaveDraftCommand() {
-    CreatePriorAuthorityDraftCommand command = stubCreateCommand();
+  void givenCommand_whenExecute_thenDispatchesValidationBeforeSaveDraftCommand() {
+    CreatePriorAuthorityDraftCommand command = stubCommand();
 
-    useCase.create(command);
+    useCase.execute(command);
 
     InOrder order = Mockito.inOrder(dispatcher);
     order
@@ -52,33 +52,19 @@ class SavePriorAuthorityDraftUseCaseTest {
   }
 
   @Test
-  void givenValidationFails_whenCreate_thenPropagatesAndSkipsSaveDraftDispatch() {
-    CreatePriorAuthorityDraftCommand command = stubCreateCommand();
+  void givenValidationFails_whenExecute_thenPropagatesAndSkipsSaveDraftDispatch() {
+    CreatePriorAuthorityDraftCommand command = stubCommand();
     ValidationException failure = new ValidationException(List.of("Application must be granted"));
     doThrow(failure)
         .when(dispatcher)
         .dispatch(new ValidateApplicationGrantedCommand(command.applicationId()));
 
-    assertThatThrownBy(() -> useCase.create(command)).isSameAs(failure);
+    assertThatThrownBy(() -> useCase.execute(command)).isSameAs(failure);
     verify(dispatcher, never()).dispatch(command);
   }
 
-  @Test
-  void givenCommand_whenUpdate_thenDispatchesCommandDirectly() {
-    UpdatePriorAuthorityDraftCommand command = stubUpdateCommand();
-
-    useCase.update(command);
-
-    verify(dispatcher).dispatch(command);
-  }
-
-  private static CreatePriorAuthorityDraftCommand stubCreateCommand() {
+  private static CreatePriorAuthorityDraftCommand stubCommand() {
     return new CreatePriorAuthorityDraftCommand(
         UUID.randomUUID(), UUID.randomUUID(), null, "{}", 1, "PriorAuthority.json", Instant.now());
-  }
-
-  private static UpdatePriorAuthorityDraftCommand stubUpdateCommand() {
-    return new UpdatePriorAuthorityDraftCommand(
-        UUID.randomUUID(), null, "{}", 1, "PriorAuthority.json", Instant.now());
   }
 }

@@ -16,10 +16,11 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.CreatePriorAuthorityDraftCommand;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.SavePriorAuthorityDraftUseCase;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.CreatePriorAuthorityDraftUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.SubmitPriorAuthorityDraftCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.SubmitPriorAuthorityDraftUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.UpdatePriorAuthorityDraftCommand;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.UpdatePriorAuthorityDraftUseCase;
 import uk.gov.justice.laa.dstew.access.model.SavePriorAuthorityDraftRequest;
 import uk.gov.justice.laa.dstew.access.model.SavePriorAuthorityDraftResponse;
 import uk.gov.justice.laa.dstew.access.model.SubmitPriorAuthorityDraftResponse;
@@ -27,7 +28,8 @@ import uk.gov.justice.laa.dstew.access.model.SubmitPriorAuthorityDraftResponse;
 /** Verifies that each controller endpoint delegates to the appropriate use case. */
 class PriorAuthorityDraftCommandControllerTest {
 
-  private SavePriorAuthorityDraftUseCase saveUseCase;
+  private CreatePriorAuthorityDraftUseCase createUseCase;
+  private UpdatePriorAuthorityDraftUseCase updateUseCase;
   private SubmitPriorAuthorityDraftUseCase submitUseCase;
   private SavePriorAuthorityDraftCommandMapper saveCommandMapper;
   private SubmitPriorAuthorityDraftCommandMapper submitCommandMapper;
@@ -37,13 +39,14 @@ class PriorAuthorityDraftCommandControllerTest {
   void setUp() {
     RequestContextHolder.setRequestAttributes(
         new ServletRequestAttributes(new MockHttpServletRequest()));
-    saveUseCase = mock(SavePriorAuthorityDraftUseCase.class);
+    createUseCase = mock(CreatePriorAuthorityDraftUseCase.class);
+    updateUseCase = mock(UpdatePriorAuthorityDraftUseCase.class);
     submitUseCase = mock(SubmitPriorAuthorityDraftUseCase.class);
     saveCommandMapper = mock(SavePriorAuthorityDraftCommandMapper.class);
     submitCommandMapper = mock(SubmitPriorAuthorityDraftCommandMapper.class);
     controller =
         new PriorAuthorityDraftCommandController(
-            saveUseCase, submitUseCase, saveCommandMapper, submitCommandMapper);
+            createUseCase, updateUseCase, submitUseCase, saveCommandMapper, submitCommandMapper);
   }
 
   @AfterEach
@@ -60,7 +63,7 @@ class PriorAuthorityDraftCommandControllerTest {
         new CreatePriorAuthorityDraftCommand(
             submissionId, applicationId, null, "{}", 1, "PriorAuthority.json", Instant.now());
     when(saveCommandMapper.toCreateCommand(applicationId, request)).thenReturn(command);
-    when(saveUseCase.create(command)).thenReturn(true);
+    when(createUseCase.execute(command)).thenReturn(true);
 
     ResponseEntity<SavePriorAuthorityDraftResponse> response =
         controller.savePriorAuthorityDraft(null, applicationId, request);
@@ -71,7 +74,7 @@ class PriorAuthorityDraftCommandControllerTest {
     assertThat(response.getHeaders().getLocation()).isNotNull();
     assertThat(response.getHeaders().getLocation().getPath())
         .isEqualTo("/api/v0/prior-authorities/" + submissionId);
-    verify(saveUseCase).create(command);
+    verify(createUseCase).execute(command);
   }
 
   @Test
@@ -83,13 +86,13 @@ class PriorAuthorityDraftCommandControllerTest {
         new CreatePriorAuthorityDraftCommand(
             submissionId, applicationId, null, "{}", 1, "PriorAuthority.json", Instant.now());
     when(saveCommandMapper.toCreateCommand(applicationId, request)).thenReturn(command);
-    when(saveUseCase.create(command)).thenReturn(false);
+    when(createUseCase.execute(command)).thenReturn(false);
 
     ResponseEntity<SavePriorAuthorityDraftResponse> response =
         controller.savePriorAuthorityDraft(null, applicationId, request);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
-    verify(saveUseCase).create(command);
+    verify(createUseCase).execute(command);
   }
 
   @Test
@@ -105,7 +108,7 @@ class PriorAuthorityDraftCommandControllerTest {
         controller.updatePriorAuthorityDraft(null, submissionId, request);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-    verify(saveUseCase).update(command);
+    verify(updateUseCase).execute(command);
   }
 
   @Test

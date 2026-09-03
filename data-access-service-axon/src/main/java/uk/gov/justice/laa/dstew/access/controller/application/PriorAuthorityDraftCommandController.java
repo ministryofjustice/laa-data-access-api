@@ -8,10 +8,11 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import uk.gov.justice.laa.dstew.access.api.PriorAuthorityDraftCommandApi;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.CreatePriorAuthorityDraftCommand;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.SavePriorAuthorityDraftUseCase;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.CreatePriorAuthorityDraftUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.SubmitPriorAuthorityDraftCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.SubmitPriorAuthorityDraftUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.UpdatePriorAuthorityDraftCommand;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.UpdatePriorAuthorityDraftUseCase;
 import uk.gov.justice.laa.dstew.access.model.SavePriorAuthorityDraftRequest;
 import uk.gov.justice.laa.dstew.access.model.SavePriorAuthorityDraftResponse;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
@@ -23,18 +24,21 @@ import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
 @RestController
 public class PriorAuthorityDraftCommandController implements PriorAuthorityDraftCommandApi {
 
-  private final SavePriorAuthorityDraftUseCase saveUseCase;
+  private final CreatePriorAuthorityDraftUseCase createUseCase;
+  private final UpdatePriorAuthorityDraftUseCase updateUseCase;
   private final SubmitPriorAuthorityDraftUseCase submitUseCase;
   private final SavePriorAuthorityDraftCommandMapper saveCommandMapper;
   private final SubmitPriorAuthorityDraftCommandMapper submitCommandMapper;
 
   /** Creates the command adapter. */
   public PriorAuthorityDraftCommandController(
-      SavePriorAuthorityDraftUseCase saveUseCase,
+      CreatePriorAuthorityDraftUseCase createUseCase,
+      UpdatePriorAuthorityDraftUseCase updateUseCase,
       SubmitPriorAuthorityDraftUseCase submitUseCase,
       SavePriorAuthorityDraftCommandMapper saveCommandMapper,
       SubmitPriorAuthorityDraftCommandMapper submitCommandMapper) {
-    this.saveUseCase = saveUseCase;
+    this.createUseCase = createUseCase;
+    this.updateUseCase = updateUseCase;
     this.submitUseCase = submitUseCase;
     this.saveCommandMapper = saveCommandMapper;
     this.submitCommandMapper = submitCommandMapper;
@@ -57,7 +61,7 @@ public class PriorAuthorityDraftCommandController implements PriorAuthorityDraft
             .toUri();
     SavePriorAuthorityDraftResponse response =
         new SavePriorAuthorityDraftResponse(command.submissionId(), OffsetDateTime.now());
-    boolean projected = saveUseCase.create(command);
+    boolean projected = createUseCase.execute(command);
     return projected
         ? ResponseEntity.created(location).body(response)
         : ResponseEntity.accepted().location(location).body(response);
@@ -73,7 +77,7 @@ public class PriorAuthorityDraftCommandController implements PriorAuthorityDraft
       SavePriorAuthorityDraftRequest savePriorAuthorityDraftRequest) {
     UpdatePriorAuthorityDraftCommand command =
         saveCommandMapper.toUpdateCommand(priorAuthorityId, savePriorAuthorityDraftRequest);
-    saveUseCase.update(command);
+    updateUseCase.execute(command);
     return ResponseEntity.noContent().build();
   }
 
