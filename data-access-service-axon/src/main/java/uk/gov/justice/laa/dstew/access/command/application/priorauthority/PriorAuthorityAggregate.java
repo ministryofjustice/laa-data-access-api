@@ -11,6 +11,7 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityNotInProgressException;
+import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
 
@@ -64,7 +65,8 @@ public class PriorAuthorityAggregate {
       PriorAuthorityDraftStore draftStore,
       EventAppender eventAppender) {
     if (this.submissionId != null && draftStore.find(command.submissionId()).isEmpty()) {
-      throw new PriorAuthorityNotInProgressException(command.submissionId());
+      throw new ResourceNotFoundException(
+          "Prior Authority %s not found".formatted(command.submissionId()));
     }
     UUID applicationId =
         command.applicationId() != null ? command.applicationId() : state.applicationId;

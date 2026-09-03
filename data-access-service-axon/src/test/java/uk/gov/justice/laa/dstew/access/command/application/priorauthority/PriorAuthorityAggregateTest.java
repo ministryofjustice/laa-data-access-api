@@ -28,6 +28,7 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityCont
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityNotInProgressException;
+import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
@@ -363,7 +364,7 @@ class PriorAuthorityAggregateTest {
   }
 
   @Test
-  void givenPendingSubmission_whenSaveDraft_thenThrowsNotInProgress() {
+  void givenPendingSubmission_whenSaveDraft_thenThrowsResourceNotFound() {
     UUID submissionId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
@@ -396,7 +397,7 @@ class PriorAuthorityAggregateTest {
         .when()
         .command(command)
         .then()
-        .exception(PriorAuthorityNotInProgressException.class)
+        .exception(ResourceNotFoundException.class)
         .noEvents();
   }
 

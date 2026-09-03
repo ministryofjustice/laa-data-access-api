@@ -65,7 +65,8 @@ class PriorAuthorityDraftCommandControllerTest {
     assertThat(response.getBody()).isNotNull();
     assertThat(response.getBody().getSubmissionId()).isEqualTo(submissionId);
     assertThat(response.getHeaders().getLocation()).isNotNull();
-    assertThat(response.getHeaders().getLocation().toString()).endsWith("/" + submissionId);
+    assertThat(response.getHeaders().getLocation().getPath())
+        .isEqualTo("/api/v0/prior-authorities/" + submissionId);
     verify(saveUseCase).create(command);
   }
 
@@ -117,7 +118,8 @@ class PriorAuthorityDraftCommandControllerTest {
     assertThat(response.getBody()).isNotNull();
     assertThat(response.getBody().getSubmissionId()).isEqualTo(submissionId);
     assertThat(response.getHeaders().getLocation()).isNotNull();
-    assertThat(response.getHeaders().getLocation().toString()).endsWith("/" + submissionId);
+    assertThat(response.getHeaders().getLocation().getPath())
+        .isEqualTo("/api/v0/prior-authorities/" + submissionId);
   }
 
   @Test

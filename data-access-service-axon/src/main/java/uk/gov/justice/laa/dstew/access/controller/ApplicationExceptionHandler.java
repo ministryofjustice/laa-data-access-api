@@ -99,7 +99,7 @@ public class ApplicationExceptionHandler {
         .body(ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage()));
   }
 
-  /** Returns a 409 when a prior-authority has no in-progress draft to save or submit. */
+  /** Returns a 409 when a prior-authority has no draft to submit. */
   @ExceptionHandler(PriorAuthorityNotInProgressException.class)
   ResponseEntity<ProblemDetail> handlePriorAuthorityNotInProgressException(
       PriorAuthorityNotInProgressException exception) {
@@ -107,9 +107,8 @@ public class ApplicationExceptionHandler {
         .body(
             ProblemDetail.forStatusAndDetail(
                 HttpStatus.CONFLICT,
-                "Prior authority "
-                    + exception.getSubmissionId()
-                    + " is not in a submittable state"));
+                "Prior authority %s is not in a submittable state"
+                    .formatted(exception.getSubmissionId())));
   }
 
   /** Returns a conflict when manual readiness would overwrite an automatic grant. */

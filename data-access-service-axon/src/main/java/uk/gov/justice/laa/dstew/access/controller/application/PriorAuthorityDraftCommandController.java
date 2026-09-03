@@ -1,7 +1,5 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import java.net.URI;
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -42,7 +40,6 @@ public class PriorAuthorityDraftCommandController implements PriorAuthorityDraft
   @Override
   @LogMethodArguments
   @LogMethodResponse
-  @Operation(security = @SecurityRequirement(name = "BearerAuth"))
   public ResponseEntity<SavePriorAuthorityDraftResponse> savePriorAuthorityDraft(
       ServiceName serviceName,
       UUID applicationId,
@@ -51,7 +48,7 @@ public class PriorAuthorityDraftCommandController implements PriorAuthorityDraft
         commandMapper.toCreateCommand(applicationId, savePriorAuthorityDraftRequest);
     URI location =
         ServletUriComponentsBuilder.fromCurrentContextPath()
-            .path("/api/v0/prior-authority/{submissionId}")
+            .path("/api/v0/prior-authorities/{priorAuthorityId}")
             .buildAndExpand(command.submissionId())
             .toUri();
     SavePriorAuthorityDraftResponse response =
@@ -66,7 +63,6 @@ public class PriorAuthorityDraftCommandController implements PriorAuthorityDraft
   @Override
   @LogMethodArguments
   @LogMethodResponse
-  @Operation(security = @SecurityRequirement(name = "BearerAuth"))
   public ResponseEntity<Void> updatePriorAuthorityDraft(
       ServiceName serviceName,
       UUID priorAuthorityId,
@@ -81,14 +77,13 @@ public class PriorAuthorityDraftCommandController implements PriorAuthorityDraft
   @Override
   @LogMethodArguments
   @LogMethodResponse
-  @Operation(security = @SecurityRequirement(name = "BearerAuth"))
   public ResponseEntity<SubmitPriorAuthorityDraftResponse> submitPriorAuthorityDraft(
       ServiceName serviceName, UUID priorAuthorityId) {
     SubmitPriorAuthorityDraftCommand command =
         new SubmitPriorAuthorityDraftCommand(priorAuthorityId, java.time.Instant.now());
     URI location =
         ServletUriComponentsBuilder.fromCurrentContextPath()
-            .path("/api/v0/prior-authority/{submissionId}")
+            .path("/api/v0/prior-authorities/{priorAuthorityId}")
             .buildAndExpand(priorAuthorityId)
             .toUri();
     SubmitPriorAuthorityDraftResponse response =
