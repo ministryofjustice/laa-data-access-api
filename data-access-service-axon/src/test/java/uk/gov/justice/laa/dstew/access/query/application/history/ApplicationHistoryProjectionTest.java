@@ -20,13 +20,14 @@ import org.mockito.ArgumentCaptor;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.config.interceptor.ServiceNameMetadataDispatchInterceptor;
 
 class ApplicationHistoryProjectionTest {
@@ -128,23 +129,26 @@ class ApplicationHistoryProjectionTest {
   }
 
   @Test
-  void givenAssignmentHistory_whenQueried_thenReconstructsCaseworkerAndDescription() {
+  void givenApplicationWorkItemAssigned_whenQueried_thenReconstructsCaseworkerAndDescription() {
     UUID applicationId = UUID.randomUUID();
     UUID caseworkerId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-07-20T08:00:00Z");
-    ApplicationAssignedToCaseworkerEvent event =
-        new ApplicationAssignedToCaseworkerEvent(applicationId, 1L, 2L, caseworkerId, occurredAt);
+    WorkItemAssigned event =
+        new WorkItemAssigned(
+            applicationId,
+            WorkItemType.APPLICATION,
+            1L,
+            1L,
+            1L,
+            caseworkerId,
+            "Assigned for assessment",
+            occurredAt);
     projection.on(event, message(event, "assignment-event"));
     ArgumentCaptor<ApplicationHistoryReadModel> captor =
         ArgumentCaptor.forClass(ApplicationHistoryReadModel.class);
     verify(repository).save(captor.capture());
     when(repository.findAllByApplicationIdOrderByOccurredAtAsc(applicationId))
         .thenReturn(List.of(captor.getValue()));
-    when(applicationDataStore.get(applicationId, 2L))
-        .thenReturn(
-            ApplicationDataPayload.from(applicationCreationDetails(applicationId))
-                .withAssignment("Assigned for assessment"));
-
     var result =
         projection.handle(
             new FindApplicationHistoryQuery(
@@ -167,22 +171,19 @@ class ApplicationHistoryProjectionTest {
   }
 
   @Test
-  void givenUnassignmentHistory_whenQueried_thenReconstructsDescriptionWithoutCaseworker()
+  void givenApplicationWorkItemUnassigned_whenQueried_thenReconstructsDescriptionWithoutCaseworker()
       throws Exception {
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-07-20T09:00:00Z");
-    ApplicationUnassignedFromCaseworkerEvent event =
-        new ApplicationUnassignedFromCaseworkerEvent(applicationId, 2L, 3L, occurredAt);
+    WorkItemUnassigned event =
+        new WorkItemUnassigned(
+            applicationId, WorkItemType.APPLICATION, 1L, 1L, 2L, "Returned to queue", occurredAt);
     projection.on(event, message(event, "unassignment-event"));
     ArgumentCaptor<ApplicationHistoryReadModel> captor =
         ArgumentCaptor.forClass(ApplicationHistoryReadModel.class);
     verify(repository).save(captor.capture());
     when(repository.findAllByApplicationIdOrderByOccurredAtAsc(applicationId))
         .thenReturn(List.of(captor.getValue()));
-    when(applicationDataStore.get(applicationId, 3L))
-        .thenReturn(
-            ApplicationDataPayload.from(applicationCreationDetails(applicationId))
-                .withAssignment("Returned to queue"));
 
     var result =
         projection.handle(

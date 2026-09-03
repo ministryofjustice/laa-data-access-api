@@ -144,7 +144,14 @@ class WorkListProjectionTest {
 
     projection.on(
         new WorkItemAssigned(
-            applicationId, WorkItemType.APPLICATION, 2L, 2L, 1L, UUID.randomUUID(), Instant.now()),
+            applicationId,
+            WorkItemType.APPLICATION,
+            2L,
+            2L,
+            1L,
+            UUID.randomUUID(),
+            "Assigned",
+            Instant.now()),
         message());
 
     assertThat(row.getAssignmentVersion()).isEqualTo(1L);

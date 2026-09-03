@@ -69,6 +69,7 @@ import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.OpponentResponse;
 import uk.gov.justice.laa.dstew.access.model.ProviderResponse;
 import uk.gov.justice.laa.dstew.access.model.ScopeLimitationResponse;
+import uk.gov.justice.laa.dstew.access.model.WorkListAssignRequest;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
@@ -168,7 +169,7 @@ class PostgresAxonIntegrationTest {
             """,
             String.class);
 
-    assertThat(appliedVersions).containsExactly("1", "2", "3", "4", "5", "6", "7", "8", "9");
+    assertThat(appliedVersions).containsExactly("1", "2", "3", "4", "5", "6", "7", "8", "9", "10");
     assertThat(tables)
         .containsExactly(
             "application_current_state",
@@ -199,6 +200,17 @@ class PostgresAxonIntegrationTest {
                 """,
                 String.class))
         .containsExactly("work_item_id");
+    assertThat(
+            jdbcTemplate.queryForObject(
+                """
+                SELECT COUNT(*)
+                FROM information_schema.columns
+                WHERE table_schema = 'axon'
+                  AND table_name = 'work_item_route'
+                  AND column_name = 'aggregate_id'
+                """,
+                Integer.class))
+        .isZero();
     assertThat(
             jdbcTemplate.queryForObject(
                 """
@@ -467,7 +479,7 @@ class PostgresAxonIntegrationTest {
 
     MakeDecisionRequest request =
         MakeDecisionRequest.builder()
-            .expectedApplicationVersion(2L)
+            .expectedApplicationVersion(1L)
             .caseworkerId(caseworkerId)
             .overallDecision(DecisionStatus.REFUSED)
             .eventHistory(
@@ -493,7 +505,7 @@ class PostgresAxonIntegrationTest {
             Void.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-    ApplicationReadModel decided = awaitProjectionVersion(applicationId, 3L);
+    ApplicationReadModel decided = awaitProjectionVersion(applicationId, 2L);
     assertThat(decided.getDecisionStatus()).isEqualTo("REFUSED");
     assertThat(decided.getAutoGranted()).isEqualTo(AutoGrantedState.MANUAL);
     assertThat(decided.getMeritsDecisions().get(proceedingId).justification())
@@ -502,7 +514,7 @@ class PostgresAxonIntegrationTest {
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT payload ->> 'overallDecision' FROM axon.application_data "
-                    + "WHERE application_id = ? AND version = 3",
+                    + "WHERE application_id = ? AND version = 2",
                 String.class,
                 applicationId))
         .isEqualTo("REFUSED");
@@ -539,7 +551,7 @@ class PostgresAxonIntegrationTest {
     ApplicationResponse application = awaitGet(applicationId).getBody();
     assertThat(application.getDecisionStatus()).isEqualTo(DecisionStatus.REFUSED);
     assertThat(application.getAutoGranted()).isEqualTo(AutoGranted.MANUAL);
-    assertThat(application.getVersion()).isEqualTo(3L);
+    assertThat(application.getVersion()).isEqualTo(2L);
     assertThat(application.getProceedings().getFirst().getMeritsDecision())
         .isEqualTo(MeritsDecisionStatus.REFUSED);
 
@@ -555,7 +567,7 @@ class PostgresAxonIntegrationTest {
                 "SELECT COUNT(*) FROM axon.application_data WHERE application_id = ?",
                 Integer.class,
                 applicationId))
-        .isEqualTo(4);
+        .isEqualTo(3);
   }
 
   @Test
@@ -655,7 +667,7 @@ class PostgresAxonIntegrationTest {
             "validUntil", "2027-03-03");
     MakeDecisionRequest request =
         MakeDecisionRequest.builder()
-            .expectedApplicationVersion(2L)
+            .expectedApplicationVersion(1L)
             .caseworkerId(caseworkerId)
             .overallDecision(DecisionStatus.GRANTED)
             .certificate(certificate)
@@ -680,7 +692,7 @@ class PostgresAxonIntegrationTest {
             new HttpEntity<>(request, headers()),
             Void.class);
     assertThat(decisionResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-    awaitProjectionVersion(applicationId, 3L);
+    awaitProjectionVersion(applicationId, 2L);
 
     ResponseEntity<Map<String, Object>> certificateResponse =
         restTemplate.exchange(
@@ -1277,7 +1289,7 @@ class PostgresAxonIntegrationTest {
     UUID proceedingId = awaitProjection(applicationId).getProceedings().getFirst().getId();
     MakeDecisionRequest request =
         MakeDecisionRequest.builder()
-            .expectedApplicationVersion(2L)
+            .expectedApplicationVersion(1L)
             .caseworkerId(caseworkerId)
             .overallDecision(DecisionStatus.REFUSED)
             .eventHistory(EventHistoryRequest.builder().eventDescription("Concurrent").build())
@@ -1310,13 +1322,13 @@ class PostgresAxonIntegrationTest {
       executor.shutdown();
     }
 
-    assertThat(awaitProjectionVersion(applicationId, 3L).getApplicationVersion()).isEqualTo(3L);
+    assertThat(awaitProjectionVersion(applicationId, 2L).getApplicationVersion()).isEqualTo(2L);
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM axon.application_data WHERE application_id = ?",
                 Integer.class,
                 applicationId))
-        .isEqualTo(4);
+        .isEqualTo(3);
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM axon.domain_event_entry WHERE aggregate_identifier = ?",
@@ -1392,20 +1404,15 @@ class PostgresAxonIntegrationTest {
         "INSERT INTO axon.caseworkers (id, username) VALUES (?, ?)",
         caseworkerId,
         "decision-" + caseworkerId + "@example.com");
-    CaseworkerAssignRequest request =
-        CaseworkerAssignRequest.builder()
-            .caseworkerId(caseworkerId)
-            .applicationIds(List.of(applicationId))
-            .build();
-
     ResponseEntity<Void> response =
-        restTemplate.postForEntity(
-            "http://localhost:" + port + "/api/v0/applications/assign",
-            new HttpEntity<>(request, headers()),
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/work-list/" + applicationId + "/assign",
+            HttpMethod.POST,
+            new HttpEntity<>(new WorkListAssignRequest(caseworkerId, 0L), headers()),
             Void.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-    assertThat(awaitProjectionVersion(applicationId, 2L).getCaseworkerId()).isEqualTo(caseworkerId);
+    assertThat(awaitProjectionVersion(applicationId, 1L).getCaseworkerId()).isEqualTo(caseworkerId);
     return caseworkerId;
   }
 

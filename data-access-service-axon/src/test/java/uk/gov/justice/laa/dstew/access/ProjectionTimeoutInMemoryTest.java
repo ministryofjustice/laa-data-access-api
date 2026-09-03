@@ -141,19 +141,7 @@ class ProjectionTimeoutInMemoryTest {
                     "/api/v0/applications", new HttpEntity<>(createRequest, headers), Void.class)
                 .getStatusCode())
         .isIn(HttpStatus.CREATED, HttpStatus.ACCEPTED);
-    await()
-        .atMost(Duration.ofSeconds(5))
-        .untilAsserted(
-            () ->
-                assertThat(
-                        restTemplate
-                            .exchange(
-                                "/api/v0/applications/" + applicationId,
-                                HttpMethod.GET,
-                                new HttpEntity<>(headers),
-                                ApplicationResponse.class)
-                            .getBody())
-                    .isNotNull());
+    awaitApplicationProjection(applicationId, headers);
 
     StreamingEventProcessor processor =
         axonConfiguration
@@ -224,19 +212,7 @@ class ProjectionTimeoutInMemoryTest {
                     "/api/v0/applications", new HttpEntity<>(createRequest, headers), Void.class)
                 .getStatusCode())
         .isIn(HttpStatus.CREATED, HttpStatus.ACCEPTED);
-    await()
-        .atMost(Duration.ofSeconds(5))
-        .untilAsserted(
-            () ->
-                assertThat(
-                        restTemplate
-                            .exchange(
-                                "/api/v0/applications/" + applicationId,
-                                HttpMethod.GET,
-                                new HttpEntity<>(headers),
-                                ApplicationResponse.class)
-                            .getBody())
-                    .isNotNull());
+    awaitApplicationProjection(applicationId, headers);
     ApplicationResponse created =
         restTemplate
             .exchange(
@@ -291,7 +267,7 @@ class ProjectionTimeoutInMemoryTest {
         .isEqualTo(HttpStatus.OK);
     MakeDecisionRequest decisionRequest =
         MakeDecisionRequest.builder()
-            .expectedApplicationVersion(2L)
+            .expectedApplicationVersion(1L)
             .caseworkerId(caseworkerId)
             .overallDecision(DecisionStatus.GRANTED)
             .certificate(
@@ -359,8 +335,23 @@ class ProjectionTimeoutInMemoryTest {
               assertThat(currentRead.getBody()).isNotNull();
               assertThat(currentRead.getBody().getAutoGranted())
                   .isEqualTo(uk.gov.justice.laa.dstew.access.model.AutoGranted.MANUAL);
-              assertThat(currentRead.getBody().getVersion()).isEqualTo(3L);
+              assertThat(currentRead.getBody().getVersion()).isEqualTo(2L);
             });
+  }
+
+  private void awaitApplicationProjection(UUID applicationId, HttpHeaders headers) {
+    await()
+        .atMost(Duration.ofSeconds(5))
+        .untilAsserted(
+            () ->
+                assertThat(
+                        restTemplate.exchange(
+                            "/api/v0/applications/" + applicationId,
+                            HttpMethod.GET,
+                            new HttpEntity<>(headers),
+                            String.class))
+                    .extracting(ResponseEntity::getStatusCode)
+                    .isEqualTo(HttpStatus.OK));
   }
 
   private HttpHeaders headers() {

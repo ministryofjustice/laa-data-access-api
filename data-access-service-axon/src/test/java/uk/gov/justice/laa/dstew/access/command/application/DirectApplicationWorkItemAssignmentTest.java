@@ -1,8 +1,6 @@
 package uk.gov.justice.laa.dstew.access.command.application;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -12,8 +10,6 @@ import org.axonframework.test.fixture.AxonTestFixture;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.DirectWorkItemAssignmentCommand;
@@ -44,11 +40,6 @@ class DirectApplicationWorkItemAssignmentTest {
     UUID id = UUID.randomUUID();
     UUID caseworkerId = UUID.randomUUID();
     Instant when = Instant.parse("2026-08-28T10:00:00Z");
-    ApplicationDataPayload payload = org.mockito.Mockito.mock(ApplicationDataPayload.class);
-    when(payload.withAssignment(any())).thenReturn(payload);
-    when(dataStore.get(id, 1L)).thenReturn(payload);
-    when(dataStore.append(any(), anyLong(), any(), any(), any())).thenReturn("hash");
-
     fixture
         .given()
         .events(created(id, when), new ApplicationReadyForManualAssessmentEvent(id, 1L, 1L, when))
@@ -56,23 +47,21 @@ class DirectApplicationWorkItemAssignmentTest {
         .command(new DirectWorkItemAssignmentCommand(id, caseworkerId, 0L, "{}", "Assigned", when))
         .then()
         .events(
-            new ApplicationAssignedToCaseworkerEvent(id, 2L, 2L, caseworkerId, when),
-            new WorkItemAssigned(id, WorkItemType.APPLICATION, 2L, 2L, 1L, caseworkerId, when));
+            new WorkItemAssigned(
+                id, WorkItemType.APPLICATION, 1L, 1L, 1L, caseworkerId, "Assigned", when));
+    verifyNoInteractions(dataStore);
   }
 
   @Test
-  void rejectsAStaleOrRepeatedAssignmentAndAnAlreadyOpenUnassignment() {
+  void rejectsAStaleAssignmentAndAnAlreadyOpenUnassignment() {
     UUID id = UUID.randomUUID();
     UUID caseworkerId = UUID.randomUUID();
     Instant when = Instant.parse("2026-08-28T10:00:00Z");
     fixture
         .given()
-        .events(
-            created(id, when),
-            new ApplicationReadyForManualAssessmentEvent(id, 1L, 1L, when),
-            new ApplicationAssignedToCaseworkerEvent(id, 2L, 2L, caseworkerId, when))
+        .events(created(id, when), new ApplicationReadyForManualAssessmentEvent(id, 1L, 1L, when))
         .when()
-        .command(new DirectWorkItemAssignmentCommand(id, UUID.randomUUID(), 0L, "{}", "", when))
+        .command(new DirectWorkItemAssignmentCommand(id, caseworkerId, 1L, "{}", "", when))
         .then()
         .exception(WorkItemAssignmentConflictException.class)
         .noEvents();

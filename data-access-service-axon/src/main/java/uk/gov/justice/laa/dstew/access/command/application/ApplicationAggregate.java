@@ -11,10 +11,6 @@ import org.axonframework.extension.spring.stereotype.EventSourced;
 import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.AssignCaseworkerToApplicationCommand;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.UnassignCaseworkerFromApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationMeritsDecision;
@@ -156,127 +152,47 @@ public class ApplicationAggregate {
     recordAutomaticGrant(command, applicationDataStore, eventAppender);
   }
 
-  /** Assigns a caseworker and stores free-text audit data outside the event stream. */
-  @CommandHandler
-  void handle(
-      AssignCaseworkerToApplicationCommand command,
-      ApplicationDataStore applicationDataStore,
-      EventAppender eventAppender) {
-    requireApplicationExists(command.applicationId());
-    ApplicationAssignedToCaseworkerEvent event = ApplicationDecider.decideAssign(state, command);
-    var current = applicationDataStore.get(applicationId, state.applicationDataVersion);
-    long nextDataVersion = state.applicationDataVersion + 1;
-    long nextApplicationVersion = state.applicationVersion + 1;
-    long nextAssignmentVersion = state.assignmentVersion + 1;
-    applicationDataStore.append(
-        applicationId,
-        nextDataVersion,
-        current.withAssignment(command.eventDescription()),
-        command.serialisedRequest(),
-        command.occurredAt());
-    eventAppender.append(event);
-  }
-
-  /** Removes the assigned caseworker and stores free-text audit data outside the event stream. */
-  @CommandHandler
-  void handle(
-      UnassignCaseworkerFromApplicationCommand command,
-      ApplicationDataStore applicationDataStore,
-      EventAppender eventAppender) {
-    requireApplicationExists(command.applicationId());
-    if (state.caseworkerId == null) {
-      return;
-    }
-    ApplicationUnassignedFromCaseworkerEvent event =
-        ApplicationDecider.decideUnassign(state, command);
-    var current = applicationDataStore.get(applicationId, state.applicationDataVersion);
-    long nextDataVersion = state.applicationDataVersion + 1;
-    long nextApplicationVersion = state.applicationVersion + 1;
-    long nextAssignmentVersion = state.assignmentVersion + 1;
-    applicationDataStore.append(
-        applicationId,
-        nextDataVersion,
-        current.withAssignment(command.eventDescription()),
-        command.serialisedRequest(),
-        command.occurredAt());
-    eventAppender.append(event);
-  }
-
   /**
    * Handles a generic direct assignment once durable routing selected this standalone aggregate.
    */
   @CommandHandler
-  void handle(
-      DirectWorkItemAssignmentCommand command,
-      ApplicationDataStore applicationDataStore,
-      EventAppender eventAppender) {
+  void handle(DirectWorkItemAssignmentCommand command, EventAppender eventAppender) {
     requireApplicationExists(command.workItemId());
     validateDirectWorkItem(command.workItemId(), command.expectedAssignmentVersion());
     if (state.caseworkerId != null) {
       throw new WorkItemAssignmentConflictException(command.workItemId(), "it is already assigned");
     }
-    long nextDataVersion = state.applicationDataVersion + 1;
-    long nextApplicationVersion = state.applicationVersion + 1;
     long nextAssignmentVersion = state.assignmentVersion + 1;
-    applicationDataStore.append(
-        applicationId,
-        nextDataVersion,
-        applicationDataStore
-            .get(applicationId, state.applicationDataVersion)
-            .withAssignment(command.eventDescription()),
-        command.serialisedRequest(),
-        command.occurredAt());
-    eventAppender.append(
-        new ApplicationAssignedToCaseworkerEvent(
-            applicationId,
-            nextApplicationVersion,
-            nextDataVersion,
-            command.caseworkerId(),
-            command.occurredAt()));
     eventAppender.append(
         new WorkItemAssigned(
             command.workItemId(),
             WorkItemType.APPLICATION,
-            nextApplicationVersion,
-            nextDataVersion,
+            state.applicationVersion,
+            state.applicationDataVersion,
             nextAssignmentVersion,
             command.caseworkerId(),
+            command.eventDescription(),
             command.occurredAt()));
   }
 
   /** Handles explicit generic direct unassignment; an already-open item is a conflict. */
   @CommandHandler
-  void handle(
-      DirectWorkItemUnassignmentCommand command,
-      ApplicationDataStore applicationDataStore,
-      EventAppender eventAppender) {
+  void handle(DirectWorkItemUnassignmentCommand command, EventAppender eventAppender) {
     requireApplicationExists(command.workItemId());
     validateDirectWorkItem(command.workItemId(), command.expectedAssignmentVersion());
     if (state.caseworkerId == null) {
       throw new WorkItemAssignmentConflictException(
           command.workItemId(), "it is already unassigned");
     }
-    long nextDataVersion = state.applicationDataVersion + 1;
-    long nextApplicationVersion = state.applicationVersion + 1;
     long nextAssignmentVersion = state.assignmentVersion + 1;
-    applicationDataStore.append(
-        applicationId,
-        nextDataVersion,
-        applicationDataStore
-            .get(applicationId, state.applicationDataVersion)
-            .withAssignment(command.eventDescription()),
-        command.serialisedRequest(),
-        command.occurredAt());
-    eventAppender.append(
-        new ApplicationUnassignedFromCaseworkerEvent(
-            applicationId, nextApplicationVersion, nextDataVersion, command.occurredAt()));
     eventAppender.append(
         new WorkItemUnassigned(
             command.workItemId(),
             WorkItemType.APPLICATION,
-            nextApplicationVersion,
-            nextDataVersion,
+            state.applicationVersion,
+            state.applicationDataVersion,
             nextAssignmentVersion,
+            command.eventDescription(),
             command.occurredAt()));
   }
 
@@ -486,16 +402,6 @@ public class ApplicationAggregate {
 
   @EventSourcingHandler
   void on(ApplicationDecisionMadeEvent event) {
-    ApplicationEvolve.apply(state, event);
-  }
-
-  @EventSourcingHandler
-  void on(ApplicationAssignedToCaseworkerEvent event) {
-    ApplicationEvolve.apply(state, event);
-  }
-
-  @EventSourcingHandler
-  void on(ApplicationUnassignedFromCaseworkerEvent event) {
     ApplicationEvolve.apply(state, event);
   }
 

@@ -14,10 +14,6 @@ import lombok.NoArgsConstructor;
 import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
 import uk.gov.justice.laa.dstew.access.applicationcontent.LinkedApplication;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.AssignCaseworkerToApplicationCommand;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.UnassignCaseworkerFromApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
@@ -163,34 +159,6 @@ public final class ApplicationDecider {
   private static WorkItemAssignmentConflictException assignmentConflict(
       MakeApplicationDecisionCommand command, String reason) {
     return new WorkItemAssignmentConflictException(command.applicationId(), reason);
-  }
-
-  /** Returns an {@link ApplicationAssignedToCaseworkerEvent}. */
-  public static ApplicationAssignedToCaseworkerEvent decideAssign(
-      ApplicationState state, AssignCaseworkerToApplicationCommand command) {
-    return new ApplicationAssignedToCaseworkerEvent(
-        state.applicationId,
-        state.applicationVersion + 1,
-        state.applicationDataVersion + 1,
-        command.caseworkerId(),
-        command.occurredAt());
-  }
-
-  /**
-   * Returns an {@link ApplicationUnassignedFromCaseworkerEvent}, or throws if no caseworker is
-   * assigned.
-   */
-  public static ApplicationUnassignedFromCaseworkerEvent decideUnassign(
-      ApplicationState state, UnassignCaseworkerFromApplicationCommand command) {
-    if (state.caseworkerId == null) {
-      throw new ValidationException(
-          List.of("The request cannot be completed: no caseworker is assigned"));
-    }
-    return new ApplicationUnassignedFromCaseworkerEvent(
-        state.applicationId,
-        state.applicationVersion + 1,
-        state.applicationDataVersion + 1,
-        command.occurredAt());
   }
 
   /** Returns a {@link NoteCreatedEvent}. */

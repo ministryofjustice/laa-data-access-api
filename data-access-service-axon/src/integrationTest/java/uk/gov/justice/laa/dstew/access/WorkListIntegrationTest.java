@@ -145,7 +145,7 @@ class WorkListIntegrationTest {
 
     MakeDecisionRequest decision =
         MakeDecisionRequest.builder()
-            .expectedApplicationVersion(2L)
+            .expectedApplicationVersion(1L)
             .caseworkerId(caseworkerId)
             .overallDecision(DecisionStatus.REFUSED)
             .eventHistory(

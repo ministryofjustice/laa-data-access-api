@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -23,10 +22,6 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationUseCase;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.AssignCaseworkerUseCase;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.CaseworkerAssignment;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.UnassignCaseworkerFromApplicationCommand;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.UnassignCaseworkerUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.document.UploadDocumentUseCase;
@@ -51,16 +46,12 @@ class ApplicationCommandControllerTest {
   private CreateApplicationUseCase createApplicationUseCase;
   private MakeApplicationDecisionUseCase makeDecisionUseCase;
   private CreateNoteUseCase createNoteUseCase;
-  private UnassignCaseworkerUseCase unassignCaseworkerUseCase;
-  private AssignCaseworkerUseCase assignCaseworkerUseCase;
   private RecordAutoGrantOutcomeUseCase recordAutoGrantOutcomeUseCase;
   private UpdateApplicationUseCase updateApplicationUseCase;
   private CreatePriorAuthorityUseCase createPriorAuthorityUseCase;
   private UploadDocumentUseCase uploadDocumentUseCase;
   private CreateApplicationCommandMapper commandMapper;
   private MakeDecisionCommandMapper decisionCommandMapper;
-  private AssignCaseworkerRequestMapper assignCaseworkerRequestMapper;
-  private UnassignCaseworkerRequestMapper unassignCaseworkerRequestMapper;
   private CreateNoteCommandMapper createNoteCommandMapper;
   private AutoGrantOutcomeCommandMapper autoGrantOutcomeCommandMapper;
   private UpdateApplicationCommandMapper updateApplicationCommandMapper;
@@ -74,16 +65,12 @@ class ApplicationCommandControllerTest {
     createApplicationUseCase = mock(CreateApplicationUseCase.class);
     makeDecisionUseCase = mock(MakeApplicationDecisionUseCase.class);
     createNoteUseCase = mock(CreateNoteUseCase.class);
-    unassignCaseworkerUseCase = mock(UnassignCaseworkerUseCase.class);
-    assignCaseworkerUseCase = mock(AssignCaseworkerUseCase.class);
     recordAutoGrantOutcomeUseCase = mock(RecordAutoGrantOutcomeUseCase.class);
     updateApplicationUseCase = mock(UpdateApplicationUseCase.class);
     createPriorAuthorityUseCase = mock(CreatePriorAuthorityUseCase.class);
     uploadDocumentUseCase = mock(UploadDocumentUseCase.class);
     commandMapper = mock(CreateApplicationCommandMapper.class);
     decisionCommandMapper = mock(MakeDecisionCommandMapper.class);
-    assignCaseworkerRequestMapper = mock(AssignCaseworkerRequestMapper.class);
-    unassignCaseworkerRequestMapper = mock(UnassignCaseworkerRequestMapper.class);
     createNoteCommandMapper = mock(CreateNoteCommandMapper.class);
     autoGrantOutcomeCommandMapper = mock(AutoGrantOutcomeCommandMapper.class);
     updateApplicationCommandMapper = mock(UpdateApplicationCommandMapper.class);
@@ -93,16 +80,12 @@ class ApplicationCommandControllerTest {
             createApplicationUseCase,
             makeDecisionUseCase,
             createNoteUseCase,
-            unassignCaseworkerUseCase,
-            assignCaseworkerUseCase,
             recordAutoGrantOutcomeUseCase,
             updateApplicationUseCase,
             createPriorAuthorityUseCase,
             uploadDocumentUseCase,
             commandMapper,
             decisionCommandMapper,
-            assignCaseworkerRequestMapper,
-            unassignCaseworkerRequestMapper,
             createNoteCommandMapper,
             autoGrantOutcomeCommandMapper,
             updateApplicationCommandMapper,
@@ -187,34 +170,6 @@ class ApplicationCommandControllerTest {
     when(createNoteCommandMapper.toCommand(id, null)).thenReturn(command);
     controller.createApplicationNotes(null, id, null);
     verify(createNoteUseCase).execute(command);
-  }
-
-  @Test
-  void givenRequest_whenUnassignCaseworker_thenDelegatesToUseCase() {
-    UUID id = UUID.randomUUID();
-    UnassignCaseworkerFromApplicationCommand command =
-        mock(UnassignCaseworkerFromApplicationCommand.class);
-    when(unassignCaseworkerRequestMapper.toCommand(id, null)).thenReturn(command);
-    controller.unassignCaseworker(null, id, null);
-    verify(unassignCaseworkerUseCase).execute(command);
-  }
-
-  @Test
-  void givenRequest_whenAssignCaseworker_thenDelegatesToUseCase() {
-    CaseworkerAssignment assignment =
-        new CaseworkerAssignment(UUID.randomUUID(), UUID.randomUUID(), "{}", "desc");
-    when(assignCaseworkerRequestMapper.toAssignment(any())).thenReturn(assignment);
-    controller.assignCaseworker(null, null);
-    verify(assignCaseworkerUseCase)
-        .assign(
-            assignment.caseworkerId(),
-            assignment.applicationId(),
-            assignment.serialisedRequest(),
-            assignment.eventDescription());
-    verify(makeDecisionUseCase, never()).execute(any());
-    verify(createNoteUseCase, never()).execute(any());
-    verify(unassignCaseworkerUseCase, never()).execute(any());
-    verify(createApplicationUseCase, never()).execute(any());
   }
 
   @Test

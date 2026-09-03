@@ -10,8 +10,6 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
@@ -159,36 +157,6 @@ public class ApplicationListIndexProjection {
               row.setClientFirstName(client != null ? client.getFirstName() : null);
               row.setClientLastName(client != null ? client.getLastName() : null);
               row.setClientDateOfBirth(client != null ? client.getDateOfBirth() : null);
-              row.setStreamVersion(event.applicationVersion());
-              row.setModifiedAt(event.occurredAt());
-              row.setProjectionPosition(message.identifier().hashCode());
-              listIndexRepository.save(row);
-            });
-  }
-
-  /** Updates {@code caseworker_id} and {@code stream_version} when a caseworker is assigned. */
-  @EventHandler
-  public void on(ApplicationAssignedToCaseworkerEvent event, EventMessage message) {
-    listIndexRepository
-        .findById(event.applicationId())
-        .ifPresent(
-            row -> {
-              row.setCaseworkerId(event.caseworkerId());
-              row.setStreamVersion(event.applicationVersion());
-              row.setModifiedAt(event.occurredAt());
-              row.setProjectionPosition(message.identifier().hashCode());
-              listIndexRepository.save(row);
-            });
-  }
-
-  /** Clears {@code caseworker_id} and updates {@code stream_version} on unassignment. */
-  @EventHandler
-  public void on(ApplicationUnassignedFromCaseworkerEvent event, EventMessage message) {
-    listIndexRepository
-        .findById(event.applicationId())
-        .ifPresent(
-            row -> {
-              row.setCaseworkerId(null);
               row.setStreamVersion(event.applicationVersion());
               row.setModifiedAt(event.occurredAt());
               row.setProjectionPosition(message.identifier().hashCode());

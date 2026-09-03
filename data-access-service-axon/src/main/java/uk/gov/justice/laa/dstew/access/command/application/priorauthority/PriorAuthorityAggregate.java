@@ -88,6 +88,7 @@ public class PriorAuthorityAggregate {
             nextDataVersion,
             state.assignmentVersion + 1,
             command.caseworkerId(),
+            command.eventDescription(),
             command.occurredAt()));
   }
 
@@ -117,6 +118,7 @@ public class PriorAuthorityAggregate {
             nextDataVersion,
             nextDataVersion,
             state.assignmentVersion + 1,
+            command.eventDescription(),
             command.occurredAt()));
   }
 

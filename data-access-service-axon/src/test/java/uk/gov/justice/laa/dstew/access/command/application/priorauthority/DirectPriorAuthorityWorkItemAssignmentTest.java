@@ -58,7 +58,14 @@ class DirectPriorAuthorityWorkItemAssignmentTest {
         .then()
         .events(
             new WorkItemAssigned(
-                submissionId, WorkItemType.PRIOR_AUTHORITY, 1L, 1L, 1L, caseworkerId, when));
+                submissionId,
+                WorkItemType.PRIOR_AUTHORITY,
+                1L,
+                1L,
+                1L,
+                caseworkerId,
+                "Assigned",
+                when));
   }
 
   @Test
@@ -72,7 +79,7 @@ class DirectPriorAuthorityWorkItemAssignmentTest {
         .events(
             created(submissionId, applicationId, when),
             new WorkItemAssigned(
-                submissionId, WorkItemType.PRIOR_AUTHORITY, 1L, 1L, 1L, caseworkerId, when))
+                submissionId, WorkItemType.PRIOR_AUTHORITY, 1L, 1L, 1L, caseworkerId, "", when))
         .when()
         .command(
             new DirectPriorAuthorityWorkItemAssignmentCommand(

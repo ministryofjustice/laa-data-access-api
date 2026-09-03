@@ -4,8 +4,6 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupRequested;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
@@ -59,34 +57,14 @@ public final class ApplicationEvolve {
     state.autoGranted = AutoGrantedState.MANUAL;
   }
 
-  /** Applies an {@link ApplicationAssignedToCaseworkerEvent} to the given state. */
-  public static void apply(ApplicationState state, ApplicationAssignedToCaseworkerEvent event) {
-    state.applicationVersion = event.applicationVersion();
-    state.applicationDataVersion = event.applicationDataVersion();
-    state.caseworkerId = event.caseworkerId();
-    state.assignmentVersion++;
-  }
-
-  /** Applies an {@link ApplicationUnassignedFromCaseworkerEvent} to the given state. */
-  public static void apply(ApplicationState state, ApplicationUnassignedFromCaseworkerEvent event) {
-    state.applicationVersion = event.applicationVersion();
-    state.applicationDataVersion = event.applicationDataVersion();
-    state.caseworkerId = null;
-    state.assignmentVersion++;
-  }
-
   /** Applies a generic direct assignment event to the owning application state. */
   public static void apply(ApplicationState state, WorkItemAssigned event) {
-    state.applicationVersion = event.itemVersion();
-    state.applicationDataVersion = event.dataVersion();
     state.assignmentVersion = event.assignmentVersion();
     state.caseworkerId = event.caseworkerId();
   }
 
   /** Applies a generic direct unassignment event to the owning application state. */
   public static void apply(ApplicationState state, WorkItemUnassigned event) {
-    state.applicationVersion = event.itemVersion();
-    state.applicationDataVersion = event.dataVersion();
     state.assignmentVersion = event.assignmentVersion();
     state.caseworkerId = null;
   }
