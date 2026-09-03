@@ -15,10 +15,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.SavePriorAuthorityDraftCommand;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.CreatePriorAuthorityDraftCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.SavePriorAuthorityDraftUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.SubmitPriorAuthorityDraftCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.SubmitPriorAuthorityDraftUseCase;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.UpdatePriorAuthorityDraftCommand;
 import uk.gov.justice.laa.dstew.access.model.SavePriorAuthorityDraftRequest;
 import uk.gov.justice.laa.dstew.access.model.SavePriorAuthorityDraftResponse;
 import uk.gov.justice.laa.dstew.access.model.SubmitPriorAuthorityDraftResponse;
@@ -52,8 +53,8 @@ class PriorAuthorityDraftCommandControllerTest {
     UUID applicationId = UUID.randomUUID();
     UUID submissionId = UUID.randomUUID();
     SavePriorAuthorityDraftRequest request = new SavePriorAuthorityDraftRequest();
-    SavePriorAuthorityDraftCommand command =
-        new SavePriorAuthorityDraftCommand(
+    CreatePriorAuthorityDraftCommand command =
+        new CreatePriorAuthorityDraftCommand(
             submissionId, applicationId, null, "{}", 1, "PriorAuthority.json", Instant.now());
     when(commandMapper.toCreateCommand(applicationId, request)).thenReturn(command);
     when(saveUseCase.create(command)).thenReturn(true);
@@ -75,8 +76,8 @@ class PriorAuthorityDraftCommandControllerTest {
     UUID applicationId = UUID.randomUUID();
     UUID submissionId = UUID.randomUUID();
     SavePriorAuthorityDraftRequest request = new SavePriorAuthorityDraftRequest();
-    SavePriorAuthorityDraftCommand command =
-        new SavePriorAuthorityDraftCommand(
+    CreatePriorAuthorityDraftCommand command =
+        new CreatePriorAuthorityDraftCommand(
             submissionId, applicationId, null, "{}", 1, "PriorAuthority.json", Instant.now());
     when(commandMapper.toCreateCommand(applicationId, request)).thenReturn(command);
     when(saveUseCase.create(command)).thenReturn(false);
@@ -92,9 +93,9 @@ class PriorAuthorityDraftCommandControllerTest {
   void givenRequest_whenUpdatePriorAuthorityDraft_thenDelegatesToUseCaseAndReturnsNoContent() {
     UUID submissionId = UUID.randomUUID();
     SavePriorAuthorityDraftRequest request = new SavePriorAuthorityDraftRequest();
-    SavePriorAuthorityDraftCommand command =
-        new SavePriorAuthorityDraftCommand(
-            submissionId, null, null, "{}", 1, "PriorAuthority.json", Instant.now());
+    UpdatePriorAuthorityDraftCommand command =
+        new UpdatePriorAuthorityDraftCommand(
+            submissionId, null, "{}", 1, "PriorAuthority.json", Instant.now());
     when(commandMapper.toUpdateCommand(submissionId, request)).thenReturn(command);
 
     ResponseEntity<Void> response =

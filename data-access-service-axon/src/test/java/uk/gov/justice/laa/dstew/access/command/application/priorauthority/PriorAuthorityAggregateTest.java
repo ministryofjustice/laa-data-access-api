@@ -200,7 +200,7 @@ class PriorAuthorityAggregateTest {
   }
 
   @Test
-  void givenNewAggregate_whenSaveDraft_thenWritesDraftAndEmitsDraftStartedEvent() {
+  void givenNewAggregate_whenCreateDraft_thenWritesDraftAndEmitsDraftStartedEvent() {
     UUID submissionId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
@@ -212,8 +212,8 @@ class PriorAuthorityAggregateTest {
             eq(submissionId), eq(applicationId), any(), eq(serialisedRequest), eq(occurredAt)))
         .thenReturn(fingerprint);
 
-    SavePriorAuthorityDraftCommand command =
-        new SavePriorAuthorityDraftCommand(
+    CreatePriorAuthorityDraftCommand command =
+        new CreatePriorAuthorityDraftCommand(
             submissionId,
             applicationId,
             content,
@@ -247,14 +247,13 @@ class PriorAuthorityAggregateTest {
   }
 
   @Test
-  void givenExistingDraftAggregate_whenSaveDraft_thenPersistsDraftAndEmitsNoEvent() {
+  void givenDraftInProgress_whenUpdateDraft_thenPersistsDraftAndEmitsNoEvent() {
     UUID submissionId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
     String firstRequest = "{}";
     String firstFingerprint = PayloadFingerprint.compute(firstRequest);
     String secondRequest = "{\"justification\":\"need expert\"}";
-    String secondFingerprint = PayloadFingerprint.compute(secondRequest);
 
     PriorAuthorityDraftStartedEvent existingEvent =
         new PriorAuthorityDraftStartedEvent(
@@ -268,14 +267,10 @@ class PriorAuthorityAggregateTest {
             occurredAt);
 
     when(draftStore.find(submissionId)).thenReturn(Optional.of(existingDraftPayload));
-    when(draftStore.upsert(
-            eq(submissionId), eq(applicationId), any(), eq(secondRequest), eq(occurredAt)))
-        .thenReturn(secondFingerprint);
 
-    SavePriorAuthorityDraftCommand command =
-        new SavePriorAuthorityDraftCommand(
+    UpdatePriorAuthorityDraftCommand command =
+        new UpdatePriorAuthorityDraftCommand(
             submissionId,
-            null,
             new PriorAuthorityContent(null, "need expert", null, null, null),
             secondRequest,
             1,
@@ -364,7 +359,7 @@ class PriorAuthorityAggregateTest {
   }
 
   @Test
-  void givenPendingSubmission_whenSaveDraft_thenThrowsResourceNotFound() {
+  void givenPendingSubmission_whenUpdateDraft_thenThrowsResourceNotFound() {
     UUID submissionId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
@@ -381,10 +376,9 @@ class PriorAuthorityAggregateTest {
             1,
             occurredAt);
 
-    SavePriorAuthorityDraftCommand command =
-        new SavePriorAuthorityDraftCommand(
+    UpdatePriorAuthorityDraftCommand command =
+        new UpdatePriorAuthorityDraftCommand(
             submissionId,
-            null,
             new PriorAuthorityContent(null, null, null, null, null),
             "{}",
             1,
@@ -394,6 +388,29 @@ class PriorAuthorityAggregateTest {
     fixture
         .given()
         .events(existingEvent)
+        .when()
+        .command(command)
+        .then()
+        .exception(ResourceNotFoundException.class)
+        .noEvents();
+  }
+
+  @Test
+  void givenNeverSeenSubmissionId_whenUpdateDraft_thenThrowsResourceNotFound() {
+    UUID submissionId = UUID.randomUUID();
+
+    UpdatePriorAuthorityDraftCommand command =
+        new UpdatePriorAuthorityDraftCommand(
+            submissionId,
+            new PriorAuthorityContent(null, null, null, null, null),
+            "{}",
+            1,
+            "PriorAuthority.json",
+            Instant.parse("2026-08-01T10:00:00Z"));
+
+    fixture
+        .given()
+        .noPriorActivity()
         .when()
         .command(command)
         .then()

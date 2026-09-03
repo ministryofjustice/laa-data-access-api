@@ -61,33 +61,54 @@ public class PriorAuthorityAggregate {
 
   @CommandHandler
   void handle(
-      SavePriorAuthorityDraftCommand command,
+      CreatePriorAuthorityDraftCommand command,
       PriorAuthorityDraftStore draftStore,
       EventAppender eventAppender) {
     if (this.submissionId != null && draftStore.find(command.submissionId()).isEmpty()) {
       throw new ResourceNotFoundException(
           "Prior Authority %s not found".formatted(command.submissionId()));
     }
-    UUID applicationId =
-        command.applicationId() != null ? command.applicationId() : state.applicationId;
     PriorAuthorityDataPayload payload =
         new PriorAuthorityDataPayload(
             command.submissionId(),
-            applicationId,
+            command.applicationId(),
             command.content(),
             command.serialisedRequest(),
             command.occurredAt());
     String fingerprint =
         draftStore.upsert(
             command.submissionId(),
-            applicationId,
+            command.applicationId(),
             payload,
             command.serialisedRequest(),
             command.occurredAt());
     if (this.submissionId == null) {
       eventAppender.append(
-          PriorAuthorityDecider.decideStartDraft(command, fingerprint, applicationId));
+          PriorAuthorityDecider.decideStartDraft(command, fingerprint, command.applicationId()));
     }
+  }
+
+  @CommandHandler
+  void handle(UpdatePriorAuthorityDraftCommand command, PriorAuthorityDraftStore draftStore) {
+    draftStore
+        .find(command.submissionId())
+        .orElseThrow(
+            () ->
+                new ResourceNotFoundException(
+                    "Prior Authority %s not found".formatted(command.submissionId())));
+    PriorAuthorityDataPayload payload =
+        new PriorAuthorityDataPayload(
+            command.submissionId(),
+            state.applicationId,
+            command.content(),
+            command.serialisedRequest(),
+            command.occurredAt());
+    draftStore.upsert(
+        command.submissionId(),
+        state.applicationId,
+        payload,
+        command.serialisedRequest(),
+        command.occurredAt());
   }
 
   @CommandHandler

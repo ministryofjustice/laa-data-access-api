@@ -12,7 +12,8 @@ import org.junit.jupiter.api.Test;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.SavePriorAuthorityDraftCommand;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.CreatePriorAuthorityDraftCommand;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.UpdatePriorAuthorityDraftCommand;
 import uk.gov.justice.laa.dstew.access.model.Apportionment;
 import uk.gov.justice.laa.dstew.access.model.BillingType;
 import uk.gov.justice.laa.dstew.access.model.CounselType;
@@ -28,7 +29,8 @@ class SavePriorAuthorityDraftCommandMapperTest {
   @Test
   void givenExpertRequest_whenCreateMapped_thenMapsAllExpertFields() {
     UUID applicationId = UUID.randomUUID();
-    SavePriorAuthorityDraftCommand command = mapper.toCreateCommand(applicationId, expertRequest());
+    CreatePriorAuthorityDraftCommand command =
+        mapper.toCreateCommand(applicationId, expertRequest());
 
     assertThat(command.submissionId()).isNotNull();
     assertThat(command.applicationId()).isEqualTo(applicationId);
@@ -61,7 +63,7 @@ class SavePriorAuthorityDraftCommandMapperTest {
 
   @Test
   void givenCounselRequest_whenCreateMapped_thenMapsCounselDetails() {
-    SavePriorAuthorityDraftCommand command =
+    CreatePriorAuthorityDraftCommand command =
         mapper.toCreateCommand(UUID.randomUUID(), counselRequest());
 
     assertThat(command.content().priorAuthorityType()).isEqualTo("COUNSEL");
@@ -71,7 +73,7 @@ class SavePriorAuthorityDraftCommandMapperTest {
 
   @Test
   void givenDisbursementRequest_whenCreateMapped_thenMapsDisbursementDetails() {
-    SavePriorAuthorityDraftCommand command =
+    CreatePriorAuthorityDraftCommand command =
         mapper.toCreateCommand(UUID.randomUUID(), disbursementRequest());
 
     assertThat(command.content().priorAuthorityType()).isEqualTo("DISBURSEMENT");
@@ -84,7 +86,7 @@ class SavePriorAuthorityDraftCommandMapperTest {
 
   @Test
   void givenRequest_whenCreateMapped_thenSchemaMetadataIsVersion1AndPriorAuthorityJson() {
-    SavePriorAuthorityDraftCommand command =
+    CreatePriorAuthorityDraftCommand command =
         mapper.toCreateCommand(UUID.randomUUID(), expertRequest());
 
     assertThat(command.schemaVersion()).isEqualTo(1);
@@ -93,7 +95,7 @@ class SavePriorAuthorityDraftCommandMapperTest {
 
   @Test
   void givenRequest_whenCreateMapped_thenTimestampIsNonNull() {
-    SavePriorAuthorityDraftCommand command =
+    CreatePriorAuthorityDraftCommand command =
         mapper.toCreateCommand(UUID.randomUUID(), expertRequest());
 
     assertThat(command.occurredAt()).isNotNull();
@@ -101,7 +103,7 @@ class SavePriorAuthorityDraftCommandMapperTest {
 
   @Test
   void givenRequest_whenCreateMapped_thenContentIsSerialised() {
-    SavePriorAuthorityDraftCommand command =
+    CreatePriorAuthorityDraftCommand command =
         mapper.toCreateCommand(UUID.randomUUID(), expertRequest());
 
     assertThat(command.serialisedRequest()).contains("Need expert assessment");
@@ -110,12 +112,12 @@ class SavePriorAuthorityDraftCommandMapperTest {
   }
 
   @Test
-  void givenSubmissionId_whenUpdateMapped_thenSubmissionIdMatchesAndApplicationIdIsNull() {
+  void givenSubmissionId_whenUpdateMapped_thenSubmissionIdMatches() {
     UUID submissionId = UUID.randomUUID();
-    SavePriorAuthorityDraftCommand command = mapper.toUpdateCommand(submissionId, expertRequest());
+    UpdatePriorAuthorityDraftCommand command =
+        mapper.toUpdateCommand(submissionId, expertRequest());
 
     assertThat(command.submissionId()).isEqualTo(submissionId);
-    assertThat(command.applicationId()).isNull();
   }
 
   @Test
@@ -135,7 +137,7 @@ class SavePriorAuthorityDraftCommandMapperTest {
 
   @Test
   void givenNullExpertCosts_whenMapped_thenExpertCostsIsNull() {
-    SavePriorAuthorityDraftCommand command =
+    CreatePriorAuthorityDraftCommand command =
         mapper.toCreateCommand(
             UUID.randomUUID(),
             SavePriorAuthorityDraftRequest.builder()
@@ -151,7 +153,7 @@ class SavePriorAuthorityDraftCommandMapperTest {
 
   @Test
   void givenExpertCostsWithNullSubFields_whenMapped_thenNullsPreserved() {
-    SavePriorAuthorityDraftCommand command =
+    CreatePriorAuthorityDraftCommand command =
         mapper.toCreateCommand(
             UUID.randomUUID(),
             SavePriorAuthorityDraftRequest.builder()

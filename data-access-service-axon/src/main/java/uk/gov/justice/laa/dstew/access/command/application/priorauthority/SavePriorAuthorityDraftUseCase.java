@@ -24,7 +24,7 @@ public class SavePriorAuthorityDraftUseCase {
    * @throws RuntimeException propagated from validation if the application is not granted
    */
   @AllowApiCaseworker
-  public boolean create(SavePriorAuthorityDraftCommand command) {
+  public boolean create(CreatePriorAuthorityDraftCommand command) {
     dispatcher.dispatch(new ValidateApplicationGrantedCommand(command.applicationId()));
     dispatcher.dispatch(command);
     return true;
@@ -32,7 +32,7 @@ public class SavePriorAuthorityDraftUseCase {
 
   /** Dispatches the save-draft command to update an existing draft submission. */
   @AllowApiCaseworker
-  public void update(SavePriorAuthorityDraftCommand command) {
+  public void update(UpdatePriorAuthorityDraftCommand command) {
     dispatcher.dispatch(command);
   }
 }

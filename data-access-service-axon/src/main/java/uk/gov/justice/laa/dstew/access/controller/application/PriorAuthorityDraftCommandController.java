@@ -7,10 +7,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import uk.gov.justice.laa.dstew.access.api.PriorAuthorityDraftCommandApi;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.SavePriorAuthorityDraftCommand;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.CreatePriorAuthorityDraftCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.SavePriorAuthorityDraftUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.SubmitPriorAuthorityDraftCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.SubmitPriorAuthorityDraftUseCase;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.UpdatePriorAuthorityDraftCommand;
 import uk.gov.justice.laa.dstew.access.model.SavePriorAuthorityDraftRequest;
 import uk.gov.justice.laa.dstew.access.model.SavePriorAuthorityDraftResponse;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
@@ -44,7 +45,7 @@ public class PriorAuthorityDraftCommandController implements PriorAuthorityDraft
       ServiceName serviceName,
       UUID applicationId,
       SavePriorAuthorityDraftRequest savePriorAuthorityDraftRequest) {
-    SavePriorAuthorityDraftCommand command =
+    CreatePriorAuthorityDraftCommand command =
         commandMapper.toCreateCommand(applicationId, savePriorAuthorityDraftRequest);
     URI location =
         ServletUriComponentsBuilder.fromCurrentContextPath()
@@ -67,7 +68,7 @@ public class PriorAuthorityDraftCommandController implements PriorAuthorityDraft
       ServiceName serviceName,
       UUID priorAuthorityId,
       SavePriorAuthorityDraftRequest savePriorAuthorityDraftRequest) {
-    SavePriorAuthorityDraftCommand command =
+    UpdatePriorAuthorityDraftCommand command =
         commandMapper.toUpdateCommand(priorAuthorityId, savePriorAuthorityDraftRequest);
     saveUseCase.update(command);
     return ResponseEntity.noContent().build();

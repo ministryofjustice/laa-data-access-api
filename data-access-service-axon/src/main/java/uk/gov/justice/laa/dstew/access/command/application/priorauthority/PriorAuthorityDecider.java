@@ -42,7 +42,7 @@ public final class PriorAuthorityDecider {
    * supplied fingerprint and resolved application ID.
    */
   public static PriorAuthorityDraftStartedEvent decideStartDraft(
-      SavePriorAuthorityDraftCommand command, String fingerprint, UUID applicationId) {
+      CreatePriorAuthorityDraftCommand command, String fingerprint, UUID applicationId) {
     return new PriorAuthorityDraftStartedEvent(
         command.submissionId(),
         applicationId,

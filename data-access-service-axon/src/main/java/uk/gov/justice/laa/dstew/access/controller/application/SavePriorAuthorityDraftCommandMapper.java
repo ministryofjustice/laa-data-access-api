@@ -6,7 +6,8 @@ import java.util.UUID;
 import org.springframework.stereotype.Component;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.SavePriorAuthorityDraftCommand;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.CreatePriorAuthorityDraftCommand;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.UpdatePriorAuthorityDraftCommand;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.Apportionment;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.CounselDetails;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.DisbursementDetails;
@@ -27,28 +28,25 @@ public class SavePriorAuthorityDraftCommandMapper {
   }
 
   /** Creates a save-draft command for a new draft, with a server-generated submission ID. */
-  public SavePriorAuthorityDraftCommand toCreateCommand(
+  public CreatePriorAuthorityDraftCommand toCreateCommand(
       UUID applicationId, SavePriorAuthorityDraftRequest request) {
-    return toCommand(UUID.randomUUID(), applicationId, request);
-  }
-
-  /** Creates a save-draft command for an existing draft identified by the given submission ID. */
-  public SavePriorAuthorityDraftCommand toUpdateCommand(
-      UUID submissionId, SavePriorAuthorityDraftRequest request) {
-    return toCommand(submissionId, null, request);
-  }
-
-  private SavePriorAuthorityDraftCommand toCommand(
-      UUID submissionId, UUID applicationId, SavePriorAuthorityDraftRequest request) {
     PriorAuthorityContent content = toContent(request);
-    return new SavePriorAuthorityDraftCommand(
-        submissionId,
+    return new CreatePriorAuthorityDraftCommand(
+        UUID.randomUUID(),
         applicationId,
         content,
         serialise(request),
         1,
         "PriorAuthority.json",
         Instant.now());
+  }
+
+  /** Creates a save-draft command for an existing draft identified by the given submission ID. */
+  public UpdatePriorAuthorityDraftCommand toUpdateCommand(
+      UUID submissionId, SavePriorAuthorityDraftRequest request) {
+    PriorAuthorityContent content = toContent(request);
+    return new UpdatePriorAuthorityDraftCommand(
+        submissionId, content, serialise(request), 1, "PriorAuthority.json", Instant.now());
   }
 
   private PriorAuthorityContent toContent(SavePriorAuthorityDraftRequest request) {

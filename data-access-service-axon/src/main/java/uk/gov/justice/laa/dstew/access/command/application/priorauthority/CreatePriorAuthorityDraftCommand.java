@@ -6,9 +6,9 @@ import org.axonframework.messaging.commandhandling.annotation.Command;
 import org.axonframework.modelling.annotation.TargetEntityId;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 
-/** Command that saves or updates a Prior Authority draft in progress. */
+/** Command that starts a new Prior Authority draft in progress. */
 @Command(routingKey = "submissionId")
-public record SavePriorAuthorityDraftCommand(
+public record CreatePriorAuthorityDraftCommand(
     @TargetEntityId UUID submissionId,
     UUID applicationId,
     PriorAuthorityContent content,

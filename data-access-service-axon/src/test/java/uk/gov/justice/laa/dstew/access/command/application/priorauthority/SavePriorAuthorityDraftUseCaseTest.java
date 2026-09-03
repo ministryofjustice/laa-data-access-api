@@ -30,7 +30,7 @@ class SavePriorAuthorityDraftUseCaseTest {
 
   @Test
   void givenCommand_whenCreate_thenDispatchesCommandDirectlyAndReturnsTrue() {
-    SavePriorAuthorityDraftCommand command = stubCommand();
+    CreatePriorAuthorityDraftCommand command = stubCreateCommand();
 
     boolean result = useCase.create(command);
 
@@ -40,7 +40,7 @@ class SavePriorAuthorityDraftUseCaseTest {
 
   @Test
   void givenCommand_whenCreate_thenDispatchesValidationBeforeSaveDraftCommand() {
-    SavePriorAuthorityDraftCommand command = stubCommand();
+    CreatePriorAuthorityDraftCommand command = stubCreateCommand();
 
     useCase.create(command);
 
@@ -53,7 +53,7 @@ class SavePriorAuthorityDraftUseCaseTest {
 
   @Test
   void givenValidationFails_whenCreate_thenPropagatesAndSkipsSaveDraftDispatch() {
-    SavePriorAuthorityDraftCommand command = stubCommand();
+    CreatePriorAuthorityDraftCommand command = stubCreateCommand();
     ValidationException failure = new ValidationException(List.of("Application must be granted"));
     doThrow(failure)
         .when(dispatcher)
@@ -65,25 +65,20 @@ class SavePriorAuthorityDraftUseCaseTest {
 
   @Test
   void givenCommand_whenUpdate_thenDispatchesCommandDirectly() {
-    SavePriorAuthorityDraftCommand command = stubCommand();
+    UpdatePriorAuthorityDraftCommand command = stubUpdateCommand();
 
     useCase.update(command);
 
     verify(dispatcher).dispatch(command);
   }
 
-  @Test
-  void givenCommand_whenUpdate_thenNeverValidatesApplication() {
-    SavePriorAuthorityDraftCommand command = stubCommand();
-
-    useCase.update(command);
-
-    verify(dispatcher, never())
-        .dispatch(new ValidateApplicationGrantedCommand(command.applicationId()));
+  private static CreatePriorAuthorityDraftCommand stubCreateCommand() {
+    return new CreatePriorAuthorityDraftCommand(
+        UUID.randomUUID(), UUID.randomUUID(), null, "{}", 1, "PriorAuthority.json", Instant.now());
   }
 
-  private static SavePriorAuthorityDraftCommand stubCommand() {
-    return new SavePriorAuthorityDraftCommand(
-        UUID.randomUUID(), UUID.randomUUID(), null, "{}", 1, "PriorAuthority.json", Instant.now());
+  private static UpdatePriorAuthorityDraftCommand stubUpdateCommand() {
+    return new UpdatePriorAuthorityDraftCommand(
+        UUID.randomUUID(), null, "{}", 1, "PriorAuthority.json", Instant.now());
   }
 }

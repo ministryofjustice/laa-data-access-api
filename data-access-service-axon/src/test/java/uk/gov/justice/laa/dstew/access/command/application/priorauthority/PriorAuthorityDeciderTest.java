@@ -104,8 +104,8 @@ class PriorAuthorityDeciderTest {
   void givenCommand_whenDecideStartDraft_thenReturnsEventWithExpectedFields() {
     UUID submissionId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
-    SavePriorAuthorityDraftCommand command =
-        new SavePriorAuthorityDraftCommand(
+    CreatePriorAuthorityDraftCommand command =
+        new CreatePriorAuthorityDraftCommand(
             submissionId,
             applicationId,
             new PriorAuthorityContent(null, null, null, null, null),
