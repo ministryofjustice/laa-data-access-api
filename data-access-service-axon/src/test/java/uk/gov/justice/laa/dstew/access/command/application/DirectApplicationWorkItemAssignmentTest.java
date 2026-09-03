@@ -17,6 +17,7 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConfli
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.assign.DirectWorkItemAssignmentCommand;
 import uk.gov.justice.laa.dstew.access.command.worklist.unassign.DirectWorkItemUnassignmentCommand;
+import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 
 class DirectApplicationWorkItemAssignmentTest {
   private AxonTestFixture fixture;
@@ -74,6 +75,45 @@ class DirectApplicationWorkItemAssignmentTest {
         .then()
         .exception(WorkItemAssignmentConflictException.class)
         .noEvents();
+  }
+
+  @Test
+  void rejectsRepeatedAssignmentAndInactiveOrMismatchedDirectWorkItems() {
+    UUID id = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+    Instant when = Instant.parse("2026-08-28T10:00:00Z");
+
+    ApplicationAggregate active = new ApplicationAggregate();
+    active.on(created(id, when));
+    active.on(new ApplicationReadyForManualAssessmentEvent(id, 1L, 1L, when));
+    active.on(new WorkItemAssigned(id, WorkItemType.APPLICATION, 1L, 1L, caseworkerId, "", when));
+    org.assertj.core.api.Assertions.assertThatThrownBy(
+            () ->
+                active.handle(
+                    new DirectWorkItemAssignmentCommand(id, caseworkerId, 1L, "{}", "", when),
+                    org.mockito.Mockito.mock(
+                        org.axonframework.messaging.eventhandling.gateway.EventAppender.class)))
+        .isInstanceOf(WorkItemAssignmentConflictException.class);
+    org.assertj.core.api.Assertions.assertThatThrownBy(
+            () ->
+                active.handle(
+                    new DirectWorkItemAssignmentCommand(
+                        UUID.randomUUID(), caseworkerId, 1L, "{}", "", when),
+                    org.mockito.Mockito.mock(
+                        org.axonframework.messaging.eventhandling.gateway.EventAppender.class)))
+        .isInstanceOf(ResourceNotFoundException.class);
+
+    UUID inactiveId = UUID.randomUUID();
+    ApplicationAggregate inactive = new ApplicationAggregate();
+    inactive.on(created(inactiveId, when));
+    org.assertj.core.api.Assertions.assertThatThrownBy(
+            () ->
+                inactive.handle(
+                    new DirectWorkItemAssignmentCommand(
+                        inactiveId, caseworkerId, 0L, "{}", "", when),
+                    org.mockito.Mockito.mock(
+                        org.axonframework.messaging.eventhandling.gateway.EventAppender.class)))
+        .isInstanceOf(ResourceNotFoundException.class);
   }
 
   @AfterEach

@@ -53,7 +53,7 @@ public class GeneratedRequestFactory {
                                 "Mass-data generated " + decisionStatus.name().toLowerCase())
                             .build())
                     .build()))
-        .expectedApplicationVersion(1L)
+        .applicationVersion(1L)
         .caseworkerId(UUID.randomUUID())
         .certificate(Map.of("source", "mass-data"))
         .build();

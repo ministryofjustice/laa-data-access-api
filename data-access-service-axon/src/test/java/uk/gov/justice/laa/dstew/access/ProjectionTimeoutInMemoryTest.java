@@ -267,7 +267,7 @@ class ProjectionTimeoutInMemoryTest {
         .isEqualTo(HttpStatus.OK);
     MakeDecisionRequest decisionRequest =
         MakeDecisionRequest.builder()
-            .expectedApplicationVersion(1L)
+            .applicationVersion(1L)
             .caseworkerId(caseworkerId)
             .overallDecision(DecisionStatus.GRANTED)
             .certificate(

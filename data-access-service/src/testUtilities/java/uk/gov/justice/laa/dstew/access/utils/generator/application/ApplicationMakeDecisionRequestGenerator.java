@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.utils.generator.application;
 
 import java.util.List;
+import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
@@ -20,7 +21,8 @@ public class ApplicationMakeDecisionRequestGenerator
     return MakeDecisionRequest.builder()
         .overallDecision(DecisionStatus.REFUSED)
         .proceedings(List.of(makeDecisionProceedingGenerator.createDefault()))
-        .expectedApplicationVersion(0L)
+        .applicationVersion(0L)
+        .caseworkerId(UUID.randomUUID())
         .build();
   }
 }

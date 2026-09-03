@@ -38,7 +38,7 @@ public class MakeDecisionCommandMapper {
       UUID applicationId, MakeDecisionRequest makeDecisionRequest) {
     return MakeDecisionCommand.builder()
         .applicationId(applicationId)
-        .applicationVersion(makeDecisionRequest.getExpectedApplicationVersion())
+        .applicationVersion(makeDecisionRequest.getApplicationVersion())
         .overallDecision(
             makeDecisionRequest.getOverallDecision() != null
                 ? DecisionStatus.valueOf(makeDecisionRequest.getOverallDecision().name())

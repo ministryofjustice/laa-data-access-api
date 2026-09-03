@@ -27,6 +27,7 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorA
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 
 class WorkListProjectionTest {
   private WorkListItemReadRepository items;
@@ -104,6 +105,24 @@ class WorkListProjectionTest {
   }
 
   @Test
+  void givenManualApplicationWithoutProceedings_whenHandled_thenStoresNoMatterTypes() {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationDataPayload data = mock(ApplicationDataPayload.class);
+    when(applicationDataStore.get(applicationId, 5L)).thenReturn(data);
+    when(data.proceedings()).thenReturn(null);
+
+    projection.on(
+        new ApplicationReadyForManualAssessmentEvent(
+            applicationId, 3L, 5L, Instant.parse("2026-08-28T10:00:00Z")),
+        message());
+
+    ArgumentCaptor<WorkListItemReadModel> captor =
+        ArgumentCaptor.forClass(WorkListItemReadModel.class);
+    verify(items).save(captor.capture());
+    assertThat(captor.getValue().getMatterTypes()).isEmpty();
+  }
+
+  @Test
   void givenWorkListQuery_whenHandled_thenPagesWithOldestSubmissionFirst() {
     WorkListItemReadModel item =
         new WorkListItemReadModel(
@@ -137,6 +156,8 @@ class WorkListProjectionTest {
   @Test
   void givenActiveWorkItem_whenGenericallyAssigned_thenUpdatesItsAssignmentVersion() {
     UUID applicationId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-08-28T10:00:00Z");
     WorkListItemReadModel row =
         new WorkListItemReadModel(
             WorkItemType.APPLICATION, applicationId, applicationId, null, Instant.now(), 1L, 0L);
@@ -144,16 +165,77 @@ class WorkListProjectionTest {
 
     projection.on(
         new WorkItemAssigned(
-            applicationId,
-            WorkItemType.APPLICATION,
-            2L,
-            1L,
-            UUID.randomUUID(),
-            "Assigned",
-            Instant.now()),
+            applicationId, WorkItemType.APPLICATION, 2L, 1L, caseworkerId, "Assigned", occurredAt),
         message());
 
+    assertThat(row.getAssigneeId()).isEqualTo(caseworkerId);
+    assertThat(row.getItemVersion()).isEqualTo(2L);
     assertThat(row.getAssignmentVersion()).isEqualTo(1L);
+    assertThat(row.getUpdatedAt()).isEqualTo(occurredAt);
+    assertThat(row.getProjectionPosition()).isNotZero();
+    verify(items).save(row);
+  }
+
+  @Test
+  void givenActiveWorkItem_whenGenericallyUnassigned_thenClearsItsAssignmentAndUpdatesMetadata() {
+    UUID itemId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-08-28T10:00:00Z");
+    WorkListItemReadModel row =
+        new WorkListItemReadModel(
+            WorkItemType.APPLICATION, itemId, itemId, null, occurredAt, 1L, 0L);
+    row.setAssigneeId(UUID.randomUUID());
+    when(items.findById(itemId)).thenReturn(Optional.of(row));
+
+    projection.on(
+        new WorkItemUnassigned(itemId, WorkItemType.APPLICATION, 2L, 2L, "Unassigned", occurredAt),
+        message());
+
+    assertThat(row.getAssigneeId()).isNull();
+    assertThat(row.getItemVersion()).isEqualTo(2L);
+    assertThat(row.getAssignmentVersion()).isEqualTo(2L);
+    assertThat(row.getUpdatedAt()).isEqualTo(occurredAt);
+    assertThat(row.getProjectionPosition()).isNotZero();
+    verify(items).save(row);
+  }
+
+  @Test
+  void givenMissingWorkItem_whenGenericAssignmentEventsArrive_thenDoesNothing() {
+    UUID itemId = UUID.randomUUID();
+    when(items.findById(itemId)).thenReturn(Optional.empty());
+
+    projection.on(
+        new WorkItemAssigned(
+            itemId, WorkItemType.APPLICATION, 1L, 1L, UUID.randomUUID(), "", Instant.now()),
+        message());
+    projection.on(
+        new WorkItemUnassigned(itemId, WorkItemType.APPLICATION, 1L, 1L, "", Instant.now()),
+        message());
+
+    verify(items, org.mockito.Mockito.never()).save(org.mockito.ArgumentMatchers.any());
+  }
+
+  @Test
+  void givenMismatchedWorkItemType_whenGenericEventArrives_thenFailsFast() {
+    UUID itemId = UUID.randomUUID();
+    WorkListItemReadModel row =
+        new WorkListItemReadModel(
+            WorkItemType.APPLICATION, itemId, itemId, null, Instant.now(), 1L, 0L);
+    when(items.findById(itemId)).thenReturn(Optional.of(row));
+
+    org.assertj.core.api.Assertions.assertThatThrownBy(
+            () ->
+                projection.on(
+                    new WorkItemAssigned(
+                        itemId,
+                        WorkItemType.PRIOR_AUTHORITY,
+                        1L,
+                        1L,
+                        UUID.randomUUID(),
+                        "",
+                        Instant.now()),
+                    message()))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Work item type mismatch for " + itemId);
   }
 
   @Test

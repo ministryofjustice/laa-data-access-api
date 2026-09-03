@@ -217,13 +217,9 @@ public class ApplicationHistoryProjection {
             .occurredAt(history.getOccurredAt())
             .build();
       }
-      String description =
-          decision ? data.decisionEventDescription() : data.assignmentEventDescription();
+      String description = data.decisionEventDescription();
       java.util.Map<String, Object> reconstructedPayload = new java.util.HashMap<>();
       reconstructedPayload.put("eventDescription", description);
-      if (assignment && thinPayload.get("caseworkerId") != null) {
-        reconstructedPayload.put("caseworkerId", thinPayload.get("caseworkerId").asString());
-      }
       return ApplicationHistoryReadModel.builder()
           .eventId(history.getEventId())
           .applicationId(history.getApplicationId())

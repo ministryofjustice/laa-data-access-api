@@ -145,7 +145,7 @@ class WorkListIntegrationTest {
 
     MakeDecisionRequest decision =
         MakeDecisionRequest.builder()
-            .expectedApplicationVersion(1L)
+            .applicationVersion(1L)
             .caseworkerId(caseworkerId)
             .overallDecision(DecisionStatus.REFUSED)
             .eventHistory(
@@ -473,6 +473,90 @@ class WorkListIntegrationTest {
                   .contains(priorAuthorityId)
                   .doesNotContain(manualApplicationId);
             });
+  }
+
+  @Test
+  void givenMixedWorkList_whenFilteredAndPaged_thenPublicQueueContractsAreApplied()
+      throws Exception {
+    UUID applicationId = UUID.randomUUID();
+    UUID parentApplicationId = UUID.randomUUID();
+    UUID caseworkerId = createCaseworker("filtered-work@example.com");
+    createManualApplication(applicationId);
+    createGrantedApplication(parentApplicationId);
+    UUID priorAuthorityId = createPriorAuthority(parentApplicationId);
+    assertThat(assign(applicationId, caseworkerId).getStatusCode()).isEqualTo(HttpStatus.OK);
+
+    await()
+        .atMost(15, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              assertThat(getWorkList("?itemType=APPLICATION").getItems())
+                  .extracting(item -> item.getItemId())
+                  .doesNotContain(priorAuthorityId);
+              assertThat(getWorkList("?itemType=PRIOR_AUTHORITY").getItems())
+                  .extracting(item -> item.getItemId())
+                  .contains(priorAuthorityId)
+                  .doesNotContain(applicationId);
+              assertThat(
+                      getWorkList("?assignedTo=" + caseworkerId + "&itemType=APPLICATION")
+                          .getItems())
+                  .extracting(item -> item.getItemId())
+                  .contains(applicationId);
+              assertThat(getWorkList("?unassigned=true&itemType=PRIOR_AUTHORITY").getItems())
+                  .extracting(item -> item.getItemId())
+                  .contains(priorAuthorityId)
+                  .doesNotContain(applicationId);
+              assertThat(getWorkList("?unassigned=false").getItems())
+                  .extracting(item -> item.getItemId())
+                  .contains(applicationId, priorAuthorityId);
+              WorkListResponse page = getWorkList("?unassigned=false&page=1&pageSize=1");
+              assertThat(page.getItems()).hasSize(1);
+              assertThat(page.getPaging().getPage()).isEqualTo(1);
+              assertThat(page.getPaging().getPageSize()).isEqualTo(1);
+            });
+
+    assertThat(
+            restTemplate
+                .exchange(
+                    "http://localhost:" + port + "/api/v0/work-list?page=-1",
+                    HttpMethod.GET,
+                    new HttpEntity<>(headers()),
+                    String.class)
+                .getStatusCode())
+        .isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(
+            restTemplate
+                .exchange(
+                    "http://localhost:"
+                        + port
+                        + "/api/v0/work-list?assignedTo="
+                        + caseworkerId
+                        + "&unassigned=true",
+                    HttpMethod.GET,
+                    new HttpEntity<>(headers()),
+                    String.class)
+                .getStatusCode())
+        .isEqualTo(HttpStatus.BAD_REQUEST);
+  }
+
+  @Test
+  void givenAssignmentHistory_whenWorkIsAssigned_thenItIsAcceptedAtTheHttpBoundary() {
+    UUID applicationId = UUID.randomUUID();
+    UUID caseworkerId = createCaseworker("history-work@example.com");
+    createManualApplication(applicationId);
+    WorkListAssignRequest request = new WorkListAssignRequest(caseworkerId, 0L);
+    request.setEventHistory(
+        EventHistoryRequest.builder().eventDescription("Taken for assessment").build());
+
+    ResponseEntity<Void> response =
+        restTemplate.exchange(
+            assignmentUrl(applicationId, "assign"),
+            HttpMethod.POST,
+            new HttpEntity<>(request, headers()),
+            Void.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    awaitWorkListContains("?assignedTo=" + caseworkerId, applicationId, caseworkerId, 1L);
   }
 
   private void createManualApplication(UUID applicationId) {

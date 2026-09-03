@@ -27,7 +27,7 @@ class MakeDecisionCommandMapperTest {
     UUID proceedingId = UUID.randomUUID();
     MakeDecisionRequest request =
         MakeDecisionRequest.builder()
-            .expectedApplicationVersion(3L)
+            .applicationVersion(3L)
             .caseworkerId(caseworkerId)
             .overallDecision(DecisionStatus.REFUSED)
             .proceedings(
@@ -74,7 +74,7 @@ class MakeDecisionCommandMapperTest {
     UUID applicationId = UUID.randomUUID();
     MakeDecisionRequest request =
         MakeDecisionRequest.builder()
-            .expectedApplicationVersion(0L)
+            .applicationVersion(0L)
             .caseworkerId(UUID.randomUUID())
             .overallDecision(DecisionStatus.REFUSED)
             .proceedings(null)
@@ -90,7 +90,7 @@ class MakeDecisionCommandMapperTest {
   void givenProceedingWithoutMeritsDecision_whenMapped_thenPreservesNullDecisionDetails() {
     MakeDecisionRequest request =
         MakeDecisionRequest.builder()
-            .expectedApplicationVersion(0L)
+            .applicationVersion(0L)
             .caseworkerId(UUID.randomUUID())
             .overallDecision(DecisionStatus.REFUSED)
             .proceedings(

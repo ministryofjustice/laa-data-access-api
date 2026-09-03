@@ -29,6 +29,15 @@ class FindWorkListItemsQueryTest {
   }
 
   @Test
+  void preservesAnExplicitFalseUnassignedFilter() {
+    FindWorkListItemsQuery query = new FindWorkListItemsQuery(null, null, false, null, null);
+
+    assertThat(query.unassigned()).isFalse();
+    assertThat(query.page()).isEqualTo(1);
+    assertThat(query.pageSize()).isEqualTo(20);
+  }
+
+  @Test
   void rejectsConflictingUnassignedAndAssignedToFilters() {
     assertThatThrownBy(() -> new FindWorkListItemsQuery(UUID.randomUUID(), null, true, 1, 20))
         .isInstanceOf(IllegalArgumentException.class)

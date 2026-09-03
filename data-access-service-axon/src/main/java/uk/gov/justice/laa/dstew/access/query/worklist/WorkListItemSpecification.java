@@ -15,7 +15,7 @@ public final class WorkListItemSpecification {
     return (root, criteriaQuery, criteriaBuilder) -> {
       List<Predicate> predicates = new ArrayList<>();
       if (query.itemType() != null) {
-        predicates.add(criteriaBuilder.equal(root.get("id").get("itemType"), query.itemType()));
+        predicates.add(criteriaBuilder.equal(root.get("itemType"), query.itemType()));
       }
       if (query.assignedTo() != null) {
         predicates.add(criteriaBuilder.equal(root.get("assigneeId"), query.assignedTo()));

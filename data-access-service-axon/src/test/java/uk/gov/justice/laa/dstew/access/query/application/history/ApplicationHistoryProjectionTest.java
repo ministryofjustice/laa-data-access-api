@@ -223,6 +223,74 @@ class ApplicationHistoryProjectionTest {
   }
 
   @Test
+  void givenLegacyDecisionPayload_whenQueried_thenUsesDataVersionFallback() throws Exception {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationHistoryReadModel history =
+        ApplicationHistoryReadModel.builder()
+            .eventId("legacy")
+            .applicationId(applicationId)
+            .eventType("APPLICATION_MAKE_DECISION_REFUSED")
+            .requestPayload("{\"dataVersion\":7}")
+            .occurredAt(Instant.now())
+            .build();
+    when(repository.findAllByApplicationIdOrderByOccurredAtAsc(applicationId))
+        .thenReturn(List.of(history));
+    when(applicationDataStore.get(applicationId, 7L))
+        .thenReturn(
+            ApplicationDataPayload.from(applicationCreationDetails(applicationId))
+                .withDecision(
+                    "REFUSED", AutoGrantedState.MANUAL, Map.of(), null, "{}", "Legacy decision"));
+
+    var result =
+        projection.handle(
+            new FindApplicationHistoryQuery(applicationId, List.of(history.getEventType())));
+
+    assertThat(
+            objectMapper
+                .readTree(result.getFirst().getRequestPayload())
+                .get("eventDescription")
+                .asString())
+        .isEqualTo("Legacy decision");
+  }
+
+  @Test
+  void givenNonHydratableOrMalformedHistory_whenQueried_thenReturnsStoredRows() {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationHistoryReadModel created =
+        history(applicationId, "APPLICATION_CREATED", Instant.now());
+    ApplicationHistoryReadModel malformed =
+        ApplicationHistoryReadModel.builder()
+            .eventId("bad")
+            .applicationId(applicationId)
+            .eventType("APPLICATION_MAKE_DECISION_GRANTED")
+            .requestPayload("{")
+            .occurredAt(Instant.now())
+            .build();
+    when(repository.findAllByApplicationIdOrderByOccurredAtAsc(applicationId))
+        .thenReturn(List.of(created, malformed));
+
+    assertThat(
+            projection.handle(
+                new FindApplicationHistoryQuery(
+                    applicationId, List.of(created.getEventType(), malformed.getEventType()))))
+        .containsExactly(created, malformed);
+  }
+
+  @Test
+  void givenPriorAuthorityWorkEvents_whenHandled_thenTheyAreNotAddedToApplicationHistory() {
+    UUID itemId = UUID.randomUUID();
+    projection.on(
+        new WorkItemAssigned(
+            itemId, WorkItemType.PRIOR_AUTHORITY, 1L, 1L, UUID.randomUUID(), "", Instant.now()),
+        message("event", "assignment"));
+    projection.on(
+        new WorkItemUnassigned(itemId, WorkItemType.PRIOR_AUTHORITY, 1L, 2L, "", Instant.now()),
+        message("event", "unassignment"));
+
+    verify(repository, org.mockito.Mockito.never()).save(org.mockito.ArgumentMatchers.any());
+  }
+
+  @Test
   void givenNoteCreatedEvent_whenHandled_thenStoresNoteCreatedHistory() {
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-07-20T10:00:00Z");

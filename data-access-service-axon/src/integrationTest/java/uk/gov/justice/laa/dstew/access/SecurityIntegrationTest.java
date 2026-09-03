@@ -167,7 +167,7 @@ class SecurityIntegrationTest {
 
   private MakeDecisionRequest decisionRequest() {
     return MakeDecisionRequest.builder()
-        .expectedApplicationVersion(0L)
+        .applicationVersion(0L)
         .caseworkerId(UUID.randomUUID())
         .overallDecision(DecisionStatus.REFUSED)
         .autoGranted(false)

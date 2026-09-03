@@ -1,7 +1,6 @@
 package uk.gov.justice.laa.dstew.access.controller.worklist;
 
 import java.time.ZoneOffset;
-import java.util.Objects;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
@@ -41,18 +40,14 @@ public class WorkListResponseMapper {
     response.setAssignmentVersion(item.getAssignmentVersion());
     response.setAssignmentBoundaryType(
         WorkListItem.AssignmentBoundaryTypeEnum.valueOf(item.getAssignmentBoundaryType()));
-    response.setSubmittedAt(
-        item.getSubmittedAt() == null ? null : item.getSubmittedAt().atOffset(ZoneOffset.UTC));
+    response.setSubmittedAt(item.getSubmittedAt().atOffset(ZoneOffset.UTC));
     response.setLaaReference(item.getLaaReference());
     response.setUsedDelegatedFunctions(item.getUsedDelegatedFunctions());
     response.setCategoryOfLaw(toCategoryOfLaw(item.getCategoryOfLaw()));
     response.setMatterTypes(
         item.getMatterTypes() == null
             ? null
-            : item.getMatterTypes().stream()
-                .map(this::toMatterType)
-                .filter(Objects::nonNull)
-                .toList());
+            : item.getMatterTypes().stream().map(this::toMatterType).toList());
     response.setApplicationStatus(
         item.getApplicationStatus() == null
             ? null
@@ -61,22 +56,12 @@ public class WorkListResponseMapper {
   }
 
   private CategoryOfLaw toCategoryOfLaw(String categoryOfLaw) {
-    try {
-      return categoryOfLaw == null
-          ? null
-          : CategoryOfLaw.valueOf(categoryOfLaw.toUpperCase().replace(" ", "_"));
-    } catch (IllegalArgumentException exception) {
-      return null;
-    }
+    return categoryOfLaw == null
+        ? null
+        : CategoryOfLaw.valueOf(categoryOfLaw.toUpperCase().replace(" ", "_"));
   }
 
   private MatterType toMatterType(String matterType) {
-    try {
-      return matterType == null
-          ? null
-          : MatterType.valueOf(matterType.toUpperCase().replace(" ", "_"));
-    } catch (IllegalArgumentException exception) {
-      return null;
-    }
+    return MatterType.valueOf(matterType.toUpperCase().replace(" ", "_"));
   }
 }

@@ -479,7 +479,7 @@ class PostgresAxonIntegrationTest {
 
     MakeDecisionRequest request =
         MakeDecisionRequest.builder()
-            .expectedApplicationVersion(1L)
+            .applicationVersion(1L)
             .caseworkerId(caseworkerId)
             .overallDecision(DecisionStatus.REFUSED)
             .eventHistory(
@@ -667,7 +667,7 @@ class PostgresAxonIntegrationTest {
             "validUntil", "2027-03-03");
     MakeDecisionRequest request =
         MakeDecisionRequest.builder()
-            .expectedApplicationVersion(1L)
+            .applicationVersion(1L)
             .caseworkerId(caseworkerId)
             .overallDecision(DecisionStatus.GRANTED)
             .certificate(certificate)
@@ -1289,7 +1289,7 @@ class PostgresAxonIntegrationTest {
     UUID proceedingId = awaitProjection(applicationId).getProceedings().getFirst().getId();
     MakeDecisionRequest request =
         MakeDecisionRequest.builder()
-            .expectedApplicationVersion(1L)
+            .applicationVersion(1L)
             .caseworkerId(caseworkerId)
             .overallDecision(DecisionStatus.REFUSED)
             .eventHistory(EventHistoryRequest.builder().eventDescription("Concurrent").build())
@@ -1549,7 +1549,7 @@ class PostgresAxonIntegrationTest {
 
   private MakeDecisionRequest decisionBody() {
     return MakeDecisionRequest.builder()
-        .expectedApplicationVersion(0L)
+        .applicationVersion(0L)
         .caseworkerId(UUID.randomUUID())
         .overallDecision(DecisionStatus.REFUSED)
         .autoGranted(false)
