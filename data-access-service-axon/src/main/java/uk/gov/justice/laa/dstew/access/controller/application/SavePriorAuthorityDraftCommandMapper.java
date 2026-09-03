@@ -4,7 +4,6 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
-import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.CreatePriorAuthorityDraftCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.UpdatePriorAuthorityDraftCommand;
@@ -16,6 +15,7 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.ExpertDetails;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.TimeRequested;
 import uk.gov.justice.laa.dstew.access.model.SavePriorAuthorityDraftRequest;
+import uk.gov.justice.laa.dstew.access.util.RequestSerialiser;
 
 /** Maps the generated HTTP request model to the Axon save-prior-authority-draft command. */
 @Component
@@ -139,11 +139,6 @@ public class SavePriorAuthorityDraftCommandMapper {
   }
 
   private String serialise(SavePriorAuthorityDraftRequest request) {
-    try {
-      return objectMapper.writeValueAsString(request);
-    } catch (JacksonException exception) {
-      throw new IllegalStateException(
-          "Unable to serialise SavePriorAuthorityDraftRequest", exception);
-    }
+    return RequestSerialiser.serialise(objectMapper, request);
   }
 }
