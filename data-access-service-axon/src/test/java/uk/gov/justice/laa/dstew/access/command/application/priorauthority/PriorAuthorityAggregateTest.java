@@ -27,6 +27,7 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityDocument;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
@@ -444,5 +445,121 @@ class PriorAuthorityAggregateTest {
         .then()
         .exception(ResourceNotFoundException.class)
         .noEvents();
+  }
+
+  @Test
+  void givenDraftInProgress_whenAttachDocument_thenAppendsDocumentAndEmitsAttachedEvent() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    Instant startedAt = Instant.parse("2026-08-01T10:00:00Z");
+    Instant occurredAt = Instant.parse("2026-08-02T10:00:00Z");
+    String serialisedRequest = "{\"priorAuthorityType\":\"EXPERT\"}";
+    String fingerprint = PayloadFingerprint.compute(serialisedRequest);
+
+    PriorAuthorityDraftStartedEvent existingEvent =
+        new PriorAuthorityDraftStartedEvent(
+            priorAuthorityId, applicationId, fingerprint, 1, startedAt);
+
+    when(draftStore.find(priorAuthorityId))
+        .thenReturn(
+            Optional.of(
+                new PriorAuthorityDataPayload(
+                    priorAuthorityId, applicationId, null, serialisedRequest, startedAt)));
+
+    AttachPriorAuthorityDocumentCommand command =
+        new AttachPriorAuthorityDocumentCommand(
+            priorAuthorityId,
+            documentId,
+            "evidence.pdf",
+            1024L,
+            "pdf",
+            "application/pdf",
+            "checksum-value",
+            occurredAt);
+
+    fixture
+        .given()
+        .events(existingEvent)
+        .when()
+        .command(command)
+        .then()
+        .events(
+            new PriorAuthorityDocumentAttachedEvent(
+                priorAuthorityId,
+                documentId,
+                1024L,
+                "pdf",
+                "application/pdf",
+                "checksum-value",
+                occurredAt));
+
+    verify(draftStore)
+        .appendDocument(
+            priorAuthorityId, new PriorAuthorityDocument(documentId, "evidence.pdf"), occurredAt);
+  }
+
+  @Test
+  void givenNoDraftInProgress_whenAttachDocument_thenThrowsResourceNotFound() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant startedAt = Instant.parse("2026-08-01T10:00:00Z");
+    String serialisedRequest = "{\"priorAuthorityType\":\"EXPERT\"}";
+    String fingerprint = PayloadFingerprint.compute(serialisedRequest);
+
+    PriorAuthorityDraftStartedEvent existingEvent =
+        new PriorAuthorityDraftStartedEvent(
+            priorAuthorityId, applicationId, fingerprint, 1, startedAt);
+
+    when(draftStore.find(priorAuthorityId)).thenReturn(Optional.empty());
+
+    AttachPriorAuthorityDocumentCommand command =
+        new AttachPriorAuthorityDocumentCommand(
+            priorAuthorityId,
+            UUID.randomUUID(),
+            "evidence.pdf",
+            1024L,
+            "pdf",
+            "application/pdf",
+            "checksum-value",
+            Instant.now());
+
+    fixture
+        .given()
+        .events(existingEvent)
+        .when()
+        .command(command)
+        .then()
+        .exception(ResourceNotFoundException.class)
+        .noEvents();
+
+    verify(draftStore, never()).appendDocument(any(), any(), any());
+  }
+
+  @Test
+  void givenNeverSeenPriorAuthorityId_whenAttachDocument_thenThrowsResourceNotFound() {
+    UUID priorAuthorityId = UUID.randomUUID();
+
+    AttachPriorAuthorityDocumentCommand command =
+        new AttachPriorAuthorityDocumentCommand(
+            priorAuthorityId,
+            UUID.randomUUID(),
+            "evidence.pdf",
+            1024L,
+            "pdf",
+            "application/pdf",
+            "checksum-value",
+            Instant.now());
+
+    fixture
+        .given()
+        .noPriorActivity()
+        .when()
+        .command(command)
+        .then()
+        .exception(ResourceNotFoundException.class)
+        .noEvents();
+
+    verify(draftStore, never()).appendDocument(any(), any(), any());
   }
 }

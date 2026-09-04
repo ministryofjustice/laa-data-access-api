@@ -10,6 +10,7 @@ import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityDocument;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
@@ -128,6 +129,30 @@ public class PriorAuthorityAggregate {
         command.occurredAt());
     eventAppender.append(PriorAuthorityDecider.decideSubmit(command, state));
     draftStore.delete(command.priorAuthorityId());
+  }
+
+  @CommandHandler
+  void handle(
+      AttachPriorAuthorityDocumentCommand command,
+      PriorAuthorityDraftStore draftStore,
+      EventAppender eventAppender) {
+    if (this.priorAuthorityId == null || draftStore.find(command.priorAuthorityId()).isEmpty()) {
+      throw new ResourceNotFoundException(
+          "Prior Authority %s not found".formatted(command.priorAuthorityId()));
+    }
+    draftStore.appendDocument(
+        command.priorAuthorityId(),
+        new PriorAuthorityDocument(command.documentId(), command.fileName()),
+        command.occurredAt());
+    eventAppender.append(
+        new PriorAuthorityDocumentAttachedEvent(
+            command.priorAuthorityId(),
+            command.documentId(),
+            command.size(),
+            command.extension(),
+            command.contentType(),
+            command.checksum(),
+            command.occurredAt()));
   }
 
   @EventSourcingHandler

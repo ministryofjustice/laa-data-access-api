@@ -1,9 +1,13 @@
 package uk.gov.justice.laa.dstew.access.command.application.priorauthority.data;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityDocument;
 import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 
 /** Writes and retrieves the mutable draft content for a prior-authority submission. */
@@ -82,5 +86,54 @@ public class PriorAuthorityDraftStore {
    */
   public void delete(UUID priorAuthorityId) {
     repository.deleteById(priorAuthorityId);
+  }
+
+  /**
+   * Appends a document to a draft's content, preserving all other content fields and the existing
+   * payload hash and created timestamp.
+   *
+   * @param priorAuthorityId the prior-authority submission identifier
+   * @param document the document to append
+   * @param occurredAt when the attachment occurred
+   * @throws IllegalStateException when no draft exists for the given submission
+   */
+  public void appendDocument(
+      UUID priorAuthorityId, PriorAuthorityDocument document, Instant occurredAt) {
+    PriorAuthorityDraft draft =
+        repository
+            .findById(priorAuthorityId)
+            .orElseThrow(
+                () ->
+                    new IllegalStateException(
+                        "No draft found for submission: " + priorAuthorityId));
+    PriorAuthorityDataPayload payload = draft.getPayload();
+    PriorAuthorityContent content = payload.content();
+    List<PriorAuthorityDocument> documents =
+        content.documents() == null ? new ArrayList<>() : new ArrayList<>(content.documents());
+    documents.add(document);
+    PriorAuthorityContent updatedContent =
+        new PriorAuthorityContent(
+            content.priorAuthorityType(),
+            content.justification(),
+            content.expertDetails(),
+            content.counselDetails(),
+            content.disbursementDetails(),
+            documents);
+    PriorAuthorityDataPayload updatedPayload =
+        new PriorAuthorityDataPayload(
+            payload.priorAuthorityId(),
+            payload.applicationId(),
+            updatedContent,
+            payload.serialisedRequest(),
+            payload.submittedAt());
+    repository.saveAndFlush(
+        PriorAuthorityDraft.builder()
+            .priorAuthorityId(draft.getPriorAuthorityId())
+            .applicationId(draft.getApplicationId())
+            .payload(updatedPayload)
+            .payloadHash(draft.getPayloadHash())
+            .createdAt(draft.getCreatedAt())
+            .updatedAt(occurredAt)
+            .build());
   }
 }
