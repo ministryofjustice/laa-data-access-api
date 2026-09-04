@@ -8,7 +8,7 @@ import org.axonframework.messaging.eventhandling.annotation.Event;
 /** Thin event establishing the non-sensitive initial state of a PriorAuthority aggregate. */
 @Event
 public record PriorAuthorityCreatedEvent(
-    @EventTag(key = "PriorAuthorityAggregate") UUID submissionId,
+    @EventTag(key = "PriorAuthorityAggregate") UUID priorAuthorityId,
     UUID applicationId,
     long dataVersion,
     String requestFingerprint,

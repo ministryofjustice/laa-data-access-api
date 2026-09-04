@@ -86,7 +86,7 @@ public class ApplicationExceptionHandler {
             ProblemDetail.forStatusAndDetail(
                 HttpStatus.CONFLICT,
                 "Prior authority submission ID "
-                    + exception.getSubmissionId()
+                    + exception.getPriorAuthorityId()
                     + " already exists with different creation data"));
   }
 

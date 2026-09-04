@@ -7,9 +7,9 @@ import org.axonframework.modelling.annotation.TargetEntityId;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 
 /** Command that creates or idempotently re-identifies a PriorAuthority aggregate. */
-@Command(routingKey = "submissionId")
+@Command(routingKey = "priorAuthorityId")
 public record CreatePriorAuthorityCommand(
-    @TargetEntityId UUID submissionId,
+    @TargetEntityId UUID priorAuthorityId,
     UUID applicationId,
     PriorAuthorityContent content,
     String serialisedRequest,

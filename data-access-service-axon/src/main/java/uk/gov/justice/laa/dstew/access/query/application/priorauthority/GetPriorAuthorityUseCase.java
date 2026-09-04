@@ -5,32 +5,56 @@ import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.model.PriorAuthorityResult;
 
-/** Retrieves and hydrates the current Prior Authority submission. */
+/**
+ * Retrieves and hydrates a Prior Authority submission, whether it is still an in-progress draft or
+ * has already been submitted.
+ */
 @Service
 public class GetPriorAuthorityUseCase {
 
   private final PriorAuthorityDataStore priorAuthorityDataStore;
+  private final PriorAuthorityDraftStore priorAuthorityDraftStore;
   private final QueryGateway queryGateway;
 
+  /**
+   * Constructor for GetPriorAuthorityUseCase.
+   *
+   * @param priorAuthorityDataStore The data store for submitted Prior Authorities.
+   * @param priorAuthorityDraftStore The data store for in-progress draft Prior Authorities.
+   * @param queryGateway The Axon QueryGateway used to query Prior Authority read models.
+   */
   public GetPriorAuthorityUseCase(
-      PriorAuthorityDataStore priorAuthorityDataStore, QueryGateway queryGateway) {
+      PriorAuthorityDataStore priorAuthorityDataStore,
+      PriorAuthorityDraftStore priorAuthorityDraftStore,
+      QueryGateway queryGateway) {
     this.priorAuthorityDataStore = priorAuthorityDataStore;
+    this.priorAuthorityDraftStore = priorAuthorityDraftStore;
     this.queryGateway = queryGateway;
   }
 
-  /** Retrieves the Prior Authority identified by its submission ID. */
+  /**
+   * Retrieves the Prior Authority identified by its submission ID, falling back to its in-progress
+   * draft content when it has not yet been submitted.
+   */
   public PriorAuthorityResult getPriorAuthority(UUID priorAuthorityId) {
     PriorAuthorityReadModel priorAuthority =
         queryGateway
             .query(
-                new FindPriorAuthorityBySubmissionIdQuery(priorAuthorityId),
+                new FindPriorAuthorityByPriorAuthorityIdQuery(priorAuthorityId),
                 PriorAuthorityReadModel.class)
             .join();
     if (priorAuthority == null) {
-      throw new ResourceNotFoundException("No prior authority found with ID: " + priorAuthorityId);
+      return priorAuthorityDraftStore
+          .find(priorAuthorityId)
+          .map(PriorAuthorityResult::fromDraft)
+          .orElseThrow(
+              () ->
+                  new ResourceNotFoundException(
+                      "No prior authority found with ID: " + priorAuthorityId));
     }
 
     PriorAuthorityDataPayload payload =

@@ -200,12 +200,12 @@ public class ApplicationCommandController
     CreatePriorAuthorityCommand command = createPriorAuthorityCommandMapper.toCommand(id, request);
     URI location =
         ServletUriComponentsBuilder.fromCurrentRequest()
-            .path("/{submissionId}")
-            .buildAndExpand(command.submissionId())
+            .path("/{priorAuthorityId}")
+            .buildAndExpand(command.priorAuthorityId())
             .toUri();
     CreatePriorAuthorityResponse body =
         new CreatePriorAuthorityResponse(
-            command.submissionId(), command.occurredAt().atOffset(ZoneOffset.UTC));
+            command.priorAuthorityId(), command.occurredAt().atOffset(ZoneOffset.UTC));
     boolean projected = createPriorAuthorityUseCase.execute(command);
     return projected
         ? ResponseEntity.created(location).body(body)

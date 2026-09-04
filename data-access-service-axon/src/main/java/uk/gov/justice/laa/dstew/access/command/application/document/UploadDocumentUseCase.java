@@ -24,6 +24,6 @@ public class UploadDocumentUseCase {
    */
   @AllowApiCaseworker
   public DocumentUploadResponse execute(UUID applicationId, MultipartFile file) {
-    return sdsService.saveFile(applicationId, file);
+    return sdsService.saveFile(applicationId, UUID.randomUUID(), file);
   }
 }

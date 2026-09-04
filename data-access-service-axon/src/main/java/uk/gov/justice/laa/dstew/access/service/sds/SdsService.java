@@ -58,19 +58,20 @@ public class SdsService {
   private String bucketName;
 
   /**
-   * Save a file in the SDS service.
+   * Save a file in the SDS service under a document ID rather than the file's own name.
    *
-   * @param applicationId the application ID used as folder name
+   * @param id the identifier of the owning record, used as the SDS folder name
+   * @param documentId the document ID to store the file under, in place of its own filename
    * @param file the file to be saved
    * @return the file URL response from SDS
    */
-  public DocumentUploadResponse saveFile(UUID applicationId, MultipartFile file) {
-    String folderName = applicationId.toString();
+  public DocumentUploadResponse saveFile(UUID id, UUID documentId, MultipartFile file) {
+    String folderName = id.toString();
     Map<String, String> bodyMap = new HashMap<>();
     bodyMap.put(BUCKET_NAME_FIELD, bucketName);
     bodyMap.put(FOLDER_FIELD, folderName);
 
-    MultipartBodyBuilder builder = buildMultipartBody(file, bodyMap);
+    MultipartBodyBuilder builder = buildMultipartBody(file, bodyMap, documentId.toString());
 
     return sdsUploadResponseHandler
         .handle(
@@ -91,14 +92,14 @@ public class SdsService {
   /**
    * Save or update a file in the SDS service.
    *
-   * @param applicationId the application ID used as folder name
+   * @param id the identifier of the owning record, used as the SDS folder name
    * @param file the file to be saved or updated
    * @return the file URL response from SDS
    */
-  public DocumentUpdateResponse saveOrUpdateFile(UUID applicationId, MultipartFile file) {
+  public DocumentUpdateResponse saveOrUpdateFile(UUID id, MultipartFile file) {
     Map<String, String> bodyMap =
-        Map.of(BUCKET_NAME_FIELD, bucketName, FOLDER_FIELD, applicationId.toString());
-    MultipartBodyBuilder builder = buildMultipartBody(file, bodyMap);
+        Map.of(BUCKET_NAME_FIELD, bucketName, FOLDER_FIELD, id.toString());
+    MultipartBodyBuilder builder = buildMultipartBody(file, bodyMap, null);
 
     return sdsUploadResponseHandler
         .handle(
@@ -114,12 +115,12 @@ public class SdsService {
   /**
    * Get the pre-signed download URL for a file from the SDS service.
    *
-   * @param applicationId the application ID
+   * @param id the identifier of the owning record
    * @param documentId the document ID
    * @return the download URL response from SDS
    */
-  public DocumentDownloadResponse getFile(UUID applicationId, String documentId) {
-    String fileKey = buildFileKey(applicationId, documentId);
+  public DocumentDownloadResponse getFile(UUID id, String documentId) {
+    String fileKey = buildFileKey(id, documentId);
 
     return sdsRestClient
         .get()
@@ -139,13 +140,12 @@ public class SdsService {
   /**
    * Delete files from the SDS service.
    *
-   * @param applicationId the application ID
+   * @param id the identifier of the owning record
    * @param fileIds the list of file IDs to be deleted
    * @return per-file deletion results
    */
-  public DocumentDeleteResponse deleteFiles(UUID applicationId, List<String> fileIds) {
-    List<String> fileKeys =
-        fileIds.stream().map(fileId -> buildFileKey(applicationId, fileId)).toList();
+  public DocumentDeleteResponse deleteFiles(UUID id, List<String> fileIds) {
+    List<String> fileKeys = fileIds.stream().map(fileId -> buildFileKey(id, fileId)).toList();
 
     Map<String, Integer> sdsResults =
         sdsRestClient
@@ -168,7 +168,7 @@ public class SdsService {
                     fileId -> {
                       var result = new DocumentDeleteResult();
                       result.setDocumentId(fileId);
-                      result.setStatus(sdsResults.get(buildFileKey(applicationId, fileId)));
+                      result.setStatus(sdsResults.get(buildFileKey(id, fileId)));
                       return result;
                     })
                 .toList();
@@ -192,15 +192,19 @@ public class SdsService {
         .body(SdsHealthResponse.class);
   }
 
-  private String buildFileKey(UUID applicationId, String documentId) {
-    return applicationId.toString() + PATH_SEPARATOR + documentId;
+  private String buildFileKey(UUID id, String documentId) {
+    return id.toString() + PATH_SEPARATOR + documentId;
   }
 
   private MultipartBodyBuilder buildMultipartBody(
-      MultipartFile file, Map<String, String> bodyFields) {
+      MultipartFile file, Map<String, String> bodyFields, String filename) {
     try {
       MultipartBodyBuilder builder = new MultipartBodyBuilder();
-      builder.part("file", file.getResource()).contentType(APPLICATION_OCTET_STREAM);
+      MultipartBodyBuilder.PartBuilder part =
+          builder.part("file", file.getResource()).contentType(APPLICATION_OCTET_STREAM);
+      if (filename != null) {
+        part.filename(filename);
+      }
       builder.part("body", objectMapper.writeValueAsString(bodyFields));
       return builder;
     } catch (JacksonException e) {

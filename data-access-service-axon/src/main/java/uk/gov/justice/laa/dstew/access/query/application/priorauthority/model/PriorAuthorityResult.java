@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.query.application.priorauthority.model;
 
 import java.util.UUID;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
 
@@ -18,12 +19,29 @@ public record PriorAuthorityResult(
   /** Builds the use-case result from the current-state projection and versioned content. */
   public static PriorAuthorityResult from(
       PriorAuthorityReadModel priorAuthority, PriorAuthorityContent content) {
+    return build(
+        priorAuthority.getPriorAuthorityId(),
+        priorAuthority.getApplicationId(),
+        priorAuthority.getStatus(),
+        content);
+  }
+
+  /**
+   * Builds the use-case result for an in-progress draft, whose content may be partial since it has
+   * not yet been schema-validated. A draft has no decision yet, so status is left {@code null}.
+   */
+  public static PriorAuthorityResult fromDraft(PriorAuthorityDataPayload payload) {
+    return build(payload.priorAuthorityId(), payload.applicationId(), null, payload.content());
+  }
+
+  private static PriorAuthorityResult build(
+      UUID priorAuthorityId, UUID applicationId, String status, PriorAuthorityContent content) {
     PriorAuthorityType priorAuthorityType = PriorAuthorityType.from(content.priorAuthorityType());
     return new PriorAuthorityResult(
-        priorAuthority.getSubmissionId(),
-        priorAuthority.getApplicationId(),
+        priorAuthorityId,
+        applicationId,
         content.justification(),
-        priorAuthority.getStatus(),
+        status,
         priorAuthorityType,
         priorAuthorityType == PriorAuthorityType.EXPERT ? toExpertDetails(content) : null,
         priorAuthorityType == PriorAuthorityType.COUNSEL ? toCounselDetails(content) : null,

@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.oauth2.client.ClientAuthorizationException;
+import org.springframework.security.oauth2.core.OAuth2Error;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationGroupInvariantException;
@@ -140,17 +142,17 @@ class ApplicationExceptionHandlerTest {
 
   @Test
   void givenConflictingPriorAuthorityCreation_whenHandled_thenReturnsStablePublicConflictMessage() {
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
 
     var response =
         handler.handlePriorAuthorityCreationConflictException(
-            new PriorAuthorityCreationConflictException(submissionId));
+            new PriorAuthorityCreationConflictException(priorAuthorityId));
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
     assertThat(response.getBody().getDetail())
         .isEqualTo(
             "Prior authority submission ID "
-                + submissionId
+                + priorAuthorityId
                 + " already exists with different creation data");
   }
 
@@ -192,5 +194,17 @@ class ApplicationExceptionHandlerTest {
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
     assertThat(response.getBody().getDetail()).isEqualTo("Virus scan gave a non-standard result");
+  }
+
+  @Test
+  void givenClientAuthorizationFailure_whenHandled_thenReturnsInternalServerError() {
+    var response =
+        handler.handleClientAuthorizationException(
+            new ClientAuthorizationException(
+                new OAuth2Error("invalid_token"), "sds-client", "Token request failed"));
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+    assertThat(response.getBody().getDetail())
+        .isEqualTo("Failed to obtain access token for an external service");
   }
 }

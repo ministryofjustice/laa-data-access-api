@@ -3,12 +3,8 @@ components:
     PriorAuthorityResponse:
       type: object
       required:
-        - priorAuthorityType
         - priorAuthorityId
         - applicationId
-        - justification
-        - decision
-        - decisionJustification
       properties:
         priorAuthorityType:
           type: string
@@ -74,4 +70,65 @@ components:
         uploadedAt:
           type: string
           format: date-time
+
+    CreatePriorAuthorityDraftRequest:
+      allOf:
+        - type: object
+          required:
+            - applicationId
+          properties:
+            applicationId:
+              type: string
+              format: uuid
+        - $ref: "#/components/schemas/SavePriorAuthorityDraftRequest"
+
+    SavePriorAuthorityDraftRequest:
+      type: object
+      properties:
+        priorAuthorityType:
+          $ref: "../open-api-applications/components.yml#/components/schemas/PriorAuthorityType"
+        justification:
+          type: string
+          maxLength: 10000
+        expertDetails:
+          $ref: "../open-api-applications/components.yml#/components/schemas/ExpertDetails"
+        counselDetails:
+          $ref: "../open-api-applications/components.yml#/components/schemas/CounselDetails"
+        disbursementDetails:
+          $ref: "../open-api-applications/components.yml#/components/schemas/DisbursementDetails"
+
+    SavePriorAuthorityDraftResponse:
+      type: object
+      required:
+        - priorAuthorityId
+        - savedAt
+      properties:
+        priorAuthorityId:
+          type: string
+          format: uuid
+        savedAt:
+          type: string
+          format: date-time
+
+    SubmitPriorAuthorityDraftResponse:
+      type: object
+      required:
+        - priorAuthorityId
+        - submittedAt
+      properties:
+        priorAuthorityId:
+          type: string
+          format: uuid
+        submittedAt:
+          type: string
+          format: date-time
+
+    UploadPriorAuthorityDocumentResponse:
+      type: object
+      required:
+        - documentId
+      properties:
+        documentId:
+          type: string
+          format: uuid
 

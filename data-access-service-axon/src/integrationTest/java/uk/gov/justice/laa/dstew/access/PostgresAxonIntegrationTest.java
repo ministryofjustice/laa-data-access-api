@@ -168,7 +168,7 @@ class PostgresAxonIntegrationTest {
             """,
             String.class);
 
-    assertThat(appliedVersions).containsExactly("1", "2", "3", "4", "5", "6");
+    assertThat(appliedVersions).containsExactly("1", "2", "3", "4", "5", "6", "7", "8");
     assertThat(tables)
         .containsExactly(
             "application_current_state",
@@ -181,6 +181,7 @@ class PostgresAxonIntegrationTest {
             "linked_application_group_current_state",
             "prior_authority_current_state",
             "prior_authority_data",
+            "prior_authority_draft",
             "token_entry");
     assertThat(sequences).containsExactly("aggregate-event-global-index-sequence");
     assertThat(

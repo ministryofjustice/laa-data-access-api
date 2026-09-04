@@ -29,10 +29,10 @@ public class CreatePriorAuthorityCommandMapper {
   /** Creates a create-prior-authority command with server-generated submission metadata. */
   public CreatePriorAuthorityCommand toCommand(
       UUID applicationId, CreatePriorAuthorityRequest request) {
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
     PriorAuthorityContent content = toContent(request);
     return new CreatePriorAuthorityCommand(
-        submissionId,
+        priorAuthorityId,
         applicationId,
         content,
         serialise(request),
