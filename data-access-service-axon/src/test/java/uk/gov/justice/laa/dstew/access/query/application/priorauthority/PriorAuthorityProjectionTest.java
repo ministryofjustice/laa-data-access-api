@@ -4,9 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.inOrder;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType.*;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -14,34 +14,37 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Predicate;
 import org.axonframework.messaging.queryhandling.QueryUpdateEmitter;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InOrder;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.Apportionment;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.BillingType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.CounselDetails;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.CounselType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.DisbursementDetails;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.ExpertCosts;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.ExpertDetails;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.TimeRequested;
 
+@ExtendWith(MockitoExtension.class)
 class PriorAuthorityProjectionTest {
 
-  private PriorAuthorityReadRepository repository;
-  private PriorAuthorityDataStore dataStore;
-  private QueryUpdateEmitter queryUpdateEmitter;
-  private PriorAuthorityProjection projection;
-
-  @BeforeEach
-  void setUp() {
-    repository = mock(PriorAuthorityReadRepository.class);
-    dataStore = mock(PriorAuthorityDataStore.class);
-    queryUpdateEmitter = mock(QueryUpdateEmitter.class);
-    projection = new PriorAuthorityProjection(repository, dataStore);
-  }
+  @Mock private PriorAuthorityReadRepository repository;
+  @Mock private PriorAuthorityDataStore dataStore;
+  @Mock private QueryUpdateEmitter queryUpdateEmitter;
+  @InjectMocks private PriorAuthorityProjection projection;
 
   @Test
   @SuppressWarnings("unchecked")
@@ -126,7 +129,7 @@ class PriorAuthorityProjectionTest {
             .build();
     PriorAuthorityContent content =
         new PriorAuthorityContent(
-            PriorAuthorityType.COUNSEL,
+            COUNSEL,
             "Counsel is required",
             null,
             new CounselDetails(CounselType.TWO_JUNIOR_COUNSEL),
@@ -142,58 +145,112 @@ class PriorAuthorityProjectionTest {
 
     assertThat(result.priorAuthorityId()).isEqualTo(submissionId);
     assertThat(result.applicationId()).isEqualTo(applicationId);
-    assertThat(result.priorAuthorityType()).isEqualTo(PriorAuthorityType.COUNSEL);
+    assertThat(result.priorAuthorityType()).isEqualTo(COUNSEL);
     assertThat(result.justification()).isEqualTo("Counsel is required");
     assertThat(result.status()).isEqualTo("PENDING");
     assertThat(result.counselDetails().counselType()).isEqualTo(CounselType.TWO_JUNIOR_COUNSEL);
+    assertThat(result.expertDetails()).isNull();
+    assertThat(result.disbursementDetails()).isNull();
   }
 
   @Test
-  void givenSupportedAndAbsentDetails_whenQueryHandled_thenHydratesOnlyMatchingDetails() {
-    assertThat(
-            handleContent(
-                    new PriorAuthorityContent(
-                        PriorAuthorityType.EXPERT, "Required", null, null, null))
-                .expertDetails())
-        .isNull();
-    assertThat(
-            handleContent(
-                    new PriorAuthorityContent(
-                        PriorAuthorityType.EXPERT,
-                        "Required",
-                        new ExpertDetails("Accountant", "Ada Lovelace", "SW1A 1AA", null),
-                        null,
-                        null))
-                .expertDetails()
-                .expertFullName())
-        .isEqualTo("Ada Lovelace");
-    assertThat(
-            handleContent(
-                    new PriorAuthorityContent(
-                        PriorAuthorityType.COUNSEL, "Required", null, null, null))
-                .counselDetails())
-        .isNull();
-    assertThat(
-            handleContent(
-                    new PriorAuthorityContent(
-                        PriorAuthorityType.DISBURSEMENT,
-                        "Required",
-                        null,
-                        null,
-                        new DisbursementDetails("Travel", BigDecimal.TEN)))
-                .disbursementDetails()
-                .disbursementPurpose())
-        .isEqualTo("Travel");
-    assertThat(
-            handleContent(
-                    new PriorAuthorityContent(
-                        PriorAuthorityType.DISBURSEMENT, "Required", null, null, null))
-                .disbursementDetails())
-        .isNull();
-    assertThat(
-            handleContent(new PriorAuthorityContent(null, "Required", null, null, null))
-                .priorAuthorityType())
-        .isNull();
+  void givenExpertDetails_whenQueryHandled_thenHydratesOnlyExpertDetails() {
+    ExpertCosts expertCosts =
+        new ExpertCosts(
+            BillingType.HOURLY,
+            new BigDecimal("125.50"),
+            new TimeRequested(2, 30),
+            new BigDecimal("313.75"),
+            true,
+            new Apportionment(3, new BigDecimal("104.58")));
+    PriorAuthorityResult expertResult =
+        handleContent(
+            new PriorAuthorityContent(
+                EXPERT,
+                "Expert required",
+                new ExpertDetails("Accountant", "Ada Lovelace", "SW1A 1AA", expertCosts),
+                null,
+                null));
+
+    assertThat(expertResult.priorAuthorityType()).isEqualTo(EXPERT);
+    assertThat(expertResult.justification()).isEqualTo("Expert required");
+    assertThat(expertResult.expertDetails().expertType()).isEqualTo("Accountant");
+    assertThat(expertResult.expertDetails().expertFullName()).isEqualTo("Ada Lovelace");
+    assertThat(expertResult.expertDetails().expertPostcode()).isEqualTo("SW1A 1AA");
+    assertThat(expertResult.expertDetails().expertCosts().billingType())
+        .isEqualTo(BillingType.HOURLY);
+    assertThat(expertResult.expertDetails().expertCosts().hourlyRate())
+        .isEqualTo(new BigDecimal("125.50"));
+    assertThat(expertResult.expertDetails().expertCosts().timeRequested().hours()).isEqualTo(2);
+    assertThat(expertResult.expertDetails().expertCosts().timeRequested().minutes()).isEqualTo(30);
+    assertThat(expertResult.expertDetails().expertCosts().totalAmount())
+        .isEqualTo(new BigDecimal("313.75"));
+    assertThat(expertResult.expertDetails().expertCosts().costsSharedWithOtherParties()).isTrue();
+    assertThat(expertResult.expertDetails().expertCosts().apportionment().partiesSharingCosts())
+        .isEqualTo(3);
+    assertThat(expertResult.expertDetails().expertCosts().apportionment().clientShareAmount())
+        .isEqualTo(new BigDecimal("104.58"));
+    assertThat(expertResult.counselDetails()).isNull();
+    assertThat(expertResult.disbursementDetails()).isNull();
+  }
+
+  @Test
+  void givenCounselDetails_whenQueryHandled_thenHydratesOnlyCounselDetails() {
+    PriorAuthorityResult counselResult =
+        handleContent(
+            new PriorAuthorityContent(
+                COUNSEL,
+                "Counsel required",
+                null,
+                new CounselDetails(CounselType.TWO_JUNIOR_COUNSEL),
+                null));
+
+    assertThat(counselResult.priorAuthorityType()).isEqualTo(COUNSEL);
+    assertThat(counselResult.justification()).isEqualTo("Counsel required");
+    assertThat(counselResult.counselDetails().counselType())
+        .isEqualTo(CounselType.TWO_JUNIOR_COUNSEL);
+    assertThat(counselResult.expertDetails()).isNull();
+    assertThat(counselResult.disbursementDetails()).isNull();
+  }
+
+  @Test
+  void givenDisbursementDetails_whenQueryHandled_thenHydratesOnlyDisbursementDetails() {
+    PriorAuthorityResult disbursementResult =
+        handleContent(
+            new PriorAuthorityContent(
+                DISBURSEMENT,
+                "Disbursement required",
+                null,
+                null,
+                new DisbursementDetails("Travel", BigDecimal.TEN)));
+
+    assertThat(disbursementResult.priorAuthorityType()).isEqualTo(DISBURSEMENT);
+    assertThat(disbursementResult.justification()).isEqualTo("Disbursement required");
+    assertThat(disbursementResult.disbursementDetails().disbursementPurpose()).isEqualTo("Travel");
+    assertThat(disbursementResult.disbursementDetails().disbursementAmount())
+        .isEqualTo(BigDecimal.TEN);
+    assertThat(disbursementResult.expertDetails()).isNull();
+    assertThat(disbursementResult.counselDetails()).isNull();
+  }
+
+  @ParameterizedTest
+  @EnumSource(PriorAuthorityType.class)
+  void givenTypeWithAbsentDetails_whenQueryHandled_thenHydratedDetailsAreNull(
+      PriorAuthorityType type) {
+    PriorAuthorityResult result =
+        handleContent(new PriorAuthorityContent(type, "Required", null, null, null));
+
+    assertThat(result.expertDetails()).isNull();
+    assertThat(result.counselDetails()).isNull();
+    assertThat(result.disbursementDetails()).isNull();
+  }
+
+  @Test
+  void givenNullType_whenQueryHandled_thenPriorAuthorityTypeIsNull() {
+    PriorAuthorityResult result =
+        handleContent(new PriorAuthorityContent(null, "Required", null, null, null));
+
+    assertThat(result.priorAuthorityType()).isNull();
   }
 
   @Test
@@ -204,24 +261,15 @@ class PriorAuthorityProjectionTest {
     assertThat(projection.handle(new FindPriorAuthorityBySubmissionIdQuery(submissionId))).isNull();
   }
 
-  @Test
-  void givenExistingSubmissionId_whenExistsQueryHandled_thenReturnsTrue() {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void givenSubmissionId_whenExistsQueryHandled_thenReturnsRepositoryResult(boolean exists) {
     UUID submissionId = UUID.randomUUID();
-    when(repository.existsById(submissionId)).thenReturn(true);
+    when(repository.existsById(submissionId)).thenReturn(exists);
 
     boolean result = projection.handle(new PriorAuthorityExistsBySubmissionIdQuery(submissionId));
 
-    assertThat(result).isTrue();
-  }
-
-  @Test
-  void givenMissingSubmissionId_whenExistsQueryHandled_thenReturnsFalse() {
-    UUID submissionId = UUID.randomUUID();
-    when(repository.existsById(submissionId)).thenReturn(false);
-
-    boolean result = projection.handle(new PriorAuthorityExistsBySubmissionIdQuery(submissionId));
-
-    assertThat(result).isFalse();
+    assertThat(result).isEqualTo(exists);
   }
 
   @Test
