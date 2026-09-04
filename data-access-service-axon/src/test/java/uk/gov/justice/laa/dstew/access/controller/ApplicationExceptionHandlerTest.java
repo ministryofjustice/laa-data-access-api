@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.net.URI;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -19,6 +20,7 @@ import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictE
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.exception.VirusDetectedException;
 import uk.gov.justice.laa.dstew.access.exception.VirusScanException;
+import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryIntegrityException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 class ApplicationExceptionHandlerTest {
@@ -194,6 +196,28 @@ class ApplicationExceptionHandlerTest {
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
     assertThat(response.getBody().getDetail()).isEqualTo("Virus scan gave a non-standard result");
+  }
+
+  @Test
+  void givenIntegrityFailure_whenHandled_thenReturnsHttp500WithStableProblemDetail() {
+    UUID applicationId = UUID.randomUUID();
+    UUID submissionId = UUID.randomUUID();
+    var integrityException =
+        new ApplicationHistoryIntegrityException(
+            applicationId,
+            submissionId,
+            "conflicting priorAuthorityType values: [EXPERT, COUNSEL]");
+
+    var response = handler.handleApplicationHistoryIntegrityException(integrityException);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+    assertThat(response.getBody().getDetail())
+        .isEqualTo("Application history data is inconsistent");
+    assertThat(response.getBody().getInstance()).isEqualTo(URI.create("about:blank"));
+    assertThat(response.getBody().toString())
+        .doesNotContain(applicationId.toString())
+        .doesNotContain(submissionId.toString())
+        .doesNotContain("conflicting");
   }
 
   @Test

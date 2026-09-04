@@ -16,4 +16,5 @@ public class PriorAuthorityState {
   String requestFingerprint;
   String status;
   int schemaVersion;
+  String priorAuthorityType;
 }

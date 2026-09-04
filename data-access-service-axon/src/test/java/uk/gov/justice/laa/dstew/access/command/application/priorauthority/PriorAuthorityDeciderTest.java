@@ -9,6 +9,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
 
 /** Unit tests for {@link PriorAuthorityDecider}. */
@@ -25,7 +26,8 @@ class PriorAuthorityDeciderTest {
         new CreatePriorAuthorityCommand(
             priorAuthorityId,
             applicationId,
-            new PriorAuthorityContent("EXPERT", null, null, null, null),
+            "EXPERT",
+            new PriorAuthorityContent(PriorAuthorityType.EXPERT, null, null, null, null),
             "{}",
             1,
             "pa-schema",
@@ -39,6 +41,7 @@ class PriorAuthorityDeciderTest {
     PriorAuthorityCreatedEvent event = result.get();
     assertThat(event.priorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(event.applicationId()).isEqualTo(applicationId);
+    assertThat(event.priorAuthorityType()).isEqualTo("EXPERT");
     assertThat(event.dataVersion()).isEqualTo(0L);
     assertThat(event.requestFingerprint()).isEqualTo(fingerprint);
     assertThat(event.status()).isEqualTo(PriorAuthorityStatus.PENDING.name());
@@ -69,6 +72,7 @@ class PriorAuthorityDeciderTest {
         new CreatePriorAuthorityCommand(
             priorAuthorityId,
             UUID.randomUUID(),
+            null,
             null,
             "{\"different\":true}",
             1,

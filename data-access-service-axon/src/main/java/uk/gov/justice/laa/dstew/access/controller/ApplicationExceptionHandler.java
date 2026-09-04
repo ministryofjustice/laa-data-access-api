@@ -1,6 +1,8 @@
 package uk.gov.justice.laa.dstew.access.controller;
 
+import java.net.URI;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 import org.axonframework.modelling.entity.EntityMissingForInstanceCommandHandlerException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -19,9 +21,11 @@ import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictE
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.exception.VirusDetectedException;
 import uk.gov.justice.laa.dstew.access.exception.VirusScanException;
+import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryIntegrityException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /** Translates command-side failures to the existing HTTP validation contract. */
+@Slf4j
 @RestControllerAdvice
 public class ApplicationExceptionHandler {
 
@@ -161,6 +165,22 @@ public class ApplicationExceptionHandler {
         ProblemDetail.forStatusAndDetail(
             HttpStatus.INTERNAL_SERVER_ERROR,
             "Failed to obtain access token for an external service");
+    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(problemDetail);
+  }
+
+  /** Returns HTTP 500 with a stable, safe detail when application-history data is inconsistent. */
+  @ExceptionHandler(ApplicationHistoryIntegrityException.class)
+  ResponseEntity<ProblemDetail> handleApplicationHistoryIntegrityException(
+      ApplicationHistoryIntegrityException exception) {
+    log.error(
+        "Application history integrity failure [applicationId={}, submissionId={}, reason={}]",
+        exception.getApplicationId(),
+        exception.getSubmissionId(),
+        exception.getReason());
+    ProblemDetail problemDetail =
+        ProblemDetail.forStatusAndDetail(
+            HttpStatus.INTERNAL_SERVER_ERROR, "Application history data is inconsistent");
+    problemDetail.setInstance(URI.create("about:blank"));
     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(problemDetail);
   }
 

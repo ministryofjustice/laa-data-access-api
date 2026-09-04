@@ -28,6 +28,7 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
@@ -67,7 +68,8 @@ class PriorAuthorityAggregateTest {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
-    PriorAuthorityContent content = new PriorAuthorityContent("EXPERT", null, null, null, null);
+    PriorAuthorityContent content =
+        new PriorAuthorityContent(PriorAuthorityType.EXPERT, null, null, null, null);
     String serialisedRequest = "{\"priorAuthorityType\":\"EXPERT\"}";
     String fingerprint = PayloadFingerprint.compute(serialisedRequest);
 
@@ -84,6 +86,7 @@ class PriorAuthorityAggregateTest {
         new CreatePriorAuthorityCommand(
             priorAuthorityId,
             applicationId,
+            "EXPERT",
             content,
             serialisedRequest,
             1,
@@ -100,6 +103,7 @@ class PriorAuthorityAggregateTest {
             new PriorAuthorityCreatedEvent(
                 priorAuthorityId,
                 applicationId,
+                "EXPERT",
                 0L,
                 fingerprint,
                 PriorAuthorityStatus.PENDING.name(),
@@ -137,6 +141,7 @@ class PriorAuthorityAggregateTest {
         new PriorAuthorityCreatedEvent(
             priorAuthorityId,
             applicationId,
+            "EXPERT",
             0L,
             fingerprint,
             PriorAuthorityStatus.PENDING.name(),
@@ -147,7 +152,8 @@ class PriorAuthorityAggregateTest {
         new CreatePriorAuthorityCommand(
             priorAuthorityId,
             applicationId,
-            new PriorAuthorityContent("EXPERT", null, null, null, null),
+            "EXPERT",
+            new PriorAuthorityContent(PriorAuthorityType.EXPERT, null, null, null, null),
             serialisedRequest,
             1,
             "pa-schema",
@@ -171,6 +177,7 @@ class PriorAuthorityAggregateTest {
         new PriorAuthorityCreatedEvent(
             priorAuthorityId,
             applicationId,
+            "EXPERT",
             0L,
             fingerprint,
             PriorAuthorityStatus.PENDING.name(),
@@ -181,7 +188,8 @@ class PriorAuthorityAggregateTest {
         new CreatePriorAuthorityCommand(
             priorAuthorityId,
             applicationId,
-            new PriorAuthorityContent("COUNSEL", null, null, null, null),
+            "COUNSEL",
+            new PriorAuthorityContent(PriorAuthorityType.COUNSEL, null, null, null, null),
             "{\"priorAuthorityType\":\"COUNSEL\"}",
             1,
             "pa-schema",

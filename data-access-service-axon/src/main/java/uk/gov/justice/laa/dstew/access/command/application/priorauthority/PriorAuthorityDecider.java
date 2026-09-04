@@ -30,6 +30,7 @@ public final class PriorAuthorityDecider {
         new PriorAuthorityCreatedEvent(
             command.priorAuthorityId(),
             command.applicationId(),
+            command.priorAuthorityType(),
             0L,
             fingerprint,
             PriorAuthorityStatus.PENDING.name(),

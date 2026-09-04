@@ -2,12 +2,13 @@ package uk.gov.justice.laa.dstew.access.query.application.priorauthority;
 
 import java.util.UUID;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
-import uk.gov.justice.laa.dstew.access.query.application.priorauthority.model.PriorAuthorityResult;
 
 /**
  * Retrieves and hydrates a Prior Authority submission, whether it is still an in-progress draft or
@@ -20,6 +21,7 @@ public class GetPriorAuthorityUseCase {
   private final PriorAuthorityDraftStore priorAuthorityDraftStore;
   private final QueryGateway queryGateway;
 
+  public GetPriorAuthorityUseCase(QueryGateway queryGateway) {
   /**
    * Constructor for GetPriorAuthorityUseCase.
    *
@@ -56,9 +58,6 @@ public class GetPriorAuthorityUseCase {
                   new ResourceNotFoundException(
                       "No prior authority found with ID: " + priorAuthorityId));
     }
-
-    PriorAuthorityDataPayload payload =
-        priorAuthorityDataStore.get(priorAuthorityId, priorAuthority.getDataVersion());
-    return PriorAuthorityResult.from(priorAuthority, payload.content());
+    return priorAuthorityResult;
   }
 }

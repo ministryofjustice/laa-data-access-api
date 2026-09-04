@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.usecase.application;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletionException;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
@@ -12,7 +13,8 @@ import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsQuer
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsResult;
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
 import uk.gov.justice.laa.dstew.access.query.application.FindNotesForApplicationQuery;
-import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadModel;
+import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryIntegrityException;
+import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryResult;
 import uk.gov.justice.laa.dstew.access.query.application.history.FindApplicationHistoryQuery;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 
@@ -55,12 +57,33 @@ public class ApplicationQueryUseCase {
 
   /** Returns domain-event history for an application. */
   @AllowApiCaseworker
-  public List<ApplicationHistoryReadModel> getApplicationHistory(
-      UUID id, List<String> requestedTypes) {
-    return queryGateway
-        .queryMany(
-            new FindApplicationHistoryQuery(id, requestedTypes), ApplicationHistoryReadModel.class)
-        .join();
+  public ApplicationHistoryResult getApplicationHistory(
+      UUID applicationId, List<String> requestedTypes) {
+    try {
+      return queryGateway
+          .query(
+              new FindApplicationHistoryQuery(applicationId, requestedTypes),
+              ApplicationHistoryResult.class)
+          .join();
+    } catch (CompletionException completionException) {
+      ApplicationHistoryIntegrityException integrityException =
+          findIntegrityException(completionException);
+      if (integrityException != null) {
+        throw integrityException;
+      }
+      throw completionException;
+    }
+  }
+
+  private static ApplicationHistoryIntegrityException findIntegrityException(Throwable throwable) {
+    Throwable cause = throwable.getCause();
+    while (cause != null) {
+      if (cause instanceof ApplicationHistoryIntegrityException integrityException) {
+        return integrityException;
+      }
+      cause = cause.getCause();
+    }
+    return null;
   }
 
   /** Returns notes for an application or throws when the application is absent. */

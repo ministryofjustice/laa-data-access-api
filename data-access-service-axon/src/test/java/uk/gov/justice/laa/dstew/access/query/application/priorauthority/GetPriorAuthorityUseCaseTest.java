@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
@@ -13,7 +13,6 @@ import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Stream;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,9 +31,6 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.ExpertCosts;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.ExpertDetails;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
-import uk.gov.justice.laa.dstew.access.query.application.priorauthority.model.CounselType;
-import uk.gov.justice.laa.dstew.access.query.application.priorauthority.model.PriorAuthorityResult;
-import uk.gov.justice.laa.dstew.access.query.application.priorauthority.model.PriorAuthorityType;
 
 @ExtendWith(MockitoExtension.class)
 class GetPriorAuthorityUseCaseTest {
@@ -109,78 +105,7 @@ class GetPriorAuthorityUseCaseTest {
 
     PriorAuthorityResult response = useCase.getPriorAuthority(priorAuthorityId);
 
-    assertThat(response.priorAuthorityType()).isEqualTo(expectedType);
-    assertThat(response.expertDetails() != null).isEqualTo(hasExpertDetails);
-    assertThat(response.counselDetails() != null).isEqualTo(hasCounselDetails);
-    assertThat(response.disbursementDetails() != null).isEqualTo(hasDisbursementDetails);
-  }
-
-  private static Stream<Arguments> supportedPriorAuthorityTypes() {
-    return Stream.of(
-        Arguments.of(
-            new PriorAuthorityContent(
-                "EXPERT",
-                "Expert is required",
-                new ExpertDetails("PSYCHIATRIST", "Jane Doe", "AB1 2CD", null),
-                null,
-                null),
-            PriorAuthorityType.EXPERT,
-            true,
-            false,
-            false),
-        Arguments.of(
-            new PriorAuthorityContent("EXPERT", "Expert is required", null, null, null),
-            PriorAuthorityType.EXPERT,
-            false,
-            false,
-            false),
-        Arguments.of(
-            new PriorAuthorityContent(
-                "COUNSEL",
-                "Counsel is required",
-                null,
-                new CounselDetails("TWO_JUNIOR_COUNSEL"),
-                null),
-            PriorAuthorityType.COUNSEL,
-            false,
-            true,
-            false),
-        Arguments.of(
-            new PriorAuthorityContent("COUNSEL", "Counsel is required", null, null, null),
-            PriorAuthorityType.COUNSEL,
-            false,
-            false,
-            false),
-        Arguments.of(
-            new PriorAuthorityContent(
-                "DISBURSEMENT",
-                "Disbursement is required",
-                null,
-                null,
-                new DisbursementDetails("Travel", BigDecimal.TEN)),
-            PriorAuthorityType.DISBURSEMENT,
-            false,
-            false,
-            true),
-        Arguments.of(
-            new PriorAuthorityContent("DISBURSEMENT", "Disbursement is required", null, null, null),
-            PriorAuthorityType.DISBURSEMENT,
-            false,
-            false,
-            false),
-        Arguments.of(
-            new PriorAuthorityContent(
-                "",
-                "Disbursement is required",
-                null,
-                null,
-                new DisbursementDetails("Travel", BigDecimal.TEN)),
-            null,
-            false,
-            false,
-            false),
-        Arguments.of(
-            new PriorAuthorityContent(null, "", null, null, null), null, false, false, false));
+    assertThat(result).isSameAs(expected);
   }
 
   @Test
