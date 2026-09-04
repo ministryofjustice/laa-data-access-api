@@ -75,7 +75,8 @@ class SdsServiceTest {
     when(sdsUploadResponseHandler.handle(responseSpec)).thenReturn(responseSpec);
     when(responseSpec.body(DocumentUploadResponse.class)).thenReturn(expectedResponse);
 
-    DocumentUploadResponse actualResponse = sdsService.saveFile(applicationId, file);
+    DocumentUploadResponse actualResponse =
+        sdsService.saveFile(applicationId, UUID.randomUUID(), file);
 
     assertThat(actualResponse).isEqualTo(expectedResponse);
     verify(sdsRestClient).post();
@@ -104,7 +105,7 @@ class SdsServiceTest {
         .thenThrow(new FileConflictException("File already exists"));
 
     assertThatExceptionOfType(FileConflictException.class)
-        .isThrownBy(() -> sdsService.saveFile(applicationId, file))
+        .isThrownBy(() -> sdsService.saveFile(applicationId, UUID.randomUUID(), file))
         .withMessage("File already exists");
   }
 
@@ -285,7 +286,7 @@ class SdsServiceTest {
     when(responseSpec.body(DocumentUploadResponse.class))
         .thenReturn(mock(DocumentUploadResponse.class));
 
-    sdsService.saveFile(applicationId, file);
+    sdsService.saveFile(applicationId, UUID.randomUUID(), file);
 
     Predicate<HttpStatusCode> conflictPredicate = predicateCaptor.getValue();
     assertThat(conflictPredicate.test(HttpStatus.CONFLICT)).isTrue();
@@ -306,7 +307,7 @@ class SdsServiceTest {
     doThrow(mock(JacksonException.class)).when(objectMapper).writeValueAsString(any());
 
     assertThatExceptionOfType(IllegalStateException.class)
-        .isThrownBy(() -> sdsService.saveFile(applicationId, file))
+        .isThrownBy(() -> sdsService.saveFile(applicationId, UUID.randomUUID(), file))
         .withMessage("Unable to serialise SDS request body");
   }
 

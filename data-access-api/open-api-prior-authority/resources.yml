@@ -90,6 +90,45 @@ paths:
         '403': { description: Forbidden }
         '404': { description: Prior Authority not found }
 
+  /api/v0/prior-authorities/{priorAuthorityId}/documents:
+    post:
+      tags:
+        - prior-authority-document-command
+      summary: Upload a supporting evidence document to a Prior Authority draft
+      operationId: uploadPriorAuthorityDocument
+      parameters:
+        - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
+        - name: priorAuthorityId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Document uploaded and stored
+          content:
+            application/json:
+              schema:
+                $ref: "./components.yml#/components/schemas/UploadPriorAuthorityDocumentResponse"
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '403': { description: Forbidden }
+        '404': { description: Prior Authority not found }
+        '500': { description: Internal server error }
+
   /api/v0/prior-authorities:
     post:
       tags:

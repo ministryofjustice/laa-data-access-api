@@ -123,3 +123,12 @@ components:
           type: string
           format: date-time
 
+    UploadPriorAuthorityDocumentResponse:
+      type: object
+      required:
+        - documentId
+      properties:
+        documentId:
+          type: string
+          format: uuid
+

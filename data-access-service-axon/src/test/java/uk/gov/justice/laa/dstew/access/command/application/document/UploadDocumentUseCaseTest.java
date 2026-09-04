@@ -1,6 +1,8 @@
 package uk.gov.justice.laa.dstew.access.command.application.document;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -29,11 +31,11 @@ class UploadDocumentUseCaseTest {
         new MockMultipartFile(
             "file", "test-file.pdf", "application/pdf", "test content".getBytes());
     DocumentUploadResponse expectedResponse = mock(DocumentUploadResponse.class);
-    when(sdsService.saveFile(applicationId, file)).thenReturn(expectedResponse);
+    when(sdsService.saveFile(any(), any(), any())).thenReturn(expectedResponse);
 
     DocumentUploadResponse actualResponse = uploadDocumentUseCase.execute(applicationId, file);
 
     assertThat(actualResponse).isEqualTo(expectedResponse);
-    verify(sdsService).saveFile(applicationId, file);
+    verify(sdsService).saveFile(eq(applicationId), any(), eq(file));
   }
 }
