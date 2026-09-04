@@ -22,7 +22,7 @@ class MakeApplicationDecisionUseCaseTest {
   }
 
   @Test
-  void givenCommand_whenExecute_thenDelegatesToRetryingDispatcher() {
+  void givenCommand_whenExecute_thenDispatchesToTheApplicationAggregate() {
     MakeApplicationDecisionCommand command = stubCommand();
 
     useCase.execute(command);
@@ -32,6 +32,14 @@ class MakeApplicationDecisionUseCaseTest {
 
   private MakeApplicationDecisionCommand stubCommand() {
     return new MakeApplicationDecisionCommand(
-        UUID.randomUUID(), 0L, "GRANTED", false, List.of(), null, "{}", "decision", Instant.now());
+        UUID.randomUUID(),
+        UUID.randomUUID(),
+        0L,
+        "GRANTED",
+        List.of(),
+        null,
+        "{}",
+        "decision",
+        Instant.now());
   }
 }

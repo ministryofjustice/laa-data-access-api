@@ -267,6 +267,7 @@ components:
         - proceedings
         - eventHistory
         - applicationVersion
+        - caseworkerId
       properties:
         overallDecision:
           $ref: "#/components/schemas/DecisionStatus"
@@ -288,7 +289,12 @@ components:
         applicationVersion:
           type: integer
           format: int64
-          description: Version of application being decided, used for concurrency control
+          minimum: 0
+          description: Version of the application being decided, used for concurrency control
+        caseworkerId:
+          type: string
+          format: uuid
+          description: Caseworker requesting the manual decision; temporary until derived from the authenticated principal
 
     AutoGrantOutcome:
       type: string

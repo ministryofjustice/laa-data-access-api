@@ -7,10 +7,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.AssignCaseworkerToApplicationCommand;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.UnassignCaseworkerFromApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
@@ -271,59 +267,46 @@ class ApplicationDeciderTest {
         .isInstanceOf(ValidationException.class);
   }
 
-  // ── decideAssign ───────────────────────────────────────────────────────────────
-
   @Test
-  void givenApplication_whenDecideAssign_thenReturnsAssignedEvent() {
+  void
+      givenActiveManualApplicationAssignedToCaller_whenValidatingManualDecision_thenAllowsDecision() {
     UUID applicationId = UUID.randomUUID();
     UUID caseworkerId = UUID.randomUUID();
     ApplicationState state = stateAfterCreate(applicationId, "fp", 1);
-
-    ApplicationAssignedToCaseworkerEvent event =
-        ApplicationDecider.decideAssign(
-            state,
-            new AssignCaseworkerToApplicationCommand(
-                applicationId, caseworkerId, "{}", "desc", TIMESTAMP));
-
-    assertThat(event.applicationId()).isEqualTo(applicationId);
-    assertThat(event.caseworkerId()).isEqualTo(caseworkerId);
-    assertThat(event.applicationVersion()).isEqualTo(1L);
-    assertThat(event.applicationDataVersion()).isEqualTo(1L);
-    assertThat(event.occurredAt()).isEqualTo(TIMESTAMP);
-  }
-
-  // ── decideUnassign ─────────────────────────────────────────────────────────────
-
-  @Test
-  void givenNoCaseworker_whenDecideUnassign_thenThrowsValidationException() {
-    UUID applicationId = UUID.randomUUID();
-    ApplicationState state = stateAfterCreate(applicationId, "fp", 1);
-    UnassignCaseworkerFromApplicationCommand command =
-        new UnassignCaseworkerFromApplicationCommand(applicationId, "{}", "no-op", TIMESTAMP);
-
-    assertThatThrownBy(() -> ApplicationDecider.decideUnassign(state, command))
-        .isInstanceOf(ValidationException.class);
-  }
-
-  @Test
-  void givenAssignedCaseworker_whenDecideUnassign_thenReturnsUnassignedEvent() {
-    UUID applicationId = UUID.randomUUID();
-    UUID caseworkerId = UUID.randomUUID();
-    ApplicationState state = stateAfterCreate(applicationId, "fp", 1);
+    state.autoGranted = AutoGrantedState.MANUAL;
     state.caseworkerId = caseworkerId;
-    state.applicationVersion = 1L;
-    state.applicationDataVersion = 1L;
 
-    ApplicationUnassignedFromCaseworkerEvent event =
-        ApplicationDecider.decideUnassign(
-            state,
-            new UnassignCaseworkerFromApplicationCommand(
-                applicationId, "{}", "removed", TIMESTAMP));
+    ApplicationDecider.validateManualDecisionAssignment(
+        state,
+        new MakeApplicationDecisionCommand(
+            applicationId, caseworkerId, 0L, "REFUSED", List.of(), null, "{}", null, TIMESTAMP));
+  }
 
-    assertThat(event.applicationId()).isEqualTo(applicationId);
-    assertThat(event.applicationVersion()).isEqualTo(2L);
-    assertThat(event.applicationDataVersion()).isEqualTo(2L);
-    assertThat(event.occurredAt()).isEqualTo(TIMESTAMP);
+  @Test
+  void
+      givenActiveManualApplicationAssignedToAnotherCaseworker_whenValidatingManualDecision_thenConflicts() {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationState state = stateAfterCreate(applicationId, "fp", 1);
+    state.autoGranted = AutoGrantedState.MANUAL;
+    state.caseworkerId = UUID.randomUUID();
+
+    assertThatThrownBy(
+            () ->
+                ApplicationDecider.validateManualDecisionAssignment(
+                    state,
+                    new MakeApplicationDecisionCommand(
+                        applicationId,
+                        UUID.randomUUID(),
+                        0L,
+                        "REFUSED",
+                        List.of(),
+                        null,
+                        "{}",
+                        null,
+                        TIMESTAMP)))
+        .isInstanceOf(
+            uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException
+                .class);
   }
 
   // ── decideNote ─────────────────────────────────────────────────────────────────

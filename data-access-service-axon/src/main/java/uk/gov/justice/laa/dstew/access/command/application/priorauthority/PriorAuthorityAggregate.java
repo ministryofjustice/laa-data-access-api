@@ -9,6 +9,13 @@ import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
+import uk.gov.justice.laa.dstew.access.command.worklist.assign.DirectPriorAuthorityWorkItemAssignmentCommand;
+import uk.gov.justice.laa.dstew.access.command.worklist.unassign.DirectPriorAuthorityWorkItemUnassignmentCommand;
+import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 
 /**
@@ -55,10 +62,67 @@ public class PriorAuthorityAggregate {
         .ifPresent(e -> eventAppender.append(e));
   }
 
+  /** Assigns a newly created direct PA work item after durable route resolution. */
+  @CommandHandler
+  void handle(DirectPriorAuthorityWorkItemAssignmentCommand command, EventAppender eventAppender) {
+    validateWorkItem(command.workItemId(), command.expectedAssignmentVersion());
+    if (state.caseworkerId != null) {
+      throw new WorkItemAssignmentConflictException(command.workItemId(), "it is already assigned");
+    }
+    eventAppender.append(
+        new WorkItemAssigned(
+            command.workItemId(),
+            WorkItemType.PRIOR_AUTHORITY,
+            state.dataVersion,
+            state.assignmentVersion + 1,
+            command.caseworkerId(),
+            command.eventDescription(),
+            command.occurredAt()));
+  }
+
+  /** Explicitly clears a direct PA assignment; already-open work is a conflict. */
+  @CommandHandler
+  void handle(
+      DirectPriorAuthorityWorkItemUnassignmentCommand command, EventAppender eventAppender) {
+    validateWorkItem(command.workItemId(), command.expectedAssignmentVersion());
+    if (state.caseworkerId == null) {
+      throw new WorkItemAssignmentConflictException(
+          command.workItemId(), "it is already unassigned");
+    }
+    eventAppender.append(
+        new WorkItemUnassigned(
+            command.workItemId(),
+            WorkItemType.PRIOR_AUTHORITY,
+            state.dataVersion,
+            state.assignmentVersion + 1,
+            command.eventDescription(),
+            command.occurredAt()));
+  }
+
+  private void validateWorkItem(UUID workItemId, long expectedAssignmentVersion) {
+    if (submissionId == null || !submissionId.equals(workItemId)) {
+      throw new ResourceNotFoundException(
+          "No prior-authority work item found with id: " + workItemId);
+    }
+    if (expectedAssignmentVersion != state.assignmentVersion) {
+      throw new WorkItemAssignmentConflictException(workItemId, "the assignment version is stale");
+    }
+  }
+
   @EventSourcingHandler
   void on(PriorAuthorityCreatedEvent event) {
     PriorAuthorityEvolve.apply(state, event);
     this.submissionId = state.submissionId;
+  }
+
+  @EventSourcingHandler
+  void on(WorkItemAssigned event) {
+    PriorAuthorityEvolve.apply(state, event);
+  }
+
+  @EventSourcingHandler
+  void on(WorkItemUnassigned event) {
+    PriorAuthorityEvolve.apply(state, event);
   }
 
   @EntityCreator

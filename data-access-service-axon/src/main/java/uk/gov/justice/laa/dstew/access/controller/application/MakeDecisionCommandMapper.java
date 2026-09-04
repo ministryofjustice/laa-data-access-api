@@ -25,6 +25,7 @@ public class MakeDecisionCommandMapper {
   public MakeApplicationDecisionCommand toCommand(UUID applicationId, MakeDecisionRequest request) {
     return new MakeApplicationDecisionCommand(
         applicationId,
+        request.getCaseworkerId(),
         request.getApplicationVersion(),
         request.getOverallDecision().name(),
         proceedings(request.getProceedings()),

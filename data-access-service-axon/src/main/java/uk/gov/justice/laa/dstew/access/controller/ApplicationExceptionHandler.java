@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.client.ClientAuthorizationException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationGroupInvariantException;
@@ -94,6 +95,14 @@ public class ApplicationExceptionHandler {
   @ExceptionHandler(ApplicationVersionConflictException.class)
   ResponseEntity<ProblemDetail> handleApplicationVersionConflictException(
       ApplicationVersionConflictException exception) {
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage()));
+  }
+
+  /** Returns a conflict when a work-item assignment is stale or incompatible with its state. */
+  @ExceptionHandler(WorkItemAssignmentConflictException.class)
+  ResponseEntity<ProblemDetail> handleWorkItemAssignmentConflictException(
+      WorkItemAssignmentConflictException exception) {
     return ResponseEntity.status(HttpStatus.CONFLICT)
         .body(ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage()));
   }

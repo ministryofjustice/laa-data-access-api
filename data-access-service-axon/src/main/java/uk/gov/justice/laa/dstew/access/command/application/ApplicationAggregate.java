@@ -11,10 +11,6 @@ import org.axonframework.extension.spring.stereotype.EventSourced;
 import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.AssignCaseworkerToApplicationCommand;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.UnassignCaseworkerFromApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationMeritsDecision;
@@ -35,8 +31,13 @@ import uk.gov.justice.laa.dstew.access.command.application.ready.ReadyApplicatio
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdateDetailsFactory;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationCommand;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
+import uk.gov.justice.laa.dstew.access.command.worklist.assign.DirectWorkItemAssignmentCommand;
+import uk.gov.justice.laa.dstew.access.command.worklist.unassign.DirectWorkItemUnassignmentCommand;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConflictException;
-import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 
 /** Event-sourced consistency boundary for an Application and its owned child state. */
@@ -151,46 +152,46 @@ public class ApplicationAggregate {
     recordAutomaticGrant(command, applicationDataStore, eventAppender);
   }
 
-  /** Assigns a caseworker and stores free-text audit data outside the event stream. */
+  /**
+   * Handles a generic direct assignment once durable routing selected this standalone aggregate.
+   */
   @CommandHandler
-  void handle(
-      AssignCaseworkerToApplicationCommand command,
-      ApplicationDataStore applicationDataStore,
-      EventAppender eventAppender) {
-    requireApplicationExists(command.applicationId());
-    ApplicationAssignedToCaseworkerEvent event = ApplicationDecider.decideAssign(state, command);
-    var current = applicationDataStore.get(applicationId, state.applicationDataVersion);
-    long nextDataVersion = state.applicationDataVersion + 1;
-    applicationDataStore.append(
-        applicationId,
-        nextDataVersion,
-        current.withAssignment(command.eventDescription()),
-        command.serialisedRequest(),
-        command.occurredAt());
-    eventAppender.append(event);
+  void handle(DirectWorkItemAssignmentCommand command, EventAppender eventAppender) {
+    requireApplicationExists(command.workItemId());
+    validateDirectWorkItem(command.workItemId(), command.expectedAssignmentVersion());
+    if (state.caseworkerId != null) {
+      throw new WorkItemAssignmentConflictException(command.workItemId(), "it is already assigned");
+    }
+    long nextAssignmentVersion = state.assignmentVersion + 1;
+    eventAppender.append(
+        new WorkItemAssigned(
+            command.workItemId(),
+            WorkItemType.APPLICATION,
+            state.applicationVersion,
+            nextAssignmentVersion,
+            command.caseworkerId(),
+            command.eventDescription(),
+            command.occurredAt()));
   }
 
-  /** Removes the assigned caseworker and stores free-text audit data outside the event stream. */
+  /** Handles explicit generic direct unassignment; an already-open item is a conflict. */
   @CommandHandler
-  void handle(
-      UnassignCaseworkerFromApplicationCommand command,
-      ApplicationDataStore applicationDataStore,
-      EventAppender eventAppender) {
-    requireApplicationExists(command.applicationId());
+  void handle(DirectWorkItemUnassignmentCommand command, EventAppender eventAppender) {
+    requireApplicationExists(command.workItemId());
+    validateDirectWorkItem(command.workItemId(), command.expectedAssignmentVersion());
     if (state.caseworkerId == null) {
-      return;
+      throw new WorkItemAssignmentConflictException(
+          command.workItemId(), "it is already unassigned");
     }
-    ApplicationUnassignedFromCaseworkerEvent event =
-        ApplicationDecider.decideUnassign(state, command);
-    var current = applicationDataStore.get(applicationId, state.applicationDataVersion);
-    long nextDataVersion = state.applicationDataVersion + 1;
-    applicationDataStore.append(
-        applicationId,
-        nextDataVersion,
-        current.withAssignment(command.eventDescription()),
-        command.serialisedRequest(),
-        command.occurredAt());
-    eventAppender.append(event);
+    long nextAssignmentVersion = state.assignmentVersion + 1;
+    eventAppender.append(
+        new WorkItemUnassigned(
+            command.workItemId(),
+            WorkItemType.APPLICATION,
+            state.applicationVersion,
+            nextAssignmentVersion,
+            command.eventDescription(),
+            command.occurredAt()));
   }
 
   /** Appends a note to the application's immutable data without advancing the decision version. */
@@ -262,13 +263,7 @@ public class ApplicationAggregate {
   }
 
   private void validateManualDecision(MakeApplicationDecisionCommand command) {
-    if (command.expectedApplicationVersion() != state.applicationVersion) {
-      throw new ApplicationVersionConflictException(
-          command.applicationId(), command.expectedApplicationVersion());
-    }
-    if (state.autoGranted != AutoGrantedState.MANUAL) {
-      throw new ApplicationAutoGrantOutcomeConflictException(command.applicationId());
-    }
+    ApplicationDecider.validateManualDecisionAssignment(state, command);
   }
 
   private void validateAutomaticOutcome(
@@ -314,6 +309,7 @@ public class ApplicationAggregate {
             .toList();
     return new MakeApplicationDecisionCommand(
         command.applicationId(),
+        null,
         state.applicationVersion,
         DecisionValue.GRANTED.name(),
         grantedProceedings,
@@ -379,6 +375,18 @@ public class ApplicationAggregate {
     }
   }
 
+  private void validateDirectWorkItem(UUID workItemId, long expectedAssignmentVersion) {
+    if (!applicationId.equals(workItemId)) {
+      throw new ResourceNotFoundException("No application work item found with id: " + workItemId);
+    }
+    if (state.autoGranted != AutoGrantedState.MANUAL || state.overallDecision != null) {
+      throw new ResourceNotFoundException("Application work item is not active: " + workItemId);
+    }
+    if (expectedAssignmentVersion != state.assignmentVersion) {
+      throw new WorkItemAssignmentConflictException(workItemId, "the assignment version is stale");
+    }
+  }
+
   @EventSourcingHandler
   void on(LinkedApplicationGroupRequested event) {
     ApplicationEvolve.apply(state, event);
@@ -396,12 +404,12 @@ public class ApplicationAggregate {
   }
 
   @EventSourcingHandler
-  void on(ApplicationAssignedToCaseworkerEvent event) {
+  void on(WorkItemAssigned event) {
     ApplicationEvolve.apply(state, event);
   }
 
   @EventSourcingHandler
-  void on(ApplicationUnassignedFromCaseworkerEvent event) {
+  void on(WorkItemUnassigned event) {
     ApplicationEvolve.apply(state, event);
   }
 

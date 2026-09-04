@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationGroupInvariantException;
@@ -82,6 +83,15 @@ class ApplicationExceptionHandlerTest {
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
     assertThat(response.getBody().getDetail())
         .isEqualTo("Application with id " + applicationId + " and version 4 not found");
+  }
+
+  @Test
+  void givenWorkItemAssignmentConflict_whenHandled_thenReturnsConflict() {
+    var response =
+        handler.handleWorkItemAssignmentConflictException(
+            new WorkItemAssignmentConflictException(UUID.randomUUID(), "it is already assigned"));
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
   }
 
   @Test
