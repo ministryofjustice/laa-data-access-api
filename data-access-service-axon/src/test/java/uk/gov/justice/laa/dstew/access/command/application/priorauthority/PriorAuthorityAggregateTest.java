@@ -23,7 +23,6 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
 import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 
