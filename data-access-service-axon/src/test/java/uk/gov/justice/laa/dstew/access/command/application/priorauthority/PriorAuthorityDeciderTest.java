@@ -19,12 +19,12 @@ class PriorAuthorityDeciderTest {
 
   @Test
   void givenEmptyState_whenDecideCreate_thenReturnsEventWithCorrectFields() {
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     PriorAuthorityState state = new PriorAuthorityState();
     CreatePriorAuthorityCommand command =
         new CreatePriorAuthorityCommand(
-            submissionId,
+            priorAuthorityId,
             applicationId,
             "EXPERT",
             new PriorAuthorityContent(PriorAuthorityType.EXPERT, null, null, null, null),
@@ -39,7 +39,7 @@ class PriorAuthorityDeciderTest {
 
     assertThat(result).isPresent();
     PriorAuthorityCreatedEvent event = result.get();
-    assertThat(event.submissionId()).isEqualTo(submissionId);
+    assertThat(event.priorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(event.applicationId()).isEqualTo(applicationId);
     assertThat(event.priorAuthorityType()).isEqualTo("EXPERT");
     assertThat(event.dataVersion()).isEqualTo(0L);
@@ -51,12 +51,12 @@ class PriorAuthorityDeciderTest {
 
   @Test
   void givenExistingStateWithSameFingerprint_whenDecideCreate_thenReturnsEmpty() {
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
     String fingerprint = "same-fingerprint";
-    PriorAuthorityState state = stateAfterCreate(submissionId, fingerprint);
+    PriorAuthorityState state = stateAfterCreate(priorAuthorityId, fingerprint);
     CreatePriorAuthorityCommand command =
         new CreatePriorAuthorityCommand(
-            submissionId, UUID.randomUUID(), null, null, "{}", 1, "pa-schema", OCCURRED_AT);
+            priorAuthorityId, UUID.randomUUID(), null, null, "{}", 1, "pa-schema", OCCURRED_AT);
 
     Optional<PriorAuthorityCreatedEvent> result =
         PriorAuthorityDecider.decideCreate(state, command, fingerprint);
@@ -66,11 +66,11 @@ class PriorAuthorityDeciderTest {
 
   @Test
   void givenExistingStateWithDifferentFingerprint_whenDecideCreate_thenThrowsConflictException() {
-    UUID submissionId = UUID.randomUUID();
-    PriorAuthorityState state = stateAfterCreate(submissionId, "original-fingerprint");
+    UUID priorAuthorityId = UUID.randomUUID();
+    PriorAuthorityState state = stateAfterCreate(priorAuthorityId, "original-fingerprint");
     CreatePriorAuthorityCommand command =
         new CreatePriorAuthorityCommand(
-            submissionId,
+            priorAuthorityId,
             UUID.randomUUID(),
             null,
             null,
@@ -85,22 +85,64 @@ class PriorAuthorityDeciderTest {
         .isInstanceOf(PriorAuthorityCreationConflictException.class)
         .hasMessage(
             "Prior authority already exists with a different payload for submission: "
-                + submissionId)
+                + priorAuthorityId)
         .satisfies(
             ex ->
-                assertThat(((PriorAuthorityCreationConflictException) ex).getSubmissionId())
-                    .isEqualTo(submissionId));
+                assertThat(((PriorAuthorityCreationConflictException) ex).getPriorAuthorityId())
+                    .isEqualTo(priorAuthorityId));
   }
 
   // ── helpers ────────────────────────────────────────────────────────────────────
 
-  private static PriorAuthorityState stateAfterCreate(UUID submissionId, String fingerprint) {
+  private static PriorAuthorityState stateAfterCreate(UUID priorAuthorityId, String fingerprint) {
     PriorAuthorityState state = new PriorAuthorityState();
-    state.submissionId = submissionId;
+    state.priorAuthorityId = priorAuthorityId;
     state.requestFingerprint = fingerprint;
     state.dataVersion = 0L;
     state.status = PriorAuthorityStatus.PENDING.name();
     state.schemaVersion = 1;
     return state;
+  }
+
+  @Test
+  void givenCommand_whenDecideStartDraft_thenReturnsEventWithExpectedFields() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    CreatePriorAuthorityDraftCommand command =
+        new CreatePriorAuthorityDraftCommand(
+            priorAuthorityId,
+            applicationId,
+            new PriorAuthorityContent(null, null, null, null, null),
+            "{}",
+            1,
+            "PriorAuthority.json",
+            OCCURRED_AT);
+    String fingerprint = "draft-fingerprint";
+
+    PriorAuthorityDraftStartedEvent event =
+        PriorAuthorityDecider.decideStartDraft(command, fingerprint, applicationId);
+
+    assertThat(event.priorAuthorityId()).isEqualTo(priorAuthorityId);
+    assertThat(event.applicationId()).isEqualTo(applicationId);
+    assertThat(event.requestFingerprint()).isEqualTo(fingerprint);
+    assertThat(event.schemaVersion()).isEqualTo(1);
+    assertThat(event.occurredAt()).isEqualTo(OCCURRED_AT);
+  }
+
+  @Test
+  void givenSubmitCommand_whenDecideSubmit_thenAlwaysUsesDataVersionZero() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    PriorAuthorityState state = new PriorAuthorityState();
+    state.applicationId = UUID.randomUUID();
+    SubmitPriorAuthorityDraftCommand command =
+        new SubmitPriorAuthorityDraftCommand(priorAuthorityId, OCCURRED_AT);
+
+    PriorAuthoritySubmittedEvent event = PriorAuthorityDecider.decideSubmit(command, state);
+
+    assertThat(event.priorAuthorityId()).isEqualTo(priorAuthorityId);
+    assertThat(event.applicationId()).isEqualTo(state.applicationId);
+    assertThat(event.dataVersion()).isEqualTo(0L);
+    assertThat(event.status()).isEqualTo(PriorAuthorityStatus.PENDING.name());
+    assertThat(event.occurredAt()).isEqualTo(OCCURRED_AT);
   }
 }

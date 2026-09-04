@@ -100,41 +100,41 @@ class PriorAuthorityIntegrationTest {
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
     CreatePriorAuthorityResponse body =
         objectMapper.readValue(response.getBody(), CreatePriorAuthorityResponse.class);
-    assertThat(body.getSubmissionId()).isNotNull();
+    assertThat(body.getPriorAuthorityId()).isNotNull();
     assertThat(body.getSubmittedAt()).isNotNull();
-    UUID submissionId = body.getSubmissionId();
+    UUID priorAuthorityId = body.getPriorAuthorityId();
     assertThat(response.getHeaders().getLocation())
         .isNotNull()
-        .satisfies(loc -> assertThat(loc.toString()).endsWith("/" + submissionId));
+        .satisfies(loc -> assertThat(loc.toString()).endsWith("/" + priorAuthorityId));
 
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT payload ->> 'applicationId' FROM axon.prior_authority_data"
-                    + " WHERE submission_id = ? AND data_version = 0",
+                    + " WHERE prior_authority_id = ? AND data_version = 0",
                 String.class,
-                submissionId))
+                priorAuthorityId))
         .isEqualTo(applicationId.toString());
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT payload -> 'content' ->> 'priorAuthorityType'"
                     + " FROM axon.prior_authority_data"
-                    + " WHERE submission_id = ? AND data_version = 0",
+                    + " WHERE prior_authority_id = ? AND data_version = 0",
                 String.class,
-                submissionId))
+                priorAuthorityId))
         .isEqualTo("EXPERT");
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT length(payload_hash) FROM axon.prior_authority_data"
-                    + " WHERE submission_id = ? AND data_version = 0",
+                    + " WHERE prior_authority_id = ? AND data_version = 0",
                 Integer.class,
-                submissionId))
+                priorAuthorityId))
         .isEqualTo(64);
 
     List<Map<String, Object>> events =
         jdbcTemplate.queryForList(
             "SELECT payload_type, sequence_number FROM axon.domain_event_entry"
                 + " WHERE aggregate_identifier = ?",
-            submissionId.toString());
+            priorAuthorityId.toString());
     assertThat(events)
         .singleElement()
         .satisfies(
@@ -148,7 +148,7 @@ class PriorAuthorityIntegrationTest {
 
     PriorAuthorityReadModel projection =
         priorAuthorityReadRepository
-            .findById(submissionId)
+            .findById(priorAuthorityId)
             .orElseThrow(() -> new AssertionError("Prior authority projection not found"));
     assertThat(projection.getApplicationId()).isEqualTo(applicationId);
     assertThat(projection.getDataVersion()).isZero();
@@ -157,7 +157,7 @@ class PriorAuthorityIntegrationTest {
 
     ResponseEntity<String> getResponse =
         restTemplate.exchange(
-            "http://localhost:" + port + "/api/v0/prior-authorities/" + submissionId,
+            "http://localhost:" + port + "/api/v0/prior-authorities/" + priorAuthorityId,
             HttpMethod.GET,
             new HttpEntity<>(headers()),
             String.class);
@@ -165,7 +165,7 @@ class PriorAuthorityIntegrationTest {
     assertThat(getResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
     PriorAuthorityResponse priorAuthority =
         objectMapper.readValue(getResponse.getBody(), PriorAuthorityResponse.class);
-    assertThat(priorAuthority.getPriorAuthorityId()).isEqualTo(submissionId);
+    assertThat(priorAuthority.getPriorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(priorAuthority.getApplicationId()).isEqualTo(applicationId);
     assertThat(priorAuthority.getPriorAuthorityType())
         .isEqualTo(PriorAuthorityResponse.PriorAuthorityTypeEnum.EXPERT);
@@ -198,7 +198,7 @@ class PriorAuthorityIntegrationTest {
         .isZero();
     assertThat(
             jdbcTemplate.queryForList(
-                "SELECT submission_id FROM axon.prior_authority_current_state"
+                "SELECT prior_authority_id FROM axon.prior_authority_current_state"
                     + " WHERE application_id = ?",
                 nonexistentApplicationId))
         .isEmpty();
@@ -226,7 +226,7 @@ class PriorAuthorityIntegrationTest {
         .isZero();
     assertThat(
             jdbcTemplate.queryForList(
-                "SELECT submission_id FROM axon.prior_authority_current_state"
+                "SELECT prior_authority_id FROM axon.prior_authority_current_state"
                     + " WHERE application_id = ?",
                 applicationId))
         .isEmpty();
@@ -258,7 +258,7 @@ class PriorAuthorityIntegrationTest {
         .isZero();
     assertThat(
             jdbcTemplate.queryForList(
-                "SELECT submission_id FROM axon.prior_authority_current_state"
+                "SELECT prior_authority_id FROM axon.prior_authority_current_state"
                     + " WHERE application_id = ?",
                 applicationId))
         .isEmpty();
@@ -377,7 +377,7 @@ class PriorAuthorityIntegrationTest {
         .isZero();
     assertThat(
             jdbcTemplate.queryForList(
-                "SELECT submission_id FROM axon.prior_authority_current_state"
+                "SELECT prior_authority_id FROM axon.prior_authority_current_state"
                     + " WHERE application_id = ?",
                 applicationId))
         .isEmpty();

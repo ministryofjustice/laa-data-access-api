@@ -636,10 +636,10 @@ components:
     CreatePriorAuthorityResponse:
       type: object
       required:
-        - submissionId
+        - priorAuthorityId
         - submittedAt
       properties:
-        submissionId:
+        priorAuthorityId:
           type: string
           format: uuid
         submittedAt:

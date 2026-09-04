@@ -7,18 +7,19 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 @ExcludeFromGeneratedCodeCoverage
 public class PriorAuthorityCreationConflictException extends RuntimeException {
 
-  private final UUID submissionId;
+  private final UUID priorAuthorityId;
 
   /**
    * Creates a conflict exception for a submission ID that already exists with different content.
    */
-  public PriorAuthorityCreationConflictException(UUID submissionId) {
+  public PriorAuthorityCreationConflictException(UUID priorAuthorityId) {
     super(
-        "Prior authority already exists with a different payload for submission: " + submissionId);
-    this.submissionId = submissionId;
+        "Prior authority already exists with a different payload for submission: "
+            + priorAuthorityId);
+    this.priorAuthorityId = priorAuthorityId;
   }
 
-  public UUID getSubmissionId() {
-    return submissionId;
+  public UUID getPriorAuthorityId() {
+    return priorAuthorityId;
   }
 }

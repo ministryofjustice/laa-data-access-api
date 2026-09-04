@@ -220,12 +220,19 @@ class ApplicationCommandControllerTest {
   @Test
   void givenProjectionConfirmed_whenCreatePriorAuthority_thenReturnsCreatedResponse() {
     UUID applicationId = UUID.randomUUID();
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-19T10:00:00Z");
     CreatePriorAuthorityRequest request = new CreatePriorAuthorityRequest();
     CreatePriorAuthorityCommand command =
         new CreatePriorAuthorityCommand(
-            submissionId, applicationId, null, null, "{}", 1, "PriorAuthority.json", occurredAt);
+            priorAuthorityId,
+            applicationId,
+            null,
+            null,
+            "{}",
+            1,
+            "PriorAuthority.json",
+            occurredAt);
     when(createPriorAuthorityCommandMapper.toCommand(applicationId, request)).thenReturn(command);
     when(createPriorAuthorityUseCase.execute(command)).thenReturn(true);
 
@@ -234,22 +241,29 @@ class ApplicationCommandControllerTest {
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
     assertThat(response.getBody()).isNotNull();
-    assertThat(response.getBody().getSubmissionId()).isEqualTo(submissionId);
+    assertThat(response.getBody().getPriorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(response.getBody().getSubmittedAt()).isEqualTo(occurredAt.atOffset(ZoneOffset.UTC));
     assertThat(response.getHeaders().getLocation()).isNotNull();
-    assertThat(response.getHeaders().getLocation().toString()).endsWith("/" + submissionId);
+    assertThat(response.getHeaders().getLocation().toString()).endsWith("/" + priorAuthorityId);
     verify(createPriorAuthorityUseCase).execute(command);
   }
 
   @Test
   void givenProjectionTimeout_whenCreatePriorAuthority_thenReturnsAcceptedResponse() {
     UUID applicationId = UUID.randomUUID();
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-19T11:00:00Z");
     CreatePriorAuthorityRequest request = new CreatePriorAuthorityRequest();
     CreatePriorAuthorityCommand command =
         new CreatePriorAuthorityCommand(
-            submissionId, applicationId, null, null, "{}", 1, "PriorAuthority.json", occurredAt);
+            priorAuthorityId,
+            applicationId,
+            null,
+            null,
+            "{}",
+            1,
+            "PriorAuthority.json",
+            occurredAt);
     when(createPriorAuthorityCommandMapper.toCommand(applicationId, request)).thenReturn(command);
     when(createPriorAuthorityUseCase.execute(command)).thenReturn(false);
 
@@ -258,9 +272,9 @@ class ApplicationCommandControllerTest {
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
     assertThat(response.getBody()).isNotNull();
-    assertThat(response.getBody().getSubmissionId()).isEqualTo(submissionId);
+    assertThat(response.getBody().getPriorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(response.getHeaders().getLocation()).isNotNull();
-    assertThat(response.getHeaders().getLocation().toString()).endsWith("/" + submissionId);
+    assertThat(response.getHeaders().getLocation().toString()).endsWith("/" + priorAuthorityId);
   }
 
   @Test

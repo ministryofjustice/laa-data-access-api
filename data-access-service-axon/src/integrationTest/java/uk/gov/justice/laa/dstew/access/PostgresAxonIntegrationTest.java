@@ -198,6 +198,7 @@ class PostgresAxonIntegrationTest {
             "linked_application_group_current_state",
             "prior_authority_current_state",
             "prior_authority_data",
+            "prior_authority_draft",
             "prior_authority_history",
             "token_entry");
     assertThat(sequences).containsExactly("aggregate-event-global-index-sequence");
@@ -1722,7 +1723,8 @@ class PostgresAxonIntegrationTest {
             String.class);
     assertThat(paResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
     UUID submissionId =
-        UUID.fromString(objectMapper.readTree(paResponse.getBody()).get("submissionId").asText());
+        UUID.fromString(
+            objectMapper.readTree(paResponse.getBody()).get("priorAuthorityId").asText());
 
     await()
         .atMost(10, TimeUnit.SECONDS)
