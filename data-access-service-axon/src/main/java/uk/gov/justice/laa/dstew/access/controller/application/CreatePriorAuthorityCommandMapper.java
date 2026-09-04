@@ -8,13 +8,17 @@ import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.CreatePriorAuthorityCommand;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.Apportionment;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.BillingType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.CounselDetails;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.CounselType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.DisbursementDetails;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.ExpertCosts;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.ExpertDetails;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.TimeRequested;
 import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityRequest;
+import uk.gov.justice.laa.dstew.access.util.EnumMapping;
 
 /** Maps the generated HTTP request model to the Axon create-prior-authority command. */
 @Component
@@ -34,7 +38,7 @@ public class CreatePriorAuthorityCommandMapper {
     return new CreatePriorAuthorityCommand(
         submissionId,
         applicationId,
-        enumName(request.getPriorAuthorityType()),
+        request.getPriorAuthorityType().name(),
         content,
         serialise(request),
         1,
@@ -44,7 +48,7 @@ public class CreatePriorAuthorityCommandMapper {
 
   private PriorAuthorityContent toContent(CreatePriorAuthorityRequest request) {
     return new PriorAuthorityContent(
-        enumName(request.getPriorAuthorityType()),
+        EnumMapping.map(request.getPriorAuthorityType(), PriorAuthorityType.class),
         request.getJustification(),
         toExpertDetails(request.getExpertDetails()),
         toCounselDetails(request.getCounselDetails()),
@@ -70,7 +74,7 @@ public class CreatePriorAuthorityCommandMapper {
     }
 
     return new ExpertCosts(
-        enumName(costs.getBillingType()),
+        EnumMapping.map(costs.getBillingType(), BillingType.class),
         toBigDecimal(costs.getHourlyRate()),
         toTimeRequested(costs.getTimeRequested()),
         toBigDecimal(costs.getTotalAmount()),
@@ -101,8 +105,7 @@ public class CreatePriorAuthorityCommandMapper {
     if (details == null) {
       return null;
     }
-
-    return new CounselDetails(enumName(details.getCounselType()));
+    return new CounselDetails(EnumMapping.map(details.getCounselType(), CounselType.class));
   }
 
   private DisbursementDetails toDisbursementDetails(
@@ -121,14 +124,6 @@ public class CreatePriorAuthorityCommandMapper {
     }
 
     return BigDecimal.valueOf(value);
-  }
-
-  private String enumName(Enum<?> value) {
-    if (value == null) {
-      return null;
-    }
-
-    return value.name();
   }
 
   private String serialise(CreatePriorAuthorityRequest request) {

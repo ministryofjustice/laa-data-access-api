@@ -9,6 +9,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
 
 /** Unit tests for {@link PriorAuthorityDecider}. */
@@ -26,7 +27,7 @@ class PriorAuthorityDeciderTest {
             submissionId,
             applicationId,
             "EXPERT",
-            new PriorAuthorityContent("EXPERT", null, null, null, null),
+            new PriorAuthorityContent(PriorAuthorityType.EXPERT, null, null, null, null),
             "{}",
             1,
             "pa-schema",
