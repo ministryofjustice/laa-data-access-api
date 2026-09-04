@@ -36,7 +36,7 @@ class PriorAuthorityProjectionTest {
     UUID submissionId = UUID.randomUUID();
     PriorAuthorityCreatedEvent event =
         new PriorAuthorityCreatedEvent(
-            submissionId, UUID.randomUUID(), 1L, "fp", "SUBMITTED", 1, Instant.now());
+            submissionId, UUID.randomUUID(), "EXPERT", 1L, "fp", "SUBMITTED", 1, Instant.now());
     when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
     projection.on(event, queryUpdateEmitter);
@@ -55,7 +55,7 @@ class PriorAuthorityProjectionTest {
     Instant occurredAt = Instant.parse("2026-08-19T10:00:00Z");
     PriorAuthorityCreatedEvent event =
         new PriorAuthorityCreatedEvent(
-            submissionId, applicationId, 1L, "fp", "SUBMITTED", 1, occurredAt);
+            submissionId, applicationId, "EXPERT", 1L, "fp", "SUBMITTED", 1, occurredAt);
     PriorAuthorityReadModel[] savedCapture = new PriorAuthorityReadModel[1];
     when(repository.save(any()))
         .thenAnswer(
@@ -80,7 +80,7 @@ class PriorAuthorityProjectionTest {
     final UUID otherId = UUID.randomUUID();
     PriorAuthorityCreatedEvent event =
         new PriorAuthorityCreatedEvent(
-            submissionId, UUID.randomUUID(), 1L, "fp", "SUBMITTED", 1, Instant.now());
+            submissionId, UUID.randomUUID(), "EXPERT", 1L, "fp", "SUBMITTED", 1, Instant.now());
     when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
     Predicate<?>[] capturedPredicate = new Predicate[1];
