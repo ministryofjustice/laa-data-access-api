@@ -13,9 +13,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityResponse;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.GetPriorAuthorityUseCase;
-import uk.gov.justice.laa.dstew.access.query.application.priorauthority.model.PriorAuthorityResult;
 
 /** Verifies that each controller endpoint delegates to the appropriate use case and mapper. */
 @ExtendWith(MockitoExtension.class)

@@ -56,7 +56,7 @@ class PriorAuthorityDeciderTest {
     PriorAuthorityState state = stateAfterCreate(priorAuthorityId, fingerprint);
     CreatePriorAuthorityCommand command =
         new CreatePriorAuthorityCommand(
-            priorAuthorityId, UUID.randomUUID(), null, "{}", 1, "pa-schema", OCCURRED_AT);
+            priorAuthorityId, UUID.randomUUID(), null, null, "{}", 1, "pa-schema", OCCURRED_AT);
 
     Optional<PriorAuthorityCreatedEvent> result =
         PriorAuthorityDecider.decideCreate(state, command, fingerprint);

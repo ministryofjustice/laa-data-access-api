@@ -43,14 +43,17 @@ class SavePriorAuthorityDraftCommandMapperTest {
 
     assertThat(command.priorAuthorityId()).isNotNull();
     assertThat(command.applicationId()).isEqualTo(applicationId);
-    assertThat(command.content().priorAuthorityType()).isEqualTo("EXPERT");
+    assertThat(command.content().priorAuthorityType())
+        .isEqualTo(
+            uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType.EXPERT);
     assertThat(command.content().justification()).isEqualTo("Need expert assessment");
     assertThat(expertDetails).isNotNull();
     assertThat(expertDetails.expertType()).isEqualTo("Pathologist");
     assertThat(expertDetails.expertFullName()).isEqualTo("Casey Expert");
     assertThat(expertDetails.expertPostcode()).isEqualTo("AB1 2CD");
     assertThat(expertCosts).isNotNull();
-    assertThat(expertCosts.billingType()).isEqualTo("HOURLY");
+    assertThat(expertCosts.billingType())
+        .isEqualTo(uk.gov.justice.laa.dstew.access.content.priorauthority.BillingType.HOURLY);
     assertThat(expertCosts.hourlyRate()).isEqualByComparingTo(BigDecimal.valueOf(300.0));
     assertThat(timeRequested).isNotNull();
     assertThat(timeRequested.hours()).isEqualTo(2);
@@ -66,16 +69,22 @@ class SavePriorAuthorityDraftCommandMapperTest {
   void givenCounselRequest_whenCreateMapped_thenMapsCounselDetails() {
     CreatePriorAuthorityDraftCommand command = mapper.toCreateCommand(counselRequest());
 
-    assertThat(command.content().priorAuthorityType()).isEqualTo("COUNSEL");
+    assertThat(command.content().priorAuthorityType())
+        .isEqualTo(
+            uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType.COUNSEL);
     assertThat(command.content().counselDetails()).isNotNull();
-    assertThat(command.content().counselDetails().counselType()).isEqualTo("KINGS_COUNSEL_ALONE");
+    assertThat(command.content().counselDetails().counselType())
+        .isEqualTo(
+            uk.gov.justice.laa.dstew.access.content.priorauthority.CounselType.KINGS_COUNSEL_ALONE);
   }
 
   @Test
   void givenDisbursementRequest_whenCreateMapped_thenMapsDisbursementDetails() {
     CreatePriorAuthorityDraftCommand command = mapper.toCreateCommand(disbursementRequest());
 
-    assertThat(command.content().priorAuthorityType()).isEqualTo("DISBURSEMENT");
+    assertThat(command.content().priorAuthorityType())
+        .isEqualTo(
+            uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType.DISBURSEMENT);
     assertThat(command.content().disbursementDetails()).isNotNull();
     assertThat(command.content().disbursementDetails().disbursementPurpose())
         .isEqualTo("Interpreter");

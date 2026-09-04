@@ -4,8 +4,7 @@ import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
-import uk.gov.justice.laa.dstew.access.query.application.priorauthority.FindPriorAuthorityByPriorAuthorityIdQuery;
-import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
+import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityPendingByPriorAuthorityIdQuery;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 
 /**
@@ -56,8 +55,7 @@ public class SubmitPriorAuthorityDraftUseCase {
             draft ->
                 dispatcher.dispatch(new ValidateApplicationGrantedCommand(draft.applicationId())));
     return projectionGateway.awaitProjection(
-        new FindPriorAuthorityByPriorAuthorityIdQuery(command.priorAuthorityId()),
-        PriorAuthorityReadModel.class,
+        new PriorAuthorityPendingByPriorAuthorityIdQuery(command.priorAuthorityId()),
         () -> dispatcher.dispatch(command));
   }
 }

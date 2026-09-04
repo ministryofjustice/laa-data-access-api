@@ -5,8 +5,8 @@ import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 
 /**
- * Dispatches a create-prior-authority-draft command. Draft content is written synchronously to the
- * draft store within the command handler, so no projection wait is required before it is readable.
+ * Validates application eligibility and dispatches a create-prior-authority-draft command, waiting
+ * for the projection to confirm the draft is readable.
  */
 @Component
 public class CreatePriorAuthorityDraftUseCase {
@@ -18,9 +18,11 @@ public class CreatePriorAuthorityDraftUseCase {
   }
 
   /**
-   * Validates the application is granted, then dispatches the create-draft command to create a new
-   * draft submission.
+   * Validates the application is granted, dispatches the create-draft command, and waits for the
+   * projection to become readable.
    *
+   * @return {@code true} when the projection confirms the submission within the configured timeout;
+   *     {@code false} on timeout — the command has still committed.
    * @throws RuntimeException propagated from validation if the application is not granted
    */
   @AllowApiCaseworker

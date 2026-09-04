@@ -28,6 +28,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.ObjectMapper;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantedOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityDraftRequest;
@@ -39,6 +40,7 @@ import uk.gov.justice.laa.dstew.access.model.SavePriorAuthorityDraftResponse;
 import uk.gov.justice.laa.dstew.access.model.SubmitPriorAuthorityDraftResponse;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
+import uk.gov.justice.laa.dstew.access.query.application.priorauthority.FindPriorAuthorityByPriorAuthorityIdQuery;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 
 /** Full HTTP/Postgres/Axon integration tests for the Prior Authority draft/submit lifecycle. */
@@ -91,12 +93,13 @@ class PriorAuthorityDraftIntegrationTest {
                 UUID.class,
                 priorAuthorityId))
         .isEqualTo(applicationId);
+    awaitPriorAuthorityProjection(priorAuthorityId);
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM axon.prior_authority_current_state WHERE prior_authority_id = ?",
                 Integer.class,
                 priorAuthorityId))
-        .isZero();
+        .isEqualTo(1);
 
     ResponseEntity<String> draftResponse =
         restTemplate.exchange(
@@ -272,7 +275,7 @@ class PriorAuthorityDraftIntegrationTest {
                 "SELECT COUNT(*) FROM axon.prior_authority_current_state WHERE prior_authority_id = ?",
                 Integer.class,
                 priorAuthorityId))
-        .isZero();
+        .isEqualTo(1);
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM axon.prior_authority_data WHERE prior_authority_id = ?",
@@ -325,9 +328,12 @@ class PriorAuthorityDraftIntegrationTest {
         restTemplate.postForEntity(
             saveDraftUrl(), new HttpEntity<>(request, headers()), String.class);
     assertThat(response.getStatusCode()).isIn(HttpStatus.CREATED, HttpStatus.ACCEPTED);
-    return objectMapper
-        .readValue(response.getBody(), SavePriorAuthorityDraftResponse.class)
-        .getPriorAuthorityId();
+    UUID priorAuthorityId =
+        objectMapper
+            .readValue(response.getBody(), SavePriorAuthorityDraftResponse.class)
+            .getPriorAuthorityId();
+    awaitPriorAuthorityProjection(priorAuthorityId);
+    return priorAuthorityId;
   }
 
   private DisbursementDetails validDisbursementRequest() {
@@ -397,6 +403,21 @@ class PriorAuthorityDraftIntegrationTest {
                     .query(new FindApplicationByIdQuery(applicationId), ApplicationReadModel.class)
                     .join(),
             projected -> projected != null && projected.getApplicationDataVersion() == version);
+  }
+
+  private PriorAuthorityResult awaitPriorAuthorityProjection(UUID priorAuthorityId) {
+    return await()
+        .alias("prior authority projection to be populated for " + priorAuthorityId)
+        .atMost(15, TimeUnit.SECONDS)
+        .pollInterval(100, TimeUnit.MILLISECONDS)
+        .until(
+            () ->
+                queryGateway
+                    .query(
+                        new FindPriorAuthorityByPriorAuthorityIdQuery(priorAuthorityId),
+                        PriorAuthorityResult.class)
+                    .join(),
+            java.util.Objects::nonNull);
   }
 
   private String saveDraftUrl() {

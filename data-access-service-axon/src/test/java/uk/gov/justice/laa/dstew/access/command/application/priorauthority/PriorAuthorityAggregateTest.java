@@ -8,6 +8,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType.*;
 
 import java.time.Instant;
 import java.util.List;
@@ -28,7 +29,6 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
@@ -68,8 +68,7 @@ class PriorAuthorityAggregateTest {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
-    PriorAuthorityContent content =
-        new PriorAuthorityContent(PriorAuthorityType.EXPERT, null, null, null, null);
+    PriorAuthorityContent content = new PriorAuthorityContent(EXPERT, null, null, null, null);
     String serialisedRequest = "{\"priorAuthorityType\":\"EXPERT\"}";
     String fingerprint = PayloadFingerprint.compute(serialisedRequest);
 
@@ -153,7 +152,7 @@ class PriorAuthorityAggregateTest {
             priorAuthorityId,
             applicationId,
             "EXPERT",
-            new PriorAuthorityContent(PriorAuthorityType.EXPERT, null, null, null, null),
+            new PriorAuthorityContent(EXPERT, null, null, null, null),
             serialisedRequest,
             1,
             "pa-schema",
@@ -189,7 +188,7 @@ class PriorAuthorityAggregateTest {
             priorAuthorityId,
             applicationId,
             "COUNSEL",
-            new PriorAuthorityContent(PriorAuthorityType.COUNSEL, null, null, null, null),
+            new PriorAuthorityContent(COUNSEL, null, null, null, null),
             "{\"priorAuthorityType\":\"COUNSEL\"}",
             1,
             "pa-schema",
@@ -304,7 +303,7 @@ class PriorAuthorityAggregateTest {
     Instant submittedAt = Instant.parse("2026-08-02T10:00:00Z");
     String serialisedRequest = "{\"priorAuthorityType\":\"EXPERT\"}";
     String fingerprint = PayloadFingerprint.compute(serialisedRequest);
-    PriorAuthorityContent content = new PriorAuthorityContent("EXPERT", null, null, null, null);
+    PriorAuthorityContent content = new PriorAuthorityContent(EXPERT, null, null, null, null);
     PriorAuthorityDataPayload draftPayload =
         new PriorAuthorityDataPayload(
             priorAuthorityId, applicationId, content, serialisedRequest, startedAt);
@@ -347,7 +346,7 @@ class PriorAuthorityAggregateTest {
     Instant submittedAt = Instant.parse("2026-08-02T10:00:00Z");
     String serialisedRequest = "{\"priorAuthorityType\":\"EXPERT\"}";
     String fingerprint = PayloadFingerprint.compute(serialisedRequest);
-    PriorAuthorityContent content = new PriorAuthorityContent("EXPERT", null, null, null, null);
+    PriorAuthorityContent content = new PriorAuthorityContent(EXPERT, null, null, null, null);
     PriorAuthorityDataPayload draftPayload =
         new PriorAuthorityDataPayload(
             priorAuthorityId, applicationId, content, serialisedRequest, startedAt);
@@ -389,6 +388,7 @@ class PriorAuthorityAggregateTest {
         new PriorAuthorityCreatedEvent(
             priorAuthorityId,
             applicationId,
+            "EXPERT",
             0L,
             fingerprint,
             PriorAuthorityStatus.PENDING.name(),

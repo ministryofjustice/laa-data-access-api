@@ -79,7 +79,7 @@ class CreatePriorAuthorityUseCaseTest {
 
     verify(projectionGateway)
         .awaitProjection(
-            eq(new PriorAuthorityExistsBySubmissionIdQuery(command.submissionId())), any());
+            eq(new PriorAuthorityExistsBySubmissionIdQuery(command.priorAuthorityId())), any());
   }
 
   @Test

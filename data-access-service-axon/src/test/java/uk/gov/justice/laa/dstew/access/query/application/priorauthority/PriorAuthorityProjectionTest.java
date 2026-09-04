@@ -16,7 +16,6 @@ import java.util.function.Predicate;
 import org.axonframework.messaging.queryhandling.QueryUpdateEmitter;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -25,9 +24,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityCreatedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDraftStartedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.Apportionment;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.BillingType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.CounselDetails;
@@ -45,16 +45,17 @@ class PriorAuthorityProjectionTest {
 
   @Mock private PriorAuthorityReadRepository repository;
   @Mock private PriorAuthorityDataStore dataStore;
+  @Mock private PriorAuthorityDraftStore draftStore;
   @Mock private QueryUpdateEmitter queryUpdateEmitter;
   @InjectMocks private PriorAuthorityProjection projection;
 
   @Test
   @SuppressWarnings("unchecked")
   void givenCreatedEvent_whenHandled_thenSavesBeforeEmitting() {
-    UUID priorAuthorityId = UUID.randomUUID();
+    UUID submissionId = UUID.randomUUID();
     PriorAuthorityCreatedEvent event =
         new PriorAuthorityCreatedEvent(
-            priorAuthorityId, UUID.randomUUID(), 1L, "fp", "SUBMITTED", 1, Instant.now());
+            submissionId, UUID.randomUUID(), "EXPERT", 1L, "fp", "SUBMITTED", 1, Instant.now());
     when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
     projection.on(event, queryUpdateEmitter);
@@ -67,12 +68,12 @@ class PriorAuthorityProjectionTest {
 
   @Test
   void givenCreatedEvent_whenHandled_thenSavesExactFields() {
-    UUID priorAuthorityId = UUID.randomUUID();
+    UUID submissionId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-19T10:00:00Z");
     PriorAuthorityCreatedEvent event =
         new PriorAuthorityCreatedEvent(
-            priorAuthorityId, applicationId, 1L, "fp", "SUBMITTED", 1, occurredAt);
+            submissionId, applicationId, "EXPERT", 1L, "fp", "SUBMITTED", 1, occurredAt);
     PriorAuthorityReadModel[] savedCapture = new PriorAuthorityReadModel[1];
     when(repository.save(any()))
         .thenAnswer(
@@ -83,7 +84,7 @@ class PriorAuthorityProjectionTest {
 
     projection.on(event, queryUpdateEmitter);
 
-    assertThat(savedCapture[0].getPriorAuthorityId()).isEqualTo(priorAuthorityId);
+    assertThat(savedCapture[0].getPriorAuthorityId()).isEqualTo(submissionId);
     assertThat(savedCapture[0].getApplicationId()).isEqualTo(applicationId);
     assertThat(savedCapture[0].getDataVersion()).isEqualTo(1L);
     assertThat(savedCapture[0].getStatus()).isEqualTo("SUBMITTED");
@@ -92,12 +93,12 @@ class PriorAuthorityProjectionTest {
 
   @Test
   @SuppressWarnings("unchecked")
-  void givenCreatedEvent_whenHandled_thenEmittedPredicateMatchesOnlyEventPriorAuthorityId() {
-    UUID priorAuthorityId = UUID.randomUUID();
+  void givenCreatedEvent_whenHandled_thenEmittedPredicateMatchesOnlyEventSubmissionId() {
+    UUID submissionId = UUID.randomUUID();
     final UUID otherId = UUID.randomUUID();
     PriorAuthorityCreatedEvent event =
         new PriorAuthorityCreatedEvent(
-            priorAuthorityId, UUID.randomUUID(), 1L, "fp", "SUBMITTED", 1, Instant.now());
+            submissionId, UUID.randomUUID(), "EXPERT", 1L, "fp", "SUBMITTED", 1, Instant.now());
     when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
     Predicate<?>[] capturedPredicate = new Predicate[1];
@@ -114,8 +115,61 @@ class PriorAuthorityProjectionTest {
     assertThat(capturedPredicate[0]).isNotNull();
     Predicate<PriorAuthorityExistsBySubmissionIdQuery> predicate =
         (Predicate<PriorAuthorityExistsBySubmissionIdQuery>) capturedPredicate[0];
-    assertThat(predicate.test(new PriorAuthorityExistsBySubmissionIdQuery(priorAuthorityId))).isTrue();
+    assertThat(predicate.test(new PriorAuthorityExistsBySubmissionIdQuery(submissionId))).isTrue();
     assertThat(predicate.test(new PriorAuthorityExistsBySubmissionIdQuery(otherId))).isFalse();
+  }
+
+  @Test
+  void givenDraftStartedEvent_whenHandled_thenCreatesCurrentStateRow() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-09-04T10:00:00Z");
+    PriorAuthorityDraftStartedEvent event =
+        new PriorAuthorityDraftStartedEvent(priorAuthorityId, applicationId, "fp", 1, occurredAt);
+    PriorAuthorityReadModel[] savedCapture = new PriorAuthorityReadModel[1];
+    when(repository.save(any()))
+        .thenAnswer(
+            invocation -> {
+              savedCapture[0] = invocation.getArgument(0);
+              return savedCapture[0];
+            });
+
+    projection.on(event, queryUpdateEmitter);
+
+    assertThat(savedCapture[0].getPriorAuthorityId()).isEqualTo(priorAuthorityId);
+    assertThat(savedCapture[0].getApplicationId()).isEqualTo(applicationId);
+    assertThat(savedCapture[0].getDataVersion()).isZero();
+    assertThat(savedCapture[0].getStatus()).isEqualTo("IN_PROGRESS");
+    assertThat(savedCapture[0].getCreatedAt()).isEqualTo(occurredAt);
+  }
+
+  @Test
+  void givenInProgressDraftRow_whenQueryHandled_thenHydratesDraftContent() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    PriorAuthorityReadModel model =
+        PriorAuthorityReadModel.builder()
+            .priorAuthorityId(priorAuthorityId)
+            .applicationId(applicationId)
+            .dataVersion(0L)
+            .status("IN_PROGRESS")
+            .build();
+    PriorAuthorityContent content =
+        new PriorAuthorityContent(EXPERT, "Expert required", null, null, null);
+    when(repository.findById(priorAuthorityId)).thenReturn(Optional.of(model));
+    when(draftStore.find(priorAuthorityId))
+        .thenReturn(
+            Optional.of(
+                new PriorAuthorityDataPayload(
+                    priorAuthorityId, applicationId, content, "{}", Instant.now())));
+
+    PriorAuthorityResult result =
+        projection.handle(new FindPriorAuthorityByPriorAuthorityIdQuery(priorAuthorityId));
+
+    assertThat(result.priorAuthorityId()).isEqualTo(priorAuthorityId);
+    assertThat(result.applicationId()).isEqualTo(applicationId);
+    assertThat(result.status()).isNull();
+    assertThat(result.priorAuthorityType()).isEqualTo(EXPERT);
   }
 
   @Test
@@ -124,7 +178,7 @@ class PriorAuthorityProjectionTest {
     UUID applicationId = UUID.randomUUID();
     PriorAuthorityReadModel model =
         PriorAuthorityReadModel.builder()
-            .submissionId(submissionId)
+            .priorAuthorityId(submissionId)
             .applicationId(applicationId)
             .dataVersion(4L)
             .status("PENDING")
@@ -143,7 +197,7 @@ class PriorAuthorityProjectionTest {
                 submissionId, applicationId, content, "{}", Instant.now()));
 
     PriorAuthorityResult result =
-        projection.handle(new FindPriorAuthorityBySubmissionIdQuery(submissionId));
+        projection.handle(new FindPriorAuthorityByPriorAuthorityIdQuery(submissionId));
 
     assertThat(result.priorAuthorityId()).isEqualTo(submissionId);
     assertThat(result.applicationId()).isEqualTo(applicationId);
@@ -216,9 +270,6 @@ class PriorAuthorityProjectionTest {
   }
 
   @Test
-  void givenMissingPriorAuthorityId_whenQueryHandled_thenReturnsEmpty() {
-    UUID priorAuthorityId = UUID.randomUUID();
-    when(repository.findById(priorAuthorityId)).thenReturn(Optional.empty());
   void givenDisbursementDetails_whenQueryHandled_thenHydratesOnlyDisbursementDetails() {
     PriorAuthorityResult disbursementResult =
         handleContent(
@@ -263,9 +314,8 @@ class PriorAuthorityProjectionTest {
     UUID submissionId = UUID.randomUUID();
     when(repository.findById(submissionId)).thenReturn(Optional.empty());
 
-    Optional<PriorAuthorityReadModel> result =
-        projection.handle(new FindPriorAuthorityByPriorAuthorityIdQuery(priorAuthorityId));
-    assertThat(projection.handle(new FindPriorAuthorityBySubmissionIdQuery(submissionId))).isNull();
+    assertThat(projection.handle(new FindPriorAuthorityByPriorAuthorityIdQuery(submissionId)))
+        .isNull();
   }
 
   @ParameterizedTest
@@ -290,7 +340,7 @@ class PriorAuthorityProjectionTest {
     UUID submissionId = UUID.randomUUID();
     PriorAuthorityReadModel model =
         PriorAuthorityReadModel.builder()
-            .submissionId(submissionId)
+            .priorAuthorityId(submissionId)
             .applicationId(UUID.randomUUID())
             .dataVersion(1L)
             .status("PENDING")
@@ -301,6 +351,6 @@ class PriorAuthorityProjectionTest {
             new PriorAuthorityDataPayload(
                 submissionId, model.getApplicationId(), content, "{}", Instant.now()));
 
-    return projection.handle(new FindPriorAuthorityBySubmissionIdQuery(submissionId));
+    return projection.handle(new FindPriorAuthorityByPriorAuthorityIdQuery(submissionId));
   }
 }

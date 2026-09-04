@@ -177,7 +177,7 @@ public class ApplicationHistoryProjection {
         PriorAuthorityHistoryReadModel.builder()
             .eventId(message.identifier())
             .applicationId(event.applicationId())
-            .submissionId(event.submissionId())
+            .submissionId(event.priorAuthorityId())
             .priorAuthorityType(event.priorAuthorityType())
             .eventType("PRIOR_AUTHORITY_CREATED")
             .eventData(

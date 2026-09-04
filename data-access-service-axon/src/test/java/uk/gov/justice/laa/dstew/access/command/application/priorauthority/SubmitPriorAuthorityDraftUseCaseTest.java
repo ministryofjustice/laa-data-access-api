@@ -25,8 +25,7 @@ import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
-import uk.gov.justice.laa.dstew.access.query.application.priorauthority.FindPriorAuthorityByPriorAuthorityIdQuery;
-import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
+import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityPendingByPriorAuthorityIdQuery;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 @ExtendWith(MockitoExtension.class)
@@ -41,8 +40,7 @@ class SubmitPriorAuthorityDraftUseCaseTest {
   @Test
   void givenCommand_whenProjectionConfirmed_thenReturnsTrue() {
     SubmitPriorAuthorityDraftCommand command = stubCommand();
-    when(projectionGateway.awaitProjection(any(), eq(PriorAuthorityReadModel.class), any()))
-        .thenReturn(true);
+    when(projectionGateway.awaitProjection(any(), any())).thenReturn(true);
 
     boolean result = useCase.submit(command);
 
@@ -52,8 +50,7 @@ class SubmitPriorAuthorityDraftUseCaseTest {
   @Test
   void givenCommand_whenProjectionTimeout_thenReturnsFalse() {
     SubmitPriorAuthorityDraftCommand command = stubCommand();
-    when(projectionGateway.awaitProjection(any(), eq(PriorAuthorityReadModel.class), any()))
-        .thenReturn(false);
+    when(projectionGateway.awaitProjection(any(), any())).thenReturn(false);
 
     boolean result = useCase.submit(command);
 
@@ -61,17 +58,15 @@ class SubmitPriorAuthorityDraftUseCaseTest {
   }
 
   @Test
-  void givenCommand_whenSubmit_thenPassesExactQueryAndModelClass() {
+  void givenCommand_whenSubmit_thenPassesExactPendingQuery() {
     SubmitPriorAuthorityDraftCommand command = stubCommand();
-    when(projectionGateway.awaitProjection(any(), eq(PriorAuthorityReadModel.class), any()))
-        .thenReturn(true);
+    when(projectionGateway.awaitProjection(any(), any())).thenReturn(true);
 
     useCase.submit(command);
 
     verify(projectionGateway)
         .awaitProjection(
-            eq(new FindPriorAuthorityByPriorAuthorityIdQuery(command.priorAuthorityId())),
-            eq(PriorAuthorityReadModel.class),
+            eq(new PriorAuthorityPendingByPriorAuthorityIdQuery(command.priorAuthorityId())),
             any());
   }
 
@@ -80,12 +75,12 @@ class SubmitPriorAuthorityDraftUseCaseTest {
     SubmitPriorAuthorityDraftCommand command = stubCommand();
     doAnswer(
             invocation -> {
-              Runnable action = invocation.getArgument(2);
+              Runnable action = invocation.getArgument(1);
               action.run();
               return true;
             })
         .when(projectionGateway)
-        .awaitProjection(any(), eq(PriorAuthorityReadModel.class), any());
+        .awaitProjection(any(), any());
 
     useCase.submit(command);
 
@@ -98,22 +93,20 @@ class SubmitPriorAuthorityDraftUseCaseTest {
     UUID applicationId = UUID.randomUUID();
     when(draftStore.find(command.priorAuthorityId()))
         .thenReturn(Optional.of(stubDraftPayload(command.priorAuthorityId(), applicationId)));
-    when(projectionGateway.awaitProjection(any(), eq(PriorAuthorityReadModel.class), any()))
-        .thenReturn(true);
+    when(projectionGateway.awaitProjection(any(), any())).thenReturn(true);
 
     useCase.submit(command);
 
     InOrder order = Mockito.inOrder(dispatcher, projectionGateway);
     order.verify(dispatcher).dispatch(new ValidateApplicationGrantedCommand(applicationId));
-    order.verify(projectionGateway).awaitProjection(any(), any(), any());
+    order.verify(projectionGateway).awaitProjection(any(), any());
   }
 
   @Test
   void givenNoDraftExists_whenSubmit_thenSkipsValidationAndStillDispatchesSubmitCommand() {
     SubmitPriorAuthorityDraftCommand command = stubCommand();
     when(draftStore.find(command.priorAuthorityId())).thenReturn(Optional.empty());
-    when(projectionGateway.awaitProjection(any(), eq(PriorAuthorityReadModel.class), any()))
-        .thenReturn(true);
+    when(projectionGateway.awaitProjection(any(), any())).thenReturn(true);
 
     boolean result = useCase.submit(command);
 
@@ -133,7 +126,7 @@ class SubmitPriorAuthorityDraftUseCaseTest {
         .dispatch(new ValidateApplicationGrantedCommand(applicationId));
 
     assertThatThrownBy(() -> useCase.submit(command)).isSameAs(failure);
-    verify(projectionGateway, never()).awaitProjection(any(), any(), any());
+    verify(projectionGateway, never()).awaitProjection(any(), any());
   }
 
   private SubmitPriorAuthorityDraftCommand stubCommand() {

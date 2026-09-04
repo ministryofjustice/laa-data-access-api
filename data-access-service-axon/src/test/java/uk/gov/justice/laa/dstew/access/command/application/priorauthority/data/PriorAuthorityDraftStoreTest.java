@@ -16,6 +16,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 
 @ExtendWith(MockitoExtension.class)
@@ -29,7 +30,8 @@ class PriorAuthorityDraftStoreTest {
   void givenNoExistingDraft_whenUpsert_thenInsertsRowAndReturnsFingerprint() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
-    PriorAuthorityContent content = new PriorAuthorityContent("EXPERT", null, null, null, null);
+    PriorAuthorityContent content =
+        new PriorAuthorityContent(PriorAuthorityType.EXPERT, null, null, null, null);
     Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
     PriorAuthorityDataPayload payload =
         new PriorAuthorityDataPayload(

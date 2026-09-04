@@ -8,15 +8,18 @@ import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.CreatePriorAuthorityDraftCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.UpdatePriorAuthorityDraftCommand;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.Apportionment;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.BillingType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.CounselDetails;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.CounselType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.DisbursementDetails;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.ExpertCosts;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.ExpertDetails;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.TimeRequested;
 import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityDraftRequest;
-import uk.gov.justice.laa.dstew.access.model.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.model.SavePriorAuthorityDraftRequest;
+import uk.gov.justice.laa.dstew.access.util.EnumMapping;
 import uk.gov.justice.laa.dstew.access.util.RequestSerialiser;
 
 /** Maps the generated HTTP request model to the Axon save-prior-authority-draft command. */
@@ -66,13 +69,13 @@ public class SavePriorAuthorityDraftCommandMapper {
   }
 
   private PriorAuthorityContent toContent(
-      PriorAuthorityType priorAuthorityType,
+      uk.gov.justice.laa.dstew.access.model.PriorAuthorityType priorAuthorityType,
       String justification,
       uk.gov.justice.laa.dstew.access.model.ExpertDetails expertDetails,
       uk.gov.justice.laa.dstew.access.model.CounselDetails counselDetails,
       uk.gov.justice.laa.dstew.access.model.DisbursementDetails disbursementDetails) {
     return new PriorAuthorityContent(
-        enumName(priorAuthorityType),
+        EnumMapping.map(priorAuthorityType, PriorAuthorityType.class),
         justification,
         toExpertDetails(expertDetails),
         toCounselDetails(counselDetails),
@@ -98,7 +101,7 @@ public class SavePriorAuthorityDraftCommandMapper {
     }
 
     return new ExpertCosts(
-        enumName(costs.getBillingType()),
+        EnumMapping.map(costs.getBillingType(), BillingType.class),
         toBigDecimal(costs.getHourlyRate()),
         toTimeRequested(costs.getTimeRequested()),
         toBigDecimal(costs.getTotalAmount()),
@@ -130,7 +133,7 @@ public class SavePriorAuthorityDraftCommandMapper {
       return null;
     }
 
-    return new CounselDetails(enumName(details.getCounselType()));
+    return new CounselDetails(EnumMapping.map(details.getCounselType(), CounselType.class));
   }
 
   private DisbursementDetails toDisbursementDetails(
@@ -149,14 +152,6 @@ public class SavePriorAuthorityDraftCommandMapper {
     }
 
     return BigDecimal.valueOf(value);
-  }
-
-  private String enumName(Enum<?> value) {
-    if (value == null) {
-      return null;
-    }
-
-    return value.name();
   }
 
   private String serialise(Object request) {

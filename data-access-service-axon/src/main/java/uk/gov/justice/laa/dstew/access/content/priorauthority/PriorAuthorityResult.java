@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.content.priorauthority;
 
 import java.util.UUID;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
 
 /** Typed result of retrieving a prior-authority submission. */
@@ -34,7 +35,7 @@ public record PriorAuthorityResult(
 
   private static PriorAuthorityResult build(
       UUID priorAuthorityId, UUID applicationId, String status, PriorAuthorityContent content) {
-    PriorAuthorityType priorAuthorityType = PriorAuthorityType.from(content.priorAuthorityType());
+    PriorAuthorityType priorAuthorityType = content.priorAuthorityType();
     return new PriorAuthorityResult(
         priorAuthorityId,
         applicationId,
