@@ -2,7 +2,6 @@ CREATE TABLE work_item_route (
     work_item_type VARCHAR(32) NOT NULL,
     work_item_id UUID NOT NULL,
     route_kind VARCHAR(32) NOT NULL,
-    aggregate_id UUID NOT NULL,
     group_id UUID,
     membership_version BIGINT NOT NULL DEFAULT 0,
     route_version BIGINT NOT NULL DEFAULT 0,
@@ -31,7 +30,11 @@ CREATE TABLE work_list_item (
     assignment_version BIGINT NOT NULL DEFAULT 0,
     item_version BIGINT NOT NULL,
     projection_position BIGINT NOT NULL,
-    PRIMARY KEY (item_type, item_id),
+    used_delegated_functions BOOLEAN,
+    category_of_law VARCHAR(255),
+    matter_types JSONB,
+    application_status VARCHAR(64),
+    PRIMARY KEY (item_id),
     CONSTRAINT chk_work_list_item_type CHECK (item_type IN ('APPLICATION', 'PRIOR_AUTHORITY')),
     CONSTRAINT chk_work_list_boundary CHECK (assignment_boundary_type IN ('DIRECT', 'LINKED_GROUP'))
 );
