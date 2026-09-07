@@ -66,7 +66,7 @@ import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.CreateNoteRequest;
-import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityRequest;
+import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityDraftRequest;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
 import uk.gov.justice.laa.dstew.access.model.ExpertCosts;
@@ -1714,17 +1714,19 @@ class PostgresAxonIntegrationTest {
 
     ResponseEntity<String> paResponse =
         restTemplate.postForEntity(
-            "http://localhost:"
-                + port
-                + "/api/v0/applications/"
-                + applicationId
-                + "/prior-authority",
-            new HttpEntity<>(fixedRateExpertRequest(), headers()),
+            "http://localhost:" + port + "/api/v0/prior-authorities",
+            new HttpEntity<>(fixedRateExpertDraftRequest(applicationId), headers()),
             String.class);
-    assertThat(paResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    assertThat(paResponse.getStatusCode()).isIn(HttpStatus.CREATED, HttpStatus.ACCEPTED);
     UUID submissionId =
         UUID.fromString(
             objectMapper.readTree(paResponse.getBody()).get("priorAuthorityId").asText());
+    ResponseEntity<String> submitResponse =
+        restTemplate.postForEntity(
+            "http://localhost:" + port + "/api/v0/prior-authorities/" + submissionId + "/submit",
+            new HttpEntity<>(null, headers()),
+            String.class);
+    assertThat(submitResponse.getStatusCode()).isIn(HttpStatus.CREATED, HttpStatus.ACCEPTED);
 
     await()
         .atMost(10, TimeUnit.SECONDS)
@@ -1823,8 +1825,9 @@ class PostgresAxonIntegrationTest {
     }
   }
 
-  private CreatePriorAuthorityRequest fixedRateExpertRequest() {
-    return CreatePriorAuthorityRequest.builder()
+  private CreatePriorAuthorityDraftRequest fixedRateExpertDraftRequest(UUID applicationId) {
+    return CreatePriorAuthorityDraftRequest.builder()
+        .applicationId(applicationId)
         .priorAuthorityType(PriorAuthorityType.EXPERT)
         .justification("Expert witness required")
         .expertDetails(

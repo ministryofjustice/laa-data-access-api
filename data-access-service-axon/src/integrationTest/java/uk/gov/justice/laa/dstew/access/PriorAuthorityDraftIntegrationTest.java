@@ -197,6 +197,27 @@ class PriorAuthorityDraftIntegrationTest {
   }
 
   @Test
+  void givenDraftPayloadWithNullNestedFields_whenSavePriorAuthorityDraft_thenAcceptsDraft()
+      throws Exception {
+    UUID applicationId = grantedApplication();
+    CreatePriorAuthorityDraftRequest request =
+        CreatePriorAuthorityDraftRequest.builder()
+            .applicationId(applicationId)
+            .priorAuthorityType(PriorAuthorityType.DISBURSEMENT)
+            .disbursementDetails(DisbursementDetails.builder().build())
+            .build();
+
+    ResponseEntity<String> response =
+        restTemplate.postForEntity(
+            saveDraftUrl(), new HttpEntity<>(request, headers()), String.class);
+
+    assertThat(response.getStatusCode()).isIn(HttpStatus.CREATED, HttpStatus.ACCEPTED);
+    SavePriorAuthorityDraftResponse body =
+        objectMapper.readValue(response.getBody(), SavePriorAuthorityDraftResponse.class);
+    assertThat(body.getPriorAuthorityId()).isNotNull();
+  }
+
+  @Test
   void givenDraftInProgress_whenSubmitPriorAuthorityDraft_thenTransitionsToPendingAndDeletesDraft()
       throws Exception {
     UUID applicationId = grantedApplication();
@@ -306,6 +327,31 @@ class PriorAuthorityDraftIntegrationTest {
             priorAuthorityUrl(nonexistentPriorAuthorityId),
             HttpMethod.GET,
             new HttpEntity<>(headers()),
+            String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+  }
+
+  @Test
+  void givenGrantedApplication_whenPostingLegacyPriorAuthorityEndpoint_thenReturnsNotFound() {
+    UUID applicationId = grantedApplication();
+    String payload =
+        """
+        {
+          "priorAuthorityType":"DISBURSEMENT",
+          "justification":"Interpreter costs for proceedings",
+          "disbursementDetails":{"disbursementPurpose":"Court interpreter","disbursementAmount":150.0}
+        }
+        """;
+
+    ResponseEntity<String> response =
+        restTemplate.postForEntity(
+            "http://localhost:"
+                + port
+                + "/api/v0/applications/"
+                + applicationId
+                + "/prior-authority",
+            new HttpEntity<>(payload, headers()),
             String.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
