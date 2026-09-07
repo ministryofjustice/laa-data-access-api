@@ -34,13 +34,13 @@ components:
             $ref: "#/components/schemas/UploadedDocument"
         expertDetails:
           description: Optional expert details (present when priorAuthorityType is EXPERT)
-          $ref: "../open-api-applications/components.yml#/components/schemas/ExpertDetails"
+          $ref: "#/components/schemas/ExpertDetails"
         counselDetails:
           description: Optional counsel details (present when priorAuthorityType is COUNSEL)
-          $ref: "../open-api-applications/components.yml#/components/schemas/CounselDetails"
+          $ref: "#/components/schemas/CounselDetails"
         disbursementDetails:
           description: Optional disbursement details (present when priorAuthorityType is DISBURSEMENT)
-          $ref: "../open-api-applications/components.yml#/components/schemas/DisbursementDetails"
+          $ref: "#/components/schemas/DisbursementDetails"
         status:
           type: string
           description: Status of the prior authority request (business values to be confirmed)
@@ -86,16 +86,16 @@ components:
       type: object
       properties:
         priorAuthorityType:
-          $ref: "../open-api-applications/components.yml#/components/schemas/PriorAuthorityType"
+          $ref: "#/components/schemas/PriorAuthorityType"
         justification:
           type: string
           maxLength: 10000
         expertDetails:
-          $ref: "../open-api-applications/components.yml#/components/schemas/ExpertDetails"
+          $ref: "#/components/schemas/ExpertDetails"
         counselDetails:
-          $ref: "../open-api-applications/components.yml#/components/schemas/CounselDetails"
+          $ref: "#/components/schemas/CounselDetails"
         disbursementDetails:
-          $ref: "../open-api-applications/components.yml#/components/schemas/DisbursementDetails"
+          $ref: "#/components/schemas/DisbursementDetails"
 
     SavePriorAuthorityDraftResponse:
       type: object
@@ -123,3 +123,120 @@ components:
           type: string
           format: date-time
 
+    PriorAuthorityType:
+      type: string
+      enum:
+        - EXPERT
+        - DISBURSEMENT
+        - COUNSEL
+
+    BillingType:
+      type: string
+      enum:
+        - HOURLY
+        - FIXED_RATE
+
+    CounselType:
+      type: string
+      enum:
+        - KINGS_COUNSEL_ALONE
+        - TWO_JUNIOR_COUNSEL
+        - KINGS_COUNSEL_AND_JUNIOR_COUNSEL
+        - KINGS_COUNSEL_AND_TWO_JUNIOR_COUNSEL
+
+    TimeRequested:
+      type: object
+      properties:
+        hours:
+          type: integer
+          minimum: 0
+        minutes:
+          type: integer
+          minimum: 0
+          maximum: 59
+
+    Apportionment:
+      type: object
+      properties:
+        partiesSharingCosts:
+          type: integer
+          minimum: 2
+        clientShareAmount:
+          type: number
+          format: double
+
+    ExpertCosts:
+      type: object
+      properties:
+        billingType:
+          $ref: "#/components/schemas/BillingType"
+        hourlyRate:
+          type: number
+          format: double
+        timeRequested:
+          $ref: "#/components/schemas/TimeRequested"
+        totalAmount:
+          type: number
+          format: double
+        costsSharedWithOtherParties:
+          type: boolean
+        apportionment:
+          $ref: "#/components/schemas/Apportionment"
+
+    ExpertDetails:
+      type: object
+      properties:
+        expertType:
+          type: string
+        expertFullName:
+          type: string
+        expertPostcode:
+          type: string
+        expertCosts:
+          $ref: "#/components/schemas/ExpertCosts"
+
+    CounselDetails:
+      type: object
+      properties:
+        counselType:
+          $ref: "#/components/schemas/CounselType"
+
+    DisbursementDetails:
+      type: object
+      properties:
+        disbursementPurpose:
+          type: string
+        disbursementAmount:
+          type: number
+          format: double
+
+    CreatePriorAuthorityRequest:
+      type: object
+      required:
+        - priorAuthorityType
+        - justification
+      properties:
+        priorAuthorityType:
+          $ref: "#/components/schemas/PriorAuthorityType"
+        justification:
+          type: string
+          maxLength: 10000
+        expertDetails:
+          $ref: "#/components/schemas/ExpertDetails"
+        counselDetails:
+          $ref: "#/components/schemas/CounselDetails"
+        disbursementDetails:
+          $ref: "#/components/schemas/DisbursementDetails"
+
+    CreatePriorAuthorityResponse:
+      type: object
+      required:
+        - priorAuthorityId
+        - submittedAt
+      properties:
+        priorAuthorityId:
+          type: string
+          format: uuid
+        submittedAt:
+          type: string
+          format: date-time
