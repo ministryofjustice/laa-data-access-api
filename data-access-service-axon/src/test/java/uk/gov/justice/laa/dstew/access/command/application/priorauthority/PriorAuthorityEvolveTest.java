@@ -14,7 +14,7 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStat
 class PriorAuthorityEvolveTest {
 
   @Test
-  void givenCreatedEvent_whenApply_thenMutatesAllSixStateFields() {
+  void givenCreatedEvent_whenApply_thenMutatesAllEightStateFields() {
     PriorAuthorityState state = new PriorAuthorityState();
     UUID submissionId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
@@ -23,6 +23,7 @@ class PriorAuthorityEvolveTest {
         new PriorAuthorityCreatedEvent(
             submissionId,
             applicationId,
+            "EXPERT",
             0L,
             "test-fingerprint",
             PriorAuthorityStatus.PENDING.name(),
@@ -37,6 +38,7 @@ class PriorAuthorityEvolveTest {
     assertThat(state.getRequestFingerprint()).isEqualTo("test-fingerprint");
     assertThat(state.getStatus()).isEqualTo(PriorAuthorityStatus.PENDING.name());
     assertThat(state.getSchemaVersion()).isEqualTo(2);
+    assertThat(state.getPriorAuthorityType()).isEqualTo("EXPERT");
   }
 
   @Test

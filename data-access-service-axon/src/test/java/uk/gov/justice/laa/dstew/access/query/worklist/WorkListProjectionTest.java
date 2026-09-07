@@ -87,6 +87,7 @@ class WorkListProjectionTest {
         new PriorAuthorityCreatedEvent(
             submissionId,
             applicationId,
+            "type",
             0L,
             "fingerprint",
             "PENDING",

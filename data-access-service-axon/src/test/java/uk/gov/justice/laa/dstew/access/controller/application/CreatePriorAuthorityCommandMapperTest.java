@@ -26,17 +26,27 @@ class CreatePriorAuthorityCommandMapperTest {
       new CreatePriorAuthorityCommandMapper(JsonMapper.builder().build());
 
   @Test
+  void givenExpertRequest_whenMapped_thenCommandCarriesPriorAuthorityType() {
+    var request = expertRequest();
+    var command = mapper.toCommand(UUID.randomUUID(), request);
+    assertThat(command.priorAuthorityType()).isEqualTo("EXPERT");
+  }
+
+  @Test
   void givenExpertRequest_whenMapped_thenMapsAllExpertFields() {
     CreatePriorAuthorityCommand command = mapper.toCommand(UUID.randomUUID(), expertRequest());
 
-    assertThat(command.content().priorAuthorityType()).isEqualTo("EXPERT");
+    assertThat(command.content().priorAuthorityType())
+        .isEqualTo(
+            uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType.EXPERT);
     assertThat(command.content().justification()).isEqualTo("Need expert assessment");
     assertThat(command.content().expertDetails()).isNotNull();
     assertThat(command.content().expertDetails().expertType()).isEqualTo("Pathologist");
     assertThat(command.content().expertDetails().expertFullName()).isEqualTo("Casey Expert");
     assertThat(command.content().expertDetails().expertPostcode()).isEqualTo("AB1 2CD");
     assertThat(command.content().expertDetails().expertCosts()).isNotNull();
-    assertThat(command.content().expertDetails().expertCosts().billingType()).isEqualTo("HOURLY");
+    assertThat(command.content().expertDetails().expertCosts().billingType().name())
+        .isEqualTo("HOURLY");
     assertThat(command.content().expertDetails().expertCosts().hourlyRate())
         .isEqualByComparingTo(BigDecimal.valueOf(300.0));
     assertThat(command.content().expertDetails().expertCosts().timeRequested()).isNotNull();
@@ -60,9 +70,12 @@ class CreatePriorAuthorityCommandMapperTest {
   void givenCounselRequest_whenMapped_thenMapsCounselDetails() {
     CreatePriorAuthorityCommand command = mapper.toCommand(UUID.randomUUID(), counselRequest());
 
-    assertThat(command.content().priorAuthorityType()).isEqualTo("COUNSEL");
+    assertThat(command.content().priorAuthorityType())
+        .isEqualTo(
+            uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType.COUNSEL);
     assertThat(command.content().counselDetails()).isNotNull();
-    assertThat(command.content().counselDetails().counselType()).isEqualTo("KINGS_COUNSEL_ALONE");
+    assertThat(command.content().counselDetails().counselType().name())
+        .isEqualTo("KINGS_COUNSEL_ALONE");
   }
 
   @Test
@@ -70,7 +83,9 @@ class CreatePriorAuthorityCommandMapperTest {
     CreatePriorAuthorityCommand command =
         mapper.toCommand(UUID.randomUUID(), disbursementRequest());
 
-    assertThat(command.content().priorAuthorityType()).isEqualTo("DISBURSEMENT");
+    assertThat(command.content().priorAuthorityType())
+        .isEqualTo(
+            uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType.DISBURSEMENT);
     assertThat(command.content().disbursementDetails()).isNotNull();
     assertThat(command.content().disbursementDetails().disbursementPurpose())
         .isEqualTo("Interpreter");

@@ -180,7 +180,7 @@ class ApplicationCommandControllerTest {
     CreatePriorAuthorityRequest request = new CreatePriorAuthorityRequest();
     CreatePriorAuthorityCommand command =
         new CreatePriorAuthorityCommand(
-            submissionId, applicationId, null, "{}", 1, "PriorAuthority.json", occurredAt);
+            submissionId, applicationId, null, null, "{}", 1, "PriorAuthority.json", occurredAt);
     when(createPriorAuthorityCommandMapper.toCommand(applicationId, request)).thenReturn(command);
     when(createPriorAuthorityUseCase.execute(command)).thenReturn(true);
 
@@ -204,7 +204,7 @@ class ApplicationCommandControllerTest {
     CreatePriorAuthorityRequest request = new CreatePriorAuthorityRequest();
     CreatePriorAuthorityCommand command =
         new CreatePriorAuthorityCommand(
-            submissionId, applicationId, null, "{}", 1, "PriorAuthority.json", occurredAt);
+            submissionId, applicationId, null, null, "{}", 1, "PriorAuthority.json", occurredAt);
     when(createPriorAuthorityCommandMapper.toCommand(applicationId, request)).thenReturn(command);
     when(createPriorAuthorityUseCase.execute(command)).thenReturn(false);
 

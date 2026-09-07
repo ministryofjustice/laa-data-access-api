@@ -198,6 +198,44 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ApplicationDomainEventResponse"
+        priorAuthorities:
+          type: array
+          items:
+            $ref: "#/components/schemas/PriorAuthorityHistoryGroup"
+
+    PriorAuthorityHistoryGroup:
+      type: object
+      required:
+        - submissionId
+        - priorAuthorityType
+        - events
+      properties:
+        submissionId:
+          type: string
+          format: uuid
+        priorAuthorityType:
+          $ref: "#/components/schemas/PriorAuthorityType"
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/PriorAuthorityEventResponse"
+
+    PriorAuthorityEventResponse:
+      type: object
+      required:
+        - eventType
+        - createdAt
+        - createdBy
+      properties:
+        eventType:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+        eventDescription:
+          type: string
 
     ApplicationDomainEventResponse:
       type: object

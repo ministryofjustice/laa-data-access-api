@@ -18,4 +18,5 @@ public class PriorAuthorityState {
   int schemaVersion;
   UUID caseworkerId;
   long assignmentVersion;
+  String priorAuthorityType;
 }

@@ -27,7 +27,7 @@ import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsQuer
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsResult;
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
 import uk.gov.justice.laa.dstew.access.query.application.FindNotesForApplicationQuery;
-import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadModel;
+import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryResult;
 import uk.gov.justice.laa.dstew.access.query.application.history.FindApplicationHistoryQuery;
 import uk.gov.justice.laa.dstew.access.utils.BaseSecuredUseCaseTest;
 import uk.gov.justice.laa.dstew.access.utils.TestSecurityConfig;
@@ -133,10 +133,10 @@ class ApplicationQueryUseCaseSecurityTest extends BaseSecuredUseCaseTest {
     setSecurityContext(CASEWORKER_ROLE);
     UUID applicationId = UUID.randomUUID();
     List<String> requestedTypes = List.of("APPLICATION_CREATED");
-    List<ApplicationHistoryReadModel> expected = List.of();
+    ApplicationHistoryResult expected = new ApplicationHistoryResult(List.of(), List.of());
 
-    when(queryGateway.queryMany(
-            any(FindApplicationHistoryQuery.class), eq(ApplicationHistoryReadModel.class)))
+    when(queryGateway.query(
+            any(FindApplicationHistoryQuery.class), eq(ApplicationHistoryResult.class)))
         .thenReturn(CompletableFuture.completedFuture(expected));
 
     assertThat(useCase.getApplicationHistory(applicationId, requestedTypes)).isSameAs(expected);
