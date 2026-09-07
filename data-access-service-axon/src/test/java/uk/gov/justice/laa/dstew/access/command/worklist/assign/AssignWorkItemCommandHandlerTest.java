@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.command.worklist.assign;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -83,7 +84,7 @@ class AssignWorkItemCommandHandlerTest {
         .hasMessage("No caseworker found with id: " + caseworkerId);
 
     verify(routes, never()).resolveDirectRoute(id);
-    verify(gateway, never()).sendAndWait(org.mockito.ArgumentMatchers.any());
+    verify(gateway, never()).sendAndWait(any());
   }
 
   private WorkItemRoute route(WorkItemType type, UUID id, Instant occurredAt) {

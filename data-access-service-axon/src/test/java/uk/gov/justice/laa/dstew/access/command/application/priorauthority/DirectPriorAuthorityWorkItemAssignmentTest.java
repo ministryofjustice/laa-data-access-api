@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.command.application.priorauthority;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
@@ -28,7 +29,7 @@ class DirectPriorAuthorityWorkItemAssignmentTest {
 
   @BeforeEach
   void setUp() {
-    dataStore = org.mockito.Mockito.mock(PriorAuthorityDataStore.class);
+    dataStore = mock(PriorAuthorityDataStore.class);
     fixture =
         AxonTestFixture.with(
             EventSourcingConfigurer.create()
@@ -101,7 +102,7 @@ class DirectPriorAuthorityWorkItemAssignmentTest {
     PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
     aggregate.on(created(submissionId, applicationId, when));
     aggregate.on(assigned);
-    EventAppender eventAppender = org.mockito.Mockito.mock(EventAppender.class);
+    EventAppender eventAppender = mock(EventAppender.class);
 
     aggregate.handle(
         new DirectPriorAuthorityWorkItemUnassignmentCommand(submissionId, 1L, "{}", "", when),
@@ -136,7 +137,7 @@ class DirectPriorAuthorityWorkItemAssignmentTest {
                 aggregate.handle(
                     new DirectPriorAuthorityWorkItemAssignmentCommand(
                         UUID.randomUUID(), UUID.randomUUID(), 0L, "{}", "", when),
-                    org.mockito.Mockito.mock(EventAppender.class)))
+                    mock(EventAppender.class)))
         .isInstanceOf(ResourceNotFoundException.class);
   }
 

@@ -15,6 +15,7 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.MakeDecision
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupRequested;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationGroupInvariantException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException;
@@ -304,9 +305,7 @@ class ApplicationDeciderTest {
                         "{}",
                         null,
                         TIMESTAMP)))
-        .isInstanceOf(
-            uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException
-                .class);
+        .isInstanceOf(WorkItemAssignmentConflictException.class);
   }
 
   // ── decideNote ─────────────────────────────────────────────────────────────────

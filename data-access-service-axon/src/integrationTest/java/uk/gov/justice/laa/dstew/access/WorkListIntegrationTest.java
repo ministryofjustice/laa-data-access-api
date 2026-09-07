@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -151,7 +152,7 @@ class WorkListIntegrationTest {
             .eventHistory(
                 EventHistoryRequest.builder().eventDescription("Decision recorded").build())
             .proceedings(
-                java.util.List.of(
+                List.of(
                     MakeDecisionProceedingRequest.builder()
                         .proceedingId(proceedingId)
                         .meritsDecision(

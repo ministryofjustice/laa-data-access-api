@@ -1,6 +1,8 @@
 package uk.gov.justice.laa.dstew.access.command.worklist.route;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import java.time.Instant;
@@ -13,8 +15,7 @@ import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationRead
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 
 class WorkItemRouteProjectionTest {
-  private final WorkItemRouteRepository routes =
-      org.mockito.Mockito.mock(WorkItemRouteRepository.class);
+  private final WorkItemRouteRepository routes = mock(WorkItemRouteRepository.class);
   private final WorkItemRouteProjection projection = new WorkItemRouteProjection(routes);
 
   @Test
@@ -43,7 +44,7 @@ class WorkItemRouteProjectionTest {
     projection.on(event);
     projection.on(event);
 
-    verify(routes, org.mockito.Mockito.times(2)).deleteById(applicationId);
+    verify(routes, times(2)).deleteById(applicationId);
   }
 
   @Test

@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.command.worklist.unassign;
 
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -15,8 +16,8 @@ import uk.gov.justice.laa.dstew.access.command.worklist.route.WorkItemRouteResol
 class UnassignWorkItemCommandHandlerTest {
   @Test
   void dispatchesAnApplicationUnassignmentToItsDirectAggregate() {
-    WorkItemRouteResolver routes = org.mockito.Mockito.mock(WorkItemRouteResolver.class);
-    CommandGateway gateway = org.mockito.Mockito.mock(CommandGateway.class);
+    WorkItemRouteResolver routes = mock(WorkItemRouteResolver.class);
+    CommandGateway gateway = mock(CommandGateway.class);
     UnassignWorkItemCommandHandler handler = new UnassignWorkItemCommandHandler(routes, gateway);
     UUID id = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-09-01T10:00:00Z");
@@ -30,8 +31,8 @@ class UnassignWorkItemCommandHandlerTest {
 
   @Test
   void dispatchesPriorAuthorityUnassignmentToItsDirectAggregate() {
-    WorkItemRouteResolver routes = org.mockito.Mockito.mock(WorkItemRouteResolver.class);
-    CommandGateway gateway = org.mockito.Mockito.mock(CommandGateway.class);
+    WorkItemRouteResolver routes = mock(WorkItemRouteResolver.class);
+    CommandGateway gateway = mock(CommandGateway.class);
     UnassignWorkItemCommandHandler handler = new UnassignWorkItemCommandHandler(routes, gateway);
     UUID id = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-09-01T10:00:00Z");

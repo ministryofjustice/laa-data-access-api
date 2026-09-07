@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.query.worklist;
 
 import java.util.Objects;
+import java.util.UUID;
 import java.util.stream.Stream;
 import org.axonframework.messaging.core.annotation.Namespace;
 import org.axonframework.messaging.eventhandling.EventMessage;
@@ -136,7 +137,7 @@ public class WorkListProjection {
   }
 
   private void requireMatchingType(
-      WorkListItemReadModel item, WorkItemType eventType, java.util.UUID workItemId) {
+      WorkListItemReadModel item, WorkItemType eventType, UUID workItemId) {
     if (item.getItemType() != eventType) {
       throw new IllegalStateException("Work item type mismatch for " + workItemId);
     }

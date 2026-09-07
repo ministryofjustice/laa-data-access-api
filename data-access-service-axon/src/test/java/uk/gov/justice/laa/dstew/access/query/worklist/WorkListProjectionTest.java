@@ -57,7 +57,7 @@ class WorkListProjectionTest {
     when(data.laaReference()).thenReturn("LAA-123456");
     when(data.usedDelegatedFunctions()).thenReturn(true);
     when(data.categoryOfLaw()).thenReturn("FAMILY");
-    when(data.proceedings()).thenReturn(java.util.List.of(proceeding));
+    when(data.proceedings()).thenReturn(List.of(proceeding));
     when(proceeding.getMatterType()).thenReturn("SPECIAL_CHILDREN_ACT");
 
     Instant occurredAt = Instant.parse("2026-08-28T10:00:00Z");

@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.command.worklist.route;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
@@ -14,7 +15,7 @@ import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 class WorkItemRouteResolverTest {
   @Test
   void returnsAnExistingStandaloneRoute() {
-    WorkItemRouteRepository routes = org.mockito.Mockito.mock(WorkItemRouteRepository.class);
+    WorkItemRouteRepository routes = mock(WorkItemRouteRepository.class);
     WorkItemRouteResolver resolver = new WorkItemRouteResolver(routes);
     UUID id = UUID.randomUUID();
     WorkItemRoute route =
@@ -32,7 +33,7 @@ class WorkItemRouteResolverTest {
 
   @Test
   void rejectsMissingAndNonStandaloneRoutes() {
-    WorkItemRouteRepository routes = org.mockito.Mockito.mock(WorkItemRouteRepository.class);
+    WorkItemRouteRepository routes = mock(WorkItemRouteRepository.class);
     WorkItemRouteResolver resolver = new WorkItemRouteResolver(routes);
     UUID missingId = UUID.randomUUID();
     UUID linkedId = UUID.randomUUID();

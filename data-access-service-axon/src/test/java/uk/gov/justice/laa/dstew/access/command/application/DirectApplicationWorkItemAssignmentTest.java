@@ -1,11 +1,15 @@
 package uk.gov.justice.laa.dstew.access.command.application;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import org.axonframework.eventsourcing.configuration.EventSourcedEntityModule;
 import org.axonframework.eventsourcing.configuration.EventSourcingConfigurer;
+import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import org.axonframework.test.fixture.AxonTestFixture;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,7 +29,7 @@ class DirectApplicationWorkItemAssignmentTest {
 
   @BeforeEach
   void setUp() {
-    dataStore = org.mockito.Mockito.mock(ApplicationDataStore.class);
+    dataStore = mock(ApplicationDataStore.class);
     fixture =
         AxonTestFixture.with(
             EventSourcingConfigurer.create()
@@ -87,32 +91,29 @@ class DirectApplicationWorkItemAssignmentTest {
     active.on(created(id, when));
     active.on(new ApplicationReadyForManualAssessmentEvent(id, 1L, 1L, when));
     active.on(new WorkItemAssigned(id, WorkItemType.APPLICATION, 1L, 1L, caseworkerId, "", when));
-    org.assertj.core.api.Assertions.assertThatThrownBy(
+    assertThatThrownBy(
             () ->
                 active.handle(
                     new DirectWorkItemAssignmentCommand(id, caseworkerId, 1L, "{}", "", when),
-                    org.mockito.Mockito.mock(
-                        org.axonframework.messaging.eventhandling.gateway.EventAppender.class)))
+                    mock(EventAppender.class)))
         .isInstanceOf(WorkItemAssignmentConflictException.class);
-    org.assertj.core.api.Assertions.assertThatThrownBy(
+    assertThatThrownBy(
             () ->
                 active.handle(
                     new DirectWorkItemAssignmentCommand(
                         UUID.randomUUID(), caseworkerId, 1L, "{}", "", when),
-                    org.mockito.Mockito.mock(
-                        org.axonframework.messaging.eventhandling.gateway.EventAppender.class)))
+                    mock(EventAppender.class)))
         .isInstanceOf(ResourceNotFoundException.class);
 
     UUID inactiveId = UUID.randomUUID();
     ApplicationAggregate inactive = new ApplicationAggregate();
     inactive.on(created(inactiveId, when));
-    org.assertj.core.api.Assertions.assertThatThrownBy(
+    assertThatThrownBy(
             () ->
                 inactive.handle(
                     new DirectWorkItemAssignmentCommand(
                         inactiveId, caseworkerId, 0L, "{}", "", when),
-                    org.mockito.Mockito.mock(
-                        org.axonframework.messaging.eventhandling.gateway.EventAppender.class)))
+                    mock(EventAppender.class)))
         .isInstanceOf(ResourceNotFoundException.class);
   }
 
@@ -123,6 +124,6 @@ class DirectApplicationWorkItemAssignmentTest {
 
   private ApplicationCreatedEvent created(UUID id, Instant occurredAt) {
     return new ApplicationCreatedEvent(
-        id, 0L, "hash", "APPLICATION_SUBMITTED", 1, occurredAt, null, java.util.List.of());
+        id, 0L, "hash", "APPLICATION_SUBMITTED", 1, occurredAt, null, List.of());
   }
 }
