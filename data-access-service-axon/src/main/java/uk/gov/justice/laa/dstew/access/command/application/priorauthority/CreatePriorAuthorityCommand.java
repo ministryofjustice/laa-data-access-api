@@ -11,6 +11,7 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityCont
 public record CreatePriorAuthorityCommand(
     @TargetEntityId UUID submissionId,
     UUID applicationId,
+    String priorAuthorityType,
     PriorAuthorityContent content,
     String serialisedRequest,
     int schemaVersion,

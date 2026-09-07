@@ -6,18 +6,24 @@ import static org.awaitility.Awaitility.await;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validLinkedCreateApplicationRequest;
 
+import java.io.IOException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Stream;
 import org.axonframework.eventsourcing.eventstore.EventStorageEngine;
 import org.axonframework.eventsourcing.eventstore.jpa.AggregateBasedJpaEventStorageEngine;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
@@ -32,6 +38,8 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.springframework.context.annotation.Import;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.env.Environment;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -53,12 +61,16 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.AutoGranted;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantedOutcomeRequest;
+import uk.gov.justice.laa.dstew.access.model.BillingType;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.CreateNoteRequest;
+import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityRequest;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
+import uk.gov.justice.laa.dstew.access.model.ExpertCosts;
+import uk.gov.justice.laa.dstew.access.model.ExpertDetails;
 import uk.gov.justice.laa.dstew.access.model.InvolvedChildResponse;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceedingRequest;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
@@ -67,6 +79,8 @@ import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetailsRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.OpponentResponse;
+import uk.gov.justice.laa.dstew.access.model.PriorAuthorityHistoryGroup;
+import uk.gov.justice.laa.dstew.access.model.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.model.ProviderResponse;
 import uk.gov.justice.laa.dstew.access.model.ScopeLimitationResponse;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
@@ -74,6 +88,7 @@ import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadReposito
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadRepository;
+import uk.gov.justice.laa.dstew.access.query.application.history.PriorAuthorityHistoryReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 
@@ -102,6 +117,8 @@ class PostgresAxonIntegrationTest {
   @Autowired private ApplicationReadRepository applicationReadRepository;
 
   @Autowired private ApplicationHistoryReadRepository applicationHistoryReadRepository;
+
+  @Autowired private PriorAuthorityHistoryReadRepository priorAuthorityHistoryReadRepository;
 
   @Autowired private LinkedApplicationGroupReadRepository groupReadRepository;
 
@@ -138,7 +155,7 @@ class PostgresAxonIntegrationTest {
   }
 
   @Test
-  void givenFreshDatabase_whenFlywayRuns_thenCreatesOnlyTheCurrentSchema() {
+  void givenFreshDatabase_whenFlywayRuns_thenCreatesOnlyTheCurrentSchema() throws IOException {
     List<String> appliedVersions =
         jdbcTemplate.queryForList(
             """
@@ -168,7 +185,7 @@ class PostgresAxonIntegrationTest {
             """,
             String.class);
 
-    assertThat(appliedVersions).containsExactly("1", "2", "3", "4", "5", "6");
+    assertThat(appliedVersions).containsExactlyElementsOf(expectedMigrationVersions());
     assertThat(tables)
         .containsExactly(
             "application_current_state",
@@ -181,6 +198,7 @@ class PostgresAxonIntegrationTest {
             "linked_application_group_current_state",
             "prior_authority_current_state",
             "prior_authority_data",
+            "prior_authority_history",
             "token_entry");
     assertThat(sequences).containsExactly("aggregate-event-global-index-sequence");
     assertThat(
@@ -1672,6 +1690,156 @@ class PostgresAxonIntegrationTest {
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
   }
 
+  @Test
+  void givenApplicationWithPriorAuthority_whenGetHistory_thenReturnsPriorAuthoritiesSection()
+      throws Exception {
+    UUID applicationId = UUID.randomUUID();
+    applicationId(post(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()));
+    awaitProjection(applicationId);
+
+    restTemplate.exchange(
+        "http://localhost:"
+            + port
+            + "/api/v0/applications/"
+            + applicationId
+            + "/auto-grant-outcome",
+        HttpMethod.PATCH,
+        new HttpEntity<>(
+            new AutoGrantedOutcomeRequest(
+                AutoGrantOutcome.AUTOGRANTED, Map.of("certificateNumber", "PA-CERT-001")),
+            headers()),
+        Void.class);
+    awaitProjectionVersion(applicationId, 1L);
+
+    ResponseEntity<String> paResponse =
+        restTemplate.postForEntity(
+            "http://localhost:"
+                + port
+                + "/api/v0/applications/"
+                + applicationId
+                + "/prior-authority",
+            new HttpEntity<>(fixedRateExpertRequest(), headers()),
+            String.class);
+    assertThat(paResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    UUID submissionId =
+        UUID.fromString(objectMapper.readTree(paResponse.getBody()).get("submissionId").asText());
+
+    await()
+        .atMost(10, TimeUnit.SECONDS)
+        .pollInterval(50, TimeUnit.MILLISECONDS)
+        .until(
+            () ->
+                priorAuthorityHistoryReadRepository.findAllByApplicationIdOrderByOccurredAtAsc(
+                    applicationId),
+            rows -> rows.size() == 1);
+
+    ResponseEntity<ApplicationHistoryResponse> historyResponse =
+        restTemplate.exchange(
+            "http://localhost:"
+                + port
+                + "/api/v0/applications/"
+                + applicationId
+                + "/history-search",
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            ApplicationHistoryResponse.class);
+    assertThat(historyResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+    assertThat(historyResponse.getBody().getPriorAuthorities()).hasSize(1);
+    PriorAuthorityHistoryGroup group = historyResponse.getBody().getPriorAuthorities().get(0);
+    assertThat(group.getSubmissionId()).isEqualTo(submissionId);
+    assertThat(group.getPriorAuthorityType()).isEqualTo(PriorAuthorityType.EXPERT);
+    assertThat(group.getEvents()).hasSize(1);
+    assertThat(group.getEvents().get(0).getEventType()).isEqualTo("PRIOR_AUTHORITY_CREATED");
+    assertThat(historyResponse.getBody().getEvents()).isNotEmpty();
+  }
+
+  @Test
+  void
+      givenConflictingPriorAuthorityTypeRowsInDb_whenGetHistory_thenReturnsHttp500WithStableProblemDetail()
+          throws Exception {
+    UUID applicationId = UUID.randomUUID();
+    UUID submissionId = UUID.randomUUID();
+
+    jdbcTemplate.update(
+        """
+        INSERT INTO axon.prior_authority_history
+            (event_id, application_id, submission_id, prior_authority_type,
+             event_type, event_data, service_name, occurred_at)
+        VALUES (?, ?, ?, ?, ?, ?::jsonb, ?, ?)
+        """,
+        "conflict-evt-1",
+        applicationId,
+        submissionId,
+        "EXPERT",
+        "PRIOR_AUTHORITY_CREATED",
+        "{\"status\":\"PENDING\",\"dataVersion\":0}",
+        "CIVIL_APPLY",
+        OffsetDateTime.parse("2026-08-01T09:00:00Z"));
+
+    jdbcTemplate.update(
+        """
+        INSERT INTO axon.prior_authority_history
+            (event_id, application_id, submission_id, prior_authority_type,
+             event_type, event_data, service_name, occurred_at)
+        VALUES (?, ?, ?, ?, ?, ?::jsonb, ?, ?)
+        """,
+        "conflict-evt-2",
+        applicationId,
+        submissionId,
+        "COUNSEL",
+        "PRIOR_AUTHORITY_CREATED",
+        "{\"status\":\"PENDING\",\"dataVersion\":0}",
+        "CIVIL_APPLY",
+        OffsetDateTime.parse("2026-08-01T10:00:00Z"));
+
+    try {
+      ResponseEntity<String> response =
+          restTemplate.exchange(
+              "http://localhost:"
+                  + port
+                  + "/api/v0/applications/"
+                  + applicationId
+                  + "/history-search",
+              HttpMethod.GET,
+              new HttpEntity<>(headers()),
+              String.class);
+
+      assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+      var responseBody = objectMapper.readTree(response.getBody());
+      assertThat(responseBody.get("status").asInt()).isEqualTo(500);
+      assertThat(responseBody.get("detail").asText())
+          .isEqualTo("Application history data is inconsistent");
+      assertThat(response.getBody()).doesNotContain(applicationId.toString());
+      assertThat(response.getBody()).doesNotContain(submissionId.toString());
+      assertThat(response.getBody()).doesNotContain("conflicting");
+    } finally {
+      jdbcTemplate.update(
+          "DELETE FROM axon.prior_authority_history WHERE event_id IN (?, ?)",
+          "conflict-evt-1",
+          "conflict-evt-2");
+    }
+  }
+
+  private CreatePriorAuthorityRequest fixedRateExpertRequest() {
+    return CreatePriorAuthorityRequest.builder()
+        .priorAuthorityType(PriorAuthorityType.EXPERT)
+        .justification("Expert witness required")
+        .expertDetails(
+            ExpertDetails.builder()
+                .expertType("Pathologist")
+                .expertFullName("Dr. Fixed Rate")
+                .expertPostcode("EC1A 1BB")
+                .expertCosts(
+                    ExpertCosts.builder()
+                        .billingType(BillingType.FIXED_RATE)
+                        .totalAmount(900.0)
+                        .costsSharedWithOtherParties(false)
+                        .build())
+                .build())
+        .build();
+  }
+
   private HttpHeaders headers() {
     return headers(1);
   }
@@ -1803,5 +1971,21 @@ class PostgresAxonIntegrationTest {
     assertThat(eventCount).isZero();
     assertThat(applicationReadRepository.findById(applicationId)).isEmpty();
     assertThat(applicationHistoryReadRepository.countByApplicationId(applicationId)).isZero();
+  }
+
+  private static List<String> expectedMigrationVersions() throws IOException {
+    Resource[] resources =
+        new PathMatchingResourcePatternResolver().getResources("classpath:db/migration/V*__*.sql");
+    return Stream.of(resources)
+        .map(Resource::getFilename)
+        .map(PostgresAxonIntegrationTest::extractVersionNumber)
+        .flatMap(Optional::stream)
+        .sorted(Comparator.comparingInt(Integer::parseInt))
+        .toList();
+  }
+
+  private static Optional<String> extractVersionNumber(String filename) {
+    Matcher matcher = Pattern.compile("V(\\d+)__").matcher(filename);
+    return matcher.find() ? Optional.of(matcher.group(1)) : Optional.empty();
   }
 }

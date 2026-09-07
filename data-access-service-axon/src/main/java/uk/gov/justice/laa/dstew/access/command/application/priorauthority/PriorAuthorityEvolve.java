@@ -15,5 +15,6 @@ public final class PriorAuthorityEvolve {
     state.requestFingerprint = event.requestFingerprint();
     state.status = event.status();
     state.schemaVersion = event.schemaVersion();
+    state.priorAuthorityType = event.priorAuthorityType();
   }
 }

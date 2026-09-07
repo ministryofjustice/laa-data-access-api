@@ -7,7 +7,7 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @ExcludeFromGeneratedCodeCoverage
 public record PriorAuthorityContent(
-    String priorAuthorityType,
+    PriorAuthorityType priorAuthorityType,
     String justification,
     ExpertDetails expertDetails,
     CounselDetails counselDetails,

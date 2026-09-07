@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.dao.DataIntegrityViolationException;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 
 class PriorAuthorityDataStoreTest {
@@ -33,7 +34,8 @@ class PriorAuthorityDataStoreTest {
       givenPayload_whenAppended_thenStoresExactIdApplicationIdPayloadHashAndTimestampAndReturns64CharFingerprint() {
     UUID submissionId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
-    PriorAuthorityContent content = new PriorAuthorityContent("EXPERT", null, null, null, null);
+    PriorAuthorityContent content =
+        new PriorAuthorityContent(PriorAuthorityType.EXPERT, null, null, null, null);
     Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
     PriorAuthorityDataPayload payload =
         new PriorAuthorityDataPayload(
