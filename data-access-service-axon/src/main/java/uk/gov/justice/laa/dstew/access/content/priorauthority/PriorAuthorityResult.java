@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.content.priorauthority;
 
 import java.util.UUID;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
 
 /** Typed result of retrieving a prior-authority submission. */
@@ -9,6 +10,8 @@ public record PriorAuthorityResult(
     UUID applicationId,
     String justification,
     String status,
+    String decision,
+    String decisionJustification,
     PriorAuthorityType priorAuthorityType,
     ExpertDetails expertDetails,
     CounselDetails counselDetails,
@@ -16,13 +19,16 @@ public record PriorAuthorityResult(
 
   /** Builds the use-case result from the current-state projection and versioned content. */
   public static PriorAuthorityResult from(
-      PriorAuthorityReadModel priorAuthority, PriorAuthorityContent content) {
+      PriorAuthorityReadModel priorAuthority, PriorAuthorityDataPayload payload) {
+    PriorAuthorityContent content = payload.content();
     PriorAuthorityType priorAuthorityType = content.priorAuthorityType();
     return new PriorAuthorityResult(
         priorAuthority.getSubmissionId(),
         priorAuthority.getApplicationId(),
         content.justification(),
         priorAuthority.getStatus(),
+        payload.decision(),
+        payload.decisionJustification(),
         priorAuthorityType,
         priorAuthorityType == PriorAuthorityType.EXPERT ? toExpertDetails(content) : null,
         priorAuthorityType == PriorAuthorityType.COUNSEL ? toCounselDetails(content) : null,

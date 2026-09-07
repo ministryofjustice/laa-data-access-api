@@ -24,6 +24,7 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityCont
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
+import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityStatusConflictException;
 import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 
 /** Integration tests for {@link PriorAuthorityAggregate} using the Axon test fixture. */
@@ -189,6 +190,174 @@ class PriorAuthorityAggregateTest {
         .noEvents();
 
     verify(dataStore, never()).append(any(), anyLong(), any(), any(), any(), any());
+  }
+
+  @Test
+  void givenPendingPriorAuthority_whenDecisionRecorded_thenPersistsNextVersionAndEmitsEvent() {
+    UUID submissionId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant createdAt = Instant.parse("2026-08-01T10:00:00Z");
+    Instant decidedAt = Instant.parse("2026-08-01T11:00:00Z");
+    PriorAuthorityCreatedEvent existingEvent =
+        new PriorAuthorityCreatedEvent(
+            submissionId,
+            applicationId,
+            "EXPERT",
+            0L,
+            "fp",
+            PriorAuthorityStatus.PENDING.name(),
+            1,
+            createdAt);
+    PriorAuthorityDataPayload current =
+        new PriorAuthorityDataPayload(
+            submissionId,
+            applicationId,
+            new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Need expert", null, null, null),
+            "{}",
+            createdAt);
+    when(dataStore.get(submissionId, 0L)).thenReturn(current);
+    when(dataStore.append(
+            eq(submissionId),
+            eq(1L),
+            eq(applicationId),
+            any(),
+            eq("{\"overallDecision\":\"GRANTED\"}"),
+            eq(decidedAt)))
+        .thenReturn("decision-fingerprint");
+
+    MakePriorAuthorityDecisionCommand command =
+        new MakePriorAuthorityDecisionCommand(
+            submissionId,
+            "GRANTED",
+            "{\"overallDecision\":\"GRANTED\"}",
+            "Decision recorded",
+            decidedAt);
+
+    fixture
+        .given()
+        .events(existingEvent)
+        .when()
+        .command(command)
+        .then()
+        .events(
+            new PriorAuthorityDecisionRecordedEvent(
+                submissionId, applicationId, 1L, PriorAuthorityStatus.GRANTED.name(), decidedAt));
+
+    ArgumentCaptor<PriorAuthorityDataPayload> payloadCaptor =
+        ArgumentCaptor.forClass(PriorAuthorityDataPayload.class);
+    verify(dataStore)
+        .append(
+            eq(submissionId),
+            eq(1L),
+            eq(applicationId),
+            payloadCaptor.capture(),
+            eq("{\"overallDecision\":\"GRANTED\"}"),
+            eq(decidedAt));
+    assertThat(payloadCaptor.getValue().decision()).isEqualTo("GRANTED");
+    assertThat(payloadCaptor.getValue().decisionJustification()).isEqualTo("Decision recorded");
+    assertThat(payloadCaptor.getValue().decisionSerialisedRequest())
+        .isEqualTo("{\"overallDecision\":\"GRANTED\"}");
+  }
+
+  @Test
+  void givenAlreadyDecidedWithSamePayload_whenDecisionRetried_thenEmitsNoEventAndNoAppend() {
+    UUID submissionId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
+    PriorAuthorityCreatedEvent created =
+        new PriorAuthorityCreatedEvent(
+            submissionId,
+            applicationId,
+            "EXPERT",
+            0L,
+            "fp",
+            PriorAuthorityStatus.PENDING.name(),
+            1,
+            occurredAt);
+    PriorAuthorityDecisionRecordedEvent decided =
+        new PriorAuthorityDecisionRecordedEvent(
+            submissionId,
+            applicationId,
+            1L,
+            PriorAuthorityStatus.REFUSED.name(),
+            occurredAt.plusSeconds(1));
+    when(dataStore.get(submissionId, 1L))
+        .thenReturn(
+            new PriorAuthorityDataPayload(
+                submissionId,
+                applicationId,
+                new PriorAuthorityContent(
+                    PriorAuthorityType.EXPERT, "Need expert", null, null, null),
+                "{}",
+                occurredAt,
+                "REFUSED",
+                "Decision recorded",
+                "{\"overallDecision\":\"REFUSED\"}"));
+
+    MakePriorAuthorityDecisionCommand retry =
+        new MakePriorAuthorityDecisionCommand(
+            submissionId,
+            "REFUSED",
+            "{\"overallDecision\":\"REFUSED\"}",
+            "Decision recorded",
+            occurredAt.plusSeconds(2));
+
+    fixture.given().events(created, decided).when().command(retry).then().noEvents();
+
+    verify(dataStore, never()).append(any(), anyLong(), any(), any(), any(), any());
+  }
+
+  @Test
+  void givenAlreadyDecidedWithDifferentDecision_whenDecisionRecorded_thenThrowsConflict() {
+    UUID submissionId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
+    PriorAuthorityCreatedEvent created =
+        new PriorAuthorityCreatedEvent(
+            submissionId,
+            applicationId,
+            "EXPERT",
+            0L,
+            "fp",
+            PriorAuthorityStatus.PENDING.name(),
+            1,
+            occurredAt);
+    PriorAuthorityDecisionRecordedEvent decided =
+        new PriorAuthorityDecisionRecordedEvent(
+            submissionId,
+            applicationId,
+            1L,
+            PriorAuthorityStatus.GRANTED.name(),
+            occurredAt.plusSeconds(1));
+    when(dataStore.get(submissionId, 1L))
+        .thenReturn(
+            new PriorAuthorityDataPayload(
+                submissionId,
+                applicationId,
+                new PriorAuthorityContent(
+                    PriorAuthorityType.EXPERT, "Need expert", null, null, null),
+                "{}",
+                occurredAt,
+                "GRANTED",
+                "Decision recorded",
+                "{\"overallDecision\":\"GRANTED\"}"));
+
+    MakePriorAuthorityDecisionCommand command =
+        new MakePriorAuthorityDecisionCommand(
+            submissionId,
+            "REFUSED",
+            "{\"overallDecision\":\"REFUSED\"}",
+            "Decision recorded",
+            occurredAt.plusSeconds(2));
+
+    fixture
+        .given()
+        .events(created, decided)
+        .when()
+        .command(command)
+        .then()
+        .exception(PriorAuthorityStatusConflictException.class)
+        .noEvents();
   }
 
   @AfterEach

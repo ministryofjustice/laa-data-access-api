@@ -7,10 +7,13 @@ import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
+import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityStatusConflictException;
+import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /** Unit tests for {@link PriorAuthorityDecider}. */
 class PriorAuthorityDeciderTest {
@@ -90,6 +93,103 @@ class PriorAuthorityDeciderTest {
             ex ->
                 assertThat(((PriorAuthorityCreationConflictException) ex).getSubmissionId())
                     .isEqualTo(submissionId));
+  }
+
+  @Test
+  void givenPendingState_whenDecideDecision_thenReturnsDecisionRecordedEvent() {
+    UUID submissionId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    PriorAuthorityState state = stateAfterCreate(submissionId, "fingerprint");
+    state.applicationId = applicationId;
+    state.status = PriorAuthorityStatus.PENDING.name();
+    state.dataVersion = 4L;
+    MakePriorAuthorityDecisionCommand command =
+        new MakePriorAuthorityDecisionCommand(
+            submissionId, "GRANTED", "{\"overallDecision\":\"GRANTED\"}", "Recorded", OCCURRED_AT);
+    PriorAuthorityDataPayload payload =
+        new PriorAuthorityDataPayload(submissionId, applicationId, null, "{}", OCCURRED_AT);
+
+    Optional<PriorAuthorityDecisionRecordedEvent> result =
+        PriorAuthorityDecider.decideDecision(state, command, payload);
+
+    assertThat(result).isPresent();
+    assertThat(result.get().submissionId()).isEqualTo(submissionId);
+    assertThat(result.get().applicationId()).isEqualTo(applicationId);
+    assertThat(result.get().dataVersion()).isEqualTo(5L);
+    assertThat(result.get().status()).isEqualTo("GRANTED");
+  }
+
+  @Test
+  void givenDecidedStateWithSameDecisionAndPayload_whenDecideDecision_thenReturnsEmpty() {
+    UUID submissionId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    PriorAuthorityState state = stateAfterCreate(submissionId, "fingerprint");
+    state.applicationId = applicationId;
+    state.status = PriorAuthorityStatus.REFUSED.name();
+    MakePriorAuthorityDecisionCommand command =
+        new MakePriorAuthorityDecisionCommand(
+            submissionId, "REFUSED", "{\"overallDecision\":\"REFUSED\"}", "Recorded", OCCURRED_AT);
+    PriorAuthorityDataPayload payload =
+        new PriorAuthorityDataPayload(
+            submissionId,
+            applicationId,
+            null,
+            "{}",
+            OCCURRED_AT,
+            "REFUSED",
+            "Recorded",
+            "{\"overallDecision\":\"REFUSED\"}");
+
+    Optional<PriorAuthorityDecisionRecordedEvent> result =
+        PriorAuthorityDecider.decideDecision(state, command, payload);
+
+    assertThat(result).isEmpty();
+  }
+
+  @Test
+  void givenDecidedStateWithDifferentPayload_whenDecideDecision_thenThrowsConflict() {
+    UUID submissionId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    PriorAuthorityState state = stateAfterCreate(submissionId, "fingerprint");
+    state.applicationId = applicationId;
+    state.status = PriorAuthorityStatus.GRANTED.name();
+    MakePriorAuthorityDecisionCommand command =
+        new MakePriorAuthorityDecisionCommand(
+            submissionId, "REFUSED", "{\"overallDecision\":\"REFUSED\"}", "Recorded", OCCURRED_AT);
+    PriorAuthorityDataPayload payload =
+        new PriorAuthorityDataPayload(
+            submissionId,
+            applicationId,
+            null,
+            "{}",
+            OCCURRED_AT,
+            "GRANTED",
+            "Recorded",
+            "{\"overallDecision\":\"GRANTED\"}");
+
+    assertThatThrownBy(() -> PriorAuthorityDecider.decideDecision(state, command, payload))
+        .isInstanceOf(PriorAuthorityStatusConflictException.class);
+  }
+
+  @Test
+  void givenUnsupportedDecisionValue_whenDecideDecision_thenThrowsValidationException() {
+    UUID submissionId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    PriorAuthorityState state = stateAfterCreate(submissionId, "fingerprint");
+    state.applicationId = applicationId;
+    state.status = PriorAuthorityStatus.PENDING.name();
+    MakePriorAuthorityDecisionCommand command =
+        new MakePriorAuthorityDecisionCommand(
+            submissionId, "PART_GRANTED", "{}", "Recorded", OCCURRED_AT);
+    PriorAuthorityDataPayload payload =
+        new PriorAuthorityDataPayload(submissionId, applicationId, null, "{}", OCCURRED_AT);
+
+    assertThatThrownBy(() -> PriorAuthorityDecider.decideDecision(state, command, payload))
+        .isInstanceOf(ValidationException.class)
+        .satisfies(
+            exception ->
+                assertThat(((ValidationException) exception).errors())
+                    .containsExactly("overallDecision must be one of: GRANTED, REFUSED"));
   }
 
   // ── helpers ────────────────────────────────────────────────────────────────────

@@ -18,6 +18,7 @@ import uk.gov.justice.laa.dstew.access.exception.FileConflictException;
 import uk.gov.justice.laa.dstew.access.exception.FileLengthRequiredException;
 import uk.gov.justice.laa.dstew.access.exception.InvalidApplicationStateException;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
+import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityStatusConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.exception.VirusDetectedException;
 import uk.gov.justice.laa.dstew.access.exception.VirusScanException;
@@ -92,6 +93,14 @@ public class ApplicationExceptionHandler {
                 "Prior authority submission ID "
                     + exception.getSubmissionId()
                     + " already exists with different creation data"));
+  }
+
+  /** Returns a conflict when a prior-authority decision is incompatible with current status. */
+  @ExceptionHandler(PriorAuthorityStatusConflictException.class)
+  ResponseEntity<ProblemDetail> handlePriorAuthorityStatusConflictException(
+      PriorAuthorityStatusConflictException exception) {
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage()));
   }
 
   /** Returns a conflict when a decision was based on a stale Application version. */

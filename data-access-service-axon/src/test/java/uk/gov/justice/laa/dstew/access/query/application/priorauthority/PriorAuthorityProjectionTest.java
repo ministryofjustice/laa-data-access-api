@@ -6,7 +6,9 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType.*;
+import static uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType.COUNSEL;
+import static uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType.DISBURSEMENT;
+import static uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType.EXPERT;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -24,6 +26,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDecisionRecordedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.Apportionment;
@@ -148,6 +151,8 @@ class PriorAuthorityProjectionTest {
     assertThat(result.priorAuthorityType()).isEqualTo(COUNSEL);
     assertThat(result.justification()).isEqualTo("Counsel is required");
     assertThat(result.status()).isEqualTo("PENDING");
+    assertThat(result.decision()).isNull();
+    assertThat(result.decisionJustification()).isNull();
     assertThat(result.counselDetails().counselType()).isEqualTo(CounselType.TWO_JUNIOR_COUNSEL);
     assertThat(result.expertDetails()).isNull();
     assertThat(result.disbursementDetails()).isNull();
@@ -259,6 +264,62 @@ class PriorAuthorityProjectionTest {
     when(repository.findById(submissionId)).thenReturn(Optional.empty());
 
     assertThat(projection.handle(new FindPriorAuthorityBySubmissionIdQuery(submissionId))).isNull();
+  }
+
+  @Test
+  void givenDecisionRecordedEvent_whenHandled_thenUpdatesCurrentStateStatusAndVersion() {
+    UUID submissionId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    PriorAuthorityReadModel model =
+        PriorAuthorityReadModel.builder()
+            .submissionId(submissionId)
+            .applicationId(applicationId)
+            .dataVersion(0L)
+            .status("PENDING")
+            .build();
+    when(repository.findById(submissionId)).thenReturn(Optional.of(model));
+
+    projection.on(
+        new PriorAuthorityDecisionRecordedEvent(
+            submissionId, applicationId, 1L, "REFUSED", Instant.now()));
+
+    assertThat(model.getStatus()).isEqualTo("REFUSED");
+    assertThat(model.getDataVersion()).isEqualTo(1L);
+    verify(repository).save(model);
+  }
+
+  @Test
+  void givenDecisionStoredInPayload_whenQueryHandled_thenReturnsDecisionDetails() {
+    UUID submissionId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    PriorAuthorityReadModel model =
+        PriorAuthorityReadModel.builder()
+            .submissionId(submissionId)
+            .applicationId(applicationId)
+            .dataVersion(2L)
+            .status("GRANTED")
+            .build();
+    PriorAuthorityContent content =
+        new PriorAuthorityContent(EXPERT, "Expert required", null, null, null);
+    when(repository.findById(submissionId)).thenReturn(Optional.of(model));
+    when(dataStore.get(submissionId, 2L))
+        .thenReturn(
+            new PriorAuthorityDataPayload(
+                submissionId,
+                applicationId,
+                content,
+                "{}",
+                Instant.now(),
+                "GRANTED",
+                "Decision recorded",
+                "{\"overallDecision\":\"GRANTED\"}"));
+
+    PriorAuthorityResult result =
+        projection.handle(new FindPriorAuthorityBySubmissionIdQuery(submissionId));
+
+    assertThat(result.status()).isEqualTo("GRANTED");
+    assertThat(result.decision()).isEqualTo("GRANTED");
+    assertThat(result.decisionJustification()).isEqualTo("Decision recorded");
   }
 
   @ParameterizedTest

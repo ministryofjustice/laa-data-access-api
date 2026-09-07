@@ -17,4 +17,12 @@ public final class PriorAuthorityEvolve {
     state.schemaVersion = event.schemaVersion();
     state.priorAuthorityType = event.priorAuthorityType();
   }
+
+  /** Applies a {@link PriorAuthorityDecisionRecordedEvent} to the given state. */
+  public static void apply(PriorAuthorityState state, PriorAuthorityDecisionRecordedEvent event) {
+    state.submissionId = event.submissionId();
+    state.applicationId = event.applicationId();
+    state.dataVersion = event.dataVersion();
+    state.status = event.status();
+  }
 }

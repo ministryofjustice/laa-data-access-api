@@ -9,6 +9,7 @@ import org.axonframework.messaging.queryhandling.annotation.QueryHandler;
 import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDecisionRecordedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
@@ -46,7 +47,7 @@ public class PriorAuthorityProjection {
   private @NonNull PriorAuthorityResult hydrate(
       PriorAuthorityReadModel priorAuthority, UUID priorAuthorityId, long dataVersion) {
     PriorAuthorityDataPayload payload = priorAuthorityDataStore.get(priorAuthorityId, dataVersion);
-    return PriorAuthorityResult.from(priorAuthority, payload.content());
+    return PriorAuthorityResult.from(priorAuthority, payload);
   }
 
   /** Creates the current-state row from a prior-authority creation event. */
@@ -64,6 +65,19 @@ public class PriorAuthorityProjection {
         PriorAuthorityExistsBySubmissionIdQuery.class,
         query -> query.submissionId().equals(event.submissionId()),
         Boolean.TRUE);
+  }
+
+  /** Updates current-state status and data version after a terminal prior-authority decision. */
+  @EventHandler
+  public void on(PriorAuthorityDecisionRecordedEvent event) {
+    repository
+        .findById(event.submissionId())
+        .ifPresent(
+            current -> {
+              current.setStatus(event.status());
+              current.setDataVersion(event.dataVersion());
+              repository.save(current);
+            });
   }
 
   /** Clears the disposable current-state table before replay. */

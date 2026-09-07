@@ -7,8 +7,6 @@ components:
         - priorAuthorityId
         - applicationId
         - justification
-        - decision
-        - decisionJustification
       properties:
         priorAuthorityType:
           type: string
@@ -28,8 +26,8 @@ components:
           maxLength: 10000
         decision:
           type: string
-          description: Decision on the request. Uses GRANT/REFUSE to match decision API.
-          enum: [GRANT, REFUSE]
+          description: Decision on the request.
+          enum: [GRANTED, REFUSED]
         decisionJustification:
           type: string
         uploadedDocuments:

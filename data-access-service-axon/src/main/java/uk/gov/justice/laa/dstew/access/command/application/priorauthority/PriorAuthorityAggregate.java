@@ -9,6 +9,7 @@ import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
+import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 
 /**
@@ -55,10 +56,45 @@ public class PriorAuthorityAggregate {
         .ifPresent(e -> eventAppender.append(e));
   }
 
+  @CommandHandler
+  void handle(
+      MakePriorAuthorityDecisionCommand command,
+      PriorAuthorityDataStore dataStore,
+      EventAppender eventAppender) {
+    requirePriorAuthorityExists(command.submissionId());
+    PriorAuthorityDataPayload current = dataStore.get(command.submissionId(), state.dataVersion);
+    PriorAuthorityDecider.decideDecision(state, command, current)
+        .ifPresent(
+            event -> {
+              dataStore.append(
+                  event.submissionId(),
+                  event.dataVersion(),
+                  event.applicationId(),
+                  current.withDecision(
+                      event.status(), command.decisionJustification(), command.serialisedRequest()),
+                  command.serialisedRequest(),
+                  command.occurredAt());
+              eventAppender.append(event);
+            });
+  }
+
   @EventSourcingHandler
   void on(PriorAuthorityCreatedEvent event) {
     PriorAuthorityEvolve.apply(state, event);
     this.submissionId = state.submissionId;
+  }
+
+  @EventSourcingHandler
+  void on(PriorAuthorityDecisionRecordedEvent event) {
+    PriorAuthorityEvolve.apply(state, event);
+    this.submissionId = state.submissionId;
+  }
+
+  private void requirePriorAuthorityExists(UUID requestedSubmissionId) {
+    if (submissionId == null) {
+      throw new ResourceNotFoundException(
+          "No prior authority found with submission ID: " + requestedSubmissionId);
+    }
   }
 
   @EntityCreator

@@ -30,7 +30,16 @@ class GetPriorAuthorityUseCaseTest {
     UUID submissionId = UUID.randomUUID();
     PriorAuthorityResult expected =
         new PriorAuthorityResult(
-            submissionId, UUID.randomUUID(), "Required", "PENDING", null, null, null, null);
+            submissionId,
+            UUID.randomUUID(),
+            "Required",
+            "PENDING",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null);
     when(queryGateway.query(
             eq(new FindPriorAuthorityBySubmissionIdQuery(submissionId)),
             eq(PriorAuthorityResult.class)))

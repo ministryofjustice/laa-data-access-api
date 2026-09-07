@@ -6,6 +6,8 @@ import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import uk.gov.justice.laa.dstew.access.api.PriorAuthoritiesApi;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.MakePriorAuthorityDecisionUseCase;
+import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityResponse;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.GetPriorAuthorityUseCase;
@@ -15,12 +17,19 @@ import uk.gov.justice.laa.dstew.access.query.application.priorauthority.GetPrior
 public class PriorAuthoritiesQueryController implements PriorAuthoritiesApi {
   private final GetPriorAuthorityUseCase getPriorAuthorityUseCase;
   private final GetPriorAuthorityResponseMapper getPriorAuthorityResponseMapper;
+  private final MakePriorAuthorityDecisionUseCase makePriorAuthorityDecisionUseCase;
+  private final MakePriorAuthorityDecisionCommandMapper makePriorAuthorityDecisionCommandMapper;
 
+  /** Creates the query and decision controller for prior-authority endpoints. */
   public PriorAuthoritiesQueryController(
       GetPriorAuthorityUseCase getPriorAuthorityUseCase,
-      GetPriorAuthorityResponseMapper getPriorAuthorityResponseMapper) {
+      GetPriorAuthorityResponseMapper getPriorAuthorityResponseMapper,
+      MakePriorAuthorityDecisionUseCase makePriorAuthorityDecisionUseCase,
+      MakePriorAuthorityDecisionCommandMapper makePriorAuthorityDecisionCommandMapper) {
     this.getPriorAuthorityUseCase = getPriorAuthorityUseCase;
     this.getPriorAuthorityResponseMapper = getPriorAuthorityResponseMapper;
+    this.makePriorAuthorityDecisionUseCase = makePriorAuthorityDecisionUseCase;
+    this.makePriorAuthorityDecisionCommandMapper = makePriorAuthorityDecisionCommandMapper;
   }
 
   /**
@@ -37,5 +46,14 @@ public class PriorAuthoritiesQueryController implements PriorAuthoritiesApi {
     return ResponseEntity.ok(
         getPriorAuthorityResponseMapper.toResponse(
             getPriorAuthorityUseCase.getPriorAuthority(priorAuthorityId)));
+  }
+
+  @Override
+  @Operation(security = @SecurityRequirement(name = "BearerAuth"))
+  public ResponseEntity<Void> makePriorAuthorityDecision(
+      ServiceName serviceName, UUID priorAuthorityId, MakeDecisionRequest makeDecisionRequest) {
+    makePriorAuthorityDecisionUseCase.execute(
+        makePriorAuthorityDecisionCommandMapper.toCommand(priorAuthorityId, makeDecisionRequest));
+    return ResponseEntity.noContent().build();
   }
 }

@@ -37,4 +37,25 @@ class PriorAuthorityEvolveTest {
     assertThat(state.getSchemaVersion()).isEqualTo(2);
     assertThat(state.getPriorAuthorityType()).isEqualTo("EXPERT");
   }
+
+  @Test
+  void givenDecisionRecordedEvent_whenApply_thenUpdatesStatusAndDataVersion() {
+    PriorAuthorityState state = new PriorAuthorityState();
+    UUID submissionId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+
+    PriorAuthorityEvolve.apply(
+        state,
+        new PriorAuthorityDecisionRecordedEvent(
+            submissionId,
+            applicationId,
+            3L,
+            PriorAuthorityStatus.REFUSED.name(),
+            Instant.parse("2026-08-02T10:00:00Z")));
+
+    assertThat(state.getSubmissionId()).isEqualTo(submissionId);
+    assertThat(state.getApplicationId()).isEqualTo(applicationId);
+    assertThat(state.getDataVersion()).isEqualTo(3L);
+    assertThat(state.getStatus()).isEqualTo(PriorAuthorityStatus.REFUSED.name());
+  }
 }

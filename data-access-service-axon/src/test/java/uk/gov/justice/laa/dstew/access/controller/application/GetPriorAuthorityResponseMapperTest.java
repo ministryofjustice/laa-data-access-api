@@ -30,6 +30,8 @@ class GetPriorAuthorityResponseMapperTest {
             applicationId,
             "Expert is required",
             "PENDING",
+            "GRANTED",
+            "Decision recorded",
             PriorAuthorityType.EXPERT,
             new ExpertDetails(
                 "PSYCHIATRIST",
@@ -51,6 +53,8 @@ class GetPriorAuthorityResponseMapperTest {
     assertThat(response.getApplicationId()).isEqualTo(applicationId);
     assertThat(response.getPriorAuthorityType().getValue()).isEqualTo("EXPERT");
     assertThat(response.getStatus()).isEqualTo("PENDING");
+    assertThat(response.getDecision().getValue()).isEqualTo("GRANTED");
+    assertThat(response.getDecisionJustification()).isEqualTo("Decision recorded");
     assertThat(response.getExpertDetails().getExpertCosts().getBillingType().getValue())
         .isEqualTo("HOURLY");
     assertThat(response.getExpertDetails().getExpertCosts().getHourlyRate()).isEqualTo(150.0);
@@ -71,6 +75,8 @@ class GetPriorAuthorityResponseMapperTest {
             UUID.randomUUID(),
             "Counsel is required",
             "PENDING",
+            null,
+            null,
             PriorAuthorityType.COUNSEL,
             null,
             new CounselDetails(CounselType.TWO_JUNIOR_COUNSEL),
@@ -81,6 +87,8 @@ class GetPriorAuthorityResponseMapperTest {
             UUID.randomUUID(),
             "Travel is required",
             "PENDING",
+            null,
+            null,
             PriorAuthorityType.DISBURSEMENT,
             null,
             null,
@@ -99,11 +107,13 @@ class GetPriorAuthorityResponseMapperTest {
   void givenResultWithOptionalValuesAbsent_whenMapped_thenLeavesApiValuesNull() {
     PriorAuthorityResult result =
         new PriorAuthorityResult(
-            UUID.randomUUID(), UUID.randomUUID(), "", null, null, null, null, null);
+            UUID.randomUUID(), UUID.randomUUID(), "", null, null, null, null, null, null, null);
 
     var response = mapper.toResponse(result);
 
     assertThat(response.getPriorAuthorityType()).isNull();
+    assertThat(response.getDecision()).isNull();
+    assertThat(response.getDecisionJustification()).isNull();
     assertThat(response.getExpertDetails()).isNull();
     assertThat(response.getCounselDetails()).isNull();
     assertThat(response.getDisbursementDetails()).isNull();
@@ -117,6 +127,8 @@ class GetPriorAuthorityResponseMapperTest {
             UUID.randomUUID(),
             "Expert is required",
             "PENDING",
+            null,
+            null,
             PriorAuthorityType.EXPERT,
             new ExpertDetails(
                 "PSYCHIATRIST",
@@ -131,6 +143,8 @@ class GetPriorAuthorityResponseMapperTest {
             UUID.randomUUID(),
             "Counsel is required",
             "PENDING",
+            null,
+            null,
             PriorAuthorityType.COUNSEL,
             null,
             new CounselDetails(null),
@@ -141,6 +155,8 @@ class GetPriorAuthorityResponseMapperTest {
             UUID.randomUUID(),
             "Disbursement is required",
             "PENDING",
+            null,
+            null,
             PriorAuthorityType.DISBURSEMENT,
             null,
             null,
