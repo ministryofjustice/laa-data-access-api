@@ -59,7 +59,6 @@ public class WorkListProjection {
         new WorkListItemReadModel(
             WorkItemType.APPLICATION,
             event.applicationId(),
-            event.applicationId(),
             null,
             event.occurredAt(),
             event.applicationVersion(),
@@ -84,7 +83,6 @@ public class WorkListProjection {
         new WorkListItemReadModel(
             WorkItemType.PRIOR_AUTHORITY,
             event.submissionId(),
-            event.applicationId(),
             event.applicationId(),
             event.occurredAt(),
             event.dataVersion(),

@@ -1,8 +1,8 @@
 package uk.gov.justice.laa.dstew.access.command.worklist.assign;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -87,12 +87,6 @@ class AssignWorkItemCommandHandlerTest {
   }
 
   private WorkItemRoute route(WorkItemType type, UUID id, Instant occurredAt) {
-    return new WorkItemRoute(
-        type,
-        id,
-        WorkItemRouteKind.STANDALONE,
-        null,
-        0L,
-        occurredAt);
+    return new WorkItemRoute(type, id, WorkItemRouteKind.STANDALONE, null, 0L, occurredAt);
   }
 }

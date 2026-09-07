@@ -31,9 +31,6 @@ public class WorkListItemReadModel {
   @Column(name = "item_type", nullable = false)
   private WorkItemType itemType;
 
-  @Column(name = "application_id", nullable = false)
-  private UUID applicationId;
-
   @Column(name = "parent_application_id")
   private UUID parentApplicationId;
 
@@ -84,14 +81,12 @@ public class WorkListItemReadModel {
   public WorkListItemReadModel(
       WorkItemType itemType,
       UUID itemId,
-      UUID applicationId,
       UUID parentApplicationId,
       Instant updatedAt,
       long itemVersion,
       long projectionPosition) {
     this.id = itemId;
     this.itemType = itemType;
-    this.applicationId = applicationId;
     this.parentApplicationId = parentApplicationId;
     this.submittedAt = updatedAt;
     this.updatedAt = updatedAt;

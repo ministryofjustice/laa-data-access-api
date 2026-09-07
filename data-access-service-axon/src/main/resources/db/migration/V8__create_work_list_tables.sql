@@ -18,7 +18,6 @@ CREATE INDEX idx_work_item_route_group_id ON work_item_route (group_id);
 CREATE TABLE work_list_item (
     item_type VARCHAR(32) NOT NULL,
     item_id UUID NOT NULL,
-    application_id UUID NOT NULL,
     parent_application_id UUID,
     laa_reference VARCHAR(255),
     submitted_at TIMESTAMPTZ,
@@ -40,6 +39,5 @@ CREATE TABLE work_list_item (
 );
 
 CREATE INDEX idx_work_list_item_open ON work_list_item (item_type, assignee_id, updated_at DESC);
-CREATE INDEX idx_work_list_item_application_id ON work_list_item (application_id);
 CREATE INDEX idx_work_list_item_group_id ON work_list_item (group_id);
 

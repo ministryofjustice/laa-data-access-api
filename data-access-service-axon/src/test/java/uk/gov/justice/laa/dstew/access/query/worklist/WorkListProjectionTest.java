@@ -70,7 +70,6 @@ class WorkListProjectionTest {
     WorkListItemReadModel row = captor.getValue();
     assertThat(row.getId()).isEqualTo(applicationId);
     assertThat(row.getItemType()).isEqualTo(WorkItemType.APPLICATION);
-    assertThat(row.getApplicationId()).isEqualTo(applicationId);
     assertThat(row.getParentApplicationId()).isNull();
     assertThat(row.getAssigneeId()).isNull();
     assertThat(row.getLaaReference()).isEqualTo("LAA-123456");
@@ -104,7 +103,6 @@ class WorkListProjectionTest {
     ArgumentCaptor<WorkListItemReadModel> captor =
         ArgumentCaptor.forClass(WorkListItemReadModel.class);
     verify(items).save(captor.capture());
-    assertThat(captor.getValue().getApplicationId()).isEqualTo(applicationId);
     assertThat(captor.getValue().getParentApplicationId()).isEqualTo(applicationId);
     assertThat(captor.getValue().getAssignmentBoundaryId()).isEqualTo(submissionId);
     assertThat(captor.getValue().getAssignmentVersion()).isZero();
@@ -135,14 +133,12 @@ class WorkListProjectionTest {
         new WorkListItemReadModel(
             WorkItemType.APPLICATION,
             UUID.randomUUID(),
-            UUID.randomUUID(),
             null,
             Instant.parse("2026-08-28T10:00:00Z"),
             1L,
             0L);
     when(items.findAll(
-            ArgumentMatchers.<Specification<WorkListItemReadModel>>any(),
-            any(Pageable.class)))
+            ArgumentMatchers.<Specification<WorkListItemReadModel>>any(), any(Pageable.class)))
         .thenReturn(new PageImpl<>(List.of(item)));
 
     FindWorkListItemsResult result =
@@ -150,9 +146,7 @@ class WorkListProjectionTest {
 
     ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
     verify(items)
-        .findAll(
-            ArgumentMatchers.<Specification<WorkListItemReadModel>>any(),
-            pageable.capture());
+        .findAll(ArgumentMatchers.<Specification<WorkListItemReadModel>>any(), pageable.capture());
     assertThat(result.items()).containsExactly(item);
     assertThat(result.requestedPage()).isEqualTo(1);
     assertThat(result.requestedPageSize()).isEqualTo(20);
@@ -167,7 +161,7 @@ class WorkListProjectionTest {
     Instant occurredAt = Instant.parse("2026-08-28T10:00:00Z");
     WorkListItemReadModel row =
         new WorkListItemReadModel(
-            WorkItemType.APPLICATION, applicationId, applicationId, null, Instant.now(), 1L, 0L);
+            WorkItemType.APPLICATION, applicationId, null, Instant.now(), 1L, 0L);
     when(items.findById(applicationId)).thenReturn(Optional.of(row));
 
     projection.on(
@@ -188,8 +182,7 @@ class WorkListProjectionTest {
     UUID itemId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-28T10:00:00Z");
     WorkListItemReadModel row =
-        new WorkListItemReadModel(
-            WorkItemType.APPLICATION, itemId, itemId, null, occurredAt, 1L, 0L);
+        new WorkListItemReadModel(WorkItemType.APPLICATION, itemId, null, occurredAt, 1L, 0L);
     row.setAssigneeId(UUID.randomUUID());
     when(items.findById(itemId)).thenReturn(Optional.of(row));
 
@@ -225,8 +218,7 @@ class WorkListProjectionTest {
   void givenMismatchedWorkItemType_whenGenericEventArrives_thenFailsFast() {
     UUID itemId = UUID.randomUUID();
     WorkListItemReadModel row =
-        new WorkListItemReadModel(
-            WorkItemType.APPLICATION, itemId, itemId, null, Instant.now(), 1L, 0L);
+        new WorkListItemReadModel(WorkItemType.APPLICATION, itemId, null, Instant.now(), 1L, 0L);
     when(items.findById(itemId)).thenReturn(Optional.of(row));
 
     assertThatThrownBy(

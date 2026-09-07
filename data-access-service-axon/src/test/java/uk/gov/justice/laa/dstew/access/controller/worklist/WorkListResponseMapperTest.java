@@ -26,7 +26,6 @@ class WorkListResponseMapperTest {
             WorkItemType.PRIOR_AUTHORITY,
             itemId,
             applicationId,
-            applicationId,
             Instant.parse("2026-08-28T10:00:00Z"),
             4L,
             9L);
@@ -62,7 +61,6 @@ class WorkListResponseMapperTest {
     WorkListItemReadModel item =
         new WorkListItemReadModel(
             WorkItemType.APPLICATION,
-            UUID.randomUUID(),
             UUID.randomUUID(),
             null,
             Instant.parse("2026-09-01T10:00:00Z"),
