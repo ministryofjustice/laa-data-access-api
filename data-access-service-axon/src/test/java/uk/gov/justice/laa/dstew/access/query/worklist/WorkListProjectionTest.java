@@ -1,12 +1,16 @@
 package uk.gov.justice.laa.dstew.access.query.worklist;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -16,8 +20,10 @@ import org.axonframework.messaging.eventhandling.GenericEventMessage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
@@ -135,9 +141,9 @@ class WorkListProjectionTest {
             1L,
             0L);
     when(items.findAll(
-            org.mockito.ArgumentMatchers.<Specification<WorkListItemReadModel>>any(),
-            org.mockito.ArgumentMatchers.any(Pageable.class)))
-        .thenReturn(new PageImpl<>(java.util.List.of(item)));
+            ArgumentMatchers.<Specification<WorkListItemReadModel>>any(),
+            any(Pageable.class)))
+        .thenReturn(new PageImpl<>(List.of(item)));
 
     FindWorkListItemsResult result =
         projection.handle(new FindWorkListItemsQuery(null, null, null, null, null));
@@ -145,13 +151,13 @@ class WorkListProjectionTest {
     ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
     verify(items)
         .findAll(
-            org.mockito.ArgumentMatchers.<Specification<WorkListItemReadModel>>any(),
+            ArgumentMatchers.<Specification<WorkListItemReadModel>>any(),
             pageable.capture());
     assertThat(result.items()).containsExactly(item);
     assertThat(result.requestedPage()).isEqualTo(1);
     assertThat(result.requestedPageSize()).isEqualTo(20);
     assertThat(pageable.getValue().getSort().getOrderFor("submittedAt").getDirection())
-        .isEqualTo(org.springframework.data.domain.Sort.Direction.ASC);
+        .isEqualTo(Sort.Direction.ASC);
   }
 
   @Test
@@ -212,7 +218,7 @@ class WorkListProjectionTest {
         new WorkItemUnassigned(itemId, WorkItemType.APPLICATION, 1L, 1L, "", Instant.now()),
         message());
 
-    verify(items, org.mockito.Mockito.never()).save(org.mockito.ArgumentMatchers.any());
+    verify(items, never()).save(any());
   }
 
   @Test
@@ -223,7 +229,7 @@ class WorkListProjectionTest {
             WorkItemType.APPLICATION, itemId, itemId, null, Instant.now(), 1L, 0L);
     when(items.findById(itemId)).thenReturn(Optional.of(row));
 
-    org.assertj.core.api.Assertions.assertThatThrownBy(
+    assertThatThrownBy(
             () ->
                 projection.on(
                     new WorkItemAssigned(

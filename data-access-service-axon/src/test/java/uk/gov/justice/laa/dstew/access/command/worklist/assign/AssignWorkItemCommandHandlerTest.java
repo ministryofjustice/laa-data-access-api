@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.command.worklist.assign;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -12,15 +13,16 @@ import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.command.caseworker.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.route.WorkItemRoute;
+import uk.gov.justice.laa.dstew.access.command.worklist.route.WorkItemRouteKind;
 import uk.gov.justice.laa.dstew.access.command.worklist.route.WorkItemRouteResolver;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 
 class AssignWorkItemCommandHandlerTest {
   @Test
   void dispatchesAnApplicationAssignmentToItsDirectAggregate() {
-    CaseworkerRepository caseworkers = org.mockito.Mockito.mock(CaseworkerRepository.class);
-    WorkItemRouteResolver routes = org.mockito.Mockito.mock(WorkItemRouteResolver.class);
-    CommandGateway gateway = org.mockito.Mockito.mock(CommandGateway.class);
+    CaseworkerRepository caseworkers = mock(CaseworkerRepository.class);
+    WorkItemRouteResolver routes = mock(WorkItemRouteResolver.class);
+    CommandGateway gateway = mock(CommandGateway.class);
     AssignWorkItemCommandHandler handler =
         new AssignWorkItemCommandHandler(caseworkers, routes, gateway);
     UUID id = UUID.randomUUID();
@@ -41,9 +43,9 @@ class AssignWorkItemCommandHandlerTest {
 
   @Test
   void dispatchesPriorAuthorityAssignmentToItsDirectAggregate() {
-    CaseworkerRepository caseworkers = org.mockito.Mockito.mock(CaseworkerRepository.class);
-    WorkItemRouteResolver routes = org.mockito.Mockito.mock(WorkItemRouteResolver.class);
-    CommandGateway gateway = org.mockito.Mockito.mock(CommandGateway.class);
+    CaseworkerRepository caseworkers = mock(CaseworkerRepository.class);
+    WorkItemRouteResolver routes = mock(WorkItemRouteResolver.class);
+    CommandGateway gateway = mock(CommandGateway.class);
     AssignWorkItemCommandHandler handler =
         new AssignWorkItemCommandHandler(caseworkers, routes, gateway);
     UUID id = UUID.randomUUID();
@@ -63,9 +65,9 @@ class AssignWorkItemCommandHandlerTest {
 
   @Test
   void rejectsAnUnknownCaseworkerWithoutResolvingOrDispatching() {
-    CaseworkerRepository caseworkers = org.mockito.Mockito.mock(CaseworkerRepository.class);
-    WorkItemRouteResolver routes = org.mockito.Mockito.mock(WorkItemRouteResolver.class);
-    CommandGateway gateway = org.mockito.Mockito.mock(CommandGateway.class);
+    CaseworkerRepository caseworkers = mock(CaseworkerRepository.class);
+    WorkItemRouteResolver routes = mock(WorkItemRouteResolver.class);
+    CommandGateway gateway = mock(CommandGateway.class);
     AssignWorkItemCommandHandler handler =
         new AssignWorkItemCommandHandler(caseworkers, routes, gateway);
     UUID id = UUID.randomUUID();
@@ -88,7 +90,7 @@ class AssignWorkItemCommandHandlerTest {
     return new WorkItemRoute(
         type,
         id,
-        uk.gov.justice.laa.dstew.access.command.worklist.route.WorkItemRouteKind.STANDALONE,
+        WorkItemRouteKind.STANDALONE,
         null,
         0L,
         occurredAt);
