@@ -98,6 +98,175 @@ components:
         disbursementDetails:
           $ref: "#/components/schemas/DisbursementDetails"
 
+    SubmitPriorAuthorityDraftValidationRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - priorAuthorityType
+        - justification
+      properties:
+        priorAuthorityType:
+          $ref: "#/components/schemas/PriorAuthorityType"
+        justification:
+          type: string
+          maxLength: 10000
+        expertDetails:
+          $ref: "#/components/schemas/SubmitExpertDetails"
+        counselDetails:
+          $ref: "#/components/schemas/SubmitCounselDetails"
+        disbursementDetails:
+          $ref: "#/components/schemas/SubmitDisbursementDetails"
+      oneOf:
+        - type: object
+          properties:
+            priorAuthorityType:
+              type: string
+              enum: [EXPERT]
+          required:
+            - expertDetails
+        - type: object
+          properties:
+            priorAuthorityType:
+              type: string
+              enum: [COUNSEL]
+          required:
+            - counselDetails
+        - type: object
+          properties:
+            priorAuthorityType:
+              type: string
+              enum: [DISBURSEMENT]
+          required:
+            - disbursementDetails
+
+    SubmitExpertDetails:
+      type: object
+      additionalProperties: false
+      required:
+        - expertType
+        - expertFullName
+        - expertPostcode
+        - expertCosts
+      properties:
+        expertType:
+          type: string
+          minLength: 1
+        expertFullName:
+          type: string
+          minLength: 1
+        expertPostcode:
+          type: string
+          minLength: 1
+        expertCosts:
+          $ref: "#/components/schemas/SubmitExpertCosts"
+
+    SubmitCounselDetails:
+      type: object
+      additionalProperties: false
+      required:
+        - counselType
+      properties:
+        counselType:
+          $ref: "#/components/schemas/CounselType"
+
+    SubmitDisbursementDetails:
+      type: object
+      additionalProperties: false
+      required:
+        - disbursementPurpose
+        - disbursementAmount
+      properties:
+        disbursementPurpose:
+          type: string
+          minLength: 1
+        disbursementAmount:
+          type: number
+          format: double
+          minimum: 0
+          exclusiveMinimum: true
+
+    SubmitTimeRequested:
+      type: object
+      additionalProperties: false
+      required:
+        - hours
+        - minutes
+      properties:
+        hours:
+          type: integer
+          minimum: 0
+        minutes:
+          type: integer
+          minimum: 0
+          maximum: 59
+
+    SubmitApportionment:
+      type: object
+      additionalProperties: false
+      required:
+        - partiesSharingCosts
+        - clientShareAmount
+      properties:
+        partiesSharingCosts:
+          type: integer
+          minimum: 2
+        clientShareAmount:
+          type: number
+          format: double
+
+    SubmitExpertCosts:
+      type: object
+      additionalProperties: false
+      required:
+        - billingType
+        - totalAmount
+        - costsSharedWithOtherParties
+      properties:
+        billingType:
+          $ref: "#/components/schemas/BillingType"
+        hourlyRate:
+          type: number
+          format: double
+          minimum: 0
+          exclusiveMinimum: true
+        timeRequested:
+          $ref: "#/components/schemas/SubmitTimeRequested"
+        totalAmount:
+          type: number
+          format: double
+        costsSharedWithOtherParties:
+          type: boolean
+        apportionment:
+          $ref: "#/components/schemas/SubmitApportionment"
+      allOf:
+        - oneOf:
+            - type: object
+              properties:
+                billingType:
+                  type: string
+                  enum: [HOURLY]
+              required:
+                - hourlyRate
+                - timeRequested
+            - type: object
+              properties:
+                billingType:
+                  type: string
+                  enum: [FIXED_RATE]
+        - oneOf:
+            - type: object
+              properties:
+                costsSharedWithOtherParties:
+                  type: boolean
+                  enum: [true]
+              required:
+                - apportionment
+            - type: object
+              properties:
+                costsSharedWithOtherParties:
+                  type: boolean
+                  enum: [false]
+
     SavePriorAuthorityDraftResponse:
       type: object
       required:
