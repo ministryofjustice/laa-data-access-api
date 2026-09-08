@@ -266,6 +266,9 @@ components:
                 costsSharedWithOtherParties:
                   type: boolean
                   enum: [false]
+              not:
+                required:
+                  - apportionment
 
     SavePriorAuthorityDraftResponse:
       type: object
