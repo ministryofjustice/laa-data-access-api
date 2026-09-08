@@ -1,6 +1,8 @@
 package uk.gov.justice.laa.dstew.access.command.application.priorauthority;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import org.axonframework.eventsourcing.annotation.EventSourcingHandler;
 import org.axonframework.eventsourcing.annotation.reflection.EntityCreator;
@@ -17,9 +19,12 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.assign.DirectPriorAuthorityWorkItemAssignmentCommand;
 import uk.gov.justice.laa.dstew.access.command.worklist.unassign.DirectPriorAuthorityWorkItemUnassignmentCommand;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityDocument;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
+import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
 import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
 
 /**
@@ -61,12 +66,13 @@ public class PriorAuthorityAggregate {
 
   @CommandHandler
   void handle(UpdatePriorAuthorityDraftCommand command, PriorAuthorityDraftStore draftStore) {
-    draftStore
-        .find(command.priorAuthorityId())
-        .orElseThrow(
-            () ->
-                new ResourceNotFoundException(
-                    "Prior Authority %s not found".formatted(command.priorAuthorityId())));
+    PriorAuthorityDataPayload existingDraft =
+        draftStore
+            .find(command.priorAuthorityId())
+            .orElseThrow(
+                () ->
+                    new ResourceNotFoundException(
+                        "Prior Authority %s not found".formatted(command.priorAuthorityId())));
     PriorAuthorityDataPayload payload =
         new PriorAuthorityDataPayload(
             command.priorAuthorityId(),
@@ -76,7 +82,8 @@ public class PriorAuthorityAggregate {
                 command.content().justification(),
                 command.content().expertDetails(),
                 command.content().counselDetails(),
-                command.content().disbursementDetails()),
+                command.content().disbursementDetails(),
+                existingDraft.content().uploadedDocuments()),
             command.serialisedRequest(),
             command.occurredAt());
     draftStore.upsert(
@@ -85,6 +92,62 @@ public class PriorAuthorityAggregate {
         payload,
         command.serialisedRequest(),
         command.occurredAt());
+  }
+
+  @CommandHandler
+  UUID handle(
+      PriorAuthorityDocumentUploadCommand command,
+      SdsService sdsService,
+      PriorAuthorityDraftStore draftStore,
+      EventAppender eventAppender) {
+    UUID documentId = UUID.randomUUID();
+    DocumentUploadResponse sdsResponse =
+        sdsService.savePriorAuthorityFile(command.priorAuthorityId(), documentId, command.file());
+    PriorAuthorityDataPayload existingDraft =
+        draftStore
+            .find(command.priorAuthorityId())
+            .orElseThrow(
+                () ->
+                    new ResourceNotFoundException(
+                        "Prior Authority %s not found".formatted(command.priorAuthorityId())));
+    List<PriorAuthorityDocument> existingDocuments =
+        existingDraft.content().uploadedDocuments() == null
+            ? new ArrayList<>()
+            : new ArrayList<>(existingDraft.content().uploadedDocuments());
+    existingDocuments.add(
+        new PriorAuthorityDocument(
+            documentId,
+            command.file().getOriginalFilename(),
+            command.file().getContentType(),
+            command.file().getSize(),
+            command.occurredAt()));
+
+    PriorAuthorityContent updatedContent =
+        new PriorAuthorityContent(
+            existingDraft.content().priorAuthorityType(),
+            existingDraft.content().justification(),
+            existingDraft.content().expertDetails(),
+            existingDraft.content().counselDetails(),
+            existingDraft.content().disbursementDetails(),
+            List.copyOf(existingDocuments));
+
+    PriorAuthorityDataPayload updatedPayload =
+        new PriorAuthorityDataPayload(
+            existingDraft.priorAuthorityId(),
+            existingDraft.applicationId(),
+            updatedContent,
+            command.serialisedRequest(),
+            existingDraft.submittedAt());
+    draftStore.upsert(
+        command.priorAuthorityId(),
+        existingDraft.applicationId(),
+        updatedPayload,
+        command.serialisedRequest(),
+        command.occurredAt());
+    eventAppender.append(
+        PriorAuthorityDecider.decideDocumentUploaded(
+            command, documentId, sdsResponse == null ? null : sdsResponse.getChecksum()));
+    return documentId;
   }
 
   @CommandHandler
@@ -166,6 +229,12 @@ public class PriorAuthorityAggregate {
 
   @EventSourcingHandler
   void on(PriorAuthoritySubmittedEvent event) {
+    PriorAuthorityEvolve.apply(state, event);
+    this.priorAuthorityId = state.priorAuthorityId;
+  }
+
+  @EventSourcingHandler
+  void on(PriorAuthorityDocumentUploadedEvent event) {
     PriorAuthorityEvolve.apply(state, event);
     this.priorAuthorityId = state.priorAuthorityId;
   }

@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.springframework.mock.web.MockMultipartFile;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 
@@ -36,6 +37,25 @@ class PriorAuthorityDeciderTest {
   }
 
   @Test
+  void givenCommandWithNullType_whenDecideStartDraft_thenEventTypeIsNull() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    CreatePriorAuthorityDraftCommand command =
+        new CreatePriorAuthorityDraftCommand(
+            priorAuthorityId,
+            applicationId,
+            new PriorAuthorityContent(null, null, null, null, null),
+            "{}",
+            1,
+            "PriorAuthority.json",
+            OCCURRED_AT);
+
+    PriorAuthorityDraftStartedEvent event = PriorAuthorityDecider.decideStartDraft(command);
+
+    assertThat(event.priorAuthorityType()).isNull();
+  }
+
+  @Test
   void givenSubmitCommand_whenDecideSubmit_thenAlwaysUsesDataVersionZero() {
     UUID priorAuthorityId = UUID.randomUUID();
     PriorAuthorityState state = new PriorAuthorityState();
@@ -53,5 +73,27 @@ class PriorAuthorityDeciderTest {
     assertThat(event.schemaVersion()).isEqualTo(2);
     assertThat(event.dataVersion()).isEqualTo(0L);
     assertThat(event.occurredAt()).isEqualTo(OCCURRED_AT);
+  }
+
+  @Test
+  void givenUploadCommand_whenDecideDocumentUploaded_thenMapsUploadFields() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    PriorAuthorityDocumentUploadCommand command =
+        new PriorAuthorityDocumentUploadCommand(
+            priorAuthorityId,
+            new MockMultipartFile("file", "report.pdf", "application/pdf", "content".getBytes()),
+            "{}",
+            OCCURRED_AT);
+
+    PriorAuthorityDocumentUploadedEvent event =
+        PriorAuthorityDecider.decideDocumentUploaded(command, documentId, "abc123");
+
+    assertThat(event.priorAuthorityId()).isEqualTo(priorAuthorityId);
+    assertThat(event.documentId()).isEqualTo(documentId);
+    assertThat(event.uploadedAt()).isEqualTo(OCCURRED_AT);
+    assertThat(event.size()).isEqualTo(7L);
+    assertThat(event.contentType()).isEqualTo("application/pdf");
+    assertThat(event.checksum()).isEqualTo("abc123");
   }
 }

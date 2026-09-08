@@ -71,4 +71,17 @@ class PriorAuthorityEvolveTest {
     assertThat(state.getAssignmentVersion()).isEqualTo(5L);
     assertThat(state.getCaseworkerId()).isNull();
   }
+
+  @Test
+  void givenDocumentUploadedEvent_whenApply_thenTracksDocumentId() {
+    PriorAuthorityState state = new PriorAuthorityState();
+    UUID documentId = UUID.randomUUID();
+
+    PriorAuthorityEvolve.apply(
+        state,
+        new PriorAuthorityDocumentUploadedEvent(
+            UUID.randomUUID(), documentId, Instant.now(), 10L, "application/pdf", "sum"));
+
+    assertThat(state.getUploadedDocumentIds()).contains(documentId);
+  }
 }

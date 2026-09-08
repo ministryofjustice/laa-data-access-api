@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.client.MultipartBodyBuilder;
 import org.springframework.stereotype.Service;
@@ -70,6 +71,42 @@ public class SdsService {
     bodyMap.put(BUCKET_NAME_FIELD, bucketName);
     bodyMap.put(FOLDER_FIELD, folderName);
 
+    MultipartBodyBuilder builder = buildMultipartBody(file, bodyMap);
+
+    return sdsUploadResponseHandler
+        .handle(
+            sdsRestClient
+                .post()
+                .uri(SAVE_FILE_ENDPOINT)
+                .contentType(MULTIPART_FORM_DATA)
+                .body(builder.build())
+                .retrieve()
+                .onStatus(
+                    status -> status.isSameCodeAs(HttpStatus.CONFLICT),
+                    (request, response) -> {
+                      throw new FileConflictException("File already exists in SDS");
+                    }))
+        .body(DocumentUploadResponse.class);
+  }
+
+  /**
+   * Save a prior-authority document in SDS using a UUID document key.
+   *
+   * @param priorAuthorityId the prior-authority ID used as folder name
+   * @param documentId the generated document ID used as file key
+   * @param file the file to upload
+   * @return the file URL response from SDS
+   */
+  public DocumentUploadResponse savePriorAuthorityFile(
+      UUID priorAuthorityId, UUID documentId, MultipartFile file) {
+    Map<String, String> bodyMap =
+        Map.of(
+            BUCKET_NAME_FIELD,
+            bucketName,
+            FOLDER_FIELD,
+            priorAuthorityId.toString(),
+            "key",
+            documentId.toString());
     MultipartBodyBuilder builder = buildMultipartBody(file, bodyMap);
 
     return sdsUploadResponseHandler
@@ -157,8 +194,7 @@ public class SdsService {
                   return deleteFilesUri.build();
                 })
             .retrieve()
-            .body(
-                new org.springframework.core.ParameterizedTypeReference<Map<String, Integer>>() {});
+            .body(new ParameterizedTypeReference<Map<String, Integer>>() {});
 
     List<DocumentDeleteResult> results =
         sdsResults == null
