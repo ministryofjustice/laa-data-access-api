@@ -119,13 +119,13 @@ class PriorAuthorityAggregateTest {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
-    String firstRequest = "{}";
+    String firstRequest = "{\"priorAuthorityType\":\"EXPERT\"}";
     String firstFingerprint = PayloadFingerprint.compute(firstRequest);
     String secondRequest = "{\"justification\":\"need expert\"}";
 
     PriorAuthorityDraftStartedEvent existingEvent =
         new PriorAuthorityDraftStartedEvent(
-            priorAuthorityId, applicationId, firstFingerprint, null, 1, occurredAt);
+            priorAuthorityId, applicationId, firstFingerprint, EXPERT.name(), 1, occurredAt);
     PriorAuthorityDataPayload existingDraftPayload =
         new PriorAuthorityDataPayload(
             priorAuthorityId,
@@ -149,6 +149,83 @@ class PriorAuthorityAggregateTest {
 
     verify(draftStore)
         .upsert(eq(priorAuthorityId), eq(applicationId), any(), eq(secondRequest), eq(occurredAt));
+  }
+
+  @Test
+  void givenStateTypeSet_whenUpdateDraftWithoutType_thenPersistsStateType() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
+    String serialisedRequest = "{\"priorAuthorityType\":\"EXPERT\"}";
+    String fingerprint = PayloadFingerprint.compute(serialisedRequest);
+    PriorAuthorityContent existingContent = new PriorAuthorityContent(null, null, null, null, null);
+    PriorAuthorityDataPayload existingDraftPayload =
+        new PriorAuthorityDataPayload(
+            priorAuthorityId, applicationId, existingContent, serialisedRequest, occurredAt);
+    PriorAuthorityDraftStartedEvent existingEvent =
+        new PriorAuthorityDraftStartedEvent(
+            priorAuthorityId, applicationId, fingerprint, EXPERT.name(), 1, occurredAt);
+
+    when(draftStore.find(priorAuthorityId)).thenReturn(Optional.of(existingDraftPayload));
+
+    UpdatePriorAuthorityDraftCommand command =
+        new UpdatePriorAuthorityDraftCommand(
+            priorAuthorityId,
+            new PriorAuthorityContent(null, "updated justification", null, null, null),
+            "{\"justification\":\"updated justification\"}",
+            1,
+            "PriorAuthority.json",
+            occurredAt);
+
+    fixture.given().events(existingEvent).when().command(command).then().noEvents();
+
+    ArgumentCaptor<PriorAuthorityDataPayload> payloadCaptor =
+        ArgumentCaptor.forClass(PriorAuthorityDataPayload.class);
+    verify(draftStore)
+        .upsert(
+            eq(priorAuthorityId),
+            eq(applicationId),
+            payloadCaptor.capture(),
+            eq("{\"justification\":\"updated justification\"}"),
+            eq(occurredAt));
+    assertThat(payloadCaptor.getValue().content().priorAuthorityType()).isEqualTo(EXPERT);
+  }
+
+  @Test
+  void givenStateTypeMissing_whenUpdateDraftWithoutType_thenThrowsNullPointerException() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
+    PriorAuthorityDataPayload existingDraftPayload =
+        new PriorAuthorityDataPayload(
+            priorAuthorityId,
+            applicationId,
+            new PriorAuthorityContent(null, null, null, null, null),
+            "{}",
+            occurredAt);
+    PriorAuthorityDraftStartedEvent existingEvent =
+        new PriorAuthorityDraftStartedEvent(
+            priorAuthorityId, applicationId, "fingerprint", null, 1, occurredAt);
+
+    when(draftStore.find(priorAuthorityId)).thenReturn(Optional.of(existingDraftPayload));
+
+    UpdatePriorAuthorityDraftCommand command =
+        new UpdatePriorAuthorityDraftCommand(
+            priorAuthorityId,
+            new PriorAuthorityContent(null, "updated justification", null, null, null),
+            "{\"justification\":\"updated justification\"}",
+            1,
+            "PriorAuthority.json",
+            occurredAt);
+
+    fixture
+        .given()
+        .events(existingEvent)
+        .when()
+        .command(command)
+        .then()
+        .exception(NullPointerException.class)
+        .noEvents();
   }
 
   @Test
