@@ -2,7 +2,7 @@ name: laa-data-access-axon
 
 services:
   postgres-axon:
-    image: postgres:17
+    image: postgres:18
     ports:
       - "5433:5432"
     environment:
