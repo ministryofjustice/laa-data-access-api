@@ -12,6 +12,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
@@ -86,6 +87,42 @@ class UploadPriorAuthorityDocumentUseCaseTest {
 
     assertThatExceptionOfType(ResourceNotFoundException.class)
         .isThrownBy(() -> useCase.execute(priorAuthorityId, file));
+  }
+
+  @Test
+  void givenSdsReturnsNull_whenExecute_thenDispatchesCommandWithNullChecksum() {
+    UploadPriorAuthorityDocumentUseCase useCase =
+        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService);
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    MockMultipartFile file =
+        new MockMultipartFile("file", "evidence.pdf", "application/pdf", "content".getBytes());
+
+    when(draftStore.find(priorAuthorityId))
+        .thenReturn(
+            Optional.of(
+                new PriorAuthorityDataPayload(
+                    priorAuthorityId,
+                    applicationId,
+                    new PriorAuthorityContent(null, null, null, null, null),
+                    "{}",
+                    java.time.Instant.now())));
+    doNothing().when(dispatcher).dispatch(new ValidateApplicationGrantedCommand(applicationId));
+    when(sdsService.savePriorAuthorityFile(
+            org.mockito.ArgumentMatchers.eq(priorAuthorityId),
+            org.mockito.ArgumentMatchers.any(UUID.class),
+            org.mockito.ArgumentMatchers.eq(file)))
+        .thenReturn(null);
+    doNothing()
+        .when(dispatcher)
+        .dispatch(org.mockito.ArgumentMatchers.any(PriorAuthorityDocumentUploadCommand.class));
+
+    useCase.execute(priorAuthorityId, file);
+
+    ArgumentCaptor<PriorAuthorityDocumentUploadCommand> commandCaptor =
+        ArgumentCaptor.forClass(PriorAuthorityDocumentUploadCommand.class);
+    verify(dispatcher).dispatch(commandCaptor.capture());
+    assertThat(commandCaptor.getValue().checksum()).isNull();
   }
 
   @Test
