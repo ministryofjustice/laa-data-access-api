@@ -6,6 +6,7 @@ import java.util.concurrent.CompletableFuture;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 /**
@@ -50,6 +51,27 @@ public class SubscriptionProjectionGateway {
       return doAwait(firstResult);
     } finally {
       firstResult.cancel(true);
+    }
+  }
+
+  /**
+   * Opens a Boolean subscription for {@code query}, runs {@code action}, then waits until the
+   * projection reports that it exists.
+   *
+   * <p>An initial {@code false} result is retained as a pending subscription rather than treated as
+   * readiness. This lets an existence query be opened before its creating command is dispatched.
+   */
+  public boolean awaitProjection(Object query, Runnable action) {
+    CompletableFuture<Boolean> firstTrueResult =
+        Flux.from(queryGateway.subscriptionQuery(query, Boolean.class))
+            .filter(Boolean.TRUE::equals)
+            .next()
+            .toFuture();
+    try {
+      action.run();
+      return doAwait(firstTrueResult);
+    } finally {
+      firstTrueResult.cancel(true);
     }
   }
 
