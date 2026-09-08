@@ -3,7 +3,6 @@ package uk.gov.justice.laa.dstew.access.command.application.priorauthority.docum
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -24,20 +23,22 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.exception.InvalidApplicationStateException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
+import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
 
 @ExtendWith(MockitoExtension.class)
 class UploadPriorAuthorityDocumentUseCaseTest {
 
   @Mock private PriorAuthorityDraftStore draftStore;
   @Mock private RetryingCommandDispatcher dispatcher;
+  @Mock private SdsService sdsService;
 
   @Test
   void givenDraftExists_whenExecute_thenValidatesApplicationAndDispatchesUploadCommand() {
     UploadPriorAuthorityDocumentUseCase useCase =
-        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher);
+        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService);
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
-    UUID documentId = UUID.randomUUID();
     MockMultipartFile file =
         new MockMultipartFile("file", "evidence.pdf", "application/pdf", "content".getBytes());
 
@@ -51,26 +52,32 @@ class UploadPriorAuthorityDocumentUseCaseTest {
                     "{}",
                     java.time.Instant.now())));
     doNothing().when(dispatcher).dispatch(new ValidateApplicationGrantedCommand(applicationId));
-    doReturn(documentId)
+    when(sdsService.savePriorAuthorityFile(
+            org.mockito.ArgumentMatchers.eq(priorAuthorityId),
+            org.mockito.ArgumentMatchers.any(UUID.class),
+            org.mockito.ArgumentMatchers.eq(file)))
+        .thenReturn(new DocumentUploadResponse().checksum("abc123"));
+    doNothing()
         .when(dispatcher)
-        .dispatch(
-            org.mockito.ArgumentMatchers.any(PriorAuthorityDocumentUploadCommand.class),
-            org.mockito.ArgumentMatchers.eq(UUID.class));
+        .dispatch(org.mockito.ArgumentMatchers.any(PriorAuthorityDocumentUploadCommand.class));
 
     var response = useCase.execute(priorAuthorityId, file);
 
-    assertThat(response.getDocumentId()).isEqualTo(documentId);
+    assertThat(response.getDocumentId()).isNotNull();
     verify(dispatcher).dispatch(new ValidateApplicationGrantedCommand(applicationId));
+    verify(sdsService)
+        .savePriorAuthorityFile(
+            org.mockito.ArgumentMatchers.eq(priorAuthorityId),
+            org.mockito.ArgumentMatchers.eq(response.getDocumentId()),
+            org.mockito.ArgumentMatchers.eq(file));
     verify(dispatcher)
-        .dispatch(
-            org.mockito.ArgumentMatchers.any(PriorAuthorityDocumentUploadCommand.class),
-            org.mockito.ArgumentMatchers.eq(UUID.class));
+        .dispatch(org.mockito.ArgumentMatchers.any(PriorAuthorityDocumentUploadCommand.class));
   }
 
   @Test
   void givenDraftMissing_whenExecute_thenThrowsNotFound() {
     UploadPriorAuthorityDocumentUseCase useCase =
-        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher);
+        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService);
     UUID priorAuthorityId = UUID.randomUUID();
     MockMultipartFile file =
         new MockMultipartFile("file", "evidence.pdf", "application/pdf", "content".getBytes());
@@ -84,7 +91,7 @@ class UploadPriorAuthorityDocumentUseCaseTest {
   @Test
   void givenApplicationNotGranted_whenExecute_thenThrowsAndDoesNotDispatchUploadCommand() {
     UploadPriorAuthorityDocumentUseCase useCase =
-        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher);
+        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService);
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     MockMultipartFile file =
