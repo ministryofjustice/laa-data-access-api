@@ -82,12 +82,14 @@ class PriorAuthorityDeciderTest {
     PriorAuthorityDocumentUploadCommand command =
         new PriorAuthorityDocumentUploadCommand(
             priorAuthorityId,
+            documentId,
             new MockMultipartFile("file", "report.pdf", "application/pdf", "content".getBytes()),
+            "abc123",
             "{}",
             OCCURRED_AT);
 
     PriorAuthorityDocumentUploadedEvent event =
-        PriorAuthorityDecider.decideDocumentUploaded(command, documentId, "abc123");
+        PriorAuthorityDecider.decideDocumentUploaded(command);
 
     assertThat(event.priorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(event.documentId()).isEqualTo(documentId);

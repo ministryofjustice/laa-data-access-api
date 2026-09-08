@@ -10,6 +10,8 @@ import org.springframework.web.multipart.MultipartFile;
 @Command(routingKey = "priorAuthorityId")
 public record PriorAuthorityDocumentUploadCommand(
     @TargetEntityId UUID priorAuthorityId,
+    UUID documentId,
     MultipartFile file,
+    String checksum,
     String serialisedRequest,
     Instant occurredAt) {}
