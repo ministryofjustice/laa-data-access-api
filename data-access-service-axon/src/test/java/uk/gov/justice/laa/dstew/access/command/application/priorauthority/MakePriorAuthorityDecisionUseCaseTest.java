@@ -16,7 +16,14 @@ class MakePriorAuthorityDecisionUseCaseTest {
     MakePriorAuthorityDecisionUseCase useCase = new MakePriorAuthorityDecisionUseCase(dispatcher);
     MakePriorAuthorityDecisionCommand command =
         new MakePriorAuthorityDecisionCommand(
-            UUID.randomUUID(), "GRANTED", "{}", "Decision recorded", Instant.now());
+            UUID.randomUUID(),
+            0L,
+            "GRANTED",
+            "Decision recorded",
+            100.0,
+            Instant.now(),
+            "{}",
+            Instant.now());
 
     useCase.execute(command);
 

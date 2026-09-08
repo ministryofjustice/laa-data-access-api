@@ -13,20 +13,37 @@ public record PriorAuthorityDataPayload(
     Instant submittedAt,
     String decision,
     String decisionJustification,
+    Double amountGranted,
+    Instant dateGranted,
     String decisionSerialisedRequest) {
 
+  /** Creates an initial payload version before any decision has been recorded. */
   public PriorAuthorityDataPayload(
       UUID submissionId,
       UUID applicationId,
       PriorAuthorityContent content,
       String serialisedRequest,
       Instant submittedAt) {
-    this(submissionId, applicationId, content, serialisedRequest, submittedAt, null, null, null);
+    this(
+        submissionId,
+        applicationId,
+        content,
+        serialisedRequest,
+        submittedAt,
+        null,
+        null,
+        null,
+        null,
+        null);
   }
 
   /** Returns a complete new data version containing the supplied decision details. */
   public PriorAuthorityDataPayload withDecision(
-      String newDecision, String newDecisionJustification, String newDecisionSerialisedRequest) {
+      String newDecision,
+      String newDecisionJustification,
+      Double newAmountGranted,
+      Instant newDateGranted,
+      String newDecisionSerialisedRequest) {
     return new PriorAuthorityDataPayload(
         submissionId,
         applicationId,
@@ -35,6 +52,8 @@ public record PriorAuthorityDataPayload(
         submittedAt,
         newDecision,
         newDecisionJustification,
+        newAmountGranted,
+        newDateGranted,
         newDecisionSerialisedRequest);
   }
 }

@@ -221,16 +221,19 @@ class PriorAuthorityAggregateTest {
             eq(1L),
             eq(applicationId),
             any(),
-            eq("{\"overallDecision\":\"GRANTED\"}"),
+            eq("{\"decision\":\"GRANTED\"}"),
             eq(decidedAt)))
         .thenReturn("decision-fingerprint");
 
     MakePriorAuthorityDecisionCommand command =
         new MakePriorAuthorityDecisionCommand(
             submissionId,
+            0L,
             "GRANTED",
-            "{\"overallDecision\":\"GRANTED\"}",
             "Decision recorded",
+            1234.56,
+            decidedAt,
+            "{\"decision\":\"GRANTED\"}",
             decidedAt);
 
     fixture
@@ -251,12 +254,14 @@ class PriorAuthorityAggregateTest {
             eq(1L),
             eq(applicationId),
             payloadCaptor.capture(),
-            eq("{\"overallDecision\":\"GRANTED\"}"),
+            eq("{\"decision\":\"GRANTED\"}"),
             eq(decidedAt));
     assertThat(payloadCaptor.getValue().decision()).isEqualTo("GRANTED");
     assertThat(payloadCaptor.getValue().decisionJustification()).isEqualTo("Decision recorded");
+    assertThat(payloadCaptor.getValue().amountGranted()).isEqualTo(1234.56);
+    assertThat(payloadCaptor.getValue().dateGranted()).isEqualTo(decidedAt);
     assertThat(payloadCaptor.getValue().decisionSerialisedRequest())
-        .isEqualTo("{\"overallDecision\":\"GRANTED\"}");
+        .isEqualTo("{\"decision\":\"GRANTED\"}");
   }
 
   @Test
@@ -292,14 +297,19 @@ class PriorAuthorityAggregateTest {
                 occurredAt,
                 "REFUSED",
                 "Decision recorded",
-                "{\"overallDecision\":\"REFUSED\"}"));
+                0.0,
+                occurredAt,
+                "{\"decision\":\"REFUSED\"}"));
 
     MakePriorAuthorityDecisionCommand retry =
         new MakePriorAuthorityDecisionCommand(
             submissionId,
+            1L,
             "REFUSED",
-            "{\"overallDecision\":\"REFUSED\"}",
             "Decision recorded",
+            0.0,
+            occurredAt,
+            "{\"decision\":\"REFUSED\"}",
             occurredAt.plusSeconds(2));
 
     fixture.given().events(created, decided).when().command(retry).then().noEvents();
@@ -340,14 +350,19 @@ class PriorAuthorityAggregateTest {
                 occurredAt,
                 "GRANTED",
                 "Decision recorded",
-                "{\"overallDecision\":\"GRANTED\"}"));
+                0.0,
+                occurredAt,
+                "{\"decision\":\"GRANTED\"}"));
 
     MakePriorAuthorityDecisionCommand command =
         new MakePriorAuthorityDecisionCommand(
             submissionId,
+            1L,
             "REFUSED",
-            "{\"overallDecision\":\"REFUSED\"}",
             "Decision recorded",
+            0.0,
+            occurredAt,
+            "{\"decision\":\"REFUSED\"}",
             occurredAt.plusSeconds(2));
 
     fixture

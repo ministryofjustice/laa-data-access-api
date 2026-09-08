@@ -1,5 +1,32 @@
 components:
   schemas:
+    MakePriorAuthorityDecisionRequest:
+      type: object
+      required:
+        - decision
+        - decisionJustification
+        - amountGranted
+        - dateGranted
+        - eventHistory
+        - priorAuthorityVersion
+      properties:
+        decision:
+          $ref: "../open-api-applications/components.yml#/components/schemas/DecisionStatus"
+        decisionJustification:
+          type: string
+        amountGranted:
+          type: number
+          format: double
+        dateGranted:
+          type: string
+          format: date-time
+        eventHistory:
+          $ref: "../open-api-common/components.yml#/components/schemas/EventHistoryRequest"
+        priorAuthorityVersion:
+          type: integer
+          format: int64
+          description: Version of prior authority being decided, used for concurrency control
+
     PriorAuthorityResponse:
       type: object
       required:

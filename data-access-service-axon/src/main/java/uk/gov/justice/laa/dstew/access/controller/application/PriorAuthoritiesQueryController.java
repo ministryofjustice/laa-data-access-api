@@ -7,7 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import uk.gov.justice.laa.dstew.access.api.PriorAuthoritiesApi;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.MakePriorAuthorityDecisionUseCase;
-import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
+import uk.gov.justice.laa.dstew.access.model.MakePriorAuthorityDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityResponse;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.GetPriorAuthorityUseCase;
@@ -51,9 +51,12 @@ public class PriorAuthoritiesQueryController implements PriorAuthoritiesApi {
   @Override
   @Operation(security = @SecurityRequirement(name = "BearerAuth"))
   public ResponseEntity<Void> makePriorAuthorityDecision(
-      ServiceName serviceName, UUID priorAuthorityId, MakeDecisionRequest makeDecisionRequest) {
+      ServiceName serviceName,
+      UUID priorAuthorityId,
+      MakePriorAuthorityDecisionRequest makePriorAuthorityDecisionRequest) {
     makePriorAuthorityDecisionUseCase.execute(
-        makePriorAuthorityDecisionCommandMapper.toCommand(priorAuthorityId, makeDecisionRequest));
+        makePriorAuthorityDecisionCommandMapper.toCommand(
+            priorAuthorityId, makePriorAuthorityDecisionRequest));
     return ResponseEntity.noContent().build();
   }
 }

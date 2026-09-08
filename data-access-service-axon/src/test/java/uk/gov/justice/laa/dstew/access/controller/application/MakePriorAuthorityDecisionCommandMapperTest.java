@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import java.util.List;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import tools.jackson.core.JacksonException;
@@ -14,10 +14,7 @@ import tools.jackson.databind.json.JsonMapper;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.MakePriorAuthorityDecisionCommand;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
-import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceedingRequest;
-import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
-import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetailsRequest;
-import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
+import uk.gov.justice.laa.dstew.access.model.MakePriorAuthorityDecisionRequest;
 
 class MakePriorAuthorityDecisionCommandMapperTest {
 
@@ -27,11 +24,14 @@ class MakePriorAuthorityDecisionCommandMapperTest {
   @Test
   void givenRequestWithEventDescription_whenMapped_thenUsesEventDescriptionAsJustification() {
     UUID submissionId = UUID.randomUUID();
-    MakeDecisionRequest request =
-        MakeDecisionRequest.builder()
-            .applicationVersion(7L)
-            .overallDecision(DecisionStatus.GRANTED)
-            .proceedings(List.of(proceeding("ignored justification")))
+    OffsetDateTime dateGranted = OffsetDateTime.parse("2026-09-08T12:30:00Z");
+    MakePriorAuthorityDecisionRequest request =
+        MakePriorAuthorityDecisionRequest.builder()
+            .priorAuthorityVersion(7L)
+            .decision(DecisionStatus.GRANTED)
+            .decisionJustification("Decision recorded")
+            .amountGranted(1200.50)
+            .dateGranted(dateGranted)
             .eventHistory(
                 EventHistoryRequest.builder().eventDescription("Decision recorded").build())
             .build();
@@ -39,24 +39,30 @@ class MakePriorAuthorityDecisionCommandMapperTest {
     MakePriorAuthorityDecisionCommand command = mapper.toCommand(submissionId, request);
 
     assertThat(command.submissionId()).isEqualTo(submissionId);
+    assertThat(command.expectedPriorAuthorityVersion()).isEqualTo(7L);
     assertThat(command.overallDecision()).isEqualTo("GRANTED");
     assertThat(command.decisionJustification()).isEqualTo("Decision recorded");
-    assertThat(command.serialisedRequest()).contains("\"overallDecision\":\"GRANTED\"");
+    assertThat(command.amountGranted()).isEqualTo(1200.50);
+    assertThat(command.dateGranted()).isEqualTo(dateGranted.toInstant());
+    assertThat(command.serialisedRequest()).contains("\"decision\":\"GRANTED\"");
     assertThat(command.occurredAt()).isNotNull();
   }
 
   @Test
-  void givenMissingEventDescription_whenMapped_thenFallsBackToProceedingJustification() {
-    MakeDecisionRequest request =
-        MakeDecisionRequest.builder()
-            .applicationVersion(8L)
-            .overallDecision(DecisionStatus.REFUSED)
-            .proceedings(List.of(proceeding("Refusal reason")))
-            .eventHistory(EventHistoryRequest.builder().eventDescription("   ").build())
+  void givenDecisionJustificationWithWhitespace_whenMapped_thenStoresTrimmedJustification() {
+    MakePriorAuthorityDecisionRequest request =
+        MakePriorAuthorityDecisionRequest.builder()
+            .priorAuthorityVersion(8L)
+            .decision(DecisionStatus.REFUSED)
+            .decisionJustification("  Refusal reason  ")
+            .amountGranted(0.0)
+            .dateGranted(OffsetDateTime.parse("2026-09-08T12:40:00Z"))
+            .eventHistory(EventHistoryRequest.builder().eventDescription("ignored").build())
             .build();
 
     MakePriorAuthorityDecisionCommand command = mapper.toCommand(UUID.randomUUID(), request);
 
+    assertThat(command.expectedPriorAuthorityVersion()).isEqualTo(8L);
     assertThat(command.overallDecision()).isEqualTo("REFUSED");
     assertThat(command.decisionJustification()).isEqualTo("Refusal reason");
   }
@@ -66,11 +72,13 @@ class MakePriorAuthorityDecisionCommandMapperTest {
     ObjectMapper objectMapper = mock(ObjectMapper.class);
     MakePriorAuthorityDecisionCommandMapper failingMapper =
         new MakePriorAuthorityDecisionCommandMapper(objectMapper);
-    MakeDecisionRequest request =
-        MakeDecisionRequest.builder()
-            .applicationVersion(9L)
-            .overallDecision(DecisionStatus.GRANTED)
-            .proceedings(List.of(proceeding("Decision recorded")))
+    MakePriorAuthorityDecisionRequest request =
+        MakePriorAuthorityDecisionRequest.builder()
+            .priorAuthorityVersion(9L)
+            .decision(DecisionStatus.GRANTED)
+            .decisionJustification("Decision recorded")
+            .amountGranted(900.0)
+            .dateGranted(OffsetDateTime.parse("2026-09-08T12:50:00Z"))
             .eventHistory(
                 EventHistoryRequest.builder().eventDescription("Decision recorded").build())
             .build();
@@ -78,19 +86,7 @@ class MakePriorAuthorityDecisionCommandMapperTest {
 
     assertThatThrownBy(() -> failingMapper.toCommand(UUID.randomUUID(), request))
         .isInstanceOf(IllegalStateException.class)
-        .hasMessage("Unable to serialise MakeDecisionRequest")
+        .hasMessage("Unable to serialise MakePriorAuthorityDecisionRequest")
         .hasCauseInstanceOf(JacksonException.class);
-  }
-
-  private MakeDecisionProceedingRequest proceeding(String justification) {
-    return MakeDecisionProceedingRequest.builder()
-        .proceedingId(UUID.randomUUID())
-        .meritsDecision(
-            MeritsDecisionDetailsRequest.builder()
-                .decision(MeritsDecisionStatus.REFUSED)
-                .reason("reason")
-                .justification(justification)
-                .build())
-        .build();
   }
 }

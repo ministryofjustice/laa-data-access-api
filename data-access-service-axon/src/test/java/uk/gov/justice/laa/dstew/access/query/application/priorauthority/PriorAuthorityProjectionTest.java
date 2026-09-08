@@ -312,7 +312,9 @@ class PriorAuthorityProjectionTest {
                 Instant.now(),
                 "GRANTED",
                 "Decision recorded",
-                "{\"overallDecision\":\"GRANTED\"}"));
+                99.99,
+                Instant.parse("2026-09-08T12:00:00Z"),
+                "{\"decision\":\"GRANTED\"}"));
 
     PriorAuthorityResult result =
         projection.handle(new FindPriorAuthorityBySubmissionIdQuery(submissionId));

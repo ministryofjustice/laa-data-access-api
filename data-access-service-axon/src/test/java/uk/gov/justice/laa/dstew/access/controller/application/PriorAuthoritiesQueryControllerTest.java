@@ -39,7 +39,8 @@ class PriorAuthoritiesQueryControllerTest {
   @Test
   void givenDecisionRequest_whenMakePriorAuthorityDecision_thenDelegatesAndReturnsNoContent() {
     UUID priorAuthorityId = UUID.randomUUID();
-    var request = mock(uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest.class);
+    var request =
+        mock(uk.gov.justice.laa.dstew.access.model.MakePriorAuthorityDecisionRequest.class);
     MakePriorAuthorityDecisionCommand command = mock(MakePriorAuthorityDecisionCommand.class);
     when(makePriorAuthorityDecisionCommandMapper.toCommand(priorAuthorityId, request))
         .thenReturn(command);

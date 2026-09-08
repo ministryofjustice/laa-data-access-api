@@ -8,6 +8,7 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityStatusConflictException;
+import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityVersionConflictException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /** Decision functions: derive events from current state and command inputs. */
@@ -50,6 +51,11 @@ public final class PriorAuthorityDecider {
       MakePriorAuthorityDecisionCommand command,
       PriorAuthorityDataPayload current) {
     validateDecision(command);
+
+    if (command.expectedPriorAuthorityVersion() != state.dataVersion) {
+      throw new PriorAuthorityVersionConflictException(
+          command.submissionId(), command.expectedPriorAuthorityVersion());
+    }
 
     if (!PriorAuthorityStatus.PENDING.name().equals(state.status)) {
       boolean sameDecision = state.status != null && state.status.equals(command.overallDecision());

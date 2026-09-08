@@ -71,7 +71,11 @@ public class PriorAuthorityAggregate {
                   event.dataVersion(),
                   event.applicationId(),
                   current.withDecision(
-                      event.status(), command.decisionJustification(), command.serialisedRequest()),
+                      event.status(),
+                      command.decisionJustification(),
+                      command.amountGranted(),
+                      command.dateGranted(),
+                      command.serialisedRequest()),
                   command.serialisedRequest(),
                   command.occurredAt());
               eventAppender.append(event);
