@@ -39,9 +39,7 @@ public class SubmitPriorAuthorityDraftUseCase {
    * projection to reflect the PENDING status.
    *
    * <p>The application may have been granted when the draft was started but could have changed
-   * state since — since drafts can remain in progress indefinitely — so eligibility is re-checked
-   * here, the same way {@link CreatePriorAuthorityUseCase} checks it before the original,
-   * single-phase create.
+   * state since — so eligibility is re-checked here.
    *
    * @return {@code true} when the projection confirms within the configured timeout; {@code false}
    *     on timeout — the command has still committed.
