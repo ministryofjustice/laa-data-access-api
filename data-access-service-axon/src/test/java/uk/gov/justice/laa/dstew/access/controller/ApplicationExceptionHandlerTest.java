@@ -152,8 +152,7 @@ class ApplicationExceptionHandlerTest {
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
     assertThat(response.getBody().getDetail())
-        .isEqualTo(
-            "Prior authority submission ID " + priorAuthorityId + " already exists");
+        .isEqualTo("Prior authority submission ID " + priorAuthorityId + " already exists");
   }
 
   @Test

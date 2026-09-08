@@ -67,8 +67,7 @@ class PriorAuthorityDraftIntegrationTest {
   @Autowired private QueryGateway queryGateway;
 
   @Test
-  void givenGrantedApplication_whenSavePriorAuthorityDraft_thenPersistsDraftAndProjectsInProgress()
-      throws Exception {
+  void givenGrantedApplication_whenSavePriorAuthorityDraft_thenPersistsDraftAndProjects() {
     UUID applicationId = grantedApplication();
     CreatePriorAuthorityDraftRequest request =
         CreatePriorAuthorityDraftRequest.builder()
@@ -140,8 +139,7 @@ class PriorAuthorityDraftIntegrationTest {
   }
 
   @Test
-  void givenUngrantedApplication_whenSavePriorAuthorityDraft_thenReturnsBadRequest()
-      throws Exception {
+  void givenUngrantedApplication_whenSavePriorAuthorityDraft_thenReturnsBadRequest() {
     UUID applicationId = UUID.randomUUID();
     createApplication(applicationId, UUID.randomUUID());
     awaitApplicationProjection(applicationId);
@@ -194,8 +192,7 @@ class PriorAuthorityDraftIntegrationTest {
   }
 
   @Test
-  void givenDraftPayloadWithNullNestedFields_whenSavePriorAuthorityDraft_thenAcceptsDraft()
-      throws Exception {
+  void givenDraftPayloadWithNullNestedFields_whenSavePriorAuthorityDraft_thenAcceptsDraft() {
     UUID applicationId = grantedApplication();
     CreatePriorAuthorityDraftRequest request =
         CreatePriorAuthorityDraftRequest.builder()

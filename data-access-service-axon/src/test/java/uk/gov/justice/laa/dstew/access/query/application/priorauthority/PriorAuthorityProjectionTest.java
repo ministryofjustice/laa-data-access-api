@@ -2,8 +2,6 @@ package uk.gov.justice.laa.dstew.access.query.application.priorauthority;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType.*;
@@ -12,14 +10,11 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.function.Predicate;
 import org.axonframework.messaging.queryhandling.QueryUpdateEmitter;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
-import org.junit.jupiter.params.provider.ValueSource;
-import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -50,23 +45,6 @@ class PriorAuthorityProjectionTest {
   @InjectMocks private PriorAuthorityProjection projection;
 
   @Test
-  @SuppressWarnings("unchecked")
-  void givenSubmittedEvent_whenHandled_thenSavesBeforeEmitting() {
-    UUID submissionId = UUID.randomUUID();
-    PriorAuthoritySubmittedEvent event =
-        new PriorAuthoritySubmittedEvent(
-            submissionId, UUID.randomUUID(), "EXPERT", 1, 1L, "SUBMITTED", Instant.now());
-    when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
-
-    projection.on(event, queryUpdateEmitter);
-
-    InOrder order = inOrder(repository, queryUpdateEmitter);
-    order.verify(repository).save(any(PriorAuthorityReadModel.class));
-    QueryUpdateEmitter verifiedEmitter = order.verify(queryUpdateEmitter);
-    verifiedEmitter.emit(any(Class.class), any(Predicate.class), any(Boolean.class));
-  }
-
-  @Test
   void givenSubmittedEvent_whenHandled_thenSavesExactFields() {
     UUID submissionId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
@@ -89,34 +67,6 @@ class PriorAuthorityProjectionTest {
     assertThat(savedCapture[0].getDataVersion()).isEqualTo(1L);
     assertThat(savedCapture[0].getStatus()).isEqualTo("SUBMITTED");
     assertThat(savedCapture[0].getCreatedAt()).isEqualTo(occurredAt);
-  }
-
-  @Test
-  @SuppressWarnings("unchecked")
-  void givenSubmittedEvent_whenHandled_thenEmittedPredicateMatchesOnlyEventSubmissionId() {
-    UUID submissionId = UUID.randomUUID();
-    final UUID otherId = UUID.randomUUID();
-    PriorAuthoritySubmittedEvent event =
-        new PriorAuthoritySubmittedEvent(
-            submissionId, UUID.randomUUID(), "EXPERT", 1, 1L, "SUBMITTED", Instant.now());
-    when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
-
-    Predicate<?>[] capturedPredicate = new Predicate[1];
-    doAnswer(
-            inv -> {
-              capturedPredicate[0] = (Predicate<?>) inv.getArgument(1);
-              return null;
-            })
-        .when(queryUpdateEmitter)
-        .emit(any(Class.class), any(Predicate.class), any(Boolean.class));
-
-    projection.on(event, queryUpdateEmitter);
-
-    assertThat(capturedPredicate[0]).isNotNull();
-    Predicate<PriorAuthorityExistsBySubmissionIdQuery> predicate =
-        (Predicate<PriorAuthorityExistsBySubmissionIdQuery>) capturedPredicate[0];
-    assertThat(predicate.test(new PriorAuthorityExistsBySubmissionIdQuery(submissionId))).isTrue();
-    assertThat(predicate.test(new PriorAuthorityExistsBySubmissionIdQuery(otherId))).isFalse();
   }
 
   @Test
@@ -317,17 +267,6 @@ class PriorAuthorityProjectionTest {
 
     assertThat(projection.handle(new FindPriorAuthorityByPriorAuthorityIdQuery(submissionId)))
         .isNull();
-  }
-
-  @ParameterizedTest
-  @ValueSource(booleans = {true, false})
-  void givenSubmissionId_whenExistsQueryHandled_thenReturnsRepositoryResult(boolean exists) {
-    UUID submissionId = UUID.randomUUID();
-    when(repository.existsById(submissionId)).thenReturn(exists);
-
-    boolean result = projection.handle(new PriorAuthorityExistsBySubmissionIdQuery(submissionId));
-
-    assertThat(result).isEqualTo(exists);
   }
 
   @Test

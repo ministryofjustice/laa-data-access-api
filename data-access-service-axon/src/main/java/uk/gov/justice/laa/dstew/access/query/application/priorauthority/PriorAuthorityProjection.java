@@ -16,6 +16,7 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
 
 /** Independently replayable projection of the current state of each prior-authority submission. */
 @Component
@@ -52,18 +53,14 @@ public class PriorAuthorityProjection {
         .orElse(null);
   }
 
-  /** Confirms whether a current-state projection exists for the requested submission. */
-  @QueryHandler
-  public boolean handle(PriorAuthorityExistsBySubmissionIdQuery query) {
-    return repository.existsById(query.submissionId());
-  }
-
   /** Confirms whether a current-state projection has reached PENDING. */
   @QueryHandler
   public boolean handle(PriorAuthorityPendingByPriorAuthorityIdQuery query) {
     return repository
         .findById(query.priorAuthorityId())
-        .map(priorAuthority -> "PENDING".equals(priorAuthority.getStatus()))
+        .map(
+            priorAuthority ->
+                PriorAuthorityStatus.PENDING.name().equals(priorAuthority.getStatus()))
         .orElse(false);
   }
 
@@ -116,11 +113,7 @@ public class PriorAuthorityProjection {
             .status(status)
             .createdAt(createdAt)
             .build());
-    queryUpdateEmitter.emit(
-        PriorAuthorityExistsBySubmissionIdQuery.class,
-        query -> query.submissionId().equals(priorAuthorityId),
-        Boolean.TRUE);
-    if ("PENDING".equals(status)) {
+    if (PriorAuthorityStatus.PENDING.name().equals(status)) {
       queryUpdateEmitter.emit(
           PriorAuthorityPendingByPriorAuthorityIdQuery.class,
           query -> query.priorAuthorityId().equals(priorAuthorityId),
