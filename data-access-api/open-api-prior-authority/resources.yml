@@ -59,7 +59,7 @@ paths:
       description: |
         This command endpoint does not accept a request body.
         Submit-time content validation requirements are documented in
-        [`SubmitPriorAuthorityDraftValidationRequest`](./components.yml#/components/schemas/SubmitPriorAuthorityDraftValidationRequest).
+        [`SubmitPriorAuthorityDraftValidationRequest`](#/components/schemas/SubmitPriorAuthorityDraftValidationRequest).
       operationId: submitPriorAuthorityDraft
       parameters:
         - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
