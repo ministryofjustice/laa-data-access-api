@@ -24,4 +24,9 @@ public final class PriorAuthorityEvolve {
     state.dataVersion = event.dataVersion();
     state.status = event.status();
   }
+
+  /** Applies a {@link PriorAuthorityDocumentUploadedEvent} to the given state. */
+  public static void apply(PriorAuthorityState state, PriorAuthorityDocumentUploadedEvent event) {
+    state.uploadedDocumentIds.add(event.documentId());
+  }
 }

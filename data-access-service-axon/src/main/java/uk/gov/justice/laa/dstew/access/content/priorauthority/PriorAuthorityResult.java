@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.content.priorauthority;
 
+import java.util.List;
 import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
@@ -13,7 +14,30 @@ public record PriorAuthorityResult(
     PriorAuthorityType priorAuthorityType,
     ExpertDetails expertDetails,
     CounselDetails counselDetails,
-    DisbursementDetails disbursementDetails) {
+    DisbursementDetails disbursementDetails,
+    List<PriorAuthorityDocument> uploadedDocuments) {
+
+  /** Creates a result with no uploaded document entries. */
+  public PriorAuthorityResult(
+      UUID priorAuthorityId,
+      UUID applicationId,
+      String justification,
+      String status,
+      PriorAuthorityType priorAuthorityType,
+      ExpertDetails expertDetails,
+      CounselDetails counselDetails,
+      DisbursementDetails disbursementDetails) {
+    this(
+        priorAuthorityId,
+        applicationId,
+        justification,
+        status,
+        priorAuthorityType,
+        expertDetails,
+        counselDetails,
+        disbursementDetails,
+        null);
+  }
 
   /** Builds the use-case result from the current-state projection and versioned content. */
   public static PriorAuthorityResult from(
@@ -46,7 +70,8 @@ public record PriorAuthorityResult(
         priorAuthorityType == PriorAuthorityType.COUNSEL ? toCounselDetails(content) : null,
         priorAuthorityType == PriorAuthorityType.DISBURSEMENT
             ? toDisbursementDetails(content)
-            : null);
+            : null,
+        content.uploadedDocuments());
   }
 
   private static ExpertDetails toExpertDetails(PriorAuthorityContent content) {

@@ -16,6 +16,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.axonframework.eventsourcing.configuration.EventSourcedEntityModule;
 import org.axonframework.eventsourcing.configuration.EventSourcingConfigurer;
+import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import org.axonframework.test.fixture.AxonTestFixture;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -24,13 +25,17 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.mock.web.MockMultipartFile;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityDocument;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
+import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
 import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
@@ -43,6 +48,8 @@ class PriorAuthorityAggregateTest {
   @Mock private PriorAuthorityDataStore dataStore;
   @Mock private PriorAuthorityDraftStore draftStore;
   @Mock private JsonSchemaValidator jsonSchemaValidator;
+  @Mock private SdsService sdsService;
+  @Mock private EventAppender eventAppender;
 
   @BeforeEach
   void setUp() {
@@ -59,6 +66,7 @@ class PriorAuthorityAggregateTest {
                                 PriorAuthorityDataStore.class, configuration -> dataStore)
                             .registerComponent(
                                 PriorAuthorityDraftStore.class, configuration -> draftStore)
+                            .registerComponent(SdsService.class, configuration -> sdsService)
                             .registerComponent(
                                 JsonSchemaValidator.class, configuration -> jsonSchemaValidator)));
   }
@@ -417,5 +425,165 @@ class PriorAuthorityAggregateTest {
         .then()
         .exception(ResourceNotFoundException.class)
         .noEvents();
+  }
+
+  @Test
+  void givenDraftWithoutExistingDocuments_whenUpload_thenPersistsSingleUploadedDocument() {
+    PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-09-08T12:00:00Z");
+    MockMultipartFile file =
+        new MockMultipartFile("file", "evidence.pdf", "application/pdf", "content".getBytes());
+    PriorAuthorityDocumentUploadCommand command =
+        new PriorAuthorityDocumentUploadCommand(priorAuthorityId, file, "{}", occurredAt);
+    DocumentUploadResponse uploadResponse = new DocumentUploadResponse().checksum("sum");
+
+    aggregate.on(
+        new PriorAuthorityDraftStartedEvent(
+            priorAuthorityId, applicationId, "EXPERT", 1, occurredAt));
+    when(sdsService.savePriorAuthorityFile(eq(priorAuthorityId), any(UUID.class), eq(file)))
+        .thenReturn(uploadResponse);
+    when(draftStore.find(priorAuthorityId))
+        .thenReturn(
+            Optional.of(
+                new PriorAuthorityDataPayload(
+                    priorAuthorityId,
+                    applicationId,
+                    new PriorAuthorityContent(EXPERT, "why", null, null, null),
+                    "{}",
+                    occurredAt)));
+
+    UUID documentId = aggregate.handle(command, sdsService, draftStore, eventAppender);
+
+    assertThat(documentId).isNotNull();
+    ArgumentCaptor<PriorAuthorityDataPayload> payloadCaptor =
+        ArgumentCaptor.forClass(PriorAuthorityDataPayload.class);
+    verify(draftStore)
+        .upsert(
+            eq(priorAuthorityId),
+            eq(applicationId),
+            payloadCaptor.capture(),
+            eq("{}"),
+            eq(occurredAt));
+    assertThat(payloadCaptor.getValue().content().uploadedDocuments()).hasSize(1);
+    verify(eventAppender).append(any(PriorAuthorityDocumentUploadedEvent.class));
+  }
+
+  @Test
+  void givenDraftWithExistingDocument_whenUpload_thenAppendsToDocumentList() {
+    PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-09-08T12:00:00Z");
+    MockMultipartFile file =
+        new MockMultipartFile("file", "second.pdf", "application/pdf", "content".getBytes());
+
+    aggregate.on(
+        new PriorAuthorityDraftStartedEvent(
+            priorAuthorityId, applicationId, "EXPERT", 1, occurredAt));
+    when(sdsService.savePriorAuthorityFile(eq(priorAuthorityId), any(UUID.class), eq(file)))
+        .thenReturn(new DocumentUploadResponse().checksum("sum"));
+    when(draftStore.find(priorAuthorityId))
+        .thenReturn(
+            Optional.of(
+                new PriorAuthorityDataPayload(
+                    priorAuthorityId,
+                    applicationId,
+                    new PriorAuthorityContent(
+                        EXPERT,
+                        "why",
+                        null,
+                        null,
+                        null,
+                        List.of(
+                            new PriorAuthorityDocument(
+                                UUID.randomUUID(),
+                                "first.pdf",
+                                "application/pdf",
+                                1L,
+                                occurredAt))),
+                    "{}",
+                    occurredAt)));
+
+    aggregate.handle(
+        new PriorAuthorityDocumentUploadCommand(priorAuthorityId, file, "{}", occurredAt),
+        sdsService,
+        draftStore,
+        eventAppender);
+
+    ArgumentCaptor<PriorAuthorityDataPayload> payloadCaptor =
+        ArgumentCaptor.forClass(PriorAuthorityDataPayload.class);
+    verify(draftStore)
+        .upsert(
+            eq(priorAuthorityId),
+            eq(applicationId),
+            payloadCaptor.capture(),
+            eq("{}"),
+            eq(occurredAt));
+    assertThat(payloadCaptor.getValue().content().uploadedDocuments()).hasSize(2);
+  }
+
+  @Test
+  void givenMissingDraft_whenUpload_thenThrowsNotFound() {
+    PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-09-08T12:00:00Z");
+    MockMultipartFile file =
+        new MockMultipartFile("file", "missing.pdf", "application/pdf", "content".getBytes());
+
+    aggregate.on(
+        new PriorAuthorityDraftStartedEvent(
+            priorAuthorityId, applicationId, "EXPERT", 1, occurredAt));
+    when(sdsService.savePriorAuthorityFile(eq(priorAuthorityId), any(UUID.class), eq(file)))
+        .thenReturn(new DocumentUploadResponse().checksum("sum"));
+    when(draftStore.find(priorAuthorityId)).thenReturn(Optional.empty());
+
+    org.assertj.core.api.Assertions.assertThatExceptionOfType(ResourceNotFoundException.class)
+        .isThrownBy(
+            () ->
+                aggregate.handle(
+                    new PriorAuthorityDocumentUploadCommand(
+                        priorAuthorityId, file, "{}", occurredAt),
+                    sdsService,
+                    draftStore,
+                    eventAppender));
+  }
+
+  @Test
+  void givenSdsReturnsNullResponse_whenUpload_thenEmitsEventWithNullChecksum() {
+    PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-09-08T12:00:00Z");
+    MockMultipartFile file =
+        new MockMultipartFile("file", "nullsum.pdf", "application/pdf", "content".getBytes());
+
+    aggregate.on(
+        new PriorAuthorityDraftStartedEvent(
+            priorAuthorityId, applicationId, "EXPERT", 1, occurredAt));
+    when(sdsService.savePriorAuthorityFile(eq(priorAuthorityId), any(UUID.class), eq(file)))
+        .thenReturn(null);
+    when(draftStore.find(priorAuthorityId))
+        .thenReturn(
+            Optional.of(
+                new PriorAuthorityDataPayload(
+                    priorAuthorityId,
+                    applicationId,
+                    new PriorAuthorityContent(EXPERT, "why", null, null, null),
+                    "{}",
+                    occurredAt)));
+
+    aggregate.handle(
+        new PriorAuthorityDocumentUploadCommand(priorAuthorityId, file, "{}", occurredAt),
+        sdsService,
+        draftStore,
+        eventAppender);
+
+    ArgumentCaptor<PriorAuthorityDocumentUploadedEvent> eventCaptor =
+        ArgumentCaptor.forClass(PriorAuthorityDocumentUploadedEvent.class);
+    verify(eventAppender).append(eventCaptor.capture());
+    assertThat(eventCaptor.getValue().checksum()).isNull();
   }
 }
