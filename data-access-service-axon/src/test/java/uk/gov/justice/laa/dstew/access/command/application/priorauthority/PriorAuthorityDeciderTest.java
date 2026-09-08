@@ -22,7 +22,7 @@ class PriorAuthorityDeciderTest {
         new CreatePriorAuthorityDraftCommand(
             priorAuthorityId,
             applicationId,
-            new PriorAuthorityContent(null, null, null, null, null),
+            new PriorAuthorityContent(PriorAuthorityType.EXPERT, null, null, null, null),
             "{}",
             1,
             "PriorAuthority.json",
@@ -35,6 +35,7 @@ class PriorAuthorityDeciderTest {
     assertThat(event.priorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(event.applicationId()).isEqualTo(applicationId);
     assertThat(event.requestFingerprint()).isEqualTo(fingerprint);
+    assertThat(event.priorAuthorityType()).isEqualTo(PriorAuthorityType.EXPERT.name());
     assertThat(event.schemaVersion()).isEqualTo(1);
     assertThat(event.occurredAt()).isEqualTo(OCCURRED_AT);
   }
@@ -44,12 +45,12 @@ class PriorAuthorityDeciderTest {
     UUID priorAuthorityId = UUID.randomUUID();
     PriorAuthorityState state = new PriorAuthorityState();
     state.applicationId = UUID.randomUUID();
+    state.priorAuthorityType = PriorAuthorityType.COUNSEL.name();
     state.schemaVersion = 2;
     SubmitPriorAuthorityDraftCommand command =
         new SubmitPriorAuthorityDraftCommand(priorAuthorityId, OCCURRED_AT);
 
-    PriorAuthoritySubmittedEvent event =
-        PriorAuthorityDecider.decideSubmit(command, state, PriorAuthorityType.COUNSEL.name());
+    PriorAuthoritySubmittedEvent event = PriorAuthorityDecider.decideSubmit(command, state);
 
     assertThat(event.priorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(event.applicationId()).isEqualTo(state.applicationId);

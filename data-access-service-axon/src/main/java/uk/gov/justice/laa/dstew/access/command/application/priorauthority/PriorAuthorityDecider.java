@@ -14,10 +14,15 @@ public final class PriorAuthorityDecider {
    */
   public static PriorAuthorityDraftStartedEvent decideStartDraft(
       CreatePriorAuthorityDraftCommand command, String fingerprint) {
+    String priorAuthorityType =
+        command.content().priorAuthorityType() == null
+            ? null
+            : command.content().priorAuthorityType().name();
     return new PriorAuthorityDraftStartedEvent(
         command.priorAuthorityId(),
         command.applicationId(),
         fingerprint,
+        priorAuthorityType,
         command.schemaVersion(),
         command.occurredAt());
   }
@@ -28,13 +33,11 @@ public final class PriorAuthorityDecider {
    * prior_authority_data}, since a submission's draft content is not itself versioned.
    */
   public static PriorAuthoritySubmittedEvent decideSubmit(
-      SubmitPriorAuthorityDraftCommand command,
-      PriorAuthorityState state,
-      String priorAuthorityType) {
+      SubmitPriorAuthorityDraftCommand command, PriorAuthorityState state) {
     return new PriorAuthoritySubmittedEvent(
         command.priorAuthorityId(),
         state.applicationId,
-        priorAuthorityType,
+        state.priorAuthorityType,
         state.schemaVersion,
         0L,
         PriorAuthorityStatus.PENDING.name(),
