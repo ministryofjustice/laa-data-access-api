@@ -170,7 +170,7 @@ class WorkListProjectionTest {
 
     projection.on(
         new WorkItemAssigned(
-            applicationId, WorkItemType.APPLICATION, 2L, 1L, caseworkerId, "Assigned", occurredAt),
+            applicationId, WorkItemType.APPLICATION, 2L, 1L, caseworkerId, occurredAt),
         message());
 
     assertThat(row.getAssigneeId()).isEqualTo(caseworkerId);
@@ -191,8 +191,7 @@ class WorkListProjectionTest {
     when(items.findById(itemId)).thenReturn(Optional.of(row));
 
     projection.on(
-        new WorkItemUnassigned(itemId, WorkItemType.APPLICATION, 2L, 2L, "Unassigned", occurredAt),
-        message());
+        new WorkItemUnassigned(itemId, WorkItemType.APPLICATION, 2L, 2L, occurredAt), message());
 
     assertThat(row.getAssigneeId()).isNull();
     assertThat(row.getItemVersion()).isEqualTo(2L);
@@ -214,7 +213,7 @@ class WorkListProjectionTest {
     try {
       projection.on(
           new WorkItemAssigned(
-              itemId, WorkItemType.APPLICATION, 1L, 1L, UUID.randomUUID(), "", Instant.now()),
+              itemId, WorkItemType.APPLICATION, 1L, 1L, UUID.randomUUID(), Instant.now()),
           message());
 
       assertThat(logEvents.list)
@@ -245,7 +244,7 @@ class WorkListProjectionTest {
 
     try {
       projection.on(
-          new WorkItemUnassigned(itemId, WorkItemType.APPLICATION, 1L, 1L, "", Instant.now()),
+          new WorkItemUnassigned(itemId, WorkItemType.APPLICATION, 1L, 1L, Instant.now()),
           message());
 
       assertThat(logEvents.list)
@@ -281,7 +280,6 @@ class WorkListProjectionTest {
                         1L,
                         1L,
                         UUID.randomUUID(),
-                        "",
                         Instant.now()),
                     message()))
         .isInstanceOf(IllegalStateException.class)

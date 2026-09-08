@@ -13,5 +13,4 @@ public record WorkItemAssigned(
     long itemVersion,
     long assignmentVersion,
     UUID caseworkerId,
-    String eventDescription,
     Instant occurredAt) {}

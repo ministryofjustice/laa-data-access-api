@@ -170,7 +170,6 @@ public class ApplicationAggregate {
             state.applicationVersion,
             nextAssignmentVersion,
             command.caseworkerId(),
-            command.eventDescription(),
             command.occurredAt()));
   }
 
@@ -190,7 +189,6 @@ public class ApplicationAggregate {
             WorkItemType.APPLICATION,
             state.applicationVersion,
             nextAssignmentVersion,
-            command.eventDescription(),
             command.occurredAt()));
   }
 

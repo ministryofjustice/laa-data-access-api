@@ -51,9 +51,7 @@ class DirectApplicationWorkItemAssignmentTest {
         .when()
         .command(new DirectWorkItemAssignmentCommand(id, caseworkerId, 0L, "{}", "Assigned", when))
         .then()
-        .events(
-            new WorkItemAssigned(
-                id, WorkItemType.APPLICATION, 1L, 1L, caseworkerId, "Assigned", when));
+        .events(new WorkItemAssigned(id, WorkItemType.APPLICATION, 1L, 1L, caseworkerId, when));
     verifyNoInteractions(dataStore);
   }
 
@@ -90,7 +88,7 @@ class DirectApplicationWorkItemAssignmentTest {
     ApplicationAggregate active = new ApplicationAggregate();
     active.on(created(id, when));
     active.on(new ApplicationReadyForManualAssessmentEvent(id, 1L, 1L, when));
-    active.on(new WorkItemAssigned(id, WorkItemType.APPLICATION, 1L, 1L, caseworkerId, "", when));
+    active.on(new WorkItemAssigned(id, WorkItemType.APPLICATION, 1L, 1L, caseworkerId, when));
     assertThatThrownBy(
             () ->
                 active.handle(

@@ -51,21 +51,14 @@ class PriorAuthorityEvolveTest {
     PriorAuthorityEvolve.apply(
         state,
         new WorkItemAssigned(
-            workItemId,
-            WorkItemType.PRIOR_AUTHORITY,
-            3L,
-            4L,
-            caseworkerId,
-            "Assigned",
-            occurredAt));
+            workItemId, WorkItemType.PRIOR_AUTHORITY, 3L, 4L, caseworkerId, occurredAt));
 
     assertThat(state.getAssignmentVersion()).isEqualTo(4L);
     assertThat(state.getCaseworkerId()).isEqualTo(caseworkerId);
 
     PriorAuthorityEvolve.apply(
         state,
-        new WorkItemUnassigned(
-            workItemId, WorkItemType.PRIOR_AUTHORITY, 3L, 5L, "Unassigned", occurredAt));
+        new WorkItemUnassigned(workItemId, WorkItemType.PRIOR_AUTHORITY, 3L, 5L, occurredAt));
 
     assertThat(state.getAssignmentVersion()).isEqualTo(5L);
     assertThat(state.getCaseworkerId()).isNull();

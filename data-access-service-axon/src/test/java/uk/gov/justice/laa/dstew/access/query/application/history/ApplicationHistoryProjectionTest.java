@@ -144,19 +144,13 @@ class ApplicationHistoryProjectionTest {
   }
 
   @Test
-  void givenApplicationWorkItemAssigned_whenQueried_thenReconstructsCaseworkerAndDescription() {
+  void givenApplicationWorkItemAssigned_whenQueried_thenReconstructsCaseworker() {
     UUID applicationId = UUID.randomUUID();
     UUID caseworkerId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-07-20T08:00:00Z");
     WorkItemAssigned event =
         new WorkItemAssigned(
-            applicationId,
-            WorkItemType.APPLICATION,
-            1L,
-            1L,
-            caseworkerId,
-            "Assigned for assessment",
-            occurredAt);
+            applicationId, WorkItemType.APPLICATION, 1L, 1L, caseworkerId, occurredAt);
     projection.on(event, message(event, "assignment-event"));
     ArgumentCaptor<ApplicationHistoryReadModel> captor =
         ArgumentCaptor.forClass(ApplicationHistoryReadModel.class);
@@ -179,8 +173,6 @@ class ApplicationHistoryProjectionTest {
                 var payload = objectMapper.readTree(history.getRequestPayload());
                 assertThat(payload.get("caseworkerId").asString())
                     .isEqualTo(caseworkerId.toString());
-                assertThat(payload.get("eventDescription").asString())
-                    .isEqualTo("Assigned for assessment");
               } catch (Exception exception) {
                 throw new AssertionError(exception);
               }
@@ -188,13 +180,12 @@ class ApplicationHistoryProjectionTest {
   }
 
   @Test
-  void givenApplicationWorkItemUnassigned_whenQueried_thenReconstructsDescriptionWithoutCaseworker()
+  void givenApplicationWorkItemUnassigned_whenQueried_thenReconstructsWithoutCaseworker()
       throws Exception {
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-07-20T09:00:00Z");
     WorkItemUnassigned event =
-        new WorkItemUnassigned(
-            applicationId, WorkItemType.APPLICATION, 1L, 2L, "Returned to queue", occurredAt);
+        new WorkItemUnassigned(applicationId, WorkItemType.APPLICATION, 1L, 2L, occurredAt);
     projection.on(event, message(event, "unassignment-event"));
     ArgumentCaptor<ApplicationHistoryReadModel> captor =
         ArgumentCaptor.forClass(ApplicationHistoryReadModel.class);
@@ -211,7 +202,6 @@ class ApplicationHistoryProjectionTest {
 
     var payload =
         objectMapper.readTree(result.applicationHistoryEvents().getFirst().getRequestPayload());
-    assertThat(payload.get("eventDescription").asString()).isEqualTo("Returned to queue");
     assertThat(payload.get("caseworkerId")).isNull();
   }
 

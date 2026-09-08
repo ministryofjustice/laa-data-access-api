@@ -220,8 +220,6 @@ public class ApplicationHistoryProjection {
       var thinPayload = objectMapper.readTree(history.getRequestPayload());
       if (assignment || unassignment) {
         Map<String, Object> reconstructedPayload = new HashMap<>();
-        reconstructedPayload.put(
-            "eventDescription", thinPayload.get("eventDescription").asString());
         if (assignment) {
           reconstructedPayload.put("caseworkerId", thinPayload.get("caseworkerId").asString());
         }

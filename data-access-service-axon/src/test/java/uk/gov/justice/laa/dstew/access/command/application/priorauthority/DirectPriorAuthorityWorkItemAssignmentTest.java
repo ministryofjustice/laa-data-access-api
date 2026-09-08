@@ -58,13 +58,7 @@ class DirectPriorAuthorityWorkItemAssignmentTest {
         .then()
         .events(
             new WorkItemAssigned(
-                submissionId,
-                WorkItemType.PRIOR_AUTHORITY,
-                0L,
-                1L,
-                caseworkerId,
-                "Assigned",
-                when));
+                submissionId, WorkItemType.PRIOR_AUTHORITY, 0L, 1L, caseworkerId, when));
     verifyNoInteractions(dataStore);
   }
 
@@ -79,7 +73,7 @@ class DirectPriorAuthorityWorkItemAssignmentTest {
         .events(
             created(submissionId, applicationId, when),
             new WorkItemAssigned(
-                submissionId, WorkItemType.PRIOR_AUTHORITY, 1L, 1L, caseworkerId, "", when))
+                submissionId, WorkItemType.PRIOR_AUTHORITY, 1L, 1L, caseworkerId, when))
         .when()
         .command(
             new DirectPriorAuthorityWorkItemAssignmentCommand(
@@ -97,7 +91,7 @@ class DirectPriorAuthorityWorkItemAssignmentTest {
     Instant when = Instant.parse("2026-08-28T10:00:00Z");
     WorkItemAssigned assigned =
         new WorkItemAssigned(
-            submissionId, WorkItemType.PRIOR_AUTHORITY, 1L, 1L, caseworkerId, "Assigned", when);
+            submissionId, WorkItemType.PRIOR_AUTHORITY, 1L, 1L, caseworkerId, when);
 
     PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
     aggregate.on(created(submissionId, applicationId, when));
@@ -109,10 +103,8 @@ class DirectPriorAuthorityWorkItemAssignmentTest {
         eventAppender);
 
     verify(eventAppender)
-        .append(
-            new WorkItemUnassigned(submissionId, WorkItemType.PRIOR_AUTHORITY, 0L, 2L, "", when));
-    aggregate.on(
-        new WorkItemUnassigned(submissionId, WorkItemType.PRIOR_AUTHORITY, 0L, 2L, "", when));
+        .append(new WorkItemUnassigned(submissionId, WorkItemType.PRIOR_AUTHORITY, 0L, 2L, when));
+    aggregate.on(new WorkItemUnassigned(submissionId, WorkItemType.PRIOR_AUTHORITY, 0L, 2L, when));
 
     fixture
         .given()
