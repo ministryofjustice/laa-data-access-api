@@ -72,13 +72,8 @@ class WorkListIntegrationTest {
   void
       givenManualApplication_whenAssignedThenUnassigned_thenItsWorkListViewsAndConflictsAreConsistent() {
     UUID applicationId = UUID.randomUUID();
-    UUID caseworkerId = UUID.randomUUID();
+    UUID caseworkerId = createCaseworker("caseworker@example.com");
     createManualApplication(applicationId);
-    jdbcTemplate.update(
-        "INSERT INTO axon.caseworkers (id, username) VALUES (?, ?)",
-        caseworkerId,
-        "caseworker@example.com");
-
     awaitWorkListContains("", applicationId, null, 0L);
 
     ResponseEntity<Void> assigned =
@@ -616,16 +611,6 @@ class WorkListIntegrationTest {
                 headers()),
             Void.class);
     assertThat(granted.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-  }
-
-  private Map<String, Object> parentState(UUID applicationId) {
-    return jdbcTemplate.queryForMap(
-        """
-        SELECT caseworker_id, application_data_version, application_version
-        FROM axon.application_current_state
-        WHERE application_id = ?
-        """,
-        applicationId);
   }
 
   private UUID createPriorAuthority(UUID applicationId) throws Exception {

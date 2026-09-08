@@ -11,6 +11,7 @@ import uk.gov.justice.laa.dstew.access.command.worklist.assign.AssignWorkItemCom
 import uk.gov.justice.laa.dstew.access.command.worklist.assign.AssignWorkItemUseCase;
 import uk.gov.justice.laa.dstew.access.command.worklist.unassign.UnassignWorkItemCommand;
 import uk.gov.justice.laa.dstew.access.command.worklist.unassign.UnassignWorkItemUseCase;
+import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.model.WorkListAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.WorkListUnassignRequest;
@@ -59,8 +60,7 @@ public class WorkListCommandController implements WorkListCommandApi {
     return ResponseEntity.ok().build();
   }
 
-  private String eventDescription(
-      uk.gov.justice.laa.dstew.access.model.EventHistoryRequest eventHistory) {
+  private String eventDescription(EventHistoryRequest eventHistory) {
     return eventHistory == null ? null : eventHistory.getEventDescription();
   }
 
