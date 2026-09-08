@@ -11,16 +11,13 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
-import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
 
 /**
  * Event-sourced consistency boundary for a PriorAuthority submission.
  *
  * <p>On the first command for this aggregate ID, persists version 0 of the sensitive data and emits
- * {@link PriorAuthorityCreatedEvent}. On an identical retry (same serialised request), it returns
- * with no events. On a conflicting retry (different payload), throws {@link
- * uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException}.
+ * {@link PriorAuthorityDraftStartedEvent}.
  */
 @EventSourced(tagKey = "PriorAuthorityAggregate", idType = UUID.class)
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
@@ -28,35 +25,6 @@ public class PriorAuthorityAggregate {
 
   private UUID priorAuthorityId;
   private final PriorAuthorityState state = new PriorAuthorityState();
-
-  @CommandHandler
-  void handle(
-      CreatePriorAuthorityCommand command,
-      PriorAuthorityDataStore dataStore,
-      EventAppender eventAppender) {
-    String fingerprint;
-    if (priorAuthorityId == null) {
-      PriorAuthorityDataPayload payload =
-          new PriorAuthorityDataPayload(
-              command.priorAuthorityId(),
-              command.applicationId(),
-              command.content(),
-              command.serialisedRequest(),
-              command.occurredAt());
-      fingerprint =
-          dataStore.append(
-              command.priorAuthorityId(),
-              0L,
-              command.applicationId(),
-              payload,
-              command.serialisedRequest(),
-              command.occurredAt());
-    } else {
-      fingerprint = PayloadFingerprint.compute(command.serialisedRequest());
-    }
-    PriorAuthorityDecider.decideCreate(state, command, fingerprint)
-        .ifPresent(e -> eventAppender.append(e));
-  }
 
   @CommandHandler
   void handle(
@@ -77,8 +45,7 @@ public class PriorAuthorityAggregate {
             payload,
             command.serialisedRequest(),
             command.occurredAt());
-    eventAppender.append(
-        PriorAuthorityDecider.decideStartDraft(command, fingerprint, command.applicationId()));
+    eventAppender.append(PriorAuthorityDecider.decideStartDraft(command, fingerprint));
   }
 
   @CommandHandler
@@ -126,14 +93,10 @@ public class PriorAuthorityAggregate {
         payload,
         payload.serialisedRequest(),
         command.occurredAt());
-    eventAppender.append(PriorAuthorityDecider.decideSubmit(command, state));
+    eventAppender.append(
+        PriorAuthorityDecider.decideSubmit(
+            command, state, payload.content().priorAuthorityType().name()));
     draftStore.delete(command.priorAuthorityId());
-  }
-
-  @EventSourcingHandler
-  void on(PriorAuthorityCreatedEvent event) {
-    PriorAuthorityEvolve.apply(state, event);
-    this.priorAuthorityId = state.priorAuthorityId;
   }
 
   @EventSourcingHandler

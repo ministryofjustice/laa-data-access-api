@@ -114,7 +114,8 @@ class GetApplicationHistoryResponseMapperTest {
     UUID submissionId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-05T10:00:00Z");
     var priorAuthorityGroup =
-        group(submissionId, "EXPERT", event("PRIOR_AUTHORITY_CREATED", occurredAt, "CIVIL_APPLY"));
+        group(
+            submissionId, "EXPERT", event("PRIOR_AUTHORITY_SUBMITTED", occurredAt, "CIVIL_APPLY"));
 
     var response =
         mapper.toResponse(new ApplicationHistoryResult(List.of(), List.of(priorAuthorityGroup)));
@@ -129,7 +130,8 @@ class GetApplicationHistoryResponseMapperTest {
                   .singleElement()
                   .satisfies(
                       mappedEvent -> {
-                        assertThat(mappedEvent.getEventType()).isEqualTo("PRIOR_AUTHORITY_CREATED");
+                        assertThat(mappedEvent.getEventType())
+                            .isEqualTo("PRIOR_AUTHORITY_SUBMITTED");
                         assertThat(mappedEvent.getCreatedBy()).isEqualTo("CIVIL_APPLY");
                         assertThat(mappedEvent.getEventDescription()).isNull();
                         assertThat(mappedEvent.getCreatedAt())
@@ -152,11 +154,11 @@ class GetApplicationHistoryResponseMapperTest {
                     group(
                         firstSubmissionId,
                         "EXPERT",
-                        event("PRIOR_AUTHORITY_CREATED", occurredAt, "CIVIL_APPLY")),
+                        event("PRIOR_AUTHORITY_SUBMITTED", occurredAt, "CIVIL_APPLY")),
                     group(
                         secondSubmissionId,
                         "COUNSEL",
-                        event("PRIOR_AUTHORITY_CREATED", occurredAt, "CIVIL_APPLY")))));
+                        event("PRIOR_AUTHORITY_SUBMITTED", occurredAt, "CIVIL_APPLY")))));
 
     assertThat(response.getPriorAuthorities())
         .extracting(group -> group.getEvents().size())
@@ -177,7 +179,7 @@ class GetApplicationHistoryResponseMapperTest {
             submissionId,
             "EXPERT",
             new PriorAuthorityHistoryEventResult(
-                "PRIOR_AUTHORITY_CREATED", Instant.parse("2026-08-05T10:00:00Z"), null, null));
+                "PRIOR_AUTHORITY_SUBMITTED", Instant.parse("2026-08-05T10:00:00Z"), null, null));
 
     var response =
         mapper.toResponse(new ApplicationHistoryResult(List.of(), List.of(priorAuthorityGroup)));

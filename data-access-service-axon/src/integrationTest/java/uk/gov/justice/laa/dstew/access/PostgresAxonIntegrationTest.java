@@ -1754,7 +1754,7 @@ class PostgresAxonIntegrationTest {
     assertThat(group.getSubmissionId()).isEqualTo(submissionId);
     assertThat(group.getPriorAuthorityType()).isEqualTo(PriorAuthorityType.EXPERT);
     assertThat(group.getEvents()).hasSize(1);
-    assertThat(group.getEvents().get(0).getEventType()).isEqualTo("PRIOR_AUTHORITY_CREATED");
+    assertThat(group.getEvents().get(0).getEventType()).isEqualTo("PRIOR_AUTHORITY_SUBMITTED");
     assertThat(historyResponse.getBody().getEvents()).isNotEmpty();
   }
 
@@ -1776,7 +1776,7 @@ class PostgresAxonIntegrationTest {
         applicationId,
         submissionId,
         "EXPERT",
-        "PRIOR_AUTHORITY_CREATED",
+        "PRIOR_AUTHORITY_SUBMITTED",
         "{\"status\":\"PENDING\",\"dataVersion\":0}",
         "CIVIL_APPLY",
         OffsetDateTime.parse("2026-08-01T09:00:00Z"));
@@ -1792,7 +1792,7 @@ class PostgresAxonIntegrationTest {
         applicationId,
         submissionId,
         "COUNSEL",
-        "PRIOR_AUTHORITY_CREATED",
+        "PRIOR_AUTHORITY_SUBMITTED",
         "{\"status\":\"PENDING\",\"dataVersion\":0}",
         "CIVIL_APPLY",
         OffsetDateTime.parse("2026-08-01T10:00:00Z"));

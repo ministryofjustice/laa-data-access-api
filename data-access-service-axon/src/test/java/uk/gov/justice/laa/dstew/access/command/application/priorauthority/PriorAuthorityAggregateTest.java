@@ -29,7 +29,6 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
-import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
@@ -61,149 +60,6 @@ class PriorAuthorityAggregateTest {
                                 PriorAuthorityDraftStore.class, configuration -> draftStore)
                             .registerComponent(
                                 JsonSchemaValidator.class, configuration -> jsonSchemaValidator)));
-  }
-
-  @Test
-  void givenNewAggregate_whenCreate_thenPersistsVersion0AndEmitsCreatedEvent() {
-    UUID priorAuthorityId = UUID.randomUUID();
-    UUID applicationId = UUID.randomUUID();
-    Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
-    PriorAuthorityContent content = new PriorAuthorityContent(EXPERT, null, null, null, null);
-    String serialisedRequest = "{\"priorAuthorityType\":\"EXPERT\"}";
-    String fingerprint = PayloadFingerprint.compute(serialisedRequest);
-
-    when(dataStore.append(
-            eq(priorAuthorityId),
-            eq(0L),
-            eq(applicationId),
-            any(),
-            eq(serialisedRequest),
-            eq(occurredAt)))
-        .thenReturn(fingerprint);
-
-    CreatePriorAuthorityCommand command =
-        new CreatePriorAuthorityCommand(
-            priorAuthorityId,
-            applicationId,
-            "EXPERT",
-            content,
-            serialisedRequest,
-            1,
-            "pa-schema",
-            occurredAt);
-
-    fixture
-        .given()
-        .noPriorActivity()
-        .when()
-        .command(command)
-        .then()
-        .events(
-            new PriorAuthorityCreatedEvent(
-                priorAuthorityId,
-                applicationId,
-                "EXPERT",
-                0L,
-                fingerprint,
-                PriorAuthorityStatus.PENDING.name(),
-                1,
-                occurredAt));
-
-    // Verify version-0 payload was persisted with correct structure
-    ArgumentCaptor<PriorAuthorityDataPayload> payloadCaptor =
-        ArgumentCaptor.forClass(PriorAuthorityDataPayload.class);
-    verify(dataStore)
-        .append(
-            eq(priorAuthorityId),
-            eq(0L),
-            eq(applicationId),
-            payloadCaptor.capture(),
-            eq(serialisedRequest),
-            eq(occurredAt));
-    PriorAuthorityDataPayload persisted = payloadCaptor.getValue();
-    assertThat(persisted.priorAuthorityId()).isEqualTo(priorAuthorityId);
-    assertThat(persisted.applicationId()).isEqualTo(applicationId);
-    assertThat(persisted.content()).isEqualTo(content);
-    assertThat(persisted.serialisedRequest()).isEqualTo(serialisedRequest);
-    assertThat(persisted.submittedAt()).isEqualTo(occurredAt);
-  }
-
-  @Test
-  void givenExistingAggregate_whenIdenticalSerialisedRequest_thenEmitsNoEventAndNeverCallsAppend() {
-    UUID priorAuthorityId = UUID.randomUUID();
-    UUID applicationId = UUID.randomUUID();
-    Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
-    String serialisedRequest = "{\"priorAuthorityType\":\"EXPERT\"}";
-    String fingerprint = PayloadFingerprint.compute(serialisedRequest);
-
-    PriorAuthorityCreatedEvent existingEvent =
-        new PriorAuthorityCreatedEvent(
-            priorAuthorityId,
-            applicationId,
-            "EXPERT",
-            0L,
-            fingerprint,
-            PriorAuthorityStatus.PENDING.name(),
-            1,
-            occurredAt);
-
-    CreatePriorAuthorityCommand command =
-        new CreatePriorAuthorityCommand(
-            priorAuthorityId,
-            applicationId,
-            "EXPERT",
-            new PriorAuthorityContent(EXPERT, null, null, null, null),
-            serialisedRequest,
-            1,
-            "pa-schema",
-            occurredAt);
-
-    fixture.given().events(existingEvent).when().command(command).then().noEvents();
-
-    verify(dataStore, never()).append(any(), anyLong(), any(), any(), any(), any());
-  }
-
-  @Test
-  void
-      givenExistingAggregate_whenDifferentSerialisedRequest_thenThrowsConflictAndNeverCallsAppend() {
-    UUID priorAuthorityId = UUID.randomUUID();
-    UUID applicationId = UUID.randomUUID();
-    Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
-    String originalRequest = "{\"priorAuthorityType\":\"EXPERT\"}";
-    String fingerprint = PayloadFingerprint.compute(originalRequest);
-
-    PriorAuthorityCreatedEvent existingEvent =
-        new PriorAuthorityCreatedEvent(
-            priorAuthorityId,
-            applicationId,
-            "EXPERT",
-            0L,
-            fingerprint,
-            PriorAuthorityStatus.PENDING.name(),
-            1,
-            occurredAt);
-
-    CreatePriorAuthorityCommand command =
-        new CreatePriorAuthorityCommand(
-            priorAuthorityId,
-            applicationId,
-            "COUNSEL",
-            new PriorAuthorityContent(COUNSEL, null, null, null, null),
-            "{\"priorAuthorityType\":\"COUNSEL\"}",
-            1,
-            "pa-schema",
-            occurredAt);
-
-    fixture
-        .given()
-        .events(existingEvent)
-        .when()
-        .command(command)
-        .then()
-        .exception(PriorAuthorityCreationConflictException.class)
-        .noEvents();
-
-    verify(dataStore, never()).append(any(), anyLong(), any(), any(), any(), any());
   }
 
   @AfterEach
@@ -327,6 +183,8 @@ class PriorAuthorityAggregateTest {
             new PriorAuthoritySubmittedEvent(
                 priorAuthorityId,
                 applicationId,
+                EXPERT.name(),
+                1,
                 0L,
                 PriorAuthorityStatus.PENDING.name(),
                 submittedAt));
@@ -380,20 +238,23 @@ class PriorAuthorityAggregateTest {
   void givenPendingSubmission_whenUpdateDraft_thenThrowsResourceNotFound() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
-    Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
+    Instant startedAt = Instant.parse("2026-08-01T10:00:00Z");
+    Instant submittedAt = Instant.parse("2026-08-02T10:00:00Z");
     String serialisedRequest = "{\"priorAuthorityType\":\"EXPERT\"}";
     String fingerprint = PayloadFingerprint.compute(serialisedRequest);
 
-    PriorAuthorityCreatedEvent existingEvent =
-        new PriorAuthorityCreatedEvent(
+    PriorAuthorityDraftStartedEvent draftStartedEvent =
+        new PriorAuthorityDraftStartedEvent(
+            priorAuthorityId, applicationId, fingerprint, 1, startedAt);
+    PriorAuthoritySubmittedEvent submittedEvent =
+        new PriorAuthoritySubmittedEvent(
             priorAuthorityId,
             applicationId,
-            "EXPERT",
-            0L,
-            fingerprint,
-            PriorAuthorityStatus.PENDING.name(),
+            EXPERT.name(),
             1,
-            occurredAt);
+            0L,
+            PriorAuthorityStatus.PENDING.name(),
+            submittedAt);
 
     UpdatePriorAuthorityDraftCommand command =
         new UpdatePriorAuthorityDraftCommand(
@@ -402,11 +263,11 @@ class PriorAuthorityAggregateTest {
             "{}",
             1,
             "PriorAuthority.json",
-            occurredAt);
+            submittedAt);
 
     fixture
         .given()
-        .events(existingEvent)
+        .events(draftStartedEvent, submittedEvent)
         .when()
         .command(command)
         .then()

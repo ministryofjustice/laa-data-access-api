@@ -10,7 +10,6 @@ import org.axonframework.messaging.queryhandling.QueryUpdateEmitter;
 import org.axonframework.messaging.queryhandling.annotation.QueryHandler;
 import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Component;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDraftStartedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
@@ -78,18 +77,6 @@ public class PriorAuthorityProjection {
     PriorAuthorityDataPayload payload =
         priorAuthorityDataStore.get(priorAuthorityId, priorAuthority.getDataVersion());
     return Optional.of(PriorAuthorityResult.from(priorAuthority, payload.content()));
-  }
-
-  /** Creates the current-state row from a prior-authority creation event. */
-  @EventHandler
-  public void on(PriorAuthorityCreatedEvent event, QueryUpdateEmitter queryUpdateEmitter) {
-    createRow(
-        event.priorAuthorityId(),
-        event.applicationId(),
-        event.dataVersion(),
-        event.status(),
-        event.occurredAt(),
-        queryUpdateEmitter);
   }
 
   /** Creates the current-state row when a prior-authority draft is started. */

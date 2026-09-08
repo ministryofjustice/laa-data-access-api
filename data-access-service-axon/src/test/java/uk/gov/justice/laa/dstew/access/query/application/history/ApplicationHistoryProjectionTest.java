@@ -32,7 +32,7 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationD
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
 import uk.gov.justice.laa.dstew.access.config.interceptor.ServiceNameMetadataDispatchInterceptor;
 
 @ExtendWith(MockitoExtension.class)
@@ -288,29 +288,45 @@ class ApplicationHistoryProjectionTest {
   }
 
   @Test
-  void givenPriorAuthorityCreatedEvent_whenHandled_thenStoresInPaHistoryTable() {
+  void givenPriorAuthoritySubmittedEvent_whenHandled_thenStoresInPaHistoryTable() {
     UUID submissionId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-05T10:00:00Z");
     var event =
-        new PriorAuthorityCreatedEvent(
-            submissionId, applicationId, "EXPERT", 0L, "fp", "PENDING", 1, occurredAt);
-    var msg = message(event, "pa-event-id");
+        new PriorAuthoritySubmittedEvent(
+            submissionId, applicationId, "EXPERT", 1, 0L, "PENDING", occurredAt);
+    var msg = message(event, "pa-submit-event-id");
 
     projection.on(event, msg);
 
     var captor = ArgumentCaptor.forClass(PriorAuthorityHistoryReadModel.class);
     verify(paRepository).save(captor.capture());
     var saved = captor.getValue();
-    assertThat(saved.getEventId()).isEqualTo("pa-event-id");
+    assertThat(saved.getEventId()).isEqualTo("pa-submit-event-id");
     assertThat(saved.getApplicationId()).isEqualTo(applicationId);
     assertThat(saved.getSubmissionId()).isEqualTo(submissionId);
     assertThat(saved.getPriorAuthorityType()).isEqualTo("EXPERT");
-    assertThat(saved.getEventType()).isEqualTo("PRIOR_AUTHORITY_CREATED");
+    assertThat(saved.getEventType()).isEqualTo("PRIOR_AUTHORITY_SUBMITTED");
     assertThat(saved.getServiceName()).isEqualTo("CIVIL_APPLY");
     assertThat(saved.getOccurredAt()).isEqualTo(occurredAt);
     assertThat(saved.getEventData()).contains("\"status\":\"PENDING\"");
     assertThat(saved.getEventData()).contains("\"dataVersion\":0");
+  }
+
+  @Test
+  void givenPriorAuthoritySubmittedEventWithoutServiceName_whenHandled_thenStoresNullServiceName() {
+    UUID submissionId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-08-05T10:00:00Z");
+    var event =
+        new PriorAuthoritySubmittedEvent(
+            submissionId, applicationId, "EXPERT", 1, 0L, "PENDING", occurredAt);
+
+    projection.on(event, messageWithoutServiceName(event, "pa-submit-event-id"));
+
+    var captor = ArgumentCaptor.forClass(PriorAuthorityHistoryReadModel.class);
+    verify(paRepository).save(captor.capture());
+    assertThat(captor.getValue().getServiceName()).isNull();
   }
 
   @Test
@@ -338,7 +354,7 @@ class ApplicationHistoryProjectionTest {
               assertThat(group.priorAuthorityType()).isEqualTo("EXPERT");
               assertThat(group.events())
                   .extracting(PriorAuthorityHistoryEventResult::eventType)
-                  .containsExactly("PRIOR_AUTHORITY_CREATED");
+                  .containsExactly("PRIOR_AUTHORITY_SUBMITTED");
             });
   }
 
@@ -374,7 +390,7 @@ class ApplicationHistoryProjectionTest {
         .applicationId(applicationId)
         .submissionId(submissionId)
         .priorAuthorityType("EXPERT")
-        .eventType("PRIOR_AUTHORITY_CREATED")
+        .eventType("PRIOR_AUTHORITY_SUBMITTED")
         .eventData("{\"status\":\"PENDING\",\"dataVersion\":0}")
         .serviceName("CIVIL_APPLY")
         .occurredAt(Instant.parse("2026-08-05T10:00:00Z"))
@@ -387,6 +403,15 @@ class ApplicationHistoryProjectionTest {
         new MessageType(payload.getClass()),
         payload,
         Map.of(ServiceNameMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY, "CIVIL_APPLY"),
+        Instant.parse("2026-07-15T08:00:00Z"));
+  }
+
+  private EventMessage messageWithoutServiceName(Object payload, String identifier) {
+    return new GenericEventMessage(
+        identifier,
+        new MessageType(payload.getClass()),
+        payload,
+        Map.of(),
         Instant.parse("2026-07-15T08:00:00Z"));
   }
 

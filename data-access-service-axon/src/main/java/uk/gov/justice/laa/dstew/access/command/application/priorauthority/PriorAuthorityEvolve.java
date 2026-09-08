@@ -7,17 +7,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class PriorAuthorityEvolve {
 
-  /** Applies a {@link PriorAuthorityCreatedEvent} to the given state. */
-  public static void apply(PriorAuthorityState state, PriorAuthorityCreatedEvent event) {
-    state.priorAuthorityId = event.priorAuthorityId();
-    state.applicationId = event.applicationId();
-    state.dataVersion = event.dataVersion();
-    state.requestFingerprint = event.requestFingerprint();
-    state.status = event.status();
-    state.schemaVersion = event.schemaVersion();
-    state.priorAuthorityType = event.priorAuthorityType();
-  }
-
   /** Applies a {@link PriorAuthorityDraftStartedEvent} to the given state. */
   public static void apply(PriorAuthorityState state, PriorAuthorityDraftStartedEvent event) {
     state.priorAuthorityId = event.priorAuthorityId();
@@ -30,6 +19,8 @@ public final class PriorAuthorityEvolve {
   public static void apply(PriorAuthorityState state, PriorAuthoritySubmittedEvent event) {
     state.priorAuthorityId = event.priorAuthorityId();
     state.applicationId = event.applicationId();
+    state.priorAuthorityType = event.priorAuthorityType();
+    state.schemaVersion = event.schemaVersion();
     state.dataVersion = event.dataVersion();
     state.status = event.status();
   }

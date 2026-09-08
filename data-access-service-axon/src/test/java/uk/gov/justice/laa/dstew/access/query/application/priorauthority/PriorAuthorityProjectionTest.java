@@ -23,8 +23,8 @@ import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDraftStartedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
@@ -51,11 +51,11 @@ class PriorAuthorityProjectionTest {
 
   @Test
   @SuppressWarnings("unchecked")
-  void givenCreatedEvent_whenHandled_thenSavesBeforeEmitting() {
+  void givenSubmittedEvent_whenHandled_thenSavesBeforeEmitting() {
     UUID submissionId = UUID.randomUUID();
-    PriorAuthorityCreatedEvent event =
-        new PriorAuthorityCreatedEvent(
-            submissionId, UUID.randomUUID(), "EXPERT", 1L, "fp", "SUBMITTED", 1, Instant.now());
+    PriorAuthoritySubmittedEvent event =
+        new PriorAuthoritySubmittedEvent(
+            submissionId, UUID.randomUUID(), "EXPERT", 1, 1L, "SUBMITTED", Instant.now());
     when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
     projection.on(event, queryUpdateEmitter);
@@ -67,13 +67,13 @@ class PriorAuthorityProjectionTest {
   }
 
   @Test
-  void givenCreatedEvent_whenHandled_thenSavesExactFields() {
+  void givenSubmittedEvent_whenHandled_thenSavesExactFields() {
     UUID submissionId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-19T10:00:00Z");
-    PriorAuthorityCreatedEvent event =
-        new PriorAuthorityCreatedEvent(
-            submissionId, applicationId, "EXPERT", 1L, "fp", "SUBMITTED", 1, occurredAt);
+    PriorAuthoritySubmittedEvent event =
+        new PriorAuthoritySubmittedEvent(
+            submissionId, applicationId, "EXPERT", 1, 1L, "SUBMITTED", occurredAt);
     PriorAuthorityReadModel[] savedCapture = new PriorAuthorityReadModel[1];
     when(repository.save(any()))
         .thenAnswer(
@@ -93,12 +93,12 @@ class PriorAuthorityProjectionTest {
 
   @Test
   @SuppressWarnings("unchecked")
-  void givenCreatedEvent_whenHandled_thenEmittedPredicateMatchesOnlyEventSubmissionId() {
+  void givenSubmittedEvent_whenHandled_thenEmittedPredicateMatchesOnlyEventSubmissionId() {
     UUID submissionId = UUID.randomUUID();
     final UUID otherId = UUID.randomUUID();
-    PriorAuthorityCreatedEvent event =
-        new PriorAuthorityCreatedEvent(
-            submissionId, UUID.randomUUID(), "EXPERT", 1L, "fp", "SUBMITTED", 1, Instant.now());
+    PriorAuthoritySubmittedEvent event =
+        new PriorAuthoritySubmittedEvent(
+            submissionId, UUID.randomUUID(), "EXPERT", 1, 1L, "SUBMITTED", Instant.now());
     when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
     Predicate<?>[] capturedPredicate = new Predicate[1];
