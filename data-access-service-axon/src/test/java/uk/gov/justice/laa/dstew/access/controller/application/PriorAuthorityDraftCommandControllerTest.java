@@ -5,6 +5,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -70,6 +71,7 @@ class PriorAuthorityDraftCommandControllerTest {
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
     assertThat(response.getBody()).isNotNull();
     assertThat(response.getBody().getPriorAuthorityId()).isEqualTo(priorAuthorityId);
+    assertThat(response.getBody().getSavedAt().getOffset()).isEqualTo(ZoneOffset.UTC);
     assertThat(response.getHeaders().getLocation()).isNotNull();
     assertThat(response.getHeaders().getLocation().getPath())
         .isEqualTo("/api/v0/prior-authorities/" + priorAuthorityId);
@@ -125,6 +127,7 @@ class PriorAuthorityDraftCommandControllerTest {
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
     assertThat(response.getBody()).isNotNull();
     assertThat(response.getBody().getPriorAuthorityId()).isEqualTo(priorAuthorityId);
+    assertThat(response.getBody().getSubmittedAt().getOffset()).isEqualTo(ZoneOffset.UTC);
     assertThat(response.getHeaders().getLocation()).isNotNull();
     assertThat(response.getHeaders().getLocation().getPath())
         .isEqualTo("/api/v0/prior-authorities/" + priorAuthorityId);

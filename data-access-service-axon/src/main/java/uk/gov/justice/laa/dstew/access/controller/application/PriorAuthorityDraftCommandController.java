@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.controller.application;
 
 import java.net.URI;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
@@ -59,7 +60,8 @@ public class PriorAuthorityDraftCommandController implements PriorAuthorityDraft
             .buildAndExpand(command.priorAuthorityId())
             .toUri();
     SavePriorAuthorityDraftResponse response =
-        new SavePriorAuthorityDraftResponse(command.priorAuthorityId(), OffsetDateTime.now());
+        new SavePriorAuthorityDraftResponse(
+            command.priorAuthorityId(), OffsetDateTime.now(ZoneOffset.UTC));
     boolean projected = createUseCase.execute(command);
     return projected
         ? ResponseEntity.created(location).body(response)
@@ -94,7 +96,7 @@ public class PriorAuthorityDraftCommandController implements PriorAuthorityDraft
             .buildAndExpand(priorAuthorityId)
             .toUri();
     SubmitPriorAuthorityDraftResponse response =
-        new SubmitPriorAuthorityDraftResponse(priorAuthorityId, OffsetDateTime.now());
+        new SubmitPriorAuthorityDraftResponse(priorAuthorityId, OffsetDateTime.now(ZoneOffset.UTC));
     boolean projected = submitUseCase.submit(command);
     return projected
         ? ResponseEntity.created(location).body(response)
