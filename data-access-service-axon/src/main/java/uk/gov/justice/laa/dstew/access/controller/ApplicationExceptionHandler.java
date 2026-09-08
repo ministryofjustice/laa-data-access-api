@@ -79,9 +79,7 @@ public class ApplicationExceptionHandler {
                     + " already exists with different creation data"));
   }
 
-  /**
-   * Returns a conflict when a prior-authority submission ID is reused with different creation data.
-   */
+  /** Returns a conflict when a prior-authority submission ID is reused on create. */
   @ExceptionHandler(PriorAuthorityCreationConflictException.class)
   ResponseEntity<ProblemDetail> handlePriorAuthorityCreationConflictException(
       PriorAuthorityCreationConflictException exception) {
@@ -91,7 +89,7 @@ public class ApplicationExceptionHandler {
                 HttpStatus.CONFLICT,
                 "Prior authority submission ID "
                     + exception.getPriorAuthorityId()
-                    + " already exists with different creation data"));
+                    + " already exists"));
   }
 
   /** Returns a conflict when a decision was based on a stale Application version. */

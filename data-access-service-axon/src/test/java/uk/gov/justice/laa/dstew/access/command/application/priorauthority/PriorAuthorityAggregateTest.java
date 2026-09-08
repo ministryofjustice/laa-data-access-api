@@ -29,6 +29,7 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
+import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
@@ -148,6 +149,38 @@ class PriorAuthorityAggregateTest {
 
     verify(draftStore)
         .upsert(eq(priorAuthorityId), eq(applicationId), any(), eq(secondRequest), eq(occurredAt));
+  }
+
+  @Test
+  void givenExistingPriorAuthority_whenCreateDraftAgain_thenThrowsConflictAndPersistsNothing() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
+    String serialisedRequest = "{\"priorAuthorityType\":\"EXPERT\"}";
+    PriorAuthorityDraftStartedEvent existingEvent =
+        new PriorAuthorityDraftStartedEvent(
+            priorAuthorityId, applicationId, EXPERT.name(), 1, occurredAt);
+
+    CreatePriorAuthorityDraftCommand duplicateCreateCommand =
+        new CreatePriorAuthorityDraftCommand(
+            priorAuthorityId,
+            applicationId,
+            new PriorAuthorityContent(EXPERT, null, null, null, null),
+            serialisedRequest,
+            1,
+            "PriorAuthority.json",
+            occurredAt.plusSeconds(60));
+
+    fixture
+        .given()
+        .events(existingEvent)
+        .when()
+        .command(duplicateCreateCommand)
+        .then()
+        .exception(PriorAuthorityCreationConflictException.class)
+        .noEvents();
+
+    verify(draftStore, never()).upsert(any(), any(), any(), any(), any());
   }
 
   @Test

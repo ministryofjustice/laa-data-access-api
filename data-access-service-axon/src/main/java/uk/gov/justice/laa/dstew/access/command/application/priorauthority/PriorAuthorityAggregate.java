@@ -12,6 +12,7 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
+import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
 
@@ -33,6 +34,9 @@ public class PriorAuthorityAggregate {
       CreatePriorAuthorityDraftCommand command,
       PriorAuthorityDraftStore draftStore,
       EventAppender eventAppender) {
+    if (state.priorAuthorityId != null) {
+      throw new PriorAuthorityCreationConflictException(command.priorAuthorityId());
+    }
     PriorAuthorityDataPayload payload =
         new PriorAuthorityDataPayload(
             command.priorAuthorityId(),
