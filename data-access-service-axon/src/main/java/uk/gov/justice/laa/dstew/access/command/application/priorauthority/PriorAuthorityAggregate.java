@@ -40,14 +40,13 @@ public class PriorAuthorityAggregate {
             command.content(),
             command.serialisedRequest(),
             command.occurredAt());
-    String fingerprint =
-        draftStore.upsert(
-            command.priorAuthorityId(),
-            command.applicationId(),
-            payload,
-            command.serialisedRequest(),
-            command.occurredAt());
-    eventAppender.append(PriorAuthorityDecider.decideStartDraft(command, fingerprint));
+    draftStore.upsert(
+        command.priorAuthorityId(),
+        command.applicationId(),
+        payload,
+        command.serialisedRequest(),
+        command.occurredAt());
+    eventAppender.append(PriorAuthorityDecider.decideStartDraft(command));
   }
 
   @CommandHandler

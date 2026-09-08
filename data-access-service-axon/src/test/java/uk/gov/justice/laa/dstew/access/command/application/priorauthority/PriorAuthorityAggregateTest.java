@@ -98,7 +98,7 @@ class PriorAuthorityAggregateTest {
         .then()
         .events(
             new PriorAuthorityDraftStartedEvent(
-                priorAuthorityId, applicationId, fingerprint, null, 1, occurredAt));
+                priorAuthorityId, applicationId, null, 1, occurredAt));
 
     ArgumentCaptor<PriorAuthorityDataPayload> payloadCaptor =
         ArgumentCaptor.forClass(PriorAuthorityDataPayload.class);
@@ -120,12 +120,11 @@ class PriorAuthorityAggregateTest {
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
     String firstRequest = "{\"priorAuthorityType\":\"EXPERT\"}";
-    String firstFingerprint = PayloadFingerprint.compute(firstRequest);
     String secondRequest = "{\"justification\":\"need expert\"}";
 
     PriorAuthorityDraftStartedEvent existingEvent =
         new PriorAuthorityDraftStartedEvent(
-            priorAuthorityId, applicationId, firstFingerprint, EXPERT.name(), 1, occurredAt);
+            priorAuthorityId, applicationId, EXPERT.name(), 1, occurredAt);
     PriorAuthorityDataPayload existingDraftPayload =
         new PriorAuthorityDataPayload(
             priorAuthorityId,
@@ -157,14 +156,13 @@ class PriorAuthorityAggregateTest {
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
     String serialisedRequest = "{\"priorAuthorityType\":\"EXPERT\"}";
-    String fingerprint = PayloadFingerprint.compute(serialisedRequest);
     PriorAuthorityContent existingContent = new PriorAuthorityContent(null, null, null, null, null);
     PriorAuthorityDataPayload existingDraftPayload =
         new PriorAuthorityDataPayload(
             priorAuthorityId, applicationId, existingContent, serialisedRequest, occurredAt);
     PriorAuthorityDraftStartedEvent existingEvent =
         new PriorAuthorityDraftStartedEvent(
-            priorAuthorityId, applicationId, fingerprint, EXPERT.name(), 1, occurredAt);
+            priorAuthorityId, applicationId, EXPERT.name(), 1, occurredAt);
 
     when(draftStore.find(priorAuthorityId)).thenReturn(Optional.of(existingDraftPayload));
 
@@ -204,8 +202,7 @@ class PriorAuthorityAggregateTest {
             "{}",
             occurredAt);
     PriorAuthorityDraftStartedEvent existingEvent =
-        new PriorAuthorityDraftStartedEvent(
-            priorAuthorityId, applicationId, "fingerprint", null, 1, occurredAt);
+        new PriorAuthorityDraftStartedEvent(priorAuthorityId, applicationId, null, 1, occurredAt);
 
     when(draftStore.find(priorAuthorityId)).thenReturn(Optional.of(existingDraftPayload));
 
@@ -235,7 +232,6 @@ class PriorAuthorityAggregateTest {
     Instant startedAt = Instant.parse("2026-08-01T10:00:00Z");
     Instant submittedAt = Instant.parse("2026-08-02T10:00:00Z");
     String serialisedRequest = "{\"priorAuthorityType\":\"EXPERT\"}";
-    String fingerprint = PayloadFingerprint.compute(serialisedRequest);
     PriorAuthorityContent content = new PriorAuthorityContent(EXPERT, null, null, null, null);
     PriorAuthorityDataPayload draftPayload =
         new PriorAuthorityDataPayload(
@@ -243,7 +239,7 @@ class PriorAuthorityAggregateTest {
 
     PriorAuthorityDraftStartedEvent existingEvent =
         new PriorAuthorityDraftStartedEvent(
-            priorAuthorityId, applicationId, fingerprint, EXPERT.name(), 1, startedAt);
+            priorAuthorityId, applicationId, EXPERT.name(), 1, startedAt);
 
     when(draftStore.find(priorAuthorityId)).thenReturn(Optional.of(draftPayload));
 
@@ -280,7 +276,6 @@ class PriorAuthorityAggregateTest {
     Instant startedAt = Instant.parse("2026-08-01T10:00:00Z");
     Instant submittedAt = Instant.parse("2026-08-02T10:00:00Z");
     String serialisedRequest = "{\"priorAuthorityType\":\"EXPERT\"}";
-    String fingerprint = PayloadFingerprint.compute(serialisedRequest);
     PriorAuthorityContent content = new PriorAuthorityContent(EXPERT, null, null, null, null);
     PriorAuthorityDataPayload draftPayload =
         new PriorAuthorityDataPayload(
@@ -288,7 +283,7 @@ class PriorAuthorityAggregateTest {
 
     PriorAuthorityDraftStartedEvent existingEvent =
         new PriorAuthorityDraftStartedEvent(
-            priorAuthorityId, applicationId, fingerprint, EXPERT.name(), 1, startedAt);
+            priorAuthorityId, applicationId, EXPERT.name(), 1, startedAt);
 
     when(draftStore.find(priorAuthorityId)).thenReturn(Optional.of(draftPayload));
     doThrow(new ValidationException(List.of("expertDetails is required")))
@@ -318,11 +313,10 @@ class PriorAuthorityAggregateTest {
     Instant startedAt = Instant.parse("2026-08-01T10:00:00Z");
     Instant submittedAt = Instant.parse("2026-08-02T10:00:00Z");
     String serialisedRequest = "{\"priorAuthorityType\":\"EXPERT\"}";
-    String fingerprint = PayloadFingerprint.compute(serialisedRequest);
 
     PriorAuthorityDraftStartedEvent draftStartedEvent =
         new PriorAuthorityDraftStartedEvent(
-            priorAuthorityId, applicationId, fingerprint, EXPERT.name(), 1, startedAt);
+            priorAuthorityId, applicationId, EXPERT.name(), 1, startedAt);
     PriorAuthoritySubmittedEvent submittedEvent =
         new PriorAuthoritySubmittedEvent(
             priorAuthorityId,

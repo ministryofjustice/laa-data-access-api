@@ -27,14 +27,10 @@ class PriorAuthorityDeciderTest {
             1,
             "PriorAuthority.json",
             OCCURRED_AT);
-    String fingerprint = "draft-fingerprint";
-
-    PriorAuthorityDraftStartedEvent event =
-        PriorAuthorityDecider.decideStartDraft(command, fingerprint);
+    PriorAuthorityDraftStartedEvent event = PriorAuthorityDecider.decideStartDraft(command);
 
     assertThat(event.priorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(event.applicationId()).isEqualTo(applicationId);
-    assertThat(event.requestFingerprint()).isEqualTo(fingerprint);
     assertThat(event.priorAuthorityType()).isEqualTo(PriorAuthorityType.EXPERT.name());
     assertThat(event.schemaVersion()).isEqualTo(1);
     assertThat(event.occurredAt()).isEqualTo(OCCURRED_AT);

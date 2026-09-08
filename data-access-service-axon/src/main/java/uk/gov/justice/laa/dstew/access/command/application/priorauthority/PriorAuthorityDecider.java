@@ -8,12 +8,9 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStat
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class PriorAuthorityDecider {
 
-  /**
-   * Returns a {@link PriorAuthorityDraftStartedEvent} for the first save of a new draft, using the
-   * supplied fingerprint and resolved application ID.
-   */
+  /** Returns a {@link PriorAuthorityDraftStartedEvent} for the first save of a new draft. */
   public static PriorAuthorityDraftStartedEvent decideStartDraft(
-      CreatePriorAuthorityDraftCommand command, String fingerprint) {
+      CreatePriorAuthorityDraftCommand command) {
     String priorAuthorityType =
         command.content().priorAuthorityType() == null
             ? null
@@ -21,7 +18,6 @@ public final class PriorAuthorityDecider {
     return new PriorAuthorityDraftStartedEvent(
         command.priorAuthorityId(),
         command.applicationId(),
-        fingerprint,
         priorAuthorityType,
         command.schemaVersion(),
         command.occurredAt());

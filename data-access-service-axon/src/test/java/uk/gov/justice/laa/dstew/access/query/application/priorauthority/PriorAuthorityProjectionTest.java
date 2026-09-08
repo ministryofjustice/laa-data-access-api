@@ -126,7 +126,7 @@ class PriorAuthorityProjectionTest {
     Instant occurredAt = Instant.parse("2026-09-04T10:00:00Z");
     PriorAuthorityDraftStartedEvent event =
         new PriorAuthorityDraftStartedEvent(
-            priorAuthorityId, applicationId, "fp", EXPERT.name(), 1, occurredAt);
+            priorAuthorityId, applicationId, EXPERT.name(), 1, occurredAt);
     PriorAuthorityReadModel[] savedCapture = new PriorAuthorityReadModel[1];
     when(repository.save(any()))
         .thenAnswer(
