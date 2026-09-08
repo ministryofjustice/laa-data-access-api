@@ -140,12 +140,12 @@ class PriorAuthorityProjectionTest {
     assertThat(savedCapture[0].getPriorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(savedCapture[0].getApplicationId()).isEqualTo(applicationId);
     assertThat(savedCapture[0].getDataVersion()).isZero();
-    assertThat(savedCapture[0].getStatus()).isEqualTo("IN_PROGRESS");
+    assertThat(savedCapture[0].getStatus()).isNull();
     assertThat(savedCapture[0].getCreatedAt()).isEqualTo(occurredAt);
   }
 
   @Test
-  void givenInProgressDraftRow_whenQueryHandled_thenHydratesDraftContent() {
+  void givenDraftRowWithNullStatus_whenQueryHandled_thenHydratesDraftContent() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     PriorAuthorityReadModel model =
@@ -153,7 +153,7 @@ class PriorAuthorityProjectionTest {
             .priorAuthorityId(priorAuthorityId)
             .applicationId(applicationId)
             .dataVersion(0L)
-            .status("IN_PROGRESS")
+            .status(null)
             .build();
     PriorAuthorityContent content =
         new PriorAuthorityContent(EXPERT, "Expert required", null, null, null);

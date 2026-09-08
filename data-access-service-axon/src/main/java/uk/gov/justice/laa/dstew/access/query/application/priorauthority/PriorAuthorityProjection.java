@@ -22,8 +22,6 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResu
 @Namespace("prior-authority-projection")
 public class PriorAuthorityProjection {
 
-  private static final String IN_PROGRESS = "IN_PROGRESS";
-
   private final PriorAuthorityReadRepository repository;
   private final PriorAuthorityDataStore priorAuthorityDataStore;
   private final PriorAuthorityDraftStore priorAuthorityDraftStore;
@@ -71,7 +69,7 @@ public class PriorAuthorityProjection {
 
   private Optional<@NonNull PriorAuthorityResult> hydrate(
       PriorAuthorityReadModel priorAuthority, UUID priorAuthorityId) {
-    if (IN_PROGRESS.equals(priorAuthority.getStatus())) {
+    if (priorAuthority.getStatus() == null) {
       return priorAuthorityDraftStore.find(priorAuthorityId).map(PriorAuthorityResult::fromDraft);
     }
     PriorAuthorityDataPayload payload =
@@ -86,7 +84,7 @@ public class PriorAuthorityProjection {
         event.priorAuthorityId(),
         event.applicationId(),
         0L,
-        IN_PROGRESS,
+        null,
         event.occurredAt(),
         queryUpdateEmitter);
   }
