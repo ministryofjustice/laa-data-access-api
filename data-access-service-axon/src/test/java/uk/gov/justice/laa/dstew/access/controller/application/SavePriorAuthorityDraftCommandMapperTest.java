@@ -123,11 +123,11 @@ class SavePriorAuthorityDraftCommandMapperTest {
         mapper.toUpdateCommand(
             priorAuthorityId,
             SavePriorAuthorityDraftRequest.builder()
-                .priorAuthorityType(PriorAuthorityType.EXPERT)
                 .justification("Need expert assessment")
                 .build());
 
     assertThat(command.priorAuthorityId()).isEqualTo(priorAuthorityId);
+    assertThat(command.content().priorAuthorityType()).isNull();
   }
 
   @Test

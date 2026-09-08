@@ -172,10 +172,7 @@ class PriorAuthorityDraftIntegrationTest {
     UUID priorAuthorityId = saveDraft(applicationId, PriorAuthorityType.EXPERT, null, null);
 
     SavePriorAuthorityDraftRequest updateRequest =
-        SavePriorAuthorityDraftRequest.builder()
-            .priorAuthorityType(PriorAuthorityType.EXPERT)
-            .justification("Updated justification")
-            .build();
+        SavePriorAuthorityDraftRequest.builder().justification("Updated justification").build();
     ResponseEntity<Void> updateResponse =
         restTemplate.exchange(
             priorAuthorityUrl(priorAuthorityId),

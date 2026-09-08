@@ -76,17 +76,18 @@ components:
         - type: object
           required:
             - applicationId
+            - priorAuthorityType
           properties:
             applicationId:
               type: string
               format: uuid
+            priorAuthorityType:
+              $ref: "#/components/schemas/PriorAuthorityType"
         - $ref: "#/components/schemas/SavePriorAuthorityDraftRequest"
 
     SavePriorAuthorityDraftRequest:
       type: object
       properties:
-        priorAuthorityType:
-          $ref: "#/components/schemas/PriorAuthorityType"
         justification:
           type: string
           maxLength: 10000

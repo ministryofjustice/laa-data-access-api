@@ -59,7 +59,7 @@ public class SavePriorAuthorityDraftCommandMapper {
       UUID priorAuthorityId, SavePriorAuthorityDraftRequest request) {
     PriorAuthorityContent content =
         toContent(
-            request.getPriorAuthorityType(),
+            null,
             request.getJustification(),
             request.getExpertDetails(),
             request.getCounselDetails(),
