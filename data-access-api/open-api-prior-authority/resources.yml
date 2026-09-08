@@ -26,7 +26,7 @@ paths:
         '500': { description: Internal server error }
     put:
       tags:
-        - prior-authority-draft-command
+        - prior-authority-drafts
       summary: Update an existing Prior Authority draft
       operationId: updatePriorAuthorityDraft
       parameters:
@@ -54,7 +54,7 @@ paths:
   /api/v0/prior-authorities/{priorAuthorityId}/submit:
     post:
       tags:
-        - prior-authority-draft-command
+        - prior-authority-drafts
       summary: Submit an in-progress Prior Authority draft, sealing its content
       description: |
         This command endpoint does not accept a request body.
@@ -97,7 +97,7 @@ paths:
   /api/v0/prior-authorities:
     post:
       tags:
-        - prior-authority-draft-command
+        - prior-authority-drafts
       summary: Start or save a Prior Authority draft
       operationId: savePriorAuthorityDraft
       parameters:
