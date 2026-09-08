@@ -98,7 +98,7 @@ class PriorAuthorityAggregateTest {
         .then()
         .events(
             new PriorAuthorityDraftStartedEvent(
-                priorAuthorityId, applicationId, fingerprint, 1, occurredAt));
+                priorAuthorityId, applicationId, fingerprint, null, 1, occurredAt));
 
     ArgumentCaptor<PriorAuthorityDataPayload> payloadCaptor =
         ArgumentCaptor.forClass(PriorAuthorityDataPayload.class);
@@ -125,7 +125,7 @@ class PriorAuthorityAggregateTest {
 
     PriorAuthorityDraftStartedEvent existingEvent =
         new PriorAuthorityDraftStartedEvent(
-            priorAuthorityId, applicationId, firstFingerprint, 1, occurredAt);
+            priorAuthorityId, applicationId, firstFingerprint, null, 1, occurredAt);
     PriorAuthorityDataPayload existingDraftPayload =
         new PriorAuthorityDataPayload(
             priorAuthorityId,
@@ -166,7 +166,7 @@ class PriorAuthorityAggregateTest {
 
     PriorAuthorityDraftStartedEvent existingEvent =
         new PriorAuthorityDraftStartedEvent(
-            priorAuthorityId, applicationId, fingerprint, 1, startedAt);
+            priorAuthorityId, applicationId, fingerprint, EXPERT.name(), 1, startedAt);
 
     when(draftStore.find(priorAuthorityId)).thenReturn(Optional.of(draftPayload));
 
@@ -211,7 +211,7 @@ class PriorAuthorityAggregateTest {
 
     PriorAuthorityDraftStartedEvent existingEvent =
         new PriorAuthorityDraftStartedEvent(
-            priorAuthorityId, applicationId, fingerprint, 1, startedAt);
+            priorAuthorityId, applicationId, fingerprint, EXPERT.name(), 1, startedAt);
 
     when(draftStore.find(priorAuthorityId)).thenReturn(Optional.of(draftPayload));
     doThrow(new ValidationException(List.of("expertDetails is required")))
@@ -245,7 +245,7 @@ class PriorAuthorityAggregateTest {
 
     PriorAuthorityDraftStartedEvent draftStartedEvent =
         new PriorAuthorityDraftStartedEvent(
-            priorAuthorityId, applicationId, fingerprint, 1, startedAt);
+            priorAuthorityId, applicationId, fingerprint, EXPERT.name(), 1, startedAt);
     PriorAuthoritySubmittedEvent submittedEvent =
         new PriorAuthoritySubmittedEvent(
             priorAuthorityId,

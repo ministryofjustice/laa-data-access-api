@@ -93,9 +93,7 @@ public class PriorAuthorityAggregate {
         payload,
         payload.serialisedRequest(),
         command.occurredAt());
-    eventAppender.append(
-        PriorAuthorityDecider.decideSubmit(
-            command, state, payload.content().priorAuthorityType().name()));
+    eventAppender.append(PriorAuthorityDecider.decideSubmit(command, state));
     draftStore.delete(command.priorAuthorityId());
   }
 
