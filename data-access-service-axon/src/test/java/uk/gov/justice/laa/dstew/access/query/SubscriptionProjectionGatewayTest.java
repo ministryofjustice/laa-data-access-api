@@ -69,6 +69,28 @@ class SubscriptionProjectionGatewayTest {
     assertThat(elapsedMs).isLessThan(2_000L);
   }
 
+  @Test
+  void givenFalseInitialBooleanAndTrueUpdate_whenAwaitProjection_thenReturnsTrue() {
+    Sinks.One<Boolean> update = Sinks.one();
+    booleanSubscription(Flux.concat(Mono.just(false), update.asMono()));
+
+    boolean result = gateway.awaitProjection(query(), () -> update.tryEmitValue(Boolean.TRUE));
+
+    assertThat(result).isTrue();
+  }
+
+  @Test
+  void givenFalseBooleanWithoutUpdate_whenAwaitProjection_thenReturnsFalseWithinTimeout() {
+    booleanSubscription(Flux.just(false).concatWith(Flux.never()));
+
+    long startNs = System.nanoTime();
+    boolean result = gateway.awaitProjection(query(), () -> {});
+    long elapsedMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNs);
+
+    assertThat(result).isFalse();
+    assertThat(elapsedMs).isLessThan(2_000L);
+  }
+
   // ── awaitProjection: error and interrupt paths ───────────────────────────
 
   @Test
@@ -159,6 +181,20 @@ class SubscriptionProjectionGatewayTest {
   }
 
   @Test
+  void givenHydrationQueryReturnsNull_whenFindProjection_thenReturnsEmpty() {
+    ApplicationReadModel notification = mock(ApplicationReadModel.class);
+    FindApplicationByIdQuery query = query();
+    subscription(Mono.just(notification));
+    when(queryGateway.query(query, ApplicationReadModel.class))
+        .thenReturn(java.util.concurrent.CompletableFuture.completedFuture(null));
+
+    Optional<ApplicationReadModel> result =
+        gateway.findProjection(query, ApplicationReadModel.class);
+
+    assertThat(result).isEmpty();
+  }
+
+  @Test
   void givenNoResultBeforeTimeout_whenFindProjection_thenReturnsEmpty() {
     subscription(Mono.never());
 
@@ -176,5 +212,9 @@ class SubscriptionProjectionGatewayTest {
 
   private void subscription(org.reactivestreams.Publisher<ApplicationReadModel> results) {
     when(queryGateway.subscriptionQuery(any(), eq(ApplicationReadModel.class))).thenReturn(results);
+  }
+
+  private void booleanSubscription(org.reactivestreams.Publisher<Boolean> results) {
+    when(queryGateway.subscriptionQuery(any(), eq(Boolean.class))).thenReturn(results);
   }
 }

@@ -20,7 +20,7 @@ import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
-import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadModel;
+import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryResult;
 import uk.gov.justice.laa.dstew.access.usecase.application.ApplicationQueryUseCase;
 
 /** Verifies the branch logic in ApplicationQueryController that integration tests do not reach. */
@@ -47,7 +47,7 @@ class ApplicationQueryControllerTest {
   @Test
   void givenNullEventType_whenGetApplicationHistory_thenAllEventTypesRequested() {
     UUID id = UUID.randomUUID();
-    List<ApplicationHistoryReadModel> history = List.of();
+    ApplicationHistoryResult history = new ApplicationHistoryResult(List.of(), List.of());
     when(applicationQueryUseCase.getApplicationHistory(eq(id), any())).thenReturn(history);
     when(historyResponseMapper.toResponse(history)).thenReturn(new ApplicationHistoryResponse());
 
@@ -64,7 +64,7 @@ class ApplicationQueryControllerTest {
   @Test
   void givenEmptyEventType_whenGetApplicationHistory_thenAllEventTypesRequested() {
     UUID id = UUID.randomUUID();
-    List<ApplicationHistoryReadModel> history = List.of();
+    ApplicationHistoryResult history = new ApplicationHistoryResult(List.of(), List.of());
     when(applicationQueryUseCase.getApplicationHistory(eq(id), any())).thenReturn(history);
     when(historyResponseMapper.toResponse(history)).thenReturn(new ApplicationHistoryResponse());
 
@@ -81,7 +81,7 @@ class ApplicationQueryControllerTest {
   @Test
   void givenNonEmptyEventType_whenGetApplicationHistory_thenOnlyRequestedTypesUsed() {
     UUID id = UUID.randomUUID();
-    List<ApplicationHistoryReadModel> history = List.of();
+    ApplicationHistoryResult history = new ApplicationHistoryResult(List.of(), List.of());
     when(applicationQueryUseCase.getApplicationHistory(eq(id), any())).thenReturn(history);
     when(historyResponseMapper.toResponse(history)).thenReturn(new ApplicationHistoryResponse());
 
