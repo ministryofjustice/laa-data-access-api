@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.query.worklist;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Stream;
+import lombok.extern.slf4j.Slf4j;
 import org.axonframework.messaging.core.annotation.Namespace;
 import org.axonframework.messaging.eventhandling.EventMessage;
 import org.axonframework.messaging.eventhandling.annotation.EventHandler;
@@ -25,6 +26,7 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 /** Replayable projection of active work; it is never consulted to route a command. */
 @Component
 @Namespace("work-list-projection")
+@Slf4j
 public class WorkListProjection {
   private final WorkListItemReadRepository items;
   private final ApplicationDataStore applicationDataStore;
@@ -101,7 +103,7 @@ public class WorkListProjection {
   public void on(WorkItemAssigned event, EventMessage message) {
     items
         .findById(event.workItemId())
-        .ifPresent(
+        .ifPresentOrElse(
             item -> {
               requireMatchingType(item, event.workItemType(), event.workItemId());
               item.setAssigneeId(event.caseworkerId());
@@ -110,7 +112,12 @@ public class WorkListProjection {
               item.setUpdatedAt(event.occurredAt());
               item.setProjectionPosition(message.identifier().hashCode());
               items.save(item);
-            });
+            },
+            () ->
+                log.warn(
+                    "Cannot assign missing work-list item: id={}, type={}",
+                    event.workItemId(),
+                    event.workItemType()));
   }
 
   /** Applies a generic direct unassignment to the event's immutable work-item identity. */
@@ -118,7 +125,7 @@ public class WorkListProjection {
   public void on(WorkItemUnassigned event, EventMessage message) {
     items
         .findById(event.workItemId())
-        .ifPresent(
+        .ifPresentOrElse(
             item -> {
               requireMatchingType(item, event.workItemType(), event.workItemId());
               item.setAssigneeId(null);
@@ -127,7 +134,12 @@ public class WorkListProjection {
               item.setUpdatedAt(event.occurredAt());
               item.setProjectionPosition(message.identifier().hashCode());
               items.save(item);
-            });
+            },
+            () ->
+                log.warn(
+                    "Cannot unassign missing work-list item: id={}, type={}",
+                    event.workItemId(),
+                    event.workItemType()));
   }
 
   /** Deletes all disposable rows before event-stream replay. */

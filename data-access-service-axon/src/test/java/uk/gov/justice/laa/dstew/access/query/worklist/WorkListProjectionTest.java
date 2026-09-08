@@ -9,6 +9,9 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +24,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -199,17 +203,64 @@ class WorkListProjectionTest {
   }
 
   @Test
-  void givenMissingWorkItem_whenGenericAssignmentEventsArrive_thenDoesNothing() {
+  void givenMissingWorkItem_whenAssigned_thenLogsWarningAndDoesNotSave() {
     UUID itemId = UUID.randomUUID();
     when(items.findById(itemId)).thenReturn(Optional.empty());
+    Logger logger = (Logger) LoggerFactory.getLogger(WorkListProjection.class);
+    ListAppender<ILoggingEvent> logEvents = new ListAppender<>();
+    logEvents.start();
+    logger.addAppender(logEvents);
 
-    projection.on(
-        new WorkItemAssigned(
-            itemId, WorkItemType.APPLICATION, 1L, 1L, UUID.randomUUID(), "", Instant.now()),
-        message());
-    projection.on(
-        new WorkItemUnassigned(itemId, WorkItemType.APPLICATION, 1L, 1L, "", Instant.now()),
-        message());
+    try {
+      projection.on(
+          new WorkItemAssigned(
+              itemId, WorkItemType.APPLICATION, 1L, 1L, UUID.randomUUID(), "", Instant.now()),
+          message());
+
+      assertThat(logEvents.list)
+          .singleElement()
+          .satisfies(
+              event ->
+                  assertThat(event.getFormattedMessage())
+                      .isEqualTo(
+                          "Cannot assign missing work-list item: id="
+                              + itemId
+                              + ", type=APPLICATION"));
+    } finally {
+      logger.detachAppender(logEvents);
+      logEvents.stop();
+    }
+
+    verify(items, never()).save(any());
+  }
+
+  @Test
+  void givenMissingWorkItem_whenUnassigned_thenLogsWarningAndDoesNotSave() {
+    UUID itemId = UUID.randomUUID();
+    when(items.findById(itemId)).thenReturn(Optional.empty());
+    Logger logger = (Logger) LoggerFactory.getLogger(WorkListProjection.class);
+    ListAppender<ILoggingEvent> logEvents = new ListAppender<>();
+    logEvents.start();
+    logger.addAppender(logEvents);
+
+    try {
+      projection.on(
+          new WorkItemUnassigned(itemId, WorkItemType.APPLICATION, 1L, 1L, "", Instant.now()),
+          message());
+
+      assertThat(logEvents.list)
+          .singleElement()
+          .satisfies(
+              event ->
+                  assertThat(event.getFormattedMessage())
+                      .isEqualTo(
+                          "Cannot unassign missing work-list item: id="
+                              + itemId
+                              + ", type=APPLICATION"));
+    } finally {
+      logger.detachAppender(logEvents);
+      logEvents.stop();
+    }
 
     verify(items, never()).save(any());
   }
