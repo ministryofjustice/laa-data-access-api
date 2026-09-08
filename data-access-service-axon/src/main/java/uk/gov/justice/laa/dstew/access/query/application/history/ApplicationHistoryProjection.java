@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.query.application.history;
 
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -22,7 +23,6 @@ import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
-import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.config.interceptor.ServiceNameMetadataDispatchInterceptor;
 
@@ -138,9 +138,6 @@ public class ApplicationHistoryProjection {
   /** Appends a thin audit entry for an application work-list assignment. */
   @EventHandler
   public void on(WorkItemAssigned event, EventMessage message) {
-    if (event.workItemType() != WorkItemType.APPLICATION) {
-      return;
-    }
     append(
         message,
         event.workItemId(),
@@ -152,9 +149,6 @@ public class ApplicationHistoryProjection {
   /** Appends a thin audit entry for an application work-list unassignment. */
   @EventHandler
   public void on(WorkItemUnassigned event, EventMessage message) {
-    if (event.workItemType() != WorkItemType.APPLICATION) {
-      return;
-    }
     append(
         message,
         event.workItemId(),
@@ -225,10 +219,10 @@ public class ApplicationHistoryProjection {
     try {
       var thinPayload = objectMapper.readTree(history.getRequestPayload());
       if (assignment || unassignment) {
-        java.util.Map<String, Object> reconstructedPayload = new java.util.HashMap<>();
+        Map<String, Object> reconstructedPayload = new HashMap<>();
         reconstructedPayload.put(
             "eventDescription", thinPayload.get("eventDescription").asString());
-        if (assignment && thinPayload.get("caseworkerId") != null) {
+        if (assignment) {
           reconstructedPayload.put("caseworkerId", thinPayload.get("caseworkerId").asString());
         }
         return ApplicationHistoryReadModel.builder()
@@ -256,7 +250,7 @@ public class ApplicationHistoryProjection {
             .build();
       }
       String description = data.decisionEventDescription();
-      java.util.Map<String, Object> reconstructedPayload = new java.util.HashMap<>();
+      Map<String, Object> reconstructedPayload = new HashMap<>();
       reconstructedPayload.put("eventDescription", description);
       return ApplicationHistoryReadModel.builder()
           .eventId(history.getEventId())
