@@ -42,13 +42,13 @@ public final class PriorAuthorityDecider {
 
   /** Returns a persisted upload event for a prior-authority document finalize command. */
   public static PriorAuthorityDocumentUploadedEvent decideDocumentUploaded(
-      PriorAuthorityDocumentUploadCommand command, java.util.UUID documentId, String checksum) {
+      PriorAuthorityDocumentUploadCommand command) {
     return new PriorAuthorityDocumentUploadedEvent(
         command.priorAuthorityId(),
-        documentId,
+        command.documentId(),
         command.occurredAt(),
         command.file().getSize(),
         command.file().getContentType(),
-        checksum);
+        command.checksum());
   }
 }

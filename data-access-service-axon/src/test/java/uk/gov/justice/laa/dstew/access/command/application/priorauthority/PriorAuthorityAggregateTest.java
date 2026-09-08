@@ -34,8 +34,6 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityDocu
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
-import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
-import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
 import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
@@ -48,7 +46,6 @@ class PriorAuthorityAggregateTest {
   @Mock private PriorAuthorityDataStore dataStore;
   @Mock private PriorAuthorityDraftStore draftStore;
   @Mock private JsonSchemaValidator jsonSchemaValidator;
-  @Mock private SdsService sdsService;
   @Mock private EventAppender eventAppender;
 
   @BeforeEach
@@ -66,7 +63,6 @@ class PriorAuthorityAggregateTest {
                                 PriorAuthorityDataStore.class, configuration -> dataStore)
                             .registerComponent(
                                 PriorAuthorityDraftStore.class, configuration -> draftStore)
-                            .registerComponent(SdsService.class, configuration -> sdsService)
                             .registerComponent(
                                 JsonSchemaValidator.class, configuration -> jsonSchemaValidator)));
   }
@@ -435,15 +431,14 @@ class PriorAuthorityAggregateTest {
     Instant occurredAt = Instant.parse("2026-09-08T12:00:00Z");
     MockMultipartFile file =
         new MockMultipartFile("file", "evidence.pdf", "application/pdf", "content".getBytes());
+    UUID documentId = UUID.randomUUID();
     PriorAuthorityDocumentUploadCommand command =
-        new PriorAuthorityDocumentUploadCommand(priorAuthorityId, file, "{}", occurredAt);
-    DocumentUploadResponse uploadResponse = new DocumentUploadResponse().checksum("sum");
+        new PriorAuthorityDocumentUploadCommand(
+            priorAuthorityId, documentId, file, "sum", "{}", occurredAt);
 
     aggregate.on(
         new PriorAuthorityDraftStartedEvent(
             priorAuthorityId, applicationId, "EXPERT", 1, occurredAt));
-    when(sdsService.savePriorAuthorityFile(eq(priorAuthorityId), any(UUID.class), eq(file)))
-        .thenReturn(uploadResponse);
     when(draftStore.find(priorAuthorityId))
         .thenReturn(
             Optional.of(
@@ -454,9 +449,9 @@ class PriorAuthorityAggregateTest {
                     "{}",
                     occurredAt)));
 
-    UUID documentId = aggregate.handle(command, sdsService, draftStore, eventAppender);
+    UUID returnedDocumentId = aggregate.handle(command, draftStore, eventAppender);
 
-    assertThat(documentId).isNotNull();
+    assertThat(returnedDocumentId).isEqualTo(documentId);
     ArgumentCaptor<PriorAuthorityDataPayload> payloadCaptor =
         ArgumentCaptor.forClass(PriorAuthorityDataPayload.class);
     verify(draftStore)
@@ -478,12 +473,11 @@ class PriorAuthorityAggregateTest {
     Instant occurredAt = Instant.parse("2026-09-08T12:00:00Z");
     MockMultipartFile file =
         new MockMultipartFile("file", "second.pdf", "application/pdf", "content".getBytes());
+    UUID documentId = UUID.randomUUID();
 
     aggregate.on(
         new PriorAuthorityDraftStartedEvent(
             priorAuthorityId, applicationId, "EXPERT", 1, occurredAt));
-    when(sdsService.savePriorAuthorityFile(eq(priorAuthorityId), any(UUID.class), eq(file)))
-        .thenReturn(new DocumentUploadResponse().checksum("sum"));
     when(draftStore.find(priorAuthorityId))
         .thenReturn(
             Optional.of(
@@ -507,8 +501,8 @@ class PriorAuthorityAggregateTest {
                     occurredAt)));
 
     aggregate.handle(
-        new PriorAuthorityDocumentUploadCommand(priorAuthorityId, file, "{}", occurredAt),
-        sdsService,
+        new PriorAuthorityDocumentUploadCommand(
+            priorAuthorityId, documentId, file, "sum", "{}", occurredAt),
         draftStore,
         eventAppender);
 
@@ -532,12 +526,11 @@ class PriorAuthorityAggregateTest {
     Instant occurredAt = Instant.parse("2026-09-08T12:00:00Z");
     MockMultipartFile file =
         new MockMultipartFile("file", "missing.pdf", "application/pdf", "content".getBytes());
+    UUID documentId = UUID.randomUUID();
 
     aggregate.on(
         new PriorAuthorityDraftStartedEvent(
             priorAuthorityId, applicationId, "EXPERT", 1, occurredAt));
-    when(sdsService.savePriorAuthorityFile(eq(priorAuthorityId), any(UUID.class), eq(file)))
-        .thenReturn(new DocumentUploadResponse().checksum("sum"));
     when(draftStore.find(priorAuthorityId)).thenReturn(Optional.empty());
 
     org.assertj.core.api.Assertions.assertThatExceptionOfType(ResourceNotFoundException.class)
@@ -545,26 +538,24 @@ class PriorAuthorityAggregateTest {
             () ->
                 aggregate.handle(
                     new PriorAuthorityDocumentUploadCommand(
-                        priorAuthorityId, file, "{}", occurredAt),
-                    sdsService,
+                        priorAuthorityId, documentId, file, "sum", "{}", occurredAt),
                     draftStore,
                     eventAppender));
   }
 
   @Test
-  void givenSdsReturnsNullResponse_whenUpload_thenEmitsEventWithNullChecksum() {
+  void givenChecksumMissing_whenUpload_thenEmitsEventWithNullChecksum() {
     PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-09-08T12:00:00Z");
     MockMultipartFile file =
         new MockMultipartFile("file", "nullsum.pdf", "application/pdf", "content".getBytes());
+    UUID documentId = UUID.randomUUID();
 
     aggregate.on(
         new PriorAuthorityDraftStartedEvent(
             priorAuthorityId, applicationId, "EXPERT", 1, occurredAt));
-    when(sdsService.savePriorAuthorityFile(eq(priorAuthorityId), any(UUID.class), eq(file)))
-        .thenReturn(null);
     when(draftStore.find(priorAuthorityId))
         .thenReturn(
             Optional.of(
@@ -576,8 +567,8 @@ class PriorAuthorityAggregateTest {
                     occurredAt)));
 
     aggregate.handle(
-        new PriorAuthorityDocumentUploadCommand(priorAuthorityId, file, "{}", occurredAt),
-        sdsService,
+        new PriorAuthorityDocumentUploadCommand(
+            priorAuthorityId, documentId, file, null, "{}", occurredAt),
         draftStore,
         eventAppender);
 

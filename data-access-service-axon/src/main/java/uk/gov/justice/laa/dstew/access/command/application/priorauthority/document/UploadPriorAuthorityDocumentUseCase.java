@@ -9,8 +9,10 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorA
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.ValidateApplicationGrantedCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
 import uk.gov.justice.laa.dstew.access.model.UploadPriorAuthorityDocumentResponse;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
+import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
 
 /** Dispatches a single command that uploads and finalises prior-authority documents. */
 @Component
@@ -18,11 +20,16 @@ public class UploadPriorAuthorityDocumentUseCase {
 
   private final PriorAuthorityDraftStore draftStore;
   private final RetryingCommandDispatcher dispatcher;
+  private final SdsService sdsService;
 
+  /** Creates the use case with draft lookup, command dispatch, and SDS upload dependencies. */
   public UploadPriorAuthorityDocumentUseCase(
-      PriorAuthorityDraftStore draftStore, RetryingCommandDispatcher dispatcher) {
+      PriorAuthorityDraftStore draftStore,
+      RetryingCommandDispatcher dispatcher,
+      SdsService sdsService) {
     this.draftStore = draftStore;
     this.dispatcher = dispatcher;
+    this.sdsService = sdsService;
   }
 
   /** Uploads a file and finalises it via a single aggregate command. */
@@ -37,10 +44,18 @@ public class UploadPriorAuthorityDocumentUseCase {
                         "Prior Authority %s not found".formatted(priorAuthorityId)));
     dispatcher.dispatch(new ValidateApplicationGrantedCommand(draft.applicationId()));
 
-    UUID documentId =
-        dispatcher.dispatch(
-            new PriorAuthorityDocumentUploadCommand(priorAuthorityId, file, "{}", Instant.now()),
-            UUID.class);
+    UUID documentId = UUID.randomUUID();
+    DocumentUploadResponse sdsResponse =
+        sdsService.savePriorAuthorityFile(priorAuthorityId, documentId, file);
+
+    dispatcher.dispatch(
+        new PriorAuthorityDocumentUploadCommand(
+            priorAuthorityId,
+            documentId,
+            file,
+            sdsResponse == null ? null : sdsResponse.getChecksum(),
+            "{}",
+            Instant.now()));
 
     return new UploadPriorAuthorityDocumentResponse().documentId(documentId);
   }
