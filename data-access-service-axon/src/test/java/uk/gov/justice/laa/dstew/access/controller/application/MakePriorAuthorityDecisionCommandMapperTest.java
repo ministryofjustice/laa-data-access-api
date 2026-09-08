@@ -68,6 +68,24 @@ class MakePriorAuthorityDecisionCommandMapperTest {
   }
 
   @Test
+  void givenNullDecisionJustification_whenMapped_thenStoresNullJustification() {
+    MakePriorAuthorityDecisionRequest request =
+        MakePriorAuthorityDecisionRequest.builder()
+            .priorAuthorityVersion(10L)
+            .decision(DecisionStatus.GRANTED)
+            .decisionJustification(null)
+            .amountGranted(42.0)
+            .dateGranted(OffsetDateTime.parse("2026-09-08T13:00:00Z"))
+            .eventHistory(EventHistoryRequest.builder().eventDescription("decision").build())
+            .build();
+
+    MakePriorAuthorityDecisionCommand command = mapper.toCommand(UUID.randomUUID(), request);
+
+    assertThat(command.expectedPriorAuthorityVersion()).isEqualTo(10L);
+    assertThat(command.decisionJustification()).isNull();
+  }
+
+  @Test
   void givenSerializationFailure_whenMapped_thenWrapsInIllegalStateException() throws Exception {
     ObjectMapper objectMapper = mock(ObjectMapper.class);
     MakePriorAuthorityDecisionCommandMapper failingMapper =

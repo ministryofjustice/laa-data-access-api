@@ -25,6 +25,7 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStat
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityStatusConflictException;
+import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 
 /** Integration tests for {@link PriorAuthorityAggregate} using the Axon test fixture. */
@@ -373,6 +374,35 @@ class PriorAuthorityAggregateTest {
         .then()
         .exception(PriorAuthorityStatusConflictException.class)
         .noEvents();
+  }
+
+  @Test
+  void givenNoPriorAuthority_whenDecisionRecorded_thenThrowsNotFoundAndDoesNotTouchDataStore() {
+    UUID submissionId = UUID.randomUUID();
+    Instant decidedAt = Instant.parse("2026-08-01T11:00:00Z");
+
+    MakePriorAuthorityDecisionCommand command =
+        new MakePriorAuthorityDecisionCommand(
+            submissionId,
+            0L,
+            "GRANTED",
+            "Decision recorded",
+            50.0,
+            decidedAt,
+            "{\"decision\":\"GRANTED\"}",
+            decidedAt);
+
+    fixture
+        .given()
+        .noPriorActivity()
+        .when()
+        .command(command)
+        .then()
+        .exception(ResourceNotFoundException.class)
+        .noEvents();
+
+    verify(dataStore, never()).get(any(), anyLong());
+    verify(dataStore, never()).append(any(), anyLong(), any(), any(), any(), any());
   }
 
   @AfterEach

@@ -200,6 +200,78 @@ class PriorAuthorityDeciderTest {
   }
 
   @Test
+  void
+      givenDecidedStateWithSameDecisionButDifferentPayload_whenDecideDecision_thenThrowsConflict() {
+    UUID submissionId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    PriorAuthorityState state = stateAfterCreate(submissionId, "fingerprint");
+    state.applicationId = applicationId;
+    state.status = PriorAuthorityStatus.GRANTED.name();
+    state.dataVersion = 2L;
+    MakePriorAuthorityDecisionCommand command =
+        new MakePriorAuthorityDecisionCommand(
+            submissionId,
+            2L,
+            "GRANTED",
+            "Recorded",
+            100.0,
+            OCCURRED_AT,
+            "{\"decision\":\"GRANTED\"}",
+            OCCURRED_AT);
+    PriorAuthorityDataPayload payload =
+        new PriorAuthorityDataPayload(
+            submissionId,
+            applicationId,
+            null,
+            "{}",
+            OCCURRED_AT,
+            "GRANTED",
+            "Recorded",
+            100.0,
+            OCCURRED_AT,
+            "{\"decision\":\"REFUSED\"}");
+
+    assertThatThrownBy(() -> PriorAuthorityDecider.decideDecision(state, command, payload))
+        .isInstanceOf(PriorAuthorityStatusConflictException.class);
+  }
+
+  @Test
+  void
+      givenDecidedStateWithDifferentDecisionButSamePayload_whenDecideDecision_thenThrowsConflict() {
+    UUID submissionId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    PriorAuthorityState state = stateAfterCreate(submissionId, "fingerprint");
+    state.applicationId = applicationId;
+    state.status = PriorAuthorityStatus.REFUSED.name();
+    state.dataVersion = 2L;
+    MakePriorAuthorityDecisionCommand command =
+        new MakePriorAuthorityDecisionCommand(
+            submissionId,
+            2L,
+            "GRANTED",
+            "Recorded",
+            100.0,
+            OCCURRED_AT,
+            "{\"decision\":\"REFUSED\"}",
+            OCCURRED_AT);
+    PriorAuthorityDataPayload payload =
+        new PriorAuthorityDataPayload(
+            submissionId,
+            applicationId,
+            null,
+            "{}",
+            OCCURRED_AT,
+            "REFUSED",
+            "Recorded",
+            100.0,
+            OCCURRED_AT,
+            "{\"decision\":\"REFUSED\"}");
+
+    assertThatThrownBy(() -> PriorAuthorityDecider.decideDecision(state, command, payload))
+        .isInstanceOf(PriorAuthorityStatusConflictException.class);
+  }
+
+  @Test
   void givenUnsupportedDecisionValue_whenDecideDecision_thenThrowsValidationException() {
     UUID submissionId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
