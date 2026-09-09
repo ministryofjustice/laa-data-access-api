@@ -238,6 +238,22 @@ class ApplicationHistoryProjectionTest {
   }
 
   @Test
+  void givenRefusedDecisionEvent_whenHandled_thenStoresRefusedDecisionType() {
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-20T10:05:00Z");
+    ApplicationDecisionMadeEvent event =
+        new ApplicationDecisionMadeEvent(
+            applicationId, 1L, 5L, "REFUSED", AutoGrantedState.MANUAL, occurredAt);
+
+    projection.on(event, message(event, "decision-refused-event"));
+
+    ArgumentCaptor<ApplicationHistoryReadModel> captor =
+        ArgumentCaptor.forClass(ApplicationHistoryReadModel.class);
+    verify(repository).save(captor.capture());
+    assertThat(captor.getValue().getEventType()).isEqualTo("APPLICATION_MAKE_DECISION_REFUSED");
+  }
+
+  @Test
   void givenNoteCreatedEvent_whenHandled_thenStoresNoteCreatedHistory() {
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-07-20T10:00:00Z");
@@ -331,6 +347,22 @@ class ApplicationHistoryProjectionTest {
     assertThat(saved.getOccurredAt()).isEqualTo(occurredAt);
     assertThat(saved.getEventData()).contains("\"status\":\"GRANTED\"");
     assertThat(saved.getEventData()).contains("\"dataVersion\":1");
+  }
+
+  @Test
+  void givenRefusedPriorAuthorityDecisionEvent_whenHandled_thenStoresRefusedDecisionType() {
+    UUID submissionId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-08-05T11:05:00Z");
+    var event =
+        new PriorAuthorityDecisionRecordedEvent(
+            submissionId, applicationId, "EXPERT", 2L, "REFUSED", occurredAt);
+
+    projection.on(event, message(event, "pa-decision-refused-event-id"));
+
+    var captor = ArgumentCaptor.forClass(PriorAuthorityHistoryReadModel.class);
+    verify(paRepository).save(captor.capture());
+    assertThat(captor.getValue().getEventType()).isEqualTo("PRIOR_AUTHORITY_DECISION_REFUSED");
   }
 
   @Test
