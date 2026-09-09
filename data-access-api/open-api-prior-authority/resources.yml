@@ -70,7 +70,7 @@ paths:
             type: string
             format: uuid
       responses:
-        '201':
+        '200':
           description: Prior Authority draft submitted and projection readable
           headers:
             Location:
