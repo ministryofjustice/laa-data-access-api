@@ -26,8 +26,6 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
@@ -223,55 +221,6 @@ class ApplicationListIndexProjectionTest {
         anyMessage());
 
     assertThat(existing.getStatus()).isEqualTo("APPLICATION_SUBMITTED");
-    verify(listIndexRepository).save(existing);
-  }
-
-  // -------------------------------------------------------------------------
-  // ApplicationAssignedToCaseworkerEvent
-  // -------------------------------------------------------------------------
-
-  @Test
-  void givenAssignmentEvent_whenHandled_thenSetsCaseworkerIdAndStreamVersion() {
-    UUID applicationId = UUID.randomUUID();
-    UUID caseworkerId = UUID.randomUUID();
-    ApplicationListIndexReadModel existing =
-        ApplicationListIndexReadModel.builder()
-            .applicationId(applicationId)
-            .streamVersion(0L)
-            .build();
-    when(listIndexRepository.findById(applicationId)).thenReturn(Optional.of(existing));
-
-    projection.on(
-        new ApplicationAssignedToCaseworkerEvent(
-            applicationId, 1L, 2L, caseworkerId, Instant.now()),
-        anyMessage());
-
-    assertThat(existing.getCaseworkerId()).isEqualTo(caseworkerId);
-    assertThat(existing.getStreamVersion()).isEqualTo(1L);
-    verify(listIndexRepository).save(existing);
-  }
-
-  // -------------------------------------------------------------------------
-  // ApplicationUnassignedFromCaseworkerEvent
-  // -------------------------------------------------------------------------
-
-  @Test
-  void givenUnassignmentEvent_whenHandled_thenClearsCaseworkerIdAndUpdatesStreamVersion() {
-    UUID applicationId = UUID.randomUUID();
-    ApplicationListIndexReadModel existing =
-        ApplicationListIndexReadModel.builder()
-            .applicationId(applicationId)
-            .caseworkerId(UUID.randomUUID())
-            .streamVersion(1L)
-            .build();
-    when(listIndexRepository.findById(applicationId)).thenReturn(Optional.of(existing));
-
-    projection.on(
-        new ApplicationUnassignedFromCaseworkerEvent(applicationId, 2L, 3L, Instant.now()),
-        anyMessage());
-
-    assertThat(existing.getCaseworkerId()).isNull();
-    assertThat(existing.getStreamVersion()).isEqualTo(2L);
     verify(listIndexRepository).save(existing);
   }
 

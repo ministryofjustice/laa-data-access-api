@@ -14,8 +14,6 @@ import uk.gov.justice.laa.dstew.access.api.ApplicationAutoGrantOutcomeCommandApi
 import uk.gov.justice.laa.dstew.access.api.ApplicationCommandApi;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationUseCase;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.AssignCaseworkerUseCase;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.UnassignCaseworkerUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.document.UploadDocumentUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteUseCase;
@@ -49,16 +47,12 @@ public class ApplicationCommandController
   private final CreateApplicationUseCase createApplicationUseCase;
   private final MakeApplicationDecisionUseCase makeDecisionUseCase;
   private final CreateNoteUseCase createNoteUseCase;
-  private final UnassignCaseworkerUseCase unassignCaseworkerUseCase;
-  private final AssignCaseworkerUseCase assignCaseworkerUseCase;
   private final RecordAutoGrantOutcomeUseCase recordAutoGrantOutcomeUseCase;
   private final UpdateApplicationUseCase updateApplicationUseCase;
   private final CreatePriorAuthorityUseCase createPriorAuthorityUseCase;
   private final UploadDocumentUseCase uploadDocumentUseCase;
   private final CreateApplicationCommandMapper commandMapper;
   private final MakeDecisionCommandMapper decisionCommandMapper;
-  private final AssignCaseworkerRequestMapper assignCaseworkerRequestMapper;
-  private final UnassignCaseworkerRequestMapper unassignCaseworkerRequestMapper;
   private final CreateNoteCommandMapper createNoteCommandMapper;
   private final AutoGrantOutcomeCommandMapper autoGrantOutcomeCommandMapper;
   private final UpdateApplicationCommandMapper updateApplicationCommandMapper;
@@ -69,16 +63,12 @@ public class ApplicationCommandController
       CreateApplicationUseCase createApplicationUseCase,
       MakeApplicationDecisionUseCase makeDecisionUseCase,
       CreateNoteUseCase createNoteUseCase,
-      UnassignCaseworkerUseCase unassignCaseworkerUseCase,
-      AssignCaseworkerUseCase assignCaseworkerUseCase,
       RecordAutoGrantOutcomeUseCase recordAutoGrantOutcomeUseCase,
       UpdateApplicationUseCase updateApplicationUseCase,
       CreatePriorAuthorityUseCase createPriorAuthorityUseCase,
       UploadDocumentUseCase uploadDocumentUseCase,
       CreateApplicationCommandMapper commandMapper,
       MakeDecisionCommandMapper decisionCommandMapper,
-      AssignCaseworkerRequestMapper assignCaseworkerRequestMapper,
-      UnassignCaseworkerRequestMapper unassignCaseworkerRequestMapper,
       CreateNoteCommandMapper createNoteCommandMapper,
       AutoGrantOutcomeCommandMapper autoGrantOutcomeCommandMapper,
       UpdateApplicationCommandMapper updateApplicationCommandMapper,
@@ -86,16 +76,12 @@ public class ApplicationCommandController
     this.createApplicationUseCase = createApplicationUseCase;
     this.makeDecisionUseCase = makeDecisionUseCase;
     this.createNoteUseCase = createNoteUseCase;
-    this.unassignCaseworkerUseCase = unassignCaseworkerUseCase;
-    this.assignCaseworkerUseCase = assignCaseworkerUseCase;
     this.recordAutoGrantOutcomeUseCase = recordAutoGrantOutcomeUseCase;
     this.updateApplicationUseCase = updateApplicationUseCase;
     this.createPriorAuthorityUseCase = createPriorAuthorityUseCase;
     this.uploadDocumentUseCase = uploadDocumentUseCase;
     this.commandMapper = commandMapper;
     this.decisionCommandMapper = decisionCommandMapper;
-    this.assignCaseworkerRequestMapper = assignCaseworkerRequestMapper;
-    this.unassignCaseworkerRequestMapper = unassignCaseworkerRequestMapper;
     this.createNoteCommandMapper = createNoteCommandMapper;
     this.autoGrantOutcomeCommandMapper = autoGrantOutcomeCommandMapper;
     this.updateApplicationCommandMapper = updateApplicationCommandMapper;
@@ -108,13 +94,7 @@ public class ApplicationCommandController
   @LogMethodResponse
   public ResponseEntity<Void> assignCaseworker(
       ServiceName serviceName, CaseworkerAssignRequest request) {
-    var assignment = assignCaseworkerRequestMapper.toAssignment(request);
-    assignCaseworkerUseCase.assign(
-        assignment.caseworkerId(),
-        assignment.applicationId(),
-        assignment.serialisedRequest(),
-        assignment.eventDescription());
-    return ResponseEntity.ok().build();
+    throw new UnsupportedOperationException("Deprecated: use the work-list/assign method");
   }
 
   /** Removes the current caseworker assignment from an Application. */
@@ -123,8 +103,7 @@ public class ApplicationCommandController
   @LogMethodResponse
   public ResponseEntity<Void> unassignCaseworker(
       ServiceName serviceName, UUID id, CaseworkerUnassignRequest request) {
-    unassignCaseworkerUseCase.execute(unassignCaseworkerRequestMapper.toCommand(id, request));
-    return ResponseEntity.ok().build();
+    throw new UnsupportedOperationException("Deprecated: use the work-list/unassign method");
   }
 
   /** Applies an overall and per-proceeding decision to an existing Application version. */

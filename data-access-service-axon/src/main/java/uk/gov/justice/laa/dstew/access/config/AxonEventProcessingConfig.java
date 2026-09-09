@@ -32,13 +32,32 @@ public class AxonEventProcessingConfig {
   }
 
   @Bean
+  EventProcessorDefinition linkedGroupWorkItemLifecycleProcessor() {
+    return pooledStreamingProcessor("linked-group-work-item-lifecycle");
+  }
+
+  @Bean
   EventProcessorDefinition priorAuthorityProjectionProcessor() {
     return pooledStreamingProcessor("prior-authority-projection");
+  }
+
+  /** Keeps the disposable work-list projection replayable and isolated from command routing. */
+  @Bean
+  EventProcessorDefinition workListProjectionProcessor() {
+    return pooledStreamingProcessor("work-list-projection");
   }
 
   @Bean
   EventProcessorDefinition linkedApplicationGroupRouterProcessor() {
     return EventProcessorDefinition.subscribingMatching("linked-application-group-router")
+        .customized(
+            configuration -> configuration.errorHandler(PropagatingErrorHandler.instance()));
+  }
+
+  /** Keeps write-side work-item routes transactionally aligned with route-changing events. */
+  @Bean
+  EventProcessorDefinition workItemRouteProcessor() {
+    return EventProcessorDefinition.subscribingMatching("work-item-route")
         .customized(
             configuration -> configuration.errorHandler(PropagatingErrorHandler.instance()));
   }
