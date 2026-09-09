@@ -83,6 +83,7 @@ import uk.gov.justice.laa.dstew.access.model.PriorAuthorityHistoryGroup;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.model.ProviderResponse;
 import uk.gov.justice.laa.dstew.access.model.ScopeLimitationResponse;
+import uk.gov.justice.laa.dstew.access.model.WorkListAssignRequest;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
@@ -199,7 +200,9 @@ class PostgresAxonIntegrationTest {
             "prior_authority_current_state",
             "prior_authority_data",
             "prior_authority_history",
-            "token_entry");
+            "token_entry",
+            "work_item_route",
+            "work_list_item");
     assertThat(sequences).containsExactly("aggregate-event-global-index-sequence");
     assertThat(
             jdbcTemplate.queryForObject(
@@ -464,11 +467,13 @@ class PostgresAxonIntegrationTest {
     applicationId(post(validCreateApplicationRequest(applicationId, applyProceedingId), headers()));
     ApplicationReadModel created = awaitProjection(applicationId);
     markReadyForManualDecision(applicationId);
+    UUID caseworkerId = assignForManualDecision(applicationId);
     UUID proceedingId = created.getProceedings().getFirst().getId();
 
     MakeDecisionRequest request =
         MakeDecisionRequest.builder()
             .applicationVersion(1L)
+            .caseworkerId(caseworkerId)
             .overallDecision(DecisionStatus.REFUSED)
             .eventHistory(
                 EventHistoryRequest.builder().eventDescription("Decision recorded").build())
@@ -509,7 +514,7 @@ class PostgresAxonIntegrationTest {
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT convert_from(payload, 'UTF8') FROM axon.domain_event_entry "
-                    + "WHERE aggregate_identifier = ? AND sequence_number = 2",
+                    + "WHERE aggregate_identifier = ? AND sequence_number = 3",
                 String.class,
                 applicationId.toString()))
         .contains("applicationDataVersion", "REFUSED")
@@ -517,8 +522,11 @@ class PostgresAxonIntegrationTest {
 
     assertThat(
             awaitHistoryTypes(
-                applicationId, "APPLICATION_CREATED", "APPLICATION_MAKE_DECISION_REFUSED"))
-        .hasSize(2);
+                applicationId,
+                "APPLICATION_CREATED",
+                "ASSIGN_APPLICATION_TO_CASEWORKER",
+                "APPLICATION_MAKE_DECISION_REFUSED"))
+        .hasSize(3);
     ResponseEntity<ApplicationHistoryResponse> historyResponse =
         restTemplate.exchange(
             "http://localhost:"
@@ -643,6 +651,7 @@ class PostgresAxonIntegrationTest {
     UUID applyProceedingId = UUID.randomUUID();
     applicationId(post(validCreateApplicationRequest(applicationId, applyProceedingId), headers()));
     markReadyForManualDecision(applicationId);
+    UUID caseworkerId = assignForManualDecision(applicationId);
     UUID proceedingId = awaitProjection(applicationId).getProceedings().getFirst().getId();
     Map<String, Object> certificate =
         Map.of(
@@ -652,6 +661,7 @@ class PostgresAxonIntegrationTest {
     MakeDecisionRequest request =
         MakeDecisionRequest.builder()
             .applicationVersion(1L)
+            .caseworkerId(caseworkerId)
             .overallDecision(DecisionStatus.GRANTED)
             .certificate(certificate)
             .eventHistory(
@@ -1268,10 +1278,12 @@ class PostgresAxonIntegrationTest {
     UUID applicationId = UUID.randomUUID();
     applicationId(post(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()));
     markReadyForManualDecision(applicationId);
+    UUID caseworkerId = assignForManualDecision(applicationId);
     UUID proceedingId = awaitProjection(applicationId).getProceedings().getFirst().getId();
     MakeDecisionRequest request =
         MakeDecisionRequest.builder()
             .applicationVersion(1L)
+            .caseworkerId(caseworkerId)
             .overallDecision(DecisionStatus.REFUSED)
             .eventHistory(EventHistoryRequest.builder().eventDescription("Concurrent").build())
             .proceedings(
@@ -1315,7 +1327,7 @@ class PostgresAxonIntegrationTest {
                 "SELECT COUNT(*) FROM axon.domain_event_entry WHERE aggregate_identifier = ?",
                 Integer.class,
                 applicationId.toString()))
-        .isEqualTo(3);
+        .isEqualTo(4);
   }
 
   @Test
@@ -1377,6 +1389,24 @@ class PostgresAxonIntegrationTest {
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
     awaitProjectionVersion(applicationId, 1L);
+  }
+
+  private UUID assignForManualDecision(UUID applicationId) {
+    UUID caseworkerId = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO axon.caseworkers (id, username) VALUES (?, ?)",
+        caseworkerId,
+        "decision-" + caseworkerId + "@example.com");
+    ResponseEntity<Void> response =
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/work-list/" + applicationId + "/assign",
+            HttpMethod.POST,
+            new HttpEntity<>(new WorkListAssignRequest(caseworkerId, 0L), headers()),
+            Void.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(awaitProjectionVersion(applicationId, 1L).getCaseworkerId()).isEqualTo(caseworkerId);
+    return caseworkerId;
   }
 
   private <T> CompletableFuture<ResponseEntity<Void>> concurrentPatch(
@@ -1513,6 +1543,7 @@ class PostgresAxonIntegrationTest {
   private MakeDecisionRequest decisionBody() {
     return MakeDecisionRequest.builder()
         .applicationVersion(0L)
+        .caseworkerId(UUID.randomUUID())
         .overallDecision(DecisionStatus.REFUSED)
         .autoGranted(false)
         .eventHistory(EventHistoryRequest.builder().eventDescription("decision").build())

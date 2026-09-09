@@ -26,8 +26,6 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
@@ -36,6 +34,9 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationD
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadModel;
@@ -251,31 +252,33 @@ public class ApplicationProjection {
             });
   }
 
-  /** Updates the assigned caseworker and referenced application-data version. */
+  /** Updates the assigned caseworker from an application work-list assignment. */
   @EventHandler
-  public void on(ApplicationAssignedToCaseworkerEvent event) {
+  public void on(WorkItemAssigned event) {
+    if (event.workItemType() != WorkItemType.APPLICATION) {
+      return;
+    }
     applicationReadRepository
-        .findById(event.applicationId())
+        .findById(event.workItemId())
         .ifPresent(
             application -> {
               application.setCaseworkerId(event.caseworkerId());
-              application.setApplicationVersion(event.applicationVersion());
-              application.setApplicationDataVersion(event.applicationDataVersion());
               application.setModifiedAt(event.occurredAt());
               applicationReadRepository.save(application);
             });
   }
 
-  /** Clears the assigned caseworker and updates the referenced application-data version. */
+  /** Clears the assigned caseworker from an application work-list unassignment. */
   @EventHandler
-  public void on(ApplicationUnassignedFromCaseworkerEvent event) {
+  public void on(WorkItemUnassigned event) {
+    if (event.workItemType() != WorkItemType.APPLICATION) {
+      return;
+    }
     applicationReadRepository
-        .findById(event.applicationId())
+        .findById(event.workItemId())
         .ifPresent(
             application -> {
               application.setCaseworkerId(null);
-              application.setApplicationVersion(event.applicationVersion());
-              application.setApplicationDataVersion(event.applicationDataVersion());
               application.setModifiedAt(event.occurredAt());
               applicationReadRepository.save(application);
             });

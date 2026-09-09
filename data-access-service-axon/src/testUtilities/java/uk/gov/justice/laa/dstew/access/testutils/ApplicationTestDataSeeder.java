@@ -3,16 +3,12 @@ package uk.gov.justice.laa.dstew.access.testutils;
 import java.util.UUID;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationUseCase;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.AssignCaseworkerUseCase;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.UnassignCaseworkerUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand;
 import uk.gov.justice.laa.dstew.access.command.application.ready.RecordAutoGrantOutcomeUseCase;
-import uk.gov.justice.laa.dstew.access.controller.application.AssignCaseworkerRequestMapper;
 import uk.gov.justice.laa.dstew.access.controller.application.AutoGrantOutcomeCommandMapper;
 import uk.gov.justice.laa.dstew.access.controller.application.CreateApplicationCommandMapper;
 import uk.gov.justice.laa.dstew.access.controller.application.MakeDecisionCommandMapper;
-import uk.gov.justice.laa.dstew.access.controller.application.UnassignCaseworkerRequestMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
@@ -25,37 +21,25 @@ public class ApplicationTestDataSeeder {
   private final CreateApplicationUseCase createApplicationUseCase;
   private final MakeApplicationDecisionUseCase makeApplicationDecisionUseCase;
   private final RecordAutoGrantOutcomeUseCase recordAutoGrantOutcomeUseCase;
-  private final AssignCaseworkerUseCase assignCaseworkerUseCase;
-  private final UnassignCaseworkerUseCase unassignCaseworkerUseCase;
   private final CreateApplicationCommandMapper createApplicationCommandMapper;
   private final MakeDecisionCommandMapper makeDecisionCommandMapper;
   private final AutoGrantOutcomeCommandMapper autoGrantOutcomeCommandMapper;
-  private final AssignCaseworkerRequestMapper assignCaseworkerRequestMapper;
-  private final UnassignCaseworkerRequestMapper unassignCaseworkerRequestMapper;
 
   public ApplicationTestDataSeeder(
       QueryGateway queryGateway,
       CreateApplicationUseCase createApplicationUseCase,
       MakeApplicationDecisionUseCase makeApplicationDecisionUseCase,
       RecordAutoGrantOutcomeUseCase recordAutoGrantOutcomeUseCase,
-      AssignCaseworkerUseCase assignCaseworkerUseCase,
-      UnassignCaseworkerUseCase unassignCaseworkerUseCase,
       CreateApplicationCommandMapper createApplicationCommandMapper,
       MakeDecisionCommandMapper makeDecisionCommandMapper,
-      AutoGrantOutcomeCommandMapper autoGrantOutcomeCommandMapper,
-      AssignCaseworkerRequestMapper assignCaseworkerRequestMapper,
-      UnassignCaseworkerRequestMapper unassignCaseworkerRequestMapper) {
+      AutoGrantOutcomeCommandMapper autoGrantOutcomeCommandMapper) {
     this.queryGateway = queryGateway;
     this.createApplicationUseCase = createApplicationUseCase;
     this.makeApplicationDecisionUseCase = makeApplicationDecisionUseCase;
     this.recordAutoGrantOutcomeUseCase = recordAutoGrantOutcomeUseCase;
-    this.assignCaseworkerUseCase = assignCaseworkerUseCase;
-    this.unassignCaseworkerUseCase = unassignCaseworkerUseCase;
     this.createApplicationCommandMapper = createApplicationCommandMapper;
     this.makeDecisionCommandMapper = makeDecisionCommandMapper;
     this.autoGrantOutcomeCommandMapper = autoGrantOutcomeCommandMapper;
-    this.assignCaseworkerRequestMapper = assignCaseworkerRequestMapper;
-    this.unassignCaseworkerRequestMapper = unassignCaseworkerRequestMapper;
   }
 
   public void seed(
@@ -95,23 +79,6 @@ public class ApplicationTestDataSeeder {
           makeDecisionCommandMapper.toCommand(
               applicationId,
               new GeneratedRequestFactory("").decision(proceedingId, lifecycle.decisionStatus())));
-    }
-    if (lifecycle.assignCaseworker()) {
-      UUID assignedCaseworkerId =
-          java.util.Objects.requireNonNull(caseworkerId, "caseworkerId is required");
-      var assignment =
-          assignCaseworkerRequestMapper.toAssignment(
-              new GeneratedRequestFactory("").assignment(applicationId, assignedCaseworkerId));
-      assignCaseworkerUseCase.assign(
-          assignment.caseworkerId(),
-          assignment.applicationId(),
-          assignment.serialisedRequest(),
-          assignment.eventDescription());
-    }
-    if (lifecycle.unassignCaseworker()) {
-      unassignCaseworkerUseCase.execute(
-          unassignCaseworkerRequestMapper.toCommand(
-              applicationId, new GeneratedRequestFactory("").unassignment()));
     }
   }
 }

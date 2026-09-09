@@ -1,6 +1,13 @@
 package uk.gov.justice.laa.dstew.dataaccesstools.cli.applications;
 
 public final class DecisionRequestFactory {
+  public String createAutograntedOutcome(ApplicationRequestFactory.ApplicationData application) {
+    return """
+        {"outcome":"AUTOGRANTED","certificate":{"certificateNumber":"CERT-%s"}}
+        """
+        .formatted(application.laaReference());
+  }
+
   public String create(ApplicationRequestFactory.ApplicationData application, Decision decision) {
     String certificate =
         decision == Decision.GRANTED

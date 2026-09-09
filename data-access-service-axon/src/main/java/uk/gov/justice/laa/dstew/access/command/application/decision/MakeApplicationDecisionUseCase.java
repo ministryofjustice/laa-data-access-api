@@ -14,7 +14,7 @@ public class MakeApplicationDecisionUseCase {
     this.dispatcher = dispatcher;
   }
 
-  /** Dispatches the command to the application aggregate. */
+  /** Dispatches the command to the application aggregate for authoritative validation. */
   @AllowApiCaseworker
   public void execute(MakeApplicationDecisionCommand command) {
     dispatcher.dispatch(command);

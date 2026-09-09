@@ -16,7 +16,6 @@ import uk.gov.justice.laa.dstew.access.repository.LinkedApplicationRepository;
 import uk.gov.justice.laa.dstew.access.repository.NoteRepository;
 import uk.gov.justice.laa.dstew.access.repository.ProceedingRepository;
 import uk.gov.justice.laa.dstew.access.service.applications.SdsService;
-import uk.gov.justice.laa.dstew.access.service.applications.UnassignCaseworkerService;
 import uk.gov.justice.laa.dstew.access.service.caseworkers.GetAllCaseworkersService;
 import uk.gov.justice.laa.dstew.access.service.domainevents.GetDomainEventService;
 import uk.gov.justice.laa.dstew.access.service.domainevents.SaveDomainEventService;
@@ -30,6 +29,7 @@ import uk.gov.justice.laa.dstew.access.usecase.getallnotesforapplication.GetAllN
 import uk.gov.justice.laa.dstew.access.usecase.getapplication.GetApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.usecase.getcertificate.GetCertificateUseCase;
 import uk.gov.justice.laa.dstew.access.usecase.makedecision.MakeDecisionUseCase;
+import uk.gov.justice.laa.dstew.access.usecase.unassigncaseworker.UnassignCaseworkerUseCase;
 import uk.gov.justice.laa.dstew.access.usecase.updateapplication.UpdateApplicationUseCase;
 
 /**
@@ -51,11 +51,11 @@ public class AbstractProviderPactTests {
   @MockitoBean protected CreateApplicationUseCase createApplicationUseCase;
   @MockitoBean protected UpdateApplicationUseCase updateApplicationUseCase;
   @MockitoBean protected AssignCaseworkerUseCase assignCaseworkerUseCase;
+  @MockitoBean protected UnassignCaseworkerUseCase unassignCaseworkerUseCase;
   @MockitoBean protected MakeDecisionUseCase makeDecisionUseCase;
   @MockitoBean protected CreateNoteUseCase createNoteUseCase;
 
   // ─── Service-layer mocks ─────────────────────────────────────────────────────
-  @MockitoBean protected UnassignCaseworkerService unassignCaseworkerService;
   @MockitoBean protected GetAllCaseworkersService getAllCaseworkersService;
   @MockitoBean protected GetDomainEventService getDomainEventService;
   @MockitoBean protected SaveDomainEventService saveDomainEventService;
