@@ -43,41 +43,41 @@ class DirectPriorAuthorityWorkItemAssignmentTest {
 
   @Test
   void assignsSubmittedPriorAuthorityUsingItsCanonicalWorkItemId() {
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     UUID caseworkerId = UUID.randomUUID();
     Instant when = Instant.parse("2026-08-28T10:00:00Z");
 
     fixture
         .given()
-        .events(submitted(submissionId, applicationId, when))
+        .events(submitted(priorAuthorityId, applicationId, when))
         .when()
         .command(
             new DirectPriorAuthorityWorkItemAssignmentCommand(
-                submissionId, caseworkerId, 0L, "{}", "Assigned", when))
+                priorAuthorityId, caseworkerId, 0L, "{}", "Assigned", when))
         .then()
         .events(
             new WorkItemAssigned(
-                submissionId, WorkItemType.PRIOR_AUTHORITY, 0L, 1L, caseworkerId, when));
+                priorAuthorityId, WorkItemType.PRIOR_AUTHORITY, 0L, 1L, caseworkerId, when));
     verifyNoInteractions(dataStore);
   }
 
   @Test
   void rejectsRepeatedAssignmentAtTheCurrentAssignmentVersion() {
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     UUID caseworkerId = UUID.randomUUID();
     Instant when = Instant.parse("2026-08-28T10:00:00Z");
     fixture
         .given()
         .events(
-            submitted(submissionId, applicationId, when),
+            submitted(priorAuthorityId, applicationId, when),
             new WorkItemAssigned(
-                submissionId, WorkItemType.PRIOR_AUTHORITY, 1L, 1L, caseworkerId, when))
+                priorAuthorityId, WorkItemType.PRIOR_AUTHORITY, 1L, 1L, caseworkerId, when))
         .when()
         .command(
             new DirectPriorAuthorityWorkItemAssignmentCommand(
-                submissionId, UUID.randomUUID(), 1L, "{}", "", when))
+                priorAuthorityId, UUID.randomUUID(), 1L, "{}", "", when))
         .then()
         .exception(WorkItemAssignmentConflictException.class)
         .noEvents();
@@ -85,33 +85,36 @@ class DirectPriorAuthorityWorkItemAssignmentTest {
 
   @Test
   void unassignsAssignedPriorAuthorityAndRejectsAlreadyUnassignedWork() {
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     UUID caseworkerId = UUID.randomUUID();
     Instant when = Instant.parse("2026-08-28T10:00:00Z");
     WorkItemAssigned assigned =
         new WorkItemAssigned(
-            submissionId, WorkItemType.PRIOR_AUTHORITY, 1L, 1L, caseworkerId, when);
+            priorAuthorityId, WorkItemType.PRIOR_AUTHORITY, 1L, 1L, caseworkerId, when);
 
     PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
-    aggregate.on(submitted(submissionId, applicationId, when));
+    aggregate.on(submitted(priorAuthorityId, applicationId, when));
     aggregate.on(assigned);
     EventAppender eventAppender = mock(EventAppender.class);
 
     aggregate.handle(
-        new DirectPriorAuthorityWorkItemUnassignmentCommand(submissionId, 1L, "{}", "", when),
+        new DirectPriorAuthorityWorkItemUnassignmentCommand(priorAuthorityId, 1L, "{}", "", when),
         eventAppender);
 
     verify(eventAppender)
-        .append(new WorkItemUnassigned(submissionId, WorkItemType.PRIOR_AUTHORITY, 0L, 2L, when));
-    aggregate.on(new WorkItemUnassigned(submissionId, WorkItemType.PRIOR_AUTHORITY, 0L, 2L, when));
+        .append(
+            new WorkItemUnassigned(priorAuthorityId, WorkItemType.PRIOR_AUTHORITY, 0L, 2L, when));
+    aggregate.on(
+        new WorkItemUnassigned(priorAuthorityId, WorkItemType.PRIOR_AUTHORITY, 0L, 2L, when));
 
     fixture
         .given()
-        .events(submitted(submissionId, applicationId, when))
+        .events(submitted(priorAuthorityId, applicationId, when))
         .when()
         .command(
-            new DirectPriorAuthorityWorkItemUnassignmentCommand(submissionId, 0L, "{}", "", when))
+            new DirectPriorAuthorityWorkItemUnassignmentCommand(
+                priorAuthorityId, 0L, "{}", "", when))
         .then()
         .exception(WorkItemAssignmentConflictException.class)
         .noEvents();
@@ -119,10 +122,10 @@ class DirectPriorAuthorityWorkItemAssignmentTest {
 
   @Test
   void rejectsARehydratedPriorAuthorityWithAMismatchedWorkItemId() {
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
     Instant when = Instant.parse("2026-08-28T10:00:00Z");
     PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
-    aggregate.on(submitted(submissionId, UUID.randomUUID(), when));
+    aggregate.on(submitted(priorAuthorityId, UUID.randomUUID(), when));
 
     assertThatThrownBy(
             () ->

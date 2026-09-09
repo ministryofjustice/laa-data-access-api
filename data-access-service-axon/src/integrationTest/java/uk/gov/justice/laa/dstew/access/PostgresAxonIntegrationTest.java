@@ -1748,12 +1748,16 @@ class PostgresAxonIntegrationTest {
             new HttpEntity<>(fixedRateExpertDraftRequest(applicationId), headers()),
             String.class);
     assertThat(paResponse.getStatusCode()).isIn(HttpStatus.CREATED, HttpStatus.ACCEPTED);
-    UUID submissionId =
+    UUID priorAuthorityId =
         UUID.fromString(
             objectMapper.readTree(paResponse.getBody()).get("priorAuthorityId").asText());
     ResponseEntity<String> submitResponse =
         restTemplate.postForEntity(
-            "http://localhost:" + port + "/api/v0/prior-authorities/" + submissionId + "/submit",
+            "http://localhost:"
+                + port
+                + "/api/v0/prior-authorities/"
+                + priorAuthorityId
+                + "/submit",
             new HttpEntity<>(null, headers()),
             String.class);
     assertThat(submitResponse.getStatusCode()).isIn(HttpStatus.OK, HttpStatus.ACCEPTED);
@@ -1781,7 +1785,7 @@ class PostgresAxonIntegrationTest {
 
     assertThat(historyResponse.getBody().getPriorAuthorities()).hasSize(1);
     PriorAuthorityHistoryGroup group = historyResponse.getBody().getPriorAuthorities().get(0);
-    assertThat(group.getSubmissionId()).isEqualTo(submissionId);
+    assertThat(group.getPriorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(group.getPriorAuthorityType()).isEqualTo(PriorAuthorityType.EXPERT);
     assertThat(group.getEvents()).hasSize(1);
     assertThat(group.getEvents().get(0).getEventType()).isEqualTo("PRIOR_AUTHORITY_SUBMITTED");
@@ -1790,21 +1794,20 @@ class PostgresAxonIntegrationTest {
 
   @Test
   void
-      givenConflictingPriorAuthorityTypeRowsInDb_whenGetHistory_thenReturnsHttp500WithStableProblemDetail()
-          throws Exception {
+      givenConflictingPriorAuthorityTypeRowsInDb_whenGetHistory_thenReturnsHttp500WithStableProblemDetail() {
     UUID applicationId = UUID.randomUUID();
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
 
     jdbcTemplate.update(
         """
         INSERT INTO axon.prior_authority_history
-            (event_id, application_id, submission_id, prior_authority_type,
+            (event_id, application_id, prior_authority_id, prior_authority_type,
              event_type, event_data, service_name, occurred_at)
         VALUES (?, ?, ?, ?, ?, ?::jsonb, ?, ?)
         """,
         "conflict-evt-1",
         applicationId,
-        submissionId,
+        priorAuthorityId,
         "EXPERT",
         "PRIOR_AUTHORITY_SUBMITTED",
         "{\"status\":\"PENDING\",\"dataVersion\":0}",
@@ -1814,13 +1817,13 @@ class PostgresAxonIntegrationTest {
     jdbcTemplate.update(
         """
         INSERT INTO axon.prior_authority_history
-            (event_id, application_id, submission_id, prior_authority_type,
+            (event_id, application_id, prior_authority_id, prior_authority_type,
              event_type, event_data, service_name, occurred_at)
         VALUES (?, ?, ?, ?, ?, ?::jsonb, ?, ?)
         """,
         "conflict-evt-2",
         applicationId,
-        submissionId,
+        priorAuthorityId,
         "COUNSEL",
         "PRIOR_AUTHORITY_SUBMITTED",
         "{\"status\":\"PENDING\",\"dataVersion\":0}",
@@ -1845,7 +1848,7 @@ class PostgresAxonIntegrationTest {
       assertThat(responseBody.get("detail").asText())
           .isEqualTo("Application history data is inconsistent");
       assertThat(response.getBody()).doesNotContain(applicationId.toString());
-      assertThat(response.getBody()).doesNotContain(submissionId.toString());
+      assertThat(response.getBody()).doesNotContain(priorAuthorityId.toString());
       assertThat(response.getBody()).doesNotContain("conflicting");
     } finally {
       jdbcTemplate.update(

@@ -180,9 +180,9 @@ public class ApplicationExceptionHandler {
   ResponseEntity<ProblemDetail> handleApplicationHistoryIntegrityException(
       ApplicationHistoryIntegrityException exception) {
     log.error(
-        "Application history integrity failure [applicationId={}, submissionId={}, reason={}]",
+        "Application history integrity failure [applicationId={}, priorAuthorityId={}, reason={}]",
         exception.getApplicationId(),
-        exception.getSubmissionId(),
+        exception.getPriorAuthorityId(),
         exception.getReason());
     ProblemDetail problemDetail =
         ProblemDetail.forStatusAndDetail(

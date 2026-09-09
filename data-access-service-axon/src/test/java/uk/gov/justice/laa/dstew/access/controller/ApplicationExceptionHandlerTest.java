@@ -208,11 +208,11 @@ class ApplicationExceptionHandlerTest {
   @Test
   void givenIntegrityFailure_whenHandled_thenReturnsHttp500WithStableProblemDetail() {
     UUID applicationId = UUID.randomUUID();
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
     var integrityException =
         new ApplicationHistoryIntegrityException(
             applicationId,
-            submissionId,
+            priorAuthorityId,
             "conflicting priorAuthorityType values: [EXPERT, COUNSEL]");
 
     var response = handler.handleApplicationHistoryIntegrityException(integrityException);
@@ -223,7 +223,7 @@ class ApplicationExceptionHandlerTest {
     assertThat(response.getBody().getInstance()).isEqualTo(URI.create("about:blank"));
     assertThat(response.getBody().toString())
         .doesNotContain(applicationId.toString())
-        .doesNotContain(submissionId.toString())
+        .doesNotContain(priorAuthorityId.toString())
         .doesNotContain("conflicting");
   }
 

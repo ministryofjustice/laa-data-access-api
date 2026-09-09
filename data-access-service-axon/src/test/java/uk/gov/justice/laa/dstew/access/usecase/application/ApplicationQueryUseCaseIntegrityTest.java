@@ -32,10 +32,10 @@ class ApplicationQueryUseCaseIntegrityTest {
   void givenQueryFutureWrapsIntegrityException_whenGetHistory_thenRethrowsIntegrityException(
       int wrapperDepth) {
     UUID applicationId = UUID.randomUUID();
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
     var integrityException =
         new ApplicationHistoryIntegrityException(
-            applicationId, submissionId, "conflicting priorAuthorityType values");
+            applicationId, priorAuthorityId, "conflicting priorAuthorityType values");
     Throwable wrappedFailure = integrityException;
     for (int wrapperIndex = 0; wrapperIndex < wrapperDepth; wrapperIndex++) {
       wrappedFailure = new CompletionException(wrappedFailure);
