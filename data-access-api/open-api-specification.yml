@@ -121,6 +121,20 @@ components:
       $ref: "./open-api-prior-authority/components.yml#/components/schemas/SavePriorAuthorityDraftRequest"
     SavePriorAuthorityDraftResponse:
       $ref: "./open-api-prior-authority/components.yml#/components/schemas/SavePriorAuthorityDraftResponse"
+    SubmitPriorAuthorityDraftValidationRequest:
+      $ref: "./open-api-prior-authority/components.yml#/components/schemas/SubmitPriorAuthorityDraftValidationRequest"
+    SubmitExpertDetails:
+      $ref: "./open-api-prior-authority/components.yml#/components/schemas/SubmitExpertDetails"
+    SubmitCounselDetails:
+      $ref: "./open-api-prior-authority/components.yml#/components/schemas/SubmitCounselDetails"
+    SubmitDisbursementDetails:
+      $ref: "./open-api-prior-authority/components.yml#/components/schemas/SubmitDisbursementDetails"
+    SubmitTimeRequested:
+      $ref: "./open-api-prior-authority/components.yml#/components/schemas/SubmitTimeRequested"
+    SubmitApportionment:
+      $ref: "./open-api-prior-authority/components.yml#/components/schemas/SubmitApportionment"
+    SubmitExpertCosts:
+      $ref: "./open-api-prior-authority/components.yml#/components/schemas/SubmitExpertCosts"
     SubmitPriorAuthorityDraftResponse:
       $ref: "./open-api-prior-authority/components.yml#/components/schemas/SubmitPriorAuthorityDraftResponse"
     PriorAuthorityResponse:
