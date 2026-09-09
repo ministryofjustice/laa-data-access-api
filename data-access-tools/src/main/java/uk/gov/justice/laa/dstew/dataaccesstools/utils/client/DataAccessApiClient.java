@@ -13,6 +13,10 @@ public interface DataAccessApiClient {
 
   void makeDecision(UUID applicationId, String requestBody);
 
+  default ApplicationDecisionData getApplicationDecisionData(UUID applicationId) {
+    throw new UnsupportedOperationException();
+  }
+
   UUID createPriorAuthority(UUID applicationId, String requestBody);
 
   default void assignWorkListItem(

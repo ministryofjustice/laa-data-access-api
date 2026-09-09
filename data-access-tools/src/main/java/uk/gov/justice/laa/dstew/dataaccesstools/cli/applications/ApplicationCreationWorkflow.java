@@ -2,10 +2,13 @@ package uk.gov.justice.laa.dstew.dataaccesstools.cli.applications;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import uk.gov.justice.laa.dstew.dataaccesstools.utils.client.DataAccessApiClient;
 import uk.gov.justice.laa.dstew.dataaccesstools.utils.workflow.WorkflowResult;
 
 public final class ApplicationCreationWorkflow {
+  private static final UUID CASEWORKER_ID =
+      UUID.fromString("8a082fe2-d539-4177-aae3-7498fd5904c7");
   private final DataAccessApiClient client;
   private final ApplicationRequestFactory applicationFactory;
   private final DecisionRequestFactory decisionFactory;
@@ -26,6 +29,8 @@ public final class ApplicationCreationWorkflow {
       try {
         client.createApplication(application.request());
         client.recordManualOutcome(application.applicationId());
+        client.assignWorkListItem(
+            application.applicationId(), CASEWORKER_ID, 0, "Assigned by data-access-tools");
         client.makeDecision(
             application.applicationId(), decisionFactory.create(application, decision));
         results.add(

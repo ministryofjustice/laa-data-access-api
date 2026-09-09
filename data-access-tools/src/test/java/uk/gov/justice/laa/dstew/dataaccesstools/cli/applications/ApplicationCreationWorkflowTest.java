@@ -21,11 +21,31 @@ class ApplicationCreationWorkflowTest {
     WorkflowResult result = workflow.create(2, DecisionRequestFactory.Decision.GRANTED);
 
     assertTrue(result.succeeded());
-    assertEquals(6, client.operations.size());
+    assertEquals(8, client.operations.size());
     assertEquals("create", client.operations.get(0));
     assertEquals("manual", client.operations.get(1));
-    assertEquals("decision:GRANTED", client.operations.get(2));
-    assertEquals("create", client.operations.get(3));
+    assertEquals("assign:8a082fe2-d539-4177-aae3-7498fd5904c7:0", client.operations.get(2));
+    assertEquals("decision:GRANTED", client.operations.get(3));
+    assertEquals("create", client.operations.get(4));
+  }
+
+  @Test
+  void assignsCaseworkerBeforeMakingEachRefusedDecision() {
+    RecordingClient client = new RecordingClient();
+    var workflow =
+        new ApplicationCreationWorkflow(
+            client, new ApplicationRequestFactory(), new DecisionRequestFactory());
+
+    WorkflowResult result = workflow.create(1, DecisionRequestFactory.Decision.REFUSED);
+
+    assertTrue(result.succeeded());
+    assertEquals(
+        List.of(
+            "create",
+            "manual",
+            "assign:8a082fe2-d539-4177-aae3-7498fd5904c7:0",
+            "decision:REFUSED"),
+        client.operations);
   }
 
   @Test
@@ -78,6 +98,12 @@ class ApplicationCreationWorkflowTest {
     @Override
     public void makeDecision(UUID applicationId, String requestBody) {
       operations.add(requestBody.contains("GRANTED") ? "decision:GRANTED" : "decision:REFUSED");
+    }
+
+    @Override
+    public void assignWorkListItem(
+        UUID itemId, UUID caseworkerId, long expectedAssignmentVersion, String eventDescription) {
+      operations.add("assign:" + caseworkerId + ":" + expectedAssignmentVersion);
     }
 
     @Override
