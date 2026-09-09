@@ -27,10 +27,14 @@ public record PriorAuthorityResult(
 
   /**
    * Builds the use-case result for an in-progress draft, whose content may be partial since it has
-   * not yet been schema-validated. A draft has no decision yet, so status is left {@code null}.
+   * not yet been schema-validated.
    */
   public static PriorAuthorityResult fromDraft(PriorAuthorityDataPayload payload) {
-    return build(payload.priorAuthorityId(), payload.applicationId(), null, payload.content());
+    return build(
+        payload.priorAuthorityId(),
+        payload.applicationId(),
+        PriorAuthorityStatus.DRAFT.name(),
+        payload.content());
   }
 
   private static PriorAuthorityResult build(

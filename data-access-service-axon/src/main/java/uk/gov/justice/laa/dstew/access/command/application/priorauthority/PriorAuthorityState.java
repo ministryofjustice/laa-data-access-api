@@ -13,7 +13,6 @@ public class PriorAuthorityState {
   UUID priorAuthorityId;
   UUID applicationId;
   long dataVersion;
-  String status;
   int schemaVersion;
   String priorAuthorityType;
 }

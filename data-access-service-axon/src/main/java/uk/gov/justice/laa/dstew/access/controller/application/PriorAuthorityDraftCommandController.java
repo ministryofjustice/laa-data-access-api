@@ -82,7 +82,7 @@ public class PriorAuthorityDraftCommandController implements PriorAuthorityDraft
     return ResponseEntity.noContent().build();
   }
 
-  /** Submits an in-progress Prior Authority draft, transitioning it to PENDING. */
+  /** Submits an in-progress Prior Authority draft, transitioning it to SUBMITTED. */
   @Override
   @LogMethodArguments
   @LogMethodResponse

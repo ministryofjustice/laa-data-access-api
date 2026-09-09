@@ -53,20 +53,20 @@ public class PriorAuthorityProjection {
         .orElse(null);
   }
 
-  /** Confirms whether a current-state projection has reached PENDING. */
+  /** Confirms whether a current-state projection has reached SUBMITTED. */
   @QueryHandler
   public boolean handle(PriorAuthorityPendingByPriorAuthorityIdQuery query) {
     return repository
         .findById(query.priorAuthorityId())
         .map(
             priorAuthority ->
-                PriorAuthorityStatus.PENDING.name().equals(priorAuthority.getStatus()))
+                PriorAuthorityStatus.SUBMITTED.name().equals(priorAuthority.getStatus()))
         .orElse(false);
   }
 
   private Optional<@NonNull PriorAuthorityResult> hydrate(
       PriorAuthorityReadModel priorAuthority, UUID priorAuthorityId) {
-    if (priorAuthority.getStatus() == null) {
+    if (PriorAuthorityStatus.DRAFT.name().equals(priorAuthority.getStatus())) {
       return priorAuthorityDraftStore.find(priorAuthorityId).map(PriorAuthorityResult::fromDraft);
     }
     PriorAuthorityDataPayload payload =
@@ -81,7 +81,7 @@ public class PriorAuthorityProjection {
         event.priorAuthorityId(),
         event.applicationId(),
         0L,
-        null,
+        PriorAuthorityStatus.DRAFT.name(),
         event.occurredAt(),
         queryUpdateEmitter);
   }
@@ -93,7 +93,7 @@ public class PriorAuthorityProjection {
         event.priorAuthorityId(),
         event.applicationId(),
         event.dataVersion(),
-        event.status(),
+        PriorAuthorityStatus.SUBMITTED.name(),
         event.occurredAt(),
         queryUpdateEmitter);
   }
@@ -113,7 +113,7 @@ public class PriorAuthorityProjection {
             .status(status)
             .createdAt(createdAt)
             .build());
-    if (PriorAuthorityStatus.PENDING.name().equals(status)) {
+    if (PriorAuthorityStatus.SUBMITTED.name().equals(status)) {
       queryUpdateEmitter.emit(
           PriorAuthorityPendingByPriorAuthorityIdQuery.class,
           query -> query.priorAuthorityId().equals(priorAuthorityId),

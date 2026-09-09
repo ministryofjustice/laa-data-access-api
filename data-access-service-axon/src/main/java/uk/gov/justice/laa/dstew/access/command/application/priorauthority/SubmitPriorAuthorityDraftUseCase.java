@@ -9,7 +9,7 @@ import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 
 /**
  * Dispatches a submit-prior-authority-draft command, waiting for the projection to confirm the
- * submission has transitioned to PENDING.
+ * submission has transitioned to SUBMITTED.
  */
 @Component
 public class SubmitPriorAuthorityDraftUseCase {
@@ -36,7 +36,7 @@ public class SubmitPriorAuthorityDraftUseCase {
 
   /**
    * Re-validates the application is still granted, dispatches the submit command, and waits for the
-   * projection to reflect the PENDING status.
+   * projection to reflect the SUBMITTED status.
    *
    * <p>The application may have been granted when the draft was started but could have changed
    * state since — so eligibility is re-checked here.

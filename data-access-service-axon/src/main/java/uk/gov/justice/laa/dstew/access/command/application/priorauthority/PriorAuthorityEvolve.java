@@ -22,6 +22,5 @@ public final class PriorAuthorityEvolve {
     state.priorAuthorityType = event.priorAuthorityType();
     state.schemaVersion = event.schemaVersion();
     state.dataVersion = event.dataVersion();
-    state.status = event.status();
   }
 }

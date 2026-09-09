@@ -43,7 +43,8 @@ components:
           $ref: "#/components/schemas/DisbursementDetails"
         status:
           type: string
-          description: Status of the prior authority request (business values to be confirmed)
+          description: Lifecycle status of the prior authority request
+          enum: [DRAFT, SUBMITTED]
         assignedTo:
           type: string
           format: uuid

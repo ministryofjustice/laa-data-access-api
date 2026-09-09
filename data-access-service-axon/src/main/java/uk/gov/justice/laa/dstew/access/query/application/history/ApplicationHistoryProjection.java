@@ -25,6 +25,7 @@ import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
 import uk.gov.justice.laa.dstew.access.config.interceptor.ServiceNameMetadataDispatchInterceptor;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
 
 /** Independently replayable, append-only audit projection of Application events. */
 @Component
@@ -183,7 +184,7 @@ public class ApplicationHistoryProjection {
             .eventData(
                 serialise(
                     Map.of(
-                        "status", event.status(),
+                        "status", PriorAuthorityStatus.SUBMITTED.name(),
                         "dataVersion", event.dataVersion())))
             .serviceName(serviceName == null ? null : serviceName.toString())
             .occurredAt(event.occurredAt())

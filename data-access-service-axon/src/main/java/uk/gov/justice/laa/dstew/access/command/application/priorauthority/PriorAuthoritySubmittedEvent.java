@@ -16,5 +16,4 @@ public record PriorAuthoritySubmittedEvent(
     String priorAuthorityType,
     int schemaVersion,
     long dataVersion,
-    String status,
     Instant occurredAt) {}
