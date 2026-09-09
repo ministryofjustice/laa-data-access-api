@@ -124,7 +124,7 @@ class PriorAuthorityDraftCommandControllerTest {
     ResponseEntity<SubmitPriorAuthorityDraftResponse> response =
         controller.submitPriorAuthorityDraft(null, priorAuthorityId);
 
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(response.getBody()).isNotNull();
     assertThat(response.getBody().getPriorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(response.getBody().getSubmittedAt().getOffset()).isEqualTo(ZoneOffset.UTC);

@@ -42,6 +42,7 @@ import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.model.SavePriorAuthorityDraftResponse;
 import uk.gov.justice.laa.dstew.access.model.WorkListAssignRequest;
+import uk.gov.justice.laa.dstew.access.model.WorkListItem;
 import uk.gov.justice.laa.dstew.access.model.WorkListItemType;
 import uk.gov.justice.laa.dstew.access.model.WorkListResponse;
 import uk.gov.justice.laa.dstew.access.model.WorkListUnassignRequest;
@@ -259,7 +260,7 @@ class WorkListIntegrationTest {
         .untilAsserted(
             () ->
                 assertThat(getWorkList("").getItems())
-                    .extracting(item -> item.getItemId())
+                    .extracting(WorkListItem::getItemId)
                     .contains(availableApplicationId, availablePriorAuthorityId)
                     .doesNotContain(
                         assignedApplicationId,
@@ -269,8 +270,7 @@ class WorkListIntegrationTest {
   }
 
   @Test
-  void givenUnassignedWorkQueueItemsWithDifferentSubmissionTimes_whenListed_thenOldestIsFirst()
-      throws Exception {
+  void givenUnassignedWorkQueueItemsWithDifferentSubmissionTimes_whenListed_thenOldestIsFirst() {
     UUID manualApplicationId = UUID.randomUUID();
     UUID parentApplicationId = UUID.randomUUID();
     createManualApplication(manualApplicationId);
@@ -288,7 +288,7 @@ class WorkListIntegrationTest {
                         item ->
                             item.getItemId().equals(manualApplicationId)
                                 || item.getItemId().equals(priorAuthorityId))
-                    .extracting(item -> item.getItemId())
+                    .extracting(WorkListItem::getItemId)
                     .containsExactly(manualApplicationId, priorAuthorityId));
   }
 
@@ -318,7 +318,7 @@ class WorkListIntegrationTest {
                         assertThat(item.getAssignedTo()).isNull();
                       });
               assertThat(openApplications.getItems())
-                  .extracting(item -> item.getItemId())
+                  .extracting(WorkListItem::getItemId)
                   .contains(availablePriorAuthorityId);
             });
 
@@ -336,7 +336,7 @@ class WorkListIntegrationTest {
             () -> {
               WorkListResponse openApplications = getWorkList("");
               assertThat(openApplications.getItems())
-                  .extracting(item -> item.getItemId())
+                  .extracting(WorkListItem::getItemId)
                   .contains(availablePriorAuthorityId)
                   .doesNotContain(claimedPriorAuthorityId);
 
@@ -350,21 +350,20 @@ class WorkListIntegrationTest {
                         assertThat(item.getParentApplicationId()).isEqualTo(parentApplicationId);
                       });
               assertThat(claimantQueue.getItems())
-                  .extracting(item -> item.getItemId())
+                  .extracting(WorkListItem::getItemId)
                   .doesNotContain(availablePriorAuthorityId);
 
               WorkListResponse otherCaseworkerQueue =
                   getWorkList("?assignedTo=" + otherCaseworkerId);
               assertThat(otherCaseworkerQueue.getItems())
-                  .extracting(item -> item.getItemId())
+                  .extracting(WorkListItem::getItemId)
                   .doesNotContain(claimedPriorAuthorityId);
             });
   }
 
   @Test
   void
-      givenMultiplePriorAuthoritiesAssignedToOneCaseworker_whenPersonalQueueIsViewed_thenAllAreReturned()
-          throws Exception {
+      givenMultiplePriorAuthoritiesAssignedToOneCaseworker_whenPersonalQueueIsViewed_thenAllAreReturned() {
     UUID parentApplicationId = UUID.randomUUID();
     UUID caseworkerId = createCaseworker("caseworker@example.com");
     createGrantedApplication(parentApplicationId);
@@ -392,14 +391,13 @@ class WorkListIntegrationTest {
                           assertThat(item.getParentApplicationId()).isEqualTo(parentApplicationId);
                           assertThat(item.getAssignedTo()).isEqualTo(caseworkerId);
                         })
-                    .extracting(item -> item.getItemId())
+                    .extracting(WorkListItem::getItemId)
                     .containsExactlyInAnyOrder(firstPriorAuthorityId, secondPriorAuthorityId));
   }
 
   @Test
   void
-      givenInitialApplicationAndPriorAuthorityAssignedToOneCaseworker_whenPersonalQueueIsViewed_thenBothAreReturned()
-          throws Exception {
+      givenApplicationAndPriorAuthorityAssignedToOneCaseworker_whenPersonalQueueIsViewed_thenBothAreReturned() {
     UUID manualApplicationId = UUID.randomUUID();
     UUID parentApplicationId = UUID.randomUUID();
     UUID caseworkerId = createCaseworker("caseworker@example.com");
@@ -438,7 +436,7 @@ class WorkListIntegrationTest {
 
   @Test
   void
-      givenInitialApplicationAndPriorAuthorityAssignedToDifferentCaseworkers_whenPersonalQueuesAreViewed_thenEachExcludesTheOthersWork() {
+      givenApplicationAndPriorAuthorityAssignedToDifferentCaseworkers_whenPersonalQueuesAreViewed_thenEachExcludesTheOthersWork() {
     UUID manualApplicationId = UUID.randomUUID();
     UUID parentApplicationId = UUID.randomUUID();
     UUID initialApplicationCaseworkerId = createCaseworker("initial@example.com");
@@ -457,11 +455,11 @@ class WorkListIntegrationTest {
         .untilAsserted(
             () -> {
               assertThat(getWorkList("?assignedTo=" + initialApplicationCaseworkerId).getItems())
-                  .extracting(item -> item.getItemId())
+                  .extracting(WorkListItem::getItemId)
                   .contains(manualApplicationId)
                   .doesNotContain(priorAuthorityId);
               assertThat(getWorkList("?assignedTo=" + priorAuthorityCaseworkerId).getItems())
-                  .extracting(item -> item.getItemId())
+                  .extracting(WorkListItem::getItemId)
                   .contains(priorAuthorityId)
                   .doesNotContain(manualApplicationId);
             });
@@ -482,23 +480,23 @@ class WorkListIntegrationTest {
         .untilAsserted(
             () -> {
               assertThat(getWorkList("?itemType=APPLICATION").getItems())
-                  .extracting(item -> item.getItemId())
+                  .extracting(WorkListItem::getItemId)
                   .doesNotContain(priorAuthorityId);
               assertThat(getWorkList("?itemType=PRIOR_AUTHORITY").getItems())
-                  .extracting(item -> item.getItemId())
+                  .extracting(WorkListItem::getItemId)
                   .contains(priorAuthorityId)
                   .doesNotContain(applicationId);
               assertThat(
                       getWorkList("?assignedTo=" + caseworkerId + "&itemType=APPLICATION")
                           .getItems())
-                  .extracting(item -> item.getItemId())
+                  .extracting(WorkListItem::getItemId)
                   .contains(applicationId);
               assertThat(getWorkList("?unassigned=true&itemType=PRIOR_AUTHORITY").getItems())
-                  .extracting(item -> item.getItemId())
+                  .extracting(WorkListItem::getItemId)
                   .contains(priorAuthorityId)
                   .doesNotContain(applicationId);
               assertThat(getWorkList("?unassigned=false").getItems())
-                  .extracting(item -> item.getItemId())
+                  .extracting(WorkListItem::getItemId)
                   .contains(applicationId, priorAuthorityId);
               WorkListResponse page = getWorkList("?unassigned=false&page=1&pageSize=1");
               assertThat(page.getItems()).hasSize(1);
@@ -642,7 +640,7 @@ class WorkListIntegrationTest {
             new HttpEntity<>(draftRequest, headers()),
             String.class);
 
-    assertThat(submitResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    assertThat(submitResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
     return priorAuthorityId;
   }
 

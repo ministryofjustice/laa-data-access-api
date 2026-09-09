@@ -99,7 +99,7 @@ public class PriorAuthorityDraftCommandController implements PriorAuthorityDraft
         new SubmitPriorAuthorityDraftResponse(priorAuthorityId, OffsetDateTime.now(ZoneOffset.UTC));
     boolean projected = submitUseCase.submit(command);
     return projected
-        ? ResponseEntity.created(location).body(response)
+        ? ResponseEntity.ok().location(location).body(response)
         : ResponseEntity.accepted().location(location).body(response);
   }
 }

@@ -1723,8 +1723,7 @@ class PostgresAxonIntegrationTest {
   }
 
   @Test
-  void givenApplicationWithPriorAuthority_whenGetHistory_thenReturnsPriorAuthoritiesSection()
-      throws Exception {
+  void givenApplicationWithPriorAuthority_whenGetHistory_thenReturnsPriorAuthoritiesSection() {
     UUID applicationId = UUID.randomUUID();
     applicationId(post(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()));
     awaitProjection(applicationId);
@@ -1757,7 +1756,7 @@ class PostgresAxonIntegrationTest {
             "http://localhost:" + port + "/api/v0/prior-authorities/" + submissionId + "/submit",
             new HttpEntity<>(null, headers()),
             String.class);
-    assertThat(submitResponse.getStatusCode()).isIn(HttpStatus.CREATED, HttpStatus.ACCEPTED);
+    assertThat(submitResponse.getStatusCode()).isIn(HttpStatus.OK, HttpStatus.ACCEPTED);
 
     await()
         .atMost(10, TimeUnit.SECONDS)

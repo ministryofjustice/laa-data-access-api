@@ -212,9 +212,8 @@ class PriorAuthorityDraftIntegrationTest {
   }
 
   @Test
-  void
-      givenDraftInProgress_whenSubmitPriorAuthorityDraft_thenTransitionsToSubmittedAndDeletesDraft()
-          throws Exception {
+  void givenDraft_whenSubmitPriorAuthorityDraft_thenTransitionsToSubmittedAndDeletesDraft()
+      throws Exception {
     UUID applicationId = grantedApplication();
     UUID priorAuthorityId =
         saveDraft(
@@ -227,7 +226,7 @@ class PriorAuthorityDraftIntegrationTest {
         restTemplate.postForEntity(
             submitUrl(priorAuthorityId), new HttpEntity<>(null, headers()), String.class);
 
-    assertThat(response.getStatusCode()).isIn(HttpStatus.CREATED, HttpStatus.ACCEPTED);
+    assertThat(response.getStatusCode()).isIn(HttpStatus.OK, HttpStatus.ACCEPTED);
     SubmitPriorAuthorityDraftResponse body =
         objectMapper.readValue(response.getBody(), SubmitPriorAuthorityDraftResponse.class);
     assertThat(body.getPriorAuthorityId()).isEqualTo(priorAuthorityId);
