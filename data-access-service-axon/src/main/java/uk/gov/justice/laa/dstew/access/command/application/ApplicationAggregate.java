@@ -24,6 +24,7 @@ import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApp
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.ValidateApplicationExistsCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.MakePriorAuthorityDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.ValidateApplicationGrantedCommand;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand;
@@ -87,6 +88,20 @@ public class ApplicationAggregate {
           state, command.applicationId(), command.schemaVersion(), fingerprint, null, 0L);
     }
     return applicationId;
+  }
+
+  /**
+   * Does stuff around Prior Authority Make Decision.
+   *
+   */
+  @CommandHandler
+  void handle(
+          MakePriorAuthorityDecisionCommand command,
+          ApplicationDataStore applicationDataStore,
+          EventAppender eventAppender) {
+    requireApplicationExists(command.applicationId());
+    validateAutomaticOutcome(command, applicationDataStore);
+    recordAutomaticGrant(command, applicationDataStore, eventAppender);
   }
 
   /**
