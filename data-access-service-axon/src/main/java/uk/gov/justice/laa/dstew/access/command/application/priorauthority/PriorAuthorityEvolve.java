@@ -22,6 +22,7 @@ public final class PriorAuthorityEvolve {
   public static void apply(PriorAuthorityState state, PriorAuthorityDecisionRecordedEvent event) {
     state.submissionId = event.submissionId();
     state.applicationId = event.applicationId();
+    state.priorAuthorityType = event.priorAuthorityType();
     state.dataVersion = event.dataVersion();
     state.status = event.status();
   }

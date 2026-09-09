@@ -102,6 +102,7 @@ class PriorAuthorityDeciderTest {
     UUID applicationId = UUID.randomUUID();
     PriorAuthorityState state = stateAfterCreate(submissionId, "fingerprint");
     state.applicationId = applicationId;
+    state.priorAuthorityType = "EXPERT";
     state.status = PriorAuthorityStatus.PENDING.name();
     state.dataVersion = 4L;
     MakePriorAuthorityDecisionCommand command =
@@ -123,6 +124,7 @@ class PriorAuthorityDeciderTest {
     assertThat(result).isPresent();
     assertThat(result.get().submissionId()).isEqualTo(submissionId);
     assertThat(result.get().applicationId()).isEqualTo(applicationId);
+    assertThat(result.get().priorAuthorityType()).isEqualTo("EXPERT");
     assertThat(result.get().dataVersion()).isEqualTo(5L);
     assertThat(result.get().status()).isEqualTo("GRANTED");
   }

@@ -49,12 +49,14 @@ class PriorAuthorityEvolveTest {
         new PriorAuthorityDecisionRecordedEvent(
             submissionId,
             applicationId,
+            "EXPERT",
             3L,
             PriorAuthorityStatus.REFUSED.name(),
             Instant.parse("2026-08-02T10:00:00Z")));
 
     assertThat(state.getSubmissionId()).isEqualTo(submissionId);
     assertThat(state.getApplicationId()).isEqualTo(applicationId);
+    assertThat(state.getPriorAuthorityType()).isEqualTo("EXPERT");
     assertThat(state.getDataVersion()).isEqualTo(3L);
     assertThat(state.getStatus()).isEqualTo(PriorAuthorityStatus.REFUSED.name());
   }

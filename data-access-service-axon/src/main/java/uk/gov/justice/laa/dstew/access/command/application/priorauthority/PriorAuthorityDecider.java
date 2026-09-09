@@ -72,6 +72,7 @@ public final class PriorAuthorityDecider {
         new PriorAuthorityDecisionRecordedEvent(
             command.submissionId(),
             state.applicationId,
+            state.priorAuthorityType,
             state.dataVersion + 1,
             command.overallDecision(),
             command.occurredAt()));

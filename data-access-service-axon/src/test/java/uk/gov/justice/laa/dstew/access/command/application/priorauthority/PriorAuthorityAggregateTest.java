@@ -245,7 +245,12 @@ class PriorAuthorityAggregateTest {
         .then()
         .events(
             new PriorAuthorityDecisionRecordedEvent(
-                submissionId, applicationId, 1L, PriorAuthorityStatus.GRANTED.name(), decidedAt));
+                submissionId,
+                applicationId,
+                "EXPERT",
+                1L,
+                PriorAuthorityStatus.GRANTED.name(),
+                decidedAt));
 
     ArgumentCaptor<PriorAuthorityDataPayload> payloadCaptor =
         ArgumentCaptor.forClass(PriorAuthorityDataPayload.class);
@@ -284,6 +289,7 @@ class PriorAuthorityAggregateTest {
         new PriorAuthorityDecisionRecordedEvent(
             submissionId,
             applicationId,
+            "EXPERT",
             1L,
             PriorAuthorityStatus.REFUSED.name(),
             occurredAt.plusSeconds(1));
@@ -337,6 +343,7 @@ class PriorAuthorityAggregateTest {
         new PriorAuthorityDecisionRecordedEvent(
             submissionId,
             applicationId,
+            "EXPERT",
             1L,
             PriorAuthorityStatus.GRANTED.name(),
             occurredAt.plusSeconds(1));
