@@ -7,7 +7,7 @@ import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
-import uk.gov.justice.laa.dstew.access.api.PriorAuthorityDraftCommandApi;
+import uk.gov.justice.laa.dstew.access.api.PriorAuthorityDraftsApi;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.CreatePriorAuthorityDraftCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.CreatePriorAuthorityDraftUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.SubmitPriorAuthorityDraftCommand;
@@ -24,7 +24,7 @@ import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
 
 /** HTTP command adapter for Prior Authority draft writes. */
 @RestController
-public class PriorAuthorityDraftCommandController implements PriorAuthorityDraftCommandApi {
+public class PriorAuthorityDraftCommandController implements PriorAuthorityDraftsApi {
 
   private final CreatePriorAuthorityDraftUseCase createUseCase;
   private final UpdatePriorAuthorityDraftUseCase updateUseCase;
