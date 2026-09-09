@@ -33,6 +33,7 @@ import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApp
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDecisionRecordedEvent;
 import uk.gov.justice.laa.dstew.access.config.interceptor.ServiceNameMetadataDispatchInterceptor;
 
 @ExtendWith(MockitoExtension.class)
@@ -311,6 +312,32 @@ class ApplicationHistoryProjectionTest {
     assertThat(saved.getOccurredAt()).isEqualTo(occurredAt);
     assertThat(saved.getEventData()).contains("\"status\":\"PENDING\"");
     assertThat(saved.getEventData()).contains("\"dataVersion\":0");
+  }
+
+  @Test
+  void givenPriorAuthorityDecisionRecordedEvent_whenHandled_thenStoresInPaHistoryTable() {
+    UUID submissionId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-08-05T11:00:00Z");
+    var event =
+        new PriorAuthorityDecisionRecordedEvent(
+            submissionId, applicationId, "EXPERT", 1L, "GRANTED", occurredAt);
+    var msg = message(event, "pa-decision-event-id");
+
+    projection.on(event, msg);
+
+    var captor = ArgumentCaptor.forClass(PriorAuthorityHistoryReadModel.class);
+    verify(paRepository).save(captor.capture());
+    var saved = captor.getValue();
+    assertThat(saved.getEventId()).isEqualTo("pa-decision-event-id");
+    assertThat(saved.getApplicationId()).isEqualTo(applicationId);
+    assertThat(saved.getSubmissionId()).isEqualTo(submissionId);
+    assertThat(saved.getPriorAuthorityType()).isEqualTo("EXPERT");
+    assertThat(saved.getEventType()).isEqualTo("PRIOR_AUTHORITY_DECISION_GRANTED");
+    assertThat(saved.getServiceName()).isEqualTo("CIVIL_APPLY");
+    assertThat(saved.getOccurredAt()).isEqualTo(occurredAt);
+    assertThat(saved.getEventData()).contains("\"status\":\"GRANTED\"");
+    assertThat(saved.getEventData()).contains("\"dataVersion\":1");
   }
 
   @Test

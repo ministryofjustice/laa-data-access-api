@@ -23,6 +23,7 @@ import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApp
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDecisionRecordedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
 import uk.gov.justice.laa.dstew.access.config.interceptor.ServiceNameMetadataDispatchInterceptor;
 
@@ -180,6 +181,31 @@ public class ApplicationHistoryProjection {
             .submissionId(event.submissionId())
             .priorAuthorityType(event.priorAuthorityType())
             .eventType("PRIOR_AUTHORITY_CREATED")
+            .eventData(
+                serialise(
+                    Map.of(
+                        "status", event.status(),
+                        "dataVersion", event.dataVersion())))
+            .serviceName(serviceName == null ? null : serviceName.toString())
+            .occurredAt(event.occurredAt())
+            .build());
+  }
+
+  /** Records a prior-authority decision in the PA history table. */
+  @EventHandler
+  public void on(PriorAuthorityDecisionRecordedEvent event, EventMessage message) {
+    Object serviceName =
+        message.metadata().get(ServiceNameMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY);
+    priorAuthorityHistoryReadRepository.save(
+        PriorAuthorityHistoryReadModel.builder()
+            .eventId(message.identifier())
+            .applicationId(event.applicationId())
+            .submissionId(event.submissionId())
+            .priorAuthorityType(event.priorAuthorityType())
+            .eventType(
+                DecisionValue.GRANTED.name().equals(event.status())
+                    ? "PRIOR_AUTHORITY_DECISION_GRANTED"
+                    : "PRIOR_AUTHORITY_DECISION_REFUSED")
             .eventData(
                 serialise(
                     Map.of(
