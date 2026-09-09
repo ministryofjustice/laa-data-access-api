@@ -58,7 +58,7 @@ public class DecisionAsserts {
     Assertions.assertThat(actual)
         .usingRecursiveComparison()
         .ignoringCollectionOrder()
-        .ignoringFields("certificate", "applicationVersion")
+        .ignoringFields("certificate", "applicationVersion", "caseworkerId")
         .isEqualTo(expectedMakeDecisionRequest);
 
     Assertions.assertThat(savedDecision.getModifiedAt()).isNotNull();

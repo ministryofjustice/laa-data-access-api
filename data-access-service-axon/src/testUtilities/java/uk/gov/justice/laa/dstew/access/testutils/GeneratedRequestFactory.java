@@ -54,6 +54,7 @@ public class GeneratedRequestFactory {
                             .build())
                     .build()))
         .applicationVersion(1L)
+        .caseworkerId(UUID.randomUUID())
         .certificate(Map.of("source", "mass-data"))
         .build();
   }

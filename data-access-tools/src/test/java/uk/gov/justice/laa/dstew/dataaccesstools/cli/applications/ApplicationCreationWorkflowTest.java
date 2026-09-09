@@ -28,6 +28,32 @@ class ApplicationCreationWorkflowTest {
     assertEquals("create", client.operations.get(3));
   }
 
+  @Test
+  void createsManualApplicationsWithoutMakingADecision() {
+    RecordingClient client = new RecordingClient();
+    var workflow =
+        new ApplicationCreationWorkflow(
+            client, new ApplicationRequestFactory(), new DecisionRequestFactory());
+
+    WorkflowResult result = workflow.createManual(2);
+
+    assertTrue(result.succeeded());
+    assertEquals(List.of("create", "manual", "create", "manual"), client.operations);
+  }
+
+  @Test
+  void createsEachAutograntedApplicationWithoutManualOutcomeOrDecision() {
+    RecordingClient client = new RecordingClient();
+    var workflow =
+        new ApplicationCreationWorkflow(
+            client, new ApplicationRequestFactory(), new DecisionRequestFactory());
+
+    WorkflowResult result = workflow.createAutogranted(2);
+
+    assertTrue(result.succeeded());
+    assertEquals(List.of("create", "autogranted", "create", "autogranted"), client.operations);
+  }
+
   private static final class RecordingClient implements DataAccessApiClient {
     private final List<String> operations = new ArrayList<>();
 
@@ -40,6 +66,13 @@ class ApplicationCreationWorkflowTest {
     @Override
     public void recordManualOutcome(UUID applicationId) {
       operations.add("manual");
+    }
+
+    @Override
+    public void recordAutograntedOutcome(UUID applicationId, String requestBody) {
+      assertTrue(requestBody.contains("\"outcome\":\"AUTOGRANTED\""));
+      assertTrue(requestBody.contains("\"certificate\""));
+      operations.add("autogranted");
     }
 
     @Override

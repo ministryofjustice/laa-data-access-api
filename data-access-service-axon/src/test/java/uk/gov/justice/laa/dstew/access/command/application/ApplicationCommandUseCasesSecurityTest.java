@@ -12,7 +12,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.UnassignCaseworkerUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.document.UploadDocumentUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteUseCase;
@@ -31,7 +30,6 @@ import uk.gov.justice.laa.dstew.access.utils.TestSecurityConfig;
       MakeApplicationDecisionUseCase.class,
       CreateNoteUseCase.class,
       MakePriorAuthorityDecisionUseCase.class,
-      UnassignCaseworkerUseCase.class,
       RecordAutoGrantOutcomeUseCase.class,
       UploadDocumentUseCase.class,
       TestSecurityConfig.class
@@ -45,7 +43,6 @@ class ApplicationCommandUseCasesSecurityTest extends BaseSecuredUseCaseTest {
   @Autowired private MakeApplicationDecisionUseCase makeApplicationDecisionUseCase;
   @Autowired private CreateNoteUseCase createNoteUseCase;
   @Autowired private MakePriorAuthorityDecisionUseCase makePriorAuthorityDecisionUseCase;
-  @Autowired private UnassignCaseworkerUseCase unassignCaseworkerUseCase;
   @Autowired private RecordAutoGrantOutcomeUseCase recordAutoGrantOutcomeUseCase;
   @Autowired private UploadDocumentUseCase uploadDocumentUseCase;
 
@@ -62,7 +59,6 @@ class ApplicationCommandUseCasesSecurityTest extends BaseSecuredUseCaseTest {
     assertDenied(() -> makeApplicationDecisionUseCase.execute(null));
     assertDenied(() -> createNoteUseCase.execute(null));
     assertDenied(() -> makePriorAuthorityDecisionUseCase.execute(null));
-    assertDenied(() -> unassignCaseworkerUseCase.execute(null));
     assertDenied(() -> recordAutoGrantOutcomeUseCase.recordReady(null));
     assertDenied(() -> recordAutoGrantOutcomeUseCase.record(new Object()));
     assertDenied(() -> uploadDocumentUseCase.execute(null, null));
@@ -80,7 +76,6 @@ class ApplicationCommandUseCasesSecurityTest extends BaseSecuredUseCaseTest {
     assertDenied(() -> makeApplicationDecisionUseCase.execute(null));
     assertDenied(() -> createNoteUseCase.execute(null));
     assertDenied(() -> makePriorAuthorityDecisionUseCase.execute(null));
-    assertDenied(() -> unassignCaseworkerUseCase.execute(null));
     assertDenied(() -> recordAutoGrantOutcomeUseCase.recordReady(null));
     assertDenied(() -> recordAutoGrantOutcomeUseCase.record(new Object()));
     assertDenied(() -> uploadDocumentUseCase.execute(null, null));

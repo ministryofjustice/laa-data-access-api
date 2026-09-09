@@ -20,4 +20,5 @@ public class ApplicationState {
   long applicationDataVersion;
   long applicationVersion;
   UUID caseworkerId;
+  long assignmentVersion;
 }
