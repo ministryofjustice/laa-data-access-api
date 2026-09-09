@@ -50,8 +50,7 @@ class PriorAuthorityProjectionTest {
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-19T10:00:00Z");
     PriorAuthoritySubmittedEvent event =
-        new PriorAuthoritySubmittedEvent(
-            submissionId, applicationId, "EXPERT", 1, 1L, "SUBMITTED", occurredAt);
+        new PriorAuthoritySubmittedEvent(submissionId, applicationId, "EXPERT", 1, 1L, occurredAt);
     PriorAuthorityReadModel[] savedCapture = new PriorAuthorityReadModel[1];
     when(repository.save(any()))
         .thenAnswer(
@@ -90,12 +89,12 @@ class PriorAuthorityProjectionTest {
     assertThat(savedCapture[0].getPriorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(savedCapture[0].getApplicationId()).isEqualTo(applicationId);
     assertThat(savedCapture[0].getDataVersion()).isZero();
-    assertThat(savedCapture[0].getStatus()).isNull();
+    assertThat(savedCapture[0].getStatus()).isEqualTo("DRAFT");
     assertThat(savedCapture[0].getCreatedAt()).isEqualTo(occurredAt);
   }
 
   @Test
-  void givenDraftRowWithNullStatus_whenQueryHandled_thenHydratesDraftContent() {
+  void givenDraftRowWithDraftStatus_whenQueryHandled_thenHydratesDraftContent() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     PriorAuthorityReadModel model =
@@ -103,7 +102,7 @@ class PriorAuthorityProjectionTest {
             .priorAuthorityId(priorAuthorityId)
             .applicationId(applicationId)
             .dataVersion(0L)
-            .status(null)
+            .status("DRAFT")
             .build();
     PriorAuthorityContent content =
         new PriorAuthorityContent(EXPERT, "Expert required", null, null, null);
@@ -119,7 +118,7 @@ class PriorAuthorityProjectionTest {
 
     assertThat(result.priorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(result.applicationId()).isEqualTo(applicationId);
-    assertThat(result.status()).isNull();
+    assertThat(result.status()).isEqualTo("DRAFT");
     assertThat(result.priorAuthorityType()).isEqualTo(EXPERT);
   }
 
@@ -132,7 +131,7 @@ class PriorAuthorityProjectionTest {
             .priorAuthorityId(submissionId)
             .applicationId(applicationId)
             .dataVersion(4L)
-            .status("PENDING")
+            .status("SUBMITTED")
             .build();
     PriorAuthorityContent content =
         new PriorAuthorityContent(
@@ -154,7 +153,7 @@ class PriorAuthorityProjectionTest {
     assertThat(result.applicationId()).isEqualTo(applicationId);
     assertThat(result.priorAuthorityType()).isEqualTo(COUNSEL);
     assertThat(result.justification()).isEqualTo("Counsel is required");
-    assertThat(result.status()).isEqualTo("PENDING");
+    assertThat(result.status()).isEqualTo("SUBMITTED");
     assertThat(result.counselDetails().counselType()).isEqualTo(CounselType.TWO_JUNIOR_COUNSEL);
     assertThat(result.expertDetails()).isNull();
     assertThat(result.disbursementDetails()).isNull();
@@ -283,7 +282,7 @@ class PriorAuthorityProjectionTest {
             .priorAuthorityId(submissionId)
             .applicationId(UUID.randomUUID())
             .dataVersion(1L)
-            .status("PENDING")
+            .status("SUBMITTED")
             .build();
     when(repository.findById(submissionId)).thenReturn(Optional.of(model));
     when(dataStore.get(submissionId, 1L))

@@ -266,7 +266,7 @@ class PriorAuthorityHistoryAssemblerTest {
         .submissionId(submissionId)
         .priorAuthorityType(priorAuthorityType)
         .eventType("PRIOR_AUTHORITY_SUBMITTED")
-        .eventData("{\"status\":\"PENDING\",\"dataVersion\":0}")
+        .eventData("{\"status\":\"SUBMITTED\",\"dataVersion\":0}")
         .serviceName(serviceName)
         .occurredAt(occurredAt)
         .build();

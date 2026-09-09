@@ -111,7 +111,7 @@ class PriorAuthorityDraftIntegrationTest {
         objectMapper.readValue(draftResponse.getBody(), PriorAuthorityResponse.class);
     assertThat(draft.getPriorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(draft.getApplicationId()).isEqualTo(applicationId);
-    assertThat(draft.getStatus()).isNull();
+    assertThat(draft.getStatus()).isEqualTo(PriorAuthorityResponse.StatusEnum.DRAFT);
     assertThat(draft.getPriorAuthorityType())
         .isEqualTo(PriorAuthorityResponse.PriorAuthorityTypeEnum.EXPERT);
   }
@@ -212,8 +212,9 @@ class PriorAuthorityDraftIntegrationTest {
   }
 
   @Test
-  void givenDraftInProgress_whenSubmitPriorAuthorityDraft_thenTransitionsToPendingAndDeletesDraft()
-      throws Exception {
+  void
+      givenDraftInProgress_whenSubmitPriorAuthorityDraft_thenTransitionsToSubmittedAndDeletesDraft()
+          throws Exception {
     UUID applicationId = grantedApplication();
     UUID priorAuthorityId =
         saveDraft(
@@ -237,7 +238,7 @@ class PriorAuthorityDraftIntegrationTest {
                 "SELECT status FROM axon.prior_authority_current_state WHERE prior_authority_id = ?",
                 String.class,
                 priorAuthorityId))
-        .isEqualTo("PENDING");
+        .isEqualTo("SUBMITTED");
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM axon.prior_authority_data"
@@ -261,7 +262,7 @@ class PriorAuthorityDraftIntegrationTest {
     assertThat(getResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
     PriorAuthorityResponse priorAuthority =
         objectMapper.readValue(getResponse.getBody(), PriorAuthorityResponse.class);
-    assertThat(priorAuthority.getStatus()).isEqualTo("PENDING");
+    assertThat(priorAuthority.getStatus()).isEqualTo(PriorAuthorityResponse.StatusEnum.SUBMITTED);
     assertThat(priorAuthority.getDisbursementDetails().getDisbursementPurpose())
         .isEqualTo("Court interpreter");
   }

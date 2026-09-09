@@ -35,7 +35,7 @@ class GetPriorAuthorityUseCaseTest {
             priorAuthorityId,
             applicationId,
             "Counsel is required",
-            "PENDING",
+            "SUBMITTED",
             PriorAuthorityType.COUNSEL,
             null,
             new uk.gov.justice.laa.dstew.access.content.priorauthority.CounselDetails(

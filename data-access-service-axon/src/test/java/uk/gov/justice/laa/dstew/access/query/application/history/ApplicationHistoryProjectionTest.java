@@ -293,8 +293,7 @@ class ApplicationHistoryProjectionTest {
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-05T10:00:00Z");
     var event =
-        new PriorAuthoritySubmittedEvent(
-            submissionId, applicationId, "EXPERT", 1, 0L, "PENDING", occurredAt);
+        new PriorAuthoritySubmittedEvent(submissionId, applicationId, "EXPERT", 1, 0L, occurredAt);
     var msg = message(event, "pa-submit-event-id");
 
     projection.on(event, msg);
@@ -309,7 +308,7 @@ class ApplicationHistoryProjectionTest {
     assertThat(saved.getEventType()).isEqualTo("PRIOR_AUTHORITY_SUBMITTED");
     assertThat(saved.getServiceName()).isEqualTo("CIVIL_APPLY");
     assertThat(saved.getOccurredAt()).isEqualTo(occurredAt);
-    assertThat(saved.getEventData()).contains("\"status\":\"PENDING\"");
+    assertThat(saved.getEventData()).contains("\"status\":\"SUBMITTED\"");
     assertThat(saved.getEventData()).contains("\"dataVersion\":0");
   }
 
@@ -319,8 +318,7 @@ class ApplicationHistoryProjectionTest {
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-05T10:00:00Z");
     var event =
-        new PriorAuthoritySubmittedEvent(
-            submissionId, applicationId, "EXPERT", 1, 0L, "PENDING", occurredAt);
+        new PriorAuthoritySubmittedEvent(submissionId, applicationId, "EXPERT", 1, 0L, occurredAt);
 
     projection.on(event, messageWithoutServiceName(event, "pa-submit-event-id"));
 

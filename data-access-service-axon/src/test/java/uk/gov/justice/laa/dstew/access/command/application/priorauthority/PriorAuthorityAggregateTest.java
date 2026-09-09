@@ -28,7 +28,6 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
@@ -287,13 +286,7 @@ class PriorAuthorityAggregateTest {
         .then()
         .events(
             new PriorAuthoritySubmittedEvent(
-                priorAuthorityId,
-                applicationId,
-                EXPERT.name(),
-                1,
-                0L,
-                PriorAuthorityStatus.PENDING.name(),
-                submittedAt));
+                priorAuthorityId, applicationId, EXPERT.name(), 1, 0L, submittedAt));
 
     verify(jsonSchemaValidator).validate(content, "PriorAuthority.json", 1);
     verify(dataStore)
@@ -352,13 +345,7 @@ class PriorAuthorityAggregateTest {
             priorAuthorityId, applicationId, EXPERT.name(), 1, startedAt);
     PriorAuthoritySubmittedEvent submittedEvent =
         new PriorAuthoritySubmittedEvent(
-            priorAuthorityId,
-            applicationId,
-            EXPERT.name(),
-            1,
-            0L,
-            PriorAuthorityStatus.PENDING.name(),
-            submittedAt);
+            priorAuthorityId, applicationId, EXPERT.name(), 1, 0L, submittedAt);
 
     UpdatePriorAuthorityDraftCommand command =
         new UpdatePriorAuthorityDraftCommand(

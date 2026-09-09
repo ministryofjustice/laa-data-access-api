@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
 
 /** Unit tests for {@link PriorAuthorityEvolve}. */
 class PriorAuthorityEvolveTest {
@@ -36,13 +35,7 @@ class PriorAuthorityEvolveTest {
     Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
     PriorAuthoritySubmittedEvent event =
         new PriorAuthoritySubmittedEvent(
-            priorAuthorityId,
-            applicationId,
-            "EXPERT",
-            3,
-            0L,
-            PriorAuthorityStatus.PENDING.name(),
-            occurredAt);
+            priorAuthorityId, applicationId, "EXPERT", 3, 0L, occurredAt);
 
     PriorAuthorityEvolve.apply(state, event);
 
@@ -51,6 +44,5 @@ class PriorAuthorityEvolveTest {
     assertThat(state.getPriorAuthorityType()).isEqualTo("EXPERT");
     assertThat(state.getSchemaVersion()).isEqualTo(3);
     assertThat(state.getDataVersion()).isEqualTo(0L);
-    assertThat(state.getStatus()).isEqualTo(PriorAuthorityStatus.PENDING.name());
   }
 }

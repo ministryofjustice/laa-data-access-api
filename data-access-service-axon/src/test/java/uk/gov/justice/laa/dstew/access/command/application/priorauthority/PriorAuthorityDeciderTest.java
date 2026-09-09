@@ -6,7 +6,6 @@ import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 
 /** Unit tests for {@link PriorAuthorityDecider}. */
@@ -53,7 +52,6 @@ class PriorAuthorityDeciderTest {
     assertThat(event.priorAuthorityType()).isEqualTo(PriorAuthorityType.COUNSEL.name());
     assertThat(event.schemaVersion()).isEqualTo(2);
     assertThat(event.dataVersion()).isEqualTo(0L);
-    assertThat(event.status()).isEqualTo(PriorAuthorityStatus.PENDING.name());
     assertThat(event.occurredAt()).isEqualTo(OCCURRED_AT);
   }
 }
