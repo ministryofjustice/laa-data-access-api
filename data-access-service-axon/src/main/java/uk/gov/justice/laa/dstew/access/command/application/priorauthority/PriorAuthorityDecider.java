@@ -75,6 +75,9 @@ public final class PriorAuthorityDecider {
             state.priorAuthorityType,
             state.dataVersion + 1,
             command.overallDecision(),
+            command.decisionJustification(),
+            command.amountGranted(),
+            command.dateGranted(),
             command.occurredAt()));
   }
 

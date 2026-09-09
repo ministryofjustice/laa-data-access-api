@@ -55,6 +55,9 @@ class PriorAuthorityEvolveTest {
             "EXPERT",
             3L,
             PriorAuthorityStatus.REFUSED.name(),
+            "Refused on merits",
+            null,
+            null,
             Instant.parse("2026-08-02T10:00:00Z")));
 
     assertThat(state.getSubmissionId()).isEqualTo(submissionId);

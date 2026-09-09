@@ -330,7 +330,15 @@ class ApplicationHistoryProjectionTest {
     Instant occurredAt = Instant.parse("2026-08-05T11:00:00Z");
     var event =
         new PriorAuthorityDecisionRecordedEvent(
-            submissionId, applicationId, "EXPERT", 1L, "GRANTED", occurredAt);
+            submissionId,
+            applicationId,
+            "EXPERT",
+            1L,
+            "GRANTED",
+            "Decision recorded",
+            123.45,
+            Instant.parse("2026-08-05T10:30:00Z"),
+            occurredAt);
     var msg = message(event, "pa-decision-event-id");
 
     projection.on(event, msg);
@@ -347,6 +355,9 @@ class ApplicationHistoryProjectionTest {
     assertThat(saved.getOccurredAt()).isEqualTo(occurredAt);
     assertThat(saved.getEventData()).contains("\"status\":\"GRANTED\"");
     assertThat(saved.getEventData()).contains("\"dataVersion\":1");
+    assertThat(saved.getEventData()).contains("\"decisionJustification\":\"Decision recorded\"");
+    assertThat(saved.getEventData()).contains("\"amountGranted\":123.45");
+    assertThat(saved.getEventData()).contains("\"dateGranted\":\"2026-08-05T10:30:00Z\"");
   }
 
   @Test
@@ -356,13 +367,25 @@ class ApplicationHistoryProjectionTest {
     Instant occurredAt = Instant.parse("2026-08-05T11:05:00Z");
     var event =
         new PriorAuthorityDecisionRecordedEvent(
-            submissionId, applicationId, "EXPERT", 2L, "REFUSED", occurredAt);
+            submissionId,
+            applicationId,
+            "EXPERT",
+            2L,
+            "REFUSED",
+            "Refused on merits",
+            null,
+            null,
+            occurredAt);
 
     projection.on(event, message(event, "pa-decision-refused-event-id"));
 
     var captor = ArgumentCaptor.forClass(PriorAuthorityHistoryReadModel.class);
     verify(paRepository).save(captor.capture());
     assertThat(captor.getValue().getEventType()).isEqualTo("PRIOR_AUTHORITY_DECISION_REFUSED");
+    assertThat(captor.getValue().getEventData())
+        .contains("\"decisionJustification\":\"Refused on merits\"")
+        .doesNotContain("amountGranted")
+        .doesNotContain("dateGranted");
   }
 
   @Test

@@ -250,6 +250,9 @@ class PriorAuthorityAggregateTest {
                 "EXPERT",
                 1L,
                 PriorAuthorityStatus.GRANTED.name(),
+                "Decision recorded",
+                1234.56,
+                decidedAt,
                 decidedAt));
 
     ArgumentCaptor<PriorAuthorityDataPayload> payloadCaptor =
@@ -292,6 +295,9 @@ class PriorAuthorityAggregateTest {
             "EXPERT",
             1L,
             PriorAuthorityStatus.REFUSED.name(),
+            "Decision recorded",
+            0.0,
+            occurredAt,
             occurredAt.plusSeconds(1));
     when(dataStore.get(submissionId, 1L))
         .thenReturn(
@@ -346,6 +352,9 @@ class PriorAuthorityAggregateTest {
             "EXPERT",
             1L,
             PriorAuthorityStatus.GRANTED.name(),
+            "Decision recorded",
+            100.0,
+            occurredAt,
             occurredAt.plusSeconds(1));
     when(dataStore.get(submissionId, 1L))
         .thenReturn(

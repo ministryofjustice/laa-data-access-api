@@ -281,7 +281,15 @@ class PriorAuthorityProjectionTest {
 
     projection.on(
         new PriorAuthorityDecisionRecordedEvent(
-            submissionId, applicationId, "EXPERT", 1L, "REFUSED", Instant.now()));
+            submissionId,
+            applicationId,
+            "EXPERT",
+            1L,
+            "REFUSED",
+            "Refused on merits",
+            null,
+            null,
+            Instant.now()));
 
     assertThat(model.getStatus()).isEqualTo("REFUSED");
     assertThat(model.getDataVersion()).isEqualTo(1L);

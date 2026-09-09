@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.query.application.history;
 
 import java.time.Instant;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -194,8 +195,16 @@ public class ApplicationHistoryProjection {
   /** Records a prior-authority decision in the PA history table. */
   @EventHandler
   public void on(PriorAuthorityDecisionRecordedEvent event, EventMessage message) {
-    Object serviceName =
-        message.metadata().get(ServiceNameMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY);
+    Map<String, Object> eventData = new LinkedHashMap<>();
+    eventData.put("status", event.status());
+    eventData.put("dataVersion", event.dataVersion());
+    eventData.put("decisionJustification", event.decisionJustification());
+    if (event.amountGranted() != null) {
+      eventData.put("amountGranted", event.amountGranted());
+    }
+    if (event.dateGranted() != null) {
+      eventData.put("dateGranted", event.dateGranted());
+    }
     priorAuthorityHistoryReadRepository.save(
         PriorAuthorityHistoryReadModel.builder()
             .eventId(message.identifier())
@@ -206,12 +215,8 @@ public class ApplicationHistoryProjection {
                 DecisionValue.GRANTED.name().equals(event.status())
                     ? "PRIOR_AUTHORITY_DECISION_GRANTED"
                     : "PRIOR_AUTHORITY_DECISION_REFUSED")
-            .eventData(
-                serialise(
-                    Map.of(
-                        "status", event.status(),
-                        "dataVersion", event.dataVersion())))
-            .serviceName(serviceName == null ? null : serviceName.toString())
+            .eventData(serialise(eventData))
+            .serviceName(resolveServiceName(message))
             .occurredAt(event.occurredAt())
             .build());
   }
@@ -326,6 +331,12 @@ public class ApplicationHistoryProjection {
 
   private String groupHistoryId(EventMessage message, UUID applicationId) {
     return message.identifier() + ":" + applicationId;
+  }
+
+  private String resolveServiceName(EventMessage message) {
+    Object serviceName =
+        message.metadata().get(ServiceNameMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY);
+    return serviceName == null ? null : serviceName.toString();
   }
 
   private String serialise(Object event) {
