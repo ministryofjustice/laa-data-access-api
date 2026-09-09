@@ -168,6 +168,7 @@ class SecurityIntegrationTest {
   private MakeDecisionRequest decisionRequest() {
     return MakeDecisionRequest.builder()
         .applicationVersion(0L)
+        .caseworkerId(UUID.randomUUID())
         .overallDecision(DecisionStatus.REFUSED)
         .autoGranted(false)
         .eventHistory(EventHistoryRequest.builder().eventDescription("decision").build())

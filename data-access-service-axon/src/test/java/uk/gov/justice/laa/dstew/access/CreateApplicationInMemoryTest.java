@@ -46,6 +46,7 @@ import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.IndividualsResponse;
 import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
+import uk.gov.justice.laa.dstew.access.model.WorkListResponse;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
@@ -375,6 +376,23 @@ class CreateApplicationInMemoryTest {
     ApplicationReadModel projected = awaitApplicationVersion(applicationId, 1L);
     assertThat(projected.getStatus()).isEqualTo(ApplicationStatus.APPLICATION_SUBMITTED.name());
     assertThat(projected.getAutoGranted()).isEqualTo(AutoGrantedState.MANUAL);
+
+    await()
+        .atMost(10, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              ResponseEntity<WorkListResponse> workList =
+                  restTemplate.exchange(
+                      "/api/v0/work-list",
+                      HttpMethod.GET,
+                      new HttpEntity<>(headers()),
+                      WorkListResponse.class);
+              assertThat(workList.getStatusCode()).isEqualTo(HttpStatus.OK);
+              assertThat(workList.getBody()).isNotNull();
+              assertThat(workList.getBody().getItems())
+                  .extracting(item -> item.getItemId())
+                  .contains(applicationId);
+            });
 
     ResponseEntity<ApplicationResponse> direct =
         restTemplate.exchange(
