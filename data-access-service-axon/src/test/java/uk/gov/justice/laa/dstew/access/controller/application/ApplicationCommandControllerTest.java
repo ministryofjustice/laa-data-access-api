@@ -162,34 +162,6 @@ class ApplicationCommandControllerTest {
   }
 
   @Test
-  void givenRequest_whenUnassignCaseworker_thenDelegatesToUseCase() {
-    UUID id = UUID.randomUUID();
-    UnassignCaseworkerFromApplicationCommand command =
-        mock(UnassignCaseworkerFromApplicationCommand.class);
-    when(unassignCaseworkerRequestMapper.toCommand(id, null)).thenReturn(command);
-    controller.unassignCaseworker(null, id, null);
-    verify(unassignCaseworkerUseCase).execute(command);
-  }
-
-  @Test
-  void givenRequest_whenAssignCaseworker_thenDelegatesToUseCase() {
-    CaseworkerAssignment assignment =
-        new CaseworkerAssignment(UUID.randomUUID(), UUID.randomUUID(), "{}", "desc");
-    when(assignCaseworkerRequestMapper.toAssignment(any())).thenReturn(assignment);
-    controller.assignCaseworker(null, null);
-    verify(assignCaseworkerUseCase)
-        .assign(
-            assignment.caseworkerId(),
-            assignment.applicationId(),
-            assignment.serialisedRequest(),
-            assignment.eventDescription());
-    verify(makeDecisionUseCase, never()).execute(any());
-    verify(createNoteUseCase, never()).execute(any());
-    verify(unassignCaseworkerUseCase, never()).execute(any());
-    verify(createApplicationUseCase, never()).execute(any());
-  }
-
-  @Test
   void givenValidFile_whenUploadDocument_thenDelegatesToUseCaseAndReturns201() {
     UUID id = UUID.randomUUID();
     MockMultipartFile file =

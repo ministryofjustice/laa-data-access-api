@@ -42,7 +42,7 @@ class DirectPriorAuthorityWorkItemAssignmentTest {
   }
 
   @Test
-  void assignsCreatedPriorAuthorityUsingItsCanonicalWorkItemId() {
+  void assignsSubmittedPriorAuthorityUsingItsCanonicalWorkItemId() {
     UUID submissionId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     UUID caseworkerId = UUID.randomUUID();
@@ -50,7 +50,7 @@ class DirectPriorAuthorityWorkItemAssignmentTest {
 
     fixture
         .given()
-        .events(created(submissionId, applicationId, when))
+        .events(submitted(submissionId, applicationId, when))
         .when()
         .command(
             new DirectPriorAuthorityWorkItemAssignmentCommand(
@@ -71,7 +71,7 @@ class DirectPriorAuthorityWorkItemAssignmentTest {
     fixture
         .given()
         .events(
-            created(submissionId, applicationId, when),
+            submitted(submissionId, applicationId, when),
             new WorkItemAssigned(
                 submissionId, WorkItemType.PRIOR_AUTHORITY, 1L, 1L, caseworkerId, when))
         .when()
@@ -94,7 +94,7 @@ class DirectPriorAuthorityWorkItemAssignmentTest {
             submissionId, WorkItemType.PRIOR_AUTHORITY, 1L, 1L, caseworkerId, when);
 
     PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
-    aggregate.on(created(submissionId, applicationId, when));
+    aggregate.on(submitted(submissionId, applicationId, when));
     aggregate.on(assigned);
     EventAppender eventAppender = mock(EventAppender.class);
 
@@ -108,7 +108,7 @@ class DirectPriorAuthorityWorkItemAssignmentTest {
 
     fixture
         .given()
-        .events(created(submissionId, applicationId, when))
+        .events(submitted(submissionId, applicationId, when))
         .when()
         .command(
             new DirectPriorAuthorityWorkItemUnassignmentCommand(submissionId, 0L, "{}", "", when))
@@ -122,7 +122,7 @@ class DirectPriorAuthorityWorkItemAssignmentTest {
     UUID submissionId = UUID.randomUUID();
     Instant when = Instant.parse("2026-08-28T10:00:00Z");
     PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
-    aggregate.on(created(submissionId, UUID.randomUUID(), when));
+    aggregate.on(submitted(submissionId, UUID.randomUUID(), when));
 
     assertThatThrownBy(
             () ->
@@ -149,7 +149,7 @@ class DirectPriorAuthorityWorkItemAssignmentTest {
         .noEvents();
     fixture
         .given()
-        .events(created(submissionId, applicationId, when))
+        .events(submitted(submissionId, applicationId, when))
         .when()
         .command(
             new DirectPriorAuthorityWorkItemAssignmentCommand(
@@ -159,7 +159,7 @@ class DirectPriorAuthorityWorkItemAssignmentTest {
         .noEvents();
     fixture
         .given()
-        .events(created(submissionId, applicationId, when))
+        .events(submitted(submissionId, applicationId, when))
         .when()
         .command(
             new DirectPriorAuthorityWorkItemAssignmentCommand(
@@ -169,9 +169,9 @@ class DirectPriorAuthorityWorkItemAssignmentTest {
         .noEvents();
   }
 
-  private PriorAuthorityCreatedEvent created(UUID submissionId, UUID applicationId, Instant when) {
-    return new PriorAuthorityCreatedEvent(
-        submissionId, applicationId, "type", 0L, "hash", "PENDING", 1, when);
+  private PriorAuthoritySubmittedEvent submitted(
+      UUID submissionId, UUID applicationId, Instant when) {
+    return new PriorAuthoritySubmittedEvent(submissionId, applicationId, "type", 1, 0L, when);
   }
 
   @AfterEach

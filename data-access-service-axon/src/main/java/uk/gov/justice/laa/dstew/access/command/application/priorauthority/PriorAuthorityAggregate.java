@@ -9,14 +9,13 @@ import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.assign.DirectPriorAuthorityWorkItemAssignmentCommand;
 import uk.gov.justice.laa.dstew.access.command.worklist.unassign.DirectPriorAuthorityWorkItemUnassignmentCommand;
-import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
@@ -150,7 +149,7 @@ public class PriorAuthorityAggregate {
   }
 
   private void validateWorkItem(UUID workItemId, long expectedAssignmentVersion) {
-    if (submissionId == null || !submissionId.equals(workItemId)) {
+    if (priorAuthorityId == null || !priorAuthorityId.equals(workItemId)) {
       throw new ResourceNotFoundException(
           "No prior-authority work item found with id: " + workItemId);
     }

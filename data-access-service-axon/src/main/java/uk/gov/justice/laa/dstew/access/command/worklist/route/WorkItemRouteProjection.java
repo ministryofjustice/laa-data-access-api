@@ -5,7 +5,7 @@ import org.axonframework.messaging.eventhandling.annotation.EventHandler;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 
@@ -44,14 +44,14 @@ public class WorkItemRouteProjection {
     routes.deleteById(event.applicationId());
   }
 
-  /** Establishes direct prior-authority command ownership at creation. */
+  /** Establishes direct prior-authority command ownership at submission. */
   @EventHandler
   @Transactional
-  public void on(PriorAuthorityCreatedEvent event) {
+  public void on(PriorAuthoritySubmittedEvent event) {
     routes.save(
         new WorkItemRoute(
             WorkItemType.PRIOR_AUTHORITY,
-            event.submissionId(),
+            event.priorAuthorityId(),
             WorkItemRouteKind.STANDALONE,
             null,
             0L,

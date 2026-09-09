@@ -119,10 +119,6 @@ components:
       $ref: "./open-api-prior-authority/components.yml#/components/schemas/CounselDetails"
     DisbursementDetails:
       $ref: "./open-api-prior-authority/components.yml#/components/schemas/DisbursementDetails"
-    CreatePriorAuthorityRequest:
-      $ref: "./open-api-prior-authority/components.yml#/components/schemas/CreatePriorAuthorityRequest"
-    CreatePriorAuthorityResponse:
-      $ref: "./open-api-prior-authority/components.yml#/components/schemas/CreatePriorAuthorityResponse"
     SavePriorAuthorityDraftRequest:
       $ref: "./open-api-prior-authority/components.yml#/components/schemas/SavePriorAuthorityDraftRequest"
     SavePriorAuthorityDraftResponse:

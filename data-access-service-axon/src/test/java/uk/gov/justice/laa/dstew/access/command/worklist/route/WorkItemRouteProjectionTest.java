@@ -10,7 +10,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 
@@ -49,16 +49,16 @@ class WorkItemRouteProjectionTest {
 
   @Test
   void createsStandalonePriorAuthorityRoute() {
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-09-03T10:00:00Z");
 
     projection.on(
-        new PriorAuthorityCreatedEvent(
-            submissionId, UUID.randomUUID(), "type", 1L, "fingerprint", "DRAFT", 1, occurredAt));
+        new PriorAuthoritySubmittedEvent(
+            priorAuthorityId, UUID.randomUUID(), "type", 1, 1L, occurredAt));
 
     WorkItemRoute route = savedRoute();
     assertThat(route.getWorkItemType()).isEqualTo(WorkItemType.PRIOR_AUTHORITY);
-    assertThat(route.getWorkItemId()).isEqualTo(submissionId);
+    assertThat(route.getWorkItemId()).isEqualTo(priorAuthorityId);
     assertThat(route.getRouteKind()).isEqualTo(WorkItemRouteKind.STANDALONE);
     assertThat(route.getGroupId()).isNull();
     assertThat(route.getMembershipVersion()).isZero();

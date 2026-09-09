@@ -383,34 +383,3 @@ components:
         disbursementAmount:
           type: number
           format: double
-
-    CreatePriorAuthorityRequest:
-      type: object
-      required:
-        - priorAuthorityType
-        - justification
-      properties:
-        priorAuthorityType:
-          $ref: "#/components/schemas/PriorAuthorityType"
-        justification:
-          type: string
-          maxLength: 10000
-        expertDetails:
-          $ref: "#/components/schemas/ExpertDetails"
-        counselDetails:
-          $ref: "#/components/schemas/CounselDetails"
-        disbursementDetails:
-          $ref: "#/components/schemas/DisbursementDetails"
-
-    CreatePriorAuthorityResponse:
-      type: object
-      required:
-        - priorAuthorityId
-        - submittedAt
-      properties:
-        priorAuthorityId:
-          type: string
-          format: uuid
-        submittedAt:
-          type: string
-          format: date-time
