@@ -210,7 +210,8 @@ public class ApplicationHistoryProjection {
                 serialise(
                     Map.of(
                         "status", event.status(),
-                        "dataVersion", event.dataVersion())))
+                        "dataVersion", event.dataVersion(),
+                        "","")))
             .serviceName(serviceName == null ? null : serviceName.toString())
             .occurredAt(event.occurredAt())
             .build());
