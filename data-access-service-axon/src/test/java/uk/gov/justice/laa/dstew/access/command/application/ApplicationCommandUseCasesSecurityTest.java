@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.command.application;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.Mockito.verifyNoInteractions;
 
+import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
@@ -47,6 +48,7 @@ class ApplicationCommandUseCasesSecurityTest extends BaseSecuredUseCaseTest {
   @Autowired private UploadDocumentUseCase uploadDocumentUseCase;
 
   @MockitoBean private RetryingCommandDispatcher dispatcher;
+  @MockitoBean private QueryGateway queryGateway;
   @MockitoBean private SubscriptionProjectionGateway projectionGateway;
   @MockitoBean private SdsService sdsService;
 
@@ -63,7 +65,7 @@ class ApplicationCommandUseCasesSecurityTest extends BaseSecuredUseCaseTest {
     assertDenied(() -> recordAutoGrantOutcomeUseCase.record(new Object()));
     assertDenied(() -> uploadDocumentUseCase.execute(null, null));
 
-    verifyNoInteractions(dispatcher, projectionGateway, sdsService);
+    verifyNoInteractions(dispatcher, queryGateway, projectionGateway, sdsService);
   }
 
   @Test
@@ -80,7 +82,7 @@ class ApplicationCommandUseCasesSecurityTest extends BaseSecuredUseCaseTest {
     assertDenied(() -> recordAutoGrantOutcomeUseCase.record(new Object()));
     assertDenied(() -> uploadDocumentUseCase.execute(null, null));
 
-    verifyNoInteractions(dispatcher, projectionGateway, sdsService);
+    verifyNoInteractions(dispatcher, queryGateway, projectionGateway, sdsService);
   }
 
   private void assertDenied(ThrowingInvocation invocation) {
