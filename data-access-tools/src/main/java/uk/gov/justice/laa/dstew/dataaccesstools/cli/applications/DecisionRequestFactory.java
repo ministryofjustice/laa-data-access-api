@@ -22,7 +22,10 @@ public final class DecisionRequestFactory {
 
   public String create(ApplicationDecisionData application, Decision decision) {
     return create(
-        application.proceedingIds(), application.laaReference(), application.applicationVersion(), decision);
+        application.proceedingIds(),
+        application.laaReference(),
+        application.applicationVersion(),
+        decision);
   }
 
   private String create(

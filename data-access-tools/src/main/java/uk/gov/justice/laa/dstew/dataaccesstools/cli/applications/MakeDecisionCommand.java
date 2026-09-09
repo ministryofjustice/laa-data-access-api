@@ -28,9 +28,9 @@ public final class MakeDecisionCommand implements Callable<Integer> {
     var client = applications.root().client();
     client.makeDecision(
         applicationId,
-        new DecisionRequestFactory().create(client.getApplicationDecisionData(applicationId), decision));
+        new DecisionRequestFactory()
+            .create(client.getApplicationDecisionData(applicationId), decision));
     System.out.printf("%s: SUCCESS - %s%n", applicationId, decision);
     return 0;
   }
 }
-

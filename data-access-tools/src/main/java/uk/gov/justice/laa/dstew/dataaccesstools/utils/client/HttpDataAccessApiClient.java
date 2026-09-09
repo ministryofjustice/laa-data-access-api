@@ -77,7 +77,8 @@ public final class HttpDataAccessApiClient implements DataAccessApiClient {
         proceedingIds.add(UUID.fromString(proceeding.required("proceedingId").asText()));
       }
       if (proceedingIds.isEmpty()) {
-        throw new ApiException("GET /api/v0/applications/" + applicationId + " returned no proceedings");
+        throw new ApiException(
+            "GET /api/v0/applications/" + applicationId + " returned no proceedings");
       }
       return new ApplicationDecisionData(
           application.required("laaReference").asText(),
