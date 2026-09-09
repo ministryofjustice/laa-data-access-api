@@ -206,11 +206,11 @@ components:
     PriorAuthorityHistoryGroup:
       type: object
       required:
-        - submissionId
+        - priorAuthorityId
         - priorAuthorityType
         - events
       properties:
-        submissionId:
+        priorAuthorityId:
           type: string
           format: uuid
         priorAuthorityType:
