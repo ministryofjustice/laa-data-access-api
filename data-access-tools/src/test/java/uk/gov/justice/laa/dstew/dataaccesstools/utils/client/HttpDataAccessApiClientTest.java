@@ -63,7 +63,8 @@ class HttpDataAccessApiClientTest {
     assertEquals("/api/v0/prior-authorities", requests.get(4).path());
     assertEquals("{}", requests.get(4).body());
     assertEquals("POST", requests.get(5).method());
-    assertEquals("/api/v0/prior-authorities/" + priorAuthorityId + "/submit", requests.get(5).path());
+    assertEquals(
+        "/api/v0/prior-authorities/" + priorAuthorityId + "/submit", requests.get(5).path());
     assertEquals("{}", requests.get(5).body());
     assertEquals("POST", requests.get(6).method());
     assertEquals("/api/v0/work-list/" + applicationId + "/assign", requests.get(6).path());

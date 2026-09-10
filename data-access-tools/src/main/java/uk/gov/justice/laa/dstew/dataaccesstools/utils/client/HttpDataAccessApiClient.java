@@ -100,7 +100,8 @@ public final class HttpDataAccessApiClient implements DataAccessApiClient {
     HttpResponse<String> response =
         execute("POST", path, requestBody, "CIVIL_APPLY", Set.of(201, 202));
     try {
-      return UUID.fromString(OBJECT_MAPPER.readTree(response.body()).required("priorAuthorityId").asText());
+      return UUID.fromString(
+          OBJECT_MAPPER.readTree(response.body()).required("priorAuthorityId").asText());
     } catch (Exception exception) {
       throw new ApiException("POST /" + path + " returned an invalid draft response", exception);
     }

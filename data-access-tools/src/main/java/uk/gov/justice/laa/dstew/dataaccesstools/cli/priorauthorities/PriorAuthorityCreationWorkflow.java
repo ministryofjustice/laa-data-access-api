@@ -23,7 +23,8 @@ public final class PriorAuthorityCreationWorkflow {
         var priorAuthorityId = client.createPriorAuthorityDraft(request.request());
         client.submitPriorAuthorityDraft(priorAuthorityId, request.request());
         results.add(
-            new WorkflowResult.ItemResult(request.type(), true, "created and submitted", priorAuthorityId));
+            new WorkflowResult.ItemResult(
+                request.type(), true, "created and submitted", priorAuthorityId));
       } catch (RuntimeException exception) {
         results.add(
             new WorkflowResult.ItemResult(request.type(), false, exception.getMessage(), null));

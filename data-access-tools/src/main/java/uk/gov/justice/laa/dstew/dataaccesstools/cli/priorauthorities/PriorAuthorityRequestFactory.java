@@ -8,13 +8,19 @@ public final class PriorAuthorityRequestFactory {
     return List.of(
         new PriorAuthorityRequest(
             "EXPERT",
-            request(applicationId, "\"priorAuthorityType\":\"EXPERT\",\"justification\":\"An independent expert assessment is required for this family matter.\",\"expertDetails\":{\"expertType\":\"Clinical psychologist\",\"expertFullName\":\"Casey Expert\",\"expertPostcode\":\"AB1 2CD\",\"expertCosts\":{\"billingType\":\"HOURLY\",\"hourlyRate\":300.0,\"timeRequested\":{\"hours\":2,\"minutes\":30},\"totalAmount\":900.0,\"costsSharedWithOtherParties\":true,\"apportionment\":{\"partiesSharingCosts\":2,\"clientShareAmount\":450.0}}}")),
+            request(
+                applicationId,
+                "\"priorAuthorityType\":\"EXPERT\",\"justification\":\"An independent expert assessment is required for this family matter.\",\"expertDetails\":{\"expertType\":\"Clinical psychologist\",\"expertFullName\":\"Casey Expert\",\"expertPostcode\":\"AB1 2CD\",\"expertCosts\":{\"billingType\":\"HOURLY\",\"hourlyRate\":300.0,\"timeRequested\":{\"hours\":2,\"minutes\":30},\"totalAmount\":900.0,\"costsSharedWithOtherParties\":true,\"apportionment\":{\"partiesSharingCosts\":2,\"clientShareAmount\":450.0}}}")),
         new PriorAuthorityRequest(
             "DISBURSEMENT",
-            request(applicationId, "\"priorAuthorityType\":\"DISBURSEMENT\",\"justification\":\"An interpreter is required to enable the client to participate effectively.\",\"disbursementDetails\":{\"disbursementPurpose\":\"Interpreter\",\"disbursementAmount\":150.25}")),
+            request(
+                applicationId,
+                "\"priorAuthorityType\":\"DISBURSEMENT\",\"justification\":\"An interpreter is required to enable the client to participate effectively.\",\"disbursementDetails\":{\"disbursementPurpose\":\"Interpreter\",\"disbursementAmount\":150.25}")),
         new PriorAuthorityRequest(
             "COUNSEL",
-            request(applicationId, "\"priorAuthorityType\":\"COUNSEL\",\"justification\":\"Specialist counsel is required because of the complexity of the proceedings.\",\"counselDetails\":{\"counselType\":\"KINGS_COUNSEL_ALONE\"}")));
+            request(
+                applicationId,
+                "\"priorAuthorityType\":\"COUNSEL\",\"justification\":\"Specialist counsel is required because of the complexity of the proceedings.\",\"counselDetails\":{\"counselType\":\"KINGS_COUNSEL_ALONE\"}")));
   }
 
   private String request(UUID applicationId, String fields) {
