@@ -107,7 +107,12 @@ class ApplicationCreationWorkflowTest {
     }
 
     @Override
-    public UUID createPriorAuthority(UUID applicationId, String requestBody) {
+    public UUID createPriorAuthorityDraft(String requestBody) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void submitPriorAuthorityDraft(UUID priorAuthorityId, String requestBody) {
       throw new UnsupportedOperationException();
     }
   }

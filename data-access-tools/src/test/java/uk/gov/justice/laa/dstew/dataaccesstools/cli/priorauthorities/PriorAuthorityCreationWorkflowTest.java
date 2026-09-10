@@ -14,6 +14,7 @@ class PriorAuthorityCreationWorkflowTest {
   @Test
   void createsAllPriorAuthorityTypesInContractOrder() {
     List<String> bodies = new ArrayList<>();
+    List<String> submittedBodies = new ArrayList<>();
     DataAccessApiClient client =
         new DataAccessApiClient() {
           @Override
@@ -28,18 +29,26 @@ class PriorAuthorityCreationWorkflowTest {
           public void makeDecision(UUID applicationId, String requestBody) {}
 
           @Override
-          public UUID createPriorAuthority(UUID applicationId, String requestBody) {
+          public UUID createPriorAuthorityDraft(String requestBody) {
             bodies.add(requestBody);
             return UUID.randomUUID();
           }
+
+          @Override
+          public void submitPriorAuthorityDraft(UUID priorAuthorityId, String requestBody) {
+            submittedBodies.add(requestBody);
+          }
         };
 
+    UUID applicationId = UUID.randomUUID();
     WorkflowResult result =
         new PriorAuthorityCreationWorkflow(client, new PriorAuthorityRequestFactory())
-            .createAll(UUID.randomUUID());
+            .createAll(applicationId);
 
     assertTrue(result.succeeded());
     assertEquals(3, bodies.size());
+    assertEquals(bodies, submittedBodies);
+    assertTrue(bodies.stream().allMatch(body -> body.contains(applicationId.toString())));
     assertTrue(bodies.get(0).contains("EXPERT"));
     assertTrue(bodies.get(1).contains("DISBURSEMENT"));
     assertTrue(bodies.get(2).contains("COUNSEL"));

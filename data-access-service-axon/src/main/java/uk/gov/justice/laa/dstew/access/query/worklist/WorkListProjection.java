@@ -93,7 +93,6 @@ public class WorkListProjection {
             event.dataVersion(),
             message.identifier().hashCode());
     populateApplicationFields(item, parentData);
-    item.setApplicationStatus("APPLICATION_SUBMITTED");
     String priorAuthorityType = priorAuthorityData.content().priorAuthorityType().name();
     item.setPriorAuthorityType(priorAuthorityType);
     item.setExpertType(

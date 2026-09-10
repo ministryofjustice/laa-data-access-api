@@ -17,7 +17,9 @@ public interface DataAccessApiClient {
     throw new UnsupportedOperationException();
   }
 
-  UUID createPriorAuthority(UUID applicationId, String requestBody);
+  UUID createPriorAuthorityDraft(String requestBody);
+
+  void submitPriorAuthorityDraft(UUID priorAuthorityId, String requestBody);
 
   default void assignWorkListItem(
       UUID itemId, UUID caseworkerId, long expectedAssignmentVersion, String eventDescription) {

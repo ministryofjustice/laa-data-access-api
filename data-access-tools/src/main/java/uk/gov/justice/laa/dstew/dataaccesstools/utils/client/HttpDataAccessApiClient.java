@@ -95,10 +95,21 @@ public final class HttpDataAccessApiClient implements DataAccessApiClient {
   }
 
   @Override
-  public UUID createPriorAuthority(UUID applicationId, String requestBody) {
-    String path = "api/v0/applications/" + applicationId + "/prior-authority";
-    return locationId(
-        execute("POST", path, requestBody, "CIVIL_APPLY", Set.of(201, 202)), "POST", path);
+  public UUID createPriorAuthorityDraft(String requestBody) {
+    String path = "api/v0/prior-authorities";
+    HttpResponse<String> response =
+        execute("POST", path, requestBody, "CIVIL_APPLY", Set.of(201, 202));
+    try {
+      return UUID.fromString(OBJECT_MAPPER.readTree(response.body()).required("priorAuthorityId").asText());
+    } catch (Exception exception) {
+      throw new ApiException("POST /" + path + " returned an invalid draft response", exception);
+    }
+  }
+
+  @Override
+  public void submitPriorAuthorityDraft(UUID priorAuthorityId, String requestBody) {
+    String path = "api/v0/prior-authorities/" + priorAuthorityId + "/submit";
+    execute("POST", path, requestBody, "CIVIL_APPLY", Set.of(200, 202));
   }
 
   @Override
