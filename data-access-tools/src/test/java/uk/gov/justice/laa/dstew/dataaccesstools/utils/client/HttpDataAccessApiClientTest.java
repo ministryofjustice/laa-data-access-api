@@ -65,14 +65,15 @@ class HttpDataAccessApiClientTest {
     assertEquals("PUT", requests.get(5).method());
     assertEquals("/api/v0/prior-authorities/" + priorAuthorityId, requests.get(5).path());
     assertEquals("POST", requests.get(6).method());
-    assertEquals("/api/v0/prior-authorities/" + priorAuthorityId + "/submit", requests.get(6).path());
+    assertEquals(
+        "/api/v0/prior-authorities/" + priorAuthorityId + "/submit", requests.get(6).path());
     assertEquals("POST", requests.get(7).method());
     assertEquals("/api/v0/work-list/" + applicationId + "/assign", requests.get(7).path());
     assertEquals(
         "{\"caseworkerId\":\""
             + priorAuthorityId
             + "\",\"expectedAssignmentVersion\":3,\"eventHistory\":{\"eventDescription\":\"Assigned \\\"locally\\\"\"}}",
-      requests.get(7).body());
+        requests.get(7).body());
   }
 
   @Test
@@ -101,7 +102,10 @@ class HttpDataAccessApiClientTest {
             exchange.getRequestHeaders().getFirst("X-Service-Name"),
             body));
     String path = exchange.getRequestURI().getPath();
-    int status = path.endsWith("auto-grant-outcome") || exchange.getRequestMethod().equals("PUT") ? 204 : 201;
+    int status =
+        path.endsWith("auto-grant-outcome") || exchange.getRequestMethod().equals("PUT")
+            ? 204
+            : 201;
     if (exchange.getRequestURI().getPath().endsWith("/decision")) {
       status = 200;
     }
@@ -109,10 +113,7 @@ class HttpDataAccessApiClientTest {
       status = 200;
     }
     if (includeLocation && exchange.getRequestMethod().equals("POST")) {
-      UUID id =
-          path.contains("/prior-authorities")
-              ? priorAuthorityId
-              : applicationId;
+      UUID id = path.contains("/prior-authorities") ? priorAuthorityId : applicationId;
       exchange
           .getResponseHeaders()
           .set(

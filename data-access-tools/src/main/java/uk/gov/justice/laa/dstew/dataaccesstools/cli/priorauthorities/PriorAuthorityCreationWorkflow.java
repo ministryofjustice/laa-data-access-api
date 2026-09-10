@@ -1,7 +1,6 @@
 package uk.gov.justice.laa.dstew.dataaccesstools.cli.priorauthorities;
 
 import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 import uk.gov.justice.laa.dstew.dataaccesstools.cli.applications.ApplicationRequestFactory;
 import uk.gov.justice.laa.dstew.dataaccesstools.cli.applications.DecisionRequestFactory;
@@ -37,11 +36,12 @@ public final class PriorAuthorityCreationWorkflow {
     return new WorkflowResult(results);
   }
 
-  public WorkflowResult createSubmitted(int count, PriorAuthorityTypeSelector typeSelector) {
+  public WorkflowResult createSubmitted(
+      int count, PriorAuthorityTypeSelector typeSelector, UUID caseworkerId) {
     var results = new ArrayList<WorkflowResult.ItemResult>();
     for (PriorAuthorityType type : requestFactory.types(typeSelector)) {
       for (int item = 0; item < count; item++) {
-        results.add(createSubmitted(type));
+        results.add(createSubmitted(type, caseworkerId));
       }
     }
     return new WorkflowResult(results);
@@ -49,30 +49,49 @@ public final class PriorAuthorityCreationWorkflow {
 
   private WorkflowResult.ItemResult createDraft(UUID applicationId, PriorAuthorityType type) {
     try {
-      UUID priorAuthorityId = client.createPriorAuthorityDraft(requestFactory.createDraft(applicationId, type));
+      UUID priorAuthorityId =
+          client.createPriorAuthorityDraft(requestFactory.createDraft(applicationId, type));
       return result(type, true, "created", applicationId, priorAuthorityId, "DRAFT");
     } catch (RuntimeException exception) {
       return result(type, false, exception.getMessage(), applicationId, null, "DRAFT");
     }
   }
 
-  private WorkflowResult.ItemResult createSubmitted(PriorAuthorityType type) {
+  private WorkflowResult.ItemResult createSubmitted(PriorAuthorityType type, UUID caseworkerId) {
     var application = applicationFactory.create();
     UUID priorAuthorityId = null;
     try {
       client.createApplication(application.request());
       client.recordManualOutcome(application.applicationId());
+      client.assignWorkListItem(
+          application.applicationId(),
+          caseworkerId,
+          0,
+          "Application assigned by data-access-tools for prior-authority submission");
       client.makeDecision(
           application.applicationId(),
-          decisionFactory.create(application, DecisionRequestFactory.Decision.GRANTED));
+          decisionFactory.create(
+              application, DecisionRequestFactory.Decision.GRANTED, caseworkerId));
       priorAuthorityId =
-          client.createPriorAuthorityDraft(requestFactory.createDraft(application.applicationId(), type));
+          client.createPriorAuthorityDraft(
+              requestFactory.createDraft(application.applicationId(), type));
       client.updatePriorAuthorityDraft(priorAuthorityId, requestFactory.saveDraft(type));
       UUID submittedPriorAuthorityId = client.submitPriorAuthorityDraft(priorAuthorityId);
       return result(
-          type, true, "created and submitted", application.applicationId(), submittedPriorAuthorityId, "SUBMITTED");
+          type,
+          true,
+          "created and submitted",
+          application.applicationId(),
+          submittedPriorAuthorityId,
+          "SUBMITTED");
     } catch (RuntimeException exception) {
-      return result(type, false, exception.getMessage(), application.applicationId(), priorAuthorityId, "SUBMITTED");
+      return result(
+          type,
+          false,
+          exception.getMessage(),
+          application.applicationId(),
+          priorAuthorityId,
+          "SUBMITTED");
     }
   }
 

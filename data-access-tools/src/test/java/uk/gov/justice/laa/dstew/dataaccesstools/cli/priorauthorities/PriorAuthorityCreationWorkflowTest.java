@@ -65,6 +65,7 @@ class PriorAuthorityCreationWorkflowTest {
   void createsAndSubmitsEachSelectedPriorAuthority() {
     List<String> operations = new ArrayList<>();
     UUID priorAuthorityId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
     DataAccessApiClient client =
         new DataAccessApiClient() {
           @Override
@@ -79,7 +80,19 @@ class PriorAuthorityCreationWorkflowTest {
           }
 
           @Override
+          public void assignWorkListItem(
+              UUID itemId,
+              UUID assignedCaseworkerId,
+              long expectedAssignmentVersion,
+              String eventDescription) {
+            assertEquals(caseworkerId, assignedCaseworkerId);
+            assertEquals(0, expectedAssignmentVersion);
+            operations.add("assign");
+          }
+
+          @Override
           public void makeDecision(UUID applicationId, String requestBody) {
+            assertTrue(requestBody.contains("\"caseworkerId\":\"" + caseworkerId + "\""));
             operations.add("granted-decision");
           }
 
@@ -110,11 +123,18 @@ class PriorAuthorityCreationWorkflowTest {
                 new PriorAuthorityRequestFactory(),
                 new ApplicationRequestFactory(),
                 new DecisionRequestFactory())
-            .createSubmitted(1, PriorAuthorityTypeSelector.EXPERT);
+            .createSubmitted(1, PriorAuthorityTypeSelector.EXPERT, caseworkerId);
 
     assertTrue(result.succeeded());
     assertEquals(
-        List.of("application", "manual-outcome", "granted-decision", "draft", "update", "submit"),
+        List.of(
+            "application",
+            "manual-outcome",
+            "assign",
+            "granted-decision",
+            "draft",
+            "update",
+            "submit"),
         operations);
     assertEquals(priorAuthorityId, result.items().getFirst().priorAuthorityId());
     assertEquals("SUBMITTED", result.items().getFirst().state());

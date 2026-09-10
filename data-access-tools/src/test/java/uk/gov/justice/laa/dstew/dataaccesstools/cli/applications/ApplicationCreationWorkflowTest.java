@@ -29,6 +29,17 @@ class ApplicationCreationWorkflowTest {
   }
 
   @Test
+  void includesCaseworkerIdInDecisionRequest() {
+    var application = new ApplicationRequestFactory().create();
+
+    String request =
+        new DecisionRequestFactory()
+            .create(application, DecisionRequestFactory.Decision.GRANTED, UUID.randomUUID());
+
+    assertTrue(request.matches("(?s).*\\\"caseworkerId\\\":\\\"[0-9a-f-]{36}\\\".*"));
+  }
+
+  @Test
   void createsManualApplicationsWithoutMakingADecision() {
     RecordingClient client = new RecordingClient();
     var workflow =

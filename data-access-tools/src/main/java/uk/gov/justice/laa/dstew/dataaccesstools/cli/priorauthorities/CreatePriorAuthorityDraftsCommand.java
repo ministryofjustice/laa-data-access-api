@@ -8,26 +8,33 @@ import uk.gov.justice.laa.dstew.dataaccesstools.cli.applications.DecisionRequest
 
 @CommandLine.Command(
     name = "create-drafts",
-  mixinStandardHelpOptions = true,
+    mixinStandardHelpOptions = true,
     description = "Create prior-authority drafts for a granted application.")
 public final class CreatePriorAuthorityDraftsCommand implements Callable<Integer> {
   @CommandLine.ParentCommand private PriorAuthoritiesCommand priorAuthorities;
 
-  @CommandLine.Option(names = "--application-id", required = true, description = "Granted application UUID.")
+  @CommandLine.Option(
+      names = "--application-id",
+      required = true,
+      description = "Granted application UUID.")
   private UUID applicationId;
 
-  @CommandLine.Option(names = "--type", required = true, description = "EXPERT, DISBURSEMENT, COUNSEL, or ALL.")
+  @CommandLine.Option(
+      names = "--type",
+      required = true,
+      description = "EXPERT, DISBURSEMENT, COUNSEL, or ALL.")
   private PriorAuthorityTypeSelector type;
 
-  @CommandLine.Option(names = "--count", required = true, description = "Number to create per selected type.")
+  @CommandLine.Option(
+      names = "--count",
+      required = true,
+      description = "Number to create per selected type.")
   private int count;
 
   @Override
   public Integer call() {
     validateCount();
-    return priorAuthorities
-        .root()
-        .print(workflow().createDrafts(applicationId, count, type));
+    return priorAuthorities.root().print(workflow().createDrafts(applicationId, count, type));
   }
 
   private PriorAuthorityCreationWorkflow workflow() {

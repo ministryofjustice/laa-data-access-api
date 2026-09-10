@@ -6,7 +6,8 @@ import java.util.UUID;
 public final class PriorAuthorityRequestFactory {
   public List<PriorAuthorityType> types(PriorAuthorityTypeSelector selector) {
     return selector == PriorAuthorityTypeSelector.ALL
-        ? List.of(PriorAuthorityType.EXPERT, PriorAuthorityType.DISBURSEMENT, PriorAuthorityType.COUNSEL)
+        ? List.of(
+            PriorAuthorityType.EXPERT, PriorAuthorityType.DISBURSEMENT, PriorAuthorityType.COUNSEL)
         : List.of(PriorAuthorityType.valueOf(selector.name()));
   }
 
@@ -31,5 +32,4 @@ public final class PriorAuthorityRequestFactory {
     DISBURSEMENT,
     COUNSEL
   }
-
 }

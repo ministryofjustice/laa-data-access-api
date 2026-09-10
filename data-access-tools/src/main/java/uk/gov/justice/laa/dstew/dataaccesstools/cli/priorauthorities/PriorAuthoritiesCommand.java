@@ -5,7 +5,7 @@ import uk.gov.justice.laa.dstew.dataaccesstools.cli.DataAccessToolsCommand;
 
 @CommandLine.Command(
     name = "prior-authorities",
-  mixinStandardHelpOptions = true,
+    mixinStandardHelpOptions = true,
     description = "Create and assign prior authorities.",
     subcommands = {
       CreatePriorAuthorityDraftsCommand.class,
