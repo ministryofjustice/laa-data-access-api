@@ -200,6 +200,66 @@ class PriorAuthorityDeciderTest {
         .isInstanceOf(PriorAuthorityStatusConflictException.class);
   }
 
+  @Test
+  void givenNullStatus_whenDecideDecision_thenThrowsConflict() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    PriorAuthorityState state = submittedState(priorAuthorityId, applicationId, 1L);
+    state.status = null;
+    MakePriorAuthorityDecisionCommand command =
+        new MakePriorAuthorityDecisionCommand(
+            priorAuthorityId,
+            1L,
+            "GRANTED",
+            "Recorded",
+            100.0,
+            null,
+            OCCURRED_AT,
+            "{\"decision\":\"GRANTED\"}",
+            OCCURRED_AT);
+
+    assertThatThrownBy(
+            () ->
+                PriorAuthorityDecider.decideDecision(
+                    state, command, payload(priorAuthorityId, applicationId)))
+        .isInstanceOf(PriorAuthorityStatusConflictException.class);
+  }
+
+  @Test
+  void
+      givenAlreadyDecidedWithNullDecisionSerialisedRequest_whenDecideDecision_thenThrowsConflict() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    PriorAuthorityState state = submittedState(priorAuthorityId, applicationId, 1L);
+    state.status = "GRANTED";
+    MakePriorAuthorityDecisionCommand command =
+        new MakePriorAuthorityDecisionCommand(
+            priorAuthorityId,
+            1L,
+            "GRANTED",
+            "Recorded",
+            100.0,
+            null,
+            OCCURRED_AT,
+            "{\"decision\":\"GRANTED\"}",
+            OCCURRED_AT);
+    PriorAuthorityDataPayload payload =
+        new PriorAuthorityDataPayload(
+            priorAuthorityId,
+            applicationId,
+            new PriorAuthorityContent(PriorAuthorityType.EXPERT, null, null, null, null),
+            "{}",
+            OCCURRED_AT,
+            "GRANTED",
+            "Recorded",
+            100.0,
+            OCCURRED_AT,
+            null);
+
+    assertThatThrownBy(() -> PriorAuthorityDecider.decideDecision(state, command, payload))
+        .isInstanceOf(PriorAuthorityStatusConflictException.class);
+  }
+
   private static PriorAuthorityState submittedState(
       UUID priorAuthorityId, UUID applicationId, long dataVersion) {
     PriorAuthorityState state = new PriorAuthorityState();

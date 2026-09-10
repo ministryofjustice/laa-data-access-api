@@ -468,6 +468,65 @@ class PriorAuthorityAggregateTest {
   }
 
   @Test
+  void
+      givenAlreadyDecidedPriorAuthority_whenSameDecisionRecorded_thenEmitsNoEventAndDoesNotAppend() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant startedAt = Instant.parse("2026-08-01T10:00:00Z");
+    Instant submittedAt = Instant.parse("2026-08-02T10:00:00Z");
+    Instant firstDecisionAt = Instant.parse("2026-08-02T11:00:00Z");
+    when(dataStore.get(priorAuthorityId, 1L))
+        .thenReturn(
+            new PriorAuthorityDataPayload(
+                priorAuthorityId,
+                applicationId,
+                new PriorAuthorityContent(EXPERT, "Need expert", null, null, null),
+                "{}",
+                submittedAt,
+                "GRANTED",
+                "Initial",
+                100.0,
+                firstDecisionAt,
+                "{\"decision\":\"GRANTED\"}"));
+
+    MakePriorAuthorityDecisionCommand command =
+        new MakePriorAuthorityDecisionCommand(
+            priorAuthorityId,
+            1L,
+            "GRANTED",
+            "Initial",
+            100.0,
+            null,
+            firstDecisionAt,
+            "{\"decision\":\"GRANTED\"}",
+            firstDecisionAt.plusSeconds(1));
+
+    fixture
+        .given()
+        .events(
+            new PriorAuthorityDraftStartedEvent(
+                priorAuthorityId, applicationId, EXPERT.name(), 1, startedAt),
+            new PriorAuthoritySubmittedEvent(
+                priorAuthorityId, applicationId, EXPERT.name(), 1, 0L, submittedAt),
+            new PriorAuthorityDecisionRecordedEvent(
+                priorAuthorityId,
+                applicationId,
+                EXPERT.name(),
+                1L,
+                "GRANTED",
+                "Initial",
+                100.0,
+                firstDecisionAt,
+                firstDecisionAt))
+        .when()
+        .command(command)
+        .then()
+        .noEvents();
+
+    verify(dataStore, never()).append(any(), anyLong(), any(), any(), any(), any());
+  }
+
+  @Test
   void givenAlreadyDecidedPriorAuthority_whenDifferentDecisionRecorded_thenThrowsConflict() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
