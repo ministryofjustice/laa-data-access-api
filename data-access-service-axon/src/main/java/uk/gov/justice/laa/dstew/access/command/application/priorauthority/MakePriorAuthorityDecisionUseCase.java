@@ -5,7 +5,7 @@ import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
-import uk.gov.justice.laa.dstew.access.query.application.priorauthority.FindPriorAuthorityBySubmissionIdQuery;
+import uk.gov.justice.laa.dstew.access.query.application.priorauthority.FindPriorAuthorityByPriorAuthorityIdQuery;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 
 /** Dispatches a prior-authority decision command. */
@@ -27,7 +27,7 @@ public class MakePriorAuthorityDecisionUseCase {
     PriorAuthorityResult priorAuthorityResult =
         queryGateway
             .query(
-                new FindPriorAuthorityBySubmissionIdQuery(command.submissionId()),
+                new FindPriorAuthorityByPriorAuthorityIdQuery(command.submissionId()),
                 PriorAuthorityResult.class)
             .join();
     if (priorAuthorityResult == null) {

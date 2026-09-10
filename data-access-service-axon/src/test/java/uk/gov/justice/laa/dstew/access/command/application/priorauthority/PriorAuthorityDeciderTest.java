@@ -11,7 +11,6 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
-import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityStatusConflictException;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityVersionConflictException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
@@ -22,92 +21,55 @@ class PriorAuthorityDeciderTest {
   private static final Instant OCCURRED_AT = Instant.parse("2026-08-01T10:00:00Z");
 
   @Test
-  void givenEmptyState_whenDecideCreate_thenReturnsEventWithCorrectFields() {
-    UUID submissionId = UUID.randomUUID();
+  void givenCommand_whenDecideStartDraft_thenReturnsEventWithExpectedFields() {
+    UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
-    PriorAuthorityState state = new PriorAuthorityState();
-    CreatePriorAuthorityCommand command =
-        new CreatePriorAuthorityCommand(
-            submissionId,
+    CreatePriorAuthorityDraftCommand command =
+        new CreatePriorAuthorityDraftCommand(
+            priorAuthorityId,
             applicationId,
-            "EXPERT",
             new PriorAuthorityContent(PriorAuthorityType.EXPERT, null, null, null, null),
             "{}",
             1,
-            "pa-schema",
+            "PriorAuthority.json",
             OCCURRED_AT);
-    String fingerprint = "test-fingerprint";
+    PriorAuthorityDraftStartedEvent event = PriorAuthorityDecider.decideStartDraft(command);
 
-    Optional<PriorAuthorityCreatedEvent> result =
-        PriorAuthorityDecider.decideCreate(state, command, fingerprint);
-
-    assertThat(result).isPresent();
-    PriorAuthorityCreatedEvent event = result.get();
-    assertThat(event.submissionId()).isEqualTo(submissionId);
+    assertThat(event.priorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(event.applicationId()).isEqualTo(applicationId);
-    assertThat(event.priorAuthorityType()).isEqualTo("EXPERT");
-    assertThat(event.dataVersion()).isEqualTo(0L);
-    assertThat(event.requestFingerprint()).isEqualTo(fingerprint);
-    assertThat(event.status()).isEqualTo(PriorAuthorityStatus.PENDING.name());
+    assertThat(event.priorAuthorityType()).isEqualTo(PriorAuthorityType.EXPERT.name());
     assertThat(event.schemaVersion()).isEqualTo(1);
     assertThat(event.occurredAt()).isEqualTo(OCCURRED_AT);
   }
 
   @Test
-  void givenExistingStateWithSameFingerprint_whenDecideCreate_thenReturnsEmpty() {
-    UUID submissionId = UUID.randomUUID();
-    String fingerprint = "same-fingerprint";
-    PriorAuthorityState state = stateAfterCreate(submissionId, fingerprint);
-    CreatePriorAuthorityCommand command =
-        new CreatePriorAuthorityCommand(
-            submissionId, UUID.randomUUID(), null, null, "{}", 1, "pa-schema", OCCURRED_AT);
+  void givenSubmitCommand_whenDecideSubmit_thenAlwaysUsesDataVersionZero() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    PriorAuthorityState state = new PriorAuthorityState();
+    state.applicationId = UUID.randomUUID();
+    state.priorAuthorityType = PriorAuthorityType.COUNSEL.name();
+    state.schemaVersion = 2;
+    SubmitPriorAuthorityDraftCommand command =
+        new SubmitPriorAuthorityDraftCommand(priorAuthorityId, OCCURRED_AT);
 
-    Optional<PriorAuthorityCreatedEvent> result =
-        PriorAuthorityDecider.decideCreate(state, command, fingerprint);
+    PriorAuthoritySubmittedEvent event = PriorAuthorityDecider.decideSubmit(command, state);
 
-    assertThat(result).isEmpty();
+    assertThat(event.priorAuthorityId()).isEqualTo(priorAuthorityId);
+    assertThat(event.applicationId()).isEqualTo(state.applicationId);
+    assertThat(event.priorAuthorityType()).isEqualTo(PriorAuthorityType.COUNSEL.name());
+    assertThat(event.schemaVersion()).isEqualTo(2);
+    assertThat(event.dataVersion()).isEqualTo(0L);
+    assertThat(event.occurredAt()).isEqualTo(OCCURRED_AT);
   }
 
   @Test
-  void givenExistingStateWithDifferentFingerprint_whenDecideCreate_thenThrowsConflictException() {
-    UUID submissionId = UUID.randomUUID();
-    PriorAuthorityState state = stateAfterCreate(submissionId, "original-fingerprint");
-    CreatePriorAuthorityCommand command =
-        new CreatePriorAuthorityCommand(
-            submissionId,
-            UUID.randomUUID(),
-            null,
-            null,
-            "{\"different\":true}",
-            1,
-            "pa-schema",
-            OCCURRED_AT);
-    String differentFingerprint = "different-fingerprint";
-
-    assertThatThrownBy(
-            () -> PriorAuthorityDecider.decideCreate(state, command, differentFingerprint))
-        .isInstanceOf(PriorAuthorityCreationConflictException.class)
-        .hasMessage(
-            "Prior authority already exists with a different payload for submission: "
-                + submissionId)
-        .satisfies(
-            ex ->
-                assertThat(((PriorAuthorityCreationConflictException) ex).getSubmissionId())
-                    .isEqualTo(submissionId));
-  }
-
-  @Test
-  void givenPendingState_whenDecideDecision_thenReturnsDecisionRecordedEvent() {
-    UUID submissionId = UUID.randomUUID();
+  void givenSubmittedState_whenDecideDecision_thenReturnsDecisionRecordedEvent() {
+    UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
-    PriorAuthorityState state = stateAfterCreate(submissionId, "fingerprint");
-    state.applicationId = applicationId;
-    state.priorAuthorityType = "EXPERT";
-    state.status = PriorAuthorityStatus.PENDING.name();
-    state.dataVersion = 4L;
+    PriorAuthorityState state = submittedState(priorAuthorityId, applicationId, 4L);
     MakePriorAuthorityDecisionCommand command =
         new MakePriorAuthorityDecisionCommand(
-            submissionId,
+            priorAuthorityId,
             4L,
             "GRANTED",
             "Recorded",
@@ -116,31 +78,28 @@ class PriorAuthorityDeciderTest {
             OCCURRED_AT,
             "{\"decision\":\"GRANTED\"}",
             OCCURRED_AT);
-    PriorAuthorityDataPayload payload =
-        new PriorAuthorityDataPayload(submissionId, applicationId, null, "{}", OCCURRED_AT);
 
     Optional<PriorAuthorityDecisionRecordedEvent> result =
-        PriorAuthorityDecider.decideDecision(state, command, payload);
+        PriorAuthorityDecider.decideDecision(
+            state, command, payload(priorAuthorityId, applicationId));
 
     assertThat(result).isPresent();
-    assertThat(result.get().submissionId()).isEqualTo(submissionId);
+    assertThat(result.get().submissionId()).isEqualTo(priorAuthorityId);
     assertThat(result.get().applicationId()).isEqualTo(applicationId);
-    assertThat(result.get().priorAuthorityType()).isEqualTo("EXPERT");
+    assertThat(result.get().priorAuthorityType()).isEqualTo(PriorAuthorityType.EXPERT.name());
     assertThat(result.get().dataVersion()).isEqualTo(5L);
     assertThat(result.get().status()).isEqualTo("GRANTED");
   }
 
   @Test
-  void givenDecidedStateWithSameDecisionAndPayload_whenDecideDecision_thenReturnsEmpty() {
-    UUID submissionId = UUID.randomUUID();
+  void givenAlreadyDecidedWithSameDecisionAndPayload_whenDecideDecision_thenReturnsEmpty() {
+    UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
-    PriorAuthorityState state = stateAfterCreate(submissionId, "fingerprint");
-    state.applicationId = applicationId;
-    state.status = PriorAuthorityStatus.REFUSED.name();
-    state.dataVersion = 1L;
+    PriorAuthorityState state = submittedState(priorAuthorityId, applicationId, 1L);
+    state.status = "REFUSED";
     MakePriorAuthorityDecisionCommand command =
         new MakePriorAuthorityDecisionCommand(
-            submissionId,
+            priorAuthorityId,
             1L,
             "REFUSED",
             "Recorded",
@@ -151,9 +110,9 @@ class PriorAuthorityDeciderTest {
             OCCURRED_AT);
     PriorAuthorityDataPayload payload =
         new PriorAuthorityDataPayload(
-            submissionId,
+            priorAuthorityId,
             applicationId,
-            null,
+            new PriorAuthorityContent(PriorAuthorityType.EXPERT, null, null, null, null),
             "{}",
             OCCURRED_AT,
             "REFUSED",
@@ -169,126 +128,13 @@ class PriorAuthorityDeciderTest {
   }
 
   @Test
-  void givenDecidedStateWithDifferentPayload_whenDecideDecision_thenThrowsConflict() {
-    UUID submissionId = UUID.randomUUID();
-    UUID applicationId = UUID.randomUUID();
-    PriorAuthorityState state = stateAfterCreate(submissionId, "fingerprint");
-    state.applicationId = applicationId;
-    state.status = PriorAuthorityStatus.GRANTED.name();
-    state.dataVersion = 1L;
-    MakePriorAuthorityDecisionCommand command =
-        new MakePriorAuthorityDecisionCommand(
-            submissionId,
-            1L,
-            "REFUSED",
-            "Recorded",
-            0.0,
-            null,
-            OCCURRED_AT,
-            "{\"decision\":\"REFUSED\"}",
-            OCCURRED_AT);
-    PriorAuthorityDataPayload payload =
-        new PriorAuthorityDataPayload(
-            submissionId,
-            applicationId,
-            null,
-            "{}",
-            OCCURRED_AT,
-            "GRANTED",
-            "Recorded",
-            0.0,
-            OCCURRED_AT,
-            "{\"decision\":\"GRANTED\"}");
-
-    assertThatThrownBy(() -> PriorAuthorityDecider.decideDecision(state, command, payload))
-        .isInstanceOf(PriorAuthorityStatusConflictException.class);
-  }
-
-  @Test
-  void
-      givenDecidedStateWithSameDecisionButDifferentPayload_whenDecideDecision_thenThrowsConflict() {
-    UUID submissionId = UUID.randomUUID();
-    UUID applicationId = UUID.randomUUID();
-    PriorAuthorityState state = stateAfterCreate(submissionId, "fingerprint");
-    state.applicationId = applicationId;
-    state.status = PriorAuthorityStatus.GRANTED.name();
-    state.dataVersion = 2L;
-    MakePriorAuthorityDecisionCommand command =
-        new MakePriorAuthorityDecisionCommand(
-            submissionId,
-            2L,
-            "GRANTED",
-            "Recorded",
-            100.0,
-            null,
-            OCCURRED_AT,
-            "{\"decision\":\"GRANTED\"}",
-            OCCURRED_AT);
-    PriorAuthorityDataPayload payload =
-        new PriorAuthorityDataPayload(
-            submissionId,
-            applicationId,
-            null,
-            "{}",
-            OCCURRED_AT,
-            "GRANTED",
-            "Recorded",
-            100.0,
-            OCCURRED_AT,
-            "{\"decision\":\"REFUSED\"}");
-
-    assertThatThrownBy(() -> PriorAuthorityDecider.decideDecision(state, command, payload))
-        .isInstanceOf(PriorAuthorityStatusConflictException.class);
-  }
-
-  @Test
-  void
-      givenDecidedStateWithDifferentDecisionButSamePayload_whenDecideDecision_thenThrowsConflict() {
-    UUID submissionId = UUID.randomUUID();
-    UUID applicationId = UUID.randomUUID();
-    PriorAuthorityState state = stateAfterCreate(submissionId, "fingerprint");
-    state.applicationId = applicationId;
-    state.status = PriorAuthorityStatus.REFUSED.name();
-    state.dataVersion = 2L;
-    MakePriorAuthorityDecisionCommand command =
-        new MakePriorAuthorityDecisionCommand(
-            submissionId,
-            2L,
-            "GRANTED",
-            "Recorded",
-            100.0,
-            null,
-            OCCURRED_AT,
-            "{\"decision\":\"REFUSED\"}",
-            OCCURRED_AT);
-    PriorAuthorityDataPayload payload =
-        new PriorAuthorityDataPayload(
-            submissionId,
-            applicationId,
-            null,
-            "{}",
-            OCCURRED_AT,
-            "REFUSED",
-            "Recorded",
-            100.0,
-            OCCURRED_AT,
-            "{\"decision\":\"REFUSED\"}");
-
-    assertThatThrownBy(() -> PriorAuthorityDecider.decideDecision(state, command, payload))
-        .isInstanceOf(PriorAuthorityStatusConflictException.class);
-  }
-
-  @Test
   void givenUnsupportedDecisionValue_whenDecideDecision_thenThrowsValidationException() {
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
-    PriorAuthorityState state = stateAfterCreate(submissionId, "fingerprint");
-    state.applicationId = applicationId;
-    state.status = PriorAuthorityStatus.PENDING.name();
-    state.dataVersion = 0L;
+    PriorAuthorityState state = submittedState(priorAuthorityId, applicationId, 0L);
     MakePriorAuthorityDecisionCommand command =
         new MakePriorAuthorityDecisionCommand(
-            submissionId,
+            priorAuthorityId,
             0L,
             "PART_GRANTED",
             "Recorded",
@@ -297,28 +143,22 @@ class PriorAuthorityDeciderTest {
             OCCURRED_AT,
             "{}",
             OCCURRED_AT);
-    PriorAuthorityDataPayload payload =
-        new PriorAuthorityDataPayload(submissionId, applicationId, null, "{}", OCCURRED_AT);
 
-    assertThatThrownBy(() -> PriorAuthorityDecider.decideDecision(state, command, payload))
-        .isInstanceOf(ValidationException.class)
-        .satisfies(
-            exception ->
-                assertThat(((ValidationException) exception).errors())
-                    .containsExactly("overallDecision must be one of: GRANTED, REFUSED"));
+    assertThatThrownBy(
+            () ->
+                PriorAuthorityDecider.decideDecision(
+                    state, command, payload(priorAuthorityId, applicationId)))
+        .isInstanceOf(ValidationException.class);
   }
 
   @Test
-  void givenPendingStateWithDifferentVersion_whenDecideDecision_thenThrowsVersionConflict() {
-    UUID submissionId = UUID.randomUUID();
+  void givenSubmittedStateWithDifferentVersion_whenDecideDecision_thenThrowsVersionConflict() {
+    UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
-    PriorAuthorityState state = stateAfterCreate(submissionId, "fingerprint");
-    state.applicationId = applicationId;
-    state.status = PriorAuthorityStatus.PENDING.name();
-    state.dataVersion = 3L;
+    PriorAuthorityState state = submittedState(priorAuthorityId, applicationId, 3L);
     MakePriorAuthorityDecisionCommand command =
         new MakePriorAuthorityDecisionCommand(
-            submissionId,
+            priorAuthorityId,
             2L,
             "GRANTED",
             "Recorded",
@@ -327,24 +167,62 @@ class PriorAuthorityDeciderTest {
             OCCURRED_AT,
             "{\"decision\":\"GRANTED\"}",
             OCCURRED_AT);
-    PriorAuthorityDataPayload payload =
-        new PriorAuthorityDataPayload(submissionId, applicationId, null, "{}", OCCURRED_AT);
 
-    assertThatThrownBy(() -> PriorAuthorityDecider.decideDecision(state, command, payload))
-        .isInstanceOf(PriorAuthorityVersionConflictException.class)
-        .hasMessage(
-            "Prior authority with submission id " + submissionId + " and version 2 not found");
+    assertThatThrownBy(
+            () ->
+                PriorAuthorityDecider.decideDecision(
+                    state, command, payload(priorAuthorityId, applicationId)))
+        .isInstanceOf(PriorAuthorityVersionConflictException.class);
   }
 
-  // ── helpers ────────────────────────────────────────────────────────────────────
+  @Test
+  void givenAlreadyDecidedWithDifferentPayload_whenDecideDecision_thenThrowsConflict() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    PriorAuthorityState state = submittedState(priorAuthorityId, applicationId, 1L);
+    state.status = "GRANTED";
+    MakePriorAuthorityDecisionCommand command =
+        new MakePriorAuthorityDecisionCommand(
+            priorAuthorityId,
+            1L,
+            "REFUSED",
+            "Recorded",
+            0.0,
+            null,
+            OCCURRED_AT,
+            "{\"decision\":\"REFUSED\"}",
+            OCCURRED_AT);
 
-  private static PriorAuthorityState stateAfterCreate(UUID submissionId, String fingerprint) {
+    assertThatThrownBy(
+            () ->
+                PriorAuthorityDecider.decideDecision(
+                    state, command, payload(priorAuthorityId, applicationId)))
+        .isInstanceOf(PriorAuthorityStatusConflictException.class);
+  }
+
+  private static PriorAuthorityState submittedState(
+      UUID priorAuthorityId, UUID applicationId, long dataVersion) {
     PriorAuthorityState state = new PriorAuthorityState();
-    state.submissionId = submissionId;
-    state.requestFingerprint = fingerprint;
-    state.dataVersion = 0L;
-    state.status = PriorAuthorityStatus.PENDING.name();
+    state.priorAuthorityId = priorAuthorityId;
+    state.applicationId = applicationId;
+    state.priorAuthorityType = PriorAuthorityType.EXPERT.name();
     state.schemaVersion = 1;
+    state.dataVersion = dataVersion;
+    state.status = PriorAuthorityStatus.SUBMITTED.name();
     return state;
+  }
+
+  private static PriorAuthorityDataPayload payload(UUID priorAuthorityId, UUID applicationId) {
+    return new PriorAuthorityDataPayload(
+        priorAuthorityId,
+        applicationId,
+        new PriorAuthorityContent(PriorAuthorityType.EXPERT, null, null, null, null),
+        "{}",
+        OCCURRED_AT,
+        "GRANTED",
+        "Recorded",
+        0.0,
+        OCCURRED_AT,
+        "{\"decision\":\"GRANTED\"}");
   }
 }

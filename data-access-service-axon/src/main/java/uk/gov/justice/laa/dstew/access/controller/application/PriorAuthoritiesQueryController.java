@@ -20,7 +20,14 @@ public class PriorAuthoritiesQueryController implements PriorAuthoritiesApi {
   private final MakePriorAuthorityDecisionUseCase makePriorAuthorityDecisionUseCase;
   private final MakePriorAuthorityDecisionCommandMapper makePriorAuthorityDecisionCommandMapper;
 
-  /** Creates the query and decision controller for prior-authority endpoints. */
+  /**
+   * Constructor for `PriorAuthoritiesQueryController`.
+   *
+   * @param getPriorAuthorityUseCase Use case for retrieving Prior Authority requests
+   * @param getPriorAuthorityResponseMapper Mapper for converting domain models to API responses
+   * @param makePriorAuthorityDecisionUseCase Use case for recording decisions
+   * @param makePriorAuthorityDecisionCommandMapper Mapper for decision commands
+   */
   public PriorAuthoritiesQueryController(
       GetPriorAuthorityUseCase getPriorAuthorityUseCase,
       GetPriorAuthorityResponseMapper getPriorAuthorityResponseMapper,
@@ -33,7 +40,8 @@ public class PriorAuthoritiesQueryController implements PriorAuthoritiesApi {
   }
 
   /**
-   * Retrieves the Prior Authority request identified by the supplied UUID.
+   * Retrieves the Prior Authority request identified by the supplied UUID, whether it is still an
+   * in-progress draft or has already been submitted.
    *
    * @param serviceName calling service identifier
    * @param priorAuthorityId identifier of the Prior Authority request

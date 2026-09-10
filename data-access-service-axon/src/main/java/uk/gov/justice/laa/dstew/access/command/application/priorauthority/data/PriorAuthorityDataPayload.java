@@ -6,7 +6,7 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityCont
 
 /** Sensitive data associated with one prior-authority submission. */
 public record PriorAuthorityDataPayload(
-    UUID submissionId,
+    UUID priorAuthorityId,
     UUID applicationId,
     PriorAuthorityContent content,
     String serialisedRequest,
@@ -19,13 +19,13 @@ public record PriorAuthorityDataPayload(
 
   /** Creates an initial payload version before any decision has been recorded. */
   public PriorAuthorityDataPayload(
-      UUID submissionId,
+      UUID priorAuthorityId,
       UUID applicationId,
       PriorAuthorityContent content,
       String serialisedRequest,
       Instant submittedAt) {
     this(
-        submissionId,
+        priorAuthorityId,
         applicationId,
         content,
         serialisedRequest,
@@ -45,7 +45,7 @@ public record PriorAuthorityDataPayload(
       Instant newDateGranted,
       String newDecisionSerialisedRequest) {
     return new PriorAuthorityDataPayload(
-        submissionId,
+        priorAuthorityId,
         applicationId,
         content,
         serialisedRequest,

@@ -2,7 +2,6 @@ package uk.gov.justice.laa.dstew.access.controller.application;
 
 import io.swagger.v3.oas.annotations.Hidden;
 import java.net.URI;
-import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -17,8 +16,6 @@ import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationUseC
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.document.UploadDocumentUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteUseCase;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.CreatePriorAuthorityCommand;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.CreatePriorAuthorityUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ReadyApplicationResult;
 import uk.gov.justice.laa.dstew.access.command.application.ready.RecordAutoGrantOutcomeUseCase;
@@ -29,8 +26,6 @@ import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
 import uk.gov.justice.laa.dstew.access.model.CreateNoteRequest;
-import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityRequest;
-import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityResponse;
 import uk.gov.justice.laa.dstew.access.model.DocumentDeleteResponse;
 import uk.gov.justice.laa.dstew.access.model.DocumentUpdateResponse;
 import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
@@ -49,14 +44,12 @@ public class ApplicationCommandController
   private final CreateNoteUseCase createNoteUseCase;
   private final RecordAutoGrantOutcomeUseCase recordAutoGrantOutcomeUseCase;
   private final UpdateApplicationUseCase updateApplicationUseCase;
-  private final CreatePriorAuthorityUseCase createPriorAuthorityUseCase;
   private final UploadDocumentUseCase uploadDocumentUseCase;
   private final CreateApplicationCommandMapper commandMapper;
   private final MakeDecisionCommandMapper decisionCommandMapper;
   private final CreateNoteCommandMapper createNoteCommandMapper;
   private final AutoGrantOutcomeCommandMapper autoGrantOutcomeCommandMapper;
   private final UpdateApplicationCommandMapper updateApplicationCommandMapper;
-  private final CreatePriorAuthorityCommandMapper createPriorAuthorityCommandMapper;
 
   /** Creates the command adapter. */
   public ApplicationCommandController(
@@ -65,27 +58,23 @@ public class ApplicationCommandController
       CreateNoteUseCase createNoteUseCase,
       RecordAutoGrantOutcomeUseCase recordAutoGrantOutcomeUseCase,
       UpdateApplicationUseCase updateApplicationUseCase,
-      CreatePriorAuthorityUseCase createPriorAuthorityUseCase,
       UploadDocumentUseCase uploadDocumentUseCase,
       CreateApplicationCommandMapper commandMapper,
       MakeDecisionCommandMapper decisionCommandMapper,
       CreateNoteCommandMapper createNoteCommandMapper,
       AutoGrantOutcomeCommandMapper autoGrantOutcomeCommandMapper,
-      UpdateApplicationCommandMapper updateApplicationCommandMapper,
-      CreatePriorAuthorityCommandMapper createPriorAuthorityCommandMapper) {
+      UpdateApplicationCommandMapper updateApplicationCommandMapper) {
     this.createApplicationUseCase = createApplicationUseCase;
     this.makeDecisionUseCase = makeDecisionUseCase;
     this.createNoteUseCase = createNoteUseCase;
     this.recordAutoGrantOutcomeUseCase = recordAutoGrantOutcomeUseCase;
     this.updateApplicationUseCase = updateApplicationUseCase;
-    this.createPriorAuthorityUseCase = createPriorAuthorityUseCase;
     this.uploadDocumentUseCase = uploadDocumentUseCase;
     this.commandMapper = commandMapper;
     this.decisionCommandMapper = decisionCommandMapper;
     this.createNoteCommandMapper = createNoteCommandMapper;
     this.autoGrantOutcomeCommandMapper = autoGrantOutcomeCommandMapper;
     this.updateApplicationCommandMapper = updateApplicationCommandMapper;
-    this.createPriorAuthorityCommandMapper = createPriorAuthorityCommandMapper;
   }
 
   /** Assigns a caseworker to one or more Applications after validating the complete batch. */
@@ -169,26 +158,6 @@ public class ApplicationCommandController
       ServiceName serviceName, UUID id, ApplicationUpdateRequest request) {
     updateApplicationUseCase.execute(updateApplicationCommandMapper.toCommand(id, request));
     return ResponseEntity.noContent().build();
-  }
-
-  @Override
-  @LogMethodArguments
-  @LogMethodResponse
-  public ResponseEntity<CreatePriorAuthorityResponse> createPriorAuthority(
-      ServiceName serviceName, UUID id, CreatePriorAuthorityRequest request) {
-    CreatePriorAuthorityCommand command = createPriorAuthorityCommandMapper.toCommand(id, request);
-    URI location =
-        ServletUriComponentsBuilder.fromCurrentRequest()
-            .path("/{submissionId}")
-            .buildAndExpand(command.submissionId())
-            .toUri();
-    CreatePriorAuthorityResponse body =
-        new CreatePriorAuthorityResponse(
-            command.submissionId(), command.occurredAt().atOffset(ZoneOffset.UTC));
-    boolean projected = createPriorAuthorityUseCase.execute(command);
-    return projected
-        ? ResponseEntity.created(location).body(body)
-        : ResponseEntity.accepted().location(location).body(body);
   }
 
   @Override

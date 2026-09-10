@@ -37,7 +37,6 @@ import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationUseC
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.document.UploadDocumentUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteUseCase;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.CreatePriorAuthorityUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.ready.RecordAutoGrantOutcomeUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.config.SecurityConfig;
@@ -70,13 +69,11 @@ class ApplicationCommandControllerSecurityTest {
   @MockitoBean private RecordAutoGrantOutcomeUseCase recordAutoGrantOutcomeUseCase;
   @MockitoBean private UpdateApplicationUseCase updateApplicationUseCase;
   @MockitoBean private UploadDocumentUseCase uploadDocumentUseCase;
-  @MockitoBean private CreatePriorAuthorityUseCase createPriorAuthorityUseCase;
   @MockitoBean private CreateApplicationCommandMapper commandMapper;
   @MockitoBean private MakeDecisionCommandMapper decisionCommandMapper;
   @MockitoBean private CreateNoteCommandMapper createNoteCommandMapper;
   @MockitoBean private AutoGrantOutcomeCommandMapper autoGrantOutcomeCommandMapper;
   @MockitoBean private UpdateApplicationCommandMapper updateApplicationCommandMapper;
-  @MockitoBean private CreatePriorAuthorityCommandMapper createPriorAuthorityCommandMapper;
 
   @Test
   void givenNoCredentials_whenCreateApplication_thenReturnsUnauthorized() {

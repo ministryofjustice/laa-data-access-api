@@ -17,7 +17,7 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
@@ -71,7 +71,7 @@ public class WorkListProjection {
     item.setCategoryOfLaw(data.categoryOfLaw());
     item.setMatterTypes(
         (data.proceedings() == null ? Stream.<Proceeding>empty() : data.proceedings().stream())
-            .map(proceeding -> proceeding.getMatterType())
+            .map(Proceeding::getMatterType)
             .filter(Objects::nonNull)
             .distinct()
             .toList());
@@ -79,13 +79,13 @@ public class WorkListProjection {
     items.save(item);
   }
 
-  /** PA creation directly activates one PA work item under its parent application. */
+  /** PA submission directly activates one PA work item under its parent application. */
   @EventHandler
-  public void on(PriorAuthorityCreatedEvent event, EventMessage message) {
+  public void on(PriorAuthoritySubmittedEvent event, EventMessage message) {
     items.save(
         new WorkListItemReadModel(
             WorkItemType.PRIOR_AUTHORITY,
-            event.submissionId(),
+            event.priorAuthorityId(),
             event.applicationId(),
             event.occurredAt(),
             event.dataVersion(),

@@ -4,9 +4,9 @@ import java.util.List;
 import java.util.Optional;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
-import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityStatusConflictException;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityVersionConflictException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
@@ -15,36 +15,40 @@ import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class PriorAuthorityDecider {
 
-  /**
-   * Returns a singleton {@link PriorAuthorityCreatedEvent} for a new submission, {@link
-   * Optional#empty()} for an idempotent retry with the same fingerprint, or throws {@link
-   * PriorAuthorityCreationConflictException} on a conflicting retry.
-   */
-  public static Optional<PriorAuthorityCreatedEvent> decideCreate(
-      PriorAuthorityState state, CreatePriorAuthorityCommand command, String fingerprint) {
-
-    if (state.submissionId != null) {
-      if (state.requestFingerprint.equals(fingerprint)) {
-        return Optional.empty();
-      }
-      throw new PriorAuthorityCreationConflictException(command.submissionId());
-    }
-
-    return Optional.of(
-        new PriorAuthorityCreatedEvent(
-            command.submissionId(),
-            command.applicationId(),
-            command.priorAuthorityType(),
-            0L,
-            fingerprint,
-            PriorAuthorityStatus.PENDING.name(),
-            command.schemaVersion(),
-            command.occurredAt()));
+  /** Returns a {@link PriorAuthorityDraftStartedEvent} for the first save of a new draft. */
+  public static PriorAuthorityDraftStartedEvent decideStartDraft(
+      CreatePriorAuthorityDraftCommand command) {
+    String priorAuthorityType =
+        command.content().priorAuthorityType() == null
+            ? null
+            : command.content().priorAuthorityType().name();
+    return new PriorAuthorityDraftStartedEvent(
+        command.priorAuthorityId(),
+        command.applicationId(),
+        priorAuthorityType,
+        command.schemaVersion(),
+        command.occurredAt());
   }
 
   /**
-   * Returns a decision event for a pending submission, empty for an idempotent retry, or throws on
-   * an incompatible terminal state.
+   * Returns a {@link PriorAuthoritySubmittedEvent} — a thin pointer with no personal data — for the
+   * given submit command. The submitted content is always appended as version 0 of {@code
+   * prior_authority_data}, since a submission's draft content is not itself versioned.
+   */
+  public static PriorAuthoritySubmittedEvent decideSubmit(
+      SubmitPriorAuthorityDraftCommand command, PriorAuthorityState state) {
+    return new PriorAuthoritySubmittedEvent(
+        command.priorAuthorityId(),
+        state.applicationId,
+        state.priorAuthorityType,
+        state.schemaVersion,
+        0L,
+        command.occurredAt());
+  }
+
+  /**
+   * Returns a decision event for a submitted prior-authority, empty for an idempotent retry, or
+   * throws on a stale version or invalid lifecycle state.
    */
   public static Optional<PriorAuthorityDecisionRecordedEvent> decideDecision(
       PriorAuthorityState state,
@@ -57,7 +61,7 @@ public final class PriorAuthorityDecider {
           command.submissionId(), command.expectedPriorAuthorityVersion());
     }
 
-    if (!PriorAuthorityStatus.PENDING.name().equals(state.status)) {
+    if (!PriorAuthorityStatus.SUBMITTED.name().equals(state.status)) {
       boolean sameDecision = state.status != null && state.status.equals(command.overallDecision());
       boolean sameRequest =
           current.decisionSerialisedRequest() != null
@@ -82,8 +86,8 @@ public final class PriorAuthorityDecider {
   }
 
   private static void validateDecision(MakePriorAuthorityDecisionCommand command) {
-    if (!PriorAuthorityStatus.GRANTED.name().equals(command.overallDecision())
-        && !PriorAuthorityStatus.REFUSED.name().equals(command.overallDecision())) {
+    if (!DecisionValue.GRANTED.name().equals(command.overallDecision())
+        && !DecisionValue.REFUSED.name().equals(command.overallDecision())) {
       throw new ValidationException(List.of("overallDecision must be one of: GRANTED, REFUSED"));
     }
   }

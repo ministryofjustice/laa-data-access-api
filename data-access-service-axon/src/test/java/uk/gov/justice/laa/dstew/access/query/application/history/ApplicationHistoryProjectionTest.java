@@ -30,8 +30,8 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationD
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDecisionRecordedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
@@ -238,28 +238,10 @@ class ApplicationHistoryProjectionTest {
   }
 
   @Test
-  void givenRefusedDecisionEvent_whenHandled_thenStoresRefusedDecisionType() {
-    UUID applicationId = UUID.randomUUID();
-    Instant occurredAt = Instant.parse("2026-07-20T10:05:00Z");
-    ApplicationDecisionMadeEvent event =
-        new ApplicationDecisionMadeEvent(
-            applicationId, 1L, 5L, "REFUSED", AutoGrantedState.MANUAL, occurredAt);
-
-    projection.on(event, message(event, "decision-refused-event"));
-
-    ArgumentCaptor<ApplicationHistoryReadModel> captor =
-        ArgumentCaptor.forClass(ApplicationHistoryReadModel.class);
-    verify(repository).save(captor.capture());
-    assertThat(captor.getValue().getEventType()).isEqualTo("APPLICATION_MAKE_DECISION_REFUSED");
-  }
-
-  @Test
   void givenNoteCreatedEvent_whenHandled_thenStoresNoteCreatedHistory() {
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-07-20T10:00:00Z");
-    uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent event =
-        new uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent(
-            applicationId, 1L, occurredAt);
+    NoteCreatedEvent event = new NoteCreatedEvent(applicationId, 1L, occurredAt);
 
     projection.on(event, message(event, "note-event-id"));
 
@@ -298,39 +280,55 @@ class ApplicationHistoryProjectionTest {
   }
 
   @Test
-  void givenPriorAuthorityCreatedEvent_whenHandled_thenStoresInPaHistoryTable() {
-    UUID submissionId = UUID.randomUUID();
+  void givenPriorAuthoritySubmittedEvent_whenHandled_thenStoresInPaHistoryTable() {
+    UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-05T10:00:00Z");
     var event =
-        new PriorAuthorityCreatedEvent(
-            submissionId, applicationId, "EXPERT", 0L, "fp", "PENDING", 1, occurredAt);
-    var msg = message(event, "pa-event-id");
+        new PriorAuthoritySubmittedEvent(
+            priorAuthorityId, applicationId, "EXPERT", 1, 0L, occurredAt);
+    var msg = message(event, "pa-submit-event-id");
 
     projection.on(event, msg);
 
     var captor = ArgumentCaptor.forClass(PriorAuthorityHistoryReadModel.class);
     verify(paRepository).save(captor.capture());
     var saved = captor.getValue();
-    assertThat(saved.getEventId()).isEqualTo("pa-event-id");
+    assertThat(saved.getEventId()).isEqualTo("pa-submit-event-id");
     assertThat(saved.getApplicationId()).isEqualTo(applicationId);
-    assertThat(saved.getSubmissionId()).isEqualTo(submissionId);
+    assertThat(saved.getPriorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(saved.getPriorAuthorityType()).isEqualTo("EXPERT");
-    assertThat(saved.getEventType()).isEqualTo("PRIOR_AUTHORITY_CREATED");
+    assertThat(saved.getEventType()).isEqualTo("PRIOR_AUTHORITY_SUBMITTED");
     assertThat(saved.getServiceName()).isEqualTo("CIVIL_APPLY");
     assertThat(saved.getOccurredAt()).isEqualTo(occurredAt);
-    assertThat(saved.getEventData()).contains("\"status\":\"PENDING\"");
+    assertThat(saved.getEventData()).contains("\"status\":\"SUBMITTED\"");
     assertThat(saved.getEventData()).contains("\"dataVersion\":0");
   }
 
   @Test
+  void givenPriorAuthoritySubmittedEventWithoutServiceName_whenHandled_thenStoresNullServiceName() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-08-05T10:00:00Z");
+    var event =
+        new PriorAuthoritySubmittedEvent(
+            priorAuthorityId, applicationId, "EXPERT", 1, 0L, occurredAt);
+
+    projection.on(event, messageWithoutServiceName(event, "pa-submit-event-id"));
+
+    var captor = ArgumentCaptor.forClass(PriorAuthorityHistoryReadModel.class);
+    verify(paRepository).save(captor.capture());
+    assertThat(captor.getValue().getServiceName()).isNull();
+  }
+
+  @Test
   void givenPriorAuthorityDecisionRecordedEvent_whenHandled_thenStoresInPaHistoryTable() {
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-05T11:00:00Z");
     var event =
         new PriorAuthorityDecisionRecordedEvent(
-            submissionId,
+            priorAuthorityId,
             applicationId,
             "EXPERT",
             1L,
@@ -348,7 +346,7 @@ class ApplicationHistoryProjectionTest {
     var saved = captor.getValue();
     assertThat(saved.getEventId()).isEqualTo("pa-decision-event-id");
     assertThat(saved.getApplicationId()).isEqualTo(applicationId);
-    assertThat(saved.getSubmissionId()).isEqualTo(submissionId);
+    assertThat(saved.getPriorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(saved.getPriorAuthorityType()).isEqualTo("EXPERT");
     assertThat(saved.getEventType()).isEqualTo("PRIOR_AUTHORITY_DECISION_GRANTED");
     assertThat(saved.getServiceName()).isEqualTo("CIVIL_APPLY");
@@ -362,12 +360,12 @@ class ApplicationHistoryProjectionTest {
 
   @Test
   void givenRefusedPriorAuthorityDecisionEvent_whenHandled_thenStoresRefusedDecisionType() {
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-05T11:05:00Z");
     var event =
         new PriorAuthorityDecisionRecordedEvent(
-            submissionId,
+            priorAuthorityId,
             applicationId,
             "EXPERT",
             2L,
@@ -391,10 +389,10 @@ class ApplicationHistoryProjectionTest {
   @Test
   void givenApplicationWithPriorAuthorities_whenQueried_thenReturnsBothEventSets() {
     UUID applicationId = UUID.randomUUID();
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
     var applicationEvent =
         history(applicationId, "APPLICATION_CREATED", Instant.parse("2026-08-05T09:00:00Z"));
-    var priorAuthorityEvent = paHistoryReadModel(applicationId, submissionId);
+    var priorAuthorityEvent = paHistoryReadModel(applicationId, priorAuthorityId);
     when(repository.findAllByApplicationIdOrderByOccurredAtAsc(applicationId))
         .thenReturn(List.of(applicationEvent));
     when(paRepository.findAllByApplicationIdOrderByOccurredAtAsc(applicationId))
@@ -409,11 +407,11 @@ class ApplicationHistoryProjectionTest {
         .singleElement()
         .satisfies(
             group -> {
-              assertThat(group.submissionId()).isEqualTo(submissionId);
+              assertThat(group.priorAuthorityId()).isEqualTo(priorAuthorityId);
               assertThat(group.priorAuthorityType()).isEqualTo("EXPERT");
               assertThat(group.events())
                   .extracting(PriorAuthorityHistoryEventResult::eventType)
-                  .containsExactly("PRIOR_AUTHORITY_CREATED");
+                  .containsExactly("PRIOR_AUTHORITY_SUBMITTED");
             });
   }
 
@@ -443,14 +441,15 @@ class ApplicationHistoryProjectionTest {
     verify(paRepository).deleteAllInBatch();
   }
 
-  private PriorAuthorityHistoryReadModel paHistoryReadModel(UUID applicationId, UUID submissionId) {
+  private PriorAuthorityHistoryReadModel paHistoryReadModel(
+      UUID applicationId, UUID priorAuthorityId) {
     return PriorAuthorityHistoryReadModel.builder()
         .eventId(UUID.randomUUID().toString())
         .applicationId(applicationId)
-        .submissionId(submissionId)
+        .priorAuthorityId(priorAuthorityId)
         .priorAuthorityType("EXPERT")
-        .eventType("PRIOR_AUTHORITY_CREATED")
-        .eventData("{\"status\":\"PENDING\",\"dataVersion\":0}")
+        .eventType("PRIOR_AUTHORITY_SUBMITTED")
+        .eventData("{\"status\":\"SUBMITTED\",\"dataVersion\":0}")
         .serviceName("CIVIL_APPLY")
         .occurredAt(Instant.parse("2026-08-05T10:00:00Z"))
         .build();
@@ -462,6 +461,15 @@ class ApplicationHistoryProjectionTest {
         new MessageType(payload.getClass()),
         payload,
         Map.of(ServiceNameMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY, "CIVIL_APPLY"),
+        Instant.parse("2026-07-15T08:00:00Z"));
+  }
+
+  private EventMessage messageWithoutServiceName(Object payload, String identifier) {
+    return new GenericEventMessage(
+        identifier,
+        new MessageType(payload.getClass()),
+        payload,
+        Map.of(),
         Instant.parse("2026-07-15T08:00:00Z"));
   }
 

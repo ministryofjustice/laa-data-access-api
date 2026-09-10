@@ -28,25 +28,25 @@ public class PriorAuthorityHistoryAssembler {
    */
   public List<PriorAuthorityHistoryGroupResult> assemble(
       List<PriorAuthorityHistoryReadModel> rows) {
-    var rowsBySubmissionId = new LinkedHashMap<UUID, List<PriorAuthorityHistoryReadModel>>();
+    var rowsByPriorAuthorityId = new LinkedHashMap<UUID, List<PriorAuthorityHistoryReadModel>>();
     rows.stream()
         .sorted(
             Comparator.comparing(PriorAuthorityHistoryReadModel::getOccurredAt)
                 .thenComparing(PriorAuthorityHistoryReadModel::getEventId))
         .forEach(
             row ->
-                rowsBySubmissionId
-                    .computeIfAbsent(row.getSubmissionId(), ignored -> new ArrayList<>())
+                rowsByPriorAuthorityId
+                    .computeIfAbsent(row.getPriorAuthorityId(), ignored -> new ArrayList<>())
                     .add(row));
 
-    return rowsBySubmissionId.entrySet().stream()
+    return rowsByPriorAuthorityId.entrySet().stream()
         .map(entry -> toGroup(entry.getKey(), entry.getValue()))
         .toList();
   }
 
   private PriorAuthorityHistoryGroupResult toGroup(
-      UUID submissionId, List<PriorAuthorityHistoryReadModel> rows) {
-    UUID applicationId = rows.getFirst().getApplicationId();
+      UUID priorAuthorityId, List<PriorAuthorityHistoryReadModel> rows) {
+    UUID applicationId = rows.get(0).getApplicationId();
 
     Set<String> distinctTypes =
         rows.stream()
@@ -54,12 +54,14 @@ public class PriorAuthorityHistoryAssembler {
             .collect(Collectors.toSet());
     if (distinctTypes.size() > 1) {
       throw new ApplicationHistoryIntegrityException(
-          applicationId, submissionId, "conflicting priorAuthorityType values: " + distinctTypes);
+          applicationId,
+          priorAuthorityId,
+          "conflicting priorAuthorityType values: " + distinctTypes);
     }
 
     String priorAuthorityType = distinctTypes.iterator().next();
     List<PriorAuthorityHistoryEventResult> events = rows.stream().map(this::toEvent).toList();
-    return new PriorAuthorityHistoryGroupResult(submissionId, priorAuthorityType, events);
+    return new PriorAuthorityHistoryGroupResult(priorAuthorityId, priorAuthorityType, events);
   }
 
   private PriorAuthorityHistoryEventResult toEvent(PriorAuthorityHistoryReadModel row) {

@@ -14,57 +14,68 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStat
 class PriorAuthorityEvolveTest {
 
   @Test
-  void givenCreatedEvent_whenApply_thenMutatesAllEightStateFields() {
+  void givenDraftStartedEvent_whenApply_thenMutatesStateFields() {
     PriorAuthorityState state = new PriorAuthorityState();
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
-    PriorAuthorityCreatedEvent event =
-        new PriorAuthorityCreatedEvent(
-            submissionId,
+    PriorAuthorityDraftStartedEvent event =
+        new PriorAuthorityDraftStartedEvent(
+            priorAuthorityId, applicationId, "EXPERT", 3, occurredAt);
+
+    PriorAuthorityEvolve.apply(state, event);
+
+    assertThat(state.getPriorAuthorityId()).isEqualTo(priorAuthorityId);
+    assertThat(state.getApplicationId()).isEqualTo(applicationId);
+    assertThat(state.getPriorAuthorityType()).isEqualTo("EXPERT");
+    assertThat(state.getSchemaVersion()).isEqualTo(3);
+  }
+
+  @Test
+  void givenSubmittedEvent_whenApply_thenMutatesStateFields() {
+    PriorAuthorityState state = new PriorAuthorityState();
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
+    PriorAuthoritySubmittedEvent event =
+        new PriorAuthoritySubmittedEvent(
+            priorAuthorityId, applicationId, "EXPERT", 3, 0L, occurredAt);
+
+    PriorAuthorityEvolve.apply(state, event);
+
+    assertThat(state.getPriorAuthorityId()).isEqualTo(priorAuthorityId);
+    assertThat(state.getApplicationId()).isEqualTo(applicationId);
+    assertThat(state.getPriorAuthorityType()).isEqualTo("EXPERT");
+    assertThat(state.getSchemaVersion()).isEqualTo(3);
+    assertThat(state.getDataVersion()).isEqualTo(0L);
+    assertThat(state.getStatus()).isEqualTo(PriorAuthorityStatus.SUBMITTED.name());
+  }
+
+  @Test
+  void givenDecisionRecordedEvent_whenApply_thenMutatesDecisionStateFields() {
+    PriorAuthorityState state = new PriorAuthorityState();
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
+    PriorAuthorityDecisionRecordedEvent event =
+        new PriorAuthorityDecisionRecordedEvent(
+            priorAuthorityId,
             applicationId,
             "EXPERT",
-            0L,
-            "test-fingerprint",
-            PriorAuthorityStatus.PENDING.name(),
-            2,
+            1L,
+            "REFUSED",
+            "Reason",
+            null,
+            null,
             occurredAt);
 
     PriorAuthorityEvolve.apply(state, event);
 
-    assertThat(state.getSubmissionId()).isEqualTo(submissionId);
-    assertThat(state.getApplicationId()).isEqualTo(applicationId);
-    assertThat(state.getDataVersion()).isEqualTo(0L);
-    assertThat(state.getRequestFingerprint()).isEqualTo("test-fingerprint");
-    assertThat(state.getStatus()).isEqualTo(PriorAuthorityStatus.PENDING.name());
-    assertThat(state.getSchemaVersion()).isEqualTo(2);
-    assertThat(state.getPriorAuthorityType()).isEqualTo("EXPERT");
-  }
-
-  @Test
-  void givenDecisionRecordedEvent_whenApply_thenUpdatesStatusAndDataVersion() {
-    PriorAuthorityState state = new PriorAuthorityState();
-    UUID submissionId = UUID.randomUUID();
-    UUID applicationId = UUID.randomUUID();
-
-    PriorAuthorityEvolve.apply(
-        state,
-        new PriorAuthorityDecisionRecordedEvent(
-            submissionId,
-            applicationId,
-            "EXPERT",
-            3L,
-            PriorAuthorityStatus.REFUSED.name(),
-            "Refused on merits",
-            null,
-            null,
-            Instant.parse("2026-08-02T10:00:00Z")));
-
-    assertThat(state.getSubmissionId()).isEqualTo(submissionId);
+    assertThat(state.getPriorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(state.getApplicationId()).isEqualTo(applicationId);
     assertThat(state.getPriorAuthorityType()).isEqualTo("EXPERT");
-    assertThat(state.getDataVersion()).isEqualTo(3L);
-    assertThat(state.getStatus()).isEqualTo(PriorAuthorityStatus.REFUSED.name());
+    assertThat(state.getDataVersion()).isEqualTo(1L);
+    assertThat(state.getStatus()).isEqualTo("REFUSED");
   }
 
   @Test

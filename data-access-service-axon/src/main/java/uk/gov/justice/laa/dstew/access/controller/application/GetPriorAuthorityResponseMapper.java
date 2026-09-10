@@ -22,7 +22,10 @@ public class GetPriorAuthorityResponseMapper {
     response.setPriorAuthorityId(result.priorAuthorityId());
     response.setApplicationId(result.applicationId());
     response.setJustification(result.justification());
-    response.setStatus(result.status());
+    response.setStatus(
+        result.status() == null
+            ? null
+            : PriorAuthorityResponse.StatusEnum.fromValue(result.status()));
     response.setDecision(toDecision(result.decision()));
     response.setDecisionJustification(result.decisionJustification());
     response.setPriorAuthorityType(

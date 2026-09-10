@@ -15,7 +15,7 @@ import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
-import uk.gov.justice.laa.dstew.access.query.application.priorauthority.FindPriorAuthorityBySubmissionIdQuery;
+import uk.gov.justice.laa.dstew.access.query.application.priorauthority.FindPriorAuthorityByPriorAuthorityIdQuery;
 
 class MakePriorAuthorityDecisionUseCaseTest {
 
@@ -39,16 +39,15 @@ class MakePriorAuthorityDecisionUseCaseTest {
             "{}",
             Instant.now());
     when(queryGateway.query(
-            new FindPriorAuthorityBySubmissionIdQuery(submissionId), PriorAuthorityResult.class))
+            new FindPriorAuthorityByPriorAuthorityIdQuery(submissionId),
+            PriorAuthorityResult.class))
         .thenReturn(
             CompletableFuture.completedFuture(
                 new PriorAuthorityResult(
                     submissionId,
                     applicationId,
                     "Need expert",
-                    "PENDING",
-                    null,
-                    null,
+                    "SUBMITTED",
                     PriorAuthorityType.EXPERT,
                     null,
                     null,
@@ -80,7 +79,8 @@ class MakePriorAuthorityDecisionUseCaseTest {
             "{}",
             Instant.now());
     when(queryGateway.query(
-            new FindPriorAuthorityBySubmissionIdQuery(submissionId), PriorAuthorityResult.class))
+            new FindPriorAuthorityByPriorAuthorityIdQuery(submissionId),
+            PriorAuthorityResult.class))
         .thenReturn(CompletableFuture.completedFuture(null));
 
     assertThatExceptionOfType(ResourceNotFoundException.class)

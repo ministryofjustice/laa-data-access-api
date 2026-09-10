@@ -8,7 +8,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
-import java.time.ZoneOffset;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -27,16 +26,12 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicat
 import uk.gov.justice.laa.dstew.access.command.application.document.UploadDocumentUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteUseCase;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.CreatePriorAuthorityCommand;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.CreatePriorAuthorityUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ReadyApplicationResult;
 import uk.gov.justice.laa.dstew.access.command.application.ready.RecordAutoGrantOutcomeUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
-import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityRequest;
-import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityResponse;
 import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
 import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
 
@@ -48,14 +43,12 @@ class ApplicationCommandControllerTest {
   private CreateNoteUseCase createNoteUseCase;
   private RecordAutoGrantOutcomeUseCase recordAutoGrantOutcomeUseCase;
   private UpdateApplicationUseCase updateApplicationUseCase;
-  private CreatePriorAuthorityUseCase createPriorAuthorityUseCase;
   private UploadDocumentUseCase uploadDocumentUseCase;
   private CreateApplicationCommandMapper commandMapper;
   private MakeDecisionCommandMapper decisionCommandMapper;
   private CreateNoteCommandMapper createNoteCommandMapper;
   private AutoGrantOutcomeCommandMapper autoGrantOutcomeCommandMapper;
   private UpdateApplicationCommandMapper updateApplicationCommandMapper;
-  private CreatePriorAuthorityCommandMapper createPriorAuthorityCommandMapper;
   private ApplicationCommandController controller;
 
   @BeforeEach
@@ -67,14 +60,12 @@ class ApplicationCommandControllerTest {
     createNoteUseCase = mock(CreateNoteUseCase.class);
     recordAutoGrantOutcomeUseCase = mock(RecordAutoGrantOutcomeUseCase.class);
     updateApplicationUseCase = mock(UpdateApplicationUseCase.class);
-    createPriorAuthorityUseCase = mock(CreatePriorAuthorityUseCase.class);
     uploadDocumentUseCase = mock(UploadDocumentUseCase.class);
     commandMapper = mock(CreateApplicationCommandMapper.class);
     decisionCommandMapper = mock(MakeDecisionCommandMapper.class);
     createNoteCommandMapper = mock(CreateNoteCommandMapper.class);
     autoGrantOutcomeCommandMapper = mock(AutoGrantOutcomeCommandMapper.class);
     updateApplicationCommandMapper = mock(UpdateApplicationCommandMapper.class);
-    createPriorAuthorityCommandMapper = mock(CreatePriorAuthorityCommandMapper.class);
     controller =
         new ApplicationCommandController(
             createApplicationUseCase,
@@ -82,14 +73,12 @@ class ApplicationCommandControllerTest {
             createNoteUseCase,
             recordAutoGrantOutcomeUseCase,
             updateApplicationUseCase,
-            createPriorAuthorityUseCase,
             uploadDocumentUseCase,
             commandMapper,
             decisionCommandMapper,
             createNoteCommandMapper,
             autoGrantOutcomeCommandMapper,
-            updateApplicationCommandMapper,
-            createPriorAuthorityCommandMapper);
+            updateApplicationCommandMapper);
   }
 
   @AfterEach
@@ -170,52 +159,6 @@ class ApplicationCommandControllerTest {
     when(createNoteCommandMapper.toCommand(id, null)).thenReturn(command);
     controller.createApplicationNotes(null, id, null);
     verify(createNoteUseCase).execute(command);
-  }
-
-  @Test
-  void givenProjectionConfirmed_whenCreatePriorAuthority_thenReturnsCreatedResponse() {
-    UUID applicationId = UUID.randomUUID();
-    UUID submissionId = UUID.randomUUID();
-    Instant occurredAt = Instant.parse("2026-08-19T10:00:00Z");
-    CreatePriorAuthorityRequest request = new CreatePriorAuthorityRequest();
-    CreatePriorAuthorityCommand command =
-        new CreatePriorAuthorityCommand(
-            submissionId, applicationId, null, null, "{}", 1, "PriorAuthority.json", occurredAt);
-    when(createPriorAuthorityCommandMapper.toCommand(applicationId, request)).thenReturn(command);
-    when(createPriorAuthorityUseCase.execute(command)).thenReturn(true);
-
-    ResponseEntity<CreatePriorAuthorityResponse> response =
-        controller.createPriorAuthority(null, applicationId, request);
-
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-    assertThat(response.getBody()).isNotNull();
-    assertThat(response.getBody().getSubmissionId()).isEqualTo(submissionId);
-    assertThat(response.getBody().getSubmittedAt()).isEqualTo(occurredAt.atOffset(ZoneOffset.UTC));
-    assertThat(response.getHeaders().getLocation()).isNotNull();
-    assertThat(response.getHeaders().getLocation().toString()).endsWith("/" + submissionId);
-    verify(createPriorAuthorityUseCase).execute(command);
-  }
-
-  @Test
-  void givenProjectionTimeout_whenCreatePriorAuthority_thenReturnsAcceptedResponse() {
-    UUID applicationId = UUID.randomUUID();
-    UUID submissionId = UUID.randomUUID();
-    Instant occurredAt = Instant.parse("2026-08-19T11:00:00Z");
-    CreatePriorAuthorityRequest request = new CreatePriorAuthorityRequest();
-    CreatePriorAuthorityCommand command =
-        new CreatePriorAuthorityCommand(
-            submissionId, applicationId, null, null, "{}", 1, "PriorAuthority.json", occurredAt);
-    when(createPriorAuthorityCommandMapper.toCommand(applicationId, request)).thenReturn(command);
-    when(createPriorAuthorityUseCase.execute(command)).thenReturn(false);
-
-    ResponseEntity<CreatePriorAuthorityResponse> response =
-        controller.createPriorAuthority(null, applicationId, request);
-
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
-    assertThat(response.getBody()).isNotNull();
-    assertThat(response.getBody().getSubmissionId()).isEqualTo(submissionId);
-    assertThat(response.getHeaders().getLocation()).isNotNull();
-    assertThat(response.getHeaders().getLocation().toString()).endsWith("/" + submissionId);
   }
 
   @Test

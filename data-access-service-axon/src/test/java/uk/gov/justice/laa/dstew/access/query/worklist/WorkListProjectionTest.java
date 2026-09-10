@@ -33,7 +33,7 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
@@ -89,26 +89,19 @@ class WorkListProjectionTest {
 
   @Test
   void givenCreatedPriorAuthority_whenHandled_thenCreatesDirectWorkUnderItsParent() {
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
 
     projection.on(
-        new PriorAuthorityCreatedEvent(
-            submissionId,
-            applicationId,
-            "type",
-            0L,
-            "fingerprint",
-            "PENDING",
-            1,
-            Instant.parse("2026-08-28T10:00:00Z")),
+        new PriorAuthoritySubmittedEvent(
+            priorAuthorityId, applicationId, "type", 1, 0L, Instant.parse("2026-08-28T10:00:00Z")),
         message());
 
     ArgumentCaptor<WorkListItemReadModel> captor =
         ArgumentCaptor.forClass(WorkListItemReadModel.class);
     verify(items).save(captor.capture());
     assertThat(captor.getValue().getParentApplicationId()).isEqualTo(applicationId);
-    assertThat(captor.getValue().getAssignmentBoundaryId()).isEqualTo(submissionId);
+    assertThat(captor.getValue().getAssignmentBoundaryId()).isEqualTo(priorAuthorityId);
     assertThat(captor.getValue().getAssignmentVersion()).isZero();
     assertThat(captor.getValue().getSubmittedAt()).isEqualTo(Instant.parse("2026-08-28T10:00:00Z"));
   }
