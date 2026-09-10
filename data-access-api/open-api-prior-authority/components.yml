@@ -55,22 +55,35 @@ components:
       type: object
       required:
         - documentId
+        - documentType
         - fileName
         - uploadedAt
       properties:
         documentId:
           type: string
           format: uuid
+        documentType:
+          $ref: "#/components/schemas/PriorAuthorityDocumentType"
         fileName:
           type: string
-        contentType:
+        fileType:
           type: string
+          description: Canonical file format for the stored representation.
+          example: PDF
+        mediaType:
+          type: string
+          description: Validated IANA MIME type for the stored representation.
+          example: application/pdf
         size:
           type: integer
           format: int64
         uploadedAt:
           type: string
           format: date-time
+        sourceService:
+          type: string
+        checksum:
+          type: string
 
     CreatePriorAuthorityDraftRequest:
       allOf:
@@ -301,10 +314,54 @@ components:
       type: object
       required:
         - documentId
+        - documentType
+        - fileName
+        - fileType
+        - contentType
+        - size
+        - uploadedAt
+        - sourceService
       properties:
         documentId:
           type: string
           format: uuid
+        documentType:
+          $ref: "#/components/schemas/PriorAuthorityDocumentType"
+        fileName:
+          type: string
+        fileType:
+          type: string
+          example: PDF
+        contentType:
+          type: string
+          example: application/pdf
+        size:
+          type: integer
+          format: int64
+        uploadedAt:
+          type: string
+          format: date-time
+        sourceService:
+          type: string
+        checksum:
+          type: string
+
+    PriorAuthorityDocumentType:
+      type: string
+      enum:
+        - gateway_evidence
+        - merits_report
+        - statement_of_case
+        - court_application
+        - court_order
+        - expert_report
+        - court_application_or_order
+        - parental_responsibility
+        - local_authority_assessment
+        - grounds_of_appeal
+        - counsel_opinion
+        - judgement
+        - plf_court_order
 
     PriorAuthorityType:
       type: string

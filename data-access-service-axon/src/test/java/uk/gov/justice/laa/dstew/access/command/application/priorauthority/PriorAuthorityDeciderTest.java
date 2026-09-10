@@ -84,6 +84,8 @@ class PriorAuthorityDeciderTest {
             priorAuthorityId,
             documentId,
             new MockMultipartFile("file", "report.pdf", "application/pdf", "content".getBytes()),
+            "gateway_evidence",
+            "CIVIL_APPLY",
             "abc123",
             "{}",
             OCCURRED_AT);

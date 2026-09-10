@@ -172,23 +172,45 @@ class GetPriorAuthorityResponseMapperTest {
             UUID.randomUUID(),
             UUID.randomUUID(),
             "justification",
-            "PENDING",
+            "DRAFT",
             PriorAuthorityType.EXPERT,
             null,
             null,
             null,
             List.of(
                 new PriorAuthorityDocument(
-                    UUID.randomUUID(), "a.pdf", "application/pdf", 12L, uploadedAt),
-                new PriorAuthorityDocument(UUID.randomUUID(), "b.pdf", "text/plain", 8L, null)));
+                    UUID.randomUUID(),
+                    "gateway_evidence",
+                    "a.pdf",
+                    "PDF",
+                    "application/pdf",
+                    12L,
+                    uploadedAt,
+                    "CIVIL_APPLY",
+                    "checksum-one"),
+                new PriorAuthorityDocument(
+                    UUID.randomUUID(),
+                    "merits_report",
+                    "b.pdf",
+                    "PDF",
+                    "application/pdf",
+                    8L,
+                    null,
+                    "CIVIL_DECIDE",
+                    "checksum-two")));
 
     var response = mapper.toResponse(result);
 
     assertThat(response.getUploadedDocuments()).hasSize(2);
+    assertThat(response.getUploadedDocuments().get(0).getDocumentType())
+        .isEqualTo(
+            uk.gov.justice.laa.dstew.access.model.PriorAuthorityDocumentType.GATEWAY_EVIDENCE);
+    assertThat(response.getUploadedDocuments().get(0).getFileType()).isEqualTo("PDF");
     assertThat(response.getUploadedDocuments().get(0).getFileName()).isEqualTo("a.pdf");
-    assertThat(response.getUploadedDocuments().get(0).getContentType())
-        .isEqualTo("application/pdf");
+    assertThat(response.getUploadedDocuments().get(0).getMediaType()).isEqualTo("application/pdf");
     assertThat(response.getUploadedDocuments().get(0).getSize()).isEqualTo(12L);
+    assertThat(response.getUploadedDocuments().get(0).getSourceService()).isEqualTo("CIVIL_APPLY");
+    assertThat(response.getUploadedDocuments().get(0).getChecksum()).isEqualTo("checksum-one");
     assertThat(response.getUploadedDocuments().get(0).getUploadedAt())
         .isEqualTo(uploadedAt.atOffset(ZoneOffset.UTC));
     assertThat(response.getUploadedDocuments().get(1).getUploadedAt()).isNull();

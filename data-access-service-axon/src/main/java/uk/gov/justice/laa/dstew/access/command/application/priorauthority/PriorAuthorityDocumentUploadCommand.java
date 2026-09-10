@@ -12,6 +12,8 @@ public record PriorAuthorityDocumentUploadCommand(
     @TargetEntityId UUID priorAuthorityId,
     UUID documentId,
     MultipartFile file,
+    String documentType,
+    String sourceService,
     String checksum,
     String serialisedRequest,
     Instant occurredAt) {}

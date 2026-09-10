@@ -421,7 +421,14 @@ class PriorAuthorityAggregateTest {
     UUID documentId = UUID.randomUUID();
     PriorAuthorityDocumentUploadCommand command =
         new PriorAuthorityDocumentUploadCommand(
-            priorAuthorityId, documentId, file, "sum", "{}", occurredAt);
+            priorAuthorityId,
+            documentId,
+            file,
+            "gateway_evidence",
+            "CIVIL_APPLY",
+            "sum",
+            "{}",
+            occurredAt);
 
     aggregate.on(
         new PriorAuthorityDraftStartedEvent(
@@ -449,6 +456,10 @@ class PriorAuthorityAggregateTest {
             eq("{}"),
             eq(occurredAt));
     assertThat(payloadCaptor.getValue().content().uploadedDocuments()).hasSize(1);
+    assertThat(payloadCaptor.getValue().content().uploadedDocuments().getFirst().documentType())
+        .isEqualTo("gateway_evidence");
+    assertThat(payloadCaptor.getValue().content().uploadedDocuments().getFirst().checksum())
+        .isEqualTo("sum");
     verify(eventAppender).append(any(PriorAuthorityDocumentUploadedEvent.class));
   }
 
@@ -480,16 +491,27 @@ class PriorAuthorityAggregateTest {
                         List.of(
                             new PriorAuthorityDocument(
                                 UUID.randomUUID(),
+                                "gateway_evidence",
                                 "first.pdf",
+                                "PDF",
                                 "application/pdf",
                                 1L,
-                                occurredAt))),
+                                occurredAt,
+                                "CIVIL_APPLY",
+                                "first-checksum"))),
                     "{}",
                     occurredAt)));
 
     aggregate.handle(
         new PriorAuthorityDocumentUploadCommand(
-            priorAuthorityId, documentId, file, "sum", "{}", occurredAt),
+            priorAuthorityId,
+            documentId,
+            file,
+            "gateway_evidence",
+            "CIVIL_APPLY",
+            "sum",
+            "{}",
+            occurredAt),
         draftStore,
         eventAppender);
 
@@ -525,7 +547,14 @@ class PriorAuthorityAggregateTest {
             () ->
                 aggregate.handle(
                     new PriorAuthorityDocumentUploadCommand(
-                        priorAuthorityId, documentId, file, "sum", "{}", occurredAt),
+                        priorAuthorityId,
+                        documentId,
+                        file,
+                        "gateway_evidence",
+                        "CIVIL_APPLY",
+                        "sum",
+                        "{}",
+                        occurredAt),
                     draftStore,
                     eventAppender));
   }
@@ -555,7 +584,14 @@ class PriorAuthorityAggregateTest {
 
     aggregate.handle(
         new PriorAuthorityDocumentUploadCommand(
-            priorAuthorityId, documentId, file, null, "{}", occurredAt),
+            priorAuthorityId,
+            documentId,
+            file,
+            "gateway_evidence",
+            "CIVIL_APPLY",
+            null,
+            "{}",
+            occurredAt),
         draftStore,
         eventAppender);
 

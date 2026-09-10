@@ -6,7 +6,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import uk.gov.justice.laa.dstew.access.api.PriorAuthorityDocumentCommandApi;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.document.UploadPriorAuthorityDocumentResult;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.document.UploadPriorAuthorityDocumentUseCase;
+import uk.gov.justice.laa.dstew.access.model.PriorAuthorityDocumentType;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.model.UploadPriorAuthorityDocumentResponse;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
@@ -27,8 +29,24 @@ public class PriorAuthorityDocumentCommandController implements PriorAuthorityDo
   @LogMethodArguments
   @LogMethodResponse
   public ResponseEntity<UploadPriorAuthorityDocumentResponse> uploadPriorAuthorityDocument(
-      ServiceName serviceName, UUID priorAuthorityId, MultipartFile file) {
-    UploadPriorAuthorityDocumentResponse response = uploadUseCase.execute(priorAuthorityId, file);
+      ServiceName serviceName,
+      UUID priorAuthorityId,
+      MultipartFile file,
+      PriorAuthorityDocumentType documentType) {
+    UploadPriorAuthorityDocumentResult result =
+        uploadUseCase.execute(
+            priorAuthorityId, file, documentType.getValue(), serviceName.getValue());
+    UploadPriorAuthorityDocumentResponse response =
+        new UploadPriorAuthorityDocumentResponse()
+            .documentId(result.documentId())
+            .documentType(PriorAuthorityDocumentType.fromValue(result.documentType()))
+            .fileName(result.fileName())
+            .fileType(result.fileType())
+            .contentType(result.contentType())
+            .size(result.size())
+            .uploadedAt(result.uploadedAt().atOffset(java.time.ZoneOffset.UTC))
+            .sourceService(result.sourceService())
+            .checksum(result.checksum());
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 }
