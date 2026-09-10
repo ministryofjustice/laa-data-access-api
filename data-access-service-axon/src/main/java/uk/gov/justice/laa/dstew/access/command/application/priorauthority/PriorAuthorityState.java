@@ -10,11 +10,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 public class PriorAuthorityState {
-  UUID submissionId;
+  UUID priorAuthorityId;
   UUID applicationId;
   long dataVersion;
-  String requestFingerprint;
-  String status;
   int schemaVersion;
   UUID caseworkerId;
   long assignmentVersion;

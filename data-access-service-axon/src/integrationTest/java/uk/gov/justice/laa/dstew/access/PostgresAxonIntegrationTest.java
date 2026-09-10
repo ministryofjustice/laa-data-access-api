@@ -66,7 +66,7 @@ import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.CreateNoteRequest;
-import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityRequest;
+import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityDraftRequest;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
 import uk.gov.justice.laa.dstew.access.model.ExpertCosts;
@@ -199,6 +199,7 @@ class PostgresAxonIntegrationTest {
             "linked_application_group_current_state",
             "prior_authority_current_state",
             "prior_authority_data",
+            "prior_authority_draft",
             "prior_authority_history",
             "token_entry",
             "work_item_route",
@@ -1722,8 +1723,7 @@ class PostgresAxonIntegrationTest {
   }
 
   @Test
-  void givenApplicationWithPriorAuthority_whenGetHistory_thenReturnsPriorAuthoritiesSection()
-      throws Exception {
+  void givenApplicationWithPriorAuthority_whenGetHistory_thenReturnsPriorAuthoritiesSection() {
     UUID applicationId = UUID.randomUUID();
     applicationId(post(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()));
     awaitProjection(applicationId);
@@ -1744,16 +1744,23 @@ class PostgresAxonIntegrationTest {
 
     ResponseEntity<String> paResponse =
         restTemplate.postForEntity(
+            "http://localhost:" + port + "/api/v0/prior-authorities",
+            new HttpEntity<>(fixedRateExpertDraftRequest(applicationId), headers()),
+            String.class);
+    assertThat(paResponse.getStatusCode()).isIn(HttpStatus.CREATED, HttpStatus.ACCEPTED);
+    UUID priorAuthorityId =
+        UUID.fromString(
+            objectMapper.readTree(paResponse.getBody()).get("priorAuthorityId").asText());
+    ResponseEntity<String> submitResponse =
+        restTemplate.postForEntity(
             "http://localhost:"
                 + port
-                + "/api/v0/applications/"
-                + applicationId
-                + "/prior-authority",
-            new HttpEntity<>(fixedRateExpertRequest(), headers()),
+                + "/api/v0/prior-authorities/"
+                + priorAuthorityId
+                + "/submit",
+            new HttpEntity<>(null, headers()),
             String.class);
-    assertThat(paResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-    UUID submissionId =
-        UUID.fromString(objectMapper.readTree(paResponse.getBody()).get("submissionId").asText());
+    assertThat(submitResponse.getStatusCode()).isIn(HttpStatus.OK, HttpStatus.ACCEPTED);
 
     await()
         .atMost(10, TimeUnit.SECONDS)
@@ -1778,32 +1785,31 @@ class PostgresAxonIntegrationTest {
 
     assertThat(historyResponse.getBody().getPriorAuthorities()).hasSize(1);
     PriorAuthorityHistoryGroup group = historyResponse.getBody().getPriorAuthorities().get(0);
-    assertThat(group.getSubmissionId()).isEqualTo(submissionId);
+    assertThat(group.getPriorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(group.getPriorAuthorityType()).isEqualTo(PriorAuthorityType.EXPERT);
     assertThat(group.getEvents()).hasSize(1);
-    assertThat(group.getEvents().get(0).getEventType()).isEqualTo("PRIOR_AUTHORITY_CREATED");
+    assertThat(group.getEvents().get(0).getEventType()).isEqualTo("PRIOR_AUTHORITY_SUBMITTED");
     assertThat(historyResponse.getBody().getEvents()).isNotEmpty();
   }
 
   @Test
   void
-      givenConflictingPriorAuthorityTypeRowsInDb_whenGetHistory_thenReturnsHttp500WithStableProblemDetail()
-          throws Exception {
+      givenConflictingPriorAuthorityTypeRowsInDb_whenGetHistory_thenReturnsHttp500WithStableProblemDetail() {
     UUID applicationId = UUID.randomUUID();
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
 
     jdbcTemplate.update(
         """
         INSERT INTO axon.prior_authority_history
-            (event_id, application_id, submission_id, prior_authority_type,
+            (event_id, application_id, prior_authority_id, prior_authority_type,
              event_type, event_data, service_name, occurred_at)
         VALUES (?, ?, ?, ?, ?, ?::jsonb, ?, ?)
         """,
         "conflict-evt-1",
         applicationId,
-        submissionId,
+        priorAuthorityId,
         "EXPERT",
-        "PRIOR_AUTHORITY_CREATED",
+        "PRIOR_AUTHORITY_SUBMITTED",
         "{\"status\":\"PENDING\",\"dataVersion\":0}",
         "CIVIL_APPLY",
         OffsetDateTime.parse("2026-08-01T09:00:00Z"));
@@ -1811,15 +1817,15 @@ class PostgresAxonIntegrationTest {
     jdbcTemplate.update(
         """
         INSERT INTO axon.prior_authority_history
-            (event_id, application_id, submission_id, prior_authority_type,
+            (event_id, application_id, prior_authority_id, prior_authority_type,
              event_type, event_data, service_name, occurred_at)
         VALUES (?, ?, ?, ?, ?, ?::jsonb, ?, ?)
         """,
         "conflict-evt-2",
         applicationId,
-        submissionId,
+        priorAuthorityId,
         "COUNSEL",
-        "PRIOR_AUTHORITY_CREATED",
+        "PRIOR_AUTHORITY_SUBMITTED",
         "{\"status\":\"PENDING\",\"dataVersion\":0}",
         "CIVIL_APPLY",
         OffsetDateTime.parse("2026-08-01T10:00:00Z"));
@@ -1842,7 +1848,7 @@ class PostgresAxonIntegrationTest {
       assertThat(responseBody.get("detail").asText())
           .isEqualTo("Application history data is inconsistent");
       assertThat(response.getBody()).doesNotContain(applicationId.toString());
-      assertThat(response.getBody()).doesNotContain(submissionId.toString());
+      assertThat(response.getBody()).doesNotContain(priorAuthorityId.toString());
       assertThat(response.getBody()).doesNotContain("conflicting");
     } finally {
       jdbcTemplate.update(
@@ -1852,8 +1858,9 @@ class PostgresAxonIntegrationTest {
     }
   }
 
-  private CreatePriorAuthorityRequest fixedRateExpertRequest() {
-    return CreatePriorAuthorityRequest.builder()
+  private CreatePriorAuthorityDraftRequest fixedRateExpertDraftRequest(UUID applicationId) {
+    return CreatePriorAuthorityDraftRequest.builder()
+        .applicationId(applicationId)
         .priorAuthorityType(PriorAuthorityType.EXPERT)
         .justification("Expert witness required")
         .expertDetails(

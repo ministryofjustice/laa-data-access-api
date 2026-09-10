@@ -15,6 +15,7 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.ExpertDetails;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.TimeRequested;
+import uk.gov.justice.laa.dstew.access.model.PriorAuthorityResponse;
 
 class GetPriorAuthorityResponseMapperTest {
 
@@ -29,7 +30,7 @@ class GetPriorAuthorityResponseMapperTest {
             priorAuthorityId,
             applicationId,
             "Expert is required",
-            "PENDING",
+            "SUBMITTED",
             PriorAuthorityType.EXPERT,
             new ExpertDetails(
                 "PSYCHIATRIST",
@@ -50,7 +51,7 @@ class GetPriorAuthorityResponseMapperTest {
     assertThat(response.getPriorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(response.getApplicationId()).isEqualTo(applicationId);
     assertThat(response.getPriorAuthorityType().getValue()).isEqualTo("EXPERT");
-    assertThat(response.getStatus()).isEqualTo("PENDING");
+    assertThat(response.getStatus()).isEqualTo(PriorAuthorityResponse.StatusEnum.SUBMITTED);
     assertThat(response.getExpertDetails().getExpertCosts().getBillingType().getValue())
         .isEqualTo("HOURLY");
     assertThat(response.getExpertDetails().getExpertCosts().getHourlyRate()).isEqualTo(150.0);
@@ -70,7 +71,7 @@ class GetPriorAuthorityResponseMapperTest {
             UUID.randomUUID(),
             UUID.randomUUID(),
             "Counsel is required",
-            "PENDING",
+            "SUBMITTED",
             PriorAuthorityType.COUNSEL,
             null,
             new CounselDetails(CounselType.TWO_JUNIOR_COUNSEL),
@@ -80,7 +81,7 @@ class GetPriorAuthorityResponseMapperTest {
             UUID.randomUUID(),
             UUID.randomUUID(),
             "Travel is required",
-            "PENDING",
+            "SUBMITTED",
             PriorAuthorityType.DISBURSEMENT,
             null,
             null,
@@ -116,7 +117,7 @@ class GetPriorAuthorityResponseMapperTest {
             UUID.randomUUID(),
             UUID.randomUUID(),
             "Expert is required",
-            "PENDING",
+            "SUBMITTED",
             PriorAuthorityType.EXPERT,
             new ExpertDetails(
                 "PSYCHIATRIST",
@@ -130,7 +131,7 @@ class GetPriorAuthorityResponseMapperTest {
             UUID.randomUUID(),
             UUID.randomUUID(),
             "Counsel is required",
-            "PENDING",
+            "SUBMITTED",
             PriorAuthorityType.COUNSEL,
             null,
             new CounselDetails(null),
@@ -140,7 +141,7 @@ class GetPriorAuthorityResponseMapperTest {
             UUID.randomUUID(),
             UUID.randomUUID(),
             "Disbursement is required",
-            "PENDING",
+            "SUBMITTED",
             PriorAuthorityType.DISBURSEMENT,
             null,
             null,

@@ -8,37 +8,45 @@ import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
 
 /** Unit tests for {@link PriorAuthorityEvolve}. */
 class PriorAuthorityEvolveTest {
 
   @Test
-  void givenCreatedEvent_whenApply_thenMutatesAllEightStateFields() {
+  void givenDraftStartedEvent_whenApply_thenMutatesStateFields() {
     PriorAuthorityState state = new PriorAuthorityState();
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
-    PriorAuthorityCreatedEvent event =
-        new PriorAuthorityCreatedEvent(
-            submissionId,
-            applicationId,
-            "EXPERT",
-            0L,
-            "test-fingerprint",
-            PriorAuthorityStatus.PENDING.name(),
-            2,
-            occurredAt);
+    PriorAuthorityDraftStartedEvent event =
+        new PriorAuthorityDraftStartedEvent(
+            priorAuthorityId, applicationId, "EXPERT", 3, occurredAt);
 
     PriorAuthorityEvolve.apply(state, event);
 
-    assertThat(state.getSubmissionId()).isEqualTo(submissionId);
+    assertThat(state.getPriorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(state.getApplicationId()).isEqualTo(applicationId);
-    assertThat(state.getDataVersion()).isEqualTo(0L);
-    assertThat(state.getRequestFingerprint()).isEqualTo("test-fingerprint");
-    assertThat(state.getStatus()).isEqualTo(PriorAuthorityStatus.PENDING.name());
-    assertThat(state.getSchemaVersion()).isEqualTo(2);
     assertThat(state.getPriorAuthorityType()).isEqualTo("EXPERT");
+    assertThat(state.getSchemaVersion()).isEqualTo(3);
+  }
+
+  @Test
+  void givenSubmittedEvent_whenApply_thenMutatesStateFields() {
+    PriorAuthorityState state = new PriorAuthorityState();
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
+    PriorAuthoritySubmittedEvent event =
+        new PriorAuthoritySubmittedEvent(
+            priorAuthorityId, applicationId, "EXPERT", 3, 0L, occurredAt);
+
+    PriorAuthorityEvolve.apply(state, event);
+
+    assertThat(state.getPriorAuthorityId()).isEqualTo(priorAuthorityId);
+    assertThat(state.getApplicationId()).isEqualTo(applicationId);
+    assertThat(state.getPriorAuthorityType()).isEqualTo("EXPERT");
+    assertThat(state.getSchemaVersion()).isEqualTo(3);
+    assertThat(state.getDataVersion()).isEqualTo(0L);
   }
 
   @Test

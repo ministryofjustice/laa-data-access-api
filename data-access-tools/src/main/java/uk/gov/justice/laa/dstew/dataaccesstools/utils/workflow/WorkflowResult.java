@@ -8,5 +8,5 @@ public record WorkflowResult(List<ItemResult> items) {
   }
 
   public record ItemResult(
-      String identifier, boolean succeeded, String detail, java.util.UUID submissionId) {}
+      String identifier, boolean succeeded, String detail, java.util.UUID priorAuthorityId) {}
 }

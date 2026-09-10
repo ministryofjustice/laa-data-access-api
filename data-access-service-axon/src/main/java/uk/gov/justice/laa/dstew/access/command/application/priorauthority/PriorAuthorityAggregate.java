@@ -9,57 +9,108 @@ import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.assign.DirectPriorAuthorityWorkItemAssignmentCommand;
 import uk.gov.justice.laa.dstew.access.command.worklist.unassign.DirectPriorAuthorityWorkItemUnassignmentCommand;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
+import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
-import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
+import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
 
 /**
  * Event-sourced consistency boundary for a PriorAuthority submission.
  *
  * <p>On the first command for this aggregate ID, persists version 0 of the sensitive data and emits
- * {@link PriorAuthorityCreatedEvent}. On an identical retry (same serialised request), it returns
- * with no events. On a conflicting retry (different payload), throws {@link
- * uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException}.
+ * {@link PriorAuthorityDraftStartedEvent}.
  */
 @EventSourced(tagKey = "PriorAuthorityAggregate", idType = UUID.class)
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 public class PriorAuthorityAggregate {
 
-  private UUID submissionId;
+  private UUID priorAuthorityId;
   private final PriorAuthorityState state = new PriorAuthorityState();
 
   @CommandHandler
   void handle(
-      CreatePriorAuthorityCommand command,
-      PriorAuthorityDataStore dataStore,
+      CreatePriorAuthorityDraftCommand command,
+      PriorAuthorityDraftStore draftStore,
       EventAppender eventAppender) {
-    String fingerprint;
-    if (submissionId == null) {
-      PriorAuthorityDataPayload payload =
-          new PriorAuthorityDataPayload(
-              command.submissionId(),
-              command.applicationId(),
-              command.content(),
-              command.serialisedRequest(),
-              command.occurredAt());
-      fingerprint =
-          dataStore.append(
-              command.submissionId(),
-              0L,
-              command.applicationId(),
-              payload,
-              command.serialisedRequest(),
-              command.occurredAt());
-    } else {
-      fingerprint = PayloadFingerprint.compute(command.serialisedRequest());
+    if (state.priorAuthorityId != null) {
+      throw new PriorAuthorityCreationConflictException(command.priorAuthorityId());
     }
-    PriorAuthorityDecider.decideCreate(state, command, fingerprint)
-        .ifPresent(e -> eventAppender.append(e));
+    PriorAuthorityDataPayload payload =
+        new PriorAuthorityDataPayload(
+            command.priorAuthorityId(),
+            command.applicationId(),
+            command.content(),
+            command.serialisedRequest(),
+            command.occurredAt());
+    draftStore.upsert(
+        command.priorAuthorityId(),
+        command.applicationId(),
+        payload,
+        command.serialisedRequest(),
+        command.occurredAt());
+    eventAppender.append(PriorAuthorityDecider.decideStartDraft(command));
+  }
+
+  @CommandHandler
+  void handle(UpdatePriorAuthorityDraftCommand command, PriorAuthorityDraftStore draftStore) {
+    draftStore
+        .find(command.priorAuthorityId())
+        .orElseThrow(
+            () ->
+                new ResourceNotFoundException(
+                    "Prior Authority %s not found".formatted(command.priorAuthorityId())));
+    PriorAuthorityDataPayload payload =
+        new PriorAuthorityDataPayload(
+            command.priorAuthorityId(),
+            state.applicationId,
+            new PriorAuthorityContent(
+                PriorAuthorityType.valueOf(state.priorAuthorityType),
+                command.content().justification(),
+                command.content().expertDetails(),
+                command.content().counselDetails(),
+                command.content().disbursementDetails()),
+            command.serialisedRequest(),
+            command.occurredAt());
+    draftStore.upsert(
+        command.priorAuthorityId(),
+        state.applicationId,
+        payload,
+        command.serialisedRequest(),
+        command.occurredAt());
+  }
+
+  @CommandHandler
+  void handle(
+      SubmitPriorAuthorityDraftCommand command,
+      PriorAuthorityDraftStore draftStore,
+      PriorAuthorityDataStore dataStore,
+      JsonSchemaValidator jsonSchemaValidator,
+      EventAppender eventAppender) {
+    PriorAuthorityDataPayload payload =
+        draftStore
+            .find(command.priorAuthorityId())
+            .orElseThrow(
+                () ->
+                    new ResourceNotFoundException(
+                        "Prior Authority %s not found".formatted(command.priorAuthorityId())));
+    jsonSchemaValidator.validate(payload.content(), "PriorAuthority.json", state.schemaVersion);
+    dataStore.append(
+        command.priorAuthorityId(),
+        0L,
+        state.applicationId,
+        payload,
+        payload.serialisedRequest(),
+        command.occurredAt());
+    eventAppender.append(PriorAuthorityDecider.decideSubmit(command, state));
+    draftStore.delete(command.priorAuthorityId());
   }
 
   /** Assigns a newly created direct PA work item after durable route resolution. */
@@ -98,7 +149,7 @@ public class PriorAuthorityAggregate {
   }
 
   private void validateWorkItem(UUID workItemId, long expectedAssignmentVersion) {
-    if (submissionId == null || !submissionId.equals(workItemId)) {
+    if (priorAuthorityId == null || !priorAuthorityId.equals(workItemId)) {
       throw new ResourceNotFoundException(
           "No prior-authority work item found with id: " + workItemId);
     }
@@ -108,9 +159,15 @@ public class PriorAuthorityAggregate {
   }
 
   @EventSourcingHandler
-  void on(PriorAuthorityCreatedEvent event) {
+  void on(PriorAuthorityDraftStartedEvent event) {
     PriorAuthorityEvolve.apply(state, event);
-    this.submissionId = state.submissionId;
+    this.priorAuthorityId = state.priorAuthorityId;
+  }
+
+  @EventSourcingHandler
+  void on(PriorAuthoritySubmittedEvent event) {
+    PriorAuthorityEvolve.apply(state, event);
+    this.priorAuthorityId = state.priorAuthorityId;
   }
 
   @EventSourcingHandler

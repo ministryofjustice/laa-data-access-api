@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.oauth2.client.ClientAuthorizationException;
+import org.springframework.security.oauth2.core.OAuth2Error;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
@@ -152,18 +154,15 @@ class ApplicationExceptionHandlerTest {
 
   @Test
   void givenConflictingPriorAuthorityCreation_whenHandled_thenReturnsStablePublicConflictMessage() {
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
 
     var response =
         handler.handlePriorAuthorityCreationConflictException(
-            new PriorAuthorityCreationConflictException(submissionId));
+            new PriorAuthorityCreationConflictException(priorAuthorityId));
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
     assertThat(response.getBody().getDetail())
-        .isEqualTo(
-            "Prior authority submission ID "
-                + submissionId
-                + " already exists with different creation data");
+        .isEqualTo("Prior authority submission ID " + priorAuthorityId + " already exists");
   }
 
   @Test
@@ -209,11 +208,11 @@ class ApplicationExceptionHandlerTest {
   @Test
   void givenIntegrityFailure_whenHandled_thenReturnsHttp500WithStableProblemDetail() {
     UUID applicationId = UUID.randomUUID();
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
     var integrityException =
         new ApplicationHistoryIntegrityException(
             applicationId,
-            submissionId,
+            priorAuthorityId,
             "conflicting priorAuthorityType values: [EXPERT, COUNSEL]");
 
     var response = handler.handleApplicationHistoryIntegrityException(integrityException);
@@ -224,7 +223,19 @@ class ApplicationExceptionHandlerTest {
     assertThat(response.getBody().getInstance()).isEqualTo(URI.create("about:blank"));
     assertThat(response.getBody().toString())
         .doesNotContain(applicationId.toString())
-        .doesNotContain(submissionId.toString())
+        .doesNotContain(priorAuthorityId.toString())
         .doesNotContain("conflicting");
+  }
+
+  @Test
+  void givenClientAuthorizationFailure_whenHandled_thenReturnsInternalServerError() {
+    var response =
+        handler.handleClientAuthorizationException(
+            new ClientAuthorizationException(
+                new OAuth2Error("invalid_token"), "sds-client", "Token request failed"));
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+    assertThat(response.getBody().getDetail())
+        .isEqualTo("Failed to obtain access token for an external service");
   }
 }

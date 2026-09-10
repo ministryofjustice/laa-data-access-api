@@ -6,12 +6,10 @@ import org.axonframework.messaging.commandhandling.annotation.Command;
 import org.axonframework.modelling.annotation.TargetEntityId;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 
-/** Command that creates or idempotently re-identifies a PriorAuthority aggregate. */
-@Command(routingKey = "submissionId")
-public record CreatePriorAuthorityCommand(
-    @TargetEntityId UUID submissionId,
-    UUID applicationId,
-    String priorAuthorityType,
+/** Command that updates an existing Prior Authority draft in progress. */
+@Command(routingKey = "priorAuthorityId")
+public record UpdatePriorAuthorityDraftCommand(
+    @TargetEntityId UUID priorAuthorityId,
     PriorAuthorityContent content,
     String serialisedRequest,
     int schemaVersion,

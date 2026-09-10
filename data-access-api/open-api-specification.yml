@@ -37,10 +37,12 @@ paths:
     $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1{id}~1update-document"
   /api/v0/applications/{id}/delete-document:
     $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1{id}~1delete-document"
-  /api/v0/applications/{id}/prior-authority:
-    $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1{id}~1prior-authority"
+  /api/v0/prior-authorities:
+    $ref: "./open-api-prior-authority/resources.yml#/paths/~1api~1v0~1prior-authorities"
   /api/v0/prior-authorities/{priorAuthorityId}:
     $ref: "./open-api-prior-authority/resources.yml#/paths/~1api~1v0~1prior-authorities~1{priorAuthorityId}"
+  /api/v0/prior-authorities/{priorAuthorityId}/submit:
+    $ref: "./open-api-prior-authority/resources.yml#/paths/~1api~1v0~1prior-authorities~1{priorAuthorityId}~1submit"
   /api/v0/work-list:
     $ref: "./open-api-work-list/resources.yml#/paths/~1api~1v0~1work-list"
   /api/v0/work-list/{itemId}/assign:
@@ -100,27 +102,43 @@ components:
     SdsHealthResponse:
       $ref: "./open-api-applications/components.yml#/components/schemas/SdsHealthResponse"
     PriorAuthorityType:
-      $ref: "./open-api-applications/components.yml#/components/schemas/PriorAuthorityType"
+      $ref: "./open-api-prior-authority/components.yml#/components/schemas/PriorAuthorityType"
     BillingType:
-      $ref: "./open-api-applications/components.yml#/components/schemas/BillingType"
+      $ref: "./open-api-prior-authority/components.yml#/components/schemas/BillingType"
     CounselType:
-      $ref: "./open-api-applications/components.yml#/components/schemas/CounselType"
+      $ref: "./open-api-prior-authority/components.yml#/components/schemas/CounselType"
     TimeRequested:
-      $ref: "./open-api-applications/components.yml#/components/schemas/TimeRequested"
+      $ref: "./open-api-prior-authority/components.yml#/components/schemas/TimeRequested"
     Apportionment:
-      $ref: "./open-api-applications/components.yml#/components/schemas/Apportionment"
+      $ref: "./open-api-prior-authority/components.yml#/components/schemas/Apportionment"
     ExpertCosts:
-      $ref: "./open-api-applications/components.yml#/components/schemas/ExpertCosts"
+      $ref: "./open-api-prior-authority/components.yml#/components/schemas/ExpertCosts"
     ExpertDetails:
-      $ref: "./open-api-applications/components.yml#/components/schemas/ExpertDetails"
+      $ref: "./open-api-prior-authority/components.yml#/components/schemas/ExpertDetails"
     CounselDetails:
-      $ref: "./open-api-applications/components.yml#/components/schemas/CounselDetails"
+      $ref: "./open-api-prior-authority/components.yml#/components/schemas/CounselDetails"
     DisbursementDetails:
-      $ref: "./open-api-applications/components.yml#/components/schemas/DisbursementDetails"
-    CreatePriorAuthorityRequest:
-      $ref: "./open-api-applications/components.yml#/components/schemas/CreatePriorAuthorityRequest"
-    CreatePriorAuthorityResponse:
-      $ref: "./open-api-applications/components.yml#/components/schemas/CreatePriorAuthorityResponse"
+      $ref: "./open-api-prior-authority/components.yml#/components/schemas/DisbursementDetails"
+    SavePriorAuthorityDraftRequest:
+      $ref: "./open-api-prior-authority/components.yml#/components/schemas/SavePriorAuthorityDraftRequest"
+    SavePriorAuthorityDraftResponse:
+      $ref: "./open-api-prior-authority/components.yml#/components/schemas/SavePriorAuthorityDraftResponse"
+    SubmitPriorAuthorityDraftValidationRequest:
+      $ref: "./open-api-prior-authority/components.yml#/components/schemas/SubmitPriorAuthorityDraftValidationRequest"
+    SubmitExpertDetails:
+      $ref: "./open-api-prior-authority/components.yml#/components/schemas/SubmitExpertDetails"
+    SubmitCounselDetails:
+      $ref: "./open-api-prior-authority/components.yml#/components/schemas/SubmitCounselDetails"
+    SubmitDisbursementDetails:
+      $ref: "./open-api-prior-authority/components.yml#/components/schemas/SubmitDisbursementDetails"
+    SubmitTimeRequested:
+      $ref: "./open-api-prior-authority/components.yml#/components/schemas/SubmitTimeRequested"
+    SubmitApportionment:
+      $ref: "./open-api-prior-authority/components.yml#/components/schemas/SubmitApportionment"
+    SubmitExpertCosts:
+      $ref: "./open-api-prior-authority/components.yml#/components/schemas/SubmitExpertCosts"
+    SubmitPriorAuthorityDraftResponse:
+      $ref: "./open-api-prior-authority/components.yml#/components/schemas/SubmitPriorAuthorityDraftResponse"
     PriorAuthorityResponse:
       $ref: "./open-api-prior-authority/components.yml#/components/schemas/PriorAuthorityResponse"
     WorkListItemType:

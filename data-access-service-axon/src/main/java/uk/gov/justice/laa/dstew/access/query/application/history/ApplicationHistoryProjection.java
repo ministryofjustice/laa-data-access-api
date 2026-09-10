@@ -20,11 +20,12 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationD
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.config.interceptor.ServiceNameMetadataDispatchInterceptor;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
 
 /** Independently replayable, append-only audit projection of Application events. */
 @Component
@@ -168,22 +169,22 @@ public class ApplicationHistoryProjection {
         event.occurredAt());
   }
 
-  /** Records the creation of a PriorAuthority submission in the PA history table. */
+  /** Records a submitted PriorAuthority in the PA history table for the public history API. */
   @EventHandler
-  public void on(PriorAuthorityCreatedEvent event, EventMessage message) {
+  public void on(PriorAuthoritySubmittedEvent event, EventMessage message) {
     Object serviceName =
         message.metadata().get(ServiceNameMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY);
     priorAuthorityHistoryReadRepository.save(
         PriorAuthorityHistoryReadModel.builder()
             .eventId(message.identifier())
             .applicationId(event.applicationId())
-            .submissionId(event.submissionId())
+            .priorAuthorityId(event.priorAuthorityId())
             .priorAuthorityType(event.priorAuthorityType())
-            .eventType("PRIOR_AUTHORITY_CREATED")
+            .eventType("PRIOR_AUTHORITY_SUBMITTED")
             .eventData(
                 serialise(
                     Map.of(
-                        "status", event.status(),
+                        "status", PriorAuthorityStatus.SUBMITTED.name(),
                         "dataVersion", event.dataVersion())))
             .serviceName(serviceName == null ? null : serviceName.toString())
             .occurredAt(event.occurredAt())

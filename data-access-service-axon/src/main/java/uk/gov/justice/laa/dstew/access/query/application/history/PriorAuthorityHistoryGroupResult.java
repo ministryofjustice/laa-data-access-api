@@ -5,7 +5,9 @@ import java.util.UUID;
 
 /** Query-specific immutable record for one prior-authority submission and its events. */
 public record PriorAuthorityHistoryGroupResult(
-    UUID submissionId, String priorAuthorityType, List<PriorAuthorityHistoryEventResult> events) {
+    UUID priorAuthorityId,
+    String priorAuthorityType,
+    List<PriorAuthorityHistoryEventResult> events) {
 
   public PriorAuthorityHistoryGroupResult {
     events = List.copyOf(events);
