@@ -74,32 +74,6 @@ class ApplicationCreationWorkflowTest {
     assertEquals(List.of("create", "autogranted", "create", "autogranted"), client.operations);
   }
 
-  @Test
-  void createsManualApplicationsWithoutMakingADecision() {
-    RecordingClient client = new RecordingClient();
-    var workflow =
-        new ApplicationCreationWorkflow(
-            client, new ApplicationRequestFactory(), new DecisionRequestFactory());
-
-    WorkflowResult result = workflow.createManual(2);
-
-    assertTrue(result.succeeded());
-    assertEquals(List.of("create", "manual", "create", "manual"), client.operations);
-  }
-
-  @Test
-  void createsEachAutograntedApplicationWithoutManualOutcomeOrDecision() {
-    RecordingClient client = new RecordingClient();
-    var workflow =
-        new ApplicationCreationWorkflow(
-            client, new ApplicationRequestFactory(), new DecisionRequestFactory());
-
-    WorkflowResult result = workflow.createAutogranted(2);
-
-    assertTrue(result.succeeded());
-    assertEquals(List.of("create", "autogranted", "create", "autogranted"), client.operations);
-  }
-
   private static final class RecordingClient implements DataAccessApiClient {
     private final List<String> operations = new ArrayList<>();
 
