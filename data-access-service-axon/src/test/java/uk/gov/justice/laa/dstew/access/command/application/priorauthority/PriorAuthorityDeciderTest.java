@@ -89,9 +89,9 @@ class PriorAuthorityDeciderTest {
             "abc123",
             "{}",
             OCCURRED_AT);
-
+    UUID applicationId = UUID.randomUUID();
     PriorAuthorityDocumentUploadedEvent event =
-        PriorAuthorityDecider.decideDocumentUploaded(command);
+        PriorAuthorityDecider.decideDocumentUploaded(command, applicationId);
 
     assertThat(event.priorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(event.documentId()).isEqualTo(documentId);
@@ -99,5 +99,6 @@ class PriorAuthorityDeciderTest {
     assertThat(event.size()).isEqualTo(7L);
     assertThat(event.contentType()).isEqualTo("application/pdf");
     assertThat(event.checksum()).isEqualTo("abc123");
+    assertThat(event.parentApplicationId()).isEqualTo(applicationId);
   }
 }

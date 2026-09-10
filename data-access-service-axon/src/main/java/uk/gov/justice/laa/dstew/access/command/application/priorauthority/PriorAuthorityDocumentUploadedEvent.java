@@ -10,4 +10,5 @@ public record PriorAuthorityDocumentUploadedEvent(
     Instant uploadedAt,
     Long size,
     String contentType,
-    String checksum) {}
+    String checksum,
+    UUID parentApplicationId) {}

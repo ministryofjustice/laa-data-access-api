@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.command.application.priorauthority;
 
+import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
@@ -40,13 +41,14 @@ public final class PriorAuthorityDecider {
 
   /** Returns a persisted upload event for a prior-authority document finalize command. */
   public static PriorAuthorityDocumentUploadedEvent decideDocumentUploaded(
-      PriorAuthorityDocumentUploadCommand command) {
+      PriorAuthorityDocumentUploadCommand command, UUID applicationId) {
     return new PriorAuthorityDocumentUploadedEvent(
         command.priorAuthorityId(),
         command.documentId(),
         command.occurredAt(),
         command.file().getSize(),
         command.file().getContentType(),
-        command.checksum());
+        command.checksum(),
+        applicationId);
   }
 }
