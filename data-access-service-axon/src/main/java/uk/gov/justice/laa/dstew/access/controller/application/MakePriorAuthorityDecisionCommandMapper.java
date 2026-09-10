@@ -5,7 +5,9 @@ import java.util.UUID;
 import org.springframework.stereotype.Component;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.ExpertFeeInformation;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.MakePriorAuthorityDecisionCommand;
+import uk.gov.justice.laa.dstew.access.model.ExpertMakePriorAuthorityDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.MakePriorAuthorityDecisionRequest;
 
 /** Maps the make-decision HTTP contract to a prior-authority decision command. */
@@ -27,9 +29,19 @@ public class MakePriorAuthorityDecisionCommandMapper {
         request.getDecision().name(),
         decisionJustification(request),
         request.getAmountGranted(),
+        expertFeeInformation(request.getExpert()),
         request.getDateGranted().toInstant(),
         serialise(request),
         Instant.now());
+  }
+
+  private ExpertFeeInformation expertFeeInformation(ExpertMakePriorAuthorityDecisionRequest value) {
+    return value == null
+        ? null
+        : ExpertFeeInformation.builder()
+            .newFixedRateAmount(value.getNewFixedRateAmount())
+            .newHourlyRateAmount(value.getNewHourlyRateAmount())
+            .build();
   }
 
   private String decisionJustification(MakePriorAuthorityDecisionRequest request) {

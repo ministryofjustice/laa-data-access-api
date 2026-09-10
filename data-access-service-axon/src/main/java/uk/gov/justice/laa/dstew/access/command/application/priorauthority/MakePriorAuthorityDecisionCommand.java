@@ -13,6 +13,7 @@ public record MakePriorAuthorityDecisionCommand(
     String overallDecision,
     String decisionJustification,
     Double amountGranted,
+    ExpertFeeInformation expertFee,
     Instant dateGranted,
     String serialisedRequest,
     Instant occurredAt) {}

@@ -26,6 +26,21 @@ components:
           type: integer
           format: int64
           description: Version of prior authority being decided, used for concurrency control
+        expert:
+          $ref: "#/components/schemas/ExpertMakePriorAuthorityDecisionRequest"
+
+    ExpertMakePriorAuthorityDecisionRequest:
+      type: object
+      description: Optional expert details for the decision
+      properties:
+        newFixedRateAmount:
+          type: number
+          format: double
+          description: New fixed rate amount if applicable
+        newHourlyRateAmount:
+          type: number
+          format: double
+          description: New hourly rate amount if applicable
 
     PriorAuthorityResponse:
       type: object
