@@ -118,7 +118,8 @@ public class PriorAuthorityAggregate {
         updatedPayload,
         command.serialisedRequest(),
         command.occurredAt());
-    eventAppender.append(PriorAuthorityDecider.decideDocumentUploaded(command));
+    eventAppender.append(
+        PriorAuthorityDecider.decideDocumentUploaded(command, state.applicationId));
     return command.documentId();
   }
 

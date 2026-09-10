@@ -80,7 +80,13 @@ class PriorAuthorityEvolveTest {
     PriorAuthorityEvolve.apply(
         state,
         new PriorAuthorityDocumentUploadedEvent(
-            UUID.randomUUID(), documentId, Instant.now(), 10L, "application/pdf", "sum"));
+            UUID.randomUUID(),
+            documentId,
+            Instant.now(),
+            10L,
+            "application/pdf",
+            "sum",
+            UUID.randomUUID()));
 
     assertThat(state.getUploadedDocumentIds()).contains(documentId);
   }
