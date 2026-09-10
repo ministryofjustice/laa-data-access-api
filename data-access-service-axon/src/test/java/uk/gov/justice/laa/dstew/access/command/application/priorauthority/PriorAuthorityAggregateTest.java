@@ -582,4 +582,31 @@ class PriorAuthorityAggregateTest {
         .exception(PriorAuthorityStatusConflictException.class)
         .noEvents();
   }
+
+  @Test
+  void givenNeverInitialized_whenMakePriorAuthorityDecision_thenThrowsResourceNotFound() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    Instant decidedAt = Instant.parse("2026-08-02T11:00:00Z");
+
+    MakePriorAuthorityDecisionCommand command =
+        new MakePriorAuthorityDecisionCommand(
+            priorAuthorityId,
+            0L,
+            "GRANTED",
+            "Decision recorded",
+            1234.56,
+            null,
+            decidedAt,
+            "{\"decision\":\"GRANTED\"}",
+            decidedAt);
+
+    fixture
+        .given()
+        .noPriorActivity()
+        .when()
+        .command(command)
+        .then()
+        .exception(ResourceNotFoundException.class)
+        .noEvents();
+  }
 }
