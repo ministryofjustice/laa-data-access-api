@@ -41,18 +41,14 @@ public final class DataAccessToolsCommand implements Callable<Integer> {
   }
 
   private static void getPrintf(WorkflowResult.ItemResult item) {
-    if (item.priorAuthorityId() == null) {
-      System.out.printf(
-          "%s: %s - %s%n",
-          item.identifier(), item.succeeded() ? "SUCCESS" : "FAILED", item.detail());
-      return;
-    }
     System.out.printf(
-        "%s: %s - %s -priorAuthorityID: %s%n",
+        "%s: %s detail=%s applicationId=%s priorAuthorityId=%s state=%s%n",
         item.identifier(),
         item.succeeded() ? "SUCCESS" : "FAILED",
         item.detail(),
-        item.priorAuthorityId());
+        item.applicationId() == null ? "-" : item.applicationId(),
+        item.priorAuthorityId() == null ? "-" : item.priorAuthorityId(),
+        item.state());
   }
 
   @Override

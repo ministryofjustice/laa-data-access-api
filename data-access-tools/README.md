@@ -37,7 +37,12 @@ data-access-tools/build/install/data-access-tools/bin/data-access-tools \
 
 data-access-tools/build/install/data-access-tools/bin/data-access-tools \
   --api-url http://localhost:8080 \
-  prior-authorities create-all --application-id 123e4567-e89b-12d3-a456-426614174000
+  prior-authorities create-drafts --application-id 44ade549-09c8-432e-90ff-1fe18f39624a \
+  --type ALL --count 2
+
+data-access-tools/build/install/data-access-tools/bin/data-access-tools \
+  --api-url http://localhost:8080 \
+  prior-authorities create-submitted --type EXPERT --count 10
 
 data-access-tools/build/install/data-access-tools/bin/data-access-tools \
   --api-url http://localhost:8080 \
@@ -61,6 +66,8 @@ data-access-tools/build/install/data-access-tools/bin/data-access-tools \
 ```
 
 Applications are created sequentially. `create-autogranted` records an `AUTOGRANTED` outcome with a certificate. The granted and refused workflows record the `MANUAL` auto-grant outcome before making their decision. A batch continues after a failed application and exits non-zero if any item failed.
+
+Prior-authority commands require `--type` with `EXPERT`, `DISBURSEMENT`, `COUNSEL`, or `ALL`; `--count` is the number created for each selected type. `create-drafts` requires an existing granted application and leaves the generated prior authorities as drafts. `create-submitted` creates and grants an application for every prior authority, creates its draft, saves valid type-specific content, and submits it. Each result line labels its `applicationId`, `priorAuthorityId`, and state.
 
 Assignment uses the public work-list API and therefore requires the current `assignmentVersion`; it returns a conflict if the item changes before the write. The `local` commands read the JDBC-backed Axon `domain_event_entry` table directly. They default to the `axon` schema and `postgres` credentials, accept `--axon-schema`, `--db-username`, and `--db-password` overrides, and may display sensitive event payloads.
 
