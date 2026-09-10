@@ -487,6 +487,8 @@ class PriorAuthorityAggregateTest {
                 "Initial",
                 100.0,
                 firstDecisionAt,
+                123.88,
+                45.77,
                 "{\"decision\":\"GRANTED\"}"));
 
     MakePriorAuthorityDecisionCommand command =
@@ -545,6 +547,8 @@ class PriorAuthorityAggregateTest {
                 "Initial",
                 100.0,
                 firstDecisionAt,
+                232.88,
+                54.09,
                 "{\"decision\":\"GRANTED\"}"));
 
     MakePriorAuthorityDecisionCommand command =

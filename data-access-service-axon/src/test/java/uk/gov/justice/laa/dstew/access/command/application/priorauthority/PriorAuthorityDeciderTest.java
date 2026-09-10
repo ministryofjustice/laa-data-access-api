@@ -119,6 +119,8 @@ class PriorAuthorityDeciderTest {
             "Recorded",
             0.0,
             OCCURRED_AT,
+            99.99,
+            23.23,
             "{\"decision\":\"REFUSED\"}");
 
     Optional<PriorAuthorityDecisionRecordedEvent> result =
@@ -254,6 +256,8 @@ class PriorAuthorityDeciderTest {
             "Recorded",
             100.0,
             OCCURRED_AT,
+            88.88,
+            66.06,
             null);
 
     assertThatThrownBy(() -> PriorAuthorityDecider.decideDecision(state, command, payload))
@@ -283,6 +287,8 @@ class PriorAuthorityDeciderTest {
         "Recorded",
         0.0,
         OCCURRED_AT,
+        88.88,
+        66.06,
         "{\"decision\":\"GRANTED\"}");
   }
 }

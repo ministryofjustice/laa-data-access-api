@@ -15,6 +15,8 @@ public record PriorAuthorityDataPayload(
     String decisionJustification,
     Double amountGranted,
     Instant dateGranted,
+    Double newHourlyRateAmount,
+    Double newFixedRateAmount,
     String decisionSerialisedRequest) {
 
   /** Creates an initial payload version before any decision has been recorded. */
@@ -34,6 +36,8 @@ public record PriorAuthorityDataPayload(
         null,
         null,
         null,
+        null,
+        null,
         null);
   }
 
@@ -43,6 +47,8 @@ public record PriorAuthorityDataPayload(
       String newDecisionJustification,
       Double newAmountGranted,
       Instant newDateGranted,
+      Double newHourlyRateAmount,
+      Double newFixedRateAmount,
       String newDecisionSerialisedRequest) {
     return new PriorAuthorityDataPayload(
         priorAuthorityId,
@@ -54,6 +60,8 @@ public record PriorAuthorityDataPayload(
         newDecisionJustification,
         newAmountGranted,
         newDateGranted,
+        newHourlyRateAmount,
+        newFixedRateAmount,
         newDecisionSerialisedRequest);
   }
 }
