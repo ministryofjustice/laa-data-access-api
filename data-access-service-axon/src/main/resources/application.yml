@@ -7,9 +7,9 @@ spring:
   autoconfigure:
     exclude: org.axonframework.springboot.autoconfig.XStreamAutoConfiguration
   datasource:
-    url: ${DB_URL:${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/laa_data_access_api?currentSchema=${AXON_DB_SCHEMA:axon}}}
-    username: ${DB_USERNAME:${SPRING_DATASOURCE_USERNAME:laa_user}}
-    password: ${DB_PASSWORD:${SPRING_DATASOURCE_PASSWORD:laa_password}}
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/laa_data_access_api?currentSchema=${AXON_DB_SCHEMA:axon}}
+    username: ${DB_USERNAME:laa_user}
+    password: ${DB_PASSWORD:laa_password}
   jpa:
     database-platform: uk.gov.justice.laa.dstew.access.config.ByteaEnforcedPostgresSqlDialect
     hibernate:
@@ -91,7 +91,27 @@ laa:
 
 logging:
   level:
+    root: ${ROOT_LOGGING_LEVEL:INFO}
+    org.springframework: ${SPRING_LOGGING_LEVEL:INFO}
+    org.springframework.web: ${SPRING_LOGGING_LEVEL:INFO}
+    org.springframework.security: INFO
+    org.hibernate: INFO
+    org.hibernate.SQL: INFO
+    org.hibernate.type.descriptor.sql.BasicBinder: INFO
     com.azure.spring: INFO
+    uk.gov.justice.laa.dstew.access: ${APP_LOGGING_LEVEL:INFO}
+    uk.gov.justice.laa.dstew.access.config.SecurityConfig: WARN
+    org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping: WARN
+    org.springframework.boot.actuate: WARN
+  structured:
+    format:
+      console: ecs
+    ecs:
+      service:
+        name: laa-data-access-api
+        version: ${info.app.version:unknown}
+        environment: ${sentry.environment:local}
+        node_name: ${HOSTNAME:unknown}
 
 management:
   endpoints:
@@ -100,10 +120,44 @@ management:
         include: health,info,metrics,prometheus
   endpoint.health.show-details: always
   info.env.enabled: true
+  metrics:
+    tags:
+      release: ${METRICS_RELEASE_TAG:local}
+    distribution:
+      percentile-histogram:
+        jdbc.query: true
+  tracing:
+    enabled: true
+    sampling:
+      probability: 1.0
+    baggage:
+      enabled: true
+      remote-fields: X-Correlation-ID
+      correlation:
+        enabled: true
+        fields: correlationId
+  observations:
+    http:
+      server:
+        requests:
+          name: http.server.requests
+      client:
+        requests:
+          name: http.client.requests
 
 springdoc:
   api-docs:
     version: openapi_3_1
+
+sentry:
+  enabled: ${SENTRY_ENABLED:false}
+  dsn: ${SENTRY_DSN:}
+  environment: ${SENTRY_ENVIRONMENT:local}
+  traces-sample-rate: ${SENTRY_TRACES_SAMPLE_RATE:1}
+  send-default-pii: false
+  logging:
+    minimum-event-level: error
+    minimum-breadcrumb-level: info
 
 feature:
   enable-dev-token: ${FEATURE_ENABLE_DEV_TOKEN:false}

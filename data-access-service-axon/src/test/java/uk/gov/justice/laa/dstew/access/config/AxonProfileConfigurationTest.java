@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Objects;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.env.YamlPropertySourceLoader;
 import org.springframework.core.env.PropertySource;
@@ -14,8 +15,8 @@ class AxonProfileConfigurationTest {
   private static final String AXON_DIALECT =
       "uk.gov.justice.laa.dstew.access.config.ByteaEnforcedPostgresSqlDialect";
   private static final String DATASOURCE_URL =
-      "${DB_URL:${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/"
-          + "laa_data_access_api?currentSchema=${AXON_DB_SCHEMA:axon}}}";
+      "${DB_URL:jdbc:postgresql://localhost:5432/"
+          + "laa_data_access_api?currentSchema=${AXON_DB_SCHEMA:axon}}";
 
   @Test
   void previewProfileUsesPreviewEnvironmentSettingsAndPreservesAxonPersistence()
@@ -38,7 +39,7 @@ class AxonProfileConfigurationTest {
         .isEqualTo("data-access-service-axon");
     assertThat(property(properties, "spring.datasource.url")).isEqualTo(DATASOURCE_URL);
     assertThat(property(properties, "spring.datasource.username"))
-        .isEqualTo("${DB_USERNAME:${SPRING_DATASOURCE_USERNAME:laa_user}}");
+        .isEqualTo("${DB_USERNAME:laa_user}");
     assertAxonPersistence(properties);
     assertEnvironmentIntegrationProperties(properties);
     assertThat(property(properties, "jdbc.datasource-proxy.slow-query.threshold"))
@@ -53,7 +54,7 @@ class AxonProfileConfigurationTest {
         .isEqualTo("data-access-service-axon");
     assertThat(property(properties, "spring.datasource.url")).isEqualTo(DATASOURCE_URL);
     assertThat(property(properties, "spring.datasource.username"))
-        .isEqualTo("${DB_USERNAME:${SPRING_DATASOURCE_USERNAME:laa_user}}");
+        .isEqualTo("${DB_USERNAME:laa_user}");
     assertAxonPersistence(properties);
     assertEnvironmentIntegrationProperties(properties);
     assertThat(property(properties, "spring.autoconfigure.exclude[0]"))
@@ -110,7 +111,7 @@ class AxonProfileConfigurationTest {
   private static Object property(List<PropertySource<?>> properties, String name) {
     return properties.stream()
         .map(propertySource -> propertySource.getProperty(name))
-        .filter(value -> value != null)
+        .filter(Objects::nonNull)
         .findFirst()
         .orElse(null);
   }
