@@ -33,10 +33,9 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
@@ -144,14 +143,14 @@ class WorkListProjectionTest {
     uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent content =
         mock(uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent.class);
     when(applicationDataStore.getLatest(applicationId)).thenReturn(parentData);
-    when(priorAuthorityDataStore.get(priorAuthorityId, 0L)).thenReturn(priorAuthorityData);
+    when(priorAuthorityDataStore.get(priorAuthorityId, 1)).thenReturn(priorAuthorityData);
     when(priorAuthorityData.content()).thenReturn(content);
     when(content.priorAuthorityType())
         .thenReturn(
             uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType.COUNSEL);
 
     projection.on(
-        new PriorAuthorityCreatedEvent(
+        new PriorAuthoritySubmittedEvent(
             priorAuthorityId, applicationId, "EXPERT", 0, 1, Instant.now()),
         message());
 

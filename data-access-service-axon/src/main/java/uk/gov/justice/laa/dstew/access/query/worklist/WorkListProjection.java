@@ -17,10 +17,9 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
@@ -74,15 +73,7 @@ public class WorkListProjection {
             event.occurredAt(),
             event.applicationVersion(),
             message.identifier().hashCode());
-    item.setLaaReference(data.laaReference());
-    item.setUsedDelegatedFunctions(data.usedDelegatedFunctions());
-    item.setCategoryOfLaw(data.categoryOfLaw());
-    item.setMatterTypes(
-        (data.proceedings() == null ? Stream.<Proceeding>empty() : data.proceedings().stream())
-            .map(Proceeding::getMatterType)
-            .filter(Objects::nonNull)
-            .distinct()
-            .toList());
+    populateApplicationFields(item, data);
     item.setApplicationStatus("APPLICATION_SUBMITTED");
     items.save(item);
   }
@@ -102,6 +93,7 @@ public class WorkListProjection {
             event.dataVersion(),
             message.identifier().hashCode());
     populateApplicationFields(item, parentData);
+    item.setApplicationStatus("APPLICATION_SUBMITTED");
     String priorAuthorityType = priorAuthorityData.content().priorAuthorityType().name();
     item.setPriorAuthorityType(priorAuthorityType);
     item.setExpertType(
@@ -177,6 +169,7 @@ public class WorkListProjection {
   private void populateApplicationFields(WorkListItemReadModel item, ApplicationDataPayload data) {
     item.setLaaReference(data.laaReference());
     item.setCategoryOfLaw(data.categoryOfLaw());
+    item.setUsedDelegatedFunctions(data.usedDelegatedFunctions());
     item.setMatterTypes(
         (data.proceedings() == null ? Stream.<Proceeding>empty() : data.proceedings().stream())
             .map(Proceeding::getMatterType)

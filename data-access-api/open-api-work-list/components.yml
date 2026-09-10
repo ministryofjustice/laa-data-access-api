@@ -49,7 +49,7 @@ components:
         applicationStatus:
           $ref: "../open-api-common/components.yml#/components/schemas/ApplicationStatus"
         priorAuthorityType:
-          $ref: "../open-api-applications/components.yml#/components/schemas/PriorAuthorityType"
+          $ref: "../open-api-prior-authority/components.yml#/components/schemas/PriorAuthorityType"
           description: Prior-authority type; null for application items
         expertType:
           type: string

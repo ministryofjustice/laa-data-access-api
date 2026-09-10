@@ -31,8 +31,6 @@ import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantedOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.BillingType;
-import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityRequest;
-import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityResponse;
 import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityDraftRequest;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.DisbursementDetails;
@@ -251,25 +249,24 @@ class WorkListIntegrationTest {
   }
 
   @Test
-  void givenExpertPriorAuthority_whenUnassigned_thenItsExpertTypeAppearsInTheWorkList()
-      throws Exception {
+  void givenExpertPriorAuthority_whenUnassigned_thenItsExpertTypeAppearsInTheWorkList() {
     UUID parentApplicationId = UUID.randomUUID();
     createGrantedApplication(parentApplicationId);
     UUID priorAuthorityId =
-        createPriorAuthority(
-            parentApplicationId,
-            CreatePriorAuthorityRequest.builder()
+        createAndSubmitPriorAuthorityDraft(
+            CreatePriorAuthorityDraftRequest.builder()
+                .applicationId(parentApplicationId)
                 .priorAuthorityType(PriorAuthorityType.EXPERT)
-                .justification("Specialist evidence")
+                .justification("Interpreter costs for proceedings")
                 .expertDetails(
                     ExpertDetails.builder()
                         .expertType("Pathologist")
-                        .expertFullName("Dr Expert")
-                        .expertPostcode("SW1A 1AA")
+                        .expertFullName("Pathologist")
+                        .expertPostcode("12345")
                         .expertCosts(
                             ExpertCosts.builder()
                                 .billingType(BillingType.FIXED_RATE)
-                                .totalAmount(900.0)
+                                .totalAmount(100.0)
                                 .costsSharedWithOtherParties(false)
                                 .build())
                         .build())
@@ -662,7 +659,7 @@ class WorkListIntegrationTest {
   }
 
   private UUID createAndSubmitPriorAuthorityDraft(UUID applicationId) {
-    CreatePriorAuthorityDraftRequest draftRequest =
+    return createAndSubmitPriorAuthorityDraft(
         CreatePriorAuthorityDraftRequest.builder()
             .applicationId(applicationId)
             .priorAuthorityType(PriorAuthorityType.DISBURSEMENT)
@@ -672,7 +669,10 @@ class WorkListIntegrationTest {
                     .disbursementPurpose("Court interpreter")
                     .disbursementAmount(150.0)
                     .build())
-            .build();
+            .build());
+  }
+
+  private UUID createAndSubmitPriorAuthorityDraft(CreatePriorAuthorityDraftRequest draftRequest) {
     ResponseEntity<String> draftResponse =
         restTemplate.postForEntity(
             "http://localhost:" + port + "/api/v0/prior-authorities",
