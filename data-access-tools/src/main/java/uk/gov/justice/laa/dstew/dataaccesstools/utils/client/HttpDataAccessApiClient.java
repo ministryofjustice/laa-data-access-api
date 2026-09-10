@@ -62,10 +62,26 @@ public final class HttpDataAccessApiClient implements DataAccessApiClient {
   }
 
   @Override
-  public UUID createPriorAuthority(UUID applicationId, String requestBody) {
-    String path = "api/v0/applications/" + applicationId + "/prior-authority";
+  public UUID createPriorAuthorityDraft(String requestBody) {
+    String path = "api/v0/prior-authorities";
     return locationId(
         execute("POST", path, requestBody, "CIVIL_APPLY", Set.of(201, 202)), "POST", path);
+  }
+
+  @Override
+  public void updatePriorAuthorityDraft(UUID priorAuthorityId, String requestBody) {
+    execute(
+        "PUT",
+        "api/v0/prior-authorities/" + priorAuthorityId,
+        requestBody,
+        "CIVIL_APPLY",
+        Set.of(204));
+  }
+
+  @Override
+  public UUID submitPriorAuthorityDraft(UUID priorAuthorityId) {
+    String path = "api/v0/prior-authorities/" + priorAuthorityId + "/submit";
+    return locationId(execute("POST", path, "{}", "CIVIL_APPLY", Set.of(200, 202)), "POST", path);
   }
 
   @Override
