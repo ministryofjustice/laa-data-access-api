@@ -116,10 +116,13 @@ paths:
               type: object
               required:
                 - file
+                - documentType
               properties:
                 file:
                   type: string
                   format: binary
+                documentType:
+                  $ref: "./components.yml#/components/schemas/PriorAuthorityDocumentType"
       responses:
         '201':
           description: Document uploaded and linked to prior authority draft

@@ -10,6 +10,7 @@ import uk.gov.justice.laa.dstew.access.model.CounselType;
 import uk.gov.justice.laa.dstew.access.model.DisbursementDetails;
 import uk.gov.justice.laa.dstew.access.model.ExpertCosts;
 import uk.gov.justice.laa.dstew.access.model.ExpertDetails;
+import uk.gov.justice.laa.dstew.access.model.PriorAuthorityDocumentType;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityResponse;
 import uk.gov.justice.laa.dstew.access.model.TimeRequested;
 import uk.gov.justice.laa.dstew.access.model.UploadedDocument;
@@ -49,13 +50,17 @@ public class GetPriorAuthorityResponseMapper {
             document ->
                 new UploadedDocument()
                     .documentId(document.documentId())
+                    .documentType(PriorAuthorityDocumentType.fromValue(document.documentType()))
                     .fileName(document.fileName())
-                    .contentType(document.contentType())
+                    .fileType(document.fileType())
+                    .mediaType(document.mediaType())
                     .size(document.size())
                     .uploadedAt(
                         document.uploadedAt() == null
                             ? null
-                            : document.uploadedAt().atOffset(java.time.ZoneOffset.UTC)))
+                            : document.uploadedAt().atOffset(java.time.ZoneOffset.UTC))
+                    .sourceService(document.sourceService())
+                    .checksum(document.checksum()))
         .toList();
   }
 
