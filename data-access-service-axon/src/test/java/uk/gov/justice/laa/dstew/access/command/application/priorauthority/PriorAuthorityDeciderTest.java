@@ -112,6 +112,7 @@ class PriorAuthorityDeciderTest {
             "GRANTED",
             "Recorded",
             350.0,
+            null,
             OCCURRED_AT,
             "{\"decision\":\"GRANTED\"}",
             OCCURRED_AT);
@@ -144,6 +145,7 @@ class PriorAuthorityDeciderTest {
             "REFUSED",
             "Recorded",
             0.0,
+            null,
             OCCURRED_AT,
             "{\"decision\":\"REFUSED\"}",
             OCCURRED_AT);
@@ -181,6 +183,7 @@ class PriorAuthorityDeciderTest {
             "REFUSED",
             "Recorded",
             0.0,
+            null,
             OCCURRED_AT,
             "{\"decision\":\"REFUSED\"}",
             OCCURRED_AT);
@@ -217,6 +220,7 @@ class PriorAuthorityDeciderTest {
             "GRANTED",
             "Recorded",
             100.0,
+            null,
             OCCURRED_AT,
             "{\"decision\":\"GRANTED\"}",
             OCCURRED_AT);
@@ -253,6 +257,7 @@ class PriorAuthorityDeciderTest {
             "GRANTED",
             "Recorded",
             100.0,
+            null,
             OCCURRED_AT,
             "{\"decision\":\"REFUSED\"}",
             OCCURRED_AT);
@@ -283,7 +288,15 @@ class PriorAuthorityDeciderTest {
     state.dataVersion = 0L;
     MakePriorAuthorityDecisionCommand command =
         new MakePriorAuthorityDecisionCommand(
-            submissionId, 0L, "PART_GRANTED", "Recorded", 0.0, OCCURRED_AT, "{}", OCCURRED_AT);
+            submissionId,
+            0L,
+            "PART_GRANTED",
+            "Recorded",
+            0.0,
+            null,
+            OCCURRED_AT,
+            "{}",
+            OCCURRED_AT);
     PriorAuthorityDataPayload payload =
         new PriorAuthorityDataPayload(submissionId, applicationId, null, "{}", OCCURRED_AT);
 
@@ -310,6 +323,7 @@ class PriorAuthorityDeciderTest {
             "GRANTED",
             "Recorded",
             100.0,
+            null,
             OCCURRED_AT,
             "{\"decision\":\"GRANTED\"}",
             OCCURRED_AT);

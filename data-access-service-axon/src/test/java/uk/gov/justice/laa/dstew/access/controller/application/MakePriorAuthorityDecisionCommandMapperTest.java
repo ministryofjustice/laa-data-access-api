@@ -14,6 +14,7 @@ import tools.jackson.databind.json.JsonMapper;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.MakePriorAuthorityDecisionCommand;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
+import uk.gov.justice.laa.dstew.access.model.ExpertMakePriorAuthorityDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.MakePriorAuthorityDecisionRequest;
 
 class MakePriorAuthorityDecisionCommandMapperTest {
@@ -46,6 +47,35 @@ class MakePriorAuthorityDecisionCommandMapperTest {
     assertThat(command.dateGranted()).isEqualTo(dateGranted.toInstant());
     assertThat(command.serialisedRequest()).contains("\"decision\":\"GRANTED\"");
     assertThat(command.occurredAt()).isNotNull();
+  }
+
+  @Test
+  void givenRequestWithExpertFeeDetails_whenMapped_thenStoresExpertFeeInformation() {
+    UUID submissionId = UUID.randomUUID();
+    MakePriorAuthorityDecisionRequest request =
+        MakePriorAuthorityDecisionRequest.builder()
+            .priorAuthorityVersion(7L)
+            .decision(DecisionStatus.GRANTED)
+            .decisionJustification("Decision recorded")
+            .amountGranted(1200.50)
+            .dateGranted(OffsetDateTime.parse("2026-09-08T12:30:00Z"))
+            .eventHistory(
+                EventHistoryRequest.builder().eventDescription("Decision recorded").build())
+            .expert(
+                ExpertMakePriorAuthorityDecisionRequest.builder()
+                    .newFixedRateAmount(450.25)
+                    .newHourlyRateAmount(125.75)
+                    .build())
+            .build();
+
+    MakePriorAuthorityDecisionCommand command = mapper.toCommand(submissionId, request);
+
+    assertThat(command.submissionId()).isEqualTo(submissionId);
+    assertThat(command.expertFee()).isNotNull();
+    assertThat(command.expertFee().getNewFixedRateAmount()).isEqualTo(450.25);
+    assertThat(command.expertFee().getNewHourlyRateAmount()).isEqualTo(125.75);
+    assertThat(command.serialisedRequest()).contains("\"newFixedRateAmount\":450.25");
+    assertThat(command.serialisedRequest()).contains("\"newHourlyRateAmount\":125.75");
   }
 
   @Test
@@ -83,6 +113,7 @@ class MakePriorAuthorityDecisionCommandMapperTest {
 
     assertThat(command.expectedPriorAuthorityVersion()).isEqualTo(10L);
     assertThat(command.decisionJustification()).isNull();
+    assertThat(command.expertFee()).isNull();
   }
 
   @Test

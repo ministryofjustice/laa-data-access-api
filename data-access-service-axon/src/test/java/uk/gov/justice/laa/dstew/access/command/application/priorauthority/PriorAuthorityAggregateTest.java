@@ -233,6 +233,7 @@ class PriorAuthorityAggregateTest {
             "GRANTED",
             "Decision recorded",
             1234.56,
+            null,
             decidedAt,
             "{\"decision\":\"GRANTED\"}",
             decidedAt);
@@ -321,6 +322,7 @@ class PriorAuthorityAggregateTest {
             "REFUSED",
             "Decision recorded",
             0.0,
+            null,
             occurredAt,
             "{\"decision\":\"REFUSED\"}",
             occurredAt.plusSeconds(2));
@@ -378,6 +380,7 @@ class PriorAuthorityAggregateTest {
             "REFUSED",
             "Decision recorded",
             0.0,
+            null,
             occurredAt,
             "{\"decision\":\"REFUSED\"}",
             occurredAt.plusSeconds(2));
@@ -404,6 +407,7 @@ class PriorAuthorityAggregateTest {
             "GRANTED",
             "Decision recorded",
             50.0,
+            null,
             decidedAt,
             "{\"decision\":\"GRANTED\"}",
             decidedAt);
