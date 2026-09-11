@@ -107,7 +107,9 @@ public class SdsService {
             priorAuthorityId.toString(),
             "key",
             documentId.toString());
-    MultipartBodyBuilder builder = buildMultipartBody(file, bodyMap, documentId.toString());
+    MultipartBodyBuilder builder =
+        buildMultipartBody(
+            file, bodyMap, documentId + getFileExtension(file.getOriginalFilename()));
 
     return sdsUploadResponseHandler
         .handle(
@@ -230,6 +232,11 @@ public class SdsService {
 
   private String buildFileKey(UUID applicationId, String documentId) {
     return applicationId.toString() + PATH_SEPARATOR + documentId;
+  }
+
+  private String getFileExtension(String fileName) {
+    int extensionStart = fileName.lastIndexOf('.');
+    return extensionStart >= 0 ? fileName.substring(extensionStart) : "";
   }
 
   private MultipartBodyBuilder buildMultipartBody(

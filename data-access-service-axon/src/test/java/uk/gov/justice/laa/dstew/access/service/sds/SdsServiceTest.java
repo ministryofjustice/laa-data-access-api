@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.endsWith;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -134,14 +135,23 @@ class SdsServiceTest {
 
     DocumentUploadResponse actualResponse =
         sdsService.savePriorAuthorityFile(priorAuthorityId, documentId, file);
+    MockMultipartFile fileWithoutExtension =
+        new MockMultipartFile(
+            "file", "test-file", "application/octet-stream", "test content".getBytes());
+    DocumentUploadResponse responseWithoutExtension =
+        sdsService.savePriorAuthorityFile(priorAuthorityId, documentId, fileWithoutExtension);
 
     assertThat(actualResponse).isEqualTo(expectedResponse);
+    assertThat(responseWithoutExtension).isEqualTo(expectedResponse);
 
     ArgumentCaptor<MultiValueMap<String, HttpEntity<?>>> bodyCaptor =
         (ArgumentCaptor) ArgumentCaptor.forClass(MultiValueMap.class);
-    verify(requestBodySpec).body(bodyCaptor.capture());
-    HttpEntity<?> filePart = bodyCaptor.getValue().getFirst("file");
-    assertThat(filePart.getHeaders().getContentDisposition().getFilename())
+    verify(requestBodySpec, times(2)).body(bodyCaptor.capture());
+    HttpEntity<?> filePartWithExtension = bodyCaptor.getAllValues().get(0).getFirst("file");
+    HttpEntity<?> filePartWithoutExtension = bodyCaptor.getAllValues().get(1).getFirst("file");
+    assertThat(filePartWithExtension.getHeaders().getContentDisposition().getFilename())
+        .isEqualTo(documentId + ".pdf");
+    assertThat(filePartWithoutExtension.getHeaders().getContentDisposition().getFilename())
         .isEqualTo(documentId.toString());
   }
 
