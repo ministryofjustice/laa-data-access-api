@@ -15,8 +15,8 @@ class AxonProfileConfigurationTest {
   private static final String AXON_DIALECT =
       "uk.gov.justice.laa.dstew.access.config.ByteaEnforcedPostgresSqlDialect";
   private static final String DATASOURCE_URL =
-      "${DB_URL:jdbc:postgresql://localhost:5432/"
-          + "laa_data_access_api?currentSchema=${AXON_DB_SCHEMA:axon}}";
+      "${DB_URL:jdbc:postgresql://${DB_HOST:localhost}:5432/"
+          + "${DB_NAME:laa_data_access_api}?currentSchema=${AXON_DB_SCHEMA:axon}}";
 
   @Test
   void previewProfileUsesPreviewEnvironmentSettingsAndPreservesAxonPersistence()
