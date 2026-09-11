@@ -11,13 +11,16 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
+import uk.gov.justice.laa.dstew.access.model.AutoGranted;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.PagingResponse;
+import uk.gov.justice.laa.dstew.access.model.PriorAuthoritySummary;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsResult;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
+import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
 
 /** Maps a {@link FindAllApplicationsResult} to an {@link ApplicationSummaryResponse}. */
 @Component
@@ -26,7 +29,12 @@ public class GetAllApplicationsResponseMapper {
   /** Builds the paginated response from the query result. */
   public ResponseEntity<ApplicationSummaryResponse> toResponse(FindAllApplicationsResult result) {
     List<ApplicationSummary> summaries =
-        result.applications().stream().map(app -> toSummary(app, result.groupsByLeadId())).toList();
+        result.applications().stream()
+            .map(
+                app ->
+                    toSummary(
+                        app, result.groupsByLeadId(), result.priorAuthoritiesByApplicationId()))
+            .toList();
 
     PagingResponse paging = new PagingResponse();
     paging.setPage(result.requestedPage());
@@ -42,7 +50,9 @@ public class GetAllApplicationsResponseMapper {
   }
 
   private ApplicationSummary toSummary(
-      ApplicationReadModel app, Map<UUID, LinkedApplicationGroupReadModel> groupsByLeadId) {
+      ApplicationReadModel app,
+      Map<UUID, LinkedApplicationGroupReadModel> groupsByLeadId,
+      Map<UUID, List<PriorAuthorityReadModel>> priorAuthoritiesByApplicationId) {
     ApplicationSummary summary = new ApplicationSummary();
     summary.setApplicationId(app.getApplicationId());
     summary.setStatus(app.getStatus() != null ? ApplicationStatus.valueOf(app.getStatus()) : null);
@@ -57,12 +67,13 @@ public class GetAllApplicationsResponseMapper {
     // Linked groups are not yet exposed; always false until the grouping endpoint is available.
     summary.setIsLead(false);
     summary.setAssignedTo(app.getCaseworkerId());
-    summary.setAutoGranted(
-        uk.gov.justice.laa.dstew.access.model.AutoGranted.valueOf(app.getAutoGranted().name()));
+    summary.setAutoGranted(AutoGranted.valueOf(app.getAutoGranted().name()));
 
     populateClientDetails(summary, app);
 
     summary.setLinkedApplications(toLinkedSummaries(app, groupsByLeadId));
+    summary.setPriorAuthorities(
+        toPriorAuthoritySummaries(app.getApplicationId(), priorAuthoritiesByApplicationId));
     return summary;
   }
 
@@ -116,6 +127,24 @@ public class GetAllApplicationsResponseMapper {
               linked.setIsLead(memberId.equals(group.getLeadApplicationId()));
               return linked;
             })
+        .toList();
+  }
+
+  private List<PriorAuthoritySummary> toPriorAuthoritySummaries(
+      UUID applicationId,
+      Map<UUID, List<PriorAuthorityReadModel>> priorAuthoritiesByApplicationId) {
+    return priorAuthoritiesByApplicationId.getOrDefault(applicationId, List.of()).stream()
+        .map(
+            priorAuthority ->
+                new PriorAuthoritySummary()
+                    .priorAuthorityId(priorAuthority.getPriorAuthorityId())
+                    .status(PriorAuthoritySummary.StatusEnum.fromValue(priorAuthority.getStatus()))
+                    .decision(
+                        priorAuthority.getDecision() == null
+                            ? null
+                            : PriorAuthoritySummary.DecisionEnum.fromValue(
+                                priorAuthority.getDecision()))
+                    .createdAt(priorAuthority.getCreatedAt().atOffset(ZoneOffset.UTC)))
         .toList();
   }
 }
