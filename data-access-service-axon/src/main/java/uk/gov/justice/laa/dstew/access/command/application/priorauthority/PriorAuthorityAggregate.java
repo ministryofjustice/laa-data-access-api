@@ -88,10 +88,10 @@ public class PriorAuthorityAggregate {
         new PriorAuthorityDocument(
             command.documentId(),
             command.documentType(),
-            command.file().getOriginalFilename(),
+            command.originalFilename(),
             PriorAuthorityDocumentMetadata.PDF_FILE_TYPE,
             PriorAuthorityDocumentMetadata.PDF_CONTENT_TYPE,
-            command.file().getSize(),
+            command.fileSize(),
             command.occurredAt(),
             command.sourceService(),
             command.checksum()));

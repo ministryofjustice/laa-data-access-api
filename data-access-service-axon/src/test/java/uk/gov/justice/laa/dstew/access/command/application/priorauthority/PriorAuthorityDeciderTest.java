@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import org.springframework.mock.web.MockMultipartFile;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 
@@ -83,12 +82,13 @@ class PriorAuthorityDeciderTest {
         new PriorAuthorityDocumentUploadCommand(
             priorAuthorityId,
             documentId,
-            new MockMultipartFile("file", "report.pdf", "application/pdf", "content".getBytes()),
             "gateway_evidence",
             "CIVIL_APPLY",
             "abc123",
             "{}",
-            OCCURRED_AT);
+            OCCURRED_AT,
+            "evidence.pdf",
+            7L);
     UUID applicationId = UUID.randomUUID();
     PriorAuthorityDocumentUploadedEvent event =
         PriorAuthorityDecider.decideDocumentUploaded(command, applicationId);

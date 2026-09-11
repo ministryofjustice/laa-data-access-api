@@ -423,12 +423,13 @@ class PriorAuthorityAggregateTest {
         new PriorAuthorityDocumentUploadCommand(
             priorAuthorityId,
             documentId,
-            file,
             "gateway_evidence",
             "CIVIL_APPLY",
             "sum",
             "{}",
-            occurredAt);
+            occurredAt,
+            file.getOriginalFilename(),
+            file.getSize());
 
     aggregate.on(
         new PriorAuthorityDraftStartedEvent(
@@ -502,18 +503,19 @@ class PriorAuthorityAggregateTest {
                     "{}",
                     occurredAt)));
 
-    aggregate.handle(
+    final PriorAuthorityDocumentUploadCommand priorAuthorityDocumentUploadCommand =
         new PriorAuthorityDocumentUploadCommand(
             priorAuthorityId,
             documentId,
-            file,
             "gateway_evidence",
             "CIVIL_APPLY",
             "sum",
             "{}",
-            occurredAt),
-        draftStore,
-        eventAppender);
+            occurredAt,
+            file.getOriginalFilename(),
+            file.getSize());
+
+    aggregate.handle(priorAuthorityDocumentUploadCommand, draftStore, eventAppender);
 
     ArgumentCaptor<PriorAuthorityDataPayload> payloadCaptor =
         ArgumentCaptor.forClass(PriorAuthorityDataPayload.class);
@@ -544,19 +546,20 @@ class PriorAuthorityAggregateTest {
 
     org.assertj.core.api.Assertions.assertThatExceptionOfType(ResourceNotFoundException.class)
         .isThrownBy(
-            () ->
-                aggregate.handle(
-                    new PriorAuthorityDocumentUploadCommand(
-                        priorAuthorityId,
-                        documentId,
-                        file,
-                        "gateway_evidence",
-                        "CIVIL_APPLY",
-                        "sum",
-                        "{}",
-                        occurredAt),
-                    draftStore,
-                    eventAppender));
+            () -> {
+              PriorAuthorityDocumentUploadCommand priorAuthorityDocumentUploadCommand =
+                  new PriorAuthorityDocumentUploadCommand(
+                      priorAuthorityId,
+                      documentId,
+                      "gateway_evidence",
+                      "CIVIL_APPLY",
+                      "sum",
+                      "{}",
+                      occurredAt,
+                      file.getOriginalFilename(),
+                      file.getSize());
+              aggregate.handle(priorAuthorityDocumentUploadCommand, draftStore, eventAppender);
+            });
   }
 
   @Test
@@ -582,18 +585,19 @@ class PriorAuthorityAggregateTest {
                     "{}",
                     occurredAt)));
 
-    aggregate.handle(
+    final PriorAuthorityDocumentUploadCommand priorAuthorityDocumentUploadCommand =
         new PriorAuthorityDocumentUploadCommand(
             priorAuthorityId,
             documentId,
-            file,
             "gateway_evidence",
             "CIVIL_APPLY",
             null,
             "{}",
-            occurredAt),
-        draftStore,
-        eventAppender);
+            occurredAt,
+            file.getOriginalFilename(),
+            file.getSize());
+
+    aggregate.handle(priorAuthorityDocumentUploadCommand, draftStore, eventAppender);
 
     ArgumentCaptor<PriorAuthorityDocumentUploadedEvent> eventCaptor =
         ArgumentCaptor.forClass(PriorAuthorityDocumentUploadedEvent.class);
