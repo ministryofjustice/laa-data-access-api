@@ -107,7 +107,7 @@ public class SdsService {
             priorAuthorityId.toString(),
             "key",
             documentId.toString());
-    MultipartBodyBuilder builder = buildMultipartBody(file, bodyMap);
+    MultipartBodyBuilder builder = buildMultipartBody(file, bodyMap, documentId.toString());
 
     return sdsUploadResponseHandler
         .handle(
@@ -234,9 +234,17 @@ public class SdsService {
 
   private MultipartBodyBuilder buildMultipartBody(
       MultipartFile file, Map<String, String> bodyFields) {
+    return buildMultipartBody(file, bodyFields, file.getOriginalFilename());
+  }
+
+  private MultipartBodyBuilder buildMultipartBody(
+      MultipartFile file, Map<String, String> bodyFields, String fileName) {
     try {
       MultipartBodyBuilder builder = new MultipartBodyBuilder();
-      builder.part("file", file.getResource()).contentType(APPLICATION_OCTET_STREAM);
+      builder
+          .part("file", file.getResource())
+          .filename(fileName)
+          .contentType(APPLICATION_OCTET_STREAM);
       builder.part("body", objectMapper.writeValueAsString(bodyFields));
       return builder;
     } catch (JacksonException e) {
