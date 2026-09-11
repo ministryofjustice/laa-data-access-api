@@ -501,10 +501,8 @@ The following actuator endpoints have been configured:
 
 ### Run the data generator
 
-Each deployment to UAT will also deploy data-access-mass-generator as a separate pod. Initially it is scaled to 0,
-however you can start the pod and connect to it via kubectl to be able to create performance testing data in that PR's database.
-
-This is also available for the main deployment in UAT.
+UAT, PR, and feature deployments no longer automatically deploy `data-access-mass-generator`.
+This can be added back once an Axon-compatible deployment flow is ready.
 
 To start the pod, run the following command:
 
