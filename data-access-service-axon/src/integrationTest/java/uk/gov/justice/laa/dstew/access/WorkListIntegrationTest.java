@@ -30,10 +30,13 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantedOutcomeRequest;
+import uk.gov.justice.laa.dstew.access.model.BillingType;
 import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityDraftRequest;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.DisbursementDetails;
 import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
+import uk.gov.justice.laa.dstew.access.model.ExpertCosts;
+import uk.gov.justice.laa.dstew.access.model.ExpertDetails;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceedingRequest;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
@@ -222,6 +225,8 @@ class WorkListIntegrationTest {
                         assertThat(item.getItemType()).isEqualTo(WorkListItemType.APPLICATION);
                         assertThat(item.getParentApplicationId()).isNull();
                         assertThat(item.getAssignedTo()).isNull();
+                        assertThat(item.getPriorAuthorityType()).isNull();
+                        assertThat(item.getExpertType()).isNull();
                       });
               assertThat(openApplications.getItems())
                   .filteredOn(item -> item.getItemId().equals(priorAuthorityId))
@@ -231,8 +236,55 @@ class WorkListIntegrationTest {
                         assertThat(item.getItemType()).isEqualTo(WorkListItemType.PRIOR_AUTHORITY);
                         assertThat(item.getParentApplicationId()).isEqualTo(parentApplicationId);
                         assertThat(item.getAssignedTo()).isNull();
+                        assertThat(item.getLaaReference()).isEqualTo("LAA-123");
+                        assertThat(item.getCategoryOfLaw().getValue()).isEqualTo("FAMILY");
+                        assertThat(item.getMatterTypes())
+                            .extracting(matterType -> matterType.getValue())
+                            .containsExactly("SPECIAL_CHILDREN_ACT");
+                        assertThat(item.getPriorAuthorityType())
+                            .isEqualTo(PriorAuthorityType.DISBURSEMENT);
+                        assertThat(item.getExpertType()).isNull();
                       });
             });
+  }
+
+  @Test
+  void givenExpertPriorAuthority_whenUnassigned_thenItsExpertTypeAppearsInTheWorkList() {
+    UUID parentApplicationId = UUID.randomUUID();
+    createGrantedApplication(parentApplicationId);
+    UUID priorAuthorityId =
+        createAndSubmitPriorAuthorityDraft(
+            CreatePriorAuthorityDraftRequest.builder()
+                .applicationId(parentApplicationId)
+                .priorAuthorityType(PriorAuthorityType.EXPERT)
+                .justification("Interpreter costs for proceedings")
+                .expertDetails(
+                    ExpertDetails.builder()
+                        .expertType("Pathologist")
+                        .expertFullName("Pathologist")
+                        .expertPostcode("12345")
+                        .expertCosts(
+                            ExpertCosts.builder()
+                                .billingType(BillingType.FIXED_RATE)
+                                .totalAmount(100.0)
+                                .costsSharedWithOtherParties(false)
+                                .build())
+                        .build())
+                .build());
+
+    await()
+        .atMost(15, TimeUnit.SECONDS)
+        .untilAsserted(
+            () ->
+                assertThat(getWorkList("").getItems())
+                    .filteredOn(item -> item.getItemId().equals(priorAuthorityId))
+                    .singleElement()
+                    .satisfies(
+                        item -> {
+                          assertThat(item.getPriorAuthorityType())
+                              .isEqualTo(PriorAuthorityType.EXPERT);
+                          assertThat(item.getExpertType()).isEqualTo("Pathologist");
+                        }));
   }
 
   @Test
@@ -607,7 +659,7 @@ class WorkListIntegrationTest {
   }
 
   private UUID createAndSubmitPriorAuthorityDraft(UUID applicationId) {
-    CreatePriorAuthorityDraftRequest draftRequest =
+    return createAndSubmitPriorAuthorityDraft(
         CreatePriorAuthorityDraftRequest.builder()
             .applicationId(applicationId)
             .priorAuthorityType(PriorAuthorityType.DISBURSEMENT)
@@ -617,7 +669,10 @@ class WorkListIntegrationTest {
                     .disbursementPurpose("Court interpreter")
                     .disbursementAmount(150.0)
                     .build())
-            .build();
+            .build());
+  }
+
+  private UUID createAndSubmitPriorAuthorityDraft(CreatePriorAuthorityDraftRequest draftRequest) {
     ResponseEntity<String> draftResponse =
         restTemplate.postForEntity(
             "http://localhost:" + port + "/api/v0/prior-authorities",

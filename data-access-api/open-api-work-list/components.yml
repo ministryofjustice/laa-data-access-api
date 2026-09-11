@@ -35,6 +35,7 @@ components:
           format: date-time
         laaReference:
           type: string
+          description: LAA reference for the application item or the parent application of a PA item
         usedDelegatedFunctions:
           type: boolean
           description: Whether the application used delegated functions; omitted for PA items
@@ -42,11 +43,17 @@ components:
           $ref: "../open-api-common/components.yml#/components/schemas/CategoryOfLaw"
         matterTypes:
           type: array
-          description: Matter types across the application's proceedings; omitted for PA items
+          description: Matter types across the application or PA parent application's proceedings
           items:
             $ref: "../open-api-common/components.yml#/components/schemas/MatterType"
         applicationStatus:
           $ref: "../open-api-common/components.yml#/components/schemas/ApplicationStatus"
+        priorAuthorityType:
+          $ref: "../open-api-prior-authority/components.yml#/components/schemas/PriorAuthorityType"
+          description: Prior-authority type; null for application items
+        expertType:
+          type: string
+          description: Expert type when priorAuthorityType is EXPERT; null otherwise
 
     WorkListResponse:
       type: object

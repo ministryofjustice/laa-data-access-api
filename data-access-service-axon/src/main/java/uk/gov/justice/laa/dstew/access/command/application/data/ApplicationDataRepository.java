@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.command.application.data;
 
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -8,4 +9,6 @@ public interface ApplicationDataRepository
     extends JpaRepository<ApplicationData, ApplicationDataId> {
 
   long countByIdApplicationId(UUID applicationId);
+
+  Optional<ApplicationData> findFirstByIdApplicationIdOrderByIdVersionDesc(UUID applicationId);
 }

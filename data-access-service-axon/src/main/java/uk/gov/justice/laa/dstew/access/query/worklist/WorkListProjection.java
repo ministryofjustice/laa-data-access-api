@@ -18,6 +18,8 @@ import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataP
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
@@ -30,11 +32,16 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 public class WorkListProjection {
   private final WorkListItemReadRepository items;
   private final ApplicationDataStore applicationDataStore;
+  private final PriorAuthorityDataStore priorAuthorityDataStore;
 
+  /** Creates a projection backed by its read repository and event data stores. */
   public WorkListProjection(
-      WorkListItemReadRepository items, ApplicationDataStore applicationDataStore) {
+      WorkListItemReadRepository items,
+      ApplicationDataStore applicationDataStore,
+      PriorAuthorityDataStore priorAuthorityDataStore) {
     this.items = items;
     this.applicationDataStore = applicationDataStore;
+    this.priorAuthorityDataStore = priorAuthorityDataStore;
   }
 
   /** Returns a database-filtered page of active work, oldest submission first. */
@@ -66,15 +73,7 @@ public class WorkListProjection {
             event.occurredAt(),
             event.applicationVersion(),
             message.identifier().hashCode());
-    item.setLaaReference(data.laaReference());
-    item.setUsedDelegatedFunctions(data.usedDelegatedFunctions());
-    item.setCategoryOfLaw(data.categoryOfLaw());
-    item.setMatterTypes(
-        (data.proceedings() == null ? Stream.<Proceeding>empty() : data.proceedings().stream())
-            .map(Proceeding::getMatterType)
-            .filter(Objects::nonNull)
-            .distinct()
-            .toList());
+    populateApplicationFields(item, data);
     item.setApplicationStatus("APPLICATION_SUBMITTED");
     items.save(item);
   }
@@ -82,14 +81,25 @@ public class WorkListProjection {
   /** PA submission directly activates one PA work item under its parent application. */
   @EventHandler
   public void on(PriorAuthoritySubmittedEvent event, EventMessage message) {
-    items.save(
+    ApplicationDataPayload parentData = applicationDataStore.getLatest(event.applicationId());
+    PriorAuthorityDataPayload priorAuthorityData =
+        priorAuthorityDataStore.get(event.priorAuthorityId(), event.dataVersion());
+    WorkListItemReadModel item =
         new WorkListItemReadModel(
             WorkItemType.PRIOR_AUTHORITY,
             event.priorAuthorityId(),
             event.applicationId(),
             event.occurredAt(),
             event.dataVersion(),
-            message.identifier().hashCode()));
+            message.identifier().hashCode());
+    populateApplicationFields(item, parentData);
+    String priorAuthorityType = priorAuthorityData.content().priorAuthorityType().name();
+    item.setPriorAuthorityType(priorAuthorityType);
+    item.setExpertType(
+        "EXPERT".equals(priorAuthorityType)
+            ? priorAuthorityData.content().expertDetails().expertType()
+            : null);
+    items.save(item);
   }
 
   /** A terminal application decision removes only its application work row. */
@@ -153,5 +163,17 @@ public class WorkListProjection {
     if (item.getItemType() != eventType) {
       throw new IllegalStateException("Work item type mismatch for " + workItemId);
     }
+  }
+
+  private void populateApplicationFields(WorkListItemReadModel item, ApplicationDataPayload data) {
+    item.setLaaReference(data.laaReference());
+    item.setCategoryOfLaw(data.categoryOfLaw());
+    item.setUsedDelegatedFunctions(data.usedDelegatedFunctions());
+    item.setMatterTypes(
+        (data.proceedings() == null ? Stream.<Proceeding>empty() : data.proceedings().stream())
+            .map(Proceeding::getMatterType)
+            .filter(Objects::nonNull)
+            .distinct()
+            .toList());
   }
 }

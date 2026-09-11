@@ -39,6 +39,8 @@ class HttpDataAccessApiClientTest {
     HttpDataAccessApiClient client = new HttpDataAccessApiClient(baseUri());
 
     assertEquals(applicationId, client.createApplication("{}"));
+    assertEquals(
+        "LAA-CLI-12345678", client.getApplicationDecisionData(applicationId).laaReference());
     client.recordManualOutcome(applicationId);
     client.recordAutograntedOutcome(
         applicationId, "{\"outcome\":\"AUTOGRANTED\",\"certificate\":{}}");
@@ -48,7 +50,7 @@ class HttpDataAccessApiClientTest {
     assertEquals(priorAuthorityId, client.submitPriorAuthorityDraft(priorAuthorityId));
     client.assignWorkListItem(applicationId, priorAuthorityId, 3, "Assigned \"locally\"");
 
-    assertEquals(8, requests.size());
+    assertEquals(9, requests.size());
     requests.forEach(
         request -> {
           assertEquals("Bearer swagger-caseworker-token", request.authorization());
@@ -56,24 +58,26 @@ class HttpDataAccessApiClientTest {
         });
     assertEquals("POST", requests.get(0).method());
     assertEquals("/api/v0/applications", requests.get(0).path());
-    assertEquals("PATCH", requests.get(1).method());
-    assertEquals("{\"outcome\":\"MANUAL\"}", requests.get(1).body());
+    assertEquals("GET", requests.get(1).method());
+    assertEquals("/api/v0/applications/" + applicationId, requests.get(1).path());
     assertEquals("PATCH", requests.get(2).method());
-    assertEquals("{\"outcome\":\"AUTOGRANTED\",\"certificate\":{}}", requests.get(2).body());
-    assertEquals("POST", requests.get(4).method());
-    assertEquals("/api/v0/prior-authorities", requests.get(4).path());
-    assertEquals("PUT", requests.get(5).method());
-    assertEquals("/api/v0/prior-authorities/" + priorAuthorityId, requests.get(5).path());
-    assertEquals("POST", requests.get(6).method());
-    assertEquals(
-        "/api/v0/prior-authorities/" + priorAuthorityId + "/submit", requests.get(6).path());
+    assertEquals("{\"outcome\":\"MANUAL\"}", requests.get(2).body());
+    assertEquals("PATCH", requests.get(3).method());
+    assertEquals("{\"outcome\":\"AUTOGRANTED\",\"certificate\":{}}", requests.get(3).body());
+    assertEquals("POST", requests.get(5).method());
+    assertEquals("/api/v0/prior-authorities", requests.get(5).path());
+    assertEquals("PUT", requests.get(6).method());
+    assertEquals("/api/v0/prior-authorities/" + priorAuthorityId, requests.get(6).path());
     assertEquals("POST", requests.get(7).method());
-    assertEquals("/api/v0/work-list/" + applicationId + "/assign", requests.get(7).path());
+    assertEquals(
+        "/api/v0/prior-authorities/" + priorAuthorityId + "/submit", requests.get(7).path());
+    assertEquals("POST", requests.get(8).method());
+    assertEquals("/api/v0/work-list/" + applicationId + "/assign", requests.get(8).path());
     assertEquals(
         "{\"caseworkerId\":\""
             + priorAuthorityId
             + "\",\"expectedAssignmentVersion\":3,\"eventHistory\":{\"eventDescription\":\"Assigned \\\"locally\\\"\"}}",
-        requests.get(7).body());
+        requests.get(8).body());
   }
 
   @Test
@@ -102,6 +106,17 @@ class HttpDataAccessApiClientTest {
             exchange.getRequestHeaders().getFirst("X-Service-Name"),
             body));
     String path = exchange.getRequestURI().getPath();
+    if (exchange.getRequestMethod().equals("GET")) {
+      byte[] response =
+          ("{\"laaReference\":\"LAA-CLI-12345678\",\"proceedings\":[{\"id\":\""
+                  + priorAuthorityId
+                  + "\"}],\"applicationVersion\":2}")
+              .getBytes();
+      exchange.sendResponseHeaders(200, response.length);
+      exchange.getResponseBody().write(response);
+      exchange.close();
+      return;
+    }
     int status =
         path.endsWith("auto-grant-outcome") || exchange.getRequestMethod().equals("PUT")
             ? 204

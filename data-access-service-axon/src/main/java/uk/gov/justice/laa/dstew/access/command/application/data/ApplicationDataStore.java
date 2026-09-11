@@ -87,6 +87,21 @@ public class ApplicationDataStore {
   }
 
   /**
+   * Retrieves the latest immutable data payload for an application.
+   *
+   * @param applicationId the application identifier
+   * @return the most recently stored application-data payload
+   * @throws IllegalStateException when the application has no stored data
+   */
+  public ApplicationDataPayload getLatest(UUID applicationId) {
+    return repository
+        .findFirstByIdApplicationIdOrderByIdVersionDesc(applicationId)
+        .orElseThrow(
+            () -> new IllegalStateException("Application data not found for " + applicationId))
+        .getPayload();
+  }
+
+  /**
    * Retrieves the available application-data versions for the supplied identifiers.
    *
    * @param ids the application-data identifiers to retrieve
