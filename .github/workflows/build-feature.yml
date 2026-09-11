@@ -55,7 +55,6 @@ jobs:
       packages: write
     with:
       java_distribution: *JDK_DISTRIBUTION
-      integration_test_task: "integrationTest"
       release_type: 'snapshot'
       override_version: ${{ needs.compute-snapshot-version.outputs.snapshot_version }}
       jacoco_coverage_report: 'true'
