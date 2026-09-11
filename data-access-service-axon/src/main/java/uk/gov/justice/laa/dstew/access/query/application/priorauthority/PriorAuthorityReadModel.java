@@ -36,4 +36,6 @@ public class PriorAuthorityReadModel {
 
   @Column(name = "created_at")
   private Instant createdAt;
+
+  private String decision;
 }

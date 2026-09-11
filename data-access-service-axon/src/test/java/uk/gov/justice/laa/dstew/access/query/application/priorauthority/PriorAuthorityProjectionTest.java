@@ -45,13 +45,40 @@ class PriorAuthorityProjectionTest {
   @InjectMocks private PriorAuthorityProjection projection;
 
   @Test
-  void givenSubmittedEvent_whenHandled_thenSavesExactFields() {
+  void givenExistingDraft_whenSubmitted_thenPreservesCreatedAtAndUpdatesCurrentState() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
-    Instant occurredAt = Instant.parse("2026-08-19T10:00:00Z");
-    PriorAuthoritySubmittedEvent event =
+    Instant createdAt = Instant.parse("2026-09-10T09:00:00Z");
+    Instant submittedAt = Instant.parse("2026-09-11T10:00:00Z");
+    PriorAuthorityReadModel draft =
+        PriorAuthorityReadModel.builder()
+            .priorAuthorityId(priorAuthorityId)
+            .applicationId(applicationId)
+            .dataVersion(0L)
+            .status("DRAFT")
+            .createdAt(createdAt)
+            .build();
+    when(repository.findById(priorAuthorityId)).thenReturn(Optional.of(draft));
+    when(repository.save(draft)).thenReturn(draft);
+
+    projection.on(
         new PriorAuthoritySubmittedEvent(
-            priorAuthorityId, applicationId, "EXPERT", 1, 1L, occurredAt);
+            priorAuthorityId, applicationId, "EXPERT", 1, 1L, submittedAt),
+        queryUpdateEmitter);
+
+    assertThat(draft.getStatus()).isEqualTo("SUBMITTED");
+    assertThat(draft.getDataVersion()).isEqualTo(1L);
+    assertThat(draft.getCreatedAt()).isEqualTo(createdAt);
+    assertThat(draft.getDecision()).isNull();
+    verify(repository).save(draft);
+  }
+
+  @Test
+  void givenNoExistingRow_whenSubmitted_thenCreatesRowUsingSubmissionEventTime() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant submittedAt = Instant.parse("2026-09-11T10:00:00Z");
+    when(repository.findById(priorAuthorityId)).thenReturn(Optional.empty());
     PriorAuthorityReadModel[] savedCapture = new PriorAuthorityReadModel[1];
     when(repository.save(any()))
         .thenAnswer(
@@ -60,13 +87,16 @@ class PriorAuthorityProjectionTest {
               return savedCapture[0];
             });
 
-    projection.on(event, queryUpdateEmitter);
+    projection.on(
+        new PriorAuthoritySubmittedEvent(
+            priorAuthorityId, applicationId, "EXPERT", 1, 1L, submittedAt),
+        queryUpdateEmitter);
 
     assertThat(savedCapture[0].getPriorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(savedCapture[0].getApplicationId()).isEqualTo(applicationId);
     assertThat(savedCapture[0].getDataVersion()).isEqualTo(1L);
     assertThat(savedCapture[0].getStatus()).isEqualTo("SUBMITTED");
-    assertThat(savedCapture[0].getCreatedAt()).isEqualTo(occurredAt);
+    assertThat(savedCapture[0].getCreatedAt()).isEqualTo(submittedAt);
   }
 
   @Test

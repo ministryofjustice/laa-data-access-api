@@ -1,6 +1,5 @@
 package uk.gov.justice.laa.dstew.access.query.application.priorauthority;
 
-import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 import org.axonframework.messaging.core.annotation.Namespace;
@@ -77,48 +76,39 @@ public class PriorAuthorityProjection {
   /** Creates the current-state row when a prior-authority draft is started. */
   @EventHandler
   public void on(PriorAuthorityDraftStartedEvent event, QueryUpdateEmitter queryUpdateEmitter) {
-    createRow(
-        event.priorAuthorityId(),
-        event.applicationId(),
-        0L,
-        PriorAuthorityStatus.DRAFT.name(),
-        event.occurredAt(),
-        queryUpdateEmitter);
-  }
-
-  /** Creates the current-state row once a prior-authority draft has been submitted. */
-  @EventHandler
-  public void on(PriorAuthoritySubmittedEvent event, QueryUpdateEmitter queryUpdateEmitter) {
-    createRow(
-        event.priorAuthorityId(),
-        event.applicationId(),
-        event.dataVersion(),
-        PriorAuthorityStatus.SUBMITTED.name(),
-        event.occurredAt(),
-        queryUpdateEmitter);
-  }
-
-  private void createRow(
-      UUID priorAuthorityId,
-      UUID applicationId,
-      long dataVersion,
-      String status,
-      Instant createdAt,
-      QueryUpdateEmitter queryUpdateEmitter) {
     repository.save(
         PriorAuthorityReadModel.builder()
-            .priorAuthorityId(priorAuthorityId)
-            .applicationId(applicationId)
-            .dataVersion(dataVersion)
-            .status(status)
-            .createdAt(createdAt)
+            .priorAuthorityId(event.priorAuthorityId())
+            .applicationId(event.applicationId())
+            .dataVersion(0L)
+            .status(PriorAuthorityStatus.DRAFT.name())
+            .createdAt(event.occurredAt())
             .build());
-    if (PriorAuthorityStatus.SUBMITTED.name().equals(status)) {
-      queryUpdateEmitter.emit(
-          PriorAuthorityPendingByPriorAuthorityIdQuery.class,
-          query -> query.priorAuthorityId().equals(priorAuthorityId),
-          Boolean.TRUE);
-    }
+  }
+
+  /**
+   * Updates the current-state row once a prior-authority draft has been submitted, preserving the
+   * original creation time when a draft row already exists.
+   */
+  @EventHandler
+  public void on(PriorAuthoritySubmittedEvent event, QueryUpdateEmitter queryUpdateEmitter) {
+    PriorAuthorityReadModel priorAuthority =
+        repository
+            .findById(event.priorAuthorityId())
+            .orElseGet(
+                () ->
+                    PriorAuthorityReadModel.builder()
+                        .priorAuthorityId(event.priorAuthorityId())
+                        .applicationId(event.applicationId())
+                        .createdAt(event.occurredAt())
+                        .build());
+    priorAuthority.setDataVersion(event.dataVersion());
+    priorAuthority.setStatus(PriorAuthorityStatus.SUBMITTED.name());
+    repository.save(priorAuthority);
+    queryUpdateEmitter.emit(
+        PriorAuthorityPendingByPriorAuthorityIdQuery.class,
+        query -> query.priorAuthorityId().equals(event.priorAuthorityId()),
+        Boolean.TRUE);
   }
 
   /** Clears the disposable current-state table before replay. */
