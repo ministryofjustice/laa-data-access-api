@@ -29,7 +29,7 @@ axon:
 
 mockOAuth2:
   sharedInstance:
-    enabled: false
+    enabled: true
     serviceName: laa-data-access-mock-oauth2-shared
     namespace: laa-data-access-api-uat
 
