@@ -74,7 +74,7 @@ class ApplicationQueryUseCaseSecurityTest extends BaseSecuredUseCaseTest {
     FindAllApplicationsQuery query =
         new FindAllApplicationsQuery(null, null, null, null, null, null, null, null, 1, 20);
     FindAllApplicationsResult expected =
-        new FindAllApplicationsResult(List.of(), Map.of(), 0, 1, 20);
+        new FindAllApplicationsResult(List.of(), Map.of(), Map.of(), 0, 1, 20);
     when(queryGateway.query(
             any(FindAllApplicationsQuery.class), eq(FindAllApplicationsResult.class)))
         .thenReturn(CompletableFuture.completedFuture(expected));

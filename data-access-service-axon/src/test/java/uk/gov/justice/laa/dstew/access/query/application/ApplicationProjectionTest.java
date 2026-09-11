@@ -2,7 +2,6 @@ package uk.gov.justice.laa.dstew.access.query.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
@@ -21,8 +20,11 @@ import java.util.function.Predicate;
 import org.axonframework.messaging.queryhandling.QueryUpdateEmitter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -42,33 +44,29 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadRepository;
+import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
+import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadRepository;
 
+@ExtendWith(MockitoExtension.class)
 class ApplicationProjectionTest {
 
-  private ApplicationReadRepository applicationReadRepository;
-  private LinkedApplicationGroupReadRepository groupReadRepository;
-  private QueryUpdateEmitter queryUpdateEmitter;
-  private ApplicationDataStore applicationDataStore;
-  private ApplicationListIndexReadRepository listIndexRepository;
+  @Mock private ApplicationReadRepository applicationReadRepository;
+  @Mock private LinkedApplicationGroupReadRepository groupReadRepository;
+  @Mock private QueryUpdateEmitter queryUpdateEmitter;
+  @Mock private ApplicationDataStore applicationDataStore;
+  @Mock private ApplicationListIndexReadRepository listIndexRepository;
+  @Mock private PriorAuthorityReadRepository priorAuthorityReadRepository;
   private ApplicationProjection projection;
 
   @BeforeEach
   void setUp() {
-    applicationReadRepository = mock(ApplicationReadRepository.class);
-    groupReadRepository = mock(LinkedApplicationGroupReadRepository.class);
-    queryUpdateEmitter = mock(QueryUpdateEmitter.class);
-    applicationDataStore = mock(ApplicationDataStore.class);
-    listIndexRepository = mock(ApplicationListIndexReadRepository.class);
-    when(applicationDataStore.get(any(), anyLong()))
-        .thenAnswer(
-            invocation ->
-                ApplicationDataPayload.from(applicationCreationDetails(invocation.getArgument(0))));
     projection =
         new ApplicationProjection(
             applicationReadRepository,
             groupReadRepository,
             applicationDataStore,
-            listIndexRepository);
+            listIndexRepository,
+            priorAuthorityReadRepository);
   }
 
   @Test
@@ -359,6 +357,16 @@ class ApplicationProjectionTest {
 
     when(groupReadRepository.findAllByLeadApplicationIdIn(any())).thenReturn(List.of());
 
+    PriorAuthorityReadModel priorAuthority =
+        PriorAuthorityReadModel.builder()
+            .priorAuthorityId(UUID.randomUUID())
+            .applicationId(appId)
+            .status("DRAFT")
+            .createdAt(Instant.parse("2026-09-11T10:00:00Z"))
+            .build();
+    when(priorAuthorityReadRepository.findAllByApplicationIdIn(List.of(appId)))
+        .thenReturn(List.of(priorAuthority));
+
     FindAllApplicationsResult result =
         projection.handle(
             new FindAllApplicationsQuery(null, null, null, null, null, null, null, null, 1, 20));
@@ -366,10 +374,13 @@ class ApplicationProjectionTest {
     assertThat(result.applications()).hasSize(1);
     assertThat(result.applications().getFirst().getApplicationId()).isEqualTo(appId);
     assertThat(result.totalElements()).isEqualTo(1L);
+    assertThat(result.priorAuthoritiesByApplicationId())
+        .containsEntry(appId, List.of(priorAuthority));
 
     // Verify batch loads — not per-row findById calls
     verify(applicationReadRepository).findAllById(List.of(appId));
     verify(applicationDataStore).getAll(List.of(dataId));
+    verify(priorAuthorityReadRepository).findAllByApplicationIdIn(List.of(appId));
   }
 
   @Test
@@ -378,6 +389,7 @@ class ApplicationProjectionTest {
     when(listIndexRepository.findAll(any(Specification.class), any(Pageable.class)))
         .thenReturn(new PageImpl<>(List.of()));
     when(groupReadRepository.findAllByLeadApplicationIdIn(any())).thenReturn(List.of());
+    when(priorAuthorityReadRepository.findAllByApplicationIdIn(List.of())).thenReturn(List.of());
 
     FindAllApplicationsResult result =
         projection.handle(
@@ -385,6 +397,8 @@ class ApplicationProjectionTest {
 
     assertThat(result.applications()).isEmpty();
     assertThat(result.totalElements()).isZero();
+    assertThat(result.priorAuthoritiesByApplicationId()).isEmpty();
+    verify(priorAuthorityReadRepository).findAllByApplicationIdIn(List.of());
   }
 
   private ApplicationReadModel reconciliationReadModel(UUID applicationId) {

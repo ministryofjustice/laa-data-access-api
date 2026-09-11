@@ -42,6 +42,8 @@ import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedAppli
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexSpecification;
+import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
+import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadRepository;
 
 /** Independently replayable projection of the current state of each Application. */
 @Component
@@ -52,6 +54,7 @@ public class ApplicationProjection {
   private final LinkedApplicationGroupReadRepository groupReadRepository;
   private final ApplicationDataStore applicationDataStore;
   private final ApplicationListIndexReadRepository listIndexRepository;
+  private final PriorAuthorityReadRepository priorAuthorityReadRepository;
 
   /**
    * Constructs the projection with its read repositories and application data store.
@@ -62,16 +65,21 @@ public class ApplicationProjection {
    *     batch-fetch group membership for the result page
    * @param listIndexRepository persistence interface for {@code application_list_index}; used by
    *     {@link FindAllApplicationsQuery} for database-side filtering and paging
+   * @param priorAuthorityReadRepository persistence interface for {@code
+   *     prior_authority_current_state}; used by {@link FindAllApplicationsQuery} to batch-fetch
+   *     linked prior authorities for the result page
    */
   public ApplicationProjection(
       ApplicationReadRepository applicationReadRepository,
       LinkedApplicationGroupReadRepository groupReadRepository,
       ApplicationDataStore applicationDataStore,
-      ApplicationListIndexReadRepository listIndexRepository) {
+      ApplicationListIndexReadRepository listIndexRepository,
+      PriorAuthorityReadRepository priorAuthorityReadRepository) {
     this.applicationReadRepository = applicationReadRepository;
     this.groupReadRepository = groupReadRepository;
     this.applicationDataStore = applicationDataStore;
     this.listIndexRepository = listIndexRepository;
+    this.priorAuthorityReadRepository = priorAuthorityReadRepository;
   }
 
   /** Returns the current-state projection for the requested Application. */
@@ -108,8 +116,9 @@ public class ApplicationProjection {
    * <p>Filtering, sorting, counting, and paging are pushed entirely to the database via {@code
    * application_list_index}. After a page of index rows is returned, {@code application_data}
    * payloads are bulk-loaded for only those application IDs, avoiding N+1 lookups. Group membership
-   * is similarly batch-fetched for the page and returned so the response mapper can populate {@code
-   * linkedApplications} without additional queries.
+   * and linked prior authorities are similarly batch-fetched for the page and returned so the
+   * response mapper can populate {@code linkedApplications} and prior-authority summaries without
+   * additional queries.
    */
   @QueryHandler
   public FindAllApplicationsResult handle(FindAllApplicationsQuery query) {
@@ -154,8 +163,19 @@ public class ApplicationProjection {
 
     Map<UUID, LinkedApplicationGroupReadModel> groupsByLeadId = fetchGroups(content);
 
+    List<UUID> applicationIds =
+        content.stream().map(ApplicationReadModel::getApplicationId).toList();
+    Map<UUID, List<PriorAuthorityReadModel>> priorAuthoritiesByApplicationId =
+        priorAuthorityReadRepository.findAllByApplicationIdIn(applicationIds).stream()
+            .collect(Collectors.groupingBy(PriorAuthorityReadModel::getApplicationId));
+
     return new FindAllApplicationsResult(
-        content, groupsByLeadId, indexPage.getTotalElements(), query.page(), query.pageSize());
+        content,
+        groupsByLeadId,
+        priorAuthoritiesByApplicationId,
+        indexPage.getTotalElements(),
+        query.page(),
+        query.pageSize());
   }
 
   /** Returns old submitted Applications that still have no automatic-assessment outcome. */
