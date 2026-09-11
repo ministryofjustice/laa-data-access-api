@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.command.application.priorauthority.data;
 
 import java.time.Instant;
 import java.util.UUID;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.ExpertFeeInformation;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 
 /** Sensitive data associated with one prior-authority submission. */
@@ -15,8 +16,7 @@ public record PriorAuthorityDataPayload(
     String decisionJustification,
     Double amountGranted,
     Instant dateGranted,
-    Double newHourlyRateAmount,
-    Double newFixedRateAmount,
+    ExpertFeeInformation expert,
     String decisionSerialisedRequest) {
 
   /** Creates an initial payload version before any decision has been recorded. */
@@ -37,7 +37,6 @@ public record PriorAuthorityDataPayload(
         null,
         null,
         null,
-        null,
         null);
   }
 
@@ -47,8 +46,7 @@ public record PriorAuthorityDataPayload(
       String newDecisionJustification,
       Double newAmountGranted,
       Instant newDateGranted,
-      Double newHourlyRateAmount,
-      Double newFixedRateAmount,
+      ExpertFeeInformation expert,
       String newDecisionSerialisedRequest) {
     return new PriorAuthorityDataPayload(
         priorAuthorityId,
@@ -60,8 +58,7 @@ public record PriorAuthorityDataPayload(
         newDecisionJustification,
         newAmountGranted,
         newDateGranted,
-        newHourlyRateAmount,
-        newFixedRateAmount,
+        expert,
         newDecisionSerialisedRequest);
   }
 }

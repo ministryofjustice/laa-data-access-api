@@ -326,8 +326,7 @@ class PriorAuthorityProjectionTest {
                 "Decision recorded",
                 99.99,
                 Instant.parse("2026-09-08T12:00:00Z"),
-                99.99,
-                66.66,
+                null,
                 "{\"decision\":\"GRANTED\"}"));
 
     PriorAuthorityResult result =

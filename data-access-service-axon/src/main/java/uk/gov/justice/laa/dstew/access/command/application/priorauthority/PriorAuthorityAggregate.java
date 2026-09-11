@@ -132,12 +132,7 @@ public class PriorAuthorityAggregate {
                       command.decisionJustification(),
                       command.amountGranted(),
                       command.dateGranted(),
-                      (command.expertFee() == null)
-                          ? null
-                          : command.expertFee().getNewHourlyRateAmount(),
-                      (command.expertFee() == null)
-                          ? null
-                          : command.expertFee().getNewFixedRateAmount(),
+                      command.expertFee(),
                       command.serialisedRequest()),
                   command.serialisedRequest(),
                   command.occurredAt());
