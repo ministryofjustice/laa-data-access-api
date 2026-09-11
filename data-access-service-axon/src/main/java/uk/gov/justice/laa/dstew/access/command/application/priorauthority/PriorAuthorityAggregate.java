@@ -133,6 +133,8 @@ public class PriorAuthorityAggregate {
                       command.amountGranted(),
                       command.dateGranted(),
                       command.expertFee(),
+                      command.disbursementInformation(),
+                      command.apportionmentInformation(),
                       command.serialisedRequest()),
                   command.serialisedRequest(),
                   command.occurredAt());

@@ -5,8 +5,12 @@ import java.util.UUID;
 import org.springframework.stereotype.Component;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.ApportionmentInformation;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.DisbursementInformation;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.ExpertFeeInformation;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.MakePriorAuthorityDecisionCommand;
+import uk.gov.justice.laa.dstew.access.model.ApportionmentMakePriorAuthorityDecisionRequest;
+import uk.gov.justice.laa.dstew.access.model.DisbursementMakePriorAuthorityDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.ExpertMakePriorAuthorityDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.MakePriorAuthorityDecisionRequest;
 
@@ -30,9 +34,27 @@ public class MakePriorAuthorityDecisionCommandMapper {
         decisionJustification(request),
         request.getAmountGranted(),
         expertFeeInformation(request.getExpert()),
+        disbursementInformation(request.getDisbursement()),
+        apportionmentInformation(request.getApportionment()),
         request.getDateGranted().toInstant(),
         serialise(request),
         Instant.now());
+  }
+
+  private ApportionmentInformation apportionmentInformation(
+      ApportionmentMakePriorAuthorityDecisionRequest value) {
+    return value == null
+        ? null
+        : ApportionmentInformation.builder()
+            .newClientShareAmount(value.getNewClientShareAmount())
+            .build();
+  }
+
+  private DisbursementInformation disbursementInformation(
+      DisbursementMakePriorAuthorityDecisionRequest value) {
+    return value == null
+        ? null
+        : DisbursementInformation.builder().newAmount(value.getNewAmount()).build();
   }
 
   private ExpertFeeInformation expertFeeInformation(ExpertMakePriorAuthorityDecisionRequest value) {

@@ -18,6 +18,7 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.DisbursementInformation;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDecisionRecordedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDraftStartedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
@@ -326,6 +327,8 @@ class PriorAuthorityProjectionTest {
                 "Decision recorded",
                 99.99,
                 Instant.parse("2026-09-08T12:00:00Z"),
+                null,
+                DisbursementInformation.builder().build(),
                 null,
                 "{\"decision\":\"GRANTED\"}"));
 

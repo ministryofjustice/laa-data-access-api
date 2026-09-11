@@ -35,6 +35,8 @@ class MakePriorAuthorityDecisionUseCaseTest {
             "Decision recorded",
             100.0,
             null,
+            null,
+            null,
             Instant.now(),
             "{}",
             Instant.now());
@@ -74,6 +76,8 @@ class MakePriorAuthorityDecisionUseCaseTest {
             "GRANTED",
             "Decision recorded",
             100.0,
+            null,
+            null,
             null,
             Instant.now(),
             "{}",

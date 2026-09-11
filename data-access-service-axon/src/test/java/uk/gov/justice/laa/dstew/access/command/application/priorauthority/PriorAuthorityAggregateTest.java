@@ -431,6 +431,8 @@ class PriorAuthorityAggregateTest {
             "Decision recorded",
             1234.56,
             null,
+            null,
+            null,
             decidedAt,
             "{\"decision\":\"GRANTED\"}",
             decidedAt);
@@ -488,6 +490,8 @@ class PriorAuthorityAggregateTest {
                 100.0,
                 firstDecisionAt,
                 ExpertFeeInformation.builder().build(),
+                DisbursementInformation.builder().build(),
+                ApportionmentInformation.builder().build(),
                 "{\"decision\":\"GRANTED\"}"));
 
     MakePriorAuthorityDecisionCommand command =
@@ -497,6 +501,8 @@ class PriorAuthorityAggregateTest {
             "GRANTED",
             "Initial",
             100.0,
+            null,
+            null,
             null,
             firstDecisionAt,
             "{\"decision\":\"GRANTED\"}",
@@ -547,6 +553,8 @@ class PriorAuthorityAggregateTest {
                 100.0,
                 firstDecisionAt,
                 ExpertFeeInformation.builder().build(),
+                DisbursementInformation.builder().build(),
+                ApportionmentInformation.builder().build(),
                 "{\"decision\":\"GRANTED\"}"));
 
     MakePriorAuthorityDecisionCommand command =
@@ -556,6 +564,8 @@ class PriorAuthorityAggregateTest {
             "REFUSED",
             "Changed",
             0.0,
+            null,
+            null,
             null,
             firstDecisionAt,
             "{\"decision\":\"REFUSED\"}",
@@ -597,6 +607,8 @@ class PriorAuthorityAggregateTest {
             "GRANTED",
             "Decision recorded",
             1234.56,
+            null,
+            null,
             null,
             decidedAt,
             "{\"decision\":\"GRANTED\"}",

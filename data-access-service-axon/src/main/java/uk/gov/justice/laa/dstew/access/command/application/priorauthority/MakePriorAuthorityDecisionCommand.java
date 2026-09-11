@@ -14,6 +14,8 @@ public record MakePriorAuthorityDecisionCommand(
     String decisionJustification,
     Double amountGranted,
     ExpertFeeInformation expertFee,
+    DisbursementInformation disbursementInformation,
+    ApportionmentInformation apportionmentInformation,
     Instant dateGranted,
     String serialisedRequest,
     Instant occurredAt) {}

@@ -28,6 +28,28 @@ components:
           description: Version of prior authority being decided, used for concurrency control
         expert:
           $ref: "#/components/schemas/ExpertMakePriorAuthorityDecisionRequest"
+        disbursement:
+          $ref: "#/components/schemas/DisbursementMakePriorAuthorityDecisionRequest"
+        apportionment:
+          $ref: "#/components/schemas/ApportionmentMakePriorAuthorityDecisionRequest"
+
+    ApportionmentMakePriorAuthorityDecisionRequest:
+      type: object
+      description: Optional apportionment details for the decision
+      properties:
+        newClientShareAmount:
+          type: number
+          format: double
+          description: New client share amount if applicable
+
+    DisbursementMakePriorAuthorityDecisionRequest:
+      type: object
+      description: Optional disbursement details for the decision
+      properties:
+        newAmount:
+          type: number
+          format: double
+          description: New amount if applicable
 
     ExpertMakePriorAuthorityDecisionRequest:
       type: object

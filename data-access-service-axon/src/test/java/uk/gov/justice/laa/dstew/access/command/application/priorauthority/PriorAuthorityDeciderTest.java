@@ -75,6 +75,8 @@ class PriorAuthorityDeciderTest {
             "Recorded",
             350.0,
             null,
+            null,
+            null,
             OCCURRED_AT,
             "{\"decision\":\"GRANTED\"}",
             OCCURRED_AT);
@@ -105,6 +107,8 @@ class PriorAuthorityDeciderTest {
             "Recorded",
             0.0,
             null,
+            null,
+            null,
             OCCURRED_AT,
             "{\"decision\":\"REFUSED\"}",
             OCCURRED_AT);
@@ -119,6 +123,8 @@ class PriorAuthorityDeciderTest {
             "Recorded",
             0.0,
             OCCURRED_AT,
+            null,
+            null,
             null,
             "{\"decision\":\"REFUSED\"}");
 
@@ -140,6 +146,8 @@ class PriorAuthorityDeciderTest {
             "PART_GRANTED",
             "Recorded",
             0.0,
+            null,
+            null,
             null,
             OCCURRED_AT,
             "{}",
@@ -164,6 +172,8 @@ class PriorAuthorityDeciderTest {
             "GRANTED",
             "Recorded",
             100.0,
+            null,
+            null,
             null,
             OCCURRED_AT,
             "{\"decision\":\"GRANTED\"}",
@@ -190,6 +200,8 @@ class PriorAuthorityDeciderTest {
             "Recorded",
             0.0,
             null,
+            null,
+            null,
             OCCURRED_AT,
             "{\"decision\":\"REFUSED\"}",
             OCCURRED_AT);
@@ -214,6 +226,8 @@ class PriorAuthorityDeciderTest {
             "GRANTED",
             "Recorded",
             100.0,
+            null,
+            null,
             null,
             OCCURRED_AT,
             "{\"decision\":\"GRANTED\"}",
@@ -241,6 +255,8 @@ class PriorAuthorityDeciderTest {
             "Recorded",
             100.0,
             null,
+            null,
+            null,
             OCCURRED_AT,
             "{\"decision\":\"GRANTED\"}",
             OCCURRED_AT);
@@ -255,6 +271,8 @@ class PriorAuthorityDeciderTest {
             "Recorded",
             100.0,
             OCCURRED_AT,
+            null,
+            null,
             null,
             null);
 
@@ -285,6 +303,8 @@ class PriorAuthorityDeciderTest {
         "Recorded",
         0.0,
         OCCURRED_AT,
+        null,
+        null,
         null,
         "{\"decision\":\"GRANTED\"}");
   }

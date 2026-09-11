@@ -12,10 +12,7 @@ import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.MakePriorAuthorityDecisionCommand;
-import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
-import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
-import uk.gov.justice.laa.dstew.access.model.ExpertMakePriorAuthorityDecisionRequest;
-import uk.gov.justice.laa.dstew.access.model.MakePriorAuthorityDecisionRequest;
+import uk.gov.justice.laa.dstew.access.model.*;
 
 class MakePriorAuthorityDecisionCommandMapperTest {
 
@@ -36,6 +33,12 @@ class MakePriorAuthorityDecisionCommandMapperTest {
                     .newFixedRateAmount(450.25)
                     .newHourlyRateAmount(125.75)
                     .build())
+            .disbursement(
+                DisbursementMakePriorAuthorityDecisionRequest.builder().newAmount(300.00).build())
+            .apportionment(
+                ApportionmentMakePriorAuthorityDecisionRequest.builder()
+                    .newClientShareAmount(200.00)
+                    .build())
             .amountGranted(1200.50)
             .dateGranted(dateGranted)
             .eventHistory(
@@ -52,6 +55,10 @@ class MakePriorAuthorityDecisionCommandMapperTest {
     assertThat(command.expertFee()).isNotNull();
     assertThat(command.expertFee().getNewFixedRateAmount()).isEqualTo(450.25);
     assertThat(command.expertFee().getNewHourlyRateAmount()).isEqualTo(125.75);
+    assertThat(command.disbursementInformation()).isNotNull();
+    assertThat(command.disbursementInformation().getNewAmount()).isEqualTo(300.00);
+    assertThat(command.apportionmentInformation()).isNotNull();
+    assertThat(command.apportionmentInformation().getNewClientShareAmount()).isEqualTo(200.00);
     assertThat(command.dateGranted()).isEqualTo(dateGranted.toInstant());
     assertThat(command.serialisedRequest()).contains("\"decision\":\"GRANTED\"");
     assertThat(command.occurredAt()).isNotNull();
@@ -73,6 +80,8 @@ class MakePriorAuthorityDecisionCommandMapperTest {
                 ExpertMakePriorAuthorityDecisionRequest.builder()
                     .newHourlyRateAmount(125.75)
                     .build())
+            .disbursement(DisbursementMakePriorAuthorityDecisionRequest.builder().build())
+            .apportionment(null)
             .build();
 
     MakePriorAuthorityDecisionCommand command = mapper.toCommand(submissionId, request);
@@ -81,6 +90,9 @@ class MakePriorAuthorityDecisionCommandMapperTest {
     assertThat(command.expertFee()).isNotNull();
     assertThat(command.expertFee().getNewFixedRateAmount()).isNull();
     assertThat(command.expertFee().getNewHourlyRateAmount()).isEqualTo(125.75);
+    assertThat(command.disbursementInformation()).isNotNull();
+    assertThat(command.disbursementInformation().getNewAmount()).isNull();
+    assertThat(command.apportionmentInformation()).isNull();
     assertThat(command.serialisedRequest()).contains("\"newFixedRateAmount\":null");
     assertThat(command.serialisedRequest()).contains("\"newHourlyRateAmount\":125.75");
   }
@@ -95,6 +107,8 @@ class MakePriorAuthorityDecisionCommandMapperTest {
             .amountGranted(0.0)
             .expert(
                 ExpertMakePriorAuthorityDecisionRequest.builder().newFixedRateAmount(0.0).build())
+            .disbursement(DisbursementMakePriorAuthorityDecisionRequest.builder().build())
+            .apportionment(ApportionmentMakePriorAuthorityDecisionRequest.builder().build())
             .dateGranted(OffsetDateTime.parse("2026-09-08T12:40:00Z"))
             .eventHistory(EventHistoryRequest.builder().eventDescription("ignored").build())
             .build();
@@ -105,6 +119,8 @@ class MakePriorAuthorityDecisionCommandMapperTest {
     assertThat(command.overallDecision()).isEqualTo("REFUSED");
     assertThat(command.expertFee().getNewFixedRateAmount()).isEqualTo(0.0);
     assertThat(command.expertFee().getNewHourlyRateAmount()).isNull();
+    assertThat(command.disbursementInformation().getNewAmount()).isNull();
+    assertThat(command.apportionmentInformation().getNewClientShareAmount()).isNull();
     assertThat(command.decisionJustification()).isEqualTo("Refusal reason");
   }
 
@@ -125,6 +141,7 @@ class MakePriorAuthorityDecisionCommandMapperTest {
     assertThat(command.expectedPriorAuthorityVersion()).isEqualTo(10L);
     assertThat(command.decisionJustification()).isNull();
     assertThat(command.expertFee()).isNull();
+    assertThat(command.disbursementInformation()).isNull();
   }
 
   @Test
