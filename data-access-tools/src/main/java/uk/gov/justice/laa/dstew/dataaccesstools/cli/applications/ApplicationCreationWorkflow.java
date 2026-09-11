@@ -31,17 +31,25 @@ public final class ApplicationCreationWorkflow {
         client.assignWorkListItem(
             application.applicationId(), CASEWORKER_ID, 0, "Assigned by data-access-tools");
         client.makeDecision(
-            application.applicationId(), decisionFactory.create(application, decision));
+            application.applicationId(),
+            decisionFactory.create(application, decision, java.util.UUID.randomUUID()));
         results.add(
             new WorkflowResult.ItemResult(
                 application.applicationId().toString(),
                 true,
                 decision + " " + application.laaReference(),
-                null));
+                application.applicationId(),
+                null,
+                "APPLICATION_" + decision));
       } catch (RuntimeException exception) {
         results.add(
             new WorkflowResult.ItemResult(
-                application.applicationId().toString(), false, exception.getMessage(), null));
+                application.applicationId().toString(),
+                false,
+                exception.getMessage(),
+                application.applicationId(),
+                null,
+                "APPLICATION_" + decision));
       }
     }
     return new WorkflowResult(results);
@@ -59,11 +67,18 @@ public final class ApplicationCreationWorkflow {
                 application.applicationId().toString(),
                 true,
                 "MANUAL " + application.laaReference(),
-                null));
+                application.applicationId(),
+                null,
+                "APPLICATION_MANUAL"));
       } catch (RuntimeException exception) {
         results.add(
             new WorkflowResult.ItemResult(
-                application.applicationId().toString(), false, exception.getMessage(), null));
+                application.applicationId().toString(),
+                false,
+                exception.getMessage(),
+                application.applicationId(),
+                null,
+                "APPLICATION_MANUAL"));
       }
     }
     return new WorkflowResult(results);
@@ -82,11 +97,18 @@ public final class ApplicationCreationWorkflow {
                 application.applicationId().toString(),
                 true,
                 "AUTOGRANTED " + application.laaReference(),
-                null));
+                application.applicationId(),
+                null,
+                "APPLICATION_AUTOGRANTED"));
       } catch (RuntimeException exception) {
         results.add(
             new WorkflowResult.ItemResult(
-                application.applicationId().toString(), false, exception.getMessage(), null));
+                application.applicationId().toString(),
+                false,
+                exception.getMessage(),
+                application.applicationId(),
+                null,
+                "APPLICATION_AUTOGRANTED"));
       }
     }
     return new WorkflowResult(results);

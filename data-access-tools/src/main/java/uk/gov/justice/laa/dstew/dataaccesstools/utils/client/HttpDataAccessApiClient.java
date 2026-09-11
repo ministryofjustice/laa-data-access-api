@@ -1,21 +1,16 @@
 package uk.gov.justice.laa.dstew.dataaccesstools.utils.client;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
 public final class HttpDataAccessApiClient implements DataAccessApiClient {
   private static final String DEV_TOKEN = "swagger-caseworker-token";
-  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private final URI baseUri;
   private final HttpClient client;
 
@@ -67,50 +62,26 @@ public final class HttpDataAccessApiClient implements DataAccessApiClient {
   }
 
   @Override
-  public ApplicationDecisionData getApplicationDecisionData(UUID applicationId) {
-    HttpResponse<String> response =
-        execute("GET", "api/v0/applications/" + applicationId, null, "CIVIL_APPLY", Set.of(200));
-    try {
-      JsonNode application = OBJECT_MAPPER.readTree(response.body());
-      List<UUID> proceedingIds = new ArrayList<>();
-      for (JsonNode proceeding : application.required("proceedings")) {
-        proceedingIds.add(UUID.fromString(proceeding.required("proceedingId").asText()));
-      }
-      if (proceedingIds.isEmpty()) {
-        throw new ApiException(
-            "GET /api/v0/applications/" + applicationId + " returned no proceedings");
-      }
-      return new ApplicationDecisionData(
-          application.required("laaReference").asText(),
-          proceedingIds,
-          application.required("version").asLong());
-    } catch (Exception exception) {
-      if (exception instanceof ApiException apiException) {
-        throw apiException;
-      }
-      throw new ApiException(
-          "GET /api/v0/applications/" + applicationId + " returned an invalid application response",
-          exception);
-    }
-  }
-
-  @Override
   public UUID createPriorAuthorityDraft(String requestBody) {
     String path = "api/v0/prior-authorities";
-    HttpResponse<String> response =
-        execute("POST", path, requestBody, "CIVIL_APPLY", Set.of(201, 202));
-    try {
-      return UUID.fromString(
-          OBJECT_MAPPER.readTree(response.body()).required("priorAuthorityId").asText());
-    } catch (Exception exception) {
-      throw new ApiException("POST /" + path + " returned an invalid draft response", exception);
-    }
+    return locationId(
+        execute("POST", path, requestBody, "CIVIL_APPLY", Set.of(201, 202)), "POST", path);
   }
 
   @Override
-  public void submitPriorAuthorityDraft(UUID priorAuthorityId, String requestBody) {
+  public void updatePriorAuthorityDraft(UUID priorAuthorityId, String requestBody) {
+    execute(
+        "PUT",
+        "api/v0/prior-authorities/" + priorAuthorityId,
+        requestBody,
+        "CIVIL_APPLY",
+        Set.of(204));
+  }
+
+  @Override
+  public UUID submitPriorAuthorityDraft(UUID priorAuthorityId) {
     String path = "api/v0/prior-authorities/" + priorAuthorityId + "/submit";
-    execute("POST", path, requestBody, "CIVIL_APPLY", Set.of(200, 202));
+    return locationId(execute("POST", path, "{}", "CIVIL_APPLY", Set.of(200, 202)), "POST", path);
   }
 
   @Override
@@ -138,11 +109,7 @@ public final class HttpDataAccessApiClient implements DataAccessApiClient {
             .header("X-Service-Name", serviceName)
             .header("Content-Type", "application/json")
             .header("Accept", "application/json")
-            .method(
-                method,
-                body == null
-                    ? HttpRequest.BodyPublishers.noBody()
-                    : HttpRequest.BodyPublishers.ofString(body))
+            .method(method, HttpRequest.BodyPublishers.ofString(body))
             .build();
     try {
       HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
