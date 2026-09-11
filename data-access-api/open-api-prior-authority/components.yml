@@ -362,6 +362,13 @@ components:
         - counsel_opinion
         - judgement
         - plf_court_order
+        - letter_of_instruction
+        - estimate_of_costs
+        - alternative_quote
+        - other_party_certificate_reference
+        - other_supporting_document
+        - primary_quote
+        - additional_quote
 
     PriorAuthorityType:
       type: string

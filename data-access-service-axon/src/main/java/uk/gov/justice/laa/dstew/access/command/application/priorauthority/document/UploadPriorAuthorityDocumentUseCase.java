@@ -60,12 +60,13 @@ public class UploadPriorAuthorityDocumentUseCase {
         new PriorAuthorityDocumentUploadCommand(
             priorAuthorityId,
             documentId,
-            file,
             documentType,
             sourceService,
             sdsResponse == null ? null : sdsResponse.getChecksum(),
             "{}",
-            uploadedAt));
+            uploadedAt,
+            file.getOriginalFilename(),
+            file.getSize()));
 
     return new UploadPriorAuthorityDocumentResult(
         documentId,

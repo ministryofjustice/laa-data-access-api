@@ -4,16 +4,16 @@ import java.time.Instant;
 import java.util.UUID;
 import org.axonframework.messaging.commandhandling.annotation.Command;
 import org.axonframework.modelling.annotation.TargetEntityId;
-import org.springframework.web.multipart.MultipartFile;
 
 /** Command that performs and finalises a prior-authority document upload. */
 @Command(routingKey = "priorAuthorityId")
 public record PriorAuthorityDocumentUploadCommand(
     @TargetEntityId UUID priorAuthorityId,
     UUID documentId,
-    MultipartFile file,
     String documentType,
     String sourceService,
     String checksum,
     String serialisedRequest,
-    Instant occurredAt) {}
+    Instant occurredAt,
+    String originalFilename,
+    Long fileSize) {}
