@@ -414,6 +414,12 @@ class PriorAuthorityAggregateTest {
     Instant startedAt = Instant.parse("2026-08-01T10:00:00Z");
     Instant submittedAt = Instant.parse("2026-08-02T10:00:00Z");
     Instant decidedAt = Instant.parse("2026-08-02T11:00:00Z");
+    ExpertFeeInformation expertFee =
+        ExpertFeeInformation.builder().newFixedRateAmount(250.0).newHourlyRateAmount(125.0).build();
+    DisbursementInformation disbursementInformation =
+        DisbursementInformation.builder().newAmount(75.5).build();
+    ApportionmentInformation apportionmentInformation =
+        ApportionmentInformation.builder().newClientShareAmount(10.25).build();
     PriorAuthorityDataPayload current =
         new PriorAuthorityDataPayload(
             priorAuthorityId,
@@ -430,9 +436,9 @@ class PriorAuthorityAggregateTest {
             "GRANTED",
             "Decision recorded",
             1234.56,
-            null,
-            null,
-            null,
+            expertFee,
+            disbursementInformation,
+            apportionmentInformation,
             decidedAt,
             "{\"decision\":\"GRANTED\"}",
             decidedAt);
@@ -459,14 +465,26 @@ class PriorAuthorityAggregateTest {
                 decidedAt,
                 decidedAt));
 
+    ArgumentCaptor<PriorAuthorityDataPayload> payloadCaptor =
+        ArgumentCaptor.forClass(PriorAuthorityDataPayload.class);
     verify(dataStore)
         .append(
             eq(priorAuthorityId),
             eq(1L),
             eq(applicationId),
-            any(),
+            payloadCaptor.capture(),
             eq("{\"decision\":\"GRANTED\"}"),
             eq(decidedAt));
+
+    PriorAuthorityDataPayload persisted = payloadCaptor.getValue();
+    assertThat(persisted.decision()).isEqualTo("GRANTED");
+    assertThat(persisted.decisionJustification()).isEqualTo("Decision recorded");
+    assertThat(persisted.amountGranted()).isEqualTo(1234.56);
+    assertThat(persisted.dateGranted()).isEqualTo(decidedAt);
+    assertThat(persisted.expert()).isEqualTo(expertFee);
+    assertThat(persisted.disbursement()).isEqualTo(disbursementInformation);
+    assertThat(persisted.apportionment()).isEqualTo(apportionmentInformation);
+    assertThat(persisted.decisionSerialisedRequest()).isEqualTo("{\"decision\":\"GRANTED\"}");
   }
 
   @Test
