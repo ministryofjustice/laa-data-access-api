@@ -23,13 +23,19 @@ public final class MakeDecisionCommand implements Callable<Integer> {
       description = "Overall decision: ${COMPLETION-CANDIDATES}.")
   private DecisionRequestFactory.Decision decision;
 
+  @CommandLine.Option(
+      names = "--caseworker-id",
+      required = true,
+      description = "UUID of the caseworker currently assigned to the application.")
+  private UUID caseworkerId;
+
   @Override
   public Integer call() {
     var client = applications.root().client();
     client.makeDecision(
         applicationId,
         new DecisionRequestFactory()
-            .create(client.getApplicationDecisionData(applicationId), decision));
+            .create(client.getApplicationDecisionData(applicationId), decision, caseworkerId));
     System.out.printf("%s: SUCCESS - %s%n", applicationId, decision);
     return 0;
   }

@@ -21,11 +21,12 @@ class ApplicationCreationWorkflowTest {
     WorkflowResult result = workflow.create(2, DecisionRequestFactory.Decision.GRANTED);
 
     assertTrue(result.succeeded());
-    assertEquals(6, client.operations.size());
+    assertEquals(8, client.operations.size());
     assertEquals("create", client.operations.get(0));
     assertEquals("manual", client.operations.get(1));
-    assertEquals("decision:GRANTED", client.operations.get(2));
-    assertEquals("create", client.operations.get(3));
+    assertEquals("assign", client.operations.get(2));
+    assertEquals("decision:GRANTED", client.operations.get(3));
+    assertEquals("create", client.operations.get(4));
   }
 
   @Test
@@ -84,6 +85,12 @@ class ApplicationCreationWorkflowTest {
       assertTrue(requestBody.contains("\"outcome\":\"AUTOGRANTED\""));
       assertTrue(requestBody.contains("\"certificate\""));
       operations.add("autogranted");
+    }
+
+    @Override
+    public void assignWorkListItem(
+        UUID itemId, UUID caseworkerId, long expectedAssignmentVersion, String eventDescription) {
+      operations.add("assign");
     }
 
     @Override

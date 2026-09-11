@@ -5,6 +5,10 @@ import java.util.UUID;
 public interface DataAccessApiClient {
   UUID createApplication(String requestBody);
 
+  default ApplicationDecisionData getApplicationDecisionData(UUID applicationId) {
+    throw new UnsupportedOperationException();
+  }
+
   void recordManualOutcome(UUID applicationId);
 
   default void recordAutograntedOutcome(UUID applicationId, String requestBody) {
