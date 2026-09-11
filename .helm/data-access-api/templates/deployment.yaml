@@ -31,7 +31,7 @@ spec:
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
-              containerPort: 8080
+              containerPort: 8082
               protocol: TCP
           livenessProbe:
             httpGet:
@@ -56,8 +56,6 @@ spec:
             {{- toYaml .Values.resources | nindent 12 }}
           env:
             {{ include "dbConnectionDetails" . | nindent 12 }}
-            - name: DB_URL
-              value: "jdbc:postgresql://$(DB_HOST):5432/$(DB_NAME)"
             - name: SPRING_PROFILES_ACTIVE
               value: {{ .Values.spring.profile | quote }}
             - name: AWS_REGION
@@ -67,6 +65,13 @@ spec:
             {{ include "sentryConfig" . | nindent 12 }}
             {{ include "sdsApiConfig" . | nindent 12 }}
             {{ include "extraEnvConfig" . | nindent 12 }}
+            {{- if and .Values.aws .Values.aws.integrationEvents .Values.aws.integrationEvents.enabled }}
+            - name: APPLICATION_INTEGRATION_EVENTS_TOPIC_ARN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.aws.topicArnSecret.name | quote }}
+                  key: {{ .Values.aws.topicArnSecret.key | quote }}
+            {{- end }}
             - name: SLOW_QUERY_THRESHOLD_SECONDS
               value: "{{ .Values.slowQueryThresholdSeconds | default 0 }}"
             - name: METRICS_RELEASE_TAG
