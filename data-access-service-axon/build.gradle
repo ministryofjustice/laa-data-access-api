@@ -9,18 +9,18 @@ plugins {
 
 def versions = [
         sentry                  : '8.55.0',
-        axonFramework           : '5.2.0',
-        jsonSchemaValidator     : '3.0.0',
-        swaggerAnnotations      : '2.2.43',
-        springdocOpenapi        : '3.0.2',
-        springCloudAws          : '4.0.2',
-        awsSdkSts               : '2.33.7',
-        lombok                  : '1.18.46',
-        datafaker               : '2.5.2',
-        archunit                : '1.4.2',
+        axonFramework           : '5.3.1',
+        jsonSchemaValidator     : '3.0.7',
+        swaggerAnnotations      : '2.2.55',
+        springdocOpenapi        : '3.1.0',
+        springCloudAws          : '4.1.1',
+        awsSdkSts               : '2.54.12',
+        lombok                  : '1.18.48',
+        datafaker               : '2.7.0',
+        archunit                : '1.5.0',
         testcontainers          : '2.0.5',
-        micrometerSpringBoot    : '2.2.0',
-        logbackEcsEncoder       : '1.6.0'
+        micrometerSpringBoot    : '2.2.1',
+        logbackEcsEncoder       : '1.8.0'
 ]
 
 sourceSets {
