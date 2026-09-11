@@ -23,6 +23,7 @@ import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
@@ -108,6 +109,7 @@ class SdsServiceTest {
         .withMessage("File already exists");
   }
 
+  @SuppressWarnings({"unchecked", "rawtypes"})
   @Test
   void givenValidPriorAuthorityUpload_whenSavePriorAuthorityFile_thenReturnsResponse() {
     UUID priorAuthorityId = UUID.randomUUID();
@@ -134,6 +136,13 @@ class SdsServiceTest {
         sdsService.savePriorAuthorityFile(priorAuthorityId, documentId, file);
 
     assertThat(actualResponse).isEqualTo(expectedResponse);
+
+    ArgumentCaptor<MultiValueMap<String, HttpEntity<?>>> bodyCaptor =
+        (ArgumentCaptor) ArgumentCaptor.forClass(MultiValueMap.class);
+    verify(requestBodySpec).body(bodyCaptor.capture());
+    HttpEntity<?> filePart = bodyCaptor.getValue().getFirst("file");
+    assertThat(filePart.getHeaders().getContentDisposition().getFilename())
+        .isEqualTo(documentId.toString());
   }
 
   @SuppressWarnings("unchecked")
