@@ -29,6 +29,17 @@ class ApplicationCreationWorkflowTest {
   }
 
   @Test
+  void includesCaseworkerIdInDecisionRequest() {
+    var application = new ApplicationRequestFactory().create();
+
+    String request =
+        new DecisionRequestFactory()
+            .create(application, DecisionRequestFactory.Decision.GRANTED, UUID.randomUUID());
+
+    assertTrue(request.matches("(?s).*\\\"caseworkerId\\\":\\\"[0-9a-f-]{36}\\\".*"));
+  }
+
+  @Test
   void createsManualApplicationsWithoutMakingADecision() {
     RecordingClient client = new RecordingClient();
     var workflow =
@@ -81,7 +92,17 @@ class ApplicationCreationWorkflowTest {
     }
 
     @Override
-    public UUID createPriorAuthority(UUID applicationId, String requestBody) {
+    public UUID createPriorAuthorityDraft(String requestBody) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void updatePriorAuthorityDraft(UUID priorAuthorityId, String requestBody) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public UUID submitPriorAuthorityDraft(UUID priorAuthorityId) {
       throw new UnsupportedOperationException();
     }
   }
