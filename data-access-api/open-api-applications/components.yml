@@ -128,6 +128,7 @@ components:
       description: (APPLICATION LIST PAGE / VIEW - OPEN APPLICATIONS ONLY BY DEFAULT)
       required:
         - autoGranted
+        - priorAuthorities
       properties:
         applicationId:
           type: string
@@ -169,6 +170,10 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/LinkedApplicationSummaryResponse"
+        priorAuthorities:
+          type: array
+          items:
+            $ref: "#/components/schemas/PriorAuthoritySummary"
 
     ApplicationSummaryResponse:
       type: object
@@ -190,6 +195,28 @@ components:
           type: string
         isLead:
           type: boolean
+
+    PriorAuthoritySummary:
+      type: object
+      required:
+        - priorAuthorityId
+        - status
+        - decision
+        - createdAt
+      properties:
+        priorAuthorityId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [DRAFT, SUBMITTED]
+        decision:
+          type: string
+          nullable: true
+          enum: [GRANT, REFUSE]
+        createdAt:
+          type: string
+          format: date-time
 
     ApplicationHistoryResponse:
       type: object
