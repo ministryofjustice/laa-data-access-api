@@ -201,7 +201,6 @@ components:
       required:
         - priorAuthorityId
         - status
-        - decision
         - createdAt
       properties:
         priorAuthorityId:
