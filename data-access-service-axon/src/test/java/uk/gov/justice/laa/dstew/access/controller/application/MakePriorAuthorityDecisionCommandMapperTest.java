@@ -31,6 +31,11 @@ class MakePriorAuthorityDecisionCommandMapperTest {
             .priorAuthorityVersion(7L)
             .decision(DecisionStatus.GRANTED)
             .decisionJustification("Decision recorded")
+            .expert(
+                ExpertMakePriorAuthorityDecisionRequest.builder()
+                    .newFixedRateAmount(450.25)
+                    .newHourlyRateAmount(125.75)
+                    .build())
             .amountGranted(1200.50)
             .dateGranted(dateGranted)
             .eventHistory(
@@ -44,6 +49,9 @@ class MakePriorAuthorityDecisionCommandMapperTest {
     assertThat(command.overallDecision()).isEqualTo("GRANTED");
     assertThat(command.decisionJustification()).isEqualTo("Decision recorded");
     assertThat(command.amountGranted()).isEqualTo(1200.50);
+    assertThat(command.expertFee()).isNotNull();
+    assertThat(command.expertFee().getNewFixedRateAmount()).isEqualTo(450.25);
+    assertThat(command.expertFee().getNewHourlyRateAmount()).isEqualTo(125.75);
     assertThat(command.dateGranted()).isEqualTo(dateGranted.toInstant());
     assertThat(command.serialisedRequest()).contains("\"decision\":\"GRANTED\"");
     assertThat(command.occurredAt()).isNotNull();
@@ -63,7 +71,6 @@ class MakePriorAuthorityDecisionCommandMapperTest {
                 EventHistoryRequest.builder().eventDescription("Decision recorded").build())
             .expert(
                 ExpertMakePriorAuthorityDecisionRequest.builder()
-                    .newFixedRateAmount(450.25)
                     .newHourlyRateAmount(125.75)
                     .build())
             .build();
@@ -72,9 +79,9 @@ class MakePriorAuthorityDecisionCommandMapperTest {
 
     assertThat(command.submissionId()).isEqualTo(submissionId);
     assertThat(command.expertFee()).isNotNull();
-    assertThat(command.expertFee().getNewFixedRateAmount()).isEqualTo(450.25);
+    assertThat(command.expertFee().getNewFixedRateAmount()).isNull();
     assertThat(command.expertFee().getNewHourlyRateAmount()).isEqualTo(125.75);
-    assertThat(command.serialisedRequest()).contains("\"newFixedRateAmount\":450.25");
+    assertThat(command.serialisedRequest()).contains("\"newFixedRateAmount\":null");
     assertThat(command.serialisedRequest()).contains("\"newHourlyRateAmount\":125.75");
   }
 
@@ -86,6 +93,8 @@ class MakePriorAuthorityDecisionCommandMapperTest {
             .decision(DecisionStatus.REFUSED)
             .decisionJustification("  Refusal reason  ")
             .amountGranted(0.0)
+            .expert(
+                ExpertMakePriorAuthorityDecisionRequest.builder().newFixedRateAmount(0.0).build())
             .dateGranted(OffsetDateTime.parse("2026-09-08T12:40:00Z"))
             .eventHistory(EventHistoryRequest.builder().eventDescription("ignored").build())
             .build();
@@ -94,6 +103,8 @@ class MakePriorAuthorityDecisionCommandMapperTest {
 
     assertThat(command.expectedPriorAuthorityVersion()).isEqualTo(8L);
     assertThat(command.overallDecision()).isEqualTo("REFUSED");
+    assertThat(command.expertFee().getNewFixedRateAmount()).isEqualTo(0.0);
+    assertThat(command.expertFee().getNewHourlyRateAmount()).isNull();
     assertThat(command.decisionJustification()).isEqualTo("Refusal reason");
   }
 

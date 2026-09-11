@@ -119,8 +119,8 @@ class PriorAuthorityDeciderTest {
             "Recorded",
             0.0,
             OCCURRED_AT,
-            99.99,
-            23.23,
+            null,
+            null,
             "{\"decision\":\"REFUSED\"}");
 
     Optional<PriorAuthorityDecisionRecordedEvent> result =
