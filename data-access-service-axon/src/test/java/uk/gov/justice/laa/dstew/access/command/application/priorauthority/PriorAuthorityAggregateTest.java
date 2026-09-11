@@ -16,6 +16,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.axonframework.eventsourcing.configuration.EventSourcedEntityModule;
 import org.axonframework.eventsourcing.configuration.EventSourcingConfigurer;
+import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import org.axonframework.test.fixture.AxonTestFixture;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -24,10 +25,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.mock.web.MockMultipartFile;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityDocument;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
@@ -42,6 +45,7 @@ class PriorAuthorityAggregateTest {
   @Mock private PriorAuthorityDataStore dataStore;
   @Mock private PriorAuthorityDraftStore draftStore;
   @Mock private JsonSchemaValidator jsonSchemaValidator;
+  @Mock private EventAppender eventAppender;
 
   @BeforeEach
   void setUp() {
@@ -404,5 +408,200 @@ class PriorAuthorityAggregateTest {
         .then()
         .exception(ResourceNotFoundException.class)
         .noEvents();
+  }
+
+  @Test
+  void givenDraftWithoutExistingDocuments_whenUpload_thenPersistsSingleUploadedDocument() {
+    PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-09-08T12:00:00Z");
+    MockMultipartFile file =
+        new MockMultipartFile("file", "evidence.pdf", "application/pdf", "content".getBytes());
+    UUID documentId = UUID.randomUUID();
+    PriorAuthorityDocumentUploadCommand command =
+        new PriorAuthorityDocumentUploadCommand(
+            priorAuthorityId,
+            documentId,
+            "gateway_evidence",
+            "CIVIL_APPLY",
+            "sum",
+            "{}",
+            occurredAt,
+            file.getOriginalFilename(),
+            file.getSize());
+
+    aggregate.on(
+        new PriorAuthorityDraftStartedEvent(
+            priorAuthorityId, applicationId, "EXPERT", 1, occurredAt));
+    when(draftStore.find(priorAuthorityId))
+        .thenReturn(
+            Optional.of(
+                new PriorAuthorityDataPayload(
+                    priorAuthorityId,
+                    applicationId,
+                    new PriorAuthorityContent(EXPERT, "why", null, null, null),
+                    "{}",
+                    occurredAt)));
+
+    UUID returnedDocumentId = aggregate.handle(command, draftStore, eventAppender);
+
+    assertThat(returnedDocumentId).isEqualTo(documentId);
+    ArgumentCaptor<PriorAuthorityDataPayload> payloadCaptor =
+        ArgumentCaptor.forClass(PriorAuthorityDataPayload.class);
+    verify(draftStore)
+        .upsert(
+            eq(priorAuthorityId),
+            eq(applicationId),
+            payloadCaptor.capture(),
+            eq("{}"),
+            eq(occurredAt));
+    assertThat(payloadCaptor.getValue().content().uploadedDocuments()).hasSize(1);
+    assertThat(payloadCaptor.getValue().content().uploadedDocuments().getFirst().documentType())
+        .isEqualTo("gateway_evidence");
+    assertThat(payloadCaptor.getValue().content().uploadedDocuments().getFirst().checksum())
+        .isEqualTo("sum");
+    verify(eventAppender).append(any(PriorAuthorityDocumentUploadedEvent.class));
+  }
+
+  @Test
+  void givenDraftWithExistingDocument_whenUpload_thenAppendsToDocumentList() {
+    PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-09-08T12:00:00Z");
+    MockMultipartFile file =
+        new MockMultipartFile("file", "second.pdf", "application/pdf", "content".getBytes());
+    UUID documentId = UUID.randomUUID();
+
+    aggregate.on(
+        new PriorAuthorityDraftStartedEvent(
+            priorAuthorityId, applicationId, "EXPERT", 1, occurredAt));
+    when(draftStore.find(priorAuthorityId))
+        .thenReturn(
+            Optional.of(
+                new PriorAuthorityDataPayload(
+                    priorAuthorityId,
+                    applicationId,
+                    new PriorAuthorityContent(
+                        EXPERT,
+                        "why",
+                        null,
+                        null,
+                        null,
+                        List.of(
+                            new PriorAuthorityDocument(
+                                UUID.randomUUID(),
+                                "gateway_evidence",
+                                "first.pdf",
+                                "PDF",
+                                "application/pdf",
+                                1L,
+                                occurredAt,
+                                "CIVIL_APPLY",
+                                "first-checksum"))),
+                    "{}",
+                    occurredAt)));
+
+    final PriorAuthorityDocumentUploadCommand priorAuthorityDocumentUploadCommand =
+        new PriorAuthorityDocumentUploadCommand(
+            priorAuthorityId,
+            documentId,
+            "gateway_evidence",
+            "CIVIL_APPLY",
+            "sum",
+            "{}",
+            occurredAt,
+            file.getOriginalFilename(),
+            file.getSize());
+
+    aggregate.handle(priorAuthorityDocumentUploadCommand, draftStore, eventAppender);
+
+    ArgumentCaptor<PriorAuthorityDataPayload> payloadCaptor =
+        ArgumentCaptor.forClass(PriorAuthorityDataPayload.class);
+    verify(draftStore)
+        .upsert(
+            eq(priorAuthorityId),
+            eq(applicationId),
+            payloadCaptor.capture(),
+            eq("{}"),
+            eq(occurredAt));
+    assertThat(payloadCaptor.getValue().content().uploadedDocuments()).hasSize(2);
+  }
+
+  @Test
+  void givenMissingDraft_whenUpload_thenThrowsNotFound() {
+    PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-09-08T12:00:00Z");
+    MockMultipartFile file =
+        new MockMultipartFile("file", "missing.pdf", "application/pdf", "content".getBytes());
+    UUID documentId = UUID.randomUUID();
+
+    aggregate.on(
+        new PriorAuthorityDraftStartedEvent(
+            priorAuthorityId, applicationId, "EXPERT", 1, occurredAt));
+    when(draftStore.find(priorAuthorityId)).thenReturn(Optional.empty());
+
+    org.assertj.core.api.Assertions.assertThatExceptionOfType(ResourceNotFoundException.class)
+        .isThrownBy(
+            () -> {
+              PriorAuthorityDocumentUploadCommand priorAuthorityDocumentUploadCommand =
+                  new PriorAuthorityDocumentUploadCommand(
+                      priorAuthorityId,
+                      documentId,
+                      "gateway_evidence",
+                      "CIVIL_APPLY",
+                      "sum",
+                      "{}",
+                      occurredAt,
+                      file.getOriginalFilename(),
+                      file.getSize());
+              aggregate.handle(priorAuthorityDocumentUploadCommand, draftStore, eventAppender);
+            });
+  }
+
+  @Test
+  void givenChecksumMissing_whenUpload_thenEmitsEventWithNullChecksum() {
+    PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-09-08T12:00:00Z");
+    MockMultipartFile file =
+        new MockMultipartFile("file", "nullsum.pdf", "application/pdf", "content".getBytes());
+    UUID documentId = UUID.randomUUID();
+
+    aggregate.on(
+        new PriorAuthorityDraftStartedEvent(
+            priorAuthorityId, applicationId, "EXPERT", 1, occurredAt));
+    when(draftStore.find(priorAuthorityId))
+        .thenReturn(
+            Optional.of(
+                new PriorAuthorityDataPayload(
+                    priorAuthorityId,
+                    applicationId,
+                    new PriorAuthorityContent(EXPERT, "why", null, null, null),
+                    "{}",
+                    occurredAt)));
+
+    final PriorAuthorityDocumentUploadCommand priorAuthorityDocumentUploadCommand =
+        new PriorAuthorityDocumentUploadCommand(
+            priorAuthorityId,
+            documentId,
+            "gateway_evidence",
+            "CIVIL_APPLY",
+            null,
+            "{}",
+            occurredAt,
+            file.getOriginalFilename(),
+            file.getSize());
+
+    aggregate.handle(priorAuthorityDocumentUploadCommand, draftStore, eventAppender);
+
+    ArgumentCaptor<PriorAuthorityDocumentUploadedEvent> eventCaptor =
+        ArgumentCaptor.forClass(PriorAuthorityDocumentUploadedEvent.class);
+    verify(eventAppender).append(eventCaptor.capture());
+    assertThat(eventCaptor.getValue().checksum()).isNull();
   }
 }

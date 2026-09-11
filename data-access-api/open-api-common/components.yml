@@ -22,6 +22,7 @@ components:
       enum:
         - CIVIL_APPLY
         - CIVIL_DECIDE
+        - CIVIL_MANAGE
       description: Service name
 
     ApplicationStatus:

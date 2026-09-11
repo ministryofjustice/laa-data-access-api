@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
+import java.util.List;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
 import uk.gov.justice.laa.dstew.access.model.Apportionment;
@@ -9,8 +10,10 @@ import uk.gov.justice.laa.dstew.access.model.CounselType;
 import uk.gov.justice.laa.dstew.access.model.DisbursementDetails;
 import uk.gov.justice.laa.dstew.access.model.ExpertCosts;
 import uk.gov.justice.laa.dstew.access.model.ExpertDetails;
+import uk.gov.justice.laa.dstew.access.model.PriorAuthorityDocumentType;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityResponse;
 import uk.gov.justice.laa.dstew.access.model.TimeRequested;
+import uk.gov.justice.laa.dstew.access.model.UploadedDocument;
 
 /** Maps get-prior-authority use-case results to the public API response. */
 @Component
@@ -34,7 +37,31 @@ public class GetPriorAuthorityResponseMapper {
     response.setExpertDetails(toExpertDetails(result.expertDetails()));
     response.setCounselDetails(toCounselDetails(result.counselDetails()));
     response.setDisbursementDetails(toDisbursementDetails(result.disbursementDetails()));
+    response.setUploadedDocuments(toUploadedDocuments(result));
     return response;
+  }
+
+  private List<UploadedDocument> toUploadedDocuments(PriorAuthorityResult result) {
+    if (result.uploadedDocuments() == null) {
+      return null;
+    }
+    return result.uploadedDocuments().stream()
+        .map(
+            document ->
+                new UploadedDocument()
+                    .documentId(document.documentId())
+                    .documentType(PriorAuthorityDocumentType.fromValue(document.documentType()))
+                    .fileName(document.fileName())
+                    .fileType(document.fileType())
+                    .mediaType(document.mediaType())
+                    .size(document.size())
+                    .uploadedAt(
+                        document.uploadedAt() == null
+                            ? null
+                            : document.uploadedAt().atOffset(java.time.ZoneOffset.UTC))
+                    .sourceService(document.sourceService())
+                    .checksum(document.checksum()))
+        .toList();
   }
 
   private ExpertDetails toExpertDetails(

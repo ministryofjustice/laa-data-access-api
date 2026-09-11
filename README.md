@@ -165,6 +165,42 @@ curl -X GET "http://localhost:8080/api/v0/caseworkers" \
   -H "X-Service-Name: CIVIL_APPLY"
 ```
 
+#### Uploading a Prior Authority document
+
+Upload supporting evidence to an existing Prior Authority draft with `POST
+/api/v0/prior-authorities/{priorAuthorityId}/documents`. The request must use
+`multipart/form-data` and include a PDF `file` and a `documentType`. The API validates both the
+`application/pdf` media type and the PDF file signature.
+
+```bash
+curl -X POST "http://localhost:8080/api/v0/prior-authorities/{priorAuthorityId}/documents" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "X-Service-Name: CIVIL_APPLY" \
+  -F "file=@/path/to/evidence.pdf;type=application/pdf" \
+  -F "documentType=gateway_evidence"
+```
+
+`documentType` must be one of:
+
+- `gateway_evidence`
+- `merits_report`
+- `statement_of_case`
+- `court_application`
+- `court_order`
+- `expert_report`
+- `court_application_or_order`
+- `parental_responsibility`
+- `local_authority_assessment`
+- `grounds_of_appeal`
+- `counsel_opinion`
+- `judgement`
+- `plf_court_order`
+
+On success, the endpoint returns `201 Created` with the document ID, type, original filename,
+canonical file and media types, byte size, upload timestamp, source service, and checksum when it
+is available. It returns `404` when the Prior Authority draft does not exist, `409` for a file
+conflict, and `411` when the request has no content length.
+
 You can also use the Swagger UI to execute endpoints, which is described below in the
 [API documentation](#api-documentation) section.
 
