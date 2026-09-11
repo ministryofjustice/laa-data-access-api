@@ -18,6 +18,8 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.DisbursementInformation;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDecisionRecordedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDraftStartedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
@@ -267,6 +269,75 @@ class PriorAuthorityProjectionTest {
 
     assertThat(projection.handle(new FindPriorAuthorityByPriorAuthorityIdQuery(priorAuthorityId)))
         .isNull();
+  }
+
+  @Test
+  void givenDecisionRecordedEvent_whenHandled_thenUpdatesCurrentStateVersion() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    PriorAuthorityReadModel model =
+        PriorAuthorityReadModel.builder()
+            .priorAuthorityId(priorAuthorityId)
+            .applicationId(applicationId)
+            .dataVersion(0L)
+            .status("SUBMITTED")
+            .build();
+    when(repository.findById(priorAuthorityId)).thenReturn(Optional.of(model));
+
+    projection.on(
+        new PriorAuthorityDecisionRecordedEvent(
+            priorAuthorityId,
+            applicationId,
+            "EXPERT",
+            1L,
+            "REFUSED",
+            "Refused on merits",
+            null,
+            null,
+            Instant.now()));
+
+    assertThat(model.getStatus()).isEqualTo("SUBMITTED");
+    assertThat(model.getDataVersion()).isEqualTo(1L);
+    verify(repository).save(model);
+  }
+
+  @Test
+  void givenDecisionStoredInPayload_whenQueryHandled_thenReturnsDecisionDetails() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    PriorAuthorityReadModel model =
+        PriorAuthorityReadModel.builder()
+            .priorAuthorityId(priorAuthorityId)
+            .applicationId(applicationId)
+            .dataVersion(2L)
+            .status("SUBMITTED")
+            .build();
+    PriorAuthorityContent content =
+        new PriorAuthorityContent(EXPERT, "Expert required", null, null, null);
+    when(repository.findById(priorAuthorityId)).thenReturn(Optional.of(model));
+    when(dataStore.get(priorAuthorityId, 2L))
+        .thenReturn(
+            new PriorAuthorityDataPayload(
+                priorAuthorityId,
+                applicationId,
+                content,
+                "{}",
+                Instant.now(),
+                "GRANTED",
+                "Decision recorded",
+                99.99,
+                Instant.parse("2026-09-08T12:00:00Z"),
+                null,
+                DisbursementInformation.builder().build(),
+                null,
+                "{\"decision\":\"GRANTED\"}"));
+
+    PriorAuthorityResult result =
+        projection.handle(new FindPriorAuthorityByPriorAuthorityIdQuery(priorAuthorityId));
+
+    assertThat(result.status()).isEqualTo("SUBMITTED");
+    assertThat(result.decision()).isEqualTo("GRANTED");
+    assertThat(result.decisionJustification()).isEqualTo("Decision recorded");
   }
 
   @Test

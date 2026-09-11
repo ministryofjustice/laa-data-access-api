@@ -29,6 +29,7 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
+import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityStatusConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
@@ -395,6 +396,241 @@ class PriorAuthorityAggregateTest {
 
     SubmitPriorAuthorityDraftCommand command =
         new SubmitPriorAuthorityDraftCommand(priorAuthorityId, Instant.now());
+
+    fixture
+        .given()
+        .noPriorActivity()
+        .when()
+        .command(command)
+        .then()
+        .exception(ResourceNotFoundException.class)
+        .noEvents();
+  }
+
+  @Test
+  void givenSubmittedPriorAuthority_whenDecisionRecorded_thenPersistsNextVersionAndEmitsEvent() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant startedAt = Instant.parse("2026-08-01T10:00:00Z");
+    Instant submittedAt = Instant.parse("2026-08-02T10:00:00Z");
+    Instant decidedAt = Instant.parse("2026-08-02T11:00:00Z");
+    ExpertFeeInformation expertFee =
+        ExpertFeeInformation.builder().newFixedRateAmount(250.0).newHourlyRateAmount(125.0).build();
+    DisbursementInformation disbursementInformation =
+        DisbursementInformation.builder().newAmount(75.5).build();
+    ApportionmentInformation apportionmentInformation =
+        ApportionmentInformation.builder().newClientShareAmount(10.25).build();
+    PriorAuthorityDataPayload current =
+        new PriorAuthorityDataPayload(
+            priorAuthorityId,
+            applicationId,
+            new PriorAuthorityContent(EXPERT, "Need expert", null, null, null),
+            "{}",
+            submittedAt);
+    when(dataStore.get(priorAuthorityId, 0L)).thenReturn(current);
+
+    MakePriorAuthorityDecisionCommand command =
+        new MakePriorAuthorityDecisionCommand(
+            priorAuthorityId,
+            0L,
+            "GRANTED",
+            "Decision recorded",
+            1234.56,
+            expertFee,
+            disbursementInformation,
+            apportionmentInformation,
+            decidedAt,
+            "{\"decision\":\"GRANTED\"}",
+            decidedAt);
+
+    fixture
+        .given()
+        .events(
+            new PriorAuthorityDraftStartedEvent(
+                priorAuthorityId, applicationId, EXPERT.name(), 1, startedAt),
+            new PriorAuthoritySubmittedEvent(
+                priorAuthorityId, applicationId, EXPERT.name(), 1, 0L, submittedAt))
+        .when()
+        .command(command)
+        .then()
+        .events(
+            new PriorAuthorityDecisionRecordedEvent(
+                priorAuthorityId,
+                applicationId,
+                EXPERT.name(),
+                1L,
+                "GRANTED",
+                "Decision recorded",
+                1234.56,
+                decidedAt,
+                decidedAt));
+
+    ArgumentCaptor<PriorAuthorityDataPayload> payloadCaptor =
+        ArgumentCaptor.forClass(PriorAuthorityDataPayload.class);
+    verify(dataStore)
+        .append(
+            eq(priorAuthorityId),
+            eq(1L),
+            eq(applicationId),
+            payloadCaptor.capture(),
+            eq("{\"decision\":\"GRANTED\"}"),
+            eq(decidedAt));
+
+    PriorAuthorityDataPayload persisted = payloadCaptor.getValue();
+    assertThat(persisted.decision()).isEqualTo("GRANTED");
+    assertThat(persisted.decisionJustification()).isEqualTo("Decision recorded");
+    assertThat(persisted.amountGranted()).isEqualTo(1234.56);
+    assertThat(persisted.dateGranted()).isEqualTo(decidedAt);
+    assertThat(persisted.expert()).isEqualTo(expertFee);
+    assertThat(persisted.disbursement()).isEqualTo(disbursementInformation);
+    assertThat(persisted.apportionment()).isEqualTo(apportionmentInformation);
+    assertThat(persisted.decisionSerialisedRequest()).isEqualTo("{\"decision\":\"GRANTED\"}");
+  }
+
+  @Test
+  void
+      givenAlreadyDecidedPriorAuthority_whenSameDecisionRecorded_thenEmitsNoEventAndDoesNotAppend() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant startedAt = Instant.parse("2026-08-01T10:00:00Z");
+    Instant submittedAt = Instant.parse("2026-08-02T10:00:00Z");
+    Instant firstDecisionAt = Instant.parse("2026-08-02T11:00:00Z");
+    when(dataStore.get(priorAuthorityId, 1L))
+        .thenReturn(
+            new PriorAuthorityDataPayload(
+                priorAuthorityId,
+                applicationId,
+                new PriorAuthorityContent(EXPERT, "Need expert", null, null, null),
+                "{}",
+                submittedAt,
+                "GRANTED",
+                "Initial",
+                100.0,
+                firstDecisionAt,
+                ExpertFeeInformation.builder().build(),
+                DisbursementInformation.builder().build(),
+                ApportionmentInformation.builder().build(),
+                "{\"decision\":\"GRANTED\"}"));
+
+    MakePriorAuthorityDecisionCommand command =
+        new MakePriorAuthorityDecisionCommand(
+            priorAuthorityId,
+            1L,
+            "GRANTED",
+            "Initial",
+            100.0,
+            null,
+            null,
+            null,
+            firstDecisionAt,
+            "{\"decision\":\"GRANTED\"}",
+            firstDecisionAt.plusSeconds(1));
+
+    fixture
+        .given()
+        .events(
+            new PriorAuthorityDraftStartedEvent(
+                priorAuthorityId, applicationId, EXPERT.name(), 1, startedAt),
+            new PriorAuthoritySubmittedEvent(
+                priorAuthorityId, applicationId, EXPERT.name(), 1, 0L, submittedAt),
+            new PriorAuthorityDecisionRecordedEvent(
+                priorAuthorityId,
+                applicationId,
+                EXPERT.name(),
+                1L,
+                "GRANTED",
+                "Initial",
+                100.0,
+                firstDecisionAt,
+                firstDecisionAt))
+        .when()
+        .command(command)
+        .then()
+        .noEvents();
+
+    verify(dataStore, never()).append(any(), anyLong(), any(), any(), any(), any());
+  }
+
+  @Test
+  void givenAlreadyDecidedPriorAuthority_whenDifferentDecisionRecorded_thenThrowsConflict() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant startedAt = Instant.parse("2026-08-01T10:00:00Z");
+    Instant submittedAt = Instant.parse("2026-08-02T10:00:00Z");
+    Instant firstDecisionAt = Instant.parse("2026-08-02T11:00:00Z");
+    when(dataStore.get(priorAuthorityId, 1L))
+        .thenReturn(
+            new PriorAuthorityDataPayload(
+                priorAuthorityId,
+                applicationId,
+                new PriorAuthorityContent(EXPERT, "Need expert", null, null, null),
+                "{}",
+                submittedAt,
+                "GRANTED",
+                "Initial",
+                100.0,
+                firstDecisionAt,
+                ExpertFeeInformation.builder().build(),
+                DisbursementInformation.builder().build(),
+                ApportionmentInformation.builder().build(),
+                "{\"decision\":\"GRANTED\"}"));
+
+    MakePriorAuthorityDecisionCommand command =
+        new MakePriorAuthorityDecisionCommand(
+            priorAuthorityId,
+            1L,
+            "REFUSED",
+            "Changed",
+            0.0,
+            null,
+            null,
+            null,
+            firstDecisionAt,
+            "{\"decision\":\"REFUSED\"}",
+            firstDecisionAt.plusSeconds(1));
+
+    fixture
+        .given()
+        .events(
+            new PriorAuthorityDraftStartedEvent(
+                priorAuthorityId, applicationId, EXPERT.name(), 1, startedAt),
+            new PriorAuthoritySubmittedEvent(
+                priorAuthorityId, applicationId, EXPERT.name(), 1, 0L, submittedAt),
+            new PriorAuthorityDecisionRecordedEvent(
+                priorAuthorityId,
+                applicationId,
+                EXPERT.name(),
+                1L,
+                "GRANTED",
+                "Initial",
+                100.0,
+                firstDecisionAt,
+                firstDecisionAt))
+        .when()
+        .command(command)
+        .then()
+        .exception(PriorAuthorityStatusConflictException.class)
+        .noEvents();
+  }
+
+  @Test
+  void givenNeverInitialized_whenMakePriorAuthorityDecision_thenThrowsResourceNotFound() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    Instant decidedAt = Instant.parse("2026-08-02T11:00:00Z");
+
+    MakePriorAuthorityDecisionCommand command =
+        new MakePriorAuthorityDecisionCommand(
+            priorAuthorityId,
+            0L,
+            "GRANTED",
+            "Decision recorded",
+            1234.56,
+            null,
+            null,
+            null,
+            decidedAt,
+            "{\"decision\":\"GRANTED\"}",
+            decidedAt);
 
     fixture
         .given()

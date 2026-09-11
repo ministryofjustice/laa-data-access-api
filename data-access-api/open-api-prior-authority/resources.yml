@@ -51,6 +51,36 @@ paths:
         '404': { description: Prior Authority not found }
         '500': { description: Internal server error }
 
+  /api/v0/prior-authorities/{priorAuthorityId}/decision:
+    patch:
+      tags:
+        - prior-authorities
+      summary: Record a decision for a Prior Authority request
+      operationId: makePriorAuthorityDecision
+      parameters:
+        - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
+        - name: priorAuthorityId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        description: event history and decision details for the prior authority request
+        content:
+          application/json:
+            schema:
+              $ref: "./components.yml#/components/schemas/MakePriorAuthorityDecisionRequest"
+      responses:
+        '204': { description: Decision recorded }
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '403': { description: Forbidden }
+        '404': { description: Prior Authority not found }
+        '409': { description: Prior Authority already decided or request conflicts with current state }
+        '500': { description: Internal server error }
+
   /api/v0/prior-authorities/{priorAuthorityId}/submit:
     post:
       tags:

@@ -26,6 +26,8 @@ public class GetPriorAuthorityResponseMapper {
         result.status() == null
             ? null
             : PriorAuthorityResponse.StatusEnum.fromValue(result.status()));
+    response.setDecision(toDecision(result.decision()));
+    response.setDecisionJustification(result.decisionJustification());
     response.setPriorAuthorityType(
         result.priorAuthorityType() == null
             ? null
@@ -102,5 +104,16 @@ public class GetPriorAuthorityResponseMapper {
 
   private Double toDouble(java.math.BigDecimal value) {
     return value == null ? null : value.doubleValue();
+  }
+
+  private PriorAuthorityResponse.DecisionEnum toDecision(String decision) {
+    if (decision == null || decision.isBlank()) {
+      return null;
+    }
+    try {
+      return PriorAuthorityResponse.DecisionEnum.valueOf(decision);
+    } catch (IllegalArgumentException exception) {
+      return null;
+    }
   }
 }

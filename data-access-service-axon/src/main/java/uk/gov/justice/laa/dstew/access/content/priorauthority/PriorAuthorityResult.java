@@ -10,19 +10,46 @@ public record PriorAuthorityResult(
     UUID applicationId,
     String justification,
     String status,
+    String decision,
+    String decisionJustification,
     PriorAuthorityType priorAuthorityType,
     ExpertDetails expertDetails,
     CounselDetails counselDetails,
     DisbursementDetails disbursementDetails) {
 
+  /** Backward-compatible constructor when decision values are absent. */
+  public PriorAuthorityResult(
+      UUID priorAuthorityId,
+      UUID applicationId,
+      String justification,
+      String status,
+      PriorAuthorityType priorAuthorityType,
+      ExpertDetails expertDetails,
+      CounselDetails counselDetails,
+      DisbursementDetails disbursementDetails) {
+    this(
+        priorAuthorityId,
+        applicationId,
+        justification,
+        status,
+        null,
+        null,
+        priorAuthorityType,
+        expertDetails,
+        counselDetails,
+        disbursementDetails);
+  }
+
   /** Builds the use-case result from the current-state projection and versioned content. */
   public static PriorAuthorityResult from(
-      PriorAuthorityReadModel priorAuthority, PriorAuthorityContent content) {
+      PriorAuthorityReadModel priorAuthority, PriorAuthorityDataPayload payload) {
     return build(
         priorAuthority.getPriorAuthorityId(),
         priorAuthority.getApplicationId(),
         priorAuthority.getStatus(),
-        content);
+        payload.content(),
+        payload.decision(),
+        payload.decisionJustification());
   }
 
   /**
@@ -34,17 +61,26 @@ public record PriorAuthorityResult(
         payload.priorAuthorityId(),
         payload.applicationId(),
         PriorAuthorityStatus.DRAFT.name(),
-        payload.content());
+        payload.content(),
+        payload.decision(),
+        payload.decisionJustification());
   }
 
   private static PriorAuthorityResult build(
-      UUID priorAuthorityId, UUID applicationId, String status, PriorAuthorityContent content) {
+      UUID priorAuthorityId,
+      UUID applicationId,
+      String status,
+      PriorAuthorityContent content,
+      String decision,
+      String decisionJustification) {
     PriorAuthorityType priorAuthorityType = content.priorAuthorityType();
     return new PriorAuthorityResult(
         priorAuthorityId,
         applicationId,
         content.justification(),
         status,
+        decision,
+        decisionJustification,
         priorAuthorityType,
         priorAuthorityType == PriorAuthorityType.EXPERT ? toExpertDetails(content) : null,
         priorAuthorityType == PriorAuthorityType.COUNSEL ? toCounselDetails(content) : null,

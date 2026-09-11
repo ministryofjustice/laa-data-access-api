@@ -10,6 +10,7 @@ import org.axonframework.messaging.queryhandling.QueryUpdateEmitter;
 import org.axonframework.messaging.queryhandling.annotation.QueryHandler;
 import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Component;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDecisionRecordedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDraftStartedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
@@ -71,7 +72,7 @@ public class PriorAuthorityProjection {
     }
     PriorAuthorityDataPayload payload =
         priorAuthorityDataStore.get(priorAuthorityId, priorAuthority.getDataVersion());
-    return Optional.of(PriorAuthorityResult.from(priorAuthority, payload.content()));
+    return Optional.of(PriorAuthorityResult.from(priorAuthority, payload));
   }
 
   /** Creates the current-state row when a prior-authority draft is started. */
@@ -96,6 +97,18 @@ public class PriorAuthorityProjection {
         PriorAuthorityStatus.SUBMITTED.name(),
         event.occurredAt(),
         queryUpdateEmitter);
+  }
+
+  /** Updates current-state data version after a terminal prior-authority decision. */
+  @EventHandler
+  public void on(PriorAuthorityDecisionRecordedEvent event) {
+    repository
+        .findById(event.submissionId())
+        .ifPresent(
+            current -> {
+              current.setDataVersion(event.dataVersion());
+              repository.save(current);
+            });
   }
 
   private void createRow(

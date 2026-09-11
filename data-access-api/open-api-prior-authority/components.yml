@@ -1,5 +1,69 @@
 components:
   schemas:
+    MakePriorAuthorityDecisionRequest:
+      type: object
+      required:
+        - decision
+        - decisionJustification
+        - amountGranted
+        - dateGranted
+        - eventHistory
+        - priorAuthorityVersion
+      properties:
+        decision:
+          $ref: "../open-api-applications/components.yml#/components/schemas/DecisionStatus"
+        decisionJustification:
+          type: string
+        amountGranted:
+          type: number
+          format: double
+        dateGranted:
+          type: string
+          format: date-time
+        eventHistory:
+          $ref: "../open-api-common/components.yml#/components/schemas/EventHistoryRequest"
+        priorAuthorityVersion:
+          type: integer
+          format: int64
+          description: Version of prior authority being decided, used for concurrency control
+        expert:
+          $ref: "#/components/schemas/ExpertMakePriorAuthorityDecisionRequest"
+        disbursement:
+          $ref: "#/components/schemas/DisbursementMakePriorAuthorityDecisionRequest"
+        apportionment:
+          $ref: "#/components/schemas/ApportionmentMakePriorAuthorityDecisionRequest"
+
+    ApportionmentMakePriorAuthorityDecisionRequest:
+      type: object
+      description: Optional apportionment details for the decision
+      properties:
+        newClientShareAmount:
+          type: number
+          format: double
+          description: New client share amount if applicable
+
+    DisbursementMakePriorAuthorityDecisionRequest:
+      type: object
+      description: Optional disbursement details for the decision
+      properties:
+        newAmount:
+          type: number
+          format: double
+          description: New amount if applicable
+
+    ExpertMakePriorAuthorityDecisionRequest:
+      type: object
+      description: Optional expert details for the decision
+      properties:
+        newFixedRateAmount:
+          type: number
+          format: double
+          description: New fixed rate amount if applicable
+        newHourlyRateAmount:
+          type: number
+          format: double
+          description: New hourly rate amount if applicable
+
     PriorAuthorityResponse:
       type: object
       required:
@@ -24,8 +88,8 @@ components:
           maxLength: 10000
         decision:
           type: string
-          description: Decision on the request. Uses GRANT/REFUSE to match decision API.
-          enum: [GRANT, REFUSE]
+          description: Decision on the request.
+          enum: [GRANTED, REFUSED]
         decisionJustification:
           type: string
         uploadedDocuments:

@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.command.application;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.Mockito.verifyNoInteractions;
 
+import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
@@ -15,6 +16,7 @@ import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.document.UploadDocumentUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteUseCase;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.MakePriorAuthorityDecisionUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.ready.RecordAutoGrantOutcomeUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
@@ -28,6 +30,7 @@ import uk.gov.justice.laa.dstew.access.utils.TestSecurityConfig;
       UpdateApplicationUseCase.class,
       MakeApplicationDecisionUseCase.class,
       CreateNoteUseCase.class,
+      MakePriorAuthorityDecisionUseCase.class,
       RecordAutoGrantOutcomeUseCase.class,
       UploadDocumentUseCase.class,
       TestSecurityConfig.class
@@ -40,10 +43,12 @@ class ApplicationCommandUseCasesSecurityTest extends BaseSecuredUseCaseTest {
   @Autowired private UpdateApplicationUseCase updateApplicationUseCase;
   @Autowired private MakeApplicationDecisionUseCase makeApplicationDecisionUseCase;
   @Autowired private CreateNoteUseCase createNoteUseCase;
+  @Autowired private MakePriorAuthorityDecisionUseCase makePriorAuthorityDecisionUseCase;
   @Autowired private RecordAutoGrantOutcomeUseCase recordAutoGrantOutcomeUseCase;
   @Autowired private UploadDocumentUseCase uploadDocumentUseCase;
 
   @MockitoBean private RetryingCommandDispatcher dispatcher;
+  @MockitoBean private QueryGateway queryGateway;
   @MockitoBean private SubscriptionProjectionGateway projectionGateway;
   @MockitoBean private SdsService sdsService;
 
@@ -55,11 +60,12 @@ class ApplicationCommandUseCasesSecurityTest extends BaseSecuredUseCaseTest {
     assertDenied(() -> updateApplicationUseCase.execute(null));
     assertDenied(() -> makeApplicationDecisionUseCase.execute(null));
     assertDenied(() -> createNoteUseCase.execute(null));
+    assertDenied(() -> makePriorAuthorityDecisionUseCase.execute(null));
     assertDenied(() -> recordAutoGrantOutcomeUseCase.recordReady(null));
     assertDenied(() -> recordAutoGrantOutcomeUseCase.record(new Object()));
     assertDenied(() -> uploadDocumentUseCase.execute(null, null));
 
-    verifyNoInteractions(dispatcher, projectionGateway, sdsService);
+    verifyNoInteractions(dispatcher, queryGateway, projectionGateway, sdsService);
   }
 
   @Test
@@ -71,11 +77,12 @@ class ApplicationCommandUseCasesSecurityTest extends BaseSecuredUseCaseTest {
     assertDenied(() -> updateApplicationUseCase.execute(null));
     assertDenied(() -> makeApplicationDecisionUseCase.execute(null));
     assertDenied(() -> createNoteUseCase.execute(null));
+    assertDenied(() -> makePriorAuthorityDecisionUseCase.execute(null));
     assertDenied(() -> recordAutoGrantOutcomeUseCase.recordReady(null));
     assertDenied(() -> recordAutoGrantOutcomeUseCase.record(new Object()));
     assertDenied(() -> uploadDocumentUseCase.execute(null, null));
 
-    verifyNoInteractions(dispatcher, projectionGateway, sdsService);
+    verifyNoInteractions(dispatcher, queryGateway, projectionGateway, sdsService);
   }
 
   private void assertDenied(ThrowingInvocation invocation) {
