@@ -12,10 +12,13 @@ import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthoritySummary;
@@ -258,5 +261,45 @@ class GetAllApplicationsResponseMapperTest {
             .get(0);
 
     assertThat(summary.getPriorAuthorities()).isEmpty();
+  }
+
+  @ParameterizedTest
+  @EnumSource(PriorAuthorityStatus.class)
+  void givenDomainPriorAuthorityStatus_whenToResponse_thenApiStatusEnumAcceptsIt(
+      PriorAuthorityStatus status) {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationReadModel app =
+        ApplicationReadModel.builder()
+            .autoGranted(AutoGrantedState.PENDING)
+            .applicationId(applicationId)
+            .modifiedAt(Instant.now())
+            .build();
+    PriorAuthorityReadModel priorAuthority =
+        PriorAuthorityReadModel.builder()
+            .priorAuthorityId(UUID.randomUUID())
+            .applicationId(applicationId)
+            .status(status.name())
+            .createdAt(Instant.parse("2026-09-11T10:00:00Z"))
+            .build();
+
+    ApplicationSummary summary =
+        mapper
+            .toResponse(
+                new FindAllApplicationsResult(
+                    List.of(app),
+                    Map.of(),
+                    Map.of(applicationId, List.of(priorAuthority)),
+                    1L,
+                    1,
+                    20))
+            .getBody()
+            .getApplications()
+            .get(0);
+
+    assertThat(PriorAuthoritySummary.StatusEnum.fromValue(status.name())).isNotNull();
+    assertThat(summary.getPriorAuthorities())
+        .singleElement()
+        .extracting(item -> item.getStatus().getValue())
+        .isEqualTo(status.name());
   }
 }
