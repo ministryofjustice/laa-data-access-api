@@ -2,12 +2,13 @@ package uk.gov.justice.laa.dstew.access.query.application.priorauthority;
 
 import java.util.Optional;
 import java.util.UUID;
+
+import jakarta.annotation.Nullable;
 import org.axonframework.messaging.core.annotation.Namespace;
 import org.axonframework.messaging.eventhandling.annotation.EventHandler;
 import org.axonframework.messaging.eventhandling.replay.annotation.ResetHandler;
 import org.axonframework.messaging.queryhandling.QueryUpdateEmitter;
 import org.axonframework.messaging.queryhandling.annotation.QueryHandler;
-import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDraftStartedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
@@ -43,6 +44,7 @@ public class PriorAuthorityProjection {
   }
 
   /** Returns the hydrated current state for the requested prior-authority submission. */
+  @Nullable
   @QueryHandler
   public PriorAuthorityResult handle(FindPriorAuthorityByPriorAuthorityIdQuery query) {
     UUID priorAuthorityId = query.priorAuthorityId();
@@ -63,7 +65,7 @@ public class PriorAuthorityProjection {
         .orElse(false);
   }
 
-  private Optional<@NonNull PriorAuthorityResult> hydrate(
+  private Optional<PriorAuthorityResult> hydrate(
       PriorAuthorityReadModel priorAuthority, UUID priorAuthorityId) {
     if (PriorAuthorityStatus.DRAFT.name().equals(priorAuthority.getStatus())) {
       return priorAuthorityDraftStore.find(priorAuthorityId).map(PriorAuthorityResult::fromDraft);
