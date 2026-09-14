@@ -212,7 +212,7 @@ components:
         decision:
           type: string
           nullable: true
-          enum: [GRANT, REFUSE]
+          enum: [GRANTED, REFUSED]
         createdAt:
           type: string
           format: date-time

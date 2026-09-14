@@ -85,7 +85,7 @@ class GetAllApplicationsResponseMapperTest {
                 .priorAuthorityId(submittedId)
                 .applicationId(applicationId)
                 .status("SUBMITTED")
-                .decision("GRANT")
+                .decision("GRANTED")
                 .createdAt(Instant.parse("2026-07-01T09:30:00Z"))
                 .build());
 
@@ -117,7 +117,7 @@ class GetAllApplicationsResponseMapperTest {
             tuple(
                 submittedId,
                 "SUBMITTED",
-                PriorAuthoritySummary.DecisionEnum.GRANT,
+                PriorAuthoritySummary.DecisionEnum.GRANTED,
                 Instant.parse("2026-07-01T09:30:00Z").atOffset(ZoneOffset.UTC)));
   }
 
