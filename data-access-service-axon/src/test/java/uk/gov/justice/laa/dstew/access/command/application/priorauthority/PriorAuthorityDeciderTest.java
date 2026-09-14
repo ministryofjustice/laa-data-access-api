@@ -43,6 +43,25 @@ class PriorAuthorityDeciderTest {
   }
 
   @Test
+  void givenCommandWithNullType_whenDecideStartDraft_thenEventTypeIsNull() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    CreatePriorAuthorityDraftCommand command =
+        new CreatePriorAuthorityDraftCommand(
+            priorAuthorityId,
+            applicationId,
+            new PriorAuthorityContent(null, null, null, null, null),
+            "{}",
+            1,
+            "PriorAuthority.json",
+            OCCURRED_AT);
+
+    PriorAuthorityDraftStartedEvent event = PriorAuthorityDecider.decideStartDraft(command);
+
+    assertThat(event.priorAuthorityType()).isNull();
+  }
+
+  @Test
   void givenSubmitCommand_whenDecideSubmit_thenAlwaysUsesDataVersionZero() {
     UUID priorAuthorityId = UUID.randomUUID();
     PriorAuthorityState state = new PriorAuthorityState();
@@ -307,5 +326,33 @@ class PriorAuthorityDeciderTest {
         null,
         null,
         "{\"decision\":\"GRANTED\"}");
+  }
+
+  @Test
+  void givenUploadCommand_whenDecideDocumentUploaded_thenMapsUploadFields() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    PriorAuthorityDocumentUploadCommand command =
+        new PriorAuthorityDocumentUploadCommand(
+            priorAuthorityId,
+            documentId,
+            "gateway_evidence",
+            "CIVIL_APPLY",
+            "abc123",
+            "{}",
+            OCCURRED_AT,
+            "evidence.pdf",
+            7L);
+    UUID applicationId = UUID.randomUUID();
+    PriorAuthorityDocumentUploadedEvent event =
+        PriorAuthorityDecider.decideDocumentUploaded(command, applicationId);
+
+    assertThat(event.priorAuthorityId()).isEqualTo(priorAuthorityId);
+    assertThat(event.documentId()).isEqualTo(documentId);
+    assertThat(event.uploadedAt()).isEqualTo(OCCURRED_AT);
+    assertThat(event.size()).isEqualTo(7L);
+    assertThat(event.contentType()).isEqualTo("application/pdf");
+    assertThat(event.checksum()).isEqualTo("abc123");
+    assertThat(event.parentApplicationId()).isEqualTo(applicationId);
   }
 }

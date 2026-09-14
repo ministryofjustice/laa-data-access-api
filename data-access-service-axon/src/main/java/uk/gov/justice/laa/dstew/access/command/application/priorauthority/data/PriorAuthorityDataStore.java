@@ -35,13 +35,12 @@ public class PriorAuthorityDataStore {
       Instant occurredAt) {
     String fingerprint = PayloadFingerprint.compute(serialisedRequest);
     repository.saveAndFlush(
-        PriorAuthorityData.builder()
-            .id(new PriorAuthorityDataId(priorAuthorityId, dataVersion))
-            .applicationId(applicationId)
-            .payload(payload)
-            .payloadHash(fingerprint)
-            .createdAt(occurredAt)
-            .build());
+        new PriorAuthorityData(
+            new PriorAuthorityDataId(priorAuthorityId, dataVersion),
+            applicationId,
+            payload,
+            fingerprint,
+            occurredAt));
     return fingerprint;
   }
 

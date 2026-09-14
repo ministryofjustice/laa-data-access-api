@@ -49,4 +49,9 @@ public final class PriorAuthorityEvolve {
     state.assignmentVersion = event.assignmentVersion();
     state.caseworkerId = null;
   }
+
+  /** Applies a {@link PriorAuthorityDocumentUploadedEvent} to the given state. */
+  public static void apply(PriorAuthorityState state, PriorAuthorityDocumentUploadedEvent event) {
+    state.uploadedDocumentIds.add(event.documentId());
+  }
 }

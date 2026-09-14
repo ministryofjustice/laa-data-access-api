@@ -7,6 +7,22 @@ plugins {
     id 'uk.gov.justice.service.laa.laa-spring-boot-gradle-plugin'
 }
 
+def versions = [
+        sentry                  : '8.55.0',
+        axonFramework           : '5.2.0',
+        jsonSchemaValidator     : '3.0.0',
+        swaggerAnnotations      : '2.2.43',
+        springdocOpenapi        : '3.0.2',
+        springCloudAws          : '4.0.2',
+        awsSdkSts               : '2.33.7',
+        lombok                  : '1.18.46',
+        datafaker               : '2.5.2',
+        archunit                : '1.4.2',
+        testcontainers          : '2.0.5',
+        micrometerSpringBoot    : '2.2.0',
+        logbackEcsEncoder       : '1.6.0'
+]
+
 sourceSets {
     testUtilities {
         java.srcDir 'src/testUtilities/java'
@@ -36,9 +52,9 @@ dependencies {
     implementation project(':data-access-shared')
 
     implementation 'io.projectreactor:reactor-core'
-    implementation 'org.axonframework.extensions.spring:axon-spring-boot-starter:5.2.0'
-    implementation 'com.networknt:json-schema-validator:3.0.0'
-    implementation 'io.swagger.core.v3:swagger-annotations-jakarta:2.2.43'
+    implementation "org.axonframework.extensions.spring:axon-spring-boot-starter:$versions.axonFramework"
+    implementation "com.networknt:json-schema-validator:$versions.jsonSchemaValidator"
+    implementation "io.swagger.core.v3:swagger-annotations-jakarta:$versions.swaggerAnnotations"
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-flyway'
@@ -48,26 +64,40 @@ dependencies {
     implementation 'uk.gov.justice.service.laa:laa-spring-boot-starter-oauth2'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-web'
+
     implementation 'io.micrometer:micrometer-registry-prometheus'
-    implementation('org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.2') {
+    implementation 'io.micrometer:micrometer-tracing-bridge-brave'
+    implementation "net.ttddyy.observation:datasource-micrometer-spring-boot:$versions.micrometerSpringBoot"
+
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:$versions.springdocOpenapi") {
         exclude group: 'tools.jackson.core'
     }
     implementation 'org.flywaydb:flyway-database-postgresql'
     // Match the Cloud Platform IRSA/default-credentials pattern.
-    implementation platform('io.awspring.cloud:spring-cloud-aws:4.0.2')
+    implementation platform("io.awspring.cloud:spring-cloud-aws:$versions.springCloudAws")
     implementation 'io.awspring.cloud:spring-cloud-aws-starter'
     implementation 'software.amazon.awssdk:sns'
-    implementation 'software.amazon.awssdk:sts:2.33.7'
-    compileOnly 'org.projectlombok:lombok:1.18.46'
-    annotationProcessor 'org.projectlombok:lombok:1.18.46'
+    implementation "software.amazon.awssdk:sts:$versions.awsSdkSts"
+    compileOnly "org.projectlombok:lombok:$versions.lombok"
+    annotationProcessor "org.projectlombok:lombok:$versions.lombok"
     runtimeOnly 'org.postgresql:postgresql'
-    implementation 'net.datafaker:datafaker:2.5.2'
+    implementation "net.datafaker:datafaker:$versions.datafaker"
+
+    // Sentry
+    implementation platform("io.sentry:sentry-bom:$versions.sentry")
+    implementation "io.sentry:sentry-logback:$versions.sentry"
+    implementation "io.sentry:sentry-spring-boot-4:$versions.sentry"
+
+    // Structured Logging - ECS format
+    implementation 'ch.qos.logback:logback-core'
+    implementation 'ch.qos.logback:logback-classic'
+    implementation "co.elastic.logging:logback-ecs-encoder:$versions.logbackEcsEncoder"
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-restclient'
-    testImplementation 'org.axonframework:axon-test:5.2.0'
-    testImplementation 'com.tngtech.archunit:archunit-junit5:1.4.2'
+    testImplementation "org.axonframework:axon-test:$versions.axonFramework"
+    testImplementation "com.tngtech.archunit:archunit-junit5:$versions.archunit"
     testRuntimeOnly 'com.h2database:h2'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
@@ -75,8 +105,8 @@ dependencies {
     integrationTestImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
     integrationTestImplementation 'org.springframework.boot:spring-boot-starter-restclient'
     integrationTestImplementation 'org.springframework.boot:spring-boot-testcontainers'
-    integrationTestImplementation 'org.testcontainers:testcontainers-junit-jupiter:2.0.5'
-    integrationTestImplementation 'org.testcontainers:testcontainers-postgresql:2.0.5'
+    integrationTestImplementation "org.testcontainers:testcontainers-junit-jupiter:$versions.testcontainers"
+    integrationTestImplementation "org.testcontainers:testcontainers-postgresql:$versions.testcontainers"
     integrationTestImplementation 'software.amazon.awssdk:sqs'
 }
 

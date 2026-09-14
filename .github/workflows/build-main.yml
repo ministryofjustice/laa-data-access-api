@@ -61,47 +61,8 @@ jobs:
       security-events: write
     with:
       java_distribution: *JDK_DISTRIBUTION
-      dockerfile_path: Dockerfile
-      image_version: ${{ needs.release.outputs.published_artifact_version }}
-      image_scan: 'true'
-    secrets:
-      gh_token: ${{ secrets.GITHUB_TOKEN }}
-      ecr_repository: ${{ vars.ECR_REPOSITORY }}
-      ecr_region: ${{ vars.ECR_REGION }}
-      ecr_role_to_assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
-      snyk_token: ${{ secrets.SNYK_TOKEN }}
-
-  ecr-publish-mass-generator-image:
-    needs: [ release ]
-    if: ${{ needs.release.outputs.published_artifact_version != '' }}
-    uses: ministryofjustice/laa-ccms-common-workflows/.github/workflows/ecr-publish-image.yml@0c06c747af49e3efb703717e6185cf693494d5a4 # v2.4.2
-    permissions:
-      contents: read
-      id-token: write
-      security-events: write
-    with:
-      java_distribution: *JDK_DISTRIBUTION
-      dockerfile_path: Dockerfile.mass-generator
-      image_version: ${{ format('{0}-mass-generator', needs.release.outputs.published_artifact_version) }}
-      image_scan: 'false'
-    secrets:
-      gh_token: ${{ secrets.GITHUB_TOKEN }}
-      ecr_repository: ${{ vars.ECR_REPOSITORY }}
-      ecr_region: ${{ vars.ECR_REGION }}
-      ecr_role_to_assume: ${{ secrets.ECR_ROLE_TO_ASSUME }}
-
-  ecr-publish-axon-image:
-    needs: [ release ]
-    if: ${{ needs.release.outputs.published_artifact_version != '' }}
-    uses: ministryofjustice/laa-ccms-common-workflows/.github/workflows/ecr-publish-image.yml@0c06c747af49e3efb703717e6185cf693494d5a4 # v2.4.2
-    permissions:
-      contents: read
-      id-token: write
-      security-events: write
-    with:
-      java_distribution: *JDK_DISTRIBUTION
       dockerfile_path: Dockerfile.axon
-      image_version: ${{ format('{0}-axon', needs.release.outputs.published_artifact_version) }}
+      image_version: ${{ needs.release.outputs.published_artifact_version }}
       image_scan: 'false'
     secrets:
       gh_token: ${{ secrets.GITHUB_TOKEN }}
@@ -111,7 +72,7 @@ jobs:
 
   deploy-uat:
     runs-on: ubuntu-latest
-    needs: [ release, ecr-publish-service-image, ecr-publish-mass-generator-image, ecr-publish-axon-image, vulnerability-scan-app ]
+    needs: [ release, ecr-publish-service-image, vulnerability-scan-app ]
     environment: uat
     permissions:
       id-token: write
@@ -134,7 +95,6 @@ jobs:
           kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
           app-environment: uat
           image-tag: ${{ needs.release.outputs.published_artifact_version }}
-          axon-image-tag: ${{ format('{0}-axon', needs.release.outputs.published_artifact_version) }}
 
 
   deploy-shared-mock-oauth2:
@@ -191,32 +151,11 @@ jobs:
           echo "   (No per-PR mock-oauth2 pods will be created)"
           echo ""
 
-  uat-smoke-test:
-    runs-on: ubuntu-latest
-    needs: [ deploy-uat, deploy-shared-mock-oauth2 ]
-    environment: uat
-    permissions:
-      id-token: write
-      contents: read
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Run smoke tests
-        uses: ./.github/actions/smoke-test
-        with:
-          release-name: ${{ needs.deploy-uat.outputs.release-name }}
-          branch-name: ${{ needs.deploy-uat.outputs.branch-name }}
-          kube-cert: ${{ secrets.KUBE_CERT }}
-          kube-token: ${{ secrets.KUBE_TOKEN }}
-          kube-cluster: ${{ secrets.KUBE_CLUSTER }}
-          kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          report-name: uat-smoke-test-report
-
   prepare-feature-environments:
     name: Approve and prepare feature environments
     runs-on: ubuntu-latest
     environment: uat-preview
-    needs: [ uat-smoke-test ]
+    needs: [ deploy-uat ]
     outputs:
       matrix: ${{ steps.resolve.outputs.matrix }}
     steps:
@@ -286,11 +225,10 @@ jobs:
           release-name-override: ${{ matrix.release_name }}
           extra-env: ${{ matrix.extra_env }}
           image-tag: ${{ needs.release.outputs.published_artifact_version }}
-          axon-image-tag: ${{ format('{0}-axon', needs.release.outputs.published_artifact_version) }}
 
   deploy-staging:
     runs-on: ubuntu-latest
-    needs: [ deploy-uat, uat-smoke-test, release ]
+    needs: [ deploy-uat, release ]
     environment: staging
     permissions:
       id-token: write
@@ -309,9 +247,6 @@ jobs:
           kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
           app-environment: staging
           image-tag: ${{ needs.release.outputs.published_artifact_version }}
-          # TODO(axon-smoke-gate): flip to 'true' (and set axon-image-tag) once Axon
-          # smoke tests exist and pass in non-prod. Intentionally gated off for now.
-          deploy-axon: 'false'
 
 
   deploy-production:
@@ -335,6 +270,3 @@ jobs:
           kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
           app-environment: production
           image-tag: ${{ needs.release.outputs.published_artifact_version }}
-          # TODO(axon-smoke-gate): production rollout remains intentionally gated off
-          # until Axon smoke tests exist and pass in non-prod.
-          deploy-axon: 'false'

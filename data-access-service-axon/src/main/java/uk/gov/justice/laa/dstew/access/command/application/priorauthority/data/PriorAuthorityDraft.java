@@ -6,20 +6,12 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 /** Mutable draft content for a Prior Authority submission that has not yet been submitted. */
 @Entity
 @Table(name = "prior_authority_draft")
-@Getter
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
 public class PriorAuthorityDraft {
 
   @Id
@@ -41,4 +33,57 @@ public class PriorAuthorityDraft {
 
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
+
+  protected PriorAuthorityDraft() {
+    // JPA constructor
+  }
+
+  /**
+   * Creates a draft persistence entity.
+   *
+   * @param priorAuthorityId draft identifier
+   * @param applicationId parent application identifier
+   * @param payload draft payload content
+   * @param payloadHash fingerprint of the serialised request
+   * @param createdAt initial create timestamp
+   * @param updatedAt latest update timestamp
+   */
+  public PriorAuthorityDraft(
+      UUID priorAuthorityId,
+      UUID applicationId,
+      PriorAuthorityDataPayload payload,
+      String payloadHash,
+      Instant createdAt,
+      Instant updatedAt) {
+    this.priorAuthorityId = priorAuthorityId;
+    this.applicationId = applicationId;
+    this.payload = payload;
+    this.payloadHash = payloadHash;
+    this.createdAt = createdAt;
+    this.updatedAt = updatedAt;
+  }
+
+  public UUID getPriorAuthorityId() {
+    return priorAuthorityId;
+  }
+
+  public UUID getApplicationId() {
+    return applicationId;
+  }
+
+  public PriorAuthorityDataPayload getPayload() {
+    return payload;
+  }
+
+  public String getPayloadHash() {
+    return payloadHash;
+  }
+
+  public Instant getCreatedAt() {
+    return createdAt;
+  }
+
+  public Instant getUpdatedAt() {
+    return updatedAt;
+  }
 }

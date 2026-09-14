@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.client.MultipartBodyBuilder;
 import org.springframework.stereotype.Service;
@@ -71,6 +72,44 @@ public class SdsService {
     bodyMap.put(FOLDER_FIELD, folderName);
 
     MultipartBodyBuilder builder = buildMultipartBody(file, bodyMap);
+
+    return sdsUploadResponseHandler
+        .handle(
+            sdsRestClient
+                .post()
+                .uri(SAVE_FILE_ENDPOINT)
+                .contentType(MULTIPART_FORM_DATA)
+                .body(builder.build())
+                .retrieve()
+                .onStatus(
+                    status -> status.isSameCodeAs(HttpStatus.CONFLICT),
+                    (request, response) -> {
+                      throw new FileConflictException("File already exists in SDS");
+                    }))
+        .body(DocumentUploadResponse.class);
+  }
+
+  /**
+   * Save a prior-authority document in SDS using a UUID document key.
+   *
+   * @param priorAuthorityId the prior-authority ID used as folder name
+   * @param documentId the generated document ID used as file key
+   * @param file the file to upload
+   * @return the file URL response from SDS
+   */
+  public DocumentUploadResponse savePriorAuthorityFile(
+      UUID priorAuthorityId, UUID documentId, MultipartFile file) {
+    Map<String, String> bodyMap =
+        Map.of(
+            BUCKET_NAME_FIELD,
+            bucketName,
+            FOLDER_FIELD,
+            priorAuthorityId.toString(),
+            "key",
+            documentId.toString());
+    MultipartBodyBuilder builder =
+        buildMultipartBody(
+            file, bodyMap, documentId + getFileExtension(file.getOriginalFilename()));
 
     return sdsUploadResponseHandler
         .handle(
@@ -157,8 +196,7 @@ public class SdsService {
                   return deleteFilesUri.build();
                 })
             .retrieve()
-            .body(
-                new org.springframework.core.ParameterizedTypeReference<Map<String, Integer>>() {});
+            .body(new ParameterizedTypeReference<Map<String, Integer>>() {});
 
     List<DocumentDeleteResult> results =
         sdsResults == null
@@ -196,11 +234,24 @@ public class SdsService {
     return applicationId.toString() + PATH_SEPARATOR + documentId;
   }
 
+  private String getFileExtension(String fileName) {
+    int extensionStart = fileName.lastIndexOf('.');
+    return extensionStart >= 0 ? fileName.substring(extensionStart) : "";
+  }
+
   private MultipartBodyBuilder buildMultipartBody(
       MultipartFile file, Map<String, String> bodyFields) {
+    return buildMultipartBody(file, bodyFields, file.getOriginalFilename());
+  }
+
+  private MultipartBodyBuilder buildMultipartBody(
+      MultipartFile file, Map<String, String> bodyFields, String fileName) {
     try {
       MultipartBodyBuilder builder = new MultipartBodyBuilder();
-      builder.part("file", file.getResource()).contentType(APPLICATION_OCTET_STREAM);
+      builder
+          .part("file", file.getResource())
+          .filename(fileName)
+          .contentType(APPLICATION_OCTET_STREAM);
       builder.part("body", objectMapper.writeValueAsString(bodyFields));
       return builder;
     } catch (JacksonException e) {

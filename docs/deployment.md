@@ -313,15 +313,17 @@ curl -X GET "https://main-laa-data-access-api-uat.cloud-platform.service.justice
 
 ## Smoke tests
 
-Smoke tests run via `./gradlew :data-access-service:infrastructureTest`. The smoke-test action:
+Smoke tests were previously run against the legacy `data-access-service` module via `./gradlew :data-access-service:infrastructureTest`. The smoke-test action would:
 
-1. Authenticates to the Kubernetes cluster
-2. Port-forwards to the target PostgreSQL (ephemeral Bitnami pod for PRs; RDS port-forward pod for UAT `main`)
-3. Port-forwards to the application pod
-4. Resolves database credentials from the appropriate Kubernetes secret
-5. Runs the Gradle infrastructure test suite
-6. Uploads the test report as a GitHub Actions artifact (retained 14 days)
-7. Tears down port-forward resources
+1. Authenticate to the Kubernetes cluster
+2. Port-forward to the target PostgreSQL (ephemeral Bitnami pod for PRs; RDS port-forward pod for UAT `main`)
+3. Port-forward to the application pod
+4. Resolve database credentials from the appropriate Kubernetes secret
+5. Run the Gradle infrastructure test suite
+6. Upload the test report as a GitHub Actions artifact (retained 14 days)
+7. Tear down port-forward resources
+
+**Current status:** Smoke tests have been removed from the build feature action as the legacy service module is no longer deployed. Once the `data-access-service-axon` module has its own smoke test suite, these tests should be re-added to CI to validate Axon deployments through the same smoke-test action pattern.
 
 ---
 

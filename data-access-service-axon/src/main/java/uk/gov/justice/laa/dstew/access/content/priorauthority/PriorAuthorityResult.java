@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.content.priorauthority;
 
+import java.util.List;
 import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
@@ -15,9 +16,10 @@ public record PriorAuthorityResult(
     PriorAuthorityType priorAuthorityType,
     ExpertDetails expertDetails,
     CounselDetails counselDetails,
-    DisbursementDetails disbursementDetails) {
+    DisbursementDetails disbursementDetails,
+    List<PriorAuthorityDocument> uploadedDocuments) {
 
-  /** Backward-compatible constructor when decision values are absent. */
+  /** Backward-compatible constructor when decision values and uploaded documents are absent. */
   public PriorAuthorityResult(
       UUID priorAuthorityId,
       UUID applicationId,
@@ -37,7 +39,8 @@ public record PriorAuthorityResult(
         priorAuthorityType,
         expertDetails,
         counselDetails,
-        disbursementDetails);
+        disbursementDetails,
+        null);
   }
 
   /** Builds the use-case result from the current-state projection and versioned content. */
@@ -86,7 +89,8 @@ public record PriorAuthorityResult(
         priorAuthorityType == PriorAuthorityType.COUNSEL ? toCounselDetails(content) : null,
         priorAuthorityType == PriorAuthorityType.DISBURSEMENT
             ? toDisbursementDetails(content)
-            : null);
+            : null,
+        content.uploadedDocuments());
   }
 
   private static ExpertDetails toExpertDetails(PriorAuthorityContent content) {

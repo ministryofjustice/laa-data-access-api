@@ -2,10 +2,12 @@ package uk.gov.justice.laa.dstew.access.command.application.priorauthority;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityDocumentMetadata;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityStatusConflictException;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityVersionConflictException;
@@ -90,5 +92,18 @@ public final class PriorAuthorityDecider {
         && !DecisionValue.REFUSED.name().equals(command.overallDecision())) {
       throw new ValidationException(List.of("overallDecision must be one of: GRANTED, REFUSED"));
     }
+  }
+
+  /** Returns a persisted upload event for a prior-authority document finalize command. */
+  public static PriorAuthorityDocumentUploadedEvent decideDocumentUploaded(
+      PriorAuthorityDocumentUploadCommand command, UUID applicationId) {
+    return new PriorAuthorityDocumentUploadedEvent(
+        command.priorAuthorityId(),
+        command.documentId(),
+        command.occurredAt(),
+        command.fileSize(),
+        PriorAuthorityDocumentMetadata.PDF_CONTENT_TYPE,
+        command.checksum(),
+        applicationId);
   }
 }
