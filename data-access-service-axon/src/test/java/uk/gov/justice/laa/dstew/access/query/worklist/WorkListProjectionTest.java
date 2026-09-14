@@ -102,7 +102,7 @@ class WorkListProjectionTest {
         mock(uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent.class);
     uk.gov.justice.laa.dstew.access.content.priorauthority.ExpertDetails expertDetails =
         mock(uk.gov.justice.laa.dstew.access.content.priorauthority.ExpertDetails.class);
-    when(applicationDataStore.getLatest(applicationId)).thenReturn(parentData);
+    when(applicationDataStore.get(applicationId, 7L)).thenReturn(parentData);
     when(parentData.laaReference()).thenReturn("LAA-654321");
     when(parentData.categoryOfLaw()).thenReturn("FAMILY");
     when(parentData.proceedings()).thenReturn(List.of(proceeding));
@@ -117,7 +117,13 @@ class WorkListProjectionTest {
 
     projection.on(
         new PriorAuthoritySubmittedEvent(
-            priorAuthorityId, applicationId, "type", 1, 0, Instant.parse("2026-08-28T10:00:00Z")),
+            priorAuthorityId,
+            applicationId,
+            "type",
+            1,
+            0,
+            7L,
+            Instant.parse("2026-08-28T10:00:00Z")),
         message());
 
     ArgumentCaptor<WorkListItemReadModel> captor =
@@ -142,7 +148,7 @@ class WorkListProjectionTest {
     PriorAuthorityDataPayload priorAuthorityData = mock(PriorAuthorityDataPayload.class);
     uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent content =
         mock(uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent.class);
-    when(applicationDataStore.getLatest(applicationId)).thenReturn(parentData);
+    when(applicationDataStore.get(applicationId, 4L)).thenReturn(parentData);
     when(priorAuthorityDataStore.get(priorAuthorityId, 1)).thenReturn(priorAuthorityData);
     when(priorAuthorityData.content()).thenReturn(content);
     when(content.priorAuthorityType())
@@ -151,7 +157,7 @@ class WorkListProjectionTest {
 
     projection.on(
         new PriorAuthoritySubmittedEvent(
-            priorAuthorityId, applicationId, "EXPERT", 0, 1, Instant.now()),
+            priorAuthorityId, applicationId, "EXPERT", 0, 1, 4L, Instant.now()),
         message());
 
     ArgumentCaptor<WorkListItemReadModel> captor =
