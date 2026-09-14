@@ -7,7 +7,20 @@ public interface DataAccessApiClient {
 
   void recordManualOutcome(UUID applicationId);
 
+  default void recordAutograntedOutcome(UUID applicationId, String requestBody) {
+    throw new UnsupportedOperationException();
+  }
+
   void makeDecision(UUID applicationId, String requestBody);
 
-  UUID createPriorAuthority(UUID applicationId, String requestBody);
+  UUID createPriorAuthorityDraft(String requestBody);
+
+  void updatePriorAuthorityDraft(UUID priorAuthorityId, String requestBody);
+
+  UUID submitPriorAuthorityDraft(UUID priorAuthorityId);
+
+  default void assignWorkListItem(
+      UUID itemId, UUID caseworkerId, long expectedAssignmentVersion, String eventDescription) {
+    throw new UnsupportedOperationException();
+  }
 }

@@ -57,3 +57,10 @@ massGenerator:
   enabled: false
 
 featureFlags: {}
+
+aws:
+  integrationEvents:
+    enabled: false
+  topicArnSecret:
+    name: data-access-events-sns-topic
+    key: topic_arn

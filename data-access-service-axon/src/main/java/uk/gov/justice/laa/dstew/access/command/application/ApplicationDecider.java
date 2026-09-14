@@ -14,10 +14,6 @@ import lombok.NoArgsConstructor;
 import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
 import uk.gov.justice.laa.dstew.access.applicationcontent.LinkedApplication;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.AssignCaseworkerToApplicationCommand;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.UnassignCaseworkerFromApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
@@ -29,6 +25,7 @@ import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplication
 import uk.gov.justice.laa.dstew.access.command.application.ready.ReadyApplicationResult;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationCommand;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationGroupInvariantException;
@@ -133,32 +130,35 @@ public final class ApplicationDecider {
     return decideDecision(state, command, current, AutoGrantedState.MANUAL);
   }
 
-  /** Returns an {@link ApplicationAssignedToCaseworkerEvent}. */
-  public static ApplicationAssignedToCaseworkerEvent decideAssign(
-      ApplicationState state, AssignCaseworkerToApplicationCommand command) {
-    return new ApplicationAssignedToCaseworkerEvent(
-        state.applicationId,
-        state.applicationVersion + 1,
-        state.applicationDataVersion + 1,
-        command.caseworkerId(),
-        command.occurredAt());
+  /** Ensures a standalone manual decision is made by its current assignment owner. */
+  public static void validateManualDecisionAssignment(
+      ApplicationState state, MakeApplicationDecisionCommand command) {
+    if (command.expectedApplicationVersion() != state.applicationVersion) {
+      throw new ApplicationVersionConflictException(
+          command.applicationId(), command.expectedApplicationVersion());
+    }
+    if (state.autoGranted != AutoGrantedState.MANUAL) {
+      throw new ApplicationAutoGrantOutcomeConflictException(command.applicationId());
+    }
+    // Deprecated constructors are retained for internal migration compatibility. The HTTP use case
+    // rejects a missing caseworker before this aggregate is dispatched.
+    if (command.caseworkerId() == null) {
+      return;
+    }
+    if (state.overallDecision != null) {
+      throw assignmentConflict(command, "it is not an active manual work item");
+    }
+    if (state.caseworkerId == null) {
+      throw assignmentConflict(command, "it is unassigned");
+    }
+    if (!state.caseworkerId.equals(command.caseworkerId())) {
+      throw assignmentConflict(command, "the supplied caseworker is not its current assignee");
+    }
   }
 
-  /**
-   * Returns an {@link ApplicationUnassignedFromCaseworkerEvent}, or throws if no caseworker is
-   * assigned.
-   */
-  public static ApplicationUnassignedFromCaseworkerEvent decideUnassign(
-      ApplicationState state, UnassignCaseworkerFromApplicationCommand command) {
-    if (state.caseworkerId == null) {
-      throw new ValidationException(
-          List.of("The request cannot be completed: no caseworker is assigned"));
-    }
-    return new ApplicationUnassignedFromCaseworkerEvent(
-        state.applicationId,
-        state.applicationVersion + 1,
-        state.applicationDataVersion + 1,
-        command.occurredAt());
+  private static WorkItemAssignmentConflictException assignmentConflict(
+      MakeApplicationDecisionCommand command, String reason) {
+    return new WorkItemAssignmentConflictException(command.applicationId(), reason);
   }
 
   /** Returns a {@link NoteCreatedEvent}. */

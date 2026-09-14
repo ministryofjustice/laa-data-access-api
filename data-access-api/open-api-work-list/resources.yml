@@ -1,0 +1,100 @@
+paths:
+  /api/v0/work-list:
+    get:
+      tags:
+        - work-list-query
+      summary: Get work-list items
+      operationId: getWorkListItems
+      parameters:
+        - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
+        - in: query
+          name: assignedTo
+          description: Return only items assigned to this caseworker UUID
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: unassigned
+          description: Return only unassigned items. Defaults to true when assignedTo is omitted.
+          schema:
+            type: boolean
+        - in: query
+          name: itemType
+          description: Restrict results to one work-item type
+          schema:
+            $ref: "./components.yml#/components/schemas/WorkListItemType"
+        - in: query
+          name: page
+          description: One-based page number (defaults to 1)
+          schema:
+            type: integer
+        - in: query
+          name: pageSize
+          description: Number of items per page (defaults to 20, max 100)
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Paginated work-list items
+          content:
+            application/json:
+              schema:
+                $ref: "./components.yml#/components/schemas/WorkListResponse"
+
+  /api/v0/work-list/{itemId}/assign:
+    post:
+      tags:
+        - work-list-command
+      summary: Assign an open work-list item
+      operationId: assignWorkListItem
+      parameters:
+        - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
+        - name: itemId
+          in: path
+          required: true
+          description: Application ID for an application item, or prior-authority submission ID for a PA item
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./components.yml#/components/schemas/WorkListAssignRequest"
+      responses:
+        "200": { description: OK }
+        "400": { description: Bad request }
+        "401": { description: Unauthorized }
+        "403": { description: Forbidden }
+        "404": { description: Work item or route not found }
+        "409": { description: Assignment version is stale or item is not open }
+
+  /api/v0/work-list/{itemId}/unassign:
+    post:
+      tags:
+        - work-list-command
+      summary: Return an assigned work-list item to the unassigned list
+      operationId: unassignWorkListItem
+      parameters:
+        - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
+        - name: itemId
+          in: path
+          required: true
+          description: Application ID for an application item, or prior-authority submission ID for a PA item
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./components.yml#/components/schemas/WorkListUnassignRequest"
+      responses:
+        "200": { description: OK }
+        "400": { description: Bad request }
+        "401": { description: Unauthorized }
+        "403": { description: Forbidden }
+        "404": { description: Work item or route not found }
+        "409": { description: Assignment version is stale or item is not assigned }

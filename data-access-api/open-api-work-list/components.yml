@@ -1,0 +1,86 @@
+components:
+  schemas:
+    WorkListItemType:
+      type: string
+      enum:
+        - APPLICATION
+        - PRIOR_AUTHORITY
+
+    WorkListItem:
+      type: object
+      properties:
+        itemId:
+          type: string
+          format: uuid
+          description: Application ID for an application item, or prior-authority submission ID for a PA item
+        itemType:
+          $ref: "#/components/schemas/WorkListItemType"
+        parentApplicationId:
+          type: string
+          format: uuid
+          description: Parent application ID for a prior-authority item; used as its assignment-history target and omitted for application items
+        assignedTo:
+          type: string
+          format: uuid
+        assignmentVersion:
+          type: integer
+          format: int64
+        assignmentBoundaryType:
+          type: string
+          enum:
+            - DIRECT
+            - LINKED_GROUP
+        submittedAt:
+          type: string
+          format: date-time
+        laaReference:
+          type: string
+        usedDelegatedFunctions:
+          type: boolean
+          description: Whether the application used delegated functions; omitted for PA items
+        categoryOfLaw:
+          $ref: "../open-api-common/components.yml#/components/schemas/CategoryOfLaw"
+        matterTypes:
+          type: array
+          description: Matter types across the application's proceedings; omitted for PA items
+          items:
+            $ref: "../open-api-common/components.yml#/components/schemas/MatterType"
+        applicationStatus:
+          $ref: "../open-api-common/components.yml#/components/schemas/ApplicationStatus"
+
+    WorkListResponse:
+      type: object
+      properties:
+        paging:
+          $ref: "../open-api-common/components.yml#/components/schemas/PagingResponse"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkListItem"
+
+    WorkListAssignRequest:
+      type: object
+      required:
+        - caseworkerId
+        - expectedAssignmentVersion
+      properties:
+        caseworkerId:
+          type: string
+          format: uuid
+        expectedAssignmentVersion:
+          type: integer
+          format: int64
+          minimum: 0
+        eventHistory:
+          $ref: "../open-api-common/components.yml#/components/schemas/EventHistoryRequest"
+    WorkListUnassignRequest:
+      type: object
+      required:
+        - expectedAssignmentVersion
+      properties:
+        expectedAssignmentVersion:
+          type: integer
+          format: int64
+          minimum: 0
+        eventHistory:
+          $ref: "../open-api-common/components.yml#/components/schemas/EventHistoryRequest"

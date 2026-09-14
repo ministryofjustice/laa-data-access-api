@@ -82,7 +82,7 @@ runs:
         kube_namespace: ${{ inputs.kube-namespace }}
         pod_selector: ${{ steps.target.outputs.app_pod_selector }}
         local_port: "8080"
-        remote_port: "8080"
+        remote_port: "8082"
         pid_env_var: APP_PORT_FORWARD_PID
 
     - name: Configure smoke-test environment
@@ -143,4 +143,3 @@ runs:
       run: |
         kubectl -n "$KUBE_NAMESPACE" delete deployment port-forward-pod --ignore-not-found
         kubectl -n "$KUBE_NAMESPACE" delete service laa-data-access-api-uat-postgresql-portforward --ignore-not-found
-

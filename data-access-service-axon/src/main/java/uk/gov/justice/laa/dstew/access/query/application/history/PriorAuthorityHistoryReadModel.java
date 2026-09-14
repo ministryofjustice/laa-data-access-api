@@ -29,8 +29,8 @@ public class PriorAuthorityHistoryReadModel {
   @Column(name = "application_id", nullable = false)
   UUID applicationId;
 
-  @Column(name = "submission_id", nullable = false)
-  UUID submissionId;
+  @Column(name = "prior_authority_id", nullable = false)
+  UUID priorAuthorityId;
 
   @Column(name = "prior_authority_type", nullable = false)
   String priorAuthorityType;

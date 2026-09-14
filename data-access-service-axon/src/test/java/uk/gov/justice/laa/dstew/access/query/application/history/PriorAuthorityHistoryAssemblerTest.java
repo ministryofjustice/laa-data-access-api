@@ -17,21 +17,21 @@ class PriorAuthorityHistoryAssemblerTest {
   // --- grouping and ordering ---
 
   @Test
-  void givenRowsForTwoSubmissions_whenAssembled_thenOneGroupPerSubmissionId() {
+  void givenRowsForTwoSubmissions_whenAssembled_thenOneGroupPerPriorAuthorityId() {
     UUID applicationId = UUID.randomUUID();
-    UUID firstSubmissionId = UUID.randomUUID();
-    UUID secondSubmissionId = UUID.randomUUID();
+    UUID firstPriorAuthorityId = UUID.randomUUID();
+    UUID secondPriorAuthorityId = UUID.randomUUID();
     var rows =
         List.of(
             row(
                 applicationId,
-                firstSubmissionId,
+                firstPriorAuthorityId,
                 "EXPERT",
                 "evt-a",
                 Instant.parse("2026-08-01T10:00:00Z")),
             row(
                 applicationId,
-                secondSubmissionId,
+                secondPriorAuthorityId,
                 "COUNSEL",
                 "evt-b",
                 Instant.parse("2026-08-01T11:00:00Z")));
@@ -39,19 +39,19 @@ class PriorAuthorityHistoryAssemblerTest {
     var groups = assembler.assemble(rows);
 
     assertThat(groups)
-        .extracting(PriorAuthorityHistoryGroupResult::submissionId)
-        .containsExactly(firstSubmissionId, secondSubmissionId);
+        .extracting(PriorAuthorityHistoryGroupResult::priorAuthorityId)
+        .containsExactly(firstPriorAuthorityId, secondPriorAuthorityId);
   }
 
   @Test
   void
       givenMultipleEventsForOneSubmission_whenAssembled_thenEventsOrderedByOccurredAtThenEventId() {
     UUID applicationId = UUID.randomUUID();
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
     var earlierRow =
         row(
             applicationId,
-            submissionId,
+            priorAuthorityId,
             "EXPERT",
             "evt-aaa",
             Instant.parse("2026-08-01T09:00:00Z"));
@@ -60,7 +60,7 @@ class PriorAuthorityHistoryAssemblerTest {
     var firstLaterRow =
         row(
             applicationId,
-            submissionId,
+            priorAuthorityId,
             "EXPERT",
             "evt-aab",
             Instant.parse("2026-08-01T10:00:00Z"),
@@ -68,7 +68,7 @@ class PriorAuthorityHistoryAssemblerTest {
     var secondLaterRow =
         row(
             applicationId,
-            submissionId,
+            priorAuthorityId,
             "EXPERT",
             "evt-aac",
             Instant.parse("2026-08-01T10:00:00Z"),
@@ -95,19 +95,19 @@ class PriorAuthorityHistoryAssemblerTest {
   @Test
   void givenTwoSubmissions_whenAssembled_thenGroupOrderFollowsEarliestEvent() {
     UUID applicationId = UUID.randomUUID();
-    UUID laterSubmissionId = UUID.randomUUID();
-    UUID earlierSubmissionId = UUID.randomUUID();
+    UUID laterPriorAuthorityId = UUID.randomUUID();
+    UUID earlierPriorAuthorityId = UUID.randomUUID();
     var rows =
         List.of(
             row(
                 applicationId,
-                laterSubmissionId,
+                laterPriorAuthorityId,
                 "EXPERT",
                 "evt-1",
                 Instant.parse("2026-08-01T12:00:00Z")),
             row(
                 applicationId,
-                earlierSubmissionId,
+                earlierPriorAuthorityId,
                 "COUNSEL",
                 "evt-2",
                 Instant.parse("2026-08-01T08:00:00Z")));
@@ -115,8 +115,8 @@ class PriorAuthorityHistoryAssemblerTest {
     var groups = assembler.assemble(rows);
 
     assertThat(groups)
-        .extracting(PriorAuthorityHistoryGroupResult::submissionId)
-        .containsExactly(earlierSubmissionId, laterSubmissionId);
+        .extracting(PriorAuthorityHistoryGroupResult::priorAuthorityId)
+        .containsExactly(earlierPriorAuthorityId, laterPriorAuthorityId);
   }
 
   @Test
@@ -180,14 +180,14 @@ class PriorAuthorityHistoryAssemblerTest {
   @Test
   void givenRowWithNullServiceName_whenAssembled_thenServiceNameIsPreservedAsNull() {
     UUID applicationId = UUID.randomUUID();
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
     var historyRow =
         PriorAuthorityHistoryReadModel.builder()
             .eventId("e1")
             .applicationId(applicationId)
-            .submissionId(submissionId)
+            .priorAuthorityId(priorAuthorityId)
             .priorAuthorityType("EXPERT")
-            .eventType("PRIOR_AUTHORITY_CREATED")
+            .eventType("PRIOR_AUTHORITY_SUBMITTED")
             .eventData("{}")
             .serviceName(null)
             .occurredAt(Instant.parse("2026-08-01T10:00:00Z"))
@@ -204,11 +204,16 @@ class PriorAuthorityHistoryAssemblerTest {
   void
       givenTwoRowsSameSubmissionDifferentTypes_whenAssembled_thenThrowsApplicationHistoryIntegrityException() {
     UUID applicationId = UUID.randomUUID();
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
     var expertHistoryRow =
-        row(applicationId, submissionId, "EXPERT", "e1", Instant.parse("2026-08-01T09:00:00Z"));
+        row(applicationId, priorAuthorityId, "EXPERT", "e1", Instant.parse("2026-08-01T09:00:00Z"));
     var counselHistoryRow =
-        row(applicationId, submissionId, "COUNSEL", "e2", Instant.parse("2026-08-01T10:00:00Z"));
+        row(
+            applicationId,
+            priorAuthorityId,
+            "COUNSEL",
+            "e2",
+            Instant.parse("2026-08-01T10:00:00Z"));
 
     assertThatThrownBy(() -> assembler.assemble(List.of(expertHistoryRow, counselHistoryRow)))
         .isInstanceOf(ApplicationHistoryIntegrityException.class)
@@ -216,7 +221,7 @@ class PriorAuthorityHistoryAssemblerTest {
             throwable -> {
               var integrityException = (ApplicationHistoryIntegrityException) throwable;
               assertThat(integrityException.getApplicationId()).isEqualTo(applicationId);
-              assertThat(integrityException.getSubmissionId()).isEqualTo(submissionId);
+              assertThat(integrityException.getPriorAuthorityId()).isEqualTo(priorAuthorityId);
               assertThat(integrityException.getReason()).contains("conflicting");
             });
   }
@@ -246,16 +251,17 @@ class PriorAuthorityHistoryAssemblerTest {
 
   private PriorAuthorityHistoryReadModel row(
       UUID applicationId,
-      UUID submissionId,
+      UUID priorAuthorityId,
       String priorAuthorityType,
       String eventId,
       Instant occurredAt) {
-    return row(applicationId, submissionId, priorAuthorityType, eventId, occurredAt, "CIVIL_APPLY");
+    return row(
+        applicationId, priorAuthorityId, priorAuthorityType, eventId, occurredAt, "CIVIL_APPLY");
   }
 
   private PriorAuthorityHistoryReadModel row(
       UUID applicationId,
-      UUID submissionId,
+      UUID priorAuthorityId,
       String priorAuthorityType,
       String eventId,
       Instant occurredAt,
@@ -263,10 +269,10 @@ class PriorAuthorityHistoryAssemblerTest {
     return PriorAuthorityHistoryReadModel.builder()
         .eventId(eventId)
         .applicationId(applicationId)
-        .submissionId(submissionId)
+        .priorAuthorityId(priorAuthorityId)
         .priorAuthorityType(priorAuthorityType)
-        .eventType("PRIOR_AUTHORITY_CREATED")
-        .eventData("{\"status\":\"PENDING\",\"dataVersion\":0}")
+        .eventType("PRIOR_AUTHORITY_SUBMITTED")
+        .eventData("{\"status\":\"SUBMITTED\",\"dataVersion\":0}")
         .serviceName(serviceName)
         .occurredAt(occurredAt)
         .build();

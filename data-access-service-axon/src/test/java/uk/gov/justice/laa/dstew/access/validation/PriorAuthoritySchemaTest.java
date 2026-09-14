@@ -142,6 +142,28 @@ class PriorAuthoritySchemaTest {
   }
 
   @Test
+  void givenUnsharedCostsWithApportionment_whenValidate_thenRejects() {
+    assertRejected(
+        new PriorAuthorityContent(
+            PriorAuthorityType.EXPERT,
+            "Need expert",
+            new ExpertDetails(
+                "Pathologist",
+                "Casey Expert",
+                "AB1 2CD",
+                new ExpertCosts(
+                    BillingType.FIXED_RATE,
+                    null,
+                    null,
+                    BigDecimal.valueOf(900),
+                    false,
+                    new Apportionment(2, BigDecimal.valueOf(450)))),
+            null,
+            null),
+        "apportionment");
+  }
+
+  @Test
   void givenInvalidCounselEnum_whenValidate_thenRejects() {
     Map<String, Object> payload =
         JsonMapper.builder()

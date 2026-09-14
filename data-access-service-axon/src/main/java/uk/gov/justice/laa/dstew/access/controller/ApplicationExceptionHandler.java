@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.client.ClientAuthorizationException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationGroupInvariantException;
@@ -79,9 +80,7 @@ public class ApplicationExceptionHandler {
                     + " already exists with different creation data"));
   }
 
-  /**
-   * Returns a conflict when a prior-authority submission ID is reused with different creation data.
-   */
+  /** Returns a conflict when a prior-authority submission ID is reused on create. */
   @ExceptionHandler(PriorAuthorityCreationConflictException.class)
   ResponseEntity<ProblemDetail> handlePriorAuthorityCreationConflictException(
       PriorAuthorityCreationConflictException exception) {
@@ -90,14 +89,22 @@ public class ApplicationExceptionHandler {
             ProblemDetail.forStatusAndDetail(
                 HttpStatus.CONFLICT,
                 "Prior authority submission ID "
-                    + exception.getSubmissionId()
-                    + " already exists with different creation data"));
+                    + exception.getPriorAuthorityId()
+                    + " already exists"));
   }
 
   /** Returns a conflict when a decision was based on a stale Application version. */
   @ExceptionHandler(ApplicationVersionConflictException.class)
   ResponseEntity<ProblemDetail> handleApplicationVersionConflictException(
       ApplicationVersionConflictException exception) {
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage()));
+  }
+
+  /** Returns a conflict when a work-item assignment is stale or incompatible with its state. */
+  @ExceptionHandler(WorkItemAssignmentConflictException.class)
+  ResponseEntity<ProblemDetail> handleWorkItemAssignmentConflictException(
+      WorkItemAssignmentConflictException exception) {
     return ResponseEntity.status(HttpStatus.CONFLICT)
         .body(ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage()));
   }
@@ -173,9 +180,9 @@ public class ApplicationExceptionHandler {
   ResponseEntity<ProblemDetail> handleApplicationHistoryIntegrityException(
       ApplicationHistoryIntegrityException exception) {
     log.error(
-        "Application history integrity failure [applicationId={}, submissionId={}, reason={}]",
+        "Application history integrity failure [applicationId={}, priorAuthorityId={}, reason={}]",
         exception.getApplicationId(),
-        exception.getSubmissionId(),
+        exception.getPriorAuthorityId(),
         exception.getReason());
     ProblemDetail problemDetail =
         ProblemDetail.forStatusAndDetail(

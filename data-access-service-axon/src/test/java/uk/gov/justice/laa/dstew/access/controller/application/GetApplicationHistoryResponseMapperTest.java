@@ -111,10 +111,13 @@ class GetApplicationHistoryResponseMapperTest {
 
   @Test
   void givenPriorAuthorityGroup_whenMapped_thenMapsToGeneratedPriorAuthorityHistoryGroup() {
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-05T10:00:00Z");
     var priorAuthorityGroup =
-        group(submissionId, "EXPERT", event("PRIOR_AUTHORITY_CREATED", occurredAt, "CIVIL_APPLY"));
+        group(
+            priorAuthorityId,
+            "EXPERT",
+            event("PRIOR_AUTHORITY_SUBMITTED", occurredAt, "CIVIL_APPLY"));
 
     var response =
         mapper.toResponse(new ApplicationHistoryResult(List.of(), List.of(priorAuthorityGroup)));
@@ -123,13 +126,14 @@ class GetApplicationHistoryResponseMapperTest {
         .singleElement()
         .satisfies(
             mappedGroup -> {
-              assertThat(mappedGroup.getSubmissionId()).isEqualTo(submissionId);
+              assertThat(mappedGroup.getPriorAuthorityId()).isEqualTo(priorAuthorityId);
               assertThat(mappedGroup.getPriorAuthorityType()).isEqualTo(PriorAuthorityType.EXPERT);
               assertThat(mappedGroup.getEvents())
                   .singleElement()
                   .satisfies(
                       mappedEvent -> {
-                        assertThat(mappedEvent.getEventType()).isEqualTo("PRIOR_AUTHORITY_CREATED");
+                        assertThat(mappedEvent.getEventType())
+                            .isEqualTo("PRIOR_AUTHORITY_SUBMITTED");
                         assertThat(mappedEvent.getCreatedBy()).isEqualTo("CIVIL_APPLY");
                         assertThat(mappedEvent.getEventDescription()).isNull();
                         assertThat(mappedEvent.getCreatedAt())
@@ -140,8 +144,8 @@ class GetApplicationHistoryResponseMapperTest {
 
   @Test
   void givenMultiplePriorAuthorityGroups_whenMapped_thenEachGroupHasOwnEvents() {
-    UUID firstSubmissionId = UUID.randomUUID();
-    UUID secondSubmissionId = UUID.randomUUID();
+    UUID firstPriorAuthorityId = UUID.randomUUID();
+    UUID secondPriorAuthorityId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-05T10:00:00Z");
 
     var response =
@@ -150,13 +154,13 @@ class GetApplicationHistoryResponseMapperTest {
                 List.of(),
                 List.of(
                     group(
-                        firstSubmissionId,
+                        firstPriorAuthorityId,
                         "EXPERT",
-                        event("PRIOR_AUTHORITY_CREATED", occurredAt, "CIVIL_APPLY")),
+                        event("PRIOR_AUTHORITY_SUBMITTED", occurredAt, "CIVIL_APPLY")),
                     group(
-                        secondSubmissionId,
+                        secondPriorAuthorityId,
                         "COUNSEL",
-                        event("PRIOR_AUTHORITY_CREATED", occurredAt, "CIVIL_APPLY")))));
+                        event("PRIOR_AUTHORITY_SUBMITTED", occurredAt, "CIVIL_APPLY")))));
 
     assertThat(response.getPriorAuthorities())
         .extracting(group -> group.getEvents().size())
@@ -171,13 +175,13 @@ class GetApplicationHistoryResponseMapperTest {
 
   @Test
   void givenNullServiceName_whenMapped_thenCreatedByIsUnknown() {
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
     var priorAuthorityGroup =
         group(
-            submissionId,
+            priorAuthorityId,
             "EXPERT",
             new PriorAuthorityHistoryEventResult(
-                "PRIOR_AUTHORITY_CREATED", Instant.parse("2026-08-05T10:00:00Z"), null, null));
+                "PRIOR_AUTHORITY_SUBMITTED", Instant.parse("2026-08-05T10:00:00Z"), null, null));
 
     var response =
         mapper.toResponse(new ApplicationHistoryResult(List.of(), List.of(priorAuthorityGroup)));
@@ -192,8 +196,11 @@ class GetApplicationHistoryResponseMapperTest {
   }
 
   private PriorAuthorityHistoryGroupResult group(
-      UUID submissionId, String priorAuthorityType, PriorAuthorityHistoryEventResult... events) {
-    return new PriorAuthorityHistoryGroupResult(submissionId, priorAuthorityType, List.of(events));
+      UUID priorAuthorityId,
+      String priorAuthorityType,
+      PriorAuthorityHistoryEventResult... events) {
+    return new PriorAuthorityHistoryGroupResult(
+        priorAuthorityId, priorAuthorityType, List.of(events));
   }
 
   private PriorAuthorityHistoryEventResult event(

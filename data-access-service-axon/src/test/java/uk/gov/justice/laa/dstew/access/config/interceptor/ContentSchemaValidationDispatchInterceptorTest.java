@@ -8,7 +8,6 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validApplicationContent;
 
-import java.time.Instant;
 import java.util.UUID;
 import org.axonframework.messaging.commandhandling.CommandMessage;
 import org.axonframework.messaging.commandhandling.GenericCommandMessage;
@@ -17,11 +16,6 @@ import org.axonframework.messaging.core.MessageStream;
 import org.axonframework.messaging.core.MessageType;
 import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationCommand;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.CreatePriorAuthorityCommand;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.CounselDetails;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.CounselType;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
 
 class ContentSchemaValidationDispatchInterceptorTest {
@@ -40,36 +34,6 @@ class ContentSchemaValidationDispatchInterceptorTest {
     interceptor.interceptOnDispatch(commandMessage, null, chain);
 
     verify(validator).validate(command.applicationContent(), "CssApplication.json", 1);
-    verify(chain).proceed(commandMessage, null);
-  }
-
-  @Test
-  void givenPriorAuthorityCommand_whenDispatched_thenValidatesCommandContent() {
-    JsonSchemaValidator validator = mock(JsonSchemaValidator.class);
-    ContentSchemaValidationDispatchInterceptor interceptor =
-        new ContentSchemaValidationDispatchInterceptor(validator);
-    CreatePriorAuthorityCommand command =
-        new CreatePriorAuthorityCommand(
-            UUID.randomUUID(),
-            UUID.randomUUID(),
-            "COUNSEL",
-            new PriorAuthorityContent(
-                PriorAuthorityType.COUNSEL,
-                "Need specialist counsel",
-                null,
-                new CounselDetails(CounselType.KINGS_COUNSEL_ALONE),
-                null),
-            "{}",
-            1,
-            "PriorAuthority.json",
-            Instant.now());
-    var commandMessage =
-        new GenericCommandMessage(new MessageType(CreatePriorAuthorityCommand.class), command);
-    MessageDispatchInterceptorChain<CommandMessage> chain = chain();
-
-    interceptor.interceptOnDispatch(commandMessage, null, chain);
-
-    verify(validator).validate(command.content(), "PriorAuthority.json", 1);
     verify(chain).proceed(commandMessage, null);
   }
 

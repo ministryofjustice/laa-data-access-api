@@ -1,6 +1,8 @@
 package uk.gov.justice.laa.dstew.access.content.priorauthority;
 
+import java.util.List;
 import java.util.UUID;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
 
 /** Typed result of retrieving a prior-authority submission. */
@@ -12,23 +14,68 @@ public record PriorAuthorityResult(
     PriorAuthorityType priorAuthorityType,
     ExpertDetails expertDetails,
     CounselDetails counselDetails,
-    DisbursementDetails disbursementDetails) {
+    DisbursementDetails disbursementDetails,
+    List<PriorAuthorityDocument> uploadedDocuments) {
+
+  /** Creates a result with no uploaded document entries. */
+  public PriorAuthorityResult(
+      UUID priorAuthorityId,
+      UUID applicationId,
+      String justification,
+      String status,
+      PriorAuthorityType priorAuthorityType,
+      ExpertDetails expertDetails,
+      CounselDetails counselDetails,
+      DisbursementDetails disbursementDetails) {
+    this(
+        priorAuthorityId,
+        applicationId,
+        justification,
+        status,
+        priorAuthorityType,
+        expertDetails,
+        counselDetails,
+        disbursementDetails,
+        null);
+  }
 
   /** Builds the use-case result from the current-state projection and versioned content. */
   public static PriorAuthorityResult from(
       PriorAuthorityReadModel priorAuthority, PriorAuthorityContent content) {
+    return build(
+        priorAuthority.getPriorAuthorityId(),
+        priorAuthority.getApplicationId(),
+        priorAuthority.getStatus(),
+        content);
+  }
+
+  /**
+   * Builds the use-case result for an in-progress draft, whose content may be partial since it has
+   * not yet been schema-validated.
+   */
+  public static PriorAuthorityResult fromDraft(PriorAuthorityDataPayload payload) {
+    return build(
+        payload.priorAuthorityId(),
+        payload.applicationId(),
+        PriorAuthorityStatus.DRAFT.name(),
+        payload.content());
+  }
+
+  private static PriorAuthorityResult build(
+      UUID priorAuthorityId, UUID applicationId, String status, PriorAuthorityContent content) {
     PriorAuthorityType priorAuthorityType = content.priorAuthorityType();
     return new PriorAuthorityResult(
-        priorAuthority.getSubmissionId(),
-        priorAuthority.getApplicationId(),
+        priorAuthorityId,
+        applicationId,
         content.justification(),
-        priorAuthority.getStatus(),
+        status,
         priorAuthorityType,
         priorAuthorityType == PriorAuthorityType.EXPERT ? toExpertDetails(content) : null,
         priorAuthorityType == PriorAuthorityType.COUNSEL ? toCounselDetails(content) : null,
         priorAuthorityType == PriorAuthorityType.DISBURSEMENT
             ? toDisbursementDetails(content)
-            : null);
+            : null,
+        content.uploadedDocuments());
   }
 
   private static ExpertDetails toExpertDetails(PriorAuthorityContent content) {

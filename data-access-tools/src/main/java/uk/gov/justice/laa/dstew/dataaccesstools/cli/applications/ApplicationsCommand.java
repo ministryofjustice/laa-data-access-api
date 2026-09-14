@@ -5,8 +5,14 @@ import uk.gov.justice.laa.dstew.dataaccesstools.cli.DataAccessToolsCommand;
 
 @CommandLine.Command(
     name = "applications",
-    description = "Create applications and decisions.",
-    subcommands = {CreateGrantedApplicationsCommand.class, CreateRefusedApplicationsCommand.class})
+    description = "Create applications, decisions, and assignments.",
+    subcommands = {
+      CreateAutograntedApplicationsCommand.class,
+      CreateGrantedApplicationsCommand.class,
+      CreateRefusedApplicationsCommand.class,
+      CreateManualApplicationsCommand.class,
+      AssignApplicationCommand.class
+    })
 public final class ApplicationsCommand {
   @CommandLine.ParentCommand private DataAccessToolsCommand root;
 

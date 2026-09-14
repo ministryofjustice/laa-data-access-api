@@ -42,6 +42,16 @@ public final class HttpDataAccessApiClient implements DataAccessApiClient {
   }
 
   @Override
+  public void recordAutograntedOutcome(UUID applicationId, String requestBody) {
+    execute(
+        "PATCH",
+        "api/v0/applications/" + applicationId + "/auto-grant-outcome",
+        requestBody,
+        "CIVIL_APPLY",
+        Set.of(200, 204));
+  }
+
+  @Override
   public void makeDecision(UUID applicationId, String requestBody) {
     execute(
         "PATCH",
@@ -52,10 +62,42 @@ public final class HttpDataAccessApiClient implements DataAccessApiClient {
   }
 
   @Override
-  public UUID createPriorAuthority(UUID applicationId, String requestBody) {
-    String path = "api/v0/applications/" + applicationId + "/prior-authority";
+  public UUID createPriorAuthorityDraft(String requestBody) {
+    String path = "api/v0/prior-authorities";
     return locationId(
         execute("POST", path, requestBody, "CIVIL_APPLY", Set.of(201, 202)), "POST", path);
+  }
+
+  @Override
+  public void updatePriorAuthorityDraft(UUID priorAuthorityId, String requestBody) {
+    execute(
+        "PUT",
+        "api/v0/prior-authorities/" + priorAuthorityId,
+        requestBody,
+        "CIVIL_APPLY",
+        Set.of(204));
+  }
+
+  @Override
+  public UUID submitPriorAuthorityDraft(UUID priorAuthorityId) {
+    String path = "api/v0/prior-authorities/" + priorAuthorityId + "/submit";
+    return locationId(execute("POST", path, "{}", "CIVIL_APPLY", Set.of(200, 202)), "POST", path);
+  }
+
+  @Override
+  public void assignWorkListItem(
+      UUID itemId, UUID caseworkerId, long expectedAssignmentVersion, String eventDescription) {
+    String body =
+        "{\"caseworkerId\":\"%s\",\"expectedAssignmentVersion\":%d%s}"
+            .formatted(
+                caseworkerId,
+                expectedAssignmentVersion,
+                eventDescription == null
+                    ? ""
+                    : ",\"eventHistory\":{\"eventDescription\":\""
+                        + escapeJson(eventDescription)
+                        + "\"}");
+    execute("POST", "api/v0/work-list/" + itemId + "/assign", body, "CIVIL_APPLY", Set.of(200));
   }
 
   private HttpResponse<String> execute(
@@ -109,5 +151,14 @@ public final class HttpDataAccessApiClient implements DataAccessApiClient {
     return body == null || body.isBlank()
         ? "no response body"
         : body.substring(0, Math.min(500, body.length()));
+  }
+
+  private String escapeJson(String value) {
+    return value
+        .replace("\\", "\\\\")
+        .replace("\"", "\\\"")
+        .replace("\n", "\\n")
+        .replace("\r", "\\r")
+        .replace("\t", "\\t");
   }
 }

@@ -10,14 +10,15 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 
 /**
@@ -163,30 +164,40 @@ public class ApplicationListIndexProjection {
             });
   }
 
-  /** Updates {@code caseworker_id} and {@code stream_version} when a caseworker is assigned. */
+  /**
+   * Mirrors generic direct application assignment without making this search index authoritative.
+   */
   @EventHandler
-  public void on(ApplicationAssignedToCaseworkerEvent event, EventMessage message) {
+  public void on(WorkItemAssigned event, EventMessage message) {
+    if (event.workItemType() != WorkItemType.APPLICATION) {
+      return;
+    }
     listIndexRepository
-        .findById(event.applicationId())
+        .findById(event.workItemId())
         .ifPresent(
             row -> {
               row.setCaseworkerId(event.caseworkerId());
-              row.setStreamVersion(event.applicationVersion());
+              row.setStreamVersion(event.itemVersion());
               row.setModifiedAt(event.occurredAt());
               row.setProjectionPosition(message.identifier().hashCode());
               listIndexRepository.save(row);
             });
   }
 
-  /** Clears {@code caseworker_id} and updates {@code stream_version} on unassignment. */
+  /**
+   * Mirrors generic direct application unassignment without making this search index authoritative.
+   */
   @EventHandler
-  public void on(ApplicationUnassignedFromCaseworkerEvent event, EventMessage message) {
+  public void on(WorkItemUnassigned event, EventMessage message) {
+    if (event.workItemType() != WorkItemType.APPLICATION) {
+      return;
+    }
     listIndexRepository
-        .findById(event.applicationId())
+        .findById(event.workItemId())
         .ifPresent(
             row -> {
               row.setCaseworkerId(null);
-              row.setStreamVersion(event.applicationVersion());
+              row.setStreamVersion(event.itemVersion());
               row.setModifiedAt(event.occurredAt());
               row.setProjectionPosition(message.identifier().hashCode());
               listIndexRepository.save(row);

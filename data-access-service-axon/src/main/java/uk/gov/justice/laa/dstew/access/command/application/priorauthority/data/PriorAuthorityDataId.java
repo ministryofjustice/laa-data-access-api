@@ -8,6 +8,6 @@ import java.util.UUID;
 /** Composite identity for an immutable version of prior-authority data. */
 @Embeddable
 public record PriorAuthorityDataId(
-    @Column(name = "submission_id") UUID submissionId,
+    @Column(name = "prior_authority_id") UUID priorAuthorityId,
     @Column(name = "data_version") long dataVersion)
     implements Serializable {}

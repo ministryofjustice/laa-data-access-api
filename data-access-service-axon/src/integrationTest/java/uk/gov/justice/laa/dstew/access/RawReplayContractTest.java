@@ -28,8 +28,6 @@ import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEve
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationEvolve;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationState;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupRequested;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
@@ -114,13 +112,6 @@ class RawReplayContractTest {
       case "uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent" ->
           ApplicationEvolve.apply(
               state, objectMapper.readValue(payload, ApplicationDecisionMadeEvent.class));
-      case "uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent" ->
-          ApplicationEvolve.apply(
-              state, objectMapper.readValue(payload, ApplicationAssignedToCaseworkerEvent.class));
-      case "uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent" ->
-          ApplicationEvolve.apply(
-              state,
-              objectMapper.readValue(payload, ApplicationUnassignedFromCaseworkerEvent.class));
       case "uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent" ->
           ApplicationEvolve.apply(state, objectMapper.readValue(payload, NoteCreatedEvent.class));
       case "uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent" ->

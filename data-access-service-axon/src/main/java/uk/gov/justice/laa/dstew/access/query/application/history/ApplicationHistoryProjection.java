@@ -15,16 +15,17 @@ import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.config.interceptor.ServiceNameMetadataDispatchInterceptor;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
 
 /** Independently replayable, append-only audit projection of Application events. */
 @Component
@@ -135,23 +136,23 @@ public class ApplicationHistoryProjection {
         event.occurredAt());
   }
 
-  /** Appends a thin audit entry for a caseworker assignment. */
+  /** Appends a thin audit entry for an application work-list assignment. */
   @EventHandler
-  public void on(ApplicationAssignedToCaseworkerEvent event, EventMessage message) {
+  public void on(WorkItemAssigned event, EventMessage message) {
     append(
         message,
-        event.applicationId(),
+        event.workItemId(),
         "ASSIGN_APPLICATION_TO_CASEWORKER",
         serialise(event),
         event.occurredAt());
   }
 
-  /** Appends a thin audit entry for a caseworker unassignment. */
+  /** Appends a thin audit entry for an application work-list unassignment. */
   @EventHandler
-  public void on(ApplicationUnassignedFromCaseworkerEvent event, EventMessage message) {
+  public void on(WorkItemUnassigned event, EventMessage message) {
     append(
         message,
-        event.applicationId(),
+        event.workItemId(),
         "UNASSIGN_APPLICATION_TO_CASEWORKER",
         serialise(event),
         event.occurredAt());
@@ -168,22 +169,22 @@ public class ApplicationHistoryProjection {
         event.occurredAt());
   }
 
-  /** Records the creation of a PriorAuthority submission in the PA history table. */
+  /** Records a submitted PriorAuthority in the PA history table for the public history API. */
   @EventHandler
-  public void on(PriorAuthorityCreatedEvent event, EventMessage message) {
+  public void on(PriorAuthoritySubmittedEvent event, EventMessage message) {
     Object serviceName =
         message.metadata().get(ServiceNameMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY);
     priorAuthorityHistoryReadRepository.save(
         PriorAuthorityHistoryReadModel.builder()
             .eventId(message.identifier())
             .applicationId(event.applicationId())
-            .submissionId(event.submissionId())
+            .priorAuthorityId(event.priorAuthorityId())
             .priorAuthorityType(event.priorAuthorityType())
-            .eventType("PRIOR_AUTHORITY_CREATED")
+            .eventType("PRIOR_AUTHORITY_SUBMITTED")
             .eventData(
                 serialise(
                     Map.of(
-                        "status", event.status(),
+                        "status", PriorAuthorityStatus.SUBMITTED.name(),
                         "dataVersion", event.dataVersion())))
             .serviceName(serviceName == null ? null : serviceName.toString())
             .occurredAt(event.occurredAt())
@@ -218,7 +219,22 @@ public class ApplicationHistoryProjection {
     }
     try {
       var thinPayload = objectMapper.readTree(history.getRequestPayload());
-      long version = thinPayload.get("applicationDataVersion").asLong();
+      if (assignment || unassignment) {
+        Map<String, Object> reconstructedPayload = new HashMap<>();
+        if (assignment) {
+          reconstructedPayload.put("caseworkerId", thinPayload.get("caseworkerId").asString());
+        }
+        return ApplicationHistoryReadModel.builder()
+            .eventId(history.getEventId())
+            .applicationId(history.getApplicationId())
+            .eventType(history.getEventType())
+            .requestPayload(objectMapper.writeValueAsString(reconstructedPayload))
+            .serviceName(history.getServiceName())
+            .occurredAt(history.getOccurredAt())
+            .build();
+      }
+      var versionNode = thinPayload.get("applicationDataVersion");
+      long version = (versionNode == null ? thinPayload.get("dataVersion") : versionNode).asLong();
       var data = applicationDataStore.get(history.getApplicationId(), version);
       if (note) {
         var lastNote = data.notes().getLast();
@@ -232,13 +248,9 @@ public class ApplicationHistoryProjection {
             .occurredAt(history.getOccurredAt())
             .build();
       }
-      String description =
-          decision ? data.decisionEventDescription() : data.assignmentEventDescription();
+      String description = data.decisionEventDescription();
       Map<String, Object> reconstructedPayload = new HashMap<>();
       reconstructedPayload.put("eventDescription", description);
-      if (assignment && thinPayload.get("caseworkerId") != null) {
-        reconstructedPayload.put("caseworkerId", thinPayload.get("caseworkerId").asString());
-      }
       return ApplicationHistoryReadModel.builder()
           .eventId(history.getEventId())
           .applicationId(history.getApplicationId())

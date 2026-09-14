@@ -39,7 +39,7 @@ public class GetApplicationHistoryResponseMapper {
 
   private PriorAuthorityHistoryGroup toPaGroup(PriorAuthorityHistoryGroupResult group) {
     return PriorAuthorityHistoryGroup.builder()
-        .submissionId(group.submissionId())
+        .priorAuthorityId(group.priorAuthorityId())
         .priorAuthorityType(PriorAuthorityType.fromValue(group.priorAuthorityType()))
         .events(group.events().stream().map(this::toPaEvent).toList())
         .build();

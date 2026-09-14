@@ -23,10 +23,12 @@ class MakeDecisionCommandMapperTest {
   @Test
   void givenCompleteRequest_whenMapped_thenMapsCommandAndAuditData() {
     UUID applicationId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
     UUID proceedingId = UUID.randomUUID();
     MakeDecisionRequest request =
         MakeDecisionRequest.builder()
             .applicationVersion(3L)
+            .caseworkerId(caseworkerId)
             .overallDecision(DecisionStatus.REFUSED)
             .proceedings(
                 List.of(
@@ -48,6 +50,7 @@ class MakeDecisionCommandMapperTest {
     var command = mapper.toCommand(applicationId, request);
 
     assertThat(command.applicationId()).isEqualTo(applicationId);
+    assertThat(command.caseworkerId()).isEqualTo(caseworkerId);
     assertThat(command.expectedApplicationVersion()).isEqualTo(3L);
     assertThat(command.overallDecision()).isEqualTo("REFUSED");
     assertThat(command.certificate()).containsEntry("reference", "CERT-1");
@@ -72,6 +75,7 @@ class MakeDecisionCommandMapperTest {
     MakeDecisionRequest request =
         MakeDecisionRequest.builder()
             .applicationVersion(0L)
+            .caseworkerId(UUID.randomUUID())
             .overallDecision(DecisionStatus.REFUSED)
             .proceedings(null)
             .build();
@@ -87,6 +91,7 @@ class MakeDecisionCommandMapperTest {
     MakeDecisionRequest request =
         MakeDecisionRequest.builder()
             .applicationVersion(0L)
+            .caseworkerId(UUID.randomUUID())
             .overallDecision(DecisionStatus.REFUSED)
             .proceedings(
                 List.of(

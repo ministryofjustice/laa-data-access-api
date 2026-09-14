@@ -27,17 +27,84 @@ public final class ApplicationCreationWorkflow {
         client.createApplication(application.request());
         client.recordManualOutcome(application.applicationId());
         client.makeDecision(
-            application.applicationId(), decisionFactory.create(application, decision));
+            application.applicationId(),
+            decisionFactory.create(application, decision, java.util.UUID.randomUUID()));
         results.add(
             new WorkflowResult.ItemResult(
                 application.applicationId().toString(),
                 true,
                 decision + " " + application.laaReference(),
-                null));
+                application.applicationId(),
+                null,
+                "APPLICATION_" + decision));
       } catch (RuntimeException exception) {
         results.add(
             new WorkflowResult.ItemResult(
-                application.applicationId().toString(), false, exception.getMessage(), null));
+                application.applicationId().toString(),
+                false,
+                exception.getMessage(),
+                application.applicationId(),
+                null,
+                "APPLICATION_" + decision));
+      }
+    }
+    return new WorkflowResult(results);
+  }
+
+  public WorkflowResult createManual(int count) {
+    List<WorkflowResult.ItemResult> results = new ArrayList<>();
+    for (int item = 0; item < count; item++) {
+      ApplicationRequestFactory.ApplicationData application = applicationFactory.create();
+      try {
+        client.createApplication(application.request());
+        client.recordManualOutcome(application.applicationId());
+        results.add(
+            new WorkflowResult.ItemResult(
+                application.applicationId().toString(),
+                true,
+                "MANUAL " + application.laaReference(),
+                application.applicationId(),
+                null,
+                "APPLICATION_MANUAL"));
+      } catch (RuntimeException exception) {
+        results.add(
+            new WorkflowResult.ItemResult(
+                application.applicationId().toString(),
+                false,
+                exception.getMessage(),
+                application.applicationId(),
+                null,
+                "APPLICATION_MANUAL"));
+      }
+    }
+    return new WorkflowResult(results);
+  }
+
+  public WorkflowResult createAutogranted(int count) {
+    List<WorkflowResult.ItemResult> results = new ArrayList<>();
+    for (int item = 0; item < count; item++) {
+      ApplicationRequestFactory.ApplicationData application = applicationFactory.create();
+      try {
+        client.createApplication(application.request());
+        client.recordAutograntedOutcome(
+            application.applicationId(), decisionFactory.createAutograntedOutcome(application));
+        results.add(
+            new WorkflowResult.ItemResult(
+                application.applicationId().toString(),
+                true,
+                "AUTOGRANTED " + application.laaReference(),
+                application.applicationId(),
+                null,
+                "APPLICATION_AUTOGRANTED"));
+      } catch (RuntimeException exception) {
+        results.add(
+            new WorkflowResult.ItemResult(
+                application.applicationId().toString(),
+                false,
+                exception.getMessage(),
+                application.applicationId(),
+                null,
+                "APPLICATION_AUTOGRANTED"));
       }
     }
     return new WorkflowResult(results);

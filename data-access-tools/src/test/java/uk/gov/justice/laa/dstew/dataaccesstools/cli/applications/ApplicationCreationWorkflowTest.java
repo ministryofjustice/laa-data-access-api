@@ -28,6 +28,43 @@ class ApplicationCreationWorkflowTest {
     assertEquals("create", client.operations.get(3));
   }
 
+  @Test
+  void includesCaseworkerIdInDecisionRequest() {
+    var application = new ApplicationRequestFactory().create();
+
+    String request =
+        new DecisionRequestFactory()
+            .create(application, DecisionRequestFactory.Decision.GRANTED, UUID.randomUUID());
+
+    assertTrue(request.matches("(?s).*\\\"caseworkerId\\\":\\\"[0-9a-f-]{36}\\\".*"));
+  }
+
+  @Test
+  void createsManualApplicationsWithoutMakingADecision() {
+    RecordingClient client = new RecordingClient();
+    var workflow =
+        new ApplicationCreationWorkflow(
+            client, new ApplicationRequestFactory(), new DecisionRequestFactory());
+
+    WorkflowResult result = workflow.createManual(2);
+
+    assertTrue(result.succeeded());
+    assertEquals(List.of("create", "manual", "create", "manual"), client.operations);
+  }
+
+  @Test
+  void createsEachAutograntedApplicationWithoutManualOutcomeOrDecision() {
+    RecordingClient client = new RecordingClient();
+    var workflow =
+        new ApplicationCreationWorkflow(
+            client, new ApplicationRequestFactory(), new DecisionRequestFactory());
+
+    WorkflowResult result = workflow.createAutogranted(2);
+
+    assertTrue(result.succeeded());
+    assertEquals(List.of("create", "autogranted", "create", "autogranted"), client.operations);
+  }
+
   private static final class RecordingClient implements DataAccessApiClient {
     private final List<String> operations = new ArrayList<>();
 
@@ -43,12 +80,29 @@ class ApplicationCreationWorkflowTest {
     }
 
     @Override
+    public void recordAutograntedOutcome(UUID applicationId, String requestBody) {
+      assertTrue(requestBody.contains("\"outcome\":\"AUTOGRANTED\""));
+      assertTrue(requestBody.contains("\"certificate\""));
+      operations.add("autogranted");
+    }
+
+    @Override
     public void makeDecision(UUID applicationId, String requestBody) {
       operations.add(requestBody.contains("GRANTED") ? "decision:GRANTED" : "decision:REFUSED");
     }
 
     @Override
-    public UUID createPriorAuthority(UUID applicationId, String requestBody) {
+    public UUID createPriorAuthorityDraft(String requestBody) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void updatePriorAuthorityDraft(UUID priorAuthorityId, String requestBody) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public UUID submitPriorAuthorityDraft(UUID priorAuthorityId) {
       throw new UnsupportedOperationException();
     }
   }

@@ -14,7 +14,7 @@ public class ApplicationHistoryIntegrityException extends RuntimeException {
   private final UUID applicationId;
 
   /** The submission whose rows are inconsistent, when the failure is PA-scoped. */
-  private final UUID submissionId;
+  private final UUID priorAuthorityId;
 
   /** Server-safe diagnostic message; never surfaced in the HTTP response. */
   private final String reason;
@@ -23,16 +23,16 @@ public class ApplicationHistoryIntegrityException extends RuntimeException {
    * Constructs an ApplicationHistoryIntegrityException for the provided identifiers and reason.
    *
    * @param applicationId the application whose history is inconsistent
-   * @param submissionId the submission whose rows are inconsistent
+   * @param priorAuthorityId the submission whose rows are inconsistent
    * @param reason server-side diagnostic message
    */
   public ApplicationHistoryIntegrityException(
-      UUID applicationId, UUID submissionId, String reason) {
+      UUID applicationId, UUID priorAuthorityId, String reason) {
     super(
-        "Application history integrity failure [applicationId=%s, submissionId=%s]: %s"
-            .formatted(applicationId, submissionId, reason));
+        "Application history integrity failure [applicationId=%s, priorAuthorityId=%s]: %s"
+            .formatted(applicationId, priorAuthorityId, reason));
     this.applicationId = applicationId;
-    this.submissionId = submissionId;
+    this.priorAuthorityId = priorAuthorityId;
     this.reason = reason;
   }
 }

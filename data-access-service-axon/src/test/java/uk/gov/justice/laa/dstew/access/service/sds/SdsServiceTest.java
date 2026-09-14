@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.endsWith;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -23,6 +24,7 @@ import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
@@ -106,6 +108,93 @@ class SdsServiceTest {
     assertThatExceptionOfType(FileConflictException.class)
         .isThrownBy(() -> sdsService.saveFile(applicationId, file))
         .withMessage("File already exists");
+  }
+
+  @SuppressWarnings({"unchecked", "rawtypes"})
+  @Test
+  void givenValidPriorAuthorityUpload_whenSavePriorAuthorityFile_thenReturnsResponse() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    MockMultipartFile file =
+        new MockMultipartFile(
+            "file", "test-file.pdf", "application/pdf", "test content".getBytes());
+    DocumentUploadResponse expectedResponse = mock(DocumentUploadResponse.class);
+
+    RestClient.RequestBodyUriSpec requestBodyUriSpec = mock(RestClient.RequestBodyUriSpec.class);
+    RestClient.RequestBodySpec requestBodySpec = mock(RestClient.RequestBodySpec.class);
+    RestClient.ResponseSpec responseSpec = mock(RestClient.ResponseSpec.class);
+
+    when(sdsRestClient.post()).thenReturn(requestBodyUriSpec);
+    when(requestBodyUriSpec.uri(endsWith("/save_file"))).thenReturn(requestBodySpec);
+    when(requestBodySpec.contentType(MediaType.MULTIPART_FORM_DATA)).thenReturn(requestBodySpec);
+    when(requestBodySpec.body(any(MultiValueMap.class))).thenReturn(requestBodySpec);
+    when(requestBodySpec.retrieve()).thenReturn(responseSpec);
+    when(responseSpec.onStatus(any(Predicate.class), any())).thenReturn(responseSpec);
+    when(sdsUploadResponseHandler.handle(responseSpec)).thenReturn(responseSpec);
+    when(responseSpec.body(DocumentUploadResponse.class)).thenReturn(expectedResponse);
+
+    DocumentUploadResponse actualResponse =
+        sdsService.savePriorAuthorityFile(priorAuthorityId, documentId, file);
+    MockMultipartFile fileWithoutExtension =
+        new MockMultipartFile(
+            "file", "test-file", "application/octet-stream", "test content".getBytes());
+    DocumentUploadResponse responseWithoutExtension =
+        sdsService.savePriorAuthorityFile(priorAuthorityId, documentId, fileWithoutExtension);
+
+    assertThat(actualResponse).isEqualTo(expectedResponse);
+    assertThat(responseWithoutExtension).isEqualTo(expectedResponse);
+
+    ArgumentCaptor<MultiValueMap<String, HttpEntity<?>>> bodyCaptor =
+        (ArgumentCaptor) ArgumentCaptor.forClass(MultiValueMap.class);
+    verify(requestBodySpec, times(2)).body(bodyCaptor.capture());
+    HttpEntity<?> filePartWithExtension = bodyCaptor.getAllValues().get(0).getFirst("file");
+    HttpEntity<?> filePartWithoutExtension = bodyCaptor.getAllValues().get(1).getFirst("file");
+    assertThat(filePartWithExtension.getHeaders().getContentDisposition().getFilename())
+        .isEqualTo(documentId + ".pdf");
+    assertThat(filePartWithoutExtension.getHeaders().getContentDisposition().getFilename())
+        .isEqualTo(documentId.toString());
+  }
+
+  @SuppressWarnings("unchecked")
+  @Test
+  void
+      givenSavePriorAuthorityConflictPredicate_whenInvoked_thenMatchesConflictStatusAndHandlerThrows()
+          throws Exception {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    MockMultipartFile file =
+        new MockMultipartFile(
+            "file", "test-file.pdf", "application/pdf", "test content".getBytes());
+
+    RestClient.RequestBodyUriSpec requestBodyUriSpec = mock(RestClient.RequestBodyUriSpec.class);
+    RestClient.RequestBodySpec requestBodySpec = mock(RestClient.RequestBodySpec.class);
+    RestClient.ResponseSpec responseSpec = mock(RestClient.ResponseSpec.class);
+
+    ArgumentCaptor<Predicate<HttpStatusCode>> predicateCaptor =
+        ArgumentCaptor.forClass(Predicate.class);
+    ArgumentCaptor<RestClient.ResponseSpec.ErrorHandler> handlerCaptor =
+        ArgumentCaptor.forClass(RestClient.ResponseSpec.ErrorHandler.class);
+
+    when(sdsRestClient.post()).thenReturn(requestBodyUriSpec);
+    when(requestBodyUriSpec.uri(endsWith("/save_file"))).thenReturn(requestBodySpec);
+    when(requestBodySpec.contentType(MediaType.MULTIPART_FORM_DATA)).thenReturn(requestBodySpec);
+    when(requestBodySpec.body(any(MultiValueMap.class))).thenReturn(requestBodySpec);
+    when(requestBodySpec.retrieve()).thenReturn(responseSpec);
+    when(responseSpec.onStatus(predicateCaptor.capture(), handlerCaptor.capture()))
+        .thenReturn(responseSpec);
+    when(sdsUploadResponseHandler.handle(responseSpec)).thenReturn(responseSpec);
+    when(responseSpec.body(DocumentUploadResponse.class))
+        .thenReturn(mock(DocumentUploadResponse.class));
+
+    sdsService.savePriorAuthorityFile(priorAuthorityId, documentId, file);
+
+    Predicate<HttpStatusCode> conflictPredicate = predicateCaptor.getValue();
+    assertThat(conflictPredicate.test(HttpStatus.CONFLICT)).isTrue();
+    assertThat(conflictPredicate.test(HttpStatus.OK)).isFalse();
+
+    assertThatExceptionOfType(FileConflictException.class)
+        .isThrownBy(() -> handlerCaptor.getValue().handle(null, null))
+        .withMessage("File already exists in SDS");
   }
 
   @Test

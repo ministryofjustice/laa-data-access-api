@@ -40,10 +40,15 @@ class HttpDataAccessApiClientTest {
 
     assertEquals(applicationId, client.createApplication("{}"));
     client.recordManualOutcome(applicationId);
+    client.recordAutograntedOutcome(
+        applicationId, "{\"outcome\":\"AUTOGRANTED\",\"certificate\":{}}");
     client.makeDecision(applicationId, "{}");
-    assertEquals(priorAuthorityId, client.createPriorAuthority(applicationId, "{}"));
+    assertEquals(priorAuthorityId, client.createPriorAuthorityDraft("{}"));
+    client.updatePriorAuthorityDraft(priorAuthorityId, "{\"justification\":\"Required\"}");
+    assertEquals(priorAuthorityId, client.submitPriorAuthorityDraft(priorAuthorityId));
+    client.assignWorkListItem(applicationId, priorAuthorityId, 3, "Assigned \"locally\"");
 
-    assertEquals(4, requests.size());
+    assertEquals(8, requests.size());
     requests.forEach(
         request -> {
           assertEquals("Bearer swagger-caseworker-token", request.authorization());
@@ -53,6 +58,22 @@ class HttpDataAccessApiClientTest {
     assertEquals("/api/v0/applications", requests.get(0).path());
     assertEquals("PATCH", requests.get(1).method());
     assertEquals("{\"outcome\":\"MANUAL\"}", requests.get(1).body());
+    assertEquals("PATCH", requests.get(2).method());
+    assertEquals("{\"outcome\":\"AUTOGRANTED\",\"certificate\":{}}", requests.get(2).body());
+    assertEquals("POST", requests.get(4).method());
+    assertEquals("/api/v0/prior-authorities", requests.get(4).path());
+    assertEquals("PUT", requests.get(5).method());
+    assertEquals("/api/v0/prior-authorities/" + priorAuthorityId, requests.get(5).path());
+    assertEquals("POST", requests.get(6).method());
+    assertEquals(
+        "/api/v0/prior-authorities/" + priorAuthorityId + "/submit", requests.get(6).path());
+    assertEquals("POST", requests.get(7).method());
+    assertEquals("/api/v0/work-list/" + applicationId + "/assign", requests.get(7).path());
+    assertEquals(
+        "{\"caseworkerId\":\""
+            + priorAuthorityId
+            + "\",\"expectedAssignmentVersion\":3,\"eventHistory\":{\"eventDescription\":\"Assigned \\\"locally\\\"\"}}",
+        requests.get(7).body());
   }
 
   @Test
@@ -80,15 +101,19 @@ class HttpDataAccessApiClientTest {
             exchange.getRequestHeaders().getFirst("Authorization"),
             exchange.getRequestHeaders().getFirst("X-Service-Name"),
             body));
-    int status = exchange.getRequestURI().getPath().endsWith("auto-grant-outcome") ? 204 : 201;
+    String path = exchange.getRequestURI().getPath();
+    int status =
+        path.endsWith("auto-grant-outcome") || exchange.getRequestMethod().equals("PUT")
+            ? 204
+            : 201;
     if (exchange.getRequestURI().getPath().endsWith("/decision")) {
       status = 200;
     }
+    if (path.endsWith("/assign") || path.endsWith("/submit")) {
+      status = 200;
+    }
     if (includeLocation && exchange.getRequestMethod().equals("POST")) {
-      UUID id =
-          exchange.getRequestURI().getPath().endsWith("/prior-authority")
-              ? priorAuthorityId
-              : applicationId;
+      UUID id = path.contains("/prior-authorities") ? priorAuthorityId : applicationId;
       exchange
           .getResponseHeaders()
           .set(
