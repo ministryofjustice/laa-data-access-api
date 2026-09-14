@@ -24,11 +24,8 @@ public final class HttpDataAccessApiClient implements DataAccessApiClient {
   }
 
   @Override
-  public UUID createApplication(String requestBody) {
-    return locationId(
-        execute("POST", "api/v0/applications", requestBody, "CIVIL_APPLY", Set.of(201)),
-        "POST",
-        "api/v0/applications");
+  public void createApplication(String requestBody) {
+    execute("POST", "api/v0/applications", requestBody, "CIVIL_APPLY", Set.of(201, 202));
   }
 
   @Override
