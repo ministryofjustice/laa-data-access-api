@@ -3,6 +3,9 @@ package uk.gov.justice.laa.dstew.access.controller.application;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.Apportionment;
@@ -12,6 +15,7 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.CounselType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.DisbursementDetails;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.ExpertCosts;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.ExpertDetails;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityDocument;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.TimeRequested;
@@ -158,5 +162,57 @@ class GetPriorAuthorityResponseMapperTest {
     assertThat(expertResponse.getExpertDetails().getExpertCosts().getApportionment()).isNull();
     assertThat(counselResponse.getCounselDetails().getCounselType()).isNull();
     assertThat(disbursementResponse.getDisbursementDetails().getDisbursementAmount()).isNull();
+  }
+
+  @Test
+  void givenUploadedDocuments_whenMapped_thenMapsDocumentFieldsAndUtcTimestamps() {
+    Instant uploadedAt = Instant.parse("2026-09-08T12:30:00Z");
+    PriorAuthorityResult result =
+        new PriorAuthorityResult(
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            "justification",
+            "DRAFT",
+            PriorAuthorityType.EXPERT,
+            null,
+            null,
+            null,
+            List.of(
+                new PriorAuthorityDocument(
+                    UUID.randomUUID(),
+                    "gateway_evidence",
+                    "a.pdf",
+                    "PDF",
+                    "application/pdf",
+                    12L,
+                    uploadedAt,
+                    "CIVIL_APPLY",
+                    "checksum-one"),
+                new PriorAuthorityDocument(
+                    UUID.randomUUID(),
+                    "merits_report",
+                    "b.pdf",
+                    "PDF",
+                    "application/pdf",
+                    8L,
+                    null,
+                    "CIVIL_DECIDE",
+                    "checksum-two")));
+
+    var response = mapper.toResponse(result);
+
+    assertThat(response.getUploadedDocuments()).hasSize(2);
+    assertThat(response.getUploadedDocuments().get(0).getDocumentType())
+        .isEqualTo(
+            uk.gov.justice.laa.dstew.access.model.PriorAuthorityDocumentType.GATEWAY_EVIDENCE);
+    assertThat(response.getUploadedDocuments().get(0).getFileType()).isEqualTo("PDF");
+    assertThat(response.getUploadedDocuments().get(0).getFileName()).isEqualTo("a.pdf");
+    assertThat(response.getUploadedDocuments().get(0).getMediaType()).isEqualTo("application/pdf");
+    assertThat(response.getUploadedDocuments().get(0).getSize()).isEqualTo(12L);
+    assertThat(response.getUploadedDocuments().get(0).getSourceService()).isEqualTo("CIVIL_APPLY");
+    assertThat(response.getUploadedDocuments().get(0).getChecksum()).isEqualTo("checksum-one");
+    assertThat(response.getUploadedDocuments().get(0).getUploadedAt())
+        .isEqualTo(uploadedAt.atOffset(ZoneOffset.UTC));
+    assertThat(response.getUploadedDocuments().get(1).getUploadedAt()).isNull();
   }
 }
