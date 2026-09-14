@@ -29,6 +29,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.ObjectMapper;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantedOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.BillingType;
@@ -46,7 +47,6 @@ import uk.gov.justice.laa.dstew.access.model.SubmitPriorAuthorityDraftResponse;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.FindPriorAuthorityByPriorAuthorityIdQuery;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 
 /** Full HTTP/Postgres/Axon integration tests for Prior Authority decision handling. */
@@ -200,8 +200,9 @@ public class PriorAuthorityDecisionAcceptIntegrationTest {
   }
 
   @Test
-  void givenDecisionAlreadyRecorded_whenMakePriorAuthorityDecisionWithDifferentRequest_thenReturnsConflict()
-      throws Exception {
+  void
+      givenDecisionAlreadyRecorded_whenMakePriorAuthorityDecisionWithDifferentRequest_thenReturnsConflict()
+          throws Exception {
     UUID applicationId = grantedApplication();
     UUID priorAuthorityId =
         saveDraftAndSubmit(
