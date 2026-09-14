@@ -54,7 +54,7 @@ public class PriorAuthorityProjection {
 
   /** Confirms whether a current-state projection has reached SUBMITTED. */
   @QueryHandler
-  public boolean handle(PriorAuthorityPendingByPriorAuthorityIdQuery query) {
+  public boolean handle(PriorAuthoritySubmittedByPriorAuthorityIdQuery query) {
     return repository
         .findById(query.priorAuthorityId())
         .map(
@@ -106,7 +106,7 @@ public class PriorAuthorityProjection {
     priorAuthority.setStatus(PriorAuthorityStatus.SUBMITTED.name());
     repository.save(priorAuthority);
     queryUpdateEmitter.emit(
-        PriorAuthorityPendingByPriorAuthorityIdQuery.class,
+        PriorAuthoritySubmittedByPriorAuthorityIdQuery.class,
         query -> query.priorAuthorityId().equals(event.priorAuthorityId()),
         Boolean.TRUE);
   }
