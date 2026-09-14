@@ -81,7 +81,8 @@ public class WorkListProjection {
   /** PA submission directly activates one PA work item under its parent application. */
   @EventHandler
   public void on(PriorAuthoritySubmittedEvent event, EventMessage message) {
-    ApplicationDataPayload parentData = applicationDataStore.getLatest(event.applicationId());
+    ApplicationDataPayload parentData =
+        applicationDataStore.get(event.applicationId(), event.applicationDataVersion());
     PriorAuthorityDataPayload priorAuthorityData =
         priorAuthorityDataStore.get(event.priorAuthorityId(), event.dataVersion());
     WorkListItemReadModel item =
