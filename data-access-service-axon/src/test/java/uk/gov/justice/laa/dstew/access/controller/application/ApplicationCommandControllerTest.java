@@ -31,6 +31,8 @@ import uk.gov.justice.laa.dstew.access.command.application.ready.ReadyApplicatio
 import uk.gov.justice.laa.dstew.access.command.application.ready.RecordAutoGrantOutcomeUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationUseCase;
+import uk.gov.justice.laa.dstew.access.model.ApplicationLinkRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationLinkType;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
 import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
@@ -121,6 +123,17 @@ class ApplicationCommandControllerTest {
     when(updateApplicationCommandMapper.toCommand(id, null)).thenReturn(command);
     controller.updateApplication(null, id, null);
     verify(updateApplicationUseCase).execute(command);
+  }
+
+  @Test
+  void givenRequest_whenLinkApplication_thenReturnsNoContent() {
+    UUID id = UUID.randomUUID();
+    ApplicationLinkRequest request =
+        new ApplicationLinkRequest(UUID.randomUUID(), ApplicationLinkType.FAMILY);
+
+    ResponseEntity<Void> response = controller.linkApplication(null, id, request);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
   }
 
   @Test

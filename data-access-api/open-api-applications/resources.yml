@@ -160,6 +160,36 @@ paths:
         '409': { description: Conflict }
         '500': { description: Internal server error }
 
+  /api/v0/applications/{id}/link:
+    post:
+      tags:
+        - application-command
+      operationId: linkApplication
+      summary: Link an Application to an existing Application's family group
+      parameters:
+        - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
+        - name: id
+          in: path
+          required: true
+          description: Source Application to link
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./components.yml#/components/schemas/ApplicationLinkRequest"
+      responses:
+        "204": { description: Application linked, or already linked to the target group }
+        "400": { description: Invalid request, self-link, or unsupported link type }
+        "401": { description: Unauthorized }
+        "403": { description: Forbidden }
+        "404": { description: Source or target Application not found }
+        "409": { description: Source Application belongs to a different linked group }
+        "500": { description: Internal server error }
+
   /api/v0/applications/{id}/history-search:
     get:
       tags:

@@ -21,6 +21,7 @@ import uk.gov.justice.laa.dstew.access.command.application.ready.ReadyApplicatio
 import uk.gov.justice.laa.dstew.access.command.application.ready.RecordAutoGrantOutcomeUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationLinkRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
@@ -93,6 +94,15 @@ public class ApplicationCommandController
   public ResponseEntity<Void> unassignCaseworker(
       ServiceName serviceName, UUID id, CaseworkerUnassignRequest request) {
     throw new UnsupportedOperationException("Deprecated: use the work-list/unassign method");
+  }
+
+  /** Links an Application to an existing Application family group. */
+  @Override
+  @LogMethodArguments
+  @LogMethodResponse
+  public ResponseEntity<Void> linkApplication(
+      ServiceName serviceName, UUID id, ApplicationLinkRequest request) {
+    return ResponseEntity.noContent().build();
   }
 
   /** Applies an overall and per-proceeding decision to an existing Application version. */

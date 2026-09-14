@@ -17,6 +17,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.api.ApplicationCommandApi;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationLinkRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
@@ -106,6 +107,14 @@ public class ApplicationCommandController implements ApplicationCommandApi {
     unassignCaseworkerUseCase.execute(
         unassignCaseworkerCommandMapper.toUnassignCaseworkerCommand(id, request));
     return ResponseEntity.ok().build();
+  }
+
+  @Override
+  @LogMethodArguments
+  @LogMethodResponse
+  public ResponseEntity<Void> linkApplication(
+      @NotNull ServiceName serviceName, UUID id, @Valid ApplicationLinkRequest request) {
+    return ResponseEntity.noContent().build();
   }
 
   @Override
