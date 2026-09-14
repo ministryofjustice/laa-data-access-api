@@ -7,7 +7,8 @@ import uk.gov.justice.laa.dstew.dataaccesstools.utils.client.DataAccessApiClient
 import uk.gov.justice.laa.dstew.dataaccesstools.utils.workflow.WorkflowResult;
 
 public final class ApplicationCreationWorkflow {
-  private static final UUID CASEWORKER_ID = UUID.fromString("8a082fe2-d539-4177-aae3-7498fd5904c7");
+  static final UUID DEFAULT_CASEWORKER_ID = UUID.fromString("8a082fe2-d539-4177-aae3-7498fd5904c7");
+
   private final DataAccessApiClient client;
   private final ApplicationRequestFactory applicationFactory;
   private final DecisionRequestFactory decisionFactory;
@@ -29,10 +30,13 @@ public final class ApplicationCreationWorkflow {
         client.createApplication(application.request());
         client.recordManualOutcome(application.applicationId());
         client.assignWorkListItem(
-            application.applicationId(), CASEWORKER_ID, 0, "Assigned by data-access-tools");
+            application.applicationId(),
+            DEFAULT_CASEWORKER_ID,
+            0,
+            "Application assigned by data-access-tools for decision");
         client.makeDecision(
             application.applicationId(),
-            decisionFactory.create(application, decision, java.util.UUID.randomUUID()));
+            decisionFactory.create(application, decision, DEFAULT_CASEWORKER_ID));
         results.add(
             new WorkflowResult.ItemResult(
                 application.applicationId().toString(),

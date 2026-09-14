@@ -68,11 +68,11 @@ class ApplicationCreationWorkflowTest {
 
   private static final class RecordingClient implements DataAccessApiClient {
     private final List<String> operations = new ArrayList<>();
+    private UUID assignedCaseworkerId;
 
     @Override
-    public UUID createApplication(String requestBody) {
+    public void createApplication(String requestBody) {
       operations.add("create");
-      return UUID.randomUUID();
     }
 
     @Override
@@ -90,11 +90,15 @@ class ApplicationCreationWorkflowTest {
     @Override
     public void assignWorkListItem(
         UUID itemId, UUID caseworkerId, long expectedAssignmentVersion, String eventDescription) {
+      assertEquals(0, expectedAssignmentVersion);
+      assertEquals(ApplicationCreationWorkflow.DEFAULT_CASEWORKER_ID, caseworkerId);
+      assignedCaseworkerId = caseworkerId;
       operations.add("assign");
     }
 
     @Override
     public void makeDecision(UUID applicationId, String requestBody) {
+      assertTrue(requestBody.contains("\"caseworkerId\":\"" + assignedCaseworkerId + "\""));
       operations.add(requestBody.contains("GRANTED") ? "decision:GRANTED" : "decision:REFUSED");
     }
 

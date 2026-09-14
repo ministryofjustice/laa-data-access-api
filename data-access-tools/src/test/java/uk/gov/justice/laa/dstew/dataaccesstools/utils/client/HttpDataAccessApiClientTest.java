@@ -1,7 +1,6 @@
 package uk.gov.justice.laa.dstew.dataaccesstools.utils.client;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
@@ -21,6 +20,7 @@ class HttpDataAccessApiClientTest {
   private final UUID applicationId = UUID.randomUUID();
   private final UUID priorAuthorityId = UUID.randomUUID();
   private boolean includeLocation = true;
+  private int applicationCreationStatus = 201;
 
   @BeforeEach
   void startServer() throws IOException {
@@ -38,6 +38,7 @@ class HttpDataAccessApiClientTest {
   void sendsRequiredAuthenticationAndServiceHeadersForEveryOperation() {
     HttpDataAccessApiClient client = new HttpDataAccessApiClient(baseUri());
 
+    client.createApplication("{}");
     assertEquals(applicationId, client.createApplication("{}"));
     assertEquals(
         "LAA-CLI-12345678", client.getApplicationDecisionData(applicationId).laaReference());
@@ -81,15 +82,11 @@ class HttpDataAccessApiClientTest {
   }
 
   @Test
-  void rejectsSuccessfulCreationResponsesWithoutALocationHeader() {
+  void acceptsAsynchronousCreationResponsesWithoutALocationHeader() {
     includeLocation = false;
+    applicationCreationStatus = 202;
 
-    ApiException exception =
-        assertThrows(
-            ApiException.class,
-            () -> new HttpDataAccessApiClient(baseUri()).createApplication("{}"));
-
-    assertEquals("POST /api/v0/applications returned no Location header", exception.getMessage());
+    new HttpDataAccessApiClient(baseUri()).createApplication("{}");
   }
 
   private URI baseUri() {
@@ -121,6 +118,9 @@ class HttpDataAccessApiClientTest {
         path.endsWith("auto-grant-outcome") || exchange.getRequestMethod().equals("PUT")
             ? 204
             : 201;
+    if (path.equals("/api/v0/applications") && exchange.getRequestMethod().equals("POST")) {
+      status = applicationCreationStatus;
+    }
     if (exchange.getRequestURI().getPath().endsWith("/decision")) {
       status = 200;
     }
