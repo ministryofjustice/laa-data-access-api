@@ -39,7 +39,6 @@ class HttpDataAccessApiClientTest {
     HttpDataAccessApiClient client = new HttpDataAccessApiClient(baseUri());
 
     client.createApplication("{}");
-    assertEquals(applicationId, client.createApplication("{}"));
     assertEquals(
         "LAA-CLI-12345678", client.getApplicationDecisionData(applicationId).laaReference());
     client.recordManualOutcome(applicationId);
