@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.oauth2.client.ClientAuthorizationException;
 import org.springframework.security.oauth2.core.OAuth2Error;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationLinkConflictException;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
@@ -120,6 +121,20 @@ class ApplicationExceptionHandlerTest {
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     assertThat(response.getBody().getDetail()).isEqualTo("Application cannot be its own lead");
+  }
+
+  @Test
+  void givenApplicationLinkConflict_whenHandled_thenReturnsConflict() {
+    UUID applicationId = UUID.randomUUID();
+
+    var response =
+        handler.handleApplicationLinkConflictException(
+            new ApplicationLinkConflictException(
+                "Application " + applicationId + " already belongs to a different linked group"));
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+    assertThat(response.getBody().getDetail())
+        .isEqualTo("Application " + applicationId + " already belongs to a different linked group");
   }
 
   @Test

@@ -129,7 +129,9 @@ class LinkedApplicationGroupDeciderTest {
                         List.of(differentLeadId, sourceApplicationId),
                         OCCURRED_AT)))
         .isInstanceOf(ApplicationLinkConflictException.class)
-        .hasMessageContaining(currentLeadId.toString());
+        .hasMessageContaining(currentLeadId.toString())
+        .hasMessageContaining(differentLeadId.toString())
+        .hasMessageNotContaining(groupId.toString());
   }
 
   @Test
@@ -151,7 +153,8 @@ class LinkedApplicationGroupDeciderTest {
                         List.of(leadId, sourceApplicationId, missingMemberId),
                         OCCURRED_AT)))
         .isInstanceOf(ApplicationLinkConflictException.class)
-        .hasMessageContaining(missingMemberId.toString());
+        .hasMessageContaining(missingMemberId.toString())
+        .hasMessageNotContaining(groupId.toString());
   }
 
   @Test

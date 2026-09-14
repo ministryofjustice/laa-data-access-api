@@ -24,9 +24,9 @@ public final class LinkedApplicationGroupDecider {
 
     if (!state.leadApplicationId.equals(command.leadApplicationId())) {
       throw new ApplicationLinkConflictException(
-          "Linked application group "
-              + state.groupId
-              + " already exists with lead application "
+          "Requested lead application "
+              + command.leadApplicationId()
+              + " conflicts with existing lead application "
               + state.leadApplicationId);
     }
 
@@ -42,10 +42,9 @@ public final class LinkedApplicationGroupDecider {
             .orElseThrow();
 
     throw new ApplicationLinkConflictException(
-        "Linked application group "
-            + state.groupId
-            + " does not contain requested member "
-            + missingMemberId);
+        "Requested application "
+            + missingMemberId
+            + " is not part of the established linked application group");
   }
 
   /** Adds one application to an established linked group idempotently. */
