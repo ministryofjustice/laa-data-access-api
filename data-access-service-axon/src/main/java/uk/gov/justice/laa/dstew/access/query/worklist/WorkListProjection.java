@@ -17,6 +17,7 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDecisionRecordedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
@@ -96,6 +97,12 @@ public class WorkListProjection {
   @EventHandler
   public void on(ApplicationDecisionMadeEvent event) {
     items.deleteById(event.applicationId());
+  }
+
+  /** A terminal prior-authority decision removes its prior-authority work row. */
+  @EventHandler
+  public void on(PriorAuthorityDecisionRecordedEvent event) {
+    items.deleteById(event.submissionId());
   }
 
   /** Applies a generic direct assignment to the event's immutable work-item identity. */

@@ -5,6 +5,7 @@ import org.axonframework.messaging.eventhandling.annotation.EventHandler;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDecisionRecordedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
@@ -56,5 +57,12 @@ public class WorkItemRouteProjection {
             null,
             0L,
             event.occurredAt()));
+  }
+
+  /** Removes prior-authority command authority after a terminal decision. */
+  @EventHandler
+  @Transactional
+  public void on(PriorAuthorityDecisionRecordedEvent event) {
+    routes.deleteById(event.submissionId());
   }
 }

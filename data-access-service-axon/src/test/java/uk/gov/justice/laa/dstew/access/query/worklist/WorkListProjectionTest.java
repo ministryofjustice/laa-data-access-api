@@ -33,6 +33,7 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDecisionRecordedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
@@ -290,6 +291,27 @@ class WorkListProjectionTest {
     projection.on(event);
 
     verify(items, times(2)).deleteById(applicationId);
+  }
+
+  @Test
+  void givenFinalPriorAuthorityDecision_whenReplayed_thenDeletesItsWorkItemIdempotently() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    PriorAuthorityDecisionRecordedEvent event =
+        new PriorAuthorityDecisionRecordedEvent(
+            priorAuthorityId,
+            UUID.randomUUID(),
+            "DISBURSEMENT",
+            2L,
+            "REFUSED",
+            "Recorded",
+            0.0,
+            Instant.now(),
+            Instant.now());
+
+    projection.on(event);
+    projection.on(event);
+
+    verify(items, times(2)).deleteById(priorAuthorityId);
   }
 
   @Test
