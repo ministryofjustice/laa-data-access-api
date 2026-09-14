@@ -54,6 +54,14 @@ public class AxonEventProcessingConfig {
             configuration -> configuration.errorHandler(PropagatingErrorHandler.instance()));
   }
 
+  /** Keeps write-side application-group routes synchronous with group membership events. */
+  @Bean
+  EventProcessorDefinition applicationGroupRouteProcessor() {
+    return EventProcessorDefinition.subscribingMatching("application-group-route")
+        .customized(
+            configuration -> configuration.errorHandler(PropagatingErrorHandler.instance()));
+  }
+
   /** Keeps write-side work-item routes transactionally aligned with route-changing events. */
   @Bean
   EventProcessorDefinition workItemRouteProcessor() {
