@@ -11,8 +11,6 @@ public record PriorAuthorityResult(
     UUID applicationId,
     String justification,
     String status,
-    String decision,
-    String decisionJustification,
     PriorAuthorityType priorAuthorityType,
     ExpertDetails expertDetails,
     CounselDetails counselDetails,
@@ -34,8 +32,6 @@ public record PriorAuthorityResult(
         applicationId,
         justification,
         status,
-        null,
-        null,
         priorAuthorityType,
         expertDetails,
         counselDetails,
@@ -50,9 +46,7 @@ public record PriorAuthorityResult(
         priorAuthority.getPriorAuthorityId(),
         priorAuthority.getApplicationId(),
         priorAuthority.getStatus(),
-        payload.content(),
-        payload.decision(),
-        payload.decisionJustification());
+        payload.content());
   }
 
   /**
@@ -64,26 +58,17 @@ public record PriorAuthorityResult(
         payload.priorAuthorityId(),
         payload.applicationId(),
         PriorAuthorityStatus.DRAFT.name(),
-        payload.content(),
-        payload.decision(),
-        payload.decisionJustification());
+        payload.content());
   }
 
   private static PriorAuthorityResult build(
-      UUID priorAuthorityId,
-      UUID applicationId,
-      String status,
-      PriorAuthorityContent content,
-      String decision,
-      String decisionJustification) {
+      UUID priorAuthorityId, UUID applicationId, String status, PriorAuthorityContent content) {
     PriorAuthorityType priorAuthorityType = content.priorAuthorityType();
     return new PriorAuthorityResult(
         priorAuthorityId,
         applicationId,
         content.justification(),
         status,
-        decision,
-        decisionJustification,
         priorAuthorityType,
         priorAuthorityType == PriorAuthorityType.EXPERT ? toExpertDetails(content) : null,
         priorAuthorityType == PriorAuthorityType.COUNSEL ? toCounselDetails(content) : null,

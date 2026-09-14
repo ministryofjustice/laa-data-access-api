@@ -35,8 +35,6 @@ class GetPriorAuthorityResponseMapperTest {
             applicationId,
             "Expert is required",
             "SUBMITTED",
-            "GRANTED",
-            "Decision recorded",
             PriorAuthorityType.EXPERT,
             new ExpertDetails(
                 "PSYCHIATRIST",
@@ -58,8 +56,6 @@ class GetPriorAuthorityResponseMapperTest {
     assertThat(response.getApplicationId()).isEqualTo(applicationId);
     assertThat(response.getPriorAuthorityType().getValue()).isEqualTo("EXPERT");
     assertThat(response.getStatus()).isEqualTo(PriorAuthorityResponse.StatusEnum.SUBMITTED);
-    assertThat(response.getDecision().getValue()).isEqualTo("GRANTED");
-    assertThat(response.getDecisionJustification()).isEqualTo("Decision recorded");
     assertThat(response.getExpertDetails().getExpertCosts().getBillingType().getValue())
         .isEqualTo("HOURLY");
     assertThat(response.getExpertDetails().getExpertCosts().getHourlyRate()).isEqualTo(150.0);

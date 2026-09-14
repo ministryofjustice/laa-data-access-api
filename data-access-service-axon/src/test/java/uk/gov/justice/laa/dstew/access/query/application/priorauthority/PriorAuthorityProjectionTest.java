@@ -336,8 +336,6 @@ class PriorAuthorityProjectionTest {
         projection.handle(new FindPriorAuthorityByPriorAuthorityIdQuery(priorAuthorityId));
 
     assertThat(result.status()).isEqualTo("SUBMITTED");
-    assertThat(result.decision()).isEqualTo("GRANTED");
-    assertThat(result.decisionJustification()).isEqualTo("Decision recorded");
   }
 
   @Test
