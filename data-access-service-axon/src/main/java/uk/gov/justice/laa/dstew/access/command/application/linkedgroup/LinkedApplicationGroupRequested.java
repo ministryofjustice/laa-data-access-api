@@ -8,7 +8,7 @@ import org.axonframework.messaging.eventhandling.annotation.Event;
 
 /**
  * Emitted by the lead {@code ApplicationAggregate} when it acknowledges a group-formation request.
- * An event handler picks this up and dispatches {@link InitialiseLinkedApplicationGroupCommand}.
+ * An event handler picks this up and dispatches {@link EstablishLinkedApplicationGroupCommand}.
  */
 @Event
 public record LinkedApplicationGroupRequested(
