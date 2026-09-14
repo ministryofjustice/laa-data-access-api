@@ -5,6 +5,7 @@ import static org.awaitility.Awaitility.await;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
@@ -16,6 +17,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Import;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -24,6 +26,9 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
@@ -41,6 +46,7 @@ import uk.gov.justice.laa.dstew.access.model.SubmitPriorAuthorityDraftResponse;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.FindPriorAuthorityByPriorAuthorityIdQuery;
+import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 
 /** Full HTTP/Postgres/Axon integration tests for the Prior Authority draft/submit lifecycle. */
@@ -65,6 +71,8 @@ class PriorAuthorityDraftIntegrationTest {
   @Autowired private JdbcTemplate jdbcTemplate;
 
   @Autowired private QueryGateway queryGateway;
+
+  @MockitoBean private SdsService sdsService;
 
   @Test
   void givenGrantedApplication_whenSavePriorAuthorityDraft_thenPersistsDraftAndProjects() {
@@ -355,8 +363,7 @@ class PriorAuthorityDraftIntegrationTest {
       UUID applicationId,
       PriorAuthorityType priorAuthorityType,
       String justification,
-      DisbursementDetails disbursement)
-      throws Exception {
+      DisbursementDetails disbursement) {
     CreatePriorAuthorityDraftRequest request =
         CreatePriorAuthorityDraftRequest.builder()
             .applicationId(applicationId)
@@ -429,7 +436,7 @@ class PriorAuthorityDraftIntegrationTest {
                 queryGateway
                     .query(new FindApplicationByIdQuery(applicationId), ApplicationReadModel.class)
                     .join(),
-            java.util.Objects::nonNull);
+            Objects::nonNull);
   }
 
   private ApplicationReadModel awaitApplicationProjectionVersion(UUID applicationId, long version) {
@@ -457,7 +464,7 @@ class PriorAuthorityDraftIntegrationTest {
                         new FindPriorAuthorityByPriorAuthorityIdQuery(priorAuthorityId),
                         PriorAuthorityResult.class)
                     .join(),
-            java.util.Objects::nonNull);
+            Objects::nonNull);
   }
 
   private String saveDraftUrl() {
@@ -470,6 +477,28 @@ class PriorAuthorityDraftIntegrationTest {
 
   private String submitUrl(UUID priorAuthorityId) {
     return priorAuthorityUrl(priorAuthorityId) + "/submit";
+  }
+
+  private String uploadUrl(UUID priorAuthorityId) {
+    return priorAuthorityUrl(priorAuthorityId) + "/documents";
+  }
+
+  private HttpEntity<MultiValueMap<String, Object>> uploadRequest(String filename) {
+    MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+    body.add(
+        "file",
+        new ByteArrayResource("content".getBytes()) {
+          @Override
+          public String getFilename() {
+            return filename;
+          }
+        });
+
+    HttpHeaders multipartHeaders = new HttpHeaders();
+    multipartHeaders.set("X-Service-Name", "CIVIL_APPLY");
+    multipartHeaders.setContentType(MediaType.MULTIPART_FORM_DATA);
+    multipartHeaders.setBearerAuth(TestJwtDecoderConfig.BEARER_TOKEN);
+    return new HttpEntity<>(body, multipartHeaders);
   }
 
   private HttpHeaders headers() {
