@@ -115,7 +115,7 @@ class PriorAuthorityProjectionTest {
               return savedCapture[0];
             });
 
-    projection.on(event, queryUpdateEmitter);
+    projection.on(event);
 
     assertThat(savedCapture[0].getPriorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(savedCapture[0].getApplicationId()).isEqualTo(applicationId);

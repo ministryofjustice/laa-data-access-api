@@ -163,6 +163,8 @@ public class ApplicationProjection {
 
     Map<UUID, LinkedApplicationGroupReadModel> groupsByLeadId = fetchGroups(content);
 
+    // Derived from the hydrated content rather than pageIds: applications dropped because their
+    // data payload was missing are absent from the response, so must not be batch-loaded for.
     List<UUID> applicationIds =
         content.stream().map(ApplicationReadModel::getApplicationId).toList();
     Map<UUID, List<PriorAuthorityReadModel>> priorAuthoritiesByApplicationId =

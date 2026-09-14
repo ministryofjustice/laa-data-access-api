@@ -75,7 +75,7 @@ public class PriorAuthorityProjection {
 
   /** Creates the current-state row when a prior-authority draft is started. */
   @EventHandler
-  public void on(PriorAuthorityDraftStartedEvent event, QueryUpdateEmitter queryUpdateEmitter) {
+  public void on(PriorAuthorityDraftStartedEvent event) {
     repository.save(
         PriorAuthorityReadModel.builder()
             .priorAuthorityId(event.priorAuthorityId())
