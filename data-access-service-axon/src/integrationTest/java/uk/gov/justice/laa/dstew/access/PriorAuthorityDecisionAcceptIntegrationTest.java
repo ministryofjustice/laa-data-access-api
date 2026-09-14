@@ -119,6 +119,7 @@ public class PriorAuthorityDecisionAcceptIntegrationTest {
     assertThat(getResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
     PriorAuthorityResponse priorAuthority =
         objectMapper.readValue(getResponse.getBody(), PriorAuthorityResponse.class);
+    assertThat(priorAuthority.getStatus()).isEqualTo(PriorAuthorityResponse.StatusEnum.GRANTED);
     assertThat(priorAuthority.getDecision()).isEqualTo(PriorAuthorityResponse.DecisionEnum.GRANTED);
     assertThat(priorAuthority.getDecisionJustification())
         .isEqualTo("Granted as per policy guidelines");
@@ -171,6 +172,7 @@ public class PriorAuthorityDecisionAcceptIntegrationTest {
             String.class);
     PriorAuthorityResponse priorAuthority =
         objectMapper.readValue(getResponse.getBody(), PriorAuthorityResponse.class);
+    assertThat(priorAuthority.getStatus()).isEqualTo(PriorAuthorityResponse.StatusEnum.REFUSED);
     assertThat(priorAuthority.getDecision()).isEqualTo(PriorAuthorityResponse.DecisionEnum.REFUSED);
     assertThat(priorAuthority.getDecisionJustification())
         .isEqualTo("Insufficient justification provided");
