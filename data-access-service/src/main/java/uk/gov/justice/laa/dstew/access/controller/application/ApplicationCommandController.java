@@ -114,7 +114,7 @@ public class ApplicationCommandController implements ApplicationCommandApi {
   @LogMethodResponse
   public ResponseEntity<Void> linkApplication(
       @NotNull ServiceName serviceName, UUID id, @Valid ApplicationLinkRequest request) {
-    return ResponseEntity.noContent().build();
+    return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
   }
 
   @Override

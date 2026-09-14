@@ -117,23 +117,23 @@ class ApplicationCommandControllerTest {
   }
 
   @Test
-  void givenRequest_whenUpdateApplication_thenDelegatesToUseCase() {
-    UUID id = UUID.randomUUID();
-    UpdateApplicationCommand command = mock(UpdateApplicationCommand.class);
-    when(updateApplicationCommandMapper.toCommand(id, null)).thenReturn(command);
-    controller.updateApplication(null, id, null);
-    verify(updateApplicationUseCase).execute(command);
-  }
-
-  @Test
-  void givenRequest_whenLinkApplication_thenReturnsNoContent() {
+  void givenRequest_whenLinkApplication_thenReturnsNotImplemented() {
     UUID id = UUID.randomUUID();
     ApplicationLinkRequest request =
         new ApplicationLinkRequest(UUID.randomUUID(), ApplicationLinkType.FAMILY);
 
     ResponseEntity<Void> response = controller.linkApplication(null, id, request);
 
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_IMPLEMENTED);
+  }
+
+  @Test
+  void givenRequest_whenUpdateApplication_thenDelegatesToUseCase() {
+    UUID id = UUID.randomUUID();
+    UpdateApplicationCommand command = mock(UpdateApplicationCommand.class);
+    when(updateApplicationCommandMapper.toCommand(id, null)).thenReturn(command);
+    controller.updateApplication(null, id, null);
+    verify(updateApplicationUseCase).execute(command);
   }
 
   @Test

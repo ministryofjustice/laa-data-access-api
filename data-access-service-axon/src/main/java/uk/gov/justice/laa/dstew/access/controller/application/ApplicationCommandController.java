@@ -102,7 +102,7 @@ public class ApplicationCommandController
   @LogMethodResponse
   public ResponseEntity<Void> linkApplication(
       ServiceName serviceName, UUID id, ApplicationLinkRequest request) {
-    return ResponseEntity.noContent().build();
+    return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
   }
 
   /** Applies an overall and per-proceeding decision to an existing Application version. */
