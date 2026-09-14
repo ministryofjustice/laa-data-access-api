@@ -72,7 +72,7 @@ class GetApplicationsIntegrationTest {
 
     ResponseEntity<ApplicationSummaryResponse> response =
         restTemplate.exchange(
-            "http://localhost:" + port + "/api/v0/applications",
+            "http://localhost:" + port + "/api/v0/applications?pageSize=100",
             HttpMethod.GET,
             new HttpEntity<>(headers()),
             ApplicationSummaryResponse.class);
@@ -110,7 +110,7 @@ class GetApplicationsIntegrationTest {
 
     ResponseEntity<ApplicationSummaryResponse> response =
         restTemplate.exchange(
-            "http://localhost:" + port + "/api/v0/applications",
+            "http://localhost:" + port + "/api/v0/applications?pageSize=100",
             HttpMethod.GET,
             new HttpEntity<>(headers()),
             ApplicationSummaryResponse.class);
@@ -145,7 +145,9 @@ class GetApplicationsIntegrationTest {
 
     ResponseEntity<ApplicationSummaryResponse> response =
         restTemplate.exchange(
-            "http://localhost:" + port + "/api/v0/applications?status=APPLICATION_SUBMITTED",
+            "http://localhost:"
+                + port
+                + "/api/v0/applications?status=APPLICATION_SUBMITTED&pageSize=100",
             HttpMethod.GET,
             new HttpEntity<>(headers()),
             ApplicationSummaryResponse.class);
@@ -154,6 +156,30 @@ class GetApplicationsIntegrationTest {
     assertThat(response.getBody().getApplications())
         .extracting(application -> application.getApplicationId())
         .contains(applicationId);
+  }
+
+  @Test
+  void givenPriorAuthorityOnOneApplication_whenGetApplications_thenOtherApplicationHasNone() {
+    UUID applicationWithPriorAuthority = grantedApplication();
+    UUID applicationWithoutPriorAuthority = UUID.randomUUID();
+    createApplication(applicationWithoutPriorAuthority);
+    awaitApplicationProjection(applicationWithoutPriorAuthority);
+    UUID draftId = saveDisbursementDraft(applicationWithPriorAuthority);
+    awaitPriorAuthorityProjection(draftId);
+
+    ResponseEntity<ApplicationSummaryResponse> response =
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/applications?pageSize=100",
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            ApplicationSummaryResponse.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(findApplication(response, applicationWithPriorAuthority).getPriorAuthorities())
+        .extracting(PriorAuthoritySummary::getPriorAuthorityId)
+        .containsExactly(draftId);
+    assertThat(findApplication(response, applicationWithoutPriorAuthority).getPriorAuthorities())
+        .isEmpty();
   }
 
   private void createApplication(UUID applicationId) {

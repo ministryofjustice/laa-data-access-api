@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.query.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.inOrder;
@@ -12,11 +13,13 @@ import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventF
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import org.axonframework.messaging.queryhandling.QueryUpdateEmitter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -399,6 +402,71 @@ class ApplicationProjectionTest {
     assertThat(result.totalElements()).isZero();
     assertThat(result.priorAuthoritiesByApplicationId()).isEmpty();
     verify(priorAuthorityReadRepository).findAllByApplicationIdIn(List.of());
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void givenTwoApplicationsOnPage_whenFindAllApplicationsQuery_thenPriorAuthoritiesStayIsolated() {
+    UUID applicationIdWithPriorAuthority = UUID.randomUUID();
+    UUID applicationIdWithout = UUID.randomUUID();
+
+    when(listIndexRepository.findAll(any(Specification.class), any(Pageable.class)))
+        .thenReturn(
+            new PageImpl<>(
+                List.of(
+                    ApplicationListIndexReadModel.builder()
+                        .applicationId(applicationIdWithPriorAuthority)
+                        .build(),
+                    ApplicationListIndexReadModel.builder()
+                        .applicationId(applicationIdWithout)
+                        .build())));
+
+    List<UUID> pageIds = List.of(applicationIdWithPriorAuthority, applicationIdWithout);
+    when(applicationReadRepository.findAllById(pageIds))
+        .thenReturn(pageIds.stream().map(ApplicationProjectionTest::pageState).toList());
+
+    when(applicationDataStore.getAll(any()))
+        .thenReturn(
+            pageIds.stream()
+                .collect(
+                    Collectors.toMap(
+                        id -> new ApplicationDataId(id, 0L),
+                        id -> ApplicationDataPayload.from(applicationCreationDetails(id)))));
+
+    when(groupReadRepository.findAllByLeadApplicationIdIn(any())).thenReturn(List.of());
+
+    PriorAuthorityReadModel priorAuthority =
+        PriorAuthorityReadModel.builder()
+            .priorAuthorityId(UUID.randomUUID())
+            .applicationId(applicationIdWithPriorAuthority)
+            .status("DRAFT")
+            .createdAt(Instant.parse("2026-09-11T10:00:00Z"))
+            .build();
+    when(priorAuthorityReadRepository.findAllByApplicationIdIn(pageIds))
+        .thenReturn(List.of(priorAuthority));
+
+    FindAllApplicationsResult result =
+        projection.handle(
+            new FindAllApplicationsQuery(null, null, null, null, null, null, null, null, 1, 20));
+
+    assertThat(result.applications()).hasSize(2);
+    assertThat(result.priorAuthoritiesByApplicationId())
+        .containsExactly(entry(applicationIdWithPriorAuthority, List.of(priorAuthority)));
+    assertThat(result.priorAuthoritiesByApplicationId()).doesNotContainKey(applicationIdWithout);
+
+    // Both page IDs must reach the repository in a single batch call, not one call per application
+    ArgumentCaptor<Collection<UUID>> captor = ArgumentCaptor.forClass(Collection.class);
+    verify(priorAuthorityReadRepository).findAllByApplicationIdIn(captor.capture());
+    assertThat(captor.getValue())
+        .containsExactlyInAnyOrder(applicationIdWithPriorAuthority, applicationIdWithout);
+  }
+
+  private static ApplicationReadModel pageState(UUID applicationId) {
+    return ApplicationReadModel.builder()
+        .applicationId(applicationId)
+        .applicationDataVersion(0L)
+        .modifiedAt(Instant.EPOCH)
+        .build();
   }
 
   private ApplicationReadModel reconciliationReadModel(UUID applicationId) {
