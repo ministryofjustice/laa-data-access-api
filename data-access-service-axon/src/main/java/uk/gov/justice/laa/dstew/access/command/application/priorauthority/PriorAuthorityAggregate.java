@@ -66,7 +66,10 @@ public class PriorAuthorityAggregate {
   }
 
   @CommandHandler
-  void handle(UpdatePriorAuthorityDraftCommand command, PriorAuthorityDraftStore draftStore) {
+  void handle(
+      UpdatePriorAuthorityDraftCommand command,
+      PriorAuthorityDraftStore draftStore,
+      EventAppender eventAppender) {
     PriorAuthorityDataPayload existingDraft = requireDraft(command.priorAuthorityId(), draftStore);
     PriorAuthorityDataPayload payload = buildUpdatedDraftPayload(command, existingDraft);
     draftStore.upsert(
@@ -75,6 +78,7 @@ public class PriorAuthorityAggregate {
         payload,
         command.serialisedRequest(),
         command.occurredAt());
+    eventAppender.append(PriorAuthorityDecider.decideDraftUpdated(command, state.applicationId));
   }
 
   @CommandHandler

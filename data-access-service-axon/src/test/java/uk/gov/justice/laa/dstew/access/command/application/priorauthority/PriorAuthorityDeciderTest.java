@@ -101,4 +101,25 @@ class PriorAuthorityDeciderTest {
     assertThat(event.checksum()).isEqualTo("abc123");
     assertThat(event.parentApplicationId()).isEqualTo(applicationId);
   }
+
+  @Test
+  void givenUpdateCommand_whenDecideDraftUpdated_thenMapsPointerFields() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    UpdatePriorAuthorityDraftCommand command =
+        new UpdatePriorAuthorityDraftCommand(
+            priorAuthorityId,
+            new PriorAuthorityContent(null, "need expert", null, null, null),
+            "{}",
+            1,
+            "PriorAuthority.json",
+            OCCURRED_AT);
+
+    PriorAuthorityDraftUpdatedEvent event =
+        PriorAuthorityDecider.decideDraftUpdated(command, applicationId);
+
+    assertThat(event.priorAuthorityId()).isEqualTo(priorAuthorityId);
+    assertThat(event.parentApplicationId()).isEqualTo(applicationId);
+    assertThat(event.occurredAt()).isEqualTo(OCCURRED_AT);
+  }
 }
