@@ -20,8 +20,8 @@ class ApplicationContentParserTest {
               new ObjectMapper(), Validation.buildDefaultValidatorFactory().getValidator()));
 
   @Test
-  void givenCompleteApplicationContent_whenParse_thenExtractsProductionDetails() {
-    UUID linkedApplicationId = UUID.randomUUID();
+  void
+      givenCompleteApplicationContentWithLegacyLinkingFields_whenParse_thenExtractsProductionDetails() {
     UUID proceedingId = UUID.randomUUID();
     Map<String, Object> rawContent =
         Map.of(
@@ -54,7 +54,7 @@ class ApplicationContentParserTest {
                     "leadApplicationId",
                     UUID.randomUUID().toString(),
                     "associatedApplicationId",
-                    linkedApplicationId.toString())));
+                    UUID.randomUUID().toString())));
     ParsedAppContentDetails result = parser.parse(rawContent);
 
     assertThat(result.categoryOfLaw()).isEqualTo("Family");
@@ -68,10 +68,6 @@ class ApplicationContentParserTest {
         .singleElement()
         .extracting(Proceeding::getId)
         .isEqualTo(proceedingId);
-    assertThat(result.allLinkedApplications())
-        .singleElement()
-        .extracting(LinkedApplication::getAssociatedApplicationId)
-        .isEqualTo(linkedApplicationId);
   }
 
   @Test

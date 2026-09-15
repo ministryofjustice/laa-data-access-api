@@ -212,7 +212,7 @@ class ApplicationGroupRouteProjectionTest {
   private static ApplicationCreatedEvent applicationCreatedEvent(
       UUID applicationId, Instant occurredAt) {
     return new ApplicationCreatedEvent(
-        applicationId, 0L, "fingerprint", "APPLICATION_SUBMITTED", 1, occurredAt, null, List.of());
+        applicationId, 0L, "fingerprint", "APPLICATION_SUBMITTED", 1, occurredAt);
   }
 
   private static LinkedApplicationGroupCreatedEvent groupCreatedEvent(

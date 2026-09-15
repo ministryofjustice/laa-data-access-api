@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
-import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validLinkedCreateApplicationRequest;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -27,7 +26,6 @@ import java.util.stream.Stream;
 import org.axonframework.eventsourcing.eventstore.EventStorageEngine;
 import org.axonframework.eventsourcing.eventstore.jpa.AggregateBasedJpaEventStorageEngine;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
@@ -1039,87 +1037,6 @@ class PostgresAxonIntegrationTest {
     assertThat(firstResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
     assertThat(conflictResponse.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
     assertThat(awaitHistory(applicationId, 1)).hasSize(1);
-  }
-
-  @Test
-  @Disabled("Linked applications removed from schema; orchestration retained for future endpoint")
-  void givenExistingLeadApplication_whenPostLinkedApplication_thenProjectsCurrentStateAndHistory()
-      throws Exception {
-    UUID leadApplicationId = UUID.randomUUID();
-    ResponseEntity<Void> leadResponse =
-        post(validCreateApplicationRequest(leadApplicationId, UUID.randomUUID()), headers());
-    UUID createdLeadApplicationId = applicationId(leadResponse);
-    awaitProjection(createdLeadApplicationId);
-
-    ResponseEntity<Void> linkedResponse =
-        post(
-            validLinkedCreateApplicationRequest(
-                UUID.randomUUID(), UUID.randomUUID(), createdLeadApplicationId),
-            headers());
-    UUID linkedApplicationId = applicationId(linkedResponse);
-
-    assertThat(
-            awaitHistoryTypes(
-                linkedApplicationId, "APPLICATION_CREATED", "APPLICATION_GROUP_JOINED"))
-        .extracting(ApplicationHistoryReadModel::getEventType)
-        .containsExactlyInAnyOrder("APPLICATION_CREATED", "APPLICATION_GROUP_JOINED");
-    assertThat(
-            awaitHistoryTypes(
-                createdLeadApplicationId, "APPLICATION_CREATED", "APPLICATION_GROUP_CREATED"))
-        .extracting(ApplicationHistoryReadModel::getEventType)
-        .containsExactlyInAnyOrder("APPLICATION_CREATED", "APPLICATION_GROUP_CREATED");
-    ApplicationReadModel projected =
-        applicationReadRepository
-            .findById(linkedApplicationId)
-            .orElseThrow(() -> new AssertionError("Application not found: " + linkedApplicationId));
-    assertThat(projected.getLeadApplicationId()).isEqualTo(createdLeadApplicationId);
-  }
-
-  @Test
-  @Disabled("Linked applications removed from schema; orchestration retained for future endpoint")
-  void givenMissingLeadApplication_whenPostApplication_thenReturnsNotFound() {
-    UUID missingLeadApplicationId = UUID.randomUUID();
-    UUID rejectedApplicationId = UUID.randomUUID();
-
-    ResponseEntity<String> response =
-        post(
-            validLinkedCreateApplicationRequest(
-                rejectedApplicationId, UUID.randomUUID(), missingLeadApplicationId),
-            headers(),
-            String.class);
-
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-    assertThat(response.getBody()).contains(missingLeadApplicationId.toString());
-    assertRejectedApplicationWasRolledBack(rejectedApplicationId);
-    assertThat(groupReadRepository.findByLeadApplicationId(missingLeadApplicationId)).isEmpty();
-  }
-
-  @Test
-  @Disabled("Linked applications removed from schema; orchestration retained for future endpoint")
-  void givenMissingAssociatedApplication_whenPostApplication_thenReturnsNotFound()
-      throws Exception {
-    UUID leadApplicationId = UUID.randomUUID();
-    UUID createdLeadApplicationId =
-        applicationId(
-            post(validCreateApplicationRequest(leadApplicationId, UUID.randomUUID()), headers()));
-    awaitProjection(createdLeadApplicationId);
-
-    UUID missingAssociatedApplicationId = UUID.randomUUID();
-    UUID rejectedApplicationId = UUID.randomUUID();
-    ResponseEntity<String> response =
-        post(
-            validLinkedCreateApplicationRequest(
-                rejectedApplicationId,
-                UUID.randomUUID(),
-                createdLeadApplicationId,
-                missingAssociatedApplicationId),
-            headers(),
-            String.class);
-
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-    assertThat(response.getBody()).contains(missingAssociatedApplicationId.toString());
-    assertRejectedApplicationWasRolledBack(rejectedApplicationId);
-    assertThat(groupReadRepository.findByLeadApplicationId(createdLeadApplicationId)).isEmpty();
   }
 
   @Test

@@ -100,16 +100,17 @@ Compare the response with [Storage model](storage-model.md).
 
 ## 7. Follow linking
 
-Create a second synthetic application referencing the first as its lead. Inspect event metadata for:
+Create a second synthetic application, then call the explicit application-link endpoint to link it
+to the first. Inspect event metadata for:
 
-- the associated application's `ApplicationCreatedEvent`;
-- the lead application's `LinkedApplicationGroupRequested`;
-- the deterministic linked-group stream;
+- each application's `ApplicationCreatedEvent`;
+- the linked-group stream's `LinkedApplicationGroupCreatedEvent` or `MemberAddedToGroupEvent`;
+- the durable route updates for each application;
 - the group current-state projection;
 - lead and member history rows.
 
-Use the [linked creation sequence](sequence-diagrams/02-linked-application-creation.md) to explain why
-a missing lead would reject the original request rather than fail later.
+Use [Linked applications](linked-applications.md) to explain why application creation succeeds
+without linking and why missing routes reject the explicit link request.
 
 ## 8. Observe replay in a test
 

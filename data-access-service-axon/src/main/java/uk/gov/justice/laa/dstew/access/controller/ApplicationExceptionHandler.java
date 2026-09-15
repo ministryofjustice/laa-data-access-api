@@ -14,7 +14,6 @@ import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.App
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
-import uk.gov.justice.laa.dstew.access.exception.ApplicationGroupInvariantException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException;
 import uk.gov.justice.laa.dstew.access.exception.FileConflictException;
 import uk.gov.justice.laa.dstew.access.exception.FileLengthRequiredException;
@@ -41,14 +40,6 @@ public class ApplicationExceptionHandler {
   @ExceptionHandler(IllegalArgumentException.class)
   ResponseEntity<ProblemDetail> handleIllegalArgumentException(IllegalArgumentException exception) {
     return validationError(List.of(exception.getMessage()));
-  }
-
-  /** Returns a 400 when a command would violate an application-group invariant. */
-  @ExceptionHandler(ApplicationGroupInvariantException.class)
-  ResponseEntity<ProblemDetail> handleApplicationGroupInvariantException(
-      ApplicationGroupInvariantException exception) {
-    return ResponseEntity.badRequest()
-        .body(ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, exception.getMessage()));
   }
 
   /** Returns a conflict when linked-application membership is incompatible with current state. */

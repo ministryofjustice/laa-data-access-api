@@ -2,18 +2,15 @@ package uk.gov.justice.laa.dstew.access.command.application;
 
 import java.time.Clock;
 import java.time.Instant;
-import java.util.List;
-import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationContentParser;
-import uk.gov.justice.laa.dstew.access.applicationcontent.LinkedApplication;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ParsedAppContentDetails;
 
 /**
  * Parses an incoming create command into {@link ApplicationCreationDetails}. This class is
- * responsible for parsing only; link validation (lead-application existence) is the responsibility
- * of {@code LinkedApplicationGroupAggregate} via {@code CreateLinkedApplicationGroupCommand}.
+ * responsible for parsing only; explicit linking is handled by the application-link endpoint after
+ * creation.
  */
 @Component
 public class ApplicationCreationDetailsFactory {
@@ -33,36 +30,20 @@ public class ApplicationCreationDetailsFactory {
     this.clock = clock;
   }
 
-  /** Parses the command payload and extracts link metadata into creation details. */
+  /** Parses the command payload into creation details. */
   public ApplicationCreationDetails prepare(CreateApplicationCommand command) {
     ParsedAppContentDetails parsed = applicationContentParser.parse(command.applicationContent());
-    UUID leadApplicationId = extractLeadApplicationId(parsed);
-    return toCreationDetails(command, parsed, leadApplicationId);
-  }
-
-  /**
-   * Extracts the lead application ID from the first linked-application entry, if present.
-   *
-   * <p>No repository lookup is performed; validation that the lead exists is delegated to {@code
-   * CreateLinkedApplicationGroupCommand} targeting the lead aggregate.
-   */
-  private UUID extractLeadApplicationId(ParsedAppContentDetails parsed) {
-    List<LinkedApplication> linkedApplications = parsed.allLinkedApplications();
-    if (linkedApplications == null || linkedApplications.isEmpty()) {
-      return null;
-    }
-    return linkedApplications.getFirst().getLeadApplicationId();
+    return toCreationDetails(command, parsed);
   }
 
   private ApplicationCreationDetails toCreationDetails(
-      CreateApplicationCommand command, ParsedAppContentDetails parsed, UUID leadApplicationId) {
+      CreateApplicationCommand command, ParsedAppContentDetails parsed) {
     return new ApplicationCreationDetails(
         command.status(),
         command.laaReference(),
         parsed.client(),
         parsed.provider(),
         parsed.opponents(),
-        parsed.allLinkedApplications(),
         command.schemaVersion(),
         parsed.submittedAt(),
         parsed.usedDelegatedFunctions(),
@@ -70,7 +51,6 @@ public class ApplicationCreationDetailsFactory {
         parsed.matterType(),
         parsed.proceedings(),
         command.serialisedRequest(),
-        Instant.now(clock),
-        leadApplicationId);
+        Instant.now(clock));
   }
 }

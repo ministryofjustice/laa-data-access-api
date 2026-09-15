@@ -13,7 +13,6 @@ import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.App
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
-import uk.gov.justice.laa.dstew.access.exception.ApplicationGroupInvariantException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException;
 import uk.gov.justice.laa.dstew.access.exception.FileConflictException;
 import uk.gov.justice.laa.dstew.access.exception.FileLengthRequiredException;
@@ -111,16 +110,6 @@ class ApplicationExceptionHandlerTest {
     assertThat(response.getBody().getDetail())
         .isEqualTo(
             "Application ID " + applicationId + " already exists with different creation data");
-  }
-
-  @Test
-  void givenGroupInvariantFailure_whenHandled_thenReturnsBadRequest() {
-    var response =
-        handler.handleApplicationGroupInvariantException(
-            new ApplicationGroupInvariantException("Application cannot be its own lead"));
-
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-    assertThat(response.getBody().getDetail()).isEqualTo("Application cannot be its own lead");
   }
 
   @Test

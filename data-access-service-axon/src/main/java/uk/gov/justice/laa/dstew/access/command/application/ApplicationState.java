@@ -11,7 +11,6 @@ import lombok.NoArgsConstructor;
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 public class ApplicationState {
   UUID applicationId;
-  boolean isAssociatedMember;
   int schemaVersion;
   String requestFingerprint;
   String status;

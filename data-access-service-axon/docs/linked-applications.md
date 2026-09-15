@@ -12,73 +12,63 @@ flowchart TD
     A1[Associated ApplicationAggregate]
     A2[Associated ApplicationAggregate]
     G[LinkedApplicationGroupAggregate]
-    L -->|leadApplicationId| G
     G -->|member| L
     G -->|member| A1
     G -->|member| A2
 ```
 
-The group ID is deterministic:
+Application creation does not create or extend linked groups.
 
-```text
-UUID.nameUUIDFromBytes("linked-group:" + leadApplicationId)
-```
+## Linking applications explicitly
 
-Every application that names the same lead therefore targets the same group aggregate. The prefix
-also ensures that the group ID differs from the lead's application ID. This matters because the
-event store looks up a stream by aggregate identifier, not by Java aggregate class.
+1. Create each application normally with `POST /api/v0/applications`.
+2. Call the explicit application-link endpoint for the source application with an
+   `ApplicationLinkRequest`.
+3. `LinkApplicationCommandHandler` validates the request and asks
+   `ApplicationGroupRouteResolver` to lock the source and target routes.
+4. If both applications are standalone, the handler dispatches
+   `EstablishLinkedApplicationGroupCommand` with a new group ID. The target application becomes the
+   lead and the source application becomes the first associated member.
+5. If the target application already belongs to a linked group and the source is standalone, the
+   handler dispatches `AddApplicationToLinkedGroupCommand`.
+6. If both applications are already in the same group, the request is an idempotent success.
+7. `LinkedApplicationGroupAggregate` emits `LinkedApplicationGroupCreatedEvent` or
+   `MemberAddedToGroupEvent`; route, application, list-index, group, and history projections update
+   from those events.
 
-## Creating a linked application
+## Why linking uses durable routes
 
-1. `ApplicationAggregate` creates the associated application and emits `ApplicationCreatedEvent`.
-   The thin event contains its lead ID and referenced associated IDs.
-2. `ApplicationGroupEventRouter` ignores standalone applications. For a linked application, it
-   first validates any other associated IDs named by the request.
-3. The router sends `CreateLinkedApplicationGroupCommand` to the lead application.
-4. The lead verifies that it exists and is not already an associated member of another group. It
-   then emits `LinkedApplicationGroupRequested` with the deterministic group ID.
-5. After the request event commits, `LinkedApplicationGroupInitializer` sends
-   `InitialiseLinkedApplicationGroupCommand` to that group.
-6. A new group emits `LinkedApplicationGroupCreatedEvent`. An existing group emits one
-   `MemberAddedToGroupEvent` for each genuinely new member.
-
-The detailed message order is shown in the [sequence diagrams](sequence-diagrams/README.md).
-
-## Why linking uses two processors
-
-`ApplicationGroupEventRouter` is a stateless event handler, not a saga. Its processing group is
-explicitly registered as subscribing in `AxonEventProcessingConfig`, with errors configured to
-propagate. This preserves synchronous validation of the lead and other referenced applications.
-
-Axon 5 rejects re-entrant event-store writes, so the requested group cannot safely be initialised
-from the handler that is still publishing the lead application's event. A separate pooled streaming
-processor invokes `LinkedApplicationGroupInitializer` after that transaction commits.
+`ApplicationGroupRouteProjection` records a `STANDALONE` route for every
+`ApplicationCreatedEvent` and transitions routes to `LINKED_GROUP` when group events commit.
+The resolver locks the relevant route rows before choosing the link action, preventing concurrent
+requests from placing one source application into multiple groups.
 
 The resulting behaviour is:
 
-- reference validation completes before application creation returns;
-- a missing reference produces a 404 on the original request;
-- group creation or extension is retried by Axon's streaming processor if it fails;
-- both stages remain stateless and idempotent, so no saga state is required.
-
-The rationale is recorded in [ADR 0004](adr/0004-split-linked-group-initialisation-after-commit.md).
+- creation returns without waiting for or dispatching linked-group commands;
+- a missing source or target route produces a 404 on the explicit link request;
+- a source application already in a different group produces a link conflict;
+- duplicate delivery remains idempotent in the group aggregate and route projection.
 
 ## Important rules
 
-- An application cannot name itself as its lead.
-- A lead must exist before a linked application is accepted.
-- Other associated applications explicitly named in the request must exist.
-- An application already marked as an associated member cannot later act as a lead.
-- Repeating group initialisation is idempotent; existing members do not produce duplicate events.
-- Adding a later member targets the same deterministic group and emits only the membership delta.
+- An application cannot be linked to itself.
+- Source and target applications must already have routes, which are created from
+  `ApplicationCreatedEvent`.
+- A standalone target becomes the group lead when the first group is established.
+- A standalone source can join an existing target group.
+- A source application already in another group cannot be moved by this command.
+- Existing members do not produce duplicate group events.
 
 ## Where the resulting data appears
 
 - The group event stream is the authoritative record of group membership.
+- `application_group_route` is the durable write-side routing table for link commands.
 - `linked_application_group_current_state` is the disposable group read model.
 - Application list responses use the group projection to populate `linkedApplications`.
 - `ApplicationHistoryProjection` writes `APPLICATION_GROUP_CREATED` for the lead and
   `APPLICATION_GROUP_JOINED` for each associated member.
 
-When changing linking, update the aggregate/router tests and the matching sequence diagram. The
-PostgreSQL integration test should continue to prove both projection state and public history.
+When changing linking, update the command handler, route resolver/projection, aggregate, and
+projection tests. Application creation tests should continue to prove create alone leaves a
+standalone route and creates no linked group.
