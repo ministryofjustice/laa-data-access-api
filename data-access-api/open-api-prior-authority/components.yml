@@ -349,26 +349,26 @@ components:
     PriorAuthorityDocumentType:
       type: string
       enum:
-        - gateway_evidence
-        - merits_report
-        - statement_of_case
-        - court_application
-        - court_order
-        - expert_report
-        - court_application_or_order
-        - parental_responsibility
-        - local_authority_assessment
-        - grounds_of_appeal
-        - counsel_opinion
-        - judgement
-        - plf_court_order
-        - letter_of_instruction
-        - estimate_of_costs
-        - alternative_quote
-        - other_party_certificate_reference
-        - other_supporting_document
-        - primary_quote
-        - additional_quote
+        - GATEWAY_EVIDENCE
+        - MERITS_REPORT
+        - STATEMENT_OF_CASE
+        - COURT_APPLICATION
+        - COURT_ORDER
+        - EXPERT_REPORT
+        - COURT_APPLICATION_OR_ORDER
+        - PARENTAL_RESPONSIBILITY
+        - LOCAL_AUTHORITY_ASSESSMENT
+        - GROUNDS_OF_APPEAL
+        - COUNSEL_OPINION
+        - JUDGEMENT
+        - PLF_COURT_ORDER
+        - LETTER_OF_INSTRUCTION
+        - ESTIMATE_OF_COSTS
+        - ALTERNATIVE_QUOTE
+        - OTHER_PARTY_CERTIFICATE_REFERENCE
+        - OTHER_SUPPORTING_DOCUMENT
+        - PRIMARY_QUOTE
+        - ADDITIONAL_QUOTE
 
     PriorAuthorityType:
       type: string

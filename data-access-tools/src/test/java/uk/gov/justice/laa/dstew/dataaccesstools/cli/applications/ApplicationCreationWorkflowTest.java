@@ -21,11 +21,12 @@ class ApplicationCreationWorkflowTest {
     WorkflowResult result = workflow.create(2, DecisionRequestFactory.Decision.GRANTED);
 
     assertTrue(result.succeeded());
-    assertEquals(6, client.operations.size());
+    assertEquals(8, client.operations.size());
     assertEquals("create", client.operations.get(0));
     assertEquals("manual", client.operations.get(1));
-    assertEquals("decision:GRANTED", client.operations.get(2));
-    assertEquals("create", client.operations.get(3));
+    assertEquals("assign", client.operations.get(2));
+    assertEquals("decision:GRANTED", client.operations.get(3));
+    assertEquals("create", client.operations.get(4));
   }
 
   @Test
@@ -67,11 +68,11 @@ class ApplicationCreationWorkflowTest {
 
   private static final class RecordingClient implements DataAccessApiClient {
     private final List<String> operations = new ArrayList<>();
+    private UUID assignedCaseworkerId;
 
     @Override
-    public UUID createApplication(String requestBody) {
+    public void createApplication(String requestBody) {
       operations.add("create");
-      return UUID.randomUUID();
     }
 
     @Override
@@ -87,7 +88,17 @@ class ApplicationCreationWorkflowTest {
     }
 
     @Override
+    public void assignWorkListItem(
+        UUID itemId, UUID caseworkerId, long expectedAssignmentVersion, String eventDescription) {
+      assertEquals(0, expectedAssignmentVersion);
+      assertEquals(ApplicationCreationWorkflow.DEFAULT_CASEWORKER_ID, caseworkerId);
+      assignedCaseworkerId = caseworkerId;
+      operations.add("assign");
+    }
+
+    @Override
     public void makeDecision(UUID applicationId, String requestBody) {
+      assertTrue(requestBody.contains("\"caseworkerId\":\"" + assignedCaseworkerId + "\""));
       operations.add(requestBody.contains("GRANTED") ? "decision:GRANTED" : "decision:REFUSED");
     }
 
