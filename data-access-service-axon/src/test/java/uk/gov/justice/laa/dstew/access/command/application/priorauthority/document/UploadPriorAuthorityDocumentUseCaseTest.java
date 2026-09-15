@@ -20,6 +20,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
+import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentUploadCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.ValidateApplicationGrantedCommand;
@@ -37,11 +38,12 @@ class UploadPriorAuthorityDocumentUseCaseTest {
   @Mock private PriorAuthorityDraftStore draftStore;
   @Mock private RetryingCommandDispatcher dispatcher;
   @Mock private SdsService sdsService;
+  private final ObjectMapper objectMapper = new ObjectMapper();
 
   @Test
   void givenDraftExists_whenExecute_thenValidatesApplicationAndDispatchesUploadCommand() {
     UploadPriorAuthorityDocumentUseCase useCase =
-        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService);
+        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService, objectMapper);
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     MockMultipartFile file =
@@ -79,14 +81,22 @@ class UploadPriorAuthorityDocumentUseCaseTest {
             org.mockito.ArgumentMatchers.eq(priorAuthorityId),
             org.mockito.ArgumentMatchers.eq(response.documentId()),
             org.mockito.ArgumentMatchers.eq(file));
-    verify(dispatcher)
-        .dispatch(org.mockito.ArgumentMatchers.any(PriorAuthorityDocumentUploadCommand.class));
+    ArgumentCaptor<PriorAuthorityDocumentUploadCommand> commandCaptor =
+        ArgumentCaptor.forClass(PriorAuthorityDocumentUploadCommand.class);
+    verify(dispatcher).dispatch(commandCaptor.capture());
+    assertThat(commandCaptor.getValue().serialisedRequest())
+        .contains(
+            "\"documentId\":\"%s\"".formatted(response.documentId()),
+            "\"originalFilename\":\"evidence.pdf\"",
+            "\"fileSize\":12",
+            "\"sourceService\":\"CIVIL_APPLY\"",
+            "\"checksum\":\"abc123\"");
   }
 
   @Test
   void givenDraftMissing_whenExecute_thenThrowsNotFound() {
     UploadPriorAuthorityDocumentUseCase useCase =
-        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService);
+        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService, objectMapper);
     UUID priorAuthorityId = UUID.randomUUID();
     MockMultipartFile file =
         new MockMultipartFile("file", "evidence.pdf", "application/pdf", "%PDF-content".getBytes());
@@ -100,7 +110,7 @@ class UploadPriorAuthorityDocumentUseCaseTest {
   @Test
   void givenSdsReturnsNull_whenExecute_thenDispatchesCommandWithNullChecksum() {
     UploadPriorAuthorityDocumentUseCase useCase =
-        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService);
+        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService, objectMapper);
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     MockMultipartFile file =
@@ -136,7 +146,7 @@ class UploadPriorAuthorityDocumentUseCaseTest {
   @Test
   void givenApplicationNotGranted_whenExecute_thenThrowsAndDoesNotDispatchUploadCommand() {
     UploadPriorAuthorityDocumentUseCase useCase =
-        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService);
+        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService, objectMapper);
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     MockMultipartFile file =
@@ -165,7 +175,7 @@ class UploadPriorAuthorityDocumentUseCaseTest {
   @Test
   void givenNonPdfContent_whenExecute_thenRejectsBeforeUploadingToSds() {
     UploadPriorAuthorityDocumentUseCase useCase =
-        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService);
+        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService, objectMapper);
     MockMultipartFile file =
         new MockMultipartFile("file", "evidence.txt", "text/plain", "not a PDF".getBytes());
 
@@ -179,7 +189,7 @@ class UploadPriorAuthorityDocumentUseCaseTest {
   @Test
   void givenPdfMimeWithInvalidSignature_whenExecute_thenRejectsBeforeUploadingToSds() {
     UploadPriorAuthorityDocumentUseCase useCase =
-        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService);
+        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService, objectMapper);
     MockMultipartFile file =
         new MockMultipartFile("file", "evidence.pdf", "application/pdf", "not a PDF".getBytes());
 
@@ -193,7 +203,7 @@ class UploadPriorAuthorityDocumentUseCaseTest {
   @Test
   void givenUnreadablePdf_whenExecute_thenRejectsBeforeUploadingToSds() throws IOException {
     UploadPriorAuthorityDocumentUseCase useCase =
-        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService);
+        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService, objectMapper);
     MultipartFile file = mock(MultipartFile.class);
     when(file.getContentType()).thenReturn("application/pdf");
     when(file.getInputStream()).thenThrow(new IOException("Unable to read file"));

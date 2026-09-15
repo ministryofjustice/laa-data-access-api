@@ -430,13 +430,15 @@ class PriorAuthorityAggregateTest {
     MockMultipartFile file =
         new MockMultipartFile("file", "evidence.pdf", "application/pdf", "content".getBytes());
     UUID documentId = UUID.randomUUID();
+    String serialisedRequest =
+        "{\"documentId\":\"%s\",\"originalFilename\":\"evidence.pdf\"}".formatted(documentId);
     PriorAuthorityDocumentUploadCommand command =
         new PriorAuthorityDocumentUploadCommand(
             priorAuthorityId,
             documentId,
             "CIVIL_APPLY",
             "sum",
-            "{}",
+            serialisedRequest,
             occurredAt,
             file.getOriginalFilename(),
             file.getSize());
@@ -464,8 +466,9 @@ class PriorAuthorityAggregateTest {
             eq(priorAuthorityId),
             eq(applicationId),
             payloadCaptor.capture(),
-            eq("{}"),
+            eq(serialisedRequest),
             eq(occurredAt));
+    assertThat(payloadCaptor.getValue().serialisedRequest()).isEqualTo(serialisedRequest);
     assertThat(payloadCaptor.getValue().content().uploadedDocuments()).hasSize(1);
     assertThat(payloadCaptor.getValue().content().uploadedDocuments().getFirst().documentType())
         .isNull();
