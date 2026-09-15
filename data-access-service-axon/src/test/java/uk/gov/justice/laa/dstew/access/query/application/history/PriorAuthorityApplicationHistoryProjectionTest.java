@@ -22,11 +22,14 @@ import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityData;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataRepository;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.config.interceptor.ServiceNameMetadataDispatchInterceptor;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 
 @ExtendWith(MockitoExtension.class)
 class PriorAuthorityApplicationHistoryProjectionTest {
@@ -96,7 +99,8 @@ class PriorAuthorityApplicationHistoryProjectionTest {
         new WorkItemAssigned(
             priorAuthorityId, WorkItemType.PRIOR_AUTHORITY, 1L, 1L, caseworkerId, occurredAt);
     when(paDataRepository.findFirstByPriorAuthorityId(priorAuthorityId))
-        .thenReturn(Optional.of(paData(priorAuthorityId, applicationId)));
+        .thenReturn(
+            Optional.of(paData(priorAuthorityId, applicationId, PriorAuthorityType.EXPERT)));
 
     projection.on(event, message(event, "pa-assign-event-id"));
 
@@ -106,7 +110,7 @@ class PriorAuthorityApplicationHistoryProjectionTest {
     assertThat(saved.getEventId()).isEqualTo("pa-assign-event-id");
     assertThat(saved.getApplicationId()).isEqualTo(applicationId);
     assertThat(saved.getPriorAuthorityId()).isEqualTo(priorAuthorityId);
-    assertThat(saved.getPriorAuthorityType()).isNull();
+    assertThat(saved.getPriorAuthorityType()).isEqualTo("EXPERT");
     assertThat(saved.getEventType()).isEqualTo("PRIOR_AUTHORITY_ASSIGNMENT_CHANGED");
     assertThat(saved.getServiceName()).isEqualTo("CIVIL_APPLY");
     assertThat(saved.getOccurredAt()).isEqualTo(occurredAt);
@@ -156,7 +160,8 @@ class PriorAuthorityApplicationHistoryProjectionTest {
     WorkItemUnassigned event =
         new WorkItemUnassigned(priorAuthorityId, WorkItemType.PRIOR_AUTHORITY, 1L, 2L, occurredAt);
     when(paDataRepository.findFirstByPriorAuthorityId(priorAuthorityId))
-        .thenReturn(Optional.of(paData(priorAuthorityId, applicationId)));
+        .thenReturn(
+            Optional.of(paData(priorAuthorityId, applicationId, PriorAuthorityType.EXPERT)));
 
     projection.on(event, message(event, "pa-unassign-event-id"));
 
@@ -166,7 +171,7 @@ class PriorAuthorityApplicationHistoryProjectionTest {
     assertThat(saved.getEventId()).isEqualTo("pa-unassign-event-id");
     assertThat(saved.getApplicationId()).isEqualTo(applicationId);
     assertThat(saved.getPriorAuthorityId()).isEqualTo(priorAuthorityId);
-    assertThat(saved.getPriorAuthorityType()).isNull();
+    assertThat(saved.getPriorAuthorityType()).isEqualTo("EXPERT");
     assertThat(saved.getEventType()).isEqualTo("PRIOR_AUTHORITY_ASSIGNMENT_CHANGED");
     assertThat(saved.getOccurredAt()).isEqualTo(occurredAt);
     var payload = objectMapper.readTree(saved.getEventData());
@@ -209,9 +214,15 @@ class PriorAuthorityApplicationHistoryProjectionTest {
     verify(paRepository).deleteAllInBatch();
   }
 
-  private PriorAuthorityData paData(UUID priorAuthorityId, UUID applicationId) {
+  private PriorAuthorityData paData(
+      UUID priorAuthorityId, UUID applicationId, PriorAuthorityType type) {
+    PriorAuthorityContent content = new PriorAuthorityContent(type, null, null, null, null);
+    PriorAuthorityDataPayload payload =
+        new PriorAuthorityDataPayload(
+            priorAuthorityId, applicationId, content, null, Instant.now());
     return PriorAuthorityData.builder()
         .applicationId(applicationId)
+        .payload(payload)
         .payloadHash("hash")
         .createdAt(Instant.now())
         .build();

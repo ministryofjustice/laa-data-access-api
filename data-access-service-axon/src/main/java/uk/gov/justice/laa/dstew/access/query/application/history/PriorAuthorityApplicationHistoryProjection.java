@@ -15,6 +15,7 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.config.interceptor.ServiceNameMetadataDispatchInterceptor;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 
 /** Projection that records Prior Authority activity to parent Application history. */
 @Component
@@ -55,16 +56,16 @@ public class PriorAuthorityApplicationHistoryProjection {
       return;
     }
 
-    UUID parentApplicationId = lookupParentApplicationId(event.workItemId());
-    if (parentApplicationId == null) {
+    PriorAuthorityRef ref = lookupPriorAuthorityRef(event.workItemId());
+    if (ref == null) {
       return;
     }
 
     append(
         message,
-        parentApplicationId,
+        ref.applicationId(),
         event.workItemId(),
-        null,
+        ref.priorAuthorityType(),
         "PRIOR_AUTHORITY_ASSIGNMENT_CHANGED",
         serialise(event),
         event.occurredAt());
@@ -77,27 +78,34 @@ public class PriorAuthorityApplicationHistoryProjection {
       return;
     }
 
-    UUID parentApplicationId = lookupParentApplicationId(event.workItemId());
-    if (parentApplicationId == null) {
+    PriorAuthorityRef ref = lookupPriorAuthorityRef(event.workItemId());
+    if (ref == null) {
       return;
     }
 
     append(
         message,
-        parentApplicationId,
+        ref.applicationId(),
         event.workItemId(),
-        null,
+        ref.priorAuthorityType(),
         "PRIOR_AUTHORITY_ASSIGNMENT_CHANGED",
         serialise(event),
         event.occurredAt());
   }
 
-  private UUID lookupParentApplicationId(UUID priorAuthorityId) {
+  private PriorAuthorityRef lookupPriorAuthorityRef(UUID priorAuthorityId) {
     return priorAuthorityDataRepository
         .findFirstByPriorAuthorityId(priorAuthorityId)
-        .map(pa -> pa.getApplicationId())
+        .map(
+            pa -> {
+              PriorAuthorityType type = pa.getPayload().content().priorAuthorityType();
+              return new PriorAuthorityRef(
+                  pa.getApplicationId(), type == null ? null : type.name());
+            })
         .orElse(null);
   }
+
+  private record PriorAuthorityRef(UUID applicationId, String priorAuthorityType) {}
 
   private void append(
       EventMessage message,
