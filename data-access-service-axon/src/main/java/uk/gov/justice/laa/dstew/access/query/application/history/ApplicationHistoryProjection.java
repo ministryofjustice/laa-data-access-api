@@ -23,6 +23,7 @@ import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.config.interceptor.ServiceNameMetadataDispatchInterceptor;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
@@ -139,6 +140,9 @@ public class ApplicationHistoryProjection {
   /** Appends a thin audit entry for an application work-list assignment. */
   @EventHandler
   public void on(WorkItemAssigned event, EventMessage message) {
+    if (WorkItemType.PRIOR_AUTHORITY.equals(event.workItemType())) {
+      return;
+    }
     append(
         message,
         event.workItemId(),
@@ -150,6 +154,9 @@ public class ApplicationHistoryProjection {
   /** Appends a thin audit entry for an application work-list unassignment. */
   @EventHandler
   public void on(WorkItemUnassigned event, EventMessage message) {
+    if (WorkItemType.PRIOR_AUTHORITY.equals(event.workItemType())) {
+      return;
+    }
     append(
         message,
         event.workItemId(),
