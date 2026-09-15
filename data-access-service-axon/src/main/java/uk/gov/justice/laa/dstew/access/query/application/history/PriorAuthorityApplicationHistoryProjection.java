@@ -1,20 +1,22 @@
 package uk.gov.justice.laa.dstew.access.query.application.history;
 
-import java.util.Map;
+import java.time.Instant;
 import java.util.UUID;
 import org.axonframework.messaging.core.annotation.Namespace;
 import org.axonframework.messaging.eventhandling.EventMessage;
 import org.axonframework.messaging.eventhandling.annotation.EventHandler;
 import org.axonframework.messaging.eventhandling.replay.annotation.ResetHandler;
 import org.springframework.stereotype.Component;
+import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataRepository;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.config.interceptor.ServiceNameMetadataDispatchInterceptor;
 
-/** Projection that records Prior Authority assignment activity to parent Application history. */
+/** Projection that records Prior Authority activity to parent Application history. */
 @Component
 @Namespace("prior-authority-application-history-projection")
 public class PriorAuthorityApplicationHistoryProjection {
@@ -33,6 +35,19 @@ public class PriorAuthorityApplicationHistoryProjection {
     this.objectMapper = objectMapper;
   }
 
+  /** Records a submitted Prior Authority in parent application's history. */
+  @EventHandler
+  public void on(PriorAuthoritySubmittedEvent event, EventMessage message) {
+    append(
+        message,
+        event.applicationId(),
+        event.priorAuthorityId(),
+        event.priorAuthorityType(),
+        "PRIOR_AUTHORITY_SUBMITTED",
+        serialise(event),
+        event.occurredAt());
+  }
+
   /** Records Prior Authority assignment in parent application's history. */
   @EventHandler
   public void on(WorkItemAssigned event, EventMessage message) {
@@ -40,36 +55,19 @@ public class PriorAuthorityApplicationHistoryProjection {
       return;
     }
 
-    UUID priorAuthorityId = event.workItemId();
-    UUID parentApplicationId =
-        priorAuthorityDataRepository
-            .findFirstByPriorAuthorityId(priorAuthorityId)
-            .map(pa -> pa.getApplicationId())
-            .orElse(null);
-
+    UUID parentApplicationId = lookupParentApplicationId(event.workItemId());
     if (parentApplicationId == null) {
       return;
     }
 
-    Object serviceName =
-        message.metadata().get(ServiceNameMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY);
-
-    priorAuthorityHistoryReadRepository.save(
-        PriorAuthorityHistoryReadModel.builder()
-            .eventId(message.identifier())
-            .applicationId(parentApplicationId)
-            .priorAuthorityId(priorAuthorityId)
-            .priorAuthorityType(null)
-            .eventType("PRIOR_AUTHORITY_ASSIGNMENT_CHANGED")
-            .eventData(
-                serialise(
-                    Map.of(
-                        "assignmentVersion", event.assignmentVersion(),
-                        "caseworkerId", event.caseworkerId(),
-                        "action", "ASSIGNED")))
-            .serviceName(serviceName == null ? null : serviceName.toString())
-            .occurredAt(event.occurredAt())
-            .build());
+    append(
+        message,
+        parentApplicationId,
+        event.workItemId(),
+        null,
+        "PRIOR_AUTHORITY_ASSIGNMENT_CHANGED",
+        serialise(event),
+        event.occurredAt());
   }
 
   /** Records Prior Authority unassignment in parent application's history. */
@@ -79,45 +77,61 @@ public class PriorAuthorityApplicationHistoryProjection {
       return;
     }
 
-    UUID priorAuthorityId = event.workItemId();
-    UUID parentApplicationId =
-        priorAuthorityDataRepository
-            .findFirstByPriorAuthorityId(priorAuthorityId)
-            .map(pa -> pa.getApplicationId())
-            .orElse(null);
-
+    UUID parentApplicationId = lookupParentApplicationId(event.workItemId());
     if (parentApplicationId == null) {
       return;
     }
 
+    append(
+        message,
+        parentApplicationId,
+        event.workItemId(),
+        null,
+        "PRIOR_AUTHORITY_ASSIGNMENT_CHANGED",
+        serialise(event),
+        event.occurredAt());
+  }
+
+  private UUID lookupParentApplicationId(UUID priorAuthorityId) {
+    return priorAuthorityDataRepository
+        .findFirstByPriorAuthorityId(priorAuthorityId)
+        .map(pa -> pa.getApplicationId())
+        .orElse(null);
+  }
+
+  private void append(
+      EventMessage message,
+      UUID applicationId,
+      UUID priorAuthorityId,
+      String priorAuthorityType,
+      String eventType,
+      String eventData,
+      Instant occurredAt) {
     Object serviceName =
         message.metadata().get(ServiceNameMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY);
-
     priorAuthorityHistoryReadRepository.save(
         PriorAuthorityHistoryReadModel.builder()
             .eventId(message.identifier())
-            .applicationId(parentApplicationId)
+            .applicationId(applicationId)
             .priorAuthorityId(priorAuthorityId)
-            .priorAuthorityType(null)
-            .eventType("PRIOR_AUTHORITY_ASSIGNMENT_CHANGED")
-            .eventData(
-                serialise(
-                    Map.of("assignmentVersion", event.assignmentVersion(), "action", "UNASSIGNED")))
+            .priorAuthorityType(priorAuthorityType)
+            .eventType(eventType)
+            .eventData(eventData)
             .serviceName(serviceName == null ? null : serviceName.toString())
-            .occurredAt(event.occurredAt())
+            .occurredAt(occurredAt)
             .build());
   }
 
-  private String serialise(Map<String, Object> data) {
+  private String serialise(Object event) {
     try {
-      return objectMapper.writeValueAsString(data);
-    } catch (Exception e) {
-      throw new RuntimeException("Failed to serialise event data", e);
+      return objectMapper.writeValueAsString(event);
+    } catch (JacksonException exception) {
+      throw new IllegalStateException("Failed to serialise event data", exception);
     }
   }
 
   @ResetHandler
   public void reset() {
-    // Projection can be replayed from events
+    priorAuthorityHistoryReadRepository.deleteAllInBatch();
   }
 }
