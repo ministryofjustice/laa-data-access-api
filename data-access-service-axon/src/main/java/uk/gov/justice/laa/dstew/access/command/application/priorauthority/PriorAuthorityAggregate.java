@@ -11,6 +11,7 @@ import org.axonframework.extension.spring.stereotype.EventSourced;
 import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import org.jspecify.annotations.NonNull;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
@@ -132,6 +133,7 @@ public class PriorAuthorityAggregate {
       SubmitPriorAuthorityDraftCommand command,
       PriorAuthorityDraftStore draftStore,
       PriorAuthorityDataStore dataStore,
+      ApplicationDataStore applicationDataStore,
       JsonSchemaValidator jsonSchemaValidator,
       EventAppender eventAppender) {
     PriorAuthorityDataPayload payload = requireDraft(command.priorAuthorityId(), draftStore);
@@ -143,7 +145,9 @@ public class PriorAuthorityAggregate {
         payload,
         payload.serialisedRequest(),
         command.occurredAt());
-    eventAppender.append(PriorAuthorityDecider.decideSubmit(command, state));
+    long applicationDataVersion = applicationDataStore.latestVersion(state.applicationId);
+    eventAppender.append(
+        PriorAuthorityDecider.decideSubmit(command, state, applicationDataVersion));
     draftStore.delete(command.priorAuthorityId());
   }
 

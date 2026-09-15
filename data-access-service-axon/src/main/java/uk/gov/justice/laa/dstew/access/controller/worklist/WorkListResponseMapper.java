@@ -7,6 +7,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.PagingResponse;
+import uk.gov.justice.laa.dstew.access.model.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.model.WorkListItem;
 import uk.gov.justice.laa.dstew.access.model.WorkListItemType;
 import uk.gov.justice.laa.dstew.access.model.WorkListResponse;
@@ -52,6 +53,11 @@ public class WorkListResponseMapper {
         item.getApplicationStatus() == null
             ? null
             : ApplicationStatus.valueOf(item.getApplicationStatus()));
+    response.setPriorAuthorityType(
+        item.getPriorAuthorityType() == null
+            ? null
+            : PriorAuthorityType.valueOf(item.getPriorAuthorityType()));
+    response.setExpertType(item.getExpertType());
     return response;
   }
 
