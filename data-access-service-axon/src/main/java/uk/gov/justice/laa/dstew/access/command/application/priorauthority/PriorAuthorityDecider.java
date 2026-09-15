@@ -46,6 +46,17 @@ public final class PriorAuthorityDecider {
         command.occurredAt());
   }
 
+  /**
+   * Returns a {@link PriorAuthorityDraftUpdatedEvent} — a thin, PII-free pointer with no draft
+   * content — for a draft-body update. It exists to seal the write through the aggregate's
+   * optimistic-concurrency gate.
+   */
+  public static PriorAuthorityDraftUpdatedEvent decideDraftUpdated(
+      UpdatePriorAuthorityDraftCommand command, UUID applicationId) {
+    return new PriorAuthorityDraftUpdatedEvent(
+        command.priorAuthorityId(), applicationId, command.occurredAt());
+  }
+
   /** Returns a persisted upload event for a prior-authority document finalize command. */
   public static PriorAuthorityDocumentUploadedEvent decideDocumentUploaded(
       PriorAuthorityDocumentUploadCommand command, UUID applicationId) {
