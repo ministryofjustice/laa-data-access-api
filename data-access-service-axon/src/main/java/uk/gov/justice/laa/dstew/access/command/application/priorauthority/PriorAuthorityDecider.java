@@ -3,7 +3,6 @@ package uk.gov.justice.laa.dstew.access.command.application.priorauthority;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityDocumentMetadata;
 
 /** Decision functions: derive events from current state and command inputs. */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
@@ -59,7 +58,7 @@ public final class PriorAuthorityDecider {
         command.documentId(),
         command.occurredAt(),
         command.fileSize(),
-        PriorAuthorityDocumentMetadata.PDF_CONTENT_TYPE,
+        command.contentType(),
         command.checksum(),
         applicationId);
   }

@@ -84,11 +84,15 @@ class UploadPriorAuthorityDocumentUseCaseTest {
     ArgumentCaptor<PriorAuthorityDocumentUploadCommand> commandCaptor =
         ArgumentCaptor.forClass(PriorAuthorityDocumentUploadCommand.class);
     verify(dispatcher).dispatch(commandCaptor.capture());
+    assertThat(commandCaptor.getValue().fileType()).isEqualTo("PDF");
+    assertThat(commandCaptor.getValue().contentType()).isEqualTo("application/pdf");
     assertThat(commandCaptor.getValue().serialisedRequest())
         .contains(
             "\"documentId\":\"%s\"".formatted(response.documentId()),
             "\"originalFilename\":\"evidence.pdf\"",
             "\"fileSize\":12",
+            "\"fileType\":\"PDF\"",
+            "\"contentType\":\"application/pdf\"",
             "\"sourceService\":\"CIVIL_APPLY\"",
             "\"checksum\":\"abc123\"");
   }
@@ -181,7 +185,7 @@ class UploadPriorAuthorityDocumentUseCaseTest {
 
     assertThatExceptionOfType(IllegalArgumentException.class)
         .isThrownBy(() -> useCase.execute(UUID.randomUUID(), file, "CIVIL_APPLY"))
-        .withMessage("Only PDF documents are supported");
+        .withMessage("Unsupported document content type");
 
     verifyNoInteractions(sdsService);
   }

@@ -1,8 +1,6 @@
 package uk.gov.justice.laa.dstew.access.command.application.priorauthority.document;
 
-import java.io.IOException;
 import java.time.Instant;
-import java.util.Arrays;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
@@ -11,7 +9,6 @@ import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentUploadCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.ValidateApplicationGrantedCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityDocumentMetadata;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
@@ -21,10 +18,6 @@ import uk.gov.justice.laa.dstew.access.util.RequestSerialiser;
 /** Dispatches a single command that uploads and finalises prior-authority documents. */
 @Component
 public class UploadPriorAuthorityDocumentUseCase {
-
-  private static final byte[] PDF_HEADER =
-      "%PDF-".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
-
   private final PriorAuthorityDraftStore draftStore;
   private final RetryingCommandDispatcher dispatcher;
   private final SdsService sdsService;
@@ -46,7 +39,7 @@ public class UploadPriorAuthorityDocumentUseCase {
   @AllowApiCaseworker
   public UploadPriorAuthorityDocumentResult execute(
       UUID priorAuthorityId, MultipartFile file, String sourceService) {
-    validateUpload(file);
+    PriorAuthorityDocumentFormat format = PriorAuthorityDocumentFormat.validate(file);
     var draft =
         draftStore
             .find(priorAuthorityId)
@@ -65,7 +58,13 @@ public class UploadPriorAuthorityDocumentUseCase {
         RequestSerialiser.serialise(
             objectMapper,
             new UploadPriorAuthorityDocumentRequest(
-                documentId, file.getOriginalFilename(), file.getSize(), sourceService, checksum));
+                documentId,
+                file.getOriginalFilename(),
+                file.getSize(),
+                format.fileType(),
+                format.contentType(),
+                sourceService,
+                checksum));
 
     dispatcher.dispatch(
         new PriorAuthorityDocumentUploadCommand(
@@ -76,30 +75,18 @@ public class UploadPriorAuthorityDocumentUseCase {
             serialisedRequest,
             uploadedAt,
             file.getOriginalFilename(),
-            file.getSize()));
+            file.getSize(),
+            format.fileType(),
+            format.contentType()));
 
     return new UploadPriorAuthorityDocumentResult(
         documentId,
         file.getOriginalFilename(),
-        PriorAuthorityDocumentMetadata.PDF_FILE_TYPE,
-        PriorAuthorityDocumentMetadata.PDF_CONTENT_TYPE,
+        format.fileType(),
+        format.contentType(),
         file.getSize(),
         uploadedAt,
         sourceService,
         checksum);
-  }
-
-  private static void validateUpload(MultipartFile file) {
-    if (!PriorAuthorityDocumentMetadata.PDF_CONTENT_TYPE.equalsIgnoreCase(file.getContentType())) {
-      throw new IllegalArgumentException("Only PDF documents are supported");
-    }
-    try (var inputStream = file.getInputStream()) {
-      byte[] header = inputStream.readNBytes(PDF_HEADER.length);
-      if (!Arrays.equals(header, PDF_HEADER)) {
-        throw new IllegalArgumentException("Uploaded file is not a valid PDF document");
-      }
-    } catch (IOException exception) {
-      throw new IllegalArgumentException("Unable to validate uploaded document", exception);
-    }
   }
 }

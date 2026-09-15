@@ -87,7 +87,9 @@ class PriorAuthorityDeciderTest {
             "{}",
             OCCURRED_AT,
             "evidence.pdf",
-            7L);
+            7L,
+            "PDF",
+            "application/pdf");
     UUID applicationId = UUID.randomUUID();
     PriorAuthorityDocumentUploadedEvent event =
         PriorAuthorityDecider.decideDocumentUploaded(command, applicationId);

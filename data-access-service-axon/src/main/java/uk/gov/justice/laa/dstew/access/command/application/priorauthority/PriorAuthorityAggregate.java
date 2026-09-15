@@ -22,7 +22,6 @@ import uk.gov.justice.laa.dstew.access.command.worklist.assign.DirectPriorAuthor
 import uk.gov.justice.laa.dstew.access.command.worklist.unassign.DirectPriorAuthorityWorkItemUnassignmentCommand;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityDocument;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityDocumentMetadata;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
@@ -94,8 +93,8 @@ public class PriorAuthorityAggregate {
             command.documentId(),
             null,
             command.originalFilename(),
-            PriorAuthorityDocumentMetadata.PDF_FILE_TYPE,
-            PriorAuthorityDocumentMetadata.PDF_CONTENT_TYPE,
+            command.fileType(),
+            command.contentType(),
             command.fileSize(),
             command.occurredAt(),
             command.sourceService(),

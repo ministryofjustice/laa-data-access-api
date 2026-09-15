@@ -441,7 +441,9 @@ class PriorAuthorityAggregateTest {
             serialisedRequest,
             occurredAt,
             file.getOriginalFilename(),
-            file.getSize());
+            file.getSize(),
+            "PDF",
+            "application/pdf");
 
     aggregate.on(
         new PriorAuthorityDraftStartedEvent(
@@ -525,7 +527,9 @@ class PriorAuthorityAggregateTest {
             "{}",
             occurredAt,
             file.getOriginalFilename(),
-            file.getSize());
+            file.getSize(),
+            "PDF",
+            "application/pdf");
 
     aggregate.handle(priorAuthorityDocumentUploadCommand, draftStore, eventAppender);
 
@@ -568,7 +572,9 @@ class PriorAuthorityAggregateTest {
                       "{}",
                       occurredAt,
                       file.getOriginalFilename(),
-                      file.getSize());
+                      file.getSize(),
+                      "PDF",
+                      "application/pdf");
               aggregate.handle(priorAuthorityDocumentUploadCommand, draftStore, eventAppender);
             });
   }
@@ -679,7 +685,9 @@ class PriorAuthorityAggregateTest {
             "{}",
             occurredAt,
             file.getOriginalFilename(),
-            file.getSize());
+            file.getSize(),
+            "PDF",
+            "application/pdf");
 
     aggregate.handle(priorAuthorityDocumentUploadCommand, draftStore, eventAppender);
 

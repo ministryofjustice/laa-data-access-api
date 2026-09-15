@@ -7,5 +7,7 @@ record UploadPriorAuthorityDocumentRequest(
     UUID documentId,
     String originalFilename,
     long fileSize,
+    String fileType,
+    String contentType,
     String sourceService,
     String checksum) {}

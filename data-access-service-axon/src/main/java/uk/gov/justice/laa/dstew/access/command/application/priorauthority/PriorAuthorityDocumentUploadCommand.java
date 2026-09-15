@@ -15,4 +15,6 @@ public record PriorAuthorityDocumentUploadCommand(
     String serialisedRequest,
     Instant occurredAt,
     String originalFilename,
-    Long fileSize) {}
+    Long fileSize,
+    String fileType,
+    String contentType) {}
