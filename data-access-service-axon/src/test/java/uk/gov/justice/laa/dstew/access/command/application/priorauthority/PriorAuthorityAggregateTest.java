@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.command.application.priorauthority;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
@@ -646,7 +647,7 @@ class PriorAuthorityAggregateTest {
         new PriorAuthorityDocumentTypeUpdateCommand(
             UUID.randomUUID(), UUID.randomUUID(), "INVALID", "{}", Instant.now());
 
-    org.assertj.core.api.Assertions.assertThatIllegalArgumentException()
+    assertThatIllegalArgumentException()
         .isThrownBy(() -> aggregate.handle(command, draftStore, eventAppender));
 
     verify(draftStore, never()).find(any());
