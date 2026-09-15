@@ -39,8 +39,14 @@ public class PriorAuthorityDraftStore {
             .map(PriorAuthorityDraft::getCreatedAt)
             .orElse(occurredAt);
     repository.saveAndFlush(
-        new PriorAuthorityDraft(
-            priorAuthorityId, applicationId, payload, fingerprint, createdAt, occurredAt));
+        PriorAuthorityDraft.builder()
+            .priorAuthorityId(priorAuthorityId)
+            .applicationId(applicationId)
+            .payload(payload)
+            .payloadHash(fingerprint)
+            .createdAt(createdAt)
+            .updatedAt(occurredAt)
+            .build());
     return fingerprint;
   }
 

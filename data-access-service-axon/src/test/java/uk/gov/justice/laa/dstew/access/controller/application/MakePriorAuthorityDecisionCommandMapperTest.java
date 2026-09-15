@@ -12,7 +12,12 @@ import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.MakePriorAuthorityDecisionCommand;
-import uk.gov.justice.laa.dstew.access.model.*;
+import uk.gov.justice.laa.dstew.access.model.ApportionmentMakePriorAuthorityDecisionRequest;
+import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
+import uk.gov.justice.laa.dstew.access.model.DisbursementMakePriorAuthorityDecisionRequest;
+import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
+import uk.gov.justice.laa.dstew.access.model.ExpertMakePriorAuthorityDecisionRequest;
+import uk.gov.justice.laa.dstew.access.model.MakePriorAuthorityDecisionRequest;
 
 class MakePriorAuthorityDecisionCommandMapperTest {
 

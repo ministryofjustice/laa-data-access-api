@@ -13,10 +13,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.MakePriorAuthorityDecisionCommand;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.MakePriorAuthorityDecisionUseCase;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
-import uk.gov.justice.laa.dstew.access.model.MakePriorAuthorityDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityResponse;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.GetPriorAuthorityUseCase;
 
@@ -26,8 +23,6 @@ class PriorAuthoritiesQueryControllerTest {
 
   @Mock private GetPriorAuthorityUseCase getPriorAuthorityUseCase;
   @Mock private GetPriorAuthorityResponseMapper getPriorAuthorityResponseMapper;
-  @Mock private MakePriorAuthorityDecisionUseCase makePriorAuthorityDecisionUseCase;
-  @Mock private MakePriorAuthorityDecisionCommandMapper makePriorAuthorityDecisionCommandMapper;
 
   @InjectMocks private PriorAuthoritiesQueryController controller;
 
@@ -45,20 +40,5 @@ class PriorAuthoritiesQueryControllerTest {
     assertThat(actual.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(actual.getBody()).isSameAs(response);
     verify(getPriorAuthorityUseCase).getPriorAuthority(priorAuthorityId);
-  }
-
-  @Test
-  void givenDecisionRequest_whenMakePriorAuthorityDecision_thenDelegatesAndReturnsNoContent() {
-    UUID priorAuthorityId = UUID.randomUUID();
-    MakePriorAuthorityDecisionRequest request = mock(MakePriorAuthorityDecisionRequest.class);
-    MakePriorAuthorityDecisionCommand command = mock(MakePriorAuthorityDecisionCommand.class);
-    when(makePriorAuthorityDecisionCommandMapper.toCommand(priorAuthorityId, request))
-        .thenReturn(command);
-
-    ResponseEntity<Void> actual =
-        controller.makePriorAuthorityDecision(null, priorAuthorityId, request);
-
-    assertThat(actual.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-    verify(makePriorAuthorityDecisionUseCase).execute(command);
   }
 }
