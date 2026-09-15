@@ -1,22 +1,32 @@
 package uk.gov.justice.laa.dstew.access.config;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.time.Instant;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.core.env.Environment;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationManagerResolver;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.authorization.AuthorizationDecision;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.annotation.web.configurers.oauth2.server.resource.OAuth2ResourceServerConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -29,12 +39,21 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.server.resource.InvalidBearerTokenException;
 import org.springframework.security.oauth2.server.resource.authentication.BearerTokenAuthenticationToken;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationProvider;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.filter.OncePerRequestFilter;
+import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationProvider;
+import uk.gov.laa.springboot.oauth2.EndpointAccessManager;
+import uk.gov.laa.springboot.oauth2.Oauth2AccessDeniedHandler;
+import uk.gov.laa.springboot.oauth2.Oauth2AuthenticationEntryPoint;
 
 /**
  * Local security wrappers around the shared OAuth2 starter so Axon can keep starter-managed HTTP
@@ -47,6 +66,8 @@ import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationPro
 public class SecurityConfig {
 
   private static final String AUTHORITY_PREFIX = "APPROLE_";
+  private static final List<String> DEV_TOKEN_ACCOUNTS = List.of("0Z1234AB", "1A9876XY");
+  private static final String DEV_TOKEN_ENTRA_OID = "00000000-0000-0000-0000-000000000001";
   private static final Map<String, List<String>> DEV_TOKENS =
       Map.of(
           "swagger-caseworker-token",
@@ -56,6 +77,71 @@ public class SecurityConfig {
 
   @Value("${feature.enable-dev-token:false}")
   private boolean enableDevToken;
+
+  /** Configures the application OAuth2 resource-server filter chain. */
+  @Bean("oauth2SecurityFilterChain")
+  @Order(Ordered.HIGHEST_PRECEDENCE)
+  public SecurityFilterChain oauth2SecurityFilterChain(
+      HttpSecurity httpSecurity,
+      EndpointAccessManager endpointAccessManager,
+      JwtAuthenticationConverter jwtConverter,
+      ObjectProvider<AuthenticationManagerResolver<HttpServletRequest>>
+          authenticationManagerResolver,
+      @Qualifier("jacksonJsonMapper") ObjectMapper objectMapper,
+      @Qualifier("xAuthorizationFilter") OncePerRequestFilter authorizationFilter)
+      throws Exception {
+
+    httpSecurity
+        .csrf(AbstractHttpConfigurer::disable)
+        .httpBasic(AbstractHttpConfigurer::disable)
+        .formLogin(AbstractHttpConfigurer::disable)
+        .logout(AbstractHttpConfigurer::disable)
+        .sessionManagement(
+            session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .addFilterAfter(authorizationFilter, BearerTokenAuthenticationFilter.class)
+        .authorizeHttpRequests(
+            auth -> {
+              auth.requestMatchers(endpointAccessManager.getUnprotectedUris()).permitAll();
+              auth.anyRequest()
+                  .access(
+                      (authentication, context) ->
+                          new AuthorizationDecision(
+                              isAuthorized(
+                                  authentication.get(),
+                                  endpointAccessManager,
+                                  context.getRequest())));
+            })
+        .exceptionHandling(
+            exceptionHandling ->
+                exceptionHandling
+                    .authenticationEntryPoint(new Oauth2AuthenticationEntryPoint(objectMapper))
+                    .accessDeniedHandler(new Oauth2AccessDeniedHandler(objectMapper)))
+        .oauth2ResourceServer(
+            resourceServerConfigurer(authenticationManagerResolver.getIfAvailable(), jwtConverter));
+
+    return httpSecurity.build();
+  }
+
+  private Customizer<OAuth2ResourceServerConfigurer<HttpSecurity>> resourceServerConfigurer(
+      AuthenticationManagerResolver<HttpServletRequest> authenticationManagerResolver,
+      JwtAuthenticationConverter jwtConverter) {
+    return oauth2 -> {
+      if (authenticationManagerResolver != null) {
+        oauth2.authenticationManagerResolver(authenticationManagerResolver);
+      } else {
+        oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtConverter));
+      }
+    };
+  }
+
+  private boolean isAuthorized(
+      Authentication authentication,
+      EndpointAccessManager endpointAccessManager,
+      HttpServletRequest request) {
+    return authentication != null
+        && authentication.isAuthenticated()
+        && endpointAccessManager.isRequestAuthorized(authentication.getAuthorities(), request);
+  }
 
   /**
    * Provides a JWT decoder with issuer and audience validation for non-dev bearer tokens.
@@ -137,8 +223,8 @@ public class SecurityConfig {
         jwt -> {
           Set<GrantedAuthority> authorities =
               grantedAuthoritiesConverter.convert(jwt) == null
-                  ? new java.util.HashSet<>()
-                  : new java.util.HashSet<>(grantedAuthoritiesConverter.convert(jwt));
+                  ? new HashSet<>()
+                  : new HashSet<>(grantedAuthoritiesConverter.convert(jwt));
           authorities.add(new SimpleGrantedAuthority("APPROLE_LAA_CASEWORKER"));
           authorities.add(new SimpleGrantedAuthority("ROLE_LAA_CASEWORKER"));
           return authorities;
@@ -153,14 +239,21 @@ public class SecurityConfig {
 
     List<String> roles = DEV_TOKENS.get(bearerTokenAuthentication.getToken());
     if (roles == null) {
-      throw new org.springframework.security.oauth2.server.resource.InvalidBearerTokenException(
-          "Invalid bearer token");
+      throw new InvalidBearerTokenException("Invalid bearer token");
     }
 
-    return new UsernamePasswordAuthenticationToken(
-        "dev-user",
-        bearerTokenAuthentication.getToken(),
-        roles.stream().map(SimpleGrantedAuthority::new).toList());
+    Instant issuedAt = Instant.now();
+    Jwt jwt =
+        Jwt.withTokenValue(bearerTokenAuthentication.getToken())
+            .header("alg", "none")
+            .subject("dev-user")
+            .claim("LAA_ACCOUNTS", DEV_TOKEN_ACCOUNTS)
+            .claim("oid", DEV_TOKEN_ENTRA_OID)
+            .issuedAt(issuedAt)
+            .expiresAt(issuedAt.plusSeconds(300))
+            .build();
+    return new JwtAuthenticationToken(
+        jwt, roles.stream().map(SimpleGrantedAuthority::new).toList());
   }
 
   private boolean isDevTokenRequest(HttpServletRequest request) {
