@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -64,6 +65,6 @@ public class ApplicationGroupRouteResolver {
       ApplicationGroupRoute sourceRoute, ApplicationGroupRoute targetRoute) {
     return sourceRoute.getRouteKind() == ApplicationGroupRouteKind.LINKED_GROUP
         && targetRoute.getRouteKind() == ApplicationGroupRouteKind.LINKED_GROUP
-        && java.util.Objects.equals(sourceRoute.getGroupId(), targetRoute.getGroupId());
+        && Objects.equals(sourceRoute.getGroupId(), targetRoute.getGroupId());
   }
 }
