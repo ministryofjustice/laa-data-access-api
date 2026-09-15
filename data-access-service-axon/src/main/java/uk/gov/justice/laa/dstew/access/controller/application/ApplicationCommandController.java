@@ -15,6 +15,7 @@ import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationComm
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.document.UploadDocumentUseCase;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ReadyApplicationResult;
@@ -46,11 +47,13 @@ public class ApplicationCommandController
   private final RecordAutoGrantOutcomeUseCase recordAutoGrantOutcomeUseCase;
   private final UpdateApplicationUseCase updateApplicationUseCase;
   private final UploadDocumentUseCase uploadDocumentUseCase;
+  private final LinkApplicationUseCase linkApplicationUseCase;
   private final CreateApplicationCommandMapper commandMapper;
   private final MakeDecisionCommandMapper decisionCommandMapper;
   private final CreateNoteCommandMapper createNoteCommandMapper;
   private final AutoGrantOutcomeCommandMapper autoGrantOutcomeCommandMapper;
   private final UpdateApplicationCommandMapper updateApplicationCommandMapper;
+  private final LinkApplicationCommandMapper linkCommandMapper;
 
   /** Creates the command adapter. */
   public ApplicationCommandController(
@@ -60,22 +63,26 @@ public class ApplicationCommandController
       RecordAutoGrantOutcomeUseCase recordAutoGrantOutcomeUseCase,
       UpdateApplicationUseCase updateApplicationUseCase,
       UploadDocumentUseCase uploadDocumentUseCase,
+      LinkApplicationUseCase linkApplicationUseCase,
       CreateApplicationCommandMapper commandMapper,
       MakeDecisionCommandMapper decisionCommandMapper,
       CreateNoteCommandMapper createNoteCommandMapper,
       AutoGrantOutcomeCommandMapper autoGrantOutcomeCommandMapper,
-      UpdateApplicationCommandMapper updateApplicationCommandMapper) {
+      UpdateApplicationCommandMapper updateApplicationCommandMapper,
+      LinkApplicationCommandMapper linkCommandMapper) {
     this.createApplicationUseCase = createApplicationUseCase;
     this.makeDecisionUseCase = makeDecisionUseCase;
     this.createNoteUseCase = createNoteUseCase;
     this.recordAutoGrantOutcomeUseCase = recordAutoGrantOutcomeUseCase;
     this.updateApplicationUseCase = updateApplicationUseCase;
     this.uploadDocumentUseCase = uploadDocumentUseCase;
+    this.linkApplicationUseCase = linkApplicationUseCase;
     this.commandMapper = commandMapper;
     this.decisionCommandMapper = decisionCommandMapper;
     this.createNoteCommandMapper = createNoteCommandMapper;
     this.autoGrantOutcomeCommandMapper = autoGrantOutcomeCommandMapper;
     this.updateApplicationCommandMapper = updateApplicationCommandMapper;
+    this.linkCommandMapper = linkCommandMapper;
   }
 
   /** Assigns a caseworker to one or more Applications after validating the complete batch. */
@@ -102,7 +109,8 @@ public class ApplicationCommandController
   @LogMethodResponse
   public ResponseEntity<Void> linkApplication(
       ServiceName serviceName, UUID id, ApplicationLinkRequest request) {
-    return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+    linkApplicationUseCase.execute(linkCommandMapper.toCommand(id, request));
+    return ResponseEntity.noContent().build();
   }
 
   /** Applies an overall and per-proceeding decision to an existing Application version. */
