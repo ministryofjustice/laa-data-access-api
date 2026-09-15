@@ -1981,6 +1981,235 @@ class PostgresAxonIntegrationTest {
 
   @Test
   void
+      givenSubmittedPriorAuthorityReassignedToDifferentCaseworker_whenGetHistory_thenIncludesAllAssignmentEvents() {
+    UUID applicationId = UUID.randomUUID();
+    applicationId(post(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()));
+    awaitProjection(applicationId);
+
+    restTemplate.exchange(
+        "http://localhost:"
+            + port
+            + "/api/v0/applications/"
+            + applicationId
+            + "/auto-grant-outcome",
+        HttpMethod.PATCH,
+        new HttpEntity<>(
+            new AutoGrantedOutcomeRequest(
+                AutoGrantOutcome.AUTOGRANTED, Map.of("certificateNumber", "PA-CERT-004")),
+            headers()),
+        Void.class);
+    awaitProjectionVersion(applicationId, 1L);
+
+    ResponseEntity<String> paResponse =
+        restTemplate.postForEntity(
+            "http://localhost:" + port + "/api/v0/prior-authorities",
+            new HttpEntity<>(fixedRateExpertDraftRequest(applicationId), headers()),
+            String.class);
+    assertThat(paResponse.getStatusCode()).isIn(HttpStatus.CREATED, HttpStatus.ACCEPTED);
+    UUID priorAuthorityId =
+        UUID.fromString(
+            objectMapper.readTree(paResponse.getBody()).get("priorAuthorityId").asText());
+
+    ResponseEntity<String> submitResponse =
+        restTemplate.postForEntity(
+            "http://localhost:"
+                + port
+                + "/api/v0/prior-authorities/"
+                + priorAuthorityId
+                + "/submit",
+            new HttpEntity<>(null, headers()),
+            String.class);
+    assertThat(submitResponse.getStatusCode()).isIn(HttpStatus.OK, HttpStatus.ACCEPTED);
+
+    UUID firstCaseworkerId = UUID.randomUUID();
+    UUID secondCaseworkerId = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO axon.caseworkers (id, username) VALUES (?, ?)",
+        firstCaseworkerId,
+        "pa-reassign-1-" + firstCaseworkerId + "@example.com");
+    jdbcTemplate.update(
+        "INSERT INTO axon.caseworkers (id, username) VALUES (?, ?)",
+        secondCaseworkerId,
+        "pa-reassign-2-" + secondCaseworkerId + "@example.com");
+
+    ResponseEntity<Void> firstAssign =
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/work-list/" + priorAuthorityId + "/assign",
+            HttpMethod.POST,
+            new HttpEntity<>(new WorkListAssignRequest(firstCaseworkerId, 0L), headers()),
+            Void.class);
+    assertThat(firstAssign.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+    ResponseEntity<Void> unassign =
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/work-list/" + priorAuthorityId + "/unassign",
+            HttpMethod.POST,
+            new HttpEntity<>(new WorkListUnassignRequest(1L), headers()),
+            Void.class);
+    assertThat(unassign.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+    ResponseEntity<Void> secondAssign =
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/work-list/" + priorAuthorityId + "/assign",
+            HttpMethod.POST,
+            new HttpEntity<>(new WorkListAssignRequest(secondCaseworkerId, 2L), headers()),
+            Void.class);
+    assertThat(secondAssign.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+    await()
+        .atMost(10, TimeUnit.SECONDS)
+        .pollInterval(50, TimeUnit.MILLISECONDS)
+        .until(
+            () ->
+                priorAuthorityHistoryReadRepository.findAllByApplicationIdOrderByOccurredAtAsc(
+                    applicationId),
+            rows -> rows.size() == 4);
+
+    ResponseEntity<ApplicationHistoryResponse> historyResponse =
+        restTemplate.exchange(
+            "http://localhost:"
+                + port
+                + "/api/v0/applications/"
+                + applicationId
+                + "/history-search",
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            ApplicationHistoryResponse.class);
+    assertThat(historyResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+    assertThat(historyResponse.getBody().getPriorAuthorities()).hasSize(1);
+    PriorAuthorityHistoryGroup group = historyResponse.getBody().getPriorAuthorities().get(0);
+    assertThat(group.getPriorAuthorityId()).isEqualTo(priorAuthorityId);
+    assertThat(group.getPriorAuthorityType()).isEqualTo(PriorAuthorityType.EXPERT);
+    assertThat(group.getEvents()).hasSize(4);
+    assertThat(group.getEvents())
+        .extracting(event -> event.getEventType())
+        .containsExactlyInAnyOrder(
+            "PRIOR_AUTHORITY_SUBMITTED",
+            "PRIOR_AUTHORITY_ASSIGNMENT_CHANGED",
+            "PRIOR_AUTHORITY_ASSIGNMENT_CHANGED",
+            "PRIOR_AUTHORITY_ASSIGNMENT_CHANGED");
+  }
+
+  @Test
+  void
+      givenMultiplePriorAuthoritiesWithOneAssigned_whenGetHistory_thenAssignmentEventAttachedToCorrectGroup() {
+    UUID applicationId = UUID.randomUUID();
+    applicationId(post(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()));
+    awaitProjection(applicationId);
+
+    restTemplate.exchange(
+        "http://localhost:"
+            + port
+            + "/api/v0/applications/"
+            + applicationId
+            + "/auto-grant-outcome",
+        HttpMethod.PATCH,
+        new HttpEntity<>(
+            new AutoGrantedOutcomeRequest(
+                AutoGrantOutcome.AUTOGRANTED, Map.of("certificateNumber", "PA-CERT-005")),
+            headers()),
+        Void.class);
+    awaitProjectionVersion(applicationId, 1L);
+
+    ResponseEntity<String> firstPaResponse =
+        restTemplate.postForEntity(
+            "http://localhost:" + port + "/api/v0/prior-authorities",
+            new HttpEntity<>(fixedRateExpertDraftRequest(applicationId), headers()),
+            String.class);
+    assertThat(firstPaResponse.getStatusCode()).isIn(HttpStatus.CREATED, HttpStatus.ACCEPTED);
+    UUID firstPriorAuthorityId =
+        UUID.fromString(
+            objectMapper.readTree(firstPaResponse.getBody()).get("priorAuthorityId").asText());
+    restTemplate.postForEntity(
+        "http://localhost:"
+            + port
+            + "/api/v0/prior-authorities/"
+            + firstPriorAuthorityId
+            + "/submit",
+        new HttpEntity<>(null, headers()),
+        String.class);
+
+    ResponseEntity<String> secondPaResponse =
+        restTemplate.postForEntity(
+            "http://localhost:" + port + "/api/v0/prior-authorities",
+            new HttpEntity<>(fixedRateExpertDraftRequest(applicationId), headers()),
+            String.class);
+    assertThat(secondPaResponse.getStatusCode()).isIn(HttpStatus.CREATED, HttpStatus.ACCEPTED);
+    UUID secondPriorAuthorityId =
+        UUID.fromString(
+            objectMapper.readTree(secondPaResponse.getBody()).get("priorAuthorityId").asText());
+    restTemplate.postForEntity(
+        "http://localhost:"
+            + port
+            + "/api/v0/prior-authorities/"
+            + secondPriorAuthorityId
+            + "/submit",
+        new HttpEntity<>(null, headers()),
+        String.class);
+
+    UUID caseworkerId = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO axon.caseworkers (id, username) VALUES (?, ?)",
+        caseworkerId,
+        "pa-multi-" + caseworkerId + "@example.com");
+
+    ResponseEntity<Void> assignResponse =
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/work-list/" + secondPriorAuthorityId + "/assign",
+            HttpMethod.POST,
+            new HttpEntity<>(new WorkListAssignRequest(caseworkerId, 0L), headers()),
+            Void.class);
+    assertThat(assignResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+    await()
+        .atMost(10, TimeUnit.SECONDS)
+        .pollInterval(50, TimeUnit.MILLISECONDS)
+        .until(
+            () ->
+                priorAuthorityHistoryReadRepository.findAllByApplicationIdOrderByOccurredAtAsc(
+                    applicationId),
+            rows -> rows.size() == 3);
+
+    ResponseEntity<ApplicationHistoryResponse> historyResponse =
+        restTemplate.exchange(
+            "http://localhost:"
+                + port
+                + "/api/v0/applications/"
+                + applicationId
+                + "/history-search",
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            ApplicationHistoryResponse.class);
+    assertThat(historyResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+    assertThat(historyResponse.getBody().getPriorAuthorities()).hasSize(2);
+
+    PriorAuthorityHistoryGroup assignedGroup =
+        historyResponse.getBody().getPriorAuthorities().stream()
+            .filter(g -> g.getPriorAuthorityId().equals(secondPriorAuthorityId))
+            .findFirst()
+            .orElseThrow();
+    assertThat(assignedGroup.getPriorAuthorityType()).isEqualTo(PriorAuthorityType.EXPERT);
+    assertThat(assignedGroup.getEvents()).hasSize(2);
+    assertThat(assignedGroup.getEvents())
+        .extracting(event -> event.getEventType())
+        .containsExactlyInAnyOrder(
+            "PRIOR_AUTHORITY_SUBMITTED", "PRIOR_AUTHORITY_ASSIGNMENT_CHANGED");
+
+    PriorAuthorityHistoryGroup untouchedGroup =
+        historyResponse.getBody().getPriorAuthorities().stream()
+            .filter(g -> g.getPriorAuthorityId().equals(firstPriorAuthorityId))
+            .findFirst()
+            .orElseThrow();
+    assertThat(untouchedGroup.getPriorAuthorityType()).isEqualTo(PriorAuthorityType.EXPERT);
+    assertThat(untouchedGroup.getEvents()).hasSize(1);
+    assertThat(untouchedGroup.getEvents().get(0).getEventType())
+        .isEqualTo("PRIOR_AUTHORITY_SUBMITTED");
+  }
+
+  @Test
+  void
       givenConflictingPriorAuthorityTypeRowsInDb_whenGetHistory_thenReturnsHttp500WithStableProblemDetail() {
     UUID applicationId = UUID.randomUUID();
     UUID priorAuthorityId = UUID.randomUUID();
