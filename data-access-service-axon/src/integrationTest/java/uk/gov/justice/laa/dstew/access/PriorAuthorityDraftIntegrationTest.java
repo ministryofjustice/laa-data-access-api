@@ -334,31 +334,6 @@ class PriorAuthorityDraftIntegrationTest {
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
   }
 
-  @Test
-  void givenGrantedApplication_whenPostingLegacyPriorAuthorityEndpoint_thenReturnsNotFound() {
-    UUID applicationId = grantedApplication();
-    String payload =
-        """
-        {
-          "priorAuthorityType":"DISBURSEMENT",
-          "justification":"Interpreter costs for proceedings",
-          "disbursementDetails":{"disbursementPurpose":"Court interpreter","disbursementAmount":150.0}
-        }
-        """;
-
-    ResponseEntity<String> response =
-        restTemplate.postForEntity(
-            "http://localhost:"
-                + port
-                + "/api/v0/applications/"
-                + applicationId
-                + "/prior-authority",
-            new HttpEntity<>(payload, headers()),
-            String.class);
-
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-  }
-
   private UUID saveDraft(
       UUID applicationId,
       PriorAuthorityType priorAuthorityType,

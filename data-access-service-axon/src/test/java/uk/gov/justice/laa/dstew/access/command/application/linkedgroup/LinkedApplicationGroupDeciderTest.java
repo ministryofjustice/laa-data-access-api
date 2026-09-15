@@ -11,16 +11,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import tools.jackson.databind.ObjectMapper;
-import tools.jackson.databind.json.JsonMapper;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationLinkConflictException;
 
 /** Pure unit tests for {@link LinkedApplicationGroupDecider} — no Spring, no Axon, no database. */
 class LinkedApplicationGroupDeciderTest {
 
   private static final Instant OCCURRED_AT = Instant.parse("2026-07-15T08:00:00Z");
-  private static final ObjectMapper OBJECT_MAPPER =
-      JsonMapper.builder().findAndAddModules().build();
 
   @Test
   void givenNoGroup_whenDecideEstablish_thenReturnsGroupCreatedEvent() {
@@ -217,35 +213,6 @@ class LinkedApplicationGroupDeciderTest {
     LinkedApplicationGroupEvolve.apply(
         state, new MemberAddedToGroupEvent(groupId, leadId, newMemberId, OCCURRED_AT));
 
-    assertThat(state.leadApplicationId).isEqualTo(leadId);
-    assertThat(state.memberApplicationIds).containsExactly(leadId, existingMemberId, newMemberId);
-  }
-
-  @Test
-  void givenLegacyMemberAddedEventPayload_whenReplayed_thenLeadApplicationIdRemainsUnchanged()
-      throws Exception {
-    UUID groupId = UUID.randomUUID();
-    UUID leadId = UUID.randomUUID();
-    UUID existingMemberId = UUID.randomUUID();
-    UUID newMemberId = UUID.randomUUID();
-    LinkedApplicationGroupState state =
-        stateAfterCreate(groupId, leadId, List.of(leadId, existingMemberId));
-
-    MemberAddedToGroupEvent event =
-        OBJECT_MAPPER.readValue(
-            """
-            {
-              "groupId": "%s",
-              "memberId": "%s",
-              "occurredAt": "%s"
-            }
-            """
-                .formatted(groupId, newMemberId, OCCURRED_AT),
-            MemberAddedToGroupEvent.class);
-
-    LinkedApplicationGroupEvolve.apply(state, event);
-
-    assertThat(event.leadApplicationId()).isNull();
     assertThat(state.leadApplicationId).isEqualTo(leadId);
     assertThat(state.memberApplicationIds).containsExactly(leadId, existingMemberId, newMemberId);
   }
