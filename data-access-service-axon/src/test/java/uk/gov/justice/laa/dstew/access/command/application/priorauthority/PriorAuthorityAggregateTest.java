@@ -354,7 +354,6 @@ class PriorAuthorityAggregateTest {
     UUID applicationId = UUID.randomUUID();
     Instant startedAt = Instant.parse("2026-08-01T10:00:00Z");
     Instant submittedAt = Instant.parse("2026-08-02T10:00:00Z");
-    String serialisedRequest = "{\"priorAuthorityType\":\"EXPERT\"}";
 
     PriorAuthorityDraftStartedEvent draftStartedEvent =
         new PriorAuthorityDraftStartedEvent(
@@ -435,7 +434,6 @@ class PriorAuthorityAggregateTest {
         new PriorAuthorityDocumentUploadCommand(
             priorAuthorityId,
             documentId,
-            "gateway_evidence",
             "CIVIL_APPLY",
             "sum",
             "{}",
@@ -470,7 +468,7 @@ class PriorAuthorityAggregateTest {
             eq(occurredAt));
     assertThat(payloadCaptor.getValue().content().uploadedDocuments()).hasSize(1);
     assertThat(payloadCaptor.getValue().content().uploadedDocuments().getFirst().documentType())
-        .isEqualTo("gateway_evidence");
+        .isNull();
     assertThat(payloadCaptor.getValue().content().uploadedDocuments().getFirst().checksum())
         .isEqualTo("sum");
     verify(eventAppender).append(any(PriorAuthorityDocumentUploadedEvent.class));
@@ -519,7 +517,6 @@ class PriorAuthorityAggregateTest {
         new PriorAuthorityDocumentUploadCommand(
             priorAuthorityId,
             documentId,
-            "gateway_evidence",
             "CIVIL_APPLY",
             "sum",
             "{}",
@@ -563,7 +560,6 @@ class PriorAuthorityAggregateTest {
                   new PriorAuthorityDocumentUploadCommand(
                       priorAuthorityId,
                       documentId,
-                      "gateway_evidence",
                       "CIVIL_APPLY",
                       "sum",
                       "{}",
@@ -572,6 +568,80 @@ class PriorAuthorityAggregateTest {
                       file.getSize());
               aggregate.handle(priorAuthorityDocumentUploadCommand, draftStore, eventAppender);
             });
+  }
+
+  @Test
+  void givenDraftWithDocument_whenUpdateDocumentType_thenPersistsUpdatedDocumentAndEmitsEvent() {
+    PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-09-08T12:00:00Z");
+    String serialisedRequest = "{\"documentType\":\"GATEWAY_EVIDENCE\"}";
+    PriorAuthorityDocumentTypeUpdateCommand command =
+        new PriorAuthorityDocumentTypeUpdateCommand(
+            priorAuthorityId, documentId, "GATEWAY_EVIDENCE", serialisedRequest, occurredAt);
+
+    aggregate.on(
+        new PriorAuthorityDraftStartedEvent(
+            priorAuthorityId, applicationId, "EXPERT", 1, occurredAt));
+    when(draftStore.find(priorAuthorityId))
+        .thenReturn(
+            Optional.of(
+                new PriorAuthorityDataPayload(
+                    priorAuthorityId,
+                    applicationId,
+                    new PriorAuthorityContent(
+                        EXPERT,
+                        "why",
+                        null,
+                        null,
+                        null,
+                        List.of(
+                            new PriorAuthorityDocument(
+                                documentId,
+                                null,
+                                "evidence.pdf",
+                                "PDF",
+                                "application/pdf",
+                                1L,
+                                occurredAt,
+                                "CIVIL_APPLY",
+                                "checksum"))),
+                    "{}",
+                    occurredAt)));
+
+    assertThat(aggregate.handle(command, draftStore, eventAppender)).isEqualTo(documentId);
+
+    ArgumentCaptor<PriorAuthorityDataPayload> payloadCaptor =
+        ArgumentCaptor.forClass(PriorAuthorityDataPayload.class);
+    verify(draftStore)
+        .upsert(
+            eq(priorAuthorityId),
+            eq(applicationId),
+            payloadCaptor.capture(),
+            eq(serialisedRequest),
+            eq(occurredAt));
+    assertThat(payloadCaptor.getValue().content().uploadedDocuments().getFirst().documentType())
+        .isEqualTo("GATEWAY_EVIDENCE");
+    verify(eventAppender)
+        .append(
+            new PriorAuthorityDocumentTypeUpdatedEvent(
+                priorAuthorityId, documentId, "GATEWAY_EVIDENCE", occurredAt));
+  }
+
+  @Test
+  void givenInvalidDocumentType_whenUpdateDocumentType_thenRejectsBeforeReadingDraft() {
+    PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
+    PriorAuthorityDocumentTypeUpdateCommand command =
+        new PriorAuthorityDocumentTypeUpdateCommand(
+            UUID.randomUUID(), UUID.randomUUID(), "INVALID", "{}", Instant.now());
+
+    org.assertj.core.api.Assertions.assertThatIllegalArgumentException()
+        .isThrownBy(() -> aggregate.handle(command, draftStore, eventAppender));
+
+    verify(draftStore, never()).find(any());
+    verify(eventAppender, never()).append(any(PriorAuthorityDocumentTypeUpdatedEvent.class));
   }
 
   @Test
@@ -601,7 +671,6 @@ class PriorAuthorityAggregateTest {
         new PriorAuthorityDocumentUploadCommand(
             priorAuthorityId,
             documentId,
-            "gateway_evidence",
             "CIVIL_APPLY",
             null,
             "{}",

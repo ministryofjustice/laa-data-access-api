@@ -40,8 +40,8 @@ public class UploadPriorAuthorityDocumentUseCase {
   /** Uploads a file and finalises it via a single aggregate command. */
   @AllowApiCaseworker
   public UploadPriorAuthorityDocumentResult execute(
-      UUID priorAuthorityId, MultipartFile file, String documentType, String sourceService) {
-    validateUpload(file, documentType);
+      UUID priorAuthorityId, MultipartFile file, String sourceService) {
+    validateUpload(file);
     var draft =
         draftStore
             .find(priorAuthorityId)
@@ -60,7 +60,6 @@ public class UploadPriorAuthorityDocumentUseCase {
         new PriorAuthorityDocumentUploadCommand(
             priorAuthorityId,
             documentId,
-            documentType,
             sourceService,
             sdsResponse == null ? null : sdsResponse.getChecksum(),
             "{}",
@@ -70,7 +69,6 @@ public class UploadPriorAuthorityDocumentUseCase {
 
     return new UploadPriorAuthorityDocumentResult(
         documentId,
-        documentType,
         file.getOriginalFilename(),
         PriorAuthorityDocumentMetadata.PDF_FILE_TYPE,
         PriorAuthorityDocumentMetadata.PDF_CONTENT_TYPE,
@@ -80,10 +78,7 @@ public class UploadPriorAuthorityDocumentUseCase {
         sdsResponse == null ? null : sdsResponse.getChecksum());
   }
 
-  private static void validateUpload(MultipartFile file, String documentType) {
-    if (documentType == null || documentType.isBlank()) {
-      throw new IllegalArgumentException("Document type must be provided");
-    }
+  private static void validateUpload(MultipartFile file) {
     if (!PriorAuthorityDocumentMetadata.PDF_CONTENT_TYPE.equalsIgnoreCase(file.getContentType())) {
       throw new IllegalArgumentException("Only PDF documents are supported");
     }

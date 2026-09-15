@@ -26,6 +26,7 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityDocu
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.model.PriorAuthorityDocumentType;
 import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
 
 /**
@@ -91,7 +92,7 @@ public class PriorAuthorityAggregate {
     existingDocuments.add(
         new PriorAuthorityDocument(
             command.documentId(),
-            command.documentType(),
+            null,
             command.originalFilename(),
             PriorAuthorityDocumentMetadata.PDF_FILE_TYPE,
             PriorAuthorityDocumentMetadata.PDF_CONTENT_TYPE,
@@ -124,6 +125,62 @@ public class PriorAuthorityAggregate {
         command.occurredAt());
     eventAppender.append(
         PriorAuthorityDecider.decideDocumentUploaded(command, state.applicationId));
+    return command.documentId();
+  }
+
+  @CommandHandler
+  UUID handle(
+      PriorAuthorityDocumentTypeUpdateCommand command,
+      PriorAuthorityDraftStore draftStore,
+      EventAppender eventAppender) {
+    PriorAuthorityDocumentType.fromValue(command.documentType());
+    PriorAuthorityDataPayload existingDraft = requireDraft(command.priorAuthorityId(), draftStore);
+    List<PriorAuthorityDocument> updatedDocuments = copyUploadedDocuments(existingDraft);
+    int documentIndex =
+        java.util.stream.IntStream.range(0, updatedDocuments.size())
+            .filter(index -> updatedDocuments.get(index).documentId().equals(command.documentId()))
+            .findFirst()
+            .orElseThrow(
+                () ->
+                    new ResourceNotFoundException(
+                        "Document %s not found for Prior Authority %s"
+                            .formatted(command.documentId(), command.priorAuthorityId())));
+    PriorAuthorityDocument existingDocument = updatedDocuments.get(documentIndex);
+    updatedDocuments.set(
+        documentIndex,
+        new PriorAuthorityDocument(
+            existingDocument.documentId(),
+            command.documentType(),
+            existingDocument.fileName(),
+            existingDocument.fileType(),
+            existingDocument.mediaType(),
+            existingDocument.size(),
+            existingDocument.uploadedAt(),
+            existingDocument.sourceService(),
+            existingDocument.checksum()));
+
+    PriorAuthorityContent updatedContent =
+        new PriorAuthorityContent(
+            existingDraft.content().priorAuthorityType(),
+            existingDraft.content().justification(),
+            existingDraft.content().expertDetails(),
+            existingDraft.content().counselDetails(),
+            existingDraft.content().disbursementDetails(),
+            List.copyOf(updatedDocuments));
+    PriorAuthorityDataPayload updatedPayload =
+        buildPayload(
+            existingDraft.priorAuthorityId(),
+            existingDraft.applicationId(),
+            updatedContent,
+            command.serialisedRequest(),
+            command.occurredAt());
+    draftStore.upsert(
+        command.priorAuthorityId(),
+        existingDraft.applicationId(),
+        updatedPayload,
+        command.serialisedRequest(),
+        command.occurredAt());
+    eventAppender.append(PriorAuthorityDecider.decideDocumentTypeUpdated(command));
     return command.documentId();
   }
 
@@ -254,6 +311,11 @@ public class PriorAuthorityAggregate {
   void on(PriorAuthorityDocumentUploadedEvent event) {
     PriorAuthorityEvolve.apply(state, event);
     this.priorAuthorityId = state.priorAuthorityId;
+  }
+
+  @EventSourcingHandler
+  void on(PriorAuthorityDocumentTypeUpdatedEvent event) {
+    this.priorAuthorityId = event.priorAuthorityId();
   }
 
   @EventSourcingHandler
