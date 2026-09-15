@@ -30,6 +30,7 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationD
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDecisionRecordedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
@@ -321,6 +322,71 @@ class ApplicationHistoryProjectionTest {
   }
 
   @Test
+  void givenPriorAuthorityDecisionRecordedEvent_whenHandled_thenStoresInPaHistoryTable() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-08-05T11:00:00Z");
+    var event =
+        new PriorAuthorityDecisionRecordedEvent(
+            priorAuthorityId,
+            applicationId,
+            "EXPERT",
+            1L,
+            "GRANTED",
+            "Decision recorded",
+            123.45,
+            Instant.parse("2026-08-05T10:30:00Z"),
+            occurredAt);
+    var msg = message(event, "pa-decision-event-id");
+
+    projection.on(event, msg);
+
+    var captor = ArgumentCaptor.forClass(PriorAuthorityHistoryReadModel.class);
+    verify(paRepository).save(captor.capture());
+    var saved = captor.getValue();
+    assertThat(saved.getEventId()).isEqualTo("pa-decision-event-id");
+    assertThat(saved.getApplicationId()).isEqualTo(applicationId);
+    assertThat(saved.getPriorAuthorityId()).isEqualTo(priorAuthorityId);
+    assertThat(saved.getPriorAuthorityType()).isEqualTo("EXPERT");
+    assertThat(saved.getEventType()).isEqualTo("PRIOR_AUTHORITY_DECISION_GRANTED");
+    assertThat(saved.getServiceName()).isEqualTo("CIVIL_APPLY");
+    assertThat(saved.getOccurredAt()).isEqualTo(occurredAt);
+    assertThat(saved.getEventData()).contains("\"status\":\"GRANTED\"");
+    assertThat(saved.getEventData()).contains("\"dataVersion\":1");
+    assertThat(saved.getEventData()).contains("\"decisionJustification\":\"Decision recorded\"");
+    assertThat(saved.getEventData()).contains("\"amountGranted\":123.45");
+    assertThat(saved.getEventData()).contains("\"dateGranted\":\"2026-08-05T10:30:00Z\"");
+  }
+
+  @Test
+  void givenRefusedPriorAuthorityDecisionEvent_whenHandled_thenStoresRefusedDecisionType() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-08-05T11:05:00Z");
+    var event =
+        new PriorAuthorityDecisionRecordedEvent(
+            priorAuthorityId,
+            applicationId,
+            "EXPERT",
+            2L,
+            "REFUSED",
+            "Refused on merits",
+            null,
+            null,
+            occurredAt);
+
+    projection.on(event, message(event, "pa-decision-refused-event-id"));
+
+    var captor = ArgumentCaptor.forClass(PriorAuthorityHistoryReadModel.class);
+    verify(paRepository).save(captor.capture());
+    assertThat(captor.getValue().getEventType()).isEqualTo("PRIOR_AUTHORITY_DECISION_REFUSED");
+    assertThat(captor.getValue().getEventData())
+        .contains("\"decisionJustification\":\"Refused on merits\"")
+        .doesNotContain("amountGranted")
+        .doesNotContain("dateGranted");
+  }
+
+  @Test
   void givenApplicationWithPriorAuthorities_whenQueried_thenReturnsBothEventSets() {
     UUID applicationId = UUID.randomUUID();
     UUID priorAuthorityId = UUID.randomUUID();
@@ -383,7 +449,7 @@ class ApplicationHistoryProjectionTest {
         .priorAuthorityId(priorAuthorityId)
         .priorAuthorityType("EXPERT")
         .eventType("PRIOR_AUTHORITY_SUBMITTED")
-        .eventData("{\"status\":\"PENDING\",\"dataVersion\":0}")
+        .eventData("{\"status\":\"SUBMITTED\",\"dataVersion\":0}")
         .serviceName("CIVIL_APPLY")
         .occurredAt(Instant.parse("2026-08-05T10:00:00Z"))
         .build();

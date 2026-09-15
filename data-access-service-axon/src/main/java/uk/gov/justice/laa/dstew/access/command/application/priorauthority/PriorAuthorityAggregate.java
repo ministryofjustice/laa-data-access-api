@@ -147,6 +147,35 @@ public class PriorAuthorityAggregate {
     draftStore.delete(command.priorAuthorityId());
   }
 
+  @CommandHandler
+  void handle(
+      MakePriorAuthorityDecisionCommand command,
+      PriorAuthorityDataStore dataStore,
+      EventAppender eventAppender) {
+    requirePriorAuthorityExists(command.submissionId());
+    PriorAuthorityDataPayload current = dataStore.get(command.submissionId(), state.dataVersion);
+    PriorAuthorityDecider.decideDecision(state, command, current)
+        .ifPresent(
+            event -> {
+              dataStore.append(
+                  event.submissionId(),
+                  event.dataVersion(),
+                  event.applicationId(),
+                  current.withDecision(
+                      event.status(),
+                      command.decisionJustification(),
+                      command.amountGranted(),
+                      command.dateGranted(),
+                      command.expertFee(),
+                      command.disbursementInformation(),
+                      command.apportionmentInformation(),
+                      command.serialisedRequest()),
+                  command.serialisedRequest(),
+                  command.occurredAt());
+              eventAppender.append(event);
+            });
+  }
+
   /** Assigns a newly created direct PA work item after durable route resolution. */
   @CommandHandler
   void handle(DirectPriorAuthorityWorkItemAssignmentCommand command, EventAppender eventAppender) {
@@ -251,6 +280,12 @@ public class PriorAuthorityAggregate {
   }
 
   @EventSourcingHandler
+  void on(PriorAuthorityDecisionRecordedEvent event) {
+    PriorAuthorityEvolve.apply(state, event);
+    this.priorAuthorityId = state.priorAuthorityId;
+  }
+
+  @EventSourcingHandler
   void on(PriorAuthorityDocumentUploadedEvent event) {
     PriorAuthorityEvolve.apply(state, event);
     this.priorAuthorityId = state.priorAuthorityId;
@@ -264,6 +299,13 @@ public class PriorAuthorityAggregate {
   @EventSourcingHandler
   void on(WorkItemUnassigned event) {
     PriorAuthorityEvolve.apply(state, event);
+  }
+
+  private void requirePriorAuthorityExists(UUID requestedSubmissionId) {
+    if (priorAuthorityId == null) {
+      throw new ResourceNotFoundException(
+          "No prior authority found with submission ID: " + requestedSubmissionId);
+    }
   }
 
   @EntityCreator
