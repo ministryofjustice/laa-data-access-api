@@ -49,6 +49,17 @@ public final class PriorAuthorityDecider {
   }
 
   /**
+   * Returns a {@link PriorAuthorityDraftUpdatedEvent} — a thin, PII-free pointer with no draft
+   * content — for a draft-body update. It exists to seal the write through the aggregate's
+   * optimistic-concurrency gate.
+   */
+  public static PriorAuthorityDraftUpdatedEvent decideDraftUpdated(
+      UpdatePriorAuthorityDraftCommand command, UUID applicationId) {
+    return new PriorAuthorityDraftUpdatedEvent(
+        command.priorAuthorityId(), applicationId, command.occurredAt());
+  }
+
+  /**
    * Returns a decision event for a submitted prior-authority, empty for an idempotent retry, or
    * throws on a stale version or invalid lifecycle state.
    */

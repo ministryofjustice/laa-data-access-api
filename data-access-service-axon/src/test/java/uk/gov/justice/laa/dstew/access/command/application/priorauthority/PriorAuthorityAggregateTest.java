@@ -120,7 +120,7 @@ class PriorAuthorityAggregateTest {
   }
 
   @Test
-  void givenDraftInProgress_whenUpdateDraft_thenPersistsDraftAndEmitsNoEvent() {
+  void givenDraftInProgress_whenUpdateDraft_thenPersistsDraftAndEmitsDraftUpdatedEvent() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
@@ -149,7 +149,13 @@ class PriorAuthorityAggregateTest {
             "PriorAuthority.json",
             occurredAt);
 
-    fixture.given().events(existingEvent).when().command(command).then().noEvents();
+    fixture
+        .given()
+        .events(existingEvent)
+        .when()
+        .command(command)
+        .then()
+        .events(new PriorAuthorityDraftUpdatedEvent(priorAuthorityId, applicationId, occurredAt));
 
     verify(draftStore)
         .upsert(eq(priorAuthorityId), eq(applicationId), any(), eq(secondRequest), eq(occurredAt));
@@ -212,7 +218,13 @@ class PriorAuthorityAggregateTest {
             "PriorAuthority.json",
             occurredAt);
 
-    fixture.given().events(existingEvent).when().command(command).then().noEvents();
+    fixture
+        .given()
+        .events(existingEvent)
+        .when()
+        .command(command)
+        .then()
+        .events(new PriorAuthorityDraftUpdatedEvent(priorAuthorityId, applicationId, occurredAt));
 
     ArgumentCaptor<PriorAuthorityDataPayload> payloadCaptor =
         ArgumentCaptor.forClass(PriorAuthorityDataPayload.class);
