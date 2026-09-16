@@ -27,15 +27,21 @@ public final class PriorAuthorityDecider {
    * Returns a {@link PriorAuthoritySubmittedEvent} — a thin pointer with no personal data — for the
    * given submit command. The submitted content is always appended as version 0 of {@code
    * prior_authority_data}, since a submission's draft content is not itself versioned.
+   *
+   * @param applicationDataVersion the parent application's current data version, pinned into the
+   *     event so the work-list projection hydrates parent fields deterministically on replay
    */
   public static PriorAuthoritySubmittedEvent decideSubmit(
-      SubmitPriorAuthorityDraftCommand command, PriorAuthorityState state) {
+      SubmitPriorAuthorityDraftCommand command,
+      PriorAuthorityState state,
+      long applicationDataVersion) {
     return new PriorAuthoritySubmittedEvent(
         command.priorAuthorityId(),
         state.applicationId,
         state.priorAuthorityType,
         state.schemaVersion,
         0L,
+        applicationDataVersion,
         command.occurredAt());
   }
 

@@ -10,6 +10,7 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
+import uk.gov.justice.laa.dstew.access.model.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.query.worklist.FindWorkListItemsResult;
 import uk.gov.justice.laa.dstew.access.query.worklist.WorkListItemReadModel;
 
@@ -34,6 +35,8 @@ class WorkListResponseMapperTest {
     item.setAssignmentVersion(3L);
     item.setLaaReference("LAA-123");
     item.setSubmittedAt(Instant.parse("2026-08-28T09:00:00Z"));
+    item.setPriorAuthorityType("EXPERT");
+    item.setExpertType("Pathologist");
 
     var response =
         new WorkListResponseMapper()
@@ -53,6 +56,8 @@ class WorkListResponseMapperTest {
               assertThat(mapped.getAssignmentVersion()).isEqualTo(3L);
               assertThat(mapped.getAssignmentBoundaryType().getValue()).isEqualTo("DIRECT");
               assertThat(mapped.getLaaReference()).isEqualTo("LAA-123");
+              assertThat(mapped.getPriorAuthorityType()).isEqualTo(PriorAuthorityType.EXPERT);
+              assertThat(mapped.getExpertType()).isEqualTo("Pathologist");
             });
   }
 
@@ -84,6 +89,8 @@ class WorkListResponseMapperTest {
               assertThat(mapped.getMatterTypes()).containsExactly(MatterType.SPECIAL_CHILDREN_ACT);
               assertThat(mapped.getApplicationStatus())
                   .isEqualTo(ApplicationStatus.APPLICATION_SUBMITTED);
+              assertThat(mapped.getPriorAuthorityType()).isNull();
+              assertThat(mapped.getExpertType()).isNull();
             });
   }
 }
