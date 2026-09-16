@@ -42,7 +42,7 @@ public final class DecisionRequestFactory {
                         .formatted(proceedingId, decision))
             .collect(Collectors.joining(","));
     return """
-      {"overallDecision":"%s","proceedings":[%s],"eventHistory":{"eventDescription":"Decision created by data-access-tools"},"autoGranted":false%s,"applicationVersion":%d}
+      {"overallDecision":"%s","proceedings":[%s],"eventHistory":{"eventDescription":"Decision created by data-access-tools"},"autoGranted":false%s,"version":%d}
         """
         .formatted(decision, proceedings, certificate, applicationVersion);
   }

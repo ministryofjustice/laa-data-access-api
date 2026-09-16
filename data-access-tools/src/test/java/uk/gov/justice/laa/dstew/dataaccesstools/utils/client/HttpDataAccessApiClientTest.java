@@ -102,9 +102,9 @@ class HttpDataAccessApiClientTest {
     String path = exchange.getRequestURI().getPath();
     if (exchange.getRequestMethod().equals("GET")) {
       byte[] response =
-          ("{\"laaReference\":\"LAA-CLI-12345678\",\"proceedings\":[{\"id\":\""
+          ("{\"laaReference\":\"LAA-CLI-12345678\",\"proceedings\":[{\"proceedingId\":\""
                   + priorAuthorityId
-                  + "\"}],\"applicationVersion\":2}")
+                  + "\"}],\"version\":2}")
               .getBytes();
       exchange.sendResponseHeaders(200, response.length);
       exchange.getResponseBody().write(response);

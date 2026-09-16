@@ -63,7 +63,7 @@ class MakeDecisionCommandTest {
 
     JsonNode decision = OBJECT_MAPPER.readTree(requests.get(1).body());
     assertEquals("GRANTED", decision.required("overallDecision").asText());
-    assertEquals(7, decision.required("applicationVersion").asLong());
+    assertEquals(7, decision.required("version").asLong());
     assertFalse(decision.has("caseworkerId"));
     assertEquals(2, decision.required("proceedings").size());
     assertTrue(decision.toString().contains(firstProceedingId.toString()));
@@ -80,11 +80,11 @@ class MakeDecisionCommandTest {
         new Request(exchange.getRequestMethod(), exchange.getRequestURI().getPath(), body));
     if (exchange.getRequestMethod().equals("GET")) {
       byte[] response =
-          ("{\"laaReference\":\"LAA-CLI-12345678\",\"proceedings\":[{\"id\":\""
+          ("{\"laaReference\":\"LAA-CLI-12345678\",\"proceedings\":[{\"proceedingId\":\""
                   + firstProceedingId
-                  + "\"},{\"id\":\""
+                  + "\"},{\"proceedingId\":\""
                   + secondProceedingId
-                  + "\"}],\"applicationVersion\":7}")
+                  + "\"}],\"version\":7}")
               .getBytes();
       exchange.sendResponseHeaders(200, response.length);
       exchange.getResponseBody().write(response);

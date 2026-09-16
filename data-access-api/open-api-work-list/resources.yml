@@ -8,14 +8,14 @@ paths:
       parameters:
         - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
         - in: query
-          name: assignedTo
-          description: Return only items assigned to this caseworker UUID
+          name: assignedToMe
+          description: Return items assigned to the authenticated caseworker's Entra OID. Defaults to false.
           schema:
-            type: string
-            format: uuid
+            type: boolean
+            default: false
         - in: query
           name: unassigned
-          description: Return only unassigned items. Defaults to true when assignedTo is omitted.
+          description: Include unassigned items. Defaults to true. At least one of unassigned or assignedToMe must be true.
           schema:
             type: boolean
         - in: query
@@ -40,6 +40,7 @@ paths:
             application/json:
               schema:
                 $ref: "./components.yml#/components/schemas/WorkListResponse"
+        "400": { description: At least one of assignedToMe or unassigned must be true }
 
   /api/v0/work-list/{itemId}/assign:
     post:
