@@ -63,7 +63,7 @@ class MakeDecisionCommandTest {
 
     JsonNode decision = OBJECT_MAPPER.readTree(requests.get(1).body());
     assertEquals("GRANTED", decision.required("overallDecision").asText());
-    assertEquals(7, decision.required("version").asLong());
+    assertEquals(7, decision.required("applicationVersion").asLong());
     assertFalse(decision.has("caseworkerId"));
     assertEquals(2, decision.required("proceedings").size());
     assertTrue(decision.toString().contains(firstProceedingId.toString()));
