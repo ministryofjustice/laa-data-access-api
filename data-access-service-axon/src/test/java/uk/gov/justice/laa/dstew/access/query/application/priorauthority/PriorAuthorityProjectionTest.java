@@ -272,7 +272,7 @@ class PriorAuthorityProjectionTest {
   }
 
   @Test
-  void givenDecisionRecordedEvent_whenHandled_thenUpdatesCurrentStateVersionAndStatus() {
+  void givenDecisionRecordedEvent_whenHandled_thenUpdatesCurrentStateVersion() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     PriorAuthorityReadModel model =
@@ -296,7 +296,7 @@ class PriorAuthorityProjectionTest {
             null,
             Instant.now()));
 
-    assertThat(model.getStatus()).isEqualTo("REFUSED");
+    assertThat(model.getStatus()).isEqualTo("SUBMITTED");
     assertThat(model.getDataVersion()).isEqualTo(1L);
     verify(repository).save(model);
   }
@@ -310,7 +310,7 @@ class PriorAuthorityProjectionTest {
             .priorAuthorityId(priorAuthorityId)
             .applicationId(applicationId)
             .dataVersion(2L)
-            .status("GRANTED")
+            .status("SUBMITTED")
             .build();
     PriorAuthorityContent content =
         new PriorAuthorityContent(EXPERT, "Expert required", null, null, null);
@@ -335,7 +335,7 @@ class PriorAuthorityProjectionTest {
     PriorAuthorityResult result =
         projection.handle(new FindPriorAuthorityByPriorAuthorityIdQuery(priorAuthorityId));
 
-    assertThat(result.status()).isEqualTo("GRANTED");
+    assertThat(result.status()).isEqualTo("SUBMITTED");
   }
 
   @Test

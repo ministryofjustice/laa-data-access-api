@@ -6,7 +6,5 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 @ExcludeFromGeneratedCodeCoverage
 public enum PriorAuthorityStatus {
   DRAFT,
-  SUBMITTED,
-  GRANTED,
-  REFUSED
+  SUBMITTED
 }
