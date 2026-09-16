@@ -1,0 +1,70 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "documentId": {
+      "type": "string",
+      "format": "uuid",
+      "example": "b459a8b3-7e23-403a-b512-3107eb7d9196"
+    },
+    "fileName": {
+      "type": "string",
+      "example": "sample.pdf"
+    },
+    "uploadedAt": {
+      "type": "string",
+      "format": "date-time",
+      "example": "2026-09-16T10:20:05.530808705Z"
+    },
+    "checksum": {
+      "type": "string",
+      "example": "229defbb0cee6f02673a5cde290d0673e75a0dc31cec43989c8ab2a4eca7e1bb"
+    },
+    "documentType": {
+      "type": "string",
+      "enum": [
+        "GATEWAY_EVIDENCE",
+        "MERITS_REPORT",
+        "STATEMENT_OF_CASE",
+        "COURT_APPLICATION",
+        "COURT_ORDER",
+        "EXPERT_REPORT",
+        "COURT_APPLICATION_OR_ORDER",
+        "PARENTAL_RESPONSIBILITY",
+        "LOCAL_AUTHORITY_ASSESSMENT",
+        "GROUNDS_OF_APPEAL",
+        "COUNSEL_OPINION",
+        "JUDGEMENT",
+        "PLF_COURT_ORDER",
+        "LETTER_OF_INSTRUCTION",
+        "ESTIMATE_OF_COSTS",
+        "ALTERNATIVE_QUOTE",
+        "OTHER_PARTY_CERTIFICATE_REFERENCE",
+        "OTHER_SUPPORTING_DOCUMENT",
+        "PRIMARY_QUOTE",
+        "ADDITIONAL_QUOTE"
+      ],
+      "example": "ESTIMATE_OF_COSTS"
+    },
+    "fileType": {
+      "type": "string",
+      "example": "PDF"
+    },
+    "mediaType": {
+      "type": "string",
+      "example": "application/pdf"
+    },
+    "size": {
+      "type": "integer",
+      "format": "int64",
+      "minimum": 0,
+      "example": 18810
+    },
+    "sourceService": {
+      "type": "string",
+      "example": "CIVIL_APPLY"
+    }
+  }
+}
+
