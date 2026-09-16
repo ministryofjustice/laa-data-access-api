@@ -2,10 +2,12 @@ package uk.gov.justice.laa.dstew.access.content.priorauthority;
 
 import java.util.List;
 import java.util.UUID;
+import lombok.With;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
 
 /** Typed result of retrieving a prior-authority submission. */
+@With
 public record PriorAuthorityResult(
     UUID priorAuthorityId,
     UUID applicationId,

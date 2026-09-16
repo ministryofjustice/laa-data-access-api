@@ -1,6 +1,8 @@
 package uk.gov.justice.laa.dstew.access.query.application.priorauthority;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.axonframework.messaging.core.annotation.Namespace;
@@ -10,11 +12,13 @@ import org.axonframework.messaging.queryhandling.QueryUpdateEmitter;
 import org.axonframework.messaging.queryhandling.annotation.QueryHandler;
 import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Component;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentUploadedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDraftStartedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.document.UploadedDocumentStore;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
 
@@ -26,6 +30,7 @@ public class PriorAuthorityProjection {
   private final PriorAuthorityReadRepository repository;
   private final PriorAuthorityDataStore priorAuthorityDataStore;
   private final PriorAuthorityDraftStore priorAuthorityDraftStore;
+  private final UploadedDocumentStore uploadedDocumentStore;
 
   /**
    * Creates the prior-authority current-state projection.
@@ -37,10 +42,12 @@ public class PriorAuthorityProjection {
   public PriorAuthorityProjection(
       PriorAuthorityReadRepository repository,
       PriorAuthorityDataStore priorAuthorityDataStore,
-      PriorAuthorityDraftStore priorAuthorityDraftStore) {
+      PriorAuthorityDraftStore priorAuthorityDraftStore,
+      UploadedDocumentStore uploadedDocumentStore) {
     this.repository = repository;
     this.priorAuthorityDataStore = priorAuthorityDataStore;
     this.priorAuthorityDraftStore = priorAuthorityDraftStore;
+    this.uploadedDocumentStore = uploadedDocumentStore;
   }
 
   /** Returns the hydrated current state for the requested prior-authority submission. */
@@ -67,11 +74,21 @@ public class PriorAuthorityProjection {
   private Optional<@NonNull PriorAuthorityResult> hydrate(
       PriorAuthorityReadModel priorAuthority, UUID priorAuthorityId) {
     if (PriorAuthorityStatus.DRAFT.name().equals(priorAuthority.getStatus())) {
-      return priorAuthorityDraftStore.find(priorAuthorityId).map(PriorAuthorityResult::fromDraft);
+      return priorAuthorityDraftStore
+          .find(priorAuthorityId)
+          .map(PriorAuthorityResult::fromDraft)
+          .map(result -> result.withUploadedDocuments(documentsFor(priorAuthority)));
     }
     PriorAuthorityDataPayload payload =
         priorAuthorityDataStore.get(priorAuthorityId, priorAuthority.getDataVersion());
-    return Optional.of(PriorAuthorityResult.from(priorAuthority, payload.content()));
+    return Optional.of(
+        PriorAuthorityResult.from(priorAuthority, payload.content())
+            .withUploadedDocuments(documentsFor(priorAuthority)));
+  }
+
+  private List<uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityDocument>
+      documentsFor(PriorAuthorityReadModel priorAuthority) {
+    return uploadedDocumentStore.findAllInOrder(priorAuthority.getUploadedDocumentIds());
   }
 
   /** Creates the current-state row when a prior-authority draft is started. */
@@ -98,6 +115,20 @@ public class PriorAuthorityProjection {
         queryUpdateEmitter);
   }
 
+  /** Records the aggregate's document ID list in the replayable current-state projection. */
+  @EventHandler
+  public void on(PriorAuthorityDocumentUploadedEvent event) {
+    repository
+        .findById(event.priorAuthorityId())
+        .ifPresent(
+            priorAuthority -> {
+              List<UUID> documentIds = new ArrayList<>(priorAuthority.getUploadedDocumentIds());
+              documentIds.add(event.documentId());
+              priorAuthority.setUploadedDocumentIds(List.copyOf(documentIds));
+              repository.save(priorAuthority);
+            });
+  }
+
   private void createRow(
       UUID priorAuthorityId,
       UUID applicationId,
@@ -112,6 +143,7 @@ public class PriorAuthorityProjection {
             .dataVersion(dataVersion)
             .status(status)
             .createdAt(createdAt)
+            .uploadedDocumentIds(List.of())
             .build());
     if (PriorAuthorityStatus.SUBMITTED.name().equals(status)) {
       queryUpdateEmitter.emit(
