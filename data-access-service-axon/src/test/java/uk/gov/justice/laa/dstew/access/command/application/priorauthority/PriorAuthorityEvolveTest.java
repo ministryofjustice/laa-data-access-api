@@ -39,7 +39,7 @@ class PriorAuthorityEvolveTest {
     Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
     PriorAuthoritySubmittedEvent event =
         new PriorAuthoritySubmittedEvent(
-            priorAuthorityId, applicationId, "EXPERT", 3, 0L, occurredAt);
+            priorAuthorityId, applicationId, "EXPERT", 3, 0L, 0L, occurredAt);
 
     PriorAuthorityEvolve.apply(state, event);
 

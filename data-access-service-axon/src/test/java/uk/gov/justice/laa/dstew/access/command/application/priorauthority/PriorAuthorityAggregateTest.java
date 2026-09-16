@@ -27,6 +27,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
@@ -46,6 +47,7 @@ class PriorAuthorityAggregateTest {
   private AxonTestFixture fixture;
   @Mock private PriorAuthorityDataStore dataStore;
   @Mock private PriorAuthorityDraftStore draftStore;
+  @Mock private ApplicationDataStore applicationDataStore;
   @Mock private JsonSchemaValidator jsonSchemaValidator;
   @Mock private EventAppender eventAppender;
 
@@ -64,6 +66,8 @@ class PriorAuthorityAggregateTest {
                                 PriorAuthorityDataStore.class, configuration -> dataStore)
                             .registerComponent(
                                 PriorAuthorityDraftStore.class, configuration -> draftStore)
+                            .registerComponent(
+                                ApplicationDataStore.class, configuration -> applicationDataStore)
                             .registerComponent(
                                 JsonSchemaValidator.class, configuration -> jsonSchemaValidator)));
   }
@@ -292,6 +296,7 @@ class PriorAuthorityAggregateTest {
             priorAuthorityId, applicationId, EXPERT.name(), 1, startedAt);
 
     when(draftStore.find(priorAuthorityId)).thenReturn(Optional.of(draftPayload));
+    when(applicationDataStore.latestVersion(applicationId)).thenReturn(7L);
 
     SubmitPriorAuthorityDraftCommand command =
         new SubmitPriorAuthorityDraftCommand(priorAuthorityId, submittedAt);
@@ -304,7 +309,7 @@ class PriorAuthorityAggregateTest {
         .then()
         .events(
             new PriorAuthoritySubmittedEvent(
-                priorAuthorityId, applicationId, EXPERT.name(), 1, 0L, submittedAt));
+                priorAuthorityId, applicationId, EXPERT.name(), 1, 0L, 7L, submittedAt));
 
     verify(jsonSchemaValidator).validate(content, "PriorAuthority.json", 1);
     verify(dataStore)
@@ -362,7 +367,7 @@ class PriorAuthorityAggregateTest {
             priorAuthorityId, applicationId, EXPERT.name(), 1, startedAt);
     PriorAuthoritySubmittedEvent submittedEvent =
         new PriorAuthoritySubmittedEvent(
-            priorAuthorityId, applicationId, EXPERT.name(), 1, 0L, submittedAt);
+            priorAuthorityId, applicationId, EXPERT.name(), 1, 0L, 0L, submittedAt);
 
     UpdatePriorAuthorityDraftCommand command =
         new UpdatePriorAuthorityDraftCommand(

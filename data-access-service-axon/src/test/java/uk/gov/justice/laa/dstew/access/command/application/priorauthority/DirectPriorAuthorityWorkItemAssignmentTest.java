@@ -174,7 +174,7 @@ class DirectPriorAuthorityWorkItemAssignmentTest {
 
   private PriorAuthoritySubmittedEvent submitted(
       UUID submissionId, UUID applicationId, Instant when) {
-    return new PriorAuthoritySubmittedEvent(submissionId, applicationId, "type", 1, 0L, when);
+    return new PriorAuthoritySubmittedEvent(submissionId, applicationId, "type", 1, 0L, 0L, when);
   }
 
   @AfterEach
