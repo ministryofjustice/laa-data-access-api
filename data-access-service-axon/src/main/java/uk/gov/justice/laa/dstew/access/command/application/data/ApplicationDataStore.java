@@ -87,6 +87,26 @@ public class ApplicationDataStore {
   }
 
   /**
+   * Returns the latest immutable data version currently stored for an application.
+   *
+   * <p>Intended for command-side use only, to capture a stable version pointer into an event at
+   * write time. Projections must not call this at replay time: they hydrate from the version pinned
+   * in the event they are handling, so that a rebuild reproduces the original result.
+   *
+   * @param applicationId the application identifier
+   * @return the highest stored data version for the application
+   * @throws IllegalStateException when the application has no stored data
+   */
+  public long latestVersion(UUID applicationId) {
+    return repository
+        .findFirstByIdApplicationIdOrderByIdVersionDesc(applicationId)
+        .orElseThrow(
+            () -> new IllegalStateException("Application data not found for " + applicationId))
+        .getId()
+        .version();
+  }
+
+  /**
    * Retrieves the available application-data versions for the supplied identifiers.
    *
    * @param ids the application-data identifiers to retrieve
