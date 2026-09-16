@@ -58,7 +58,7 @@ public class DeletePriorAuthorityDocumentUseCase {
             deletedAt));
 
     try {
-      sdsService.deleteFiles(draft.applicationId(), List.of(documentId.toString()));
+      sdsService.deleteFiles(draft.priorAuthorityId(), List.of(documentId.toString()));
     } catch (RuntimeException exception) {
       LOG.error(
           "Prior Authority document was deleted but SDS file deletion failed for priorAuthorityId={} documentId={}",

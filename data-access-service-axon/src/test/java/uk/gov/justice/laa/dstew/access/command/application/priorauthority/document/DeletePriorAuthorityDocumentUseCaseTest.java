@@ -64,7 +64,7 @@ class DeletePriorAuthorityDocumentUseCaseTest {
         .contains("\"documentId\":\"%s\"".formatted(documentId));
     InOrder calls = inOrder(dispatcher, sdsService);
     calls.verify(dispatcher).dispatch(any(PriorAuthorityDocumentDeleteCommand.class));
-    calls.verify(sdsService).deleteFiles(applicationId, List.of(documentId.toString()));
+    calls.verify(sdsService).deleteFiles(priorAuthorityId, List.of(documentId.toString()));
   }
 
   @Test
@@ -86,12 +86,12 @@ class DeletePriorAuthorityDocumentUseCaseTest {
                     Instant.now())));
     doThrow(new IllegalStateException("SDS unavailable"))
         .when(sdsService)
-        .deleteFiles(applicationId, List.of(documentId.toString()));
+        .deleteFiles(priorAuthorityId, List.of(documentId.toString()));
 
     useCase.execute(priorAuthorityId, documentId);
 
     verify(dispatcher).dispatch(any(PriorAuthorityDocumentDeleteCommand.class));
-    verify(sdsService).deleteFiles(applicationId, List.of(documentId.toString()));
+    verify(sdsService).deleteFiles(priorAuthorityId, List.of(documentId.toString()));
   }
 
   @Test
