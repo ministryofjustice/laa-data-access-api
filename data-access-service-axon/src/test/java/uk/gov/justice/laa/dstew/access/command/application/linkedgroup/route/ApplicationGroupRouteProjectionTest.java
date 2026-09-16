@@ -7,6 +7,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
+import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationCreationDetails;
 
 import java.time.Instant;
 import java.util.List;
@@ -19,6 +20,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
@@ -27,16 +30,20 @@ import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 class ApplicationGroupRouteProjectionTest {
   private static final Instant ORIGINAL_OCCURRED_AT = Instant.parse("2026-09-14T09:00:00Z");
   private static final Instant ROUTED_AT = Instant.parse("2026-09-14T10:15:00Z");
+  private static final String OFFICE_CODE = "1A001B";
 
   @Mock private ApplicationGroupRouteRepository routes;
+  @Mock private ApplicationDataStore applicationDataStore;
 
   @InjectMocks private ApplicationGroupRouteProjection projection;
 
   @Test
   void createsAStandaloneRouteWhenAnApplicationIsCreated() {
     UUID applicationId = UUID.randomUUID();
-    ApplicationCreatedEvent event = applicationCreatedEvent(applicationId, ROUTED_AT);
+    ApplicationCreatedEvent event = applicationCreatedEvent(applicationId, 7L, ROUTED_AT);
+    var applicationData = ApplicationDataPayload.from(applicationCreationDetails(applicationId));
     when(routes.findById(applicationId)).thenReturn(Optional.empty());
+    when(applicationDataStore.get(applicationId, 0L)).thenReturn(applicationData);
 
     projection.on(event);
 
@@ -47,6 +54,7 @@ class ApplicationGroupRouteProjectionTest {
     assertThat(savedRoute.getApplicationId()).isEqualTo(applicationId);
     assertThat(savedRoute.getRouteKind()).isEqualTo(ApplicationGroupRouteKind.STANDALONE);
     assertThat(savedRoute.getGroupId()).isNull();
+    assertThat(savedRoute.getOfficeCode()).isEqualTo(OFFICE_CODE);
     assertThat(savedRoute.getCreatedAt()).isEqualTo(ROUTED_AT);
     assertThat(savedRoute.getUpdatedAt()).isEqualTo(ROUTED_AT);
   }
@@ -63,7 +71,7 @@ class ApplicationGroupRouteProjectionTest {
 
     verify(routes).findById(applicationId);
     verify(routes, never()).save(any());
-    verifyNoMoreInteractions(routes);
+    verifyNoMoreInteractions(routes, applicationDataStore);
     assertThat(existingRoute.getRouteKind()).isEqualTo(ApplicationGroupRouteKind.LINKED_GROUP);
     assertThat(existingRoute.getGroupId()).isEqualTo(existingGroupId);
     assertThat(existingRoute.getUpdatedAt()).isEqualTo(ORIGINAL_OCCURRED_AT);
@@ -211,8 +219,18 @@ class ApplicationGroupRouteProjectionTest {
 
   private static ApplicationCreatedEvent applicationCreatedEvent(
       UUID applicationId, Instant occurredAt) {
+    return applicationCreatedEvent(applicationId, 0L, occurredAt);
+  }
+
+  private static ApplicationCreatedEvent applicationCreatedEvent(
+      UUID applicationId, long applicationDataVersion, Instant occurredAt) {
     return new ApplicationCreatedEvent(
-        applicationId, 0L, "fingerprint", "APPLICATION_SUBMITTED", 1, occurredAt);
+        applicationId,
+        applicationDataVersion,
+        "fingerprint",
+        "APPLICATION_SUBMITTED",
+        1,
+        occurredAt);
   }
 
   private static LinkedApplicationGroupCreatedEvent groupCreatedEvent(
@@ -228,6 +246,7 @@ class ApplicationGroupRouteProjectionTest {
 
   private static ApplicationGroupRoute route(
       UUID applicationId, ApplicationGroupRouteKind routeKind, UUID groupId) {
-    return new ApplicationGroupRoute(applicationId, routeKind, groupId, ORIGINAL_OCCURRED_AT);
+    return new ApplicationGroupRoute(
+        applicationId, routeKind, groupId, OFFICE_CODE, ORIGINAL_OCCURRED_AT);
   }
 }

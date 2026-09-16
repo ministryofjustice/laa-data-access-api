@@ -18,11 +18,13 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /** Unit tests for write-side application-link routing decisions. */
 @ExtendWith(MockitoExtension.class)
 class ApplicationGroupRouteResolverTest {
   private static final Instant CREATED_AT = Instant.parse("2026-09-14T09:00:00Z");
+  private static final String OFFICE_CODE = "1A001B";
 
   @Mock private ApplicationGroupRouteRepository routes;
 
@@ -58,6 +60,23 @@ class ApplicationGroupRouteResolverTest {
             "Application "
                 + sourceRoute.getApplicationId()
                 + " already belongs to a different linked group");
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("invalidOfficeCodeScenarios")
+  void rejectsDifferentOrMissingOfficeCodes(
+      String scenario, ApplicationGroupRoute sourceRoute, ApplicationGroupRoute targetRoute) {
+    when(routes.findAllByApplicationIdInForUpdate(sortedIds(sourceRoute, targetRoute)))
+        .thenReturn(sortedRoutes(sourceRoute, targetRoute));
+
+    assertThatThrownBy(
+            () -> resolver.resolve(sourceRoute.getApplicationId(), targetRoute.getApplicationId()))
+        .as(scenario)
+        .isInstanceOfSatisfying(
+            ValidationException.class,
+            exception ->
+                assertThat(exception.errors())
+                    .containsExactly("Applications must have the same office code"));
   }
 
   @Test
@@ -202,6 +221,37 @@ class ApplicationGroupRouteResolverTest {
             route(secondApplicationId, ApplicationGroupRouteKind.LINKED_GROUP, targetGroupId)));
   }
 
+  private static Stream<Arguments> invalidOfficeCodeScenarios() {
+    UUID firstApplicationId = UUID.fromString("00000000-0000-0000-0000-000000000001");
+    UUID secondApplicationId = UUID.fromString("00000000-0000-0000-0000-000000000002");
+    UUID groupId = UUID.fromString("10000000-0000-0000-0000-000000000001");
+    return Stream.of(
+        Arguments.of(
+            "different office codes",
+            route(firstApplicationId, ApplicationGroupRouteKind.STANDALONE, null, "1A001B"),
+            route(secondApplicationId, ApplicationGroupRouteKind.STANDALONE, null, "2B002C")),
+        Arguments.of(
+            "missing source office code",
+            route(firstApplicationId, ApplicationGroupRouteKind.STANDALONE, null, null),
+            route(secondApplicationId, ApplicationGroupRouteKind.STANDALONE, null)),
+        Arguments.of(
+            "missing target office code",
+            route(firstApplicationId, ApplicationGroupRouteKind.STANDALONE, null),
+            route(secondApplicationId, ApplicationGroupRouteKind.STANDALONE, null, null)),
+        Arguments.of(
+            "both office codes missing",
+            route(firstApplicationId, ApplicationGroupRouteKind.STANDALONE, null, null),
+            route(secondApplicationId, ApplicationGroupRouteKind.STANDALONE, null, null)),
+        Arguments.of(
+            "both office codes blank",
+            route(firstApplicationId, ApplicationGroupRouteKind.STANDALONE, null, " "),
+            route(secondApplicationId, ApplicationGroupRouteKind.STANDALONE, null, " ")),
+        Arguments.of(
+            "already linked applications with different office codes",
+            route(firstApplicationId, ApplicationGroupRouteKind.LINKED_GROUP, groupId, "1A001B"),
+            route(secondApplicationId, ApplicationGroupRouteKind.LINKED_GROUP, groupId, "2B002C")));
+  }
+
   private static Stream<Arguments> invalidPlans() {
     UUID groupId = UUID.fromString("10000000-0000-0000-0000-000000000001");
     return Stream.of(
@@ -238,6 +288,11 @@ class ApplicationGroupRouteResolverTest {
 
   private static ApplicationGroupRoute route(
       UUID applicationId, ApplicationGroupRouteKind routeKind, UUID groupId) {
-    return new ApplicationGroupRoute(applicationId, routeKind, groupId, CREATED_AT);
+    return route(applicationId, routeKind, groupId, OFFICE_CODE);
+  }
+
+  private static ApplicationGroupRoute route(
+      UUID applicationId, ApplicationGroupRouteKind routeKind, UUID groupId, String officeCode) {
+    return new ApplicationGroupRoute(applicationId, routeKind, groupId, officeCode, CREATED_AT);
   }
 }

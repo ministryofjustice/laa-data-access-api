@@ -1508,6 +1508,59 @@ class PostgresAxonIntegrationTest {
   }
 
   @Test
+  void givenApplicationsFromDifferentOffices_whenApplicationsAreLinked_thenRequestIsRejected() {
+    UUID sourceApplicationId = UUID.randomUUID();
+    UUID targetApplicationId = UUID.randomUUID();
+    String clientLastName = uniqueClientLastName();
+    createApplication(sourceApplicationId, clientLastName, "1A001B");
+    createApplication(targetApplicationId, clientLastName, "2B002C");
+    long groupEventCount = countGroupEvents();
+
+    ResponseEntity<Void> response = linkApplication(sourceApplicationId, targetApplicationId);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(countGroupEvents()).isEqualTo(groupEventCount);
+    assertStandaloneRoute(sourceApplicationId);
+    assertStandaloneRoute(targetApplicationId);
+  }
+
+  @Test
+  void givenApplicationWithoutOfficeCode_whenApplicationIsCreated_thenRequestIsRejected() {
+    UUID applicationId = UUID.randomUUID();
+    String clientLastName = uniqueClientLastName();
+    var request = createApplicationRequest(applicationId, clientLastName);
+    var applicationContent = new HashMap<>(request.getApplicationContent());
+    var originalProvider = (Map<?, ?>) applicationContent.get("provider");
+    var provider = new HashMap<String, Object>();
+    originalProvider.forEach((key, value) -> provider.put(key.toString(), value));
+    provider.remove("officeCode");
+    applicationContent.put("provider", provider);
+    request.setApplicationContent(applicationContent);
+
+    var response = post(request, headers());
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(countRoutes(applicationId)).isZero();
+  }
+
+  @Test
+  void givenApplicationsWithBlankOfficeCodes_whenApplicationsAreLinked_thenRequestIsRejected() {
+    UUID sourceApplicationId = UUID.randomUUID();
+    UUID targetApplicationId = UUID.randomUUID();
+    String clientLastName = uniqueClientLastName();
+    createApplication(sourceApplicationId, clientLastName, " ");
+    createApplication(targetApplicationId, clientLastName, " ");
+    long groupEventCount = countGroupEvents();
+
+    ResponseEntity<Void> response = linkApplication(sourceApplicationId, targetApplicationId);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(countGroupEvents()).isEqualTo(groupEventCount);
+    assertStandaloneRoute(sourceApplicationId);
+    assertStandaloneRoute(targetApplicationId);
+  }
+
+  @Test
   void
       givenStandaloneSourceAndGroupedTarget_whenApplicationsAreLinked_thenSourceJoinsTargetGroup() {
     UUID sourceApplicationId = UUID.randomUUID();
@@ -2299,7 +2352,20 @@ class PostgresAxonIntegrationTest {
   }
 
   private void createApplication(UUID applicationId, String clientLastName) {
-    applicationId(post(createApplicationRequest(applicationId, clientLastName), headers()));
+    createApplication(applicationId, clientLastName, "1A001B");
+  }
+
+  private void createApplication(UUID applicationId, String clientLastName, String officeCode) {
+    var request = createApplicationRequest(applicationId, clientLastName);
+    var applicationContent = new HashMap<>(request.getApplicationContent());
+    var originalProvider = (Map<?, ?>) applicationContent.get("provider");
+    var provider = new HashMap<String, Object>();
+    originalProvider.forEach((key, value) -> provider.put(key.toString(), value));
+    provider.put("officeCode", officeCode);
+    applicationContent.put("provider", provider);
+    request.setApplicationContent(applicationContent);
+
+    applicationId(post(request, headers()));
     awaitProjection(applicationId);
     awaitRoute(applicationId, ApplicationGroupRouteKind.STANDALONE);
   }

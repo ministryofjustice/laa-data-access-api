@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
@@ -10,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /** Resolves the write-side routing action required to link one application to another. */
 @Service
@@ -30,10 +32,15 @@ public class ApplicationGroupRouteResolver {
     var sourceRoute = requiredRoute(routesByApplicationId, sourceApplicationId, "source");
     var targetRoute = requiredRoute(routesByApplicationId, targetApplicationId, "target");
 
+    if (!sourceRoute.hasSameOfficeCodeAs(targetRoute)) {
+      throw new ValidationException(List.of("Applications must have the same office code"));
+    }
+
     if (isSameLinkedGroup(sourceRoute, targetRoute)) {
       return new ApplicationLinkPlan(
           ApplicationLinkAction.ALREADY_LINKED, sourceRoute.getGroupId());
     }
+
     if (sourceRoute.getRouteKind() == ApplicationGroupRouteKind.STANDALONE
         && targetRoute.getRouteKind() == ApplicationGroupRouteKind.STANDALONE) {
       return new ApplicationLinkPlan(ApplicationLinkAction.CREATE_GROUP, null);

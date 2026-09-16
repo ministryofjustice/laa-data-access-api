@@ -2,6 +2,7 @@ CREATE TABLE application_group_route (
     application_id UUID PRIMARY KEY,
     route_kind VARCHAR(32) NOT NULL,
     group_id UUID,
+    office_code TEXT NOT NULL,
     route_version BIGINT NOT NULL DEFAULT 0,
     created_at TIMESTAMPTZ NOT NULL,
     updated_at TIMESTAMPTZ NOT NULL,

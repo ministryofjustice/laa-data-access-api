@@ -33,6 +33,9 @@ public class ApplicationGroupRoute {
   @Column(name = "group_id")
   private @Nullable UUID groupId;
 
+  @Column(name = "office_code", nullable = false)
+  private @Nullable String officeCode;
+
   @Version
   @Column(name = "route_version", nullable = false)
   private long routeVersion;
@@ -48,12 +51,21 @@ public class ApplicationGroupRoute {
       UUID applicationId,
       ApplicationGroupRouteKind routeKind,
       @Nullable UUID groupId,
+      @Nullable String officeCode,
       Instant occurredAt) {
     this.applicationId = applicationId;
     this.routeKind = routeKind;
     this.groupId = groupId;
+    this.officeCode = officeCode;
     this.createdAt = occurredAt;
     this.updatedAt = occurredAt;
+  }
+
+  /** Returns whether both routes have the same non-null submission office code. */
+  boolean hasSameOfficeCodeAs(ApplicationGroupRoute other) {
+    return officeCode != null
+        && !officeCode.isBlank()
+        && Objects.equals(officeCode, other.officeCode);
   }
 
   /** Moves a standalone route into a linked group, or no-ops if already in the same group. */

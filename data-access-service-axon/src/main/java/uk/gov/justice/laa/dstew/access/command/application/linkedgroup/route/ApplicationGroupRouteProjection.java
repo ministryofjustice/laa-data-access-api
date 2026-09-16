@@ -10,6 +10,7 @@ import org.axonframework.messaging.eventhandling.annotation.EventHandler;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
@@ -19,7 +20,10 @@ import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 @RequiredArgsConstructor
 @Namespace("application-group-route")
 public class ApplicationGroupRouteProjection {
+  private static final long SUBMISSION_DATA_VERSION = 0L;
+
   private final ApplicationGroupRouteRepository routes;
+  private final ApplicationDataStore applicationDataStore;
 
   /** Inserts the initial standalone route unless duplicate delivery has already created one. */
   @EventHandler
@@ -29,9 +33,16 @@ public class ApplicationGroupRouteProjection {
       return;
     }
 
+    var applicationData = applicationDataStore.get(event.applicationId(), SUBMISSION_DATA_VERSION);
+    var officeCode = applicationData.provider().getOfficeCode();
+
     routes.save(
         new ApplicationGroupRoute(
-            event.applicationId(), ApplicationGroupRouteKind.STANDALONE, null, event.occurredAt()));
+            event.applicationId(),
+            ApplicationGroupRouteKind.STANDALONE,
+            null,
+            officeCode,
+            event.occurredAt()));
   }
 
   /** Transitions all listed member routes into the created linked group inside one transaction. */

@@ -53,6 +53,7 @@ The resulting behaviour is:
 ## Important rules
 
 - An application cannot be linked to itself.
+- Source and target applications must have the same non-null submission office code.
 - Source and target applications must already have routes, which are created from
   `ApplicationCreatedEvent`.
 - A standalone target becomes the group lead when the first group is established.
