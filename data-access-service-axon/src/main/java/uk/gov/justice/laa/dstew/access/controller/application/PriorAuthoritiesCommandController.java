@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.controller.application;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -34,7 +35,7 @@ public class PriorAuthoritiesCommandController implements PriorAuthorityCommandA
   @Operation(security = @SecurityRequirement(name = "BearerAuth"))
   @PatchMapping(PriorAuthorityCommandApi.PATH_MAKE_PRIOR_AUTHORITY_DECISION)
   public ResponseEntity<Void> makePriorAuthorityDecision(
-      @RequestHeader("X-Service-Name") ServiceName serviceName,
+      @NotNull @RequestHeader("X-Service-Name") ServiceName serviceName,
       @PathVariable UUID priorAuthorityId,
       @Valid @RequestBody MakePriorAuthorityDecisionRequest makePriorAuthorityDecisionRequest) {
     makePriorAuthorityDecisionUseCase.execute(
