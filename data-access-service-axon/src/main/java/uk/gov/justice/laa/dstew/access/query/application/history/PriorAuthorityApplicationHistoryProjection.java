@@ -66,7 +66,7 @@ public class PriorAuthorityApplicationHistoryProjection {
         ref.applicationId(),
         event.workItemId(),
         ref.priorAuthorityType(),
-        "PRIOR_AUTHORITY_ASSIGNMENT_CHANGED",
+        "PRIOR_AUTHORITY_ASSIGNED",
         serialise(event),
         event.occurredAt());
   }
@@ -88,7 +88,7 @@ public class PriorAuthorityApplicationHistoryProjection {
         ref.applicationId(),
         event.workItemId(),
         ref.priorAuthorityType(),
-        "PRIOR_AUTHORITY_ASSIGNMENT_CHANGED",
+        "PRIOR_AUTHORITY_UNASSIGNED",
         serialise(event),
         event.occurredAt());
   }
