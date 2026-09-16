@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.dataaccesstools.cli.applications;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -22,7 +23,6 @@ import uk.gov.justice.laa.dstew.dataaccesstools.cli.DataAccessToolsCommand;
 class MakeDecisionCommandTest {
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private final UUID applicationId = UUID.randomUUID();
-  private final UUID caseworkerId = UUID.randomUUID();
   private final UUID firstProceedingId = UUID.randomUUID();
   private final UUID secondProceedingId = UUID.randomUUID();
   private final List<Request> requests = new ArrayList<>();
@@ -41,7 +41,7 @@ class MakeDecisionCommandTest {
   }
 
   @Test
-  void getsCurrentApplicationDataAndMakesDecisionForTheAssignedCaseworker() throws Exception {
+  void getsCurrentApplicationDataAndMakesDecisionForTheAuthenticatedUser() throws Exception {
     int exitCode =
         new CommandLine(new DataAccessToolsCommand())
             .execute(
@@ -52,9 +52,7 @@ class MakeDecisionCommandTest {
                 "--application-id",
                 applicationId.toString(),
                 "--decision",
-                "GRANTED",
-                "--caseworker-id",
-                caseworkerId.toString());
+                "GRANTED");
 
     assertEquals(0, exitCode);
     assertEquals(2, requests.size());
@@ -66,7 +64,7 @@ class MakeDecisionCommandTest {
     JsonNode decision = OBJECT_MAPPER.readTree(requests.get(1).body());
     assertEquals("GRANTED", decision.required("overallDecision").asText());
     assertEquals(7, decision.required("applicationVersion").asLong());
-    assertEquals(caseworkerId.toString(), decision.required("caseworkerId").asText());
+    assertFalse(decision.has("caseworkerId"));
     assertEquals(2, decision.required("proceedings").size());
     assertTrue(decision.toString().contains(firstProceedingId.toString()));
     assertTrue(decision.toString().contains(secondProceedingId.toString()));
