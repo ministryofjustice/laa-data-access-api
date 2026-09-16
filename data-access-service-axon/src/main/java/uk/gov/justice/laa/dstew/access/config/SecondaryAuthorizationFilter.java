@@ -96,7 +96,7 @@ public class SecondaryAuthorizationFilter extends OncePerRequestFilter {
       return;
     }
 
-    List<String> appRoles = claimAsNonBlankDistinctStrings(authorizationJwt, APP_ROLES_CLAIM);
+    List<String> appRoles = claimAsNonBlankDistinctStrings(authorizationJwt, LAA_APP_ROLES_CLAIM);
     List<String> laaAccounts = claimAsNonBlankDistinctStrings(authorizationJwt, LAA_ACCOUNTS_CLAIM);
     if (appRoles.isEmpty() && laaAccounts.isEmpty()) {
       // Authenticated but no entitlements — let method security determine access.
@@ -121,7 +121,7 @@ public class SecondaryAuthorizationFilter extends OncePerRequestFilter {
 
   private Jwt mergeEntitlementClaims(Jwt oboJwt, List<String> appRoles, List<String> laaAccounts) {
     Map<String, Object> claims = new LinkedHashMap<>(oboJwt.getClaims());
-    claims.put(APP_ROLES_CLAIM, appRoles);
+    claims.put(LAA_APP_ROLES_CLAIM, appRoles);
     claims.put(LAA_ACCOUNTS_CLAIM, laaAccounts);
 
     Jwt.Builder builder =
