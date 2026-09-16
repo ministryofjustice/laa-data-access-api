@@ -323,14 +323,15 @@ class PriorAuthorityProjectionTest {
                 content,
                 "{}",
                 Instant.now(),
-                "GRANTED",
-                "Decision recorded",
-                99.99,
-                Instant.parse("2026-09-08T12:00:00Z"),
-                null,
-                DisbursementInformation.builder().build(),
-                null,
-                "{\"decision\":\"GRANTED\"}"));
+                new PriorAuthorityDataPayload.DecisionDetails(
+                    "GRANTED",
+                    "Decision recorded",
+                    99.99,
+                    Instant.parse("2026-09-08T12:00:00Z"),
+                    null,
+                    DisbursementInformation.builder().build(),
+                    null,
+                    "{\"decision\":\"GRANTED\"}")));
 
     PriorAuthorityResult result =
         projection.handle(new FindPriorAuthorityByPriorAuthorityIdQuery(priorAuthorityId));

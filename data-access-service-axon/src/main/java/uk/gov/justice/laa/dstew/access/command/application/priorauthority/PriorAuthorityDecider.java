@@ -7,7 +7,6 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityDocumentMetadata;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityStatusConflictException;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityVersionConflictException;
@@ -113,8 +112,18 @@ public final class PriorAuthorityDecider {
         command.documentId(),
         command.occurredAt(),
         command.fileSize(),
-        PriorAuthorityDocumentMetadata.PDF_CONTENT_TYPE,
+        command.contentType(),
         command.checksum(),
         applicationId);
+  }
+
+  /** Returns the persisted event for setting or replacing a document type. */
+  public static PriorAuthorityDocumentTypeUpdatedEvent decideDocumentTypeUpdated(
+      PriorAuthorityDocumentTypeUpdateCommand command) {
+    return new PriorAuthorityDocumentTypeUpdatedEvent(
+        command.priorAuthorityId(),
+        command.documentId(),
+        command.documentType(),
+        command.occurredAt());
   }
 }

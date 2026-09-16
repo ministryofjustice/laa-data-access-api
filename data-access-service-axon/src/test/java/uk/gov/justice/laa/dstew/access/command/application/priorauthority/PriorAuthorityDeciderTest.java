@@ -138,14 +138,15 @@ class PriorAuthorityDeciderTest {
             new PriorAuthorityContent(PriorAuthorityType.EXPERT, null, null, null, null),
             "{}",
             OCCURRED_AT,
-            "REFUSED",
-            "Recorded",
-            0.0,
-            OCCURRED_AT,
-            null,
-            null,
-            null,
-            "{\"decision\":\"REFUSED\"}");
+            new PriorAuthorityDataPayload.DecisionDetails(
+                "REFUSED",
+                "Recorded",
+                0.0,
+                OCCURRED_AT,
+                null,
+                null,
+                null,
+                "{\"decision\":\"REFUSED\"}"));
 
     Optional<PriorAuthorityDecisionRecordedEvent> result =
         PriorAuthorityDecider.decideDecision(state, command, payload);
@@ -286,14 +287,8 @@ class PriorAuthorityDeciderTest {
             new PriorAuthorityContent(PriorAuthorityType.EXPERT, null, null, null, null),
             "{}",
             OCCURRED_AT,
-            "GRANTED",
-            "Recorded",
-            100.0,
-            OCCURRED_AT,
-            null,
-            null,
-            null,
-            null);
+            new PriorAuthorityDataPayload.DecisionDetails(
+                "GRANTED", "Recorded", 100.0, OCCURRED_AT, null, null, null, null));
 
     assertThatThrownBy(() -> PriorAuthorityDecider.decideDecision(state, command, payload))
         .isInstanceOf(PriorAuthorityStatusConflictException.class);
@@ -318,14 +313,15 @@ class PriorAuthorityDeciderTest {
         new PriorAuthorityContent(PriorAuthorityType.EXPERT, null, null, null, null),
         "{}",
         OCCURRED_AT,
-        "GRANTED",
-        "Recorded",
-        0.0,
-        OCCURRED_AT,
-        null,
-        null,
-        null,
-        "{\"decision\":\"GRANTED\"}");
+        new PriorAuthorityDataPayload.DecisionDetails(
+            "GRANTED",
+            "Recorded",
+            0.0,
+            OCCURRED_AT,
+            null,
+            null,
+            null,
+            "{\"decision\":\"GRANTED\"}"));
   }
 
   @Test
@@ -336,13 +332,14 @@ class PriorAuthorityDeciderTest {
         new PriorAuthorityDocumentUploadCommand(
             priorAuthorityId,
             documentId,
-            "gateway_evidence",
             "CIVIL_APPLY",
             "abc123",
             "{}",
             OCCURRED_AT,
             "evidence.pdf",
-            7L);
+            7L,
+            "PDF",
+            "application/pdf");
     UUID applicationId = UUID.randomUUID();
     PriorAuthorityDocumentUploadedEvent event =
         PriorAuthorityDecider.decideDocumentUploaded(command, applicationId);
@@ -354,6 +351,23 @@ class PriorAuthorityDeciderTest {
     assertThat(event.contentType()).isEqualTo("application/pdf");
     assertThat(event.checksum()).isEqualTo("abc123");
     assertThat(event.parentApplicationId()).isEqualTo(applicationId);
+  }
+
+  @Test
+  void givenDocumentTypeUpdateCommand_whenDecideDocumentTypeUpdated_thenMapsUpdateFields() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    PriorAuthorityDocumentTypeUpdateCommand command =
+        new PriorAuthorityDocumentTypeUpdateCommand(
+            priorAuthorityId, documentId, "GATEWAY_EVIDENCE", "{}", OCCURRED_AT);
+
+    PriorAuthorityDocumentTypeUpdatedEvent event =
+        PriorAuthorityDecider.decideDocumentTypeUpdated(command);
+
+    assertThat(event.priorAuthorityId()).isEqualTo(priorAuthorityId);
+    assertThat(event.documentId()).isEqualTo(documentId);
+    assertThat(event.documentType()).isEqualTo("GATEWAY_EVIDENCE");
+    assertThat(event.occurredAt()).isEqualTo(OCCURRED_AT);
   }
 
   @Test
