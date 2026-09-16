@@ -5,16 +5,11 @@ import java.util.UUID;
 import org.axonframework.messaging.commandhandling.annotation.Command;
 import org.axonframework.modelling.annotation.TargetEntityId;
 
-/** Command that performs and finalises a prior-authority document upload. */
+/** Command that sets or replaces the type of an uploaded Prior Authority document. */
 @Command(routingKey = "priorAuthorityId")
-public record PriorAuthorityDocumentUploadCommand(
+public record PriorAuthorityDocumentTypeUpdateCommand(
     @TargetEntityId UUID priorAuthorityId,
     UUID documentId,
-    String sourceService,
-    String checksum,
+    String documentType,
     String serialisedRequest,
-    Instant occurredAt,
-    String originalFilename,
-    Long fileSize,
-    String fileType,
-    String contentType) {}
+    Instant occurredAt) {}

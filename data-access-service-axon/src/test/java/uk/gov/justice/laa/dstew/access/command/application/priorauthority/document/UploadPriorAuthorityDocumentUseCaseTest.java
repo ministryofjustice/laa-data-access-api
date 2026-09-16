@@ -20,6 +20,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
+import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentUploadCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.ValidateApplicationGrantedCommand;
@@ -37,11 +38,12 @@ class UploadPriorAuthorityDocumentUseCaseTest {
   @Mock private PriorAuthorityDraftStore draftStore;
   @Mock private RetryingCommandDispatcher dispatcher;
   @Mock private SdsService sdsService;
+  private final ObjectMapper objectMapper = new ObjectMapper();
 
   @Test
   void givenDraftExists_whenExecute_thenValidatesApplicationAndDispatchesUploadCommand() {
     UploadPriorAuthorityDocumentUseCase useCase =
-        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService);
+        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService, objectMapper);
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     MockMultipartFile file =
@@ -66,10 +68,9 @@ class UploadPriorAuthorityDocumentUseCaseTest {
         .when(dispatcher)
         .dispatch(org.mockito.ArgumentMatchers.any(PriorAuthorityDocumentUploadCommand.class));
 
-    var response = useCase.execute(priorAuthorityId, file, "gateway_evidence", "CIVIL_APPLY");
+    var response = useCase.execute(priorAuthorityId, file, "CIVIL_APPLY");
 
     assertThat(response.documentId()).isNotNull();
-    assertThat(response.documentType()).isEqualTo("gateway_evidence");
     assertThat(response.fileType()).isEqualTo("PDF");
     assertThat(response.contentType()).isEqualTo("application/pdf");
     assertThat(response.sourceService()).isEqualTo("CIVIL_APPLY");
@@ -80,14 +81,26 @@ class UploadPriorAuthorityDocumentUseCaseTest {
             org.mockito.ArgumentMatchers.eq(priorAuthorityId),
             org.mockito.ArgumentMatchers.eq(response.documentId()),
             org.mockito.ArgumentMatchers.eq(file));
-    verify(dispatcher)
-        .dispatch(org.mockito.ArgumentMatchers.any(PriorAuthorityDocumentUploadCommand.class));
+    ArgumentCaptor<PriorAuthorityDocumentUploadCommand> commandCaptor =
+        ArgumentCaptor.forClass(PriorAuthorityDocumentUploadCommand.class);
+    verify(dispatcher).dispatch(commandCaptor.capture());
+    assertThat(commandCaptor.getValue().fileType()).isEqualTo("PDF");
+    assertThat(commandCaptor.getValue().contentType()).isEqualTo("application/pdf");
+    assertThat(commandCaptor.getValue().serialisedRequest())
+        .contains(
+            "\"documentId\":\"%s\"".formatted(response.documentId()),
+            "\"originalFilename\":\"evidence.pdf\"",
+            "\"fileSize\":12",
+            "\"fileType\":\"PDF\"",
+            "\"contentType\":\"application/pdf\"",
+            "\"sourceService\":\"CIVIL_APPLY\"",
+            "\"checksum\":\"abc123\"");
   }
 
   @Test
   void givenDraftMissing_whenExecute_thenThrowsNotFound() {
     UploadPriorAuthorityDocumentUseCase useCase =
-        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService);
+        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService, objectMapper);
     UUID priorAuthorityId = UUID.randomUUID();
     MockMultipartFile file =
         new MockMultipartFile("file", "evidence.pdf", "application/pdf", "%PDF-content".getBytes());
@@ -95,14 +108,13 @@ class UploadPriorAuthorityDocumentUseCaseTest {
     when(draftStore.find(priorAuthorityId)).thenReturn(Optional.empty());
 
     assertThatExceptionOfType(ResourceNotFoundException.class)
-        .isThrownBy(
-            () -> useCase.execute(priorAuthorityId, file, "gateway_evidence", "CIVIL_APPLY"));
+        .isThrownBy(() -> useCase.execute(priorAuthorityId, file, "CIVIL_APPLY"));
   }
 
   @Test
   void givenSdsReturnsNull_whenExecute_thenDispatchesCommandWithNullChecksum() {
     UploadPriorAuthorityDocumentUseCase useCase =
-        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService);
+        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService, objectMapper);
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     MockMultipartFile file =
@@ -127,7 +139,7 @@ class UploadPriorAuthorityDocumentUseCaseTest {
         .when(dispatcher)
         .dispatch(org.mockito.ArgumentMatchers.any(PriorAuthorityDocumentUploadCommand.class));
 
-    useCase.execute(priorAuthorityId, file, "gateway_evidence", "CIVIL_APPLY");
+    useCase.execute(priorAuthorityId, file, "CIVIL_APPLY");
 
     ArgumentCaptor<PriorAuthorityDocumentUploadCommand> commandCaptor =
         ArgumentCaptor.forClass(PriorAuthorityDocumentUploadCommand.class);
@@ -138,7 +150,7 @@ class UploadPriorAuthorityDocumentUseCaseTest {
   @Test
   void givenApplicationNotGranted_whenExecute_thenThrowsAndDoesNotDispatchUploadCommand() {
     UploadPriorAuthorityDocumentUseCase useCase =
-        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService);
+        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService, objectMapper);
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     MockMultipartFile file =
@@ -158,52 +170,22 @@ class UploadPriorAuthorityDocumentUseCaseTest {
         .dispatch(new ValidateApplicationGrantedCommand(applicationId));
 
     assertThatExceptionOfType(InvalidApplicationStateException.class)
-        .isThrownBy(
-            () -> useCase.execute(priorAuthorityId, file, "gateway_evidence", "CIVIL_APPLY"));
+        .isThrownBy(() -> useCase.execute(priorAuthorityId, file, "CIVIL_APPLY"));
 
     verify(dispatcher).dispatch(new ValidateApplicationGrantedCommand(applicationId));
     verifyNoMoreInteractions(dispatcher);
   }
 
   @Test
-  void givenBlankDocumentType_whenExecute_thenRejectsBeforeUploadingToSds() {
-    UploadPriorAuthorityDocumentUseCase useCase =
-        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService);
-    MockMultipartFile file =
-        new MockMultipartFile("file", "evidence.pdf", "application/pdf", "%PDF-content".getBytes());
-
-    assertThatExceptionOfType(IllegalArgumentException.class)
-        .isThrownBy(() -> useCase.execute(UUID.randomUUID(), file, " ", "CIVIL_APPLY"))
-        .withMessage("Document type must be provided");
-
-    verifyNoInteractions(sdsService);
-  }
-
-  @Test
-  void givenNullDocumentType_whenExecute_thenRejectsBeforeUploadingToSds() {
-    UploadPriorAuthorityDocumentUseCase useCase =
-        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService);
-    MockMultipartFile file =
-        new MockMultipartFile("file", "evidence.pdf", "application/pdf", "%PDF-content".getBytes());
-
-    assertThatExceptionOfType(IllegalArgumentException.class)
-        .isThrownBy(() -> useCase.execute(UUID.randomUUID(), file, null, "CIVIL_APPLY"))
-        .withMessage("Document type must be provided");
-
-    verifyNoInteractions(sdsService);
-  }
-
-  @Test
   void givenNonPdfContent_whenExecute_thenRejectsBeforeUploadingToSds() {
     UploadPriorAuthorityDocumentUseCase useCase =
-        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService);
+        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService, objectMapper);
     MockMultipartFile file =
         new MockMultipartFile("file", "evidence.txt", "text/plain", "not a PDF".getBytes());
 
     assertThatExceptionOfType(IllegalArgumentException.class)
-        .isThrownBy(
-            () -> useCase.execute(UUID.randomUUID(), file, "gateway_evidence", "CIVIL_APPLY"))
-        .withMessage("Only PDF documents are supported");
+        .isThrownBy(() -> useCase.execute(UUID.randomUUID(), file, "CIVIL_APPLY"))
+        .withMessage("Unsupported document content type");
 
     verifyNoInteractions(sdsService);
   }
@@ -211,13 +193,12 @@ class UploadPriorAuthorityDocumentUseCaseTest {
   @Test
   void givenPdfMimeWithInvalidSignature_whenExecute_thenRejectsBeforeUploadingToSds() {
     UploadPriorAuthorityDocumentUseCase useCase =
-        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService);
+        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService, objectMapper);
     MockMultipartFile file =
         new MockMultipartFile("file", "evidence.pdf", "application/pdf", "not a PDF".getBytes());
 
     assertThatExceptionOfType(IllegalArgumentException.class)
-        .isThrownBy(
-            () -> useCase.execute(UUID.randomUUID(), file, "gateway_evidence", "CIVIL_APPLY"))
+        .isThrownBy(() -> useCase.execute(UUID.randomUUID(), file, "CIVIL_APPLY"))
         .withMessage("Uploaded file is not a valid PDF document");
 
     verifyNoInteractions(sdsService);
@@ -226,14 +207,13 @@ class UploadPriorAuthorityDocumentUseCaseTest {
   @Test
   void givenUnreadablePdf_whenExecute_thenRejectsBeforeUploadingToSds() throws IOException {
     UploadPriorAuthorityDocumentUseCase useCase =
-        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService);
+        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService, objectMapper);
     MultipartFile file = mock(MultipartFile.class);
     when(file.getContentType()).thenReturn("application/pdf");
     when(file.getInputStream()).thenThrow(new IOException("Unable to read file"));
 
     assertThatExceptionOfType(IllegalArgumentException.class)
-        .isThrownBy(
-            () -> useCase.execute(UUID.randomUUID(), file, "gateway_evidence", "CIVIL_APPLY"))
+        .isThrownBy(() -> useCase.execute(UUID.randomUUID(), file, "CIVIL_APPLY"))
         .withMessage("Unable to validate uploaded document")
         .withCauseInstanceOf(IOException.class);
 
