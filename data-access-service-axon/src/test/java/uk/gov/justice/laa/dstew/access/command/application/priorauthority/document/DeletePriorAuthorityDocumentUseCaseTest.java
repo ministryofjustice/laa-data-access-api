@@ -25,6 +25,7 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorA
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityDocument;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
 
@@ -49,7 +50,7 @@ class DeletePriorAuthorityDocumentUseCaseTest {
                 new PriorAuthorityDataPayload(
                     priorAuthorityId,
                     applicationId,
-                    new PriorAuthorityContent(null, null, null, null, null),
+                    contentWithPdfDocument(documentId),
                     "{}",
                     Instant.now())));
 
@@ -81,12 +82,12 @@ class DeletePriorAuthorityDocumentUseCaseTest {
                 new PriorAuthorityDataPayload(
                     priorAuthorityId,
                     applicationId,
-                    new PriorAuthorityContent(null, null, null, null, null),
+                    contentWithPdfDocument(documentId),
                     "{}",
                     Instant.now())));
     doThrow(new IllegalStateException("SDS unavailable"))
         .when(sdsService)
-        .deleteFiles(priorAuthorityId, List.of(documentId.toString()));
+        .deleteFiles(priorAuthorityId, List.of(documentId.toString() + ".pdf"));
 
     useCase.execute(priorAuthorityId, documentId);
 
@@ -106,5 +107,25 @@ class DeletePriorAuthorityDocumentUseCaseTest {
         .isThrownBy(() -> useCase.execute(priorAuthorityId, UUID.randomUUID()));
 
     verifyNoInteractions(dispatcher, sdsService);
+  }
+
+  private PriorAuthorityContent contentWithPdfDocument(UUID documentId) {
+    return new PriorAuthorityContent(
+        null,
+        null,
+        null,
+        null,
+        null,
+        List.of(
+            new PriorAuthorityDocument(
+                documentId,
+                null,
+                "evidence.pdf",
+                "PDF",
+                "application/pdf",
+                1L,
+                Instant.now(),
+                "test",
+                null)));
   }
 }

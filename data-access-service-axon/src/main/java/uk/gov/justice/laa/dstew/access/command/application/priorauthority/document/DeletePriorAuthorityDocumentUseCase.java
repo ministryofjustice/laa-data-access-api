@@ -10,6 +10,7 @@ import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentDeleteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityDocument;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
@@ -48,6 +49,15 @@ public class DeletePriorAuthorityDocumentUseCase {
                 () ->
                     new ResourceNotFoundException(
                         "Prior Authority %s not found".formatted(priorAuthorityId)));
+    PriorAuthorityDocument document =
+        draft.content().uploadedDocuments().stream()
+            .filter(candidate -> candidate.documentId().equals(documentId))
+            .findFirst()
+            .orElseThrow(
+                () ->
+                    new ResourceNotFoundException(
+                        "Document %s not found for Prior Authority %s"
+                            .formatted(documentId, priorAuthorityId)));
     Instant deletedAt = Instant.now();
     dispatcher.dispatch(
         new PriorAuthorityDocumentDeleteCommand(
@@ -58,7 +68,10 @@ public class DeletePriorAuthorityDocumentUseCase {
             deletedAt));
 
     try {
-      sdsService.deleteFiles(draft.priorAuthorityId(), List.of(documentId.toString() + ".pdf"));
+      String fileName =
+          documentId
+              + PriorAuthorityDocumentFormat.fromFileType(document.fileType()).fileExtension();
+      sdsService.deleteFiles(draft.priorAuthorityId(), List.of(fileName));
     } catch (RuntimeException exception) {
       LOG.error(
           "Prior Authority document was deleted but SDS file deletion failed for priorAuthorityId={} documentId={}",
