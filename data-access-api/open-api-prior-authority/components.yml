@@ -55,7 +55,6 @@ components:
       type: object
       required:
         - documentId
-        - documentType
         - fileName
         - uploadedAt
       properties:
@@ -314,7 +313,6 @@ components:
       type: object
       required:
         - documentId
-        - documentType
         - fileName
         - fileType
         - contentType
@@ -325,8 +323,6 @@ components:
         documentId:
           type: string
           format: uuid
-        documentType:
-          $ref: "#/components/schemas/PriorAuthorityDocumentType"
         fileName:
           type: string
         fileType:
@@ -345,6 +341,27 @@ components:
           type: string
         checksum:
           type: string
+
+    UpdatePriorAuthorityDocumentTypeRequest:
+      type: object
+      required:
+        - documentType
+      properties:
+        documentType:
+          $ref: "#/components/schemas/PriorAuthorityDocumentType"
+
+    PriorAuthorityDocumentTypeUpdateResponse:
+      type: object
+      required:
+        - documentId
+        - updatedAt
+      properties:
+        documentId:
+          type: string
+          format: uuid
+        updatedAt:
+          type: string
+          format: date-time
 
     PriorAuthorityDocumentType:
       type: string
