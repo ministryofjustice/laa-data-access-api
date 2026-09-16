@@ -45,7 +45,7 @@ paths:
     post:
       tags:
         - work-list-command
-      summary: Assign an open work-list item
+      summary: Assign an open work-list item to the authenticated caseworker
       operationId: assignWorkListItem
       parameters:
         - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
@@ -58,6 +58,7 @@ paths:
             format: uuid
       requestBody:
         required: true
+        description: Supplies optimistic-concurrency and optional audit detail; the assignee is derived from the authenticated Entra OID.
         content:
           application/json:
             schema:

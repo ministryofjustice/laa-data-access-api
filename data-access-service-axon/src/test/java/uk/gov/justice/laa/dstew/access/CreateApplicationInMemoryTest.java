@@ -121,7 +121,6 @@ class CreateApplicationInMemoryTest {
     assertThat(response.getBody())
         .contains("\"openapi\":\"3.1")
         .contains("\"/api/v0/applications\"")
-        .contains("\"/api/v0/caseworkers\"")
         .contains("\"/api/v0/individuals\"");
 
     JsonNode openApi = new ObjectMapper().readTree(response.getBody());

@@ -338,29 +338,25 @@ Example response (verified against a running instance, after creating the applic
 }
 ```
 
-### Assign a caseworker to one or more applications
+### Assign an open work-list item to yourself
 
-`POST /api/v0/applications/assign`
+`POST /api/v0/work-list/{itemId}/assign` assigns the item to the authenticated JWT's Entra OID.
+The request body never accepts a caseworker ID.
 
 ```bash
-curl -i -X POST http://localhost:8082/api/v0/applications/assign \
+curl -i -X POST http://localhost:8082/api/v0/work-list/8c9e6c2e-4f1a-4e3a-9c2b-1a2b3c4d5e6f/assign \
   -H "Content-Type: application/json" \
   -H "X-Service-Name: CIVIL_DECIDE" \
   -d '{
-    "caseworkerId": "3f7b1e2a-6d4c-4a8e-9b0d-2c3d4e5f6a7b",
-    "applicationIds": [
-      "8c9e6c2e-4f1a-4e3a-9c2b-1a2b3c4d5e6f"
-    ],
+    "expectedAssignmentVersion": 0,
     "eventHistory": {
       "eventDescription": "Assigned during triage"
     }
   }'
 ```
 
-Response: `200 OK` with an empty body. Note: `caseworkerId` must reference an existing row in the
-`caseworkers` table (`axon` schema) — the axon module ships no seed data for it, so seed one first,
-e.g. `INSERT INTO caseworkers (id, username) VALUES ('3f7b1e2a-6d4c-4a8e-9b0d-2c3d4e5f6a7b', 'caseworker1');`.
-An unknown `caseworkerId` returns `404 Not Found`.
+Response: `200 OK` with an empty body. The authenticated OID must be a UUID; it is persisted as
+the assignment identity without looking up a `caseworkers` table.
 
 `POST /api/v0/applications/{id}/unassign`
 
@@ -417,6 +413,9 @@ current version returned by `GET /api/v0/applications/{id}` (optimistic concurre
 `409 Conflict`, e.g. `{"detail":"Application with id ... and version ... not found", "status":409}`.
 The version increments on every command against the aggregate (create, assign, unassign, decision,
 notes), so re-fetch it immediately before deciding.
+
+The authenticated JWT's Entra OID is the decision actor and must match the stored assignment OID.
+It is not accepted in the request JSON.
 
 Response: `204 No Content`.
 

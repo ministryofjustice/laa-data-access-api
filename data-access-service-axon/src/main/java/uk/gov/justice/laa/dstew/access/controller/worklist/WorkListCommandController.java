@@ -15,6 +15,7 @@ import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.model.WorkListAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.WorkListUnassignRequest;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaseworkerId;
 
 /** HTTP adapter for generic work-item assignment commands. */
 @RestController
@@ -22,15 +23,18 @@ public class WorkListCommandController implements WorkListCommandApi {
   private final AssignWorkItemUseCase assignWorkItemUseCase;
   private final UnassignWorkItemUseCase unassignWorkItemUseCase;
   private final ObjectMapper objectMapper;
+  private final AuthenticatedCaseworkerId authenticatedCaseworkerId;
 
   /** Creates the HTTP adapter with dedicated work-item assignment use cases. */
   public WorkListCommandController(
       AssignWorkItemUseCase assignWorkItemUseCase,
       UnassignWorkItemUseCase unassignWorkItemUseCase,
-      ObjectMapper objectMapper) {
+      ObjectMapper objectMapper,
+      AuthenticatedCaseworkerId authenticatedCaseworkerId) {
     this.assignWorkItemUseCase = assignWorkItemUseCase;
     this.unassignWorkItemUseCase = unassignWorkItemUseCase;
     this.objectMapper = objectMapper;
+    this.authenticatedCaseworkerId = authenticatedCaseworkerId;
   }
 
   @Override
@@ -39,7 +43,7 @@ public class WorkListCommandController implements WorkListCommandApi {
     assignWorkItemUseCase.execute(
         new AssignWorkItemCommand(
             itemId,
-            request.getCaseworkerId(),
+            authenticatedCaseworkerId.get(),
             request.getExpectedAssignmentVersion(),
             serialise(request),
             eventDescription(request.getEventHistory()),
