@@ -9,6 +9,8 @@ import io.swagger.v3.oas.models.media.Schema;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import uk.gov.justice.laa.dstew.access.config.swagger.ApplicationContentSchemaCustomizer;
 
 class ApplicationContentSchemaCustomizerTest {
@@ -73,31 +75,62 @@ class ApplicationContentSchemaCustomizerTest {
                 .getProperties()
                 .get("proceedings");
     assertThat(proceedingsSchema).isNotNull();
-    assertThat(proceedingsSchema.getType()).isEqualTo("array");
+    assertThat(proceedingsSchema.getTypes()).containsExactly("array");
     assertThat(proceedingsSchema.getMinItems()).isEqualTo(1);
   }
 
-  @Test
-  void
-      givenSchemaWithTypeArray_whenCustomise_thenTypeArrayContainingNullIsConvertedToNullableField() {
-    // given - Proceeding.json has fields with "type": ["string", "null"]
+  @ParameterizedTest
+  @CsvSource({
+    "Proceeding, delegatedFunctionsDate, string",
+    "Client, hasNationalInsuranceNumber, boolean"
+  })
+  void givenSchemaWithNullableTypeArray_whenCustomise_thenOpenApiTypeUnionIsPreserved(
+      String componentName, String propertyName, String propertyType) {
+    // given
     OpenAPI openApi = openApiWithComponents();
 
     // when
     customizer.customise(openApi);
 
-    // then - a field with "type": ["string", "null"] becomes type=string + nullable=true
+    // then
     @SuppressWarnings("unchecked")
-    Schema<?> delegatedFunctionsDate =
+    Schema<?> nullableProperty =
         (Schema<?>)
             openApi
                 .getComponents()
                 .getSchemas()
-                .get("Proceeding")
+                .get(componentName)
                 .getProperties()
-                .get("delegatedFunctionsDate");
-    assertThat(delegatedFunctionsDate.getType()).isEqualTo("string");
-    assertThat(delegatedFunctionsDate.getNullable()).isTrue();
+                .get(propertyName);
+    assertThat(nullableProperty.getTypes()).containsExactlyInAnyOrder(propertyType, "null");
+    assertThat(nullableProperty.getNullable()).isNull();
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "Client, appliedPreviously, boolean",
+    "Client, firstName, string",
+    "Client, addresses, array",
+    "Proceeding, substantiveLevelOfService, integer"
+  })
+  void givenSchemaWithScalarType_whenCustomise_thenOpenApiTypeSetIsPopulated(
+      String componentName, String propertyName, String propertyType) {
+    // given
+    OpenAPI openApi = openApiWithComponents();
+
+    // when
+    customizer.customise(openApi);
+
+    // then
+    Schema<?> property =
+        (Schema<?>)
+            openApi
+                .getComponents()
+                .getSchemas()
+                .get(componentName)
+                .getProperties()
+                .get(propertyName);
+    assertThat(property.getTypes()).containsExactly(propertyType);
   }
 
   @Test
