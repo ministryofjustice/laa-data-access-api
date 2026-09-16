@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -564,7 +565,7 @@ class WorkListIntegrationTest {
             .decision(DecisionStatus.GRANTED)
             .decisionJustification("Granted")
             .amountGranted(150.0)
-            .dateGranted(java.time.OffsetDateTime.now())
+            .dateGranted(OffsetDateTime.now())
             .eventHistory(
                 EventHistoryRequest.builder().eventDescription("Decision recorded").build())
             .priorAuthorityVersion(0L);

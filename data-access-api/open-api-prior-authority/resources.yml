@@ -2,7 +2,7 @@ paths:
   /api/v0/prior-authorities/{priorAuthorityId}:
     get:
       tags:
-        - prior-authorities
+        - prior-authority-query
       summary: Retrieve a Prior Authority request by priorAuthorityId, whether it is still an in-progress draft or has already been submitted
       operationId: getPriorAuthority
       parameters:
@@ -54,7 +54,7 @@ paths:
   /api/v0/prior-authorities/{priorAuthorityId}/decision:
     patch:
       tags:
-        - prior-authorities
+        - prior-authority-command
       summary: Record a decision for a Prior Authority request
       operationId: makePriorAuthorityDecision
       parameters:

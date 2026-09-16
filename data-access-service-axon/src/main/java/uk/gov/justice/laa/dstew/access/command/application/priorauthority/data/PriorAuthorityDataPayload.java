@@ -14,14 +14,18 @@ public record PriorAuthorityDataPayload(
     PriorAuthorityContent content,
     String serialisedRequest,
     Instant submittedAt,
-    String decision,
-    String decisionJustification,
-    Double amountGranted,
-    Instant dateGranted,
-    ExpertFeeInformation expert,
-    DisbursementInformation disbursement,
-    ApportionmentInformation apportionment,
-    String decisionSerialisedRequest) {
+    DecisionDetails decisionDetails) {
+
+  /** Decision data recorded once a prior-authority request has been decided. */
+  public record DecisionDetails(
+      String decision,
+      String decisionJustification,
+      Double amountGranted,
+      Instant dateGranted,
+      ExpertFeeInformation expert,
+      DisbursementInformation disbursement,
+      ApportionmentInformation apportionment,
+      String decisionSerialisedRequest) {}
 
   /** Creates an initial payload version before any decision has been recorded. */
   public PriorAuthorityDataPayload(
@@ -30,45 +34,52 @@ public record PriorAuthorityDataPayload(
       PriorAuthorityContent content,
       String serialisedRequest,
       Instant submittedAt) {
-    this(
-        priorAuthorityId,
-        applicationId,
-        content,
-        serialisedRequest,
-        submittedAt,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null);
+    this(priorAuthorityId, applicationId, content, serialisedRequest, submittedAt, null);
   }
 
   /** Returns a complete new data version containing the supplied decision details. */
-  public PriorAuthorityDataPayload withDecision(
-      String newDecision,
-      String newDecisionJustification,
-      Double newAmountGranted,
-      Instant newDateGranted,
-      ExpertFeeInformation expert,
-      DisbursementInformation disbursement,
-      ApportionmentInformation apportionment,
-      String newDecisionSerialisedRequest) {
+  public PriorAuthorityDataPayload withDecision(DecisionDetails newDecision) {
     return new PriorAuthorityDataPayload(
-        priorAuthorityId,
-        applicationId,
-        content,
-        serialisedRequest,
-        submittedAt,
-        newDecision,
-        newDecisionJustification,
-        newAmountGranted,
-        newDateGranted,
-        expert,
-        disbursement,
-        apportionment,
-        newDecisionSerialisedRequest);
+        priorAuthorityId, applicationId, content, serialisedRequest, submittedAt, newDecision);
+  }
+
+  /** Returns the recorded decision value, or {@code null} if the request has not been decided. */
+  public String decision() {
+    return decisionDetails == null ? null : decisionDetails.decision();
+  }
+
+  /** Returns the recorded decision justification, or {@code null} if undecided. */
+  public String decisionJustification() {
+    return decisionDetails == null ? null : decisionDetails.decisionJustification();
+  }
+
+  /** Returns the amount granted, or {@code null} if undecided. */
+  public Double amountGranted() {
+    return decisionDetails == null ? null : decisionDetails.amountGranted();
+  }
+
+  /** Returns the date granted, or {@code null} if undecided. */
+  public Instant dateGranted() {
+    return decisionDetails == null ? null : decisionDetails.dateGranted();
+  }
+
+  /** Returns the expert fee details, or {@code null} if undecided. */
+  public ExpertFeeInformation expert() {
+    return decisionDetails == null ? null : decisionDetails.expert();
+  }
+
+  /** Returns the disbursement details, or {@code null} if undecided. */
+  public DisbursementInformation disbursement() {
+    return decisionDetails == null ? null : decisionDetails.disbursement();
+  }
+
+  /** Returns the apportionment details, or {@code null} if undecided. */
+  public ApportionmentInformation apportionment() {
+    return decisionDetails == null ? null : decisionDetails.apportionment();
+  }
+
+  /** Returns the serialised decision request, or {@code null} if undecided. */
+  public String decisionSerialisedRequest() {
+    return decisionDetails == null ? null : decisionDetails.decisionSerialisedRequest();
   }
 }

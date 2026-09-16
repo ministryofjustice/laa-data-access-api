@@ -162,14 +162,15 @@ public class PriorAuthorityAggregate {
                   event.dataVersion(),
                   event.applicationId(),
                   current.withDecision(
-                      event.status(),
-                      command.decisionJustification(),
-                      command.amountGranted(),
-                      command.dateGranted(),
-                      command.expertFee(),
-                      command.disbursementInformation(),
-                      command.apportionmentInformation(),
-                      command.serialisedRequest()),
+                      new PriorAuthorityDataPayload.DecisionDetails(
+                          event.status(),
+                          command.decisionJustification(),
+                          command.amountGranted(),
+                          command.dateGranted(),
+                          command.expertFee(),
+                          command.disbursementInformation(),
+                          command.apportionmentInformation(),
+                          command.serialisedRequest())),
                   command.serialisedRequest(),
                   command.occurredAt());
               eventAppender.append(event);

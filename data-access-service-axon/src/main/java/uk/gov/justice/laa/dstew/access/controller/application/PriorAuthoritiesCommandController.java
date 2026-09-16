@@ -10,14 +10,14 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
-import uk.gov.justice.laa.dstew.access.api.PriorAuthoritiesApi;
+import uk.gov.justice.laa.dstew.access.api.PriorAuthorityCommandApi;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.MakePriorAuthorityDecisionUseCase;
 import uk.gov.justice.laa.dstew.access.model.MakePriorAuthorityDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 
 /** HTTP command adapter for Prior Authority decision writes. */
 @RestController
-public class PriorAuthoritiesCommandController {
+public class PriorAuthoritiesCommandController implements PriorAuthorityCommandApi {
   private final MakePriorAuthorityDecisionUseCase makePriorAuthorityDecisionUseCase;
   private final MakePriorAuthorityDecisionCommandMapper makePriorAuthorityDecisionCommandMapper;
 
@@ -30,8 +30,9 @@ public class PriorAuthoritiesCommandController {
   }
 
   /** Records a decision against an existing Prior Authority request and returns 204. */
+  @Override
   @Operation(security = @SecurityRequirement(name = "BearerAuth"))
-  @PatchMapping(PriorAuthoritiesApi.PATH_MAKE_PRIOR_AUTHORITY_DECISION)
+  @PatchMapping(PriorAuthorityCommandApi.PATH_MAKE_PRIOR_AUTHORITY_DECISION)
   public ResponseEntity<Void> makePriorAuthorityDecision(
       @RequestHeader("X-Service-Name") ServiceName serviceName,
       @PathVariable UUID priorAuthorityId,
