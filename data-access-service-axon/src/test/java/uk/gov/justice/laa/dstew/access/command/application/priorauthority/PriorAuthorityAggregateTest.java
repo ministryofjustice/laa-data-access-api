@@ -586,12 +586,12 @@ class PriorAuthorityAggregateTest {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
+    UUID documentTwoId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-09-08T12:00:00Z");
     String serialisedRequest = "{\"documentType\":\"GATEWAY_EVIDENCE\"}";
     PriorAuthorityDocumentTypeUpdateCommand command =
         new PriorAuthorityDocumentTypeUpdateCommand(
             priorAuthorityId, documentId, "GATEWAY_EVIDENCE", serialisedRequest, occurredAt);
-
     aggregate.on(
         new PriorAuthorityDraftStartedEvent(
             priorAuthorityId, applicationId, "EXPERT", 1, occurredAt));
@@ -617,6 +617,16 @@ class PriorAuthorityAggregateTest {
                                 1L,
                                 occurredAt,
                                 "CIVIL_APPLY",
+                                "checksum"),
+                            new PriorAuthorityDocument(
+                                documentTwoId,
+                                null,
+                                "other_evidence.pdf",
+                                "PDF",
+                                "application/pdf",
+                                1L,
+                                occurredAt,
+                                "CIVIL_APPLY",
                                 "checksum"))),
                     "{}",
                     occurredAt)));
@@ -634,10 +644,78 @@ class PriorAuthorityAggregateTest {
             eq(occurredAt));
     assertThat(payloadCaptor.getValue().content().uploadedDocuments().getFirst().documentType())
         .isEqualTo("GATEWAY_EVIDENCE");
+    assertThat(payloadCaptor.getValue().content().uploadedDocuments().get(1).documentType())
+        .isNull();
     verify(eventAppender)
         .append(
             new PriorAuthorityDocumentTypeUpdatedEvent(
                 priorAuthorityId, documentId, "GATEWAY_EVIDENCE", occurredAt));
+  }
+
+  @Test
+  void givenDraftWithMultipleTypedDocuments_whenChangeDocumentType_thenOnlyUpdatesTargetDocument() {
+    PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    UUID documentTwoId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-09-08T12:00:00Z");
+    PriorAuthorityDocumentTypeUpdateCommand command =
+        new PriorAuthorityDocumentTypeUpdateCommand(
+            priorAuthorityId, documentId, "GATEWAY_EVIDENCE", "{}", occurredAt);
+    aggregate.on(
+        new PriorAuthorityDraftStartedEvent(
+            priorAuthorityId, applicationId, "EXPERT", 1, occurredAt));
+    when(draftStore.find(priorAuthorityId))
+        .thenReturn(
+            Optional.of(
+                new PriorAuthorityDataPayload(
+                    priorAuthorityId,
+                    applicationId,
+                    new PriorAuthorityContent(
+                        EXPERT,
+                        "why",
+                        null,
+                        null,
+                        null,
+                        List.of(
+                            new PriorAuthorityDocument(
+                                documentId,
+                                "INVOICE",
+                                "invoice.pdf",
+                                "PDF",
+                                "application/pdf",
+                                1L,
+                                occurredAt,
+                                "CIVIL_APPLY",
+                                "checksum"),
+                            new PriorAuthorityDocument(
+                                documentTwoId,
+                                "EXPERT_REPORT",
+                                "report.pdf",
+                                "PDF",
+                                "application/pdf",
+                                1L,
+                                occurredAt,
+                                "CIVIL_APPLY",
+                                "checksum"))),
+                    "{}",
+                    occurredAt)));
+
+    aggregate.handle(command, draftStore, eventAppender);
+
+    ArgumentCaptor<PriorAuthorityDataPayload> payloadCaptor =
+        ArgumentCaptor.forClass(PriorAuthorityDataPayload.class);
+    verify(draftStore)
+        .upsert(
+            eq(priorAuthorityId),
+            eq(applicationId),
+            payloadCaptor.capture(),
+            eq("{}"),
+            eq(occurredAt));
+    assertThat(payloadCaptor.getValue().content().uploadedDocuments())
+        .extracting(PriorAuthorityDocument::documentType)
+        .containsExactly("GATEWAY_EVIDENCE", "EXPERT_REPORT");
   }
 
   @Test
