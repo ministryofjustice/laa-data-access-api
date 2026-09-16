@@ -64,7 +64,7 @@ class DeletePriorAuthorityDocumentUseCaseTest {
         .contains("\"documentId\":\"%s\"".formatted(documentId));
     InOrder calls = inOrder(dispatcher, sdsService);
     calls.verify(dispatcher).dispatch(any(PriorAuthorityDocumentDeleteCommand.class));
-    calls.verify(sdsService).deleteFiles(priorAuthorityId, List.of(documentId.toString()));
+    calls.verify(sdsService).deleteFiles(priorAuthorityId, List.of(documentId.toString() + ".pdf"));
   }
 
   @Test
@@ -91,7 +91,7 @@ class DeletePriorAuthorityDocumentUseCaseTest {
     useCase.execute(priorAuthorityId, documentId);
 
     verify(dispatcher).dispatch(any(PriorAuthorityDocumentDeleteCommand.class));
-    verify(sdsService).deleteFiles(priorAuthorityId, List.of(documentId.toString()));
+    verify(sdsService).deleteFiles(priorAuthorityId, List.of(documentId.toString() + ".pdf"));
   }
 
   @Test
