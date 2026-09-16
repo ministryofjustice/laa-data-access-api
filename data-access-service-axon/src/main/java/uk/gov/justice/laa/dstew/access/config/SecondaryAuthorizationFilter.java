@@ -131,9 +131,8 @@ public class SecondaryAuthorizationFilter extends OncePerRequestFilter {
     if (oboJwt.getIssuedAt() != null) {
       builder.issuedAt(oboJwt.getIssuedAt());
     }
-    if (oboJwt.getExpiresAt() != null) {
-      builder.expiresAt(oboJwt.getExpiresAt());
-    }
+    builder.expiresAt(
+        Objects.requireNonNull(oboJwt.getExpiresAt(), "Validated OBO JWT must contain an expiry"));
     return builder.build();
   }
 

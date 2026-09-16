@@ -7,7 +7,6 @@ import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -40,7 +39,7 @@ public class SecondaryAuthorizationConfig {
   @Bean("xAuthorizationJwtDecoder")
   public JwtDecoder secondaryAuthorizationJwtDecoder() {
     NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build();
-    decoder.setJwtValidator(JwtValidators.createDefaultWithIssuer(issuerUri));
+    decoder.setJwtValidator(JwtValidation.requiringExpiryWithIssuer(issuerUri));
     return decoder;
   }
 

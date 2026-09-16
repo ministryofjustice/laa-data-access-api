@@ -9,9 +9,11 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 
 class SecondaryAuthorizationFilterTest {
@@ -102,6 +104,109 @@ class SecondaryAuthorizationFilterTest {
 
     assertThat(response.getStatus()).isEqualTo(401);
     assertThat(chainInvoked).isFalse();
+  }
+
+  @Test
+  void givenInvalidSecondaryAuthorizationToken_whenFiltered_thenReturnsUnauthorized()
+      throws Exception {
+    SecondaryAuthorizationFilter filter =
+        new SecondaryAuthorizationFilter(
+            token -> {
+              throw new JwtException("invalid token");
+            });
+    MockHttpServletRequest request = new MockHttpServletRequest();
+    request.addHeader("X-Authorization", "invalid-token");
+    MockHttpServletResponse response = new MockHttpServletResponse();
+
+    filter.doFilterInternal(request, response, (ignoredRequest, ignoredResponse) -> {});
+
+    assertThat(response.getStatus()).isEqualTo(401);
+  }
+
+  @Test
+  void givenNonJwtAuthentication_whenFiltered_thenReturnsUnauthorized() throws Exception {
+    SecurityContextHolder.getContext()
+        .setAuthentication(new TestingAuthenticationToken("user", "credentials"));
+    SecondaryAuthorizationFilter filter =
+        new SecondaryAuthorizationFilter(token -> jwt(token).build());
+    MockHttpServletRequest request = new MockHttpServletRequest();
+    request.addHeader("X-Authorization", "x-authorization-token");
+    MockHttpServletResponse response = new MockHttpServletResponse();
+
+    filter.doFilterInternal(request, response, (ignoredRequest, ignoredResponse) -> {});
+
+    assertThat(response.getStatus()).isEqualTo(401);
+  }
+
+  @Test
+  void givenEitherTokenHasNoOid_whenFiltered_thenReturnsUnauthorized() throws Exception {
+    for (boolean missingAuthorizationOid : List.of(true, false)) {
+      Jwt.Builder oboJwt = jwt("obo-token");
+      Jwt.Builder authorizationJwt =
+          jwt("x-authorization-token").claim("LAA_ACCOUNTS", List.of("ABC123"));
+      if (missingAuthorizationOid) {
+        authorizationJwt.claim("oid", " ");
+      } else {
+        oboJwt.claim("oid", " ");
+      }
+      SecurityContextHolder.getContext()
+          .setAuthentication(new JwtAuthenticationToken(oboJwt.build()));
+      SecondaryAuthorizationFilter filter =
+          new SecondaryAuthorizationFilter(token -> authorizationJwt.build());
+      MockHttpServletRequest request = new MockHttpServletRequest();
+      request.addHeader("X-Authorization", "x-authorization-token");
+      MockHttpServletResponse response = new MockHttpServletResponse();
+
+      filter.doFilterInternal(request, response, (ignoredRequest, ignoredResponse) -> {});
+
+      assertThat(response.getStatus()).isEqualTo(401);
+      SecurityContextHolder.clearContext();
+    }
+  }
+
+  @Test
+  void givenSecondaryAuthorizationWithoutEntitlements_whenFiltered_thenContinuesWithoutMerging()
+      throws Exception {
+    Jwt oboJwt = jwt("obo-token").build();
+    SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(oboJwt));
+    SecondaryAuthorizationFilter filter =
+        new SecondaryAuthorizationFilter(token -> jwt(token).build());
+    MockHttpServletRequest request = new MockHttpServletRequest();
+    request.addHeader("X-Authorization", "x-authorization-token");
+    AtomicBoolean chainInvoked = new AtomicBoolean();
+
+    filter.doFilterInternal(
+        request,
+        new MockHttpServletResponse(),
+        (ignoredRequest, ignoredResponse) -> chainInvoked.set(true));
+
+    assertThat(chainInvoked).isTrue();
+    assertThat(SecurityContextHolder.getContext().getAuthentication().getPrincipal())
+        .isSameAs(oboJwt);
+  }
+
+  @Test
+  void givenOboJwtWithoutIssuedAt_whenEntitlementsAreMerged_thenPreservesItsOptionalTimestamp()
+      throws Exception {
+    Jwt oboJwt =
+        Jwt.withTokenValue("obo-token")
+            .header("alg", "none")
+            .claim("oid", "entra-object-id")
+            .expiresAt(Instant.now().plusSeconds(300))
+            .build();
+    SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(oboJwt));
+    SecondaryAuthorizationFilter filter =
+        new SecondaryAuthorizationFilter(
+            token -> jwt(token).claim("LAA_ACCOUNTS", List.of("ABC123")).build());
+    MockHttpServletRequest request = new MockHttpServletRequest();
+    request.addHeader("X-Authorization", "x-authorization-token");
+
+    filter.doFilterInternal(
+        request, new MockHttpServletResponse(), (ignoredRequest, ignoredResponse) -> {});
+
+    JwtAuthenticationToken authentication =
+        (JwtAuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
+    assertThat(authentication.getToken().getIssuedAt()).isNull();
   }
 
   private Jwt.Builder jwt(String tokenValue) {

@@ -49,6 +49,12 @@ class SecurityHelperTest {
     assertThat(SecurityHelper.getEntraOid(jwt().build())).isEqualTo(Optional.empty());
   }
 
+  @Test
+  void givenJwtWithBlankOid_whenRequested_thenReturnsEmpty() {
+    assertThat(SecurityHelper.getEntraOid(jwt().claim("oid", " ").build()))
+        .isEqualTo(Optional.empty());
+  }
+
   private Jwt.Builder jwt() {
     Instant issuedAt = Instant.now();
     return Jwt.withTokenValue("token")

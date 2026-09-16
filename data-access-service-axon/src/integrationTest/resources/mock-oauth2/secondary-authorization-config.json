@@ -1,0 +1,31 @@
+{
+  "interactiveLogin": false,
+  "tokenCallbacks": [
+    {
+      "issuerId": "entra",
+      "tokenExpiry": 3600,
+      "requestMappings": [
+        {
+          "requestParam": "client_id",
+          "match": "primary-client",
+          "claims": {
+            "sub": "integration-test-user",
+            "aud": ["laa-data-access-api"],
+            "oid": "00000000-0000-0000-0000-000000000001"
+          }
+        },
+        {
+          "requestParam": "client_id",
+          "match": "secondary-client",
+          "claims": {
+            "sub": "integration-test-user",
+            "aud": ["laa-data-access-api"],
+            "oid": "00000000-0000-0000-0000-000000000001",
+            "LAA_APP_ROLES": ["SECONDARY_AUTHORIZATION_TEST"]
+          }
+        }
+      ]
+    }
+  ]
+}
+
