@@ -2,8 +2,8 @@ package uk.gov.justice.laa.dstew.access.testsupport;
 
 import java.util.List;
 import java.util.Map;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import uk.gov.laa.springboot.oauth2.testsupport.StubJwtDecoder;
@@ -15,7 +15,7 @@ import uk.gov.laa.springboot.oauth2.testsupport.StubJwtToken;
  * <p>Provides a deterministic bearer token that the real starter security filter chain can decode
  * without a mock OAuth2 server.
  */
-@Configuration
+@TestConfiguration
 public class TestJwtDecoderConfig {
 
   public static final String BEARER_TOKEN = "test-caseworker-token";

@@ -10,10 +10,11 @@ import org.axonframework.modelling.annotation.TargetEntityId;
 public record PriorAuthorityDocumentUploadCommand(
     @TargetEntityId UUID priorAuthorityId,
     UUID documentId,
-    String documentType,
     String sourceService,
     String checksum,
     String serialisedRequest,
     Instant occurredAt,
     String originalFilename,
-    Long fileSize) {}
+    Long fileSize,
+    String fileType,
+    String contentType) {}

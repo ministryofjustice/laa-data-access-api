@@ -50,7 +50,10 @@ public class GetPriorAuthorityResponseMapper {
             document ->
                 new UploadedDocument()
                     .documentId(document.documentId())
-                    .documentType(PriorAuthorityDocumentType.fromValue(document.documentType()))
+                    .documentType(
+                        document.documentType() == null
+                            ? null
+                            : PriorAuthorityDocumentType.fromValue(document.documentType()))
                     .fileName(document.fileName())
                     .fileType(document.fileType())
                     .mediaType(document.mediaType())

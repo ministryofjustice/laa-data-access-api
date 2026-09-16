@@ -2,6 +2,8 @@ package uk.gov.justice.laa.dstew.access;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
 
 import java.util.Map;
@@ -38,11 +40,15 @@ import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantedOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityDraftRequest;
 import uk.gov.justice.laa.dstew.access.model.DisbursementDetails;
+import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
+import uk.gov.justice.laa.dstew.access.model.PriorAuthorityDocumentType;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityResponse;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.model.SavePriorAuthorityDraftRequest;
 import uk.gov.justice.laa.dstew.access.model.SavePriorAuthorityDraftResponse;
 import uk.gov.justice.laa.dstew.access.model.SubmitPriorAuthorityDraftResponse;
+import uk.gov.justice.laa.dstew.access.model.UpdatePriorAuthorityDocumentTypeRequest;
+import uk.gov.justice.laa.dstew.access.model.UploadPriorAuthorityDocumentResponse;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.FindPriorAuthorityByPriorAuthorityIdQuery;
@@ -275,6 +281,60 @@ class PriorAuthorityDraftIntegrationTest {
   }
 
   @Test
+  void givenDraftWithUploadedDocument_whenSubmitPriorAuthorityDraft_thenPreservesDocument() {
+    UUID applicationId = grantedApplication();
+    UUID priorAuthorityId =
+        saveDraft(
+            applicationId,
+            PriorAuthorityType.DISBURSEMENT,
+            "Interpreter costs for proceedings",
+            validDisbursementRequest());
+    when(sdsService.savePriorAuthorityFile(any(), any(), any()))
+        .thenReturn(new DocumentUploadResponse().checksum("checksum"));
+
+    ResponseEntity<String> uploadResponse =
+        restTemplate.postForEntity(
+            uploadUrl(priorAuthorityId), uploadRequest("evidence.pdf"), String.class);
+    assertThat(uploadResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    UUID documentId =
+        objectMapper
+            .readValue(uploadResponse.getBody(), UploadPriorAuthorityDocumentResponse.class)
+            .getDocumentId();
+
+    ResponseEntity<Void> updateDocumentTypeResponse =
+        restTemplate.exchange(
+            documentUrl(priorAuthorityId, documentId),
+            HttpMethod.PATCH,
+            new HttpEntity<>(
+                new UpdatePriorAuthorityDocumentTypeRequest(
+                    PriorAuthorityDocumentType.GATEWAY_EVIDENCE),
+                headers()),
+            Void.class);
+    assertThat(updateDocumentTypeResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+    ResponseEntity<String> submitResponse =
+        restTemplate.postForEntity(
+            submitUrl(priorAuthorityId), new HttpEntity<>(null, headers()), String.class);
+    assertThat(submitResponse.getStatusCode())
+        .withFailMessage("Submit response: %s", submitResponse.getBody())
+        .isIn(HttpStatus.OK, HttpStatus.ACCEPTED);
+
+    ResponseEntity<String> getResponse =
+        restTemplate.exchange(
+            priorAuthorityUrl(priorAuthorityId),
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            String.class);
+    assertThat(getResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+    PriorAuthorityResponse priorAuthority =
+        objectMapper.readValue(getResponse.getBody(), PriorAuthorityResponse.class);
+    assertThat(priorAuthority.getStatus()).isEqualTo(PriorAuthorityResponse.StatusEnum.SUBMITTED);
+    assertThat(priorAuthority.getUploadedDocuments())
+        .singleElement()
+        .satisfies(document -> assertThat(document.getFileName()).isEqualTo("evidence.pdf"));
+  }
+
+  @Test
   void
       givenDraftViolatesSchema_whenSubmitPriorAuthorityDraft_thenReturnsBadRequestAndDraftPersists()
           throws Exception {
@@ -458,11 +518,15 @@ class PriorAuthorityDraftIntegrationTest {
     return priorAuthorityUrl(priorAuthorityId) + "/documents";
   }
 
+  private String documentUrl(UUID priorAuthorityId, UUID documentId) {
+    return uploadUrl(priorAuthorityId) + "/" + documentId;
+  }
+
   private HttpEntity<MultiValueMap<String, Object>> uploadRequest(String filename) {
     MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
     body.add(
         "file",
-        new ByteArrayResource("content".getBytes()) {
+        new ByteArrayResource("%PDF-1.4\ncontent".getBytes()) {
           @Override
           public String getFilename() {
             return filename;

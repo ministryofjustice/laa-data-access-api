@@ -116,13 +116,10 @@ paths:
               type: object
               required:
                 - file
-                - documentType
               properties:
                 file:
                   type: string
                   format: binary
-                documentType:
-                  $ref: "./components.yml#/components/schemas/PriorAuthorityDocumentType"
       responses:
         '201':
           description: Document uploaded and linked to prior authority draft
@@ -135,6 +132,45 @@ paths:
         '404': { description: Prior Authority not found }
         '409': { description: File conflict }
         '411': { description: Missing content length }
+        '500': { description: Internal server error }
+
+  /api/v0/prior-authorities/{priorAuthorityId}/documents/{documentId}:
+    patch:
+      tags:
+        - prior-authority-document-command
+      summary: Set or replace the type of a Prior Authority document
+      operationId: updatePriorAuthorityDocumentType
+      parameters:
+        - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
+        - name: priorAuthorityId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./components.yml#/components/schemas/UpdatePriorAuthorityDocumentTypeRequest"
+      responses:
+        '200':
+          description: Document type updated
+          content:
+            application/json:
+              schema:
+                $ref: "./components.yml#/components/schemas/PriorAuthorityDocumentTypeUpdateResponse"
+        '401': { description: Unauthorized }
+        '403': { description: Forbidden }
+        '404': { description: Prior Authority or document not found }
+        '409': { description: Document update conflict }
         '500': { description: Internal server error }
 
   /api/v0/prior-authorities:

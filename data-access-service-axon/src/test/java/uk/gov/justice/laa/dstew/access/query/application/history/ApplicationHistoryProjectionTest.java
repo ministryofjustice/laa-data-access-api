@@ -288,7 +288,7 @@ class ApplicationHistoryProjectionTest {
     Instant occurredAt = Instant.parse("2026-08-05T10:00:00Z");
     var event =
         new PriorAuthoritySubmittedEvent(
-            priorAuthorityId, applicationId, "EXPERT", 1, 0L, occurredAt);
+            priorAuthorityId, applicationId, "EXPERT", 1, 0L, 0L, occurredAt);
     var msg = message(event, "pa-submit-event-id");
 
     projection.on(event, msg);
@@ -314,7 +314,7 @@ class ApplicationHistoryProjectionTest {
     Instant occurredAt = Instant.parse("2026-08-05T10:00:00Z");
     var event =
         new PriorAuthoritySubmittedEvent(
-            priorAuthorityId, applicationId, "EXPERT", 1, 0L, occurredAt);
+            priorAuthorityId, applicationId, "EXPERT", 1, 0L, 0L, occurredAt);
 
     projection.on(event, messageWithoutServiceName(event, "pa-submit-event-id"));
 
