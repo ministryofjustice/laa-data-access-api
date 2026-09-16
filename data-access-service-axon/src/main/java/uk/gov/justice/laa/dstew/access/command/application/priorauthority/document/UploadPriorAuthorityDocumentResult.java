@@ -6,7 +6,6 @@ import java.util.UUID;
 /** Internal result of a completed prior-authority document upload. */
 public record UploadPriorAuthorityDocumentResult(
     UUID documentId,
-    String documentType,
     String fileName,
     String fileType,
     String contentType,

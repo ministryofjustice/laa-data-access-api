@@ -39,6 +39,8 @@ import uk.gov.justice.laa.dstew.access.command.application.document.UploadDocume
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.ready.RecordAutoGrantOutcomeUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationUseCase;
+import uk.gov.justice.laa.dstew.access.config.SecondaryAuthorizationConfig;
+import uk.gov.justice.laa.dstew.access.config.SecondaryAuthorizationFilter;
 import uk.gov.justice.laa.dstew.access.config.SecurityConfig;
 import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
 import uk.gov.laa.springboot.oauth2.testsupport.StubJwtDecoder;
@@ -141,6 +143,8 @@ class ApplicationCommandControllerSecurityTest {
     ApplicationCommandController.class,
     CreateApplicationUseCase.class,
     SecurityConfig.class,
+    SecondaryAuthorizationConfig.class,
+    SecondaryAuthorizationFilter.class,
     UnknownRoleJwtConfig.class
   })
   static class TestApplication {}
