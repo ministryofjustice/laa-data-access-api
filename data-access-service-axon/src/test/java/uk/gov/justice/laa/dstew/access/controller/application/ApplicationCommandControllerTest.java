@@ -34,7 +34,7 @@ import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicat
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
 import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
-import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaseworkerId;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedUserId;
 
 /** Verifies that each controller endpoint delegates to the appropriate use case. */
 class ApplicationCommandControllerTest {
@@ -50,7 +50,7 @@ class ApplicationCommandControllerTest {
   private CreateNoteCommandMapper createNoteCommandMapper;
   private AutoGrantOutcomeCommandMapper autoGrantOutcomeCommandMapper;
   private UpdateApplicationCommandMapper updateApplicationCommandMapper;
-  private AuthenticatedCaseworkerId authenticatedCaseworkerId;
+  private AuthenticatedUserId authenticatedUserId;
   private ApplicationCommandController controller;
 
   @BeforeEach
@@ -68,7 +68,7 @@ class ApplicationCommandControllerTest {
     createNoteCommandMapper = mock(CreateNoteCommandMapper.class);
     autoGrantOutcomeCommandMapper = mock(AutoGrantOutcomeCommandMapper.class);
     updateApplicationCommandMapper = mock(UpdateApplicationCommandMapper.class);
-    authenticatedCaseworkerId = mock(AuthenticatedCaseworkerId.class);
+    authenticatedUserId = mock(AuthenticatedUserId.class);
     controller =
         new ApplicationCommandController(
             createApplicationUseCase,
@@ -82,7 +82,7 @@ class ApplicationCommandControllerTest {
             createNoteCommandMapper,
             autoGrantOutcomeCommandMapper,
             updateApplicationCommandMapper,
-            authenticatedCaseworkerId);
+            authenticatedUserId);
   }
 
   @AfterEach
@@ -152,7 +152,7 @@ class ApplicationCommandControllerTest {
     UUID id = UUID.randomUUID();
     UUID caseworkerId = UUID.randomUUID();
     MakeApplicationDecisionCommand command = mock(MakeApplicationDecisionCommand.class);
-    when(authenticatedCaseworkerId.get()).thenReturn(caseworkerId);
+    when(authenticatedUserId.get()).thenReturn(caseworkerId);
     when(decisionCommandMapper.toCommand(id, caseworkerId, null)).thenReturn(command);
     controller.makeDecision(null, id, null);
     verify(makeDecisionUseCase).execute(command);

@@ -12,9 +12,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 
-class AuthenticatedCaseworkerIdTest {
-  private final AuthenticatedCaseworkerId authenticatedCaseworkerId =
-      new AuthenticatedCaseworkerId();
+class AuthenticatedUserIdTest {
+  private final AuthenticatedUserId authenticatedUserId =
+      new AuthenticatedUserId();
 
   @AfterEach
   void clearSecurityContext() {
@@ -26,16 +26,16 @@ class AuthenticatedCaseworkerIdTest {
     UUID oid = UUID.randomUUID();
     authenticate(oid.toString());
 
-    assertThat(authenticatedCaseworkerId.get()).isEqualTo(oid);
+    assertThat(authenticatedUserId.get()).isEqualTo(oid);
   }
 
   @Test
   void rejectsMissingOrBlankOid() {
-    assertThatThrownBy(() -> authenticatedCaseworkerId.get())
+    assertThatThrownBy(() -> authenticatedUserId.get())
         .isInstanceOf(AccessDeniedException.class)
         .hasMessage("An Entra OID is required");
     authenticate(" ");
-    assertThatThrownBy(() -> authenticatedCaseworkerId.get())
+    assertThatThrownBy(() -> authenticatedUserId.get())
         .isInstanceOf(AccessDeniedException.class)
         .hasMessage("An Entra OID is required");
   }
@@ -44,7 +44,7 @@ class AuthenticatedCaseworkerIdTest {
   void rejectsMalformedOidAsAnAuthorizationFailure() {
     authenticate("not-a-uuid");
 
-    assertThatThrownBy(() -> authenticatedCaseworkerId.get())
+    assertThatThrownBy(() -> authenticatedUserId.get())
         .isInstanceOf(AccessDeniedException.class)
         .hasMessage("The Entra OID must be a UUID");
   }
