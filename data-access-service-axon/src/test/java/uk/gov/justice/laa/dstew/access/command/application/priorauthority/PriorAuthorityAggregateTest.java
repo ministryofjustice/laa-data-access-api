@@ -470,7 +470,7 @@ class PriorAuthorityAggregateTest {
             new PriorAuthorityDraftStartedEvent(
                 priorAuthorityId, applicationId, EXPERT.name(), 1, startedAt),
             new PriorAuthoritySubmittedEvent(
-                priorAuthorityId, applicationId, EXPERT.name(), 1, 0L, submittedAt))
+                priorAuthorityId, applicationId, EXPERT.name(), 1, 0L, 0L, submittedAt))
         .when()
         .command(command)
         .then()
@@ -554,7 +554,7 @@ class PriorAuthorityAggregateTest {
             new PriorAuthorityDraftStartedEvent(
                 priorAuthorityId, applicationId, EXPERT.name(), 1, startedAt),
             new PriorAuthoritySubmittedEvent(
-                priorAuthorityId, applicationId, EXPERT.name(), 1, 0L, submittedAt),
+                priorAuthorityId, applicationId, EXPERT.name(), 1, 0L, 0L, submittedAt),
             new PriorAuthorityDecisionRecordedEvent(
                 priorAuthorityId,
                 applicationId,
@@ -618,7 +618,7 @@ class PriorAuthorityAggregateTest {
             new PriorAuthorityDraftStartedEvent(
                 priorAuthorityId, applicationId, EXPERT.name(), 1, startedAt),
             new PriorAuthoritySubmittedEvent(
-                priorAuthorityId, applicationId, EXPERT.name(), 1, 0L, submittedAt),
+                priorAuthorityId, applicationId, EXPERT.name(), 1, 0L, 0L, submittedAt),
             new PriorAuthorityDecisionRecordedEvent(
                 priorAuthorityId,
                 applicationId,
