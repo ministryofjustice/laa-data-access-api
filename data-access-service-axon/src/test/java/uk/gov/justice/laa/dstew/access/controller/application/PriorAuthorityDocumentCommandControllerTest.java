@@ -14,6 +14,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockMultipartFile;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.document.DeletePriorAuthorityDocumentUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.document.UpdatePriorAuthorityDocumentTypeResult;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.document.UpdatePriorAuthorityDocumentTypeUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.document.UploadPriorAuthorityDocumentResult;
@@ -28,6 +29,7 @@ class PriorAuthorityDocumentCommandControllerTest {
 
   @Mock private UploadPriorAuthorityDocumentUseCase uploadUseCase;
   @Mock private UpdatePriorAuthorityDocumentTypeUseCase updateTypeUseCase;
+  @Mock private DeletePriorAuthorityDocumentUseCase deleteUseCase;
 
   @InjectMocks private PriorAuthorityDocumentCommandController controller;
 
@@ -83,5 +85,20 @@ class PriorAuthorityDocumentCommandControllerTest {
     assertThat(response.getBody().getUpdatedAt())
         .isEqualTo(updatedAt.atOffset(java.time.ZoneOffset.UTC));
     verify(updateTypeUseCase).execute(priorAuthorityId, documentId, request);
+  }
+
+  @Test
+  void givenRequest_whenDeletePriorAuthorityDocument_thenReturnsNoContent() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+
+    ResponseEntity<Void> response =
+        controller.deletePriorAuthorityDocument(
+            uk.gov.justice.laa.dstew.access.model.ServiceName.CIVIL_APPLY,
+            priorAuthorityId,
+            documentId);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    verify(deleteUseCase).execute(priorAuthorityId, documentId);
   }
 }

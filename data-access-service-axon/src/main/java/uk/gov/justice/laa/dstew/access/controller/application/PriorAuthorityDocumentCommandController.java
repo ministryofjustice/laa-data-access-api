@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import uk.gov.justice.laa.dstew.access.api.PriorAuthorityDocumentCommandApi;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.document.DeletePriorAuthorityDocumentUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.document.UpdatePriorAuthorityDocumentTypeResult;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.document.UpdatePriorAuthorityDocumentTypeUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.document.UploadPriorAuthorityDocumentResult;
@@ -17,18 +18,22 @@ import uk.gov.justice.laa.dstew.access.model.UploadPriorAuthorityDocumentRespons
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
 
-/** HTTP command adapter for prior-authority document uploads. */
+/** HTTP command adapter for prior-authority document commands. */
 @RestController
 public class PriorAuthorityDocumentCommandController implements PriorAuthorityDocumentCommandApi {
 
   private final UploadPriorAuthorityDocumentUseCase uploadUseCase;
   private final UpdatePriorAuthorityDocumentTypeUseCase updateTypeUseCase;
+  private final DeletePriorAuthorityDocumentUseCase deleteUseCase;
 
+  /** Creates the controller with prior-authority document command use cases. */
   public PriorAuthorityDocumentCommandController(
       UploadPriorAuthorityDocumentUseCase uploadUseCase,
-      UpdatePriorAuthorityDocumentTypeUseCase updateTypeUseCase) {
+      UpdatePriorAuthorityDocumentTypeUseCase updateTypeUseCase,
+      DeletePriorAuthorityDocumentUseCase deleteUseCase) {
     this.uploadUseCase = uploadUseCase;
     this.updateTypeUseCase = updateTypeUseCase;
+    this.deleteUseCase = deleteUseCase;
   }
 
   @Override
@@ -65,5 +70,14 @@ public class PriorAuthorityDocumentCommandController implements PriorAuthorityDo
         .body(
             new PriorAuthorityDocumentTypeUpdateResponse(
                 result.documentId(), result.updatedAt().atOffset(java.time.ZoneOffset.UTC)));
+  }
+
+  @Override
+  @LogMethodArguments
+  @LogMethodResponse
+  public ResponseEntity<Void> deletePriorAuthorityDocument(
+      ServiceName serviceName, UUID priorAuthorityId, UUID documentId) {
+    deleteUseCase.execute(priorAuthorityId, documentId);
+    return ResponseEntity.noContent().build();
   }
 }
