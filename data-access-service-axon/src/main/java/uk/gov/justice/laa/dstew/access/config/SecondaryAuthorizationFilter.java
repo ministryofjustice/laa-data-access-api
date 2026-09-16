@@ -50,7 +50,7 @@ public class SecondaryAuthorizationFilter extends OncePerRequestFilter {
   private static final Logger log = LoggerFactory.getLogger(SecondaryAuthorizationFilter.class);
 
   private static final String X_AUTHORIZATION_HEADER = "X-Authorization";
-  private static final String APP_ROLES_CLAIM = "LAA_APP_ROLES";
+  private static final String LAA_APP_ROLES_CLAIM = "LAA_APP_ROLES";
   private static final String LAA_ACCOUNTS_CLAIM = "LAA_ACCOUNTS";
   private static final String AUTHORITY_PREFIX = "APPROLE_";
 
