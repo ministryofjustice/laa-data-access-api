@@ -123,6 +123,53 @@ class PriorAuthorityApplicationHistoryProjectionTest {
   }
 
   @Test
+  void
+      givenPriorAuthorityWorkItemAssignedWithNoPriorAuthorityType_whenHandled_thenStoresNullType() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    WorkItemAssigned event =
+        new WorkItemAssigned(
+            priorAuthorityId,
+            WorkItemType.PRIOR_AUTHORITY,
+            1L,
+            1L,
+            UUID.randomUUID(),
+            Instant.parse("2026-08-05T11:00:00Z"));
+    when(paDataRepository.findFirstByPriorAuthorityId(priorAuthorityId))
+        .thenReturn(Optional.of(paData(priorAuthorityId, applicationId, null)));
+
+    projection.on(event, message(event, "pa-assign-event-id"));
+
+    var captor = ArgumentCaptor.forClass(PriorAuthorityHistoryReadModel.class);
+    verify(paRepository).save(captor.capture());
+    assertThat(captor.getValue().getPriorAuthorityType()).isNull();
+  }
+
+  @Test
+  void
+      givenPriorAuthorityWorkItemAssignedWithoutServiceName_whenHandled_thenStoresNullServiceName() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    WorkItemAssigned event =
+        new WorkItemAssigned(
+            priorAuthorityId,
+            WorkItemType.PRIOR_AUTHORITY,
+            1L,
+            1L,
+            UUID.randomUUID(),
+            Instant.parse("2026-08-05T11:00:00Z"));
+    when(paDataRepository.findFirstByPriorAuthorityId(priorAuthorityId))
+        .thenReturn(
+            Optional.of(paData(priorAuthorityId, applicationId, PriorAuthorityType.EXPERT)));
+
+    projection.on(event, messageWithoutServiceName(event, "pa-assign-event-id"));
+
+    var captor = ArgumentCaptor.forClass(PriorAuthorityHistoryReadModel.class);
+    verify(paRepository).save(captor.capture());
+    assertThat(captor.getValue().getServiceName()).isNull();
+  }
+
+  @Test
   void givenApplicationWorkItemAssigned_whenHandled_thenIgnored() {
     UUID applicationId = UUID.randomUUID();
     UUID caseworkerId = UUID.randomUUID();
