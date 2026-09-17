@@ -202,7 +202,6 @@ public class ApplicationHistoryProjection {
     eventData.put("status", PriorAuthorityStatus.DECIDED.name());
     eventData.put("decision", event.overallDecision());
     eventData.put("dataVersion", event.dataVersion());
-    eventData.put("decisionJustification", event.decisionJustification());
     if (event.amountGranted() != null) {
       eventData.put("amountGranted", event.amountGranted());
     }
