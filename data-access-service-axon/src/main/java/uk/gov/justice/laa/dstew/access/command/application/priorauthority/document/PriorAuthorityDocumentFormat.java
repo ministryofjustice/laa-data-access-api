@@ -7,15 +7,18 @@ import org.springframework.web.multipart.MultipartFile;
 
 /** Accepted file formats for prior-authority document uploads. */
 enum PriorAuthorityDocumentFormat {
-  PDF("PDF", "application/pdf", "%PDF-");
+  PDF("PDF", "application/pdf", ".pdf", "%PDF-");
 
   private final String fileType;
   private final String contentType;
+  private final String fileExtension;
   private final byte[] signature;
 
-  PriorAuthorityDocumentFormat(String fileType, String contentType, String signature) {
+  PriorAuthorityDocumentFormat(
+      String fileType, String contentType, String fileExtension, String signature) {
     this.fileType = fileType;
     this.contentType = contentType;
+    this.fileExtension = fileExtension;
     this.signature = signature.getBytes(StandardCharsets.US_ASCII);
   }
 
@@ -25,6 +28,17 @@ enum PriorAuthorityDocumentFormat {
 
   String contentType() {
     return contentType;
+  }
+
+  String fileExtension() {
+    return fileExtension;
+  }
+
+  static PriorAuthorityDocumentFormat fromFileType(String fileType) {
+    return Arrays.stream(values())
+        .filter(candidate -> candidate.fileType.equalsIgnoreCase(fileType))
+        .findFirst()
+        .orElseThrow(() -> new IllegalArgumentException("Unsupported document file type"));
   }
 
   static PriorAuthorityDocumentFormat validate(MultipartFile file) {
