@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import org.springdoc.core.customizers.OpenApiCustomizer;
@@ -118,16 +119,13 @@ public class ApplicationContentSchemaCustomizer implements OpenApiCustomizer {
 
     if (node.has("type")) {
       JsonNode typeNode = node.get("type");
+      var types = new LinkedHashSet<String>();
       if (typeNode.isArray()) {
-        for (JsonNode t : typeNode) {
-          if (!"null".equals(t.asText())) {
-            schema.setType(t.asText());
-          }
-        }
-        schema.setNullable(true);
+        typeNode.forEach(type -> types.add(type.asText()));
       } else {
-        schema.setType(typeNode.asText());
+        types.add(typeNode.asText());
       }
+      schema.setTypes(types);
     }
 
     if (node.has("format")) {

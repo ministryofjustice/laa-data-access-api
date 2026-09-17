@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
@@ -35,18 +36,18 @@ class DevTokenInMemoryTest {
   @Autowired private TestRestTemplate restTemplate;
 
   @Test
-  void givenSwaggerCaseworkerToken_whenGetCaseworkers_thenReturnsOk() {
+  void givenSwaggerCaseworkerToken_whenGetUnknownPriorAuthority_thenReturnsNotFound() {
     HttpHeaders headers = new HttpHeaders();
     headers.set("X-Service-Name", "CIVIL_APPLY");
     headers.setBearerAuth("swagger-caseworker-token");
 
     ResponseEntity<String> response =
         restTemplate.exchange(
-            "http://localhost:" + port + "/api/v0/caseworkers",
+            "http://localhost:" + port + "/api/v0/prior-authorities/" + UUID.randomUUID(),
             HttpMethod.GET,
             new HttpEntity<>(headers),
             String.class);
 
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
   }
 }

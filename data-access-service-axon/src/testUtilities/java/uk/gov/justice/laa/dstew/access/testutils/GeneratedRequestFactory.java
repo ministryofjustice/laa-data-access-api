@@ -7,7 +7,6 @@ import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantedOutcomeRequest;
-import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceedingRequest;
@@ -54,7 +53,6 @@ public class GeneratedRequestFactory {
                             .build())
                     .build()))
         .applicationVersion(1L)
-        .caseworkerId(UUID.randomUUID())
         .certificate(Map.of("source", "mass-data"))
         .build();
   }
@@ -63,12 +61,6 @@ public class GeneratedRequestFactory {
     return new AutoGrantedOutcomeRequest()
         .outcome(AutoGrantOutcome.AUTOGRANTED)
         .certificate(Map.of("source", "mass-data"));
-  }
-
-  public CaseworkerAssignRequest assignment(UUID applicationId, UUID caseworkerId) {
-    return new CaseworkerAssignRequest()
-        .caseworkerId(caseworkerId)
-        .applicationIds(List.of(applicationId));
   }
 
   public CaseworkerUnassignRequest unassignment() {

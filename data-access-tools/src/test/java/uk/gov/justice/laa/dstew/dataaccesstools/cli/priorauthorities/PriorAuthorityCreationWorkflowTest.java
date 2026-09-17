@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.dataaccesstools.cli.priorauthorities;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
@@ -63,7 +64,6 @@ class PriorAuthorityCreationWorkflowTest {
   void createsAndSubmitsEachSelectedPriorAuthority() {
     List<String> operations = new ArrayList<>();
     UUID priorAuthorityId = UUID.randomUUID();
-    UUID caseworkerId = UUID.randomUUID();
     DataAccessApiClient client =
         new DataAccessApiClient() {
           @Override
@@ -78,18 +78,14 @@ class PriorAuthorityCreationWorkflowTest {
 
           @Override
           public void assignWorkListItem(
-              UUID itemId,
-              UUID assignedCaseworkerId,
-              long expectedAssignmentVersion,
-              String eventDescription) {
-            assertEquals(caseworkerId, assignedCaseworkerId);
+              UUID itemId, long expectedAssignmentVersion, String eventDescription) {
             assertEquals(0, expectedAssignmentVersion);
             operations.add("assign");
           }
 
           @Override
           public void makeDecision(UUID applicationId, String requestBody) {
-            assertTrue(requestBody.contains("\"caseworkerId\":\"" + caseworkerId + "\""));
+            assertFalse(requestBody.contains("\"caseworkerId\""));
             operations.add("granted-decision");
           }
 
@@ -120,7 +116,7 @@ class PriorAuthorityCreationWorkflowTest {
                 new PriorAuthorityRequestFactory(),
                 new ApplicationRequestFactory(),
                 new DecisionRequestFactory())
-            .createSubmitted(1, PriorAuthorityTypeSelector.EXPERT, caseworkerId);
+            .createSubmitted(1, PriorAuthorityTypeSelector.EXPERT);
 
     assertTrue(result.succeeded());
     assertEquals(

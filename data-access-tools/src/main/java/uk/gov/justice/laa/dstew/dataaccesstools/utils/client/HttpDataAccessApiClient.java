@@ -43,9 +43,9 @@ public final class HttpDataAccessApiClient implements DataAccessApiClient {
           application
               .required("proceedings")
               .valueStream()
-              .map(proceeding -> UUID.fromString(proceeding.required("id").asText()))
+              .map(proceeding -> UUID.fromString(proceeding.required("proceedingId").asText()))
               .toList(),
-          application.required("applicationVersion").asLong());
+          application.required("version").asLong());
     } catch (JsonProcessingException | IllegalArgumentException exception) {
       throw new ApiException(
           "GET /api/v0/applications/" + applicationId + " returned invalid JSON", exception);
@@ -107,11 +107,10 @@ public final class HttpDataAccessApiClient implements DataAccessApiClient {
 
   @Override
   public void assignWorkListItem(
-      UUID itemId, UUID caseworkerId, long expectedAssignmentVersion, String eventDescription) {
+      UUID itemId, long expectedAssignmentVersion, String eventDescription) {
     String body =
-        "{\"caseworkerId\":\"%s\",\"expectedAssignmentVersion\":%d%s}"
+        "{\"expectedAssignmentVersion\":%d%s}"
             .formatted(
-                caseworkerId,
                 expectedAssignmentVersion,
                 eventDescription == null
                     ? ""
