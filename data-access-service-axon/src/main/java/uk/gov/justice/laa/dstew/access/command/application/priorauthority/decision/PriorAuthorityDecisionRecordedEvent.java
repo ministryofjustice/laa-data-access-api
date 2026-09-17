@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.command.application.priorauthority;
+package uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision;
 
 import java.math.BigDecimal;
 import java.time.Instant;

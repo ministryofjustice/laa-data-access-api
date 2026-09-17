@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.command.application.priorauthority;
 
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionRecordedEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;

@@ -4,9 +4,9 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.With;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.ApportionmentInformation;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.DisbursementInformation;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.ExpertFeeInformation;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.ApportionmentInformation;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 
 /** Sensitive data associated with one prior-authority submission. */

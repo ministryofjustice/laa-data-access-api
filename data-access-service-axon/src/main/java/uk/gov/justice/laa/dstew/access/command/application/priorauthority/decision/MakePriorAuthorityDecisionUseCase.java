@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.command.application.priorauthority;
+package uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision;
 
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.springframework.stereotype.Component;
@@ -35,7 +35,8 @@ public class MakePriorAuthorityDecisionUseCase {
           "No prior authority found with ID: " + command.priorAuthorityId());
     }
     dispatcher.dispatch(
-        new ValidateApplicationGrantedCommand(priorAuthorityResult.applicationId()));
+        new uk.gov.justice.laa.dstew.access.command.application.priorauthority
+            .ValidateApplicationGrantedCommand(priorAuthorityResult.applicationId()));
     dispatcher.dispatch(command);
   }
 }

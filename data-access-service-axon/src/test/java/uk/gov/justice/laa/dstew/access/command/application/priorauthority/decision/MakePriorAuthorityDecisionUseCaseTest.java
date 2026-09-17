@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.command.application.priorauthority;
+package uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision;
 
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.Mockito.inOrder;
@@ -61,7 +61,11 @@ class MakePriorAuthorityDecisionUseCaseTest {
     useCase.execute(command);
 
     var inOrder = inOrder(dispatcher);
-    inOrder.verify(dispatcher).dispatch(new ValidateApplicationGrantedCommand(applicationId));
+    inOrder
+        .verify(dispatcher)
+        .dispatch(
+            new uk.gov.justice.laa.dstew.access.command.application.priorauthority
+                .ValidateApplicationGrantedCommand(applicationId));
     inOrder.verify(dispatcher).dispatch(command);
   }
 

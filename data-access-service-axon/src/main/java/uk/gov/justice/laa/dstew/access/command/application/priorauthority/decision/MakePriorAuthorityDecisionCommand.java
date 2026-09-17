@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.command.application.priorauthority;
+package uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -15,8 +15,10 @@ public record MakePriorAuthorityDecisionCommand(
     String overallDecision,
     String decisionJustification,
     BigDecimal amountGranted,
-    ExpertFeeInformation expertFee,
-    DisbursementInformation disbursementInformation,
+    uk.gov.justice.laa.dstew.access.command.application.priorauthority.ExpertFeeInformation
+        expertFee,
+    uk.gov.justice.laa.dstew.access.command.application.priorauthority.DisbursementInformation
+        disbursementInformation,
     ApportionmentInformation apportionmentInformation,
     Instant dateGranted,
     String serialisedRequest,

@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 import uk.gov.justice.laa.dstew.access.api.PriorAuthorityCommandApi;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.MakePriorAuthorityDecisionUseCase;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.MakePriorAuthorityDecisionUseCase;
 import uk.gov.justice.laa.dstew.access.model.MakePriorAuthorityDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 
