@@ -1632,17 +1632,11 @@ class PostgresAxonIntegrationTest {
             String.class);
     assertThat(submitResponse.getStatusCode()).isIn(HttpStatus.OK, HttpStatus.ACCEPTED);
 
-    UUID caseworkerId = UUID.randomUUID();
-    jdbcTemplate.update(
-        "INSERT INTO axon.caseworkers (id, username) VALUES (?, ?)",
-        caseworkerId,
-        "pa-assign-" + caseworkerId + "@example.com");
-
     ResponseEntity<Void> assignResponse =
         restTemplate.exchange(
             "http://localhost:" + port + "/api/v0/work-list/" + priorAuthorityId + "/assign",
             HttpMethod.POST,
-            new HttpEntity<>(new WorkListAssignRequest(caseworkerId, 0L), headers()),
+            new HttpEntity<>(new WorkListAssignRequest(0L), headers()),
             Void.class);
     assertThat(assignResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
 
@@ -1674,8 +1668,7 @@ class PostgresAxonIntegrationTest {
     assertThat(group.getEvents()).hasSize(2);
     assertThat(group.getEvents())
         .extracting(event -> event.getEventType())
-        .containsExactlyInAnyOrder(
-            "PRIOR_AUTHORITY_SUBMITTED", "ASSIGN_APPLICATION_TO_CASEWORKER");
+        .containsExactlyInAnyOrder("PRIOR_AUTHORITY_SUBMITTED", "ASSIGN_APPLICATION_TO_CASEWORKER");
   }
 
   @Test
@@ -1720,17 +1713,11 @@ class PostgresAxonIntegrationTest {
             String.class);
     assertThat(submitResponse.getStatusCode()).isIn(HttpStatus.OK, HttpStatus.ACCEPTED);
 
-    UUID caseworkerId = UUID.randomUUID();
-    jdbcTemplate.update(
-        "INSERT INTO axon.caseworkers (id, username) VALUES (?, ?)",
-        caseworkerId,
-        "pa-unassign-" + caseworkerId + "@example.com");
-
     ResponseEntity<Void> assignResponse =
         restTemplate.exchange(
             "http://localhost:" + port + "/api/v0/work-list/" + priorAuthorityId + "/assign",
             HttpMethod.POST,
-            new HttpEntity<>(new WorkListAssignRequest(caseworkerId, 0L), headers()),
+            new HttpEntity<>(new WorkListAssignRequest(0L), headers()),
             Void.class);
     assertThat(assignResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
 
@@ -1818,22 +1805,12 @@ class PostgresAxonIntegrationTest {
             String.class);
     assertThat(submitResponse.getStatusCode()).isIn(HttpStatus.OK, HttpStatus.ACCEPTED);
 
-    UUID firstCaseworkerId = UUID.randomUUID();
-    UUID secondCaseworkerId = UUID.randomUUID();
-    jdbcTemplate.update(
-        "INSERT INTO axon.caseworkers (id, username) VALUES (?, ?)",
-        firstCaseworkerId,
-        "pa-reassign-1-" + firstCaseworkerId + "@example.com");
-    jdbcTemplate.update(
-        "INSERT INTO axon.caseworkers (id, username) VALUES (?, ?)",
-        secondCaseworkerId,
-        "pa-reassign-2-" + secondCaseworkerId + "@example.com");
-
     ResponseEntity<Void> firstAssign =
         restTemplate.exchange(
             "http://localhost:" + port + "/api/v0/work-list/" + priorAuthorityId + "/assign",
             HttpMethod.POST,
-            new HttpEntity<>(new WorkListAssignRequest(firstCaseworkerId, 0L), headers()),
+            new HttpEntity<>(
+                new WorkListAssignRequest(0L), headers(TestJwtDecoderConfig.BEARER_TOKEN)),
             Void.class);
     assertThat(firstAssign.getStatusCode()).isEqualTo(HttpStatus.OK);
 
@@ -1849,7 +1826,8 @@ class PostgresAxonIntegrationTest {
         restTemplate.exchange(
             "http://localhost:" + port + "/api/v0/work-list/" + priorAuthorityId + "/assign",
             HttpMethod.POST,
-            new HttpEntity<>(new WorkListAssignRequest(secondCaseworkerId, 2L), headers()),
+            new HttpEntity<>(
+                new WorkListAssignRequest(2L), headers(TestJwtDecoderConfig.OTHER_BEARER_TOKEN)),
             Void.class);
     assertThat(secondAssign.getStatusCode()).isEqualTo(HttpStatus.OK);
 
@@ -1945,17 +1923,11 @@ class PostgresAxonIntegrationTest {
         new HttpEntity<>(null, headers()),
         String.class);
 
-    UUID caseworkerId = UUID.randomUUID();
-    jdbcTemplate.update(
-        "INSERT INTO axon.caseworkers (id, username) VALUES (?, ?)",
-        caseworkerId,
-        "pa-multi-" + caseworkerId + "@example.com");
-
     ResponseEntity<Void> assignResponse =
         restTemplate.exchange(
             "http://localhost:" + port + "/api/v0/work-list/" + secondPriorAuthorityId + "/assign",
             HttpMethod.POST,
-            new HttpEntity<>(new WorkListAssignRequest(caseworkerId, 0L), headers()),
+            new HttpEntity<>(new WorkListAssignRequest(0L), headers()),
             Void.class);
     assertThat(assignResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
 
@@ -1991,8 +1963,7 @@ class PostgresAxonIntegrationTest {
     assertThat(assignedGroup.getEvents()).hasSize(2);
     assertThat(assignedGroup.getEvents())
         .extracting(event -> event.getEventType())
-        .containsExactlyInAnyOrder(
-            "PRIOR_AUTHORITY_SUBMITTED", "ASSIGN_APPLICATION_TO_CASEWORKER");
+        .containsExactlyInAnyOrder("PRIOR_AUTHORITY_SUBMITTED", "ASSIGN_APPLICATION_TO_CASEWORKER");
 
     PriorAuthorityHistoryGroup untouchedGroup =
         historyResponse.getBody().getPriorAuthorities().stream()
@@ -2095,11 +2066,23 @@ class PostgresAxonIntegrationTest {
     return headers(1);
   }
 
+  private HttpHeaders headers(String bearerToken) {
+    return headers(1, bearerToken);
+  }
+
   private HttpHeaders headers(int schemaVersion) {
     HttpHeaders headers = new HttpHeaders();
     headers.set("X-Service-Name", "CIVIL_APPLY");
     headers.set("X-Schema-Version", String.valueOf(schemaVersion));
     headers.setBearerAuth(TestJwtDecoderConfig.BEARER_TOKEN);
+    return headers;
+  }
+
+  private HttpHeaders headers(int schemaVersion, String bearerAuthToken) {
+    HttpHeaders headers = new HttpHeaders();
+    headers.set("X-Service-Name", "CIVIL_APPLY");
+    headers.set("X-Schema-Version", String.valueOf(schemaVersion));
+    headers.setBearerAuth(bearerAuthToken);
     return headers;
   }
 
