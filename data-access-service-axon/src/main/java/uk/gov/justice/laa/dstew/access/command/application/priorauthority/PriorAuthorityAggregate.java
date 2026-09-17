@@ -15,6 +15,8 @@ import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataS
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.MakePriorAuthorityDecisionCommand;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
@@ -168,6 +170,37 @@ public class PriorAuthorityAggregate {
     draftStore.delete(command.priorAuthorityId());
   }
 
+  @CommandHandler
+  void handle(
+      MakePriorAuthorityDecisionCommand command,
+      PriorAuthorityDataStore dataStore,
+      EventAppender eventAppender) {
+    requirePriorAuthorityExists(command.priorAuthorityId());
+    PriorAuthorityDataPayload current =
+        dataStore.get(command.priorAuthorityId(), state.dataVersion);
+    PriorAuthorityDecider.decideDecision(state, command, current)
+        .ifPresent(
+            event -> {
+              dataStore.append(
+                  event.priorAuthorityId(),
+                  event.dataVersion(),
+                  event.applicationId(),
+                  current.withDecision(
+                      new PriorAuthorityDataPayload.DecisionDetails(
+                          event.overallDecision(),
+                          command.decisionJustification(),
+                          command.amountGranted(),
+                          command.dateGranted(),
+                          command.expertFee(),
+                          command.disbursementInformation(),
+                          command.apportionmentInformation(),
+                          command.serialisedRequest())),
+                  command.serialisedRequest(),
+                  command.occurredAt());
+              eventAppender.append(event);
+            });
+  }
+
   /** Assigns a newly created direct PA work item after durable route resolution. */
   @CommandHandler
   void handle(DirectPriorAuthorityWorkItemAssignmentCommand command, EventAppender eventAppender) {
@@ -273,6 +306,12 @@ public class PriorAuthorityAggregate {
   }
 
   @EventSourcingHandler
+  void on(PriorAuthorityDecisionMadeEvent event) {
+    PriorAuthorityEvolve.apply(state, event);
+    this.priorAuthorityId = state.priorAuthorityId;
+  }
+
+  @EventSourcingHandler
   void on(PriorAuthorityDocumentUploadedEvent event) {
     PriorAuthorityEvolve.apply(state, event);
     this.priorAuthorityId = state.priorAuthorityId;
@@ -291,6 +330,13 @@ public class PriorAuthorityAggregate {
   @EventSourcingHandler
   void on(WorkItemUnassigned event) {
     PriorAuthorityEvolve.apply(state, event);
+  }
+
+  private void requirePriorAuthorityExists(UUID requestedSubmissionId) {
+    if (priorAuthorityId == null) {
+      throw new ResourceNotFoundException(
+          "No prior authority found with submission ID: " + requestedSubmissionId);
+    }
   }
 
   @EntityCreator

@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.query.application.history;
 
 import java.time.Instant;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -21,6 +22,7 @@ import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApp
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
@@ -193,6 +195,35 @@ public class ApplicationHistoryProjection {
             .build());
   }
 
+  /** Records a prior-authority decision in the PA history table. */
+  @EventHandler
+  public void on(PriorAuthorityDecisionMadeEvent event, EventMessage message) {
+    Map<String, Object> eventData = new LinkedHashMap<>();
+    eventData.put("status", PriorAuthorityStatus.DECIDED.name());
+    eventData.put("decision", event.overallDecision());
+    eventData.put("dataVersion", event.dataVersion());
+    if (event.amountGranted() != null) {
+      eventData.put("amountGranted", event.amountGranted());
+    }
+    if (event.dateGranted() != null) {
+      eventData.put("dateGranted", event.dateGranted());
+    }
+    priorAuthorityHistoryReadRepository.save(
+        PriorAuthorityHistoryReadModel.builder()
+            .eventId(message.identifier())
+            .applicationId(event.applicationId())
+            .priorAuthorityId(event.priorAuthorityId())
+            .priorAuthorityType(event.priorAuthorityType())
+            .eventType(
+                DecisionValue.GRANTED.name().equals(event.overallDecision())
+                    ? "PRIOR_AUTHORITY_DECISION_GRANTED"
+                    : "PRIOR_AUTHORITY_DECISION_REFUSED")
+            .eventData(serialise(eventData))
+            .serviceName(resolveServiceName(message))
+            .occurredAt(event.occurredAt())
+            .build());
+  }
+
   /** Returns chronologically ordered history rows matching the requested public event types. */
   @QueryHandler
   public ApplicationHistoryResult handle(FindApplicationHistoryQuery query) {
@@ -335,6 +366,12 @@ public class ApplicationHistoryProjection {
 
   private String groupHistoryId(EventMessage message, UUID applicationId) {
     return message.identifier() + ":" + applicationId;
+  }
+
+  private String resolveServiceName(EventMessage message) {
+    Object serviceName =
+        message.metadata().get(ServiceNameMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY);
+    return serviceName == null ? null : serviceName.toString();
   }
 
   private String serialise(Object event) {

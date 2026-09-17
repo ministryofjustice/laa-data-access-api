@@ -1,6 +1,5 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
@@ -102,9 +101,9 @@ public class SavePriorAuthorityDraftCommandMapper {
 
     return new ExpertCosts(
         EnumMapping.map(costs.getBillingType(), BillingType.class),
-        toBigDecimal(costs.getHourlyRate()),
+        costs.getHourlyRate(),
         toTimeRequested(costs.getTimeRequested()),
-        toBigDecimal(costs.getTotalAmount()),
+        costs.getTotalAmount(),
         costs.getCostsSharedWithOtherParties(),
         toApportionment(costs.getApportionment()));
   }
@@ -124,7 +123,7 @@ public class SavePriorAuthorityDraftCommandMapper {
     }
 
     return new Apportionment(
-        apportionment.getPartiesSharingCosts(), toBigDecimal(apportionment.getClientShareAmount()));
+        apportionment.getPartiesSharingCosts(), apportionment.getClientShareAmount());
   }
 
   private CounselDetails toCounselDetails(
@@ -143,15 +142,7 @@ public class SavePriorAuthorityDraftCommandMapper {
     }
 
     return new DisbursementDetails(
-        details.getDisbursementPurpose(), toBigDecimal(details.getDisbursementAmount()));
-  }
-
-  private BigDecimal toBigDecimal(Double value) {
-    if (value == null) {
-      return null;
-    }
-
-    return BigDecimal.valueOf(value);
+        details.getDisbursementPurpose(), details.getDisbursementAmount());
   }
 
   private String serialise(Object request) {
