@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.query.application.history;
 
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 import org.axonframework.messaging.core.annotation.Namespace;
 import org.axonframework.messaging.eventhandling.EventMessage;
@@ -15,6 +16,7 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.config.interceptor.ServiceNameMetadataDispatchInterceptor;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 
 /** Projection that records Prior Authority activity to parent Application history. */
@@ -39,14 +41,23 @@ public class PriorAuthorityApplicationHistoryProjection {
   /** Records a submitted Prior Authority in parent application's history. */
   @EventHandler
   public void on(PriorAuthoritySubmittedEvent event, EventMessage message) {
-    append(
-        message,
-        event.applicationId(),
-        event.priorAuthorityId(),
-        event.priorAuthorityType(),
-        "PRIOR_AUTHORITY_SUBMITTED",
-        serialise(event),
-        event.occurredAt());
+    Object serviceName =
+        message.metadata().get(ServiceNameMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY);
+    priorAuthorityHistoryReadRepository.save(
+        PriorAuthorityHistoryReadModel.builder()
+            .eventId(message.identifier())
+            .applicationId(event.applicationId())
+            .priorAuthorityId(event.priorAuthorityId())
+            .priorAuthorityType(event.priorAuthorityType())
+            .eventType("PRIOR_AUTHORITY_SUBMITTED")
+            .eventData(
+                serialise(
+                    Map.of(
+                        "status", PriorAuthorityStatus.SUBMITTED.name(),
+                        "dataVersion", event.dataVersion())))
+            .serviceName(serviceName == null ? null : serviceName.toString())
+            .occurredAt(event.occurredAt())
+            .build());
   }
 
   /** Records Prior Authority assignment in parent application's history. */
@@ -66,7 +77,7 @@ public class PriorAuthorityApplicationHistoryProjection {
         ref.applicationId(),
         event.workItemId(),
         ref.priorAuthorityType(),
-        "PRIOR_AUTHORITY_ASSIGNED",
+        "ASSIGN_APPLICATION_TO_CASEWORKER",
         serialise(event),
         event.occurredAt());
   }
@@ -88,7 +99,7 @@ public class PriorAuthorityApplicationHistoryProjection {
         ref.applicationId(),
         event.workItemId(),
         ref.priorAuthorityType(),
-        "PRIOR_AUTHORITY_UNASSIGNED",
+        "UNASSIGN_APPLICATION_TO_CASEWORKER",
         serialise(event),
         event.occurredAt());
   }

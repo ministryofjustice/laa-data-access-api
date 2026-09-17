@@ -1878,7 +1878,7 @@ class PostgresAxonIntegrationTest {
     assertThat(group.getEvents())
         .extracting(event -> event.getEventType())
         .containsExactlyInAnyOrder(
-            "PRIOR_AUTHORITY_SUBMITTED", "PRIOR_AUTHORITY_ASSIGNMENT_CHANGED");
+            "PRIOR_AUTHORITY_SUBMITTED", "ASSIGN_APPLICATION_TO_CASEWORKER");
   }
 
   @Test
@@ -1975,8 +1975,8 @@ class PostgresAxonIntegrationTest {
         .extracting(event -> event.getEventType())
         .containsExactlyInAnyOrder(
             "PRIOR_AUTHORITY_SUBMITTED",
-            "PRIOR_AUTHORITY_ASSIGNMENT_CHANGED",
-            "PRIOR_AUTHORITY_ASSIGNMENT_CHANGED");
+            "UNASSIGN_APPLICATION_TO_CASEWORKER",
+            "ASSIGN_APPLICATION_TO_CASEWORKER");
   }
 
   @Test
@@ -2086,9 +2086,9 @@ class PostgresAxonIntegrationTest {
         .extracting(event -> event.getEventType())
         .containsExactlyInAnyOrder(
             "PRIOR_AUTHORITY_SUBMITTED",
-            "PRIOR_AUTHORITY_ASSIGNMENT_CHANGED",
-            "PRIOR_AUTHORITY_ASSIGNMENT_CHANGED",
-            "PRIOR_AUTHORITY_ASSIGNMENT_CHANGED");
+            "UNASSIGN_APPLICATION_TO_CASEWORKER",
+            "ASSIGN_APPLICATION_TO_CASEWORKER",
+            "ASSIGN_APPLICATION_TO_CASEWORKER");
   }
 
   @Test
@@ -2195,7 +2195,7 @@ class PostgresAxonIntegrationTest {
     assertThat(assignedGroup.getEvents())
         .extracting(event -> event.getEventType())
         .containsExactlyInAnyOrder(
-            "PRIOR_AUTHORITY_SUBMITTED", "PRIOR_AUTHORITY_ASSIGNMENT_CHANGED");
+            "PRIOR_AUTHORITY_SUBMITTED", "ASSIGN_APPLICATION_TO_CASEWORKER");
 
     PriorAuthorityHistoryGroup untouchedGroup =
         historyResponse.getBody().getPriorAuthorities().stream()
