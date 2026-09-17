@@ -10,37 +10,46 @@ import org.junit.jupiter.api.Test;
 class FindWorkListItemsQueryTest {
 
   @Test
-  void defaultsPaginationWhenItIsNotProvided() {
-    FindWorkListItemsQuery query = new FindWorkListItemsQuery(null, null, null, null, null);
+  void defaultsToOpenApplicationsAndPaginationWhenFiltersAreNotProvided() {
+    FindWorkListItemsQuery query = new FindWorkListItemsQuery(null, null, null, null, null, null);
 
     assertThat(query.page()).isEqualTo(1);
     assertThat(query.pageSize()).isEqualTo(20);
+    assertThat(query.assignedToMe()).isFalse();
     assertThat(query.unassigned()).isTrue();
   }
 
   @Test
-  void acceptsAssignedToWithoutAnUnassignedFilter() {
-    UUID caseworkerId = UUID.randomUUID();
+  void preservesARequestForTheAuthenticatedCaseworkersPersonalQueue() {
+    UUID authenticatedUserId = UUID.randomUUID();
+    FindWorkListItemsQuery query =
+        new FindWorkListItemsQuery(true, null, false, null, null, authenticatedUserId);
 
-    FindWorkListItemsQuery query = new FindWorkListItemsQuery(caseworkerId, null, null, null, null);
-
-    assertThat(query.assignedTo()).isEqualTo(caseworkerId);
-    assertThat(query.unassigned()).isNull();
-  }
-
-  @Test
-  void preservesAnExplicitFalseUnassignedFilter() {
-    FindWorkListItemsQuery query = new FindWorkListItemsQuery(null, null, false, null, null);
-
+    assertThat(query.assignedToMe()).isTrue();
     assertThat(query.unassigned()).isFalse();
-    assertThat(query.page()).isEqualTo(1);
-    assertThat(query.pageSize()).isEqualTo(20);
+    assertThat(query.authenticatedUserId()).isEqualTo(authenticatedUserId);
   }
 
   @Test
-  void rejectsConflictingUnassignedAndAssignedToFilters() {
-    assertThatThrownBy(() -> new FindWorkListItemsQuery(UUID.randomUUID(), null, true, 1, 20))
+  void acceptsTheCombinedOpenApplicationsAndPersonalQueueFilter() {
+    FindWorkListItemsQuery query =
+        new FindWorkListItemsQuery(true, null, true, null, null, UUID.randomUUID());
+
+    assertThat(query.assignedToMe()).isTrue();
+    assertThat(query.unassigned()).isTrue();
+  }
+
+  @Test
+  void rejectsARequestThatWouldReturnAllWorkQueueItems() {
+    assertThatThrownBy(() -> new FindWorkListItemsQuery(false, null, false, 1, 20, null))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("assignedTo and unassigned=true cannot be used together");
+        .hasMessage("assignedToMe and unassigned cannot both be false");
+  }
+
+  @Test
+  void rejectsAPersonalQueueRequestWithoutAnAuthenticatedUserId() {
+    assertThatThrownBy(() -> new FindWorkListItemsQuery(true, null, false, 1, 20, null))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("authenticatedUserId is required when assignedToMe is true");
   }
 }

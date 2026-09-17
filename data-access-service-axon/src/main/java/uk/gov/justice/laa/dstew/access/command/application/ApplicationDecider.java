@@ -119,6 +119,7 @@ public final class ApplicationDecider {
         state.applicationDataVersion + 1,
         command.overallDecision(),
         autoGranted,
+        command.caseworkerId(),
         command.occurredAt());
   }
 

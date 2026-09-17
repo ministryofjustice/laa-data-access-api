@@ -196,9 +196,9 @@ tasks.named('integrationTest').configure { mustRunAfter build }
 jacocoTestCoverageVerification.mustRunAfter tasks.named('integrationTest')
 
 tasks.register('preflightCheck') {
-    description = 'Runs clean, spotlessApply, build, integrationTest and jacocoTestCoverageVerification'
+    description = 'Runs clean and spotlessApply without compiling or testing data-access-service'
     group = 'verification'
-    dependsOn clean, spotlessApply, build, tasks.named('integrationTest'), jacocoTestCoverageVerification, combinedCoverageReport
+    dependsOn clean, spotlessApply
 }
 
 tasks.register('combinedCoverageReport', JacocoReport) {

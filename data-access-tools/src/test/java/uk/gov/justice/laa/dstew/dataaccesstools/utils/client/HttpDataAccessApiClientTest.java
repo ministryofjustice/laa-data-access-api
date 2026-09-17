@@ -48,7 +48,7 @@ class HttpDataAccessApiClientTest {
     assertEquals(priorAuthorityId, client.createPriorAuthorityDraft("{}"));
     client.updatePriorAuthorityDraft(priorAuthorityId, "{\"justification\":\"Required\"}");
     assertEquals(priorAuthorityId, client.submitPriorAuthorityDraft(priorAuthorityId));
-    client.assignWorkListItem(applicationId, priorAuthorityId, 3, "Assigned \"locally\"");
+    client.assignWorkListItem(applicationId, 3, "Assigned \"locally\"");
 
     assertEquals(9, requests.size());
     requests.forEach(
@@ -74,9 +74,7 @@ class HttpDataAccessApiClientTest {
     assertEquals("POST", requests.get(8).method());
     assertEquals("/api/v0/work-list/" + applicationId + "/assign", requests.get(8).path());
     assertEquals(
-        "{\"caseworkerId\":\""
-            + priorAuthorityId
-            + "\",\"expectedAssignmentVersion\":3,\"eventHistory\":{\"eventDescription\":\"Assigned \\\"locally\\\"\"}}",
+        "{\"expectedAssignmentVersion\":3,\"eventHistory\":{\"eventDescription\":\"Assigned \\\"locally\\\"\"}}",
         requests.get(8).body());
   }
 
@@ -104,9 +102,9 @@ class HttpDataAccessApiClientTest {
     String path = exchange.getRequestURI().getPath();
     if (exchange.getRequestMethod().equals("GET")) {
       byte[] response =
-          ("{\"laaReference\":\"LAA-CLI-12345678\",\"proceedings\":[{\"id\":\""
+          ("{\"laaReference\":\"LAA-CLI-12345678\",\"proceedings\":[{\"proceedingId\":\""
                   + priorAuthorityId
-                  + "\"}],\"applicationVersion\":2}")
+                  + "\"}],\"version\":2}")
               .getBytes();
       exchange.sendResponseHeaders(200, response.length);
       exchange.getResponseBody().write(response);

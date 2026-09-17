@@ -78,7 +78,7 @@ class WorkListIntegrationTest {
   void
       givenManualApplication_whenAssignedThenUnassigned_thenItsWorkListViewsAndConflictsAreConsistent() {
     UUID applicationId = UUID.randomUUID();
-    UUID caseworkerId = createCaseworker("caseworker@example.com");
+    UUID caseworkerId = TestJwtDecoderConfig.CASEWORKER_ID;
     createManualApplication(applicationId);
     awaitWorkListContains("", applicationId, null, 0L);
 
@@ -86,10 +86,10 @@ class WorkListIntegrationTest {
         restTemplate.exchange(
             assignmentUrl(applicationId, "assign"),
             HttpMethod.POST,
-            new HttpEntity<>(new WorkListAssignRequest(caseworkerId, 0L), headers()),
+            new HttpEntity<>(new WorkListAssignRequest(0L), headers()),
             Void.class);
     assertThat(assigned.getStatusCode()).isEqualTo(HttpStatus.OK);
-    awaitWorkListContains("?assignedTo=" + caseworkerId, applicationId, caseworkerId, 1L);
+    awaitWorkListContains("?assignedToMe=true&unassigned=false", applicationId, caseworkerId, 1L);
     await()
         .atMost(15, TimeUnit.SECONDS)
         .untilAsserted(
@@ -102,7 +102,7 @@ class WorkListIntegrationTest {
         restTemplate.exchange(
             assignmentUrl(applicationId, "assign"),
             HttpMethod.POST,
-            new HttpEntity<>(new WorkListAssignRequest(caseworkerId, 0L), headers()),
+            new HttpEntity<>(new WorkListAssignRequest(0L), headers()),
             Void.class);
     assertThat(duplicate.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
 
@@ -120,7 +120,7 @@ class WorkListIntegrationTest {
   void givenManualApplicationAssignedToCaseworker_whenDecided_thenItIsRemovedFromTheWorkQueue() {
     UUID applicationId = UUID.randomUUID();
     UUID proceedingId = UUID.randomUUID();
-    UUID caseworkerId = createCaseworker("decider@example.com");
+    UUID caseworkerId = TestJwtDecoderConfig.CASEWORKER_ID;
     ResponseEntity<Void> created =
         restTemplate.postForEntity(
             "http://localhost:" + port + "/api/v0/applications",
@@ -142,12 +142,11 @@ class WorkListIntegrationTest {
     awaitWorkListContains("", applicationId, null, 0L);
 
     assertThat(assign(applicationId, caseworkerId).getStatusCode()).isEqualTo(HttpStatus.OK);
-    awaitWorkListContains("?assignedTo=" + caseworkerId, applicationId, caseworkerId, 1L);
+    awaitWorkListContains("?assignedToMe=true&unassigned=false", applicationId, caseworkerId, 1L);
 
     MakeDecisionRequest decision =
         MakeDecisionRequest.builder()
             .applicationVersion(1L)
-            .caseworkerId(caseworkerId)
             .overallDecision(DecisionStatus.REFUSED)
             .eventHistory(
                 EventHistoryRequest.builder().eventDescription("Decision recorded").build())
@@ -178,7 +177,7 @@ class WorkListIntegrationTest {
               assertThat(getWorkList("").getItems())
                   .extracting(item -> item.getItemId())
                   .doesNotContain(applicationId);
-              assertThat(getWorkList("?assignedTo=" + caseworkerId).getItems())
+              assertThat(getWorkList("?assignedToMe=true&unassigned=false").getItems())
                   .extracting(item -> item.getItemId())
                   .doesNotContain(applicationId);
             });
@@ -296,7 +295,7 @@ class WorkListIntegrationTest {
     UUID assignedApplicationId = UUID.randomUUID();
     UUID completedApplicationId = UUID.randomUUID();
     UUID parentApplicationId = UUID.randomUUID();
-    UUID caseworkerId = createCaseworker("claimable-work@example.com");
+    UUID caseworkerId = TestJwtDecoderConfig.CASEWORKER_ID;
     createManualApplication(availableApplicationId);
     createManualApplication(assignedApplicationId);
     createGrantedApplication(completedApplicationId);
@@ -351,8 +350,8 @@ class WorkListIntegrationTest {
       givenTwoPriorAuthoritiesUnderOneApplication_whenOneIsClaimed_thenWorkQueueViewsKeepThemIndependent()
           throws Exception {
     UUID parentApplicationId = UUID.randomUUID();
-    UUID claimantId = createCaseworker("claimant@example.com");
-    UUID otherCaseworkerId = createCaseworker("other@example.com");
+    UUID claimantId = TestJwtDecoderConfig.CASEWORKER_ID;
+    UUID otherCaseworkerId = TestJwtDecoderConfig.OTHER_CASEWORKER_ID;
     createGrantedApplication(parentApplicationId);
     UUID claimedPriorAuthorityId = createAndSubmitPriorAuthorityDraft(parentApplicationId);
     UUID availablePriorAuthorityId = createAndSubmitPriorAuthorityDraft(parentApplicationId);
@@ -380,7 +379,7 @@ class WorkListIntegrationTest {
         restTemplate.exchange(
             assignmentUrl(claimedPriorAuthorityId, "assign"),
             HttpMethod.POST,
-            new HttpEntity<>(new WorkListAssignRequest(claimantId, 0L), headers()),
+            new HttpEntity<>(new WorkListAssignRequest(0L), headers()),
             Void.class);
     assertThat(assigned.getStatusCode()).isEqualTo(HttpStatus.OK);
 
@@ -394,7 +393,7 @@ class WorkListIntegrationTest {
                   .contains(availablePriorAuthorityId)
                   .doesNotContain(claimedPriorAuthorityId);
 
-              WorkListResponse claimantQueue = getWorkList("?assignedTo=" + claimantId);
+              WorkListResponse claimantQueue = getWorkList("?assignedToMe=true&unassigned=false");
               assertThat(claimantQueue.getItems())
                   .filteredOn(item -> item.getItemId().equals(claimedPriorAuthorityId))
                   .singleElement()
@@ -408,7 +407,7 @@ class WorkListIntegrationTest {
                   .doesNotContain(availablePriorAuthorityId);
 
               WorkListResponse otherCaseworkerQueue =
-                  getWorkList("?assignedTo=" + otherCaseworkerId);
+                  getWorkList("?assignedToMe=true&unassigned=false", otherCaseworkerId);
               assertThat(otherCaseworkerQueue.getItems())
                   .extracting(WorkListItem::getItemId)
                   .doesNotContain(claimedPriorAuthorityId);
@@ -419,7 +418,7 @@ class WorkListIntegrationTest {
   void
       givenMultiplePriorAuthoritiesAssignedToOneCaseworker_whenPersonalQueueIsViewed_thenAllAreReturned() {
     UUID parentApplicationId = UUID.randomUUID();
-    UUID caseworkerId = createCaseworker("caseworker@example.com");
+    UUID caseworkerId = TestJwtDecoderConfig.CASEWORKER_ID;
     createGrantedApplication(parentApplicationId);
     UUID firstPriorAuthorityId = createAndSubmitPriorAuthorityDraft(parentApplicationId);
     UUID secondPriorAuthorityId = createAndSubmitPriorAuthorityDraft(parentApplicationId);
@@ -433,7 +432,7 @@ class WorkListIntegrationTest {
         .atMost(15, TimeUnit.SECONDS)
         .untilAsserted(
             () ->
-                assertThat(getWorkList("?assignedTo=" + caseworkerId).getItems())
+                assertThat(getWorkList("?assignedToMe=true&unassigned=false").getItems())
                     .filteredOn(
                         item ->
                             item.getItemId().equals(firstPriorAuthorityId)
@@ -454,7 +453,7 @@ class WorkListIntegrationTest {
       givenApplicationAndPriorAuthorityAssignedToOneCaseworker_whenPersonalQueueIsViewed_thenBothAreReturned() {
     UUID manualApplicationId = UUID.randomUUID();
     UUID parentApplicationId = UUID.randomUUID();
-    UUID caseworkerId = createCaseworker("caseworker@example.com");
+    UUID caseworkerId = TestJwtDecoderConfig.CASEWORKER_ID;
     createManualApplication(manualApplicationId);
     createGrantedApplication(parentApplicationId);
     UUID priorAuthorityId = createAndSubmitPriorAuthorityDraft(parentApplicationId);
@@ -466,7 +465,7 @@ class WorkListIntegrationTest {
         .atMost(15, TimeUnit.SECONDS)
         .untilAsserted(
             () -> {
-              WorkListResponse personalQueue = getWorkList("?assignedTo=" + caseworkerId);
+              WorkListResponse personalQueue = getWorkList("?assignedToMe=true&unassigned=false");
               assertThat(personalQueue.getItems())
                   .filteredOn(
                       item ->
@@ -493,8 +492,8 @@ class WorkListIntegrationTest {
       givenApplicationAndPriorAuthorityAssignedToDifferentCaseworkers_whenPersonalQueuesAreViewed_thenEachExcludesTheOthersWork() {
     UUID manualApplicationId = UUID.randomUUID();
     UUID parentApplicationId = UUID.randomUUID();
-    UUID initialApplicationCaseworkerId = createCaseworker("initial@example.com");
-    UUID priorAuthorityCaseworkerId = createCaseworker("prior-authority@example.com");
+    UUID initialApplicationCaseworkerId = TestJwtDecoderConfig.CASEWORKER_ID;
+    UUID priorAuthorityCaseworkerId = TestJwtDecoderConfig.OTHER_CASEWORKER_ID;
     createManualApplication(manualApplicationId);
     createGrantedApplication(parentApplicationId);
     UUID priorAuthorityId = createAndSubmitPriorAuthorityDraft(parentApplicationId);
@@ -508,11 +507,13 @@ class WorkListIntegrationTest {
         .atMost(15, TimeUnit.SECONDS)
         .untilAsserted(
             () -> {
-              assertThat(getWorkList("?assignedTo=" + initialApplicationCaseworkerId).getItems())
+              assertThat(getWorkList("?assignedToMe=true&unassigned=false").getItems())
                   .extracting(WorkListItem::getItemId)
                   .contains(manualApplicationId)
                   .doesNotContain(priorAuthorityId);
-              assertThat(getWorkList("?assignedTo=" + priorAuthorityCaseworkerId).getItems())
+              assertThat(
+                      getWorkList("?assignedToMe=true&unassigned=false", priorAuthorityCaseworkerId)
+                          .getItems())
                   .extracting(WorkListItem::getItemId)
                   .contains(priorAuthorityId)
                   .doesNotContain(manualApplicationId);
@@ -520,10 +521,39 @@ class WorkListIntegrationTest {
   }
 
   @Test
+  void
+      givenOpenAndAssignedWork_whenCombinedPersonalAndOpenApplicationsAreViewed_thenOnlyOpenAndCallersWorkIsReturned() {
+    UUID callersApplicationId = UUID.randomUUID();
+    UUID openApplicationId = UUID.randomUUID();
+    UUID parentApplicationId = UUID.randomUUID();
+    UUID otherCaseworkersPriorAuthorityId;
+    createManualApplication(callersApplicationId);
+    createManualApplication(openApplicationId);
+    createGrantedApplication(parentApplicationId);
+    otherCaseworkersPriorAuthorityId = createAndSubmitPriorAuthorityDraft(parentApplicationId);
+
+    assertThat(assign(callersApplicationId, TestJwtDecoderConfig.CASEWORKER_ID).getStatusCode())
+        .isEqualTo(HttpStatus.OK);
+    assertThat(
+            assign(otherCaseworkersPriorAuthorityId, TestJwtDecoderConfig.OTHER_CASEWORKER_ID)
+                .getStatusCode())
+        .isEqualTo(HttpStatus.OK);
+
+    await()
+        .atMost(15, TimeUnit.SECONDS)
+        .untilAsserted(
+            () ->
+                assertThat(getWorkList("?assignedToMe=true&unassigned=true").getItems())
+                    .extracting(WorkListItem::getItemId)
+                    .contains(callersApplicationId, openApplicationId)
+                    .doesNotContain(otherCaseworkersPriorAuthorityId));
+  }
+
+  @Test
   void givenMixedWorkList_whenFilteredAndPaged_thenPublicQueueContractsAreApplied() {
     UUID applicationId = UUID.randomUUID();
     UUID parentApplicationId = UUID.randomUUID();
-    UUID caseworkerId = createCaseworker("filtered-work@example.com");
+    UUID caseworkerId = TestJwtDecoderConfig.CASEWORKER_ID;
     createManualApplication(applicationId);
     createGrantedApplication(parentApplicationId);
     UUID priorAuthorityId = createAndSubmitPriorAuthorityDraft(parentApplicationId);
@@ -541,7 +571,7 @@ class WorkListIntegrationTest {
                   .contains(priorAuthorityId)
                   .doesNotContain(applicationId);
               assertThat(
-                      getWorkList("?assignedTo=" + caseworkerId + "&itemType=APPLICATION")
+                      getWorkList("?assignedToMe=true&unassigned=false&itemType=APPLICATION")
                           .getItems())
                   .extracting(WorkListItem::getItemId)
                   .contains(applicationId);
@@ -549,10 +579,11 @@ class WorkListIntegrationTest {
                   .extracting(WorkListItem::getItemId)
                   .contains(priorAuthorityId)
                   .doesNotContain(applicationId);
-              assertThat(getWorkList("?unassigned=false").getItems())
+              assertThat(getWorkList("?assignedToMe=true&unassigned=true").getItems())
                   .extracting(WorkListItem::getItemId)
                   .contains(applicationId, priorAuthorityId);
-              WorkListResponse page = getWorkList("?unassigned=false&page=1&pageSize=1");
+              WorkListResponse page =
+                  getWorkList("?assignedToMe=true&unassigned=true&page=1&pageSize=1");
               assertThat(page.getItems()).hasSize(1);
               assertThat(page.getPaging().getPage()).isEqualTo(1);
               assertThat(page.getPaging().getPageSize()).isEqualTo(1);
@@ -572,9 +603,7 @@ class WorkListIntegrationTest {
                 .exchange(
                     "http://localhost:"
                         + port
-                        + "/api/v0/work-list?assignedTo="
-                        + caseworkerId
-                        + "&unassigned=true",
+                        + "/api/v0/work-list?assignedToMe=false&unassigned=false",
                     HttpMethod.GET,
                     new HttpEntity<>(headers()),
                     String.class)
@@ -585,9 +614,9 @@ class WorkListIntegrationTest {
   @Test
   void givenAssignmentHistory_whenWorkIsAssigned_thenItIsAcceptedAtTheHttpBoundary() {
     UUID applicationId = UUID.randomUUID();
-    UUID caseworkerId = createCaseworker("history-work@example.com");
+    UUID caseworkerId = TestJwtDecoderConfig.CASEWORKER_ID;
     createManualApplication(applicationId);
-    WorkListAssignRequest request = new WorkListAssignRequest(caseworkerId, 0L);
+    WorkListAssignRequest request = new WorkListAssignRequest(0L);
     request.setEventHistory(
         EventHistoryRequest.builder().eventDescription("Taken for assessment").build());
 
@@ -599,7 +628,7 @@ class WorkListIntegrationTest {
             Void.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-    awaitWorkListContains("?assignedTo=" + caseworkerId, applicationId, caseworkerId, 1L);
+    awaitWorkListContains("?assignedToMe=true&unassigned=false", applicationId, caseworkerId, 1L);
   }
 
   @Test
@@ -675,13 +704,6 @@ class WorkListIntegrationTest {
             new HttpEntity<>(new ManualOutcomeRequest(AutoGrantOutcome.MANUAL), headers()),
             Void.class);
     assertThat(ready.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-  }
-
-  private UUID createCaseworker(String username) {
-    UUID caseworkerId = UUID.randomUUID();
-    jdbcTemplate.update(
-        "INSERT INTO axon.caseworkers (id, username) VALUES (?, ?)", caseworkerId, username);
-    return caseworkerId;
   }
 
   private void createGrantedApplication(UUID applicationId) {
@@ -782,11 +804,15 @@ class WorkListIntegrationTest {
   }
 
   private WorkListResponse getWorkList(String query) {
+    return getWorkList(query, TestJwtDecoderConfig.CASEWORKER_ID);
+  }
+
+  private WorkListResponse getWorkList(String query, UUID caseworkerId) {
     ResponseEntity<WorkListResponse> response =
         restTemplate.exchange(
             "http://localhost:" + port + "/api/v0/work-list" + query,
             HttpMethod.GET,
-            new HttpEntity<>(headers()),
+            new HttpEntity<>(headersFor(caseworkerId)),
             WorkListResponse.class);
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(response.getBody()).isNotNull();
@@ -801,16 +827,23 @@ class WorkListIntegrationTest {
     return restTemplate.exchange(
         assignmentUrl(itemId, "assign"),
         HttpMethod.POST,
-        new HttpEntity<>(new WorkListAssignRequest(caseworkerId, 0L), headers()),
+        new HttpEntity<>(new WorkListAssignRequest(0L), headersFor(caseworkerId)),
         Void.class);
   }
 
   private HttpHeaders headers() {
+    return headersFor(TestJwtDecoderConfig.CASEWORKER_ID);
+  }
+
+  private HttpHeaders headersFor(UUID caseworkerId) {
     HttpHeaders headers = new HttpHeaders();
     headers.set("X-Service-Name", "CIVIL_APPLY");
     headers.set("X-Schema-Version", "1");
     headers.setContentType(MediaType.APPLICATION_JSON);
-    headers.setBearerAuth(TestJwtDecoderConfig.BEARER_TOKEN);
+    headers.setBearerAuth(
+        caseworkerId.equals(TestJwtDecoderConfig.OTHER_CASEWORKER_ID)
+            ? TestJwtDecoderConfig.OTHER_BEARER_TOKEN
+            : TestJwtDecoderConfig.BEARER_TOKEN);
     return headers;
   }
 }
