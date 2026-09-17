@@ -30,27 +30,27 @@ class GetPriorAuthorityResponseMapperTest {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     PriorAuthorityResult result =
-        new PriorAuthorityResult(
-            priorAuthorityId,
-            applicationId,
-            "Expert is required",
-            "SUBMITTED",
-            "GRANTED",
-            "Decision recorded",
-            PriorAuthorityType.EXPERT,
-            new ExpertDetails(
-                "PSYCHIATRIST",
-                "Jane Doe",
-                "AB1 2CD",
-                new ExpertCosts(
-                    BillingType.HOURLY,
-                    BigDecimal.valueOf(150),
-                    new TimeRequested(2, 30),
-                    BigDecimal.valueOf(300),
-                    true,
-                    new Apportionment(2, BigDecimal.valueOf(150)))),
-            null,
-            null);
+        PriorAuthorityResult.builder()
+            .priorAuthorityId(priorAuthorityId)
+            .applicationId(applicationId)
+            .justification("Expert is required")
+            .status("SUBMITTED")
+            .decision("GRANTED")
+            .decisionJustification("Decision recorded")
+            .priorAuthorityType(PriorAuthorityType.EXPERT)
+            .expertDetails(
+                new ExpertDetails(
+                    "PSYCHIATRIST",
+                    "Jane Doe",
+                    "AB1 2CD",
+                    new ExpertCosts(
+                        BillingType.HOURLY,
+                        BigDecimal.valueOf(150),
+                        new TimeRequested(2, 30),
+                        BigDecimal.valueOf(300),
+                        true,
+                        new Apportionment(2, BigDecimal.valueOf(150)))))
+            .build();
 
     var response = mapper.toResponse(result);
 
@@ -76,25 +76,23 @@ class GetPriorAuthorityResponseMapperTest {
   @Test
   void givenCounselAndDisbursementResults_whenMapped_thenMapsTheirDetails() {
     PriorAuthorityResult counsel =
-        new PriorAuthorityResult(
-            UUID.randomUUID(),
-            UUID.randomUUID(),
-            "Counsel is required",
-            "SUBMITTED",
-            PriorAuthorityType.COUNSEL,
-            null,
-            new CounselDetails(CounselType.TWO_JUNIOR_COUNSEL),
-            null);
+        PriorAuthorityResult.builder()
+            .priorAuthorityId(UUID.randomUUID())
+            .applicationId(UUID.randomUUID())
+            .justification("Counsel is required")
+            .status("SUBMITTED")
+            .priorAuthorityType(PriorAuthorityType.COUNSEL)
+            .counselDetails(new CounselDetails(CounselType.TWO_JUNIOR_COUNSEL))
+            .build();
     PriorAuthorityResult disbursement =
-        new PriorAuthorityResult(
-            UUID.randomUUID(),
-            UUID.randomUUID(),
-            "Travel is required",
-            "SUBMITTED",
-            PriorAuthorityType.DISBURSEMENT,
-            null,
-            null,
-            new DisbursementDetails("Travel", BigDecimal.TEN));
+        PriorAuthorityResult.builder()
+            .priorAuthorityId(UUID.randomUUID())
+            .applicationId(UUID.randomUUID())
+            .justification("Travel is required")
+            .status("SUBMITTED")
+            .priorAuthorityType(PriorAuthorityType.DISBURSEMENT)
+            .disbursementDetails(new DisbursementDetails("Travel", BigDecimal.TEN))
+            .build();
 
     var counselResponse = mapper.toResponse(counsel);
     var disbursementResponse = mapper.toResponse(disbursement);
@@ -108,8 +106,11 @@ class GetPriorAuthorityResponseMapperTest {
   @Test
   void givenResultWithOptionalValuesAbsent_whenMapped_thenLeavesApiValuesNull() {
     PriorAuthorityResult result =
-        new PriorAuthorityResult(
-            UUID.randomUUID(), UUID.randomUUID(), "", null, null, null, null, null);
+        PriorAuthorityResult.builder()
+            .priorAuthorityId(UUID.randomUUID())
+            .applicationId(UUID.randomUUID())
+            .justification("")
+            .build();
 
     var response = mapper.toResponse(result);
 
@@ -122,39 +123,37 @@ class GetPriorAuthorityResponseMapperTest {
   @Test
   void givenNullableNestedValues_whenMapped_thenLeavesTheirApiValuesNull() {
     PriorAuthorityResult expert =
-        new PriorAuthorityResult(
-            UUID.randomUUID(),
-            UUID.randomUUID(),
-            "Expert is required",
-            "SUBMITTED",
-            PriorAuthorityType.EXPERT,
-            new ExpertDetails(
-                "PSYCHIATRIST",
-                "Jane Doe",
-                "AB1 2CD",
-                new ExpertCosts(null, null, null, null, null, null)),
-            null,
-            null);
+        PriorAuthorityResult.builder()
+            .priorAuthorityId(UUID.randomUUID())
+            .applicationId(UUID.randomUUID())
+            .justification("Expert is required")
+            .status("SUBMITTED")
+            .priorAuthorityType(PriorAuthorityType.EXPERT)
+            .expertDetails(
+                new ExpertDetails(
+                    "PSYCHIATRIST",
+                    "Jane Doe",
+                    "AB1 2CD",
+                    new ExpertCosts(null, null, null, null, null, null)))
+            .build();
     PriorAuthorityResult counsel =
-        new PriorAuthorityResult(
-            UUID.randomUUID(),
-            UUID.randomUUID(),
-            "Counsel is required",
-            "SUBMITTED",
-            PriorAuthorityType.COUNSEL,
-            null,
-            new CounselDetails(null),
-            null);
+        PriorAuthorityResult.builder()
+            .priorAuthorityId(UUID.randomUUID())
+            .applicationId(UUID.randomUUID())
+            .justification("Counsel is required")
+            .status("SUBMITTED")
+            .priorAuthorityType(PriorAuthorityType.COUNSEL)
+            .counselDetails(new CounselDetails(null))
+            .build();
     PriorAuthorityResult disbursement =
-        new PriorAuthorityResult(
-            UUID.randomUUID(),
-            UUID.randomUUID(),
-            "Disbursement is required",
-            "SUBMITTED",
-            PriorAuthorityType.DISBURSEMENT,
-            null,
-            null,
-            new DisbursementDetails("Travel", null));
+        PriorAuthorityResult.builder()
+            .priorAuthorityId(UUID.randomUUID())
+            .applicationId(UUID.randomUUID())
+            .justification("Disbursement is required")
+            .status("SUBMITTED")
+            .priorAuthorityType(PriorAuthorityType.DISBURSEMENT)
+            .disbursementDetails(new DisbursementDetails("Travel", null))
+            .build();
 
     var expertResponse = mapper.toResponse(expert);
     var counselResponse = mapper.toResponse(counsel);
@@ -173,36 +172,35 @@ class GetPriorAuthorityResponseMapperTest {
   void givenUploadedDocuments_whenMapped_thenMapsDocumentFieldsAndUtcTimestamps() {
     Instant uploadedAt = Instant.parse("2026-09-08T12:30:00Z");
     PriorAuthorityResult result =
-        new PriorAuthorityResult(
-            UUID.randomUUID(),
-            UUID.randomUUID(),
-            "justification",
-            "DRAFT",
-            PriorAuthorityType.EXPERT,
-            null,
-            null,
-            null,
-            List.of(
-                new PriorAuthorityDocument(
-                    UUID.randomUUID(),
-                    "GATEWAY_EVIDENCE",
-                    "a.pdf",
-                    "PDF",
-                    "application/pdf",
-                    12L,
-                    uploadedAt,
-                    "CIVIL_APPLY",
-                    "checksum-one"),
-                new PriorAuthorityDocument(
-                    UUID.randomUUID(),
-                    "MERITS_REPORT",
-                    "b.pdf",
-                    "PDF",
-                    "application/pdf",
-                    8L,
-                    null,
-                    "CIVIL_DECIDE",
-                    "checksum-two")));
+        PriorAuthorityResult.builder()
+            .priorAuthorityId(UUID.randomUUID())
+            .applicationId(UUID.randomUUID())
+            .justification("justification")
+            .status("DRAFT")
+            .priorAuthorityType(PriorAuthorityType.EXPERT)
+            .uploadedDocuments(
+                List.of(
+                    new PriorAuthorityDocument(
+                        UUID.randomUUID(),
+                        "GATEWAY_EVIDENCE",
+                        "a.pdf",
+                        "PDF",
+                        "application/pdf",
+                        12L,
+                        uploadedAt,
+                        "CIVIL_APPLY",
+                        "checksum-one"),
+                    new PriorAuthorityDocument(
+                        UUID.randomUUID(),
+                        "MERITS_REPORT",
+                        "b.pdf",
+                        "PDF",
+                        "application/pdf",
+                        8L,
+                        null,
+                        "CIVIL_DECIDE",
+                        "checksum-two")))
+            .build();
 
     var response = mapper.toResponse(result);
 

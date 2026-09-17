@@ -31,17 +31,17 @@ class GetPriorAuthorityUseCaseTest {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     PriorAuthorityResult projectedResult =
-        new PriorAuthorityResult(
-            priorAuthorityId,
-            applicationId,
-            "Counsel is required",
-            "SUBMITTED",
-            PriorAuthorityType.COUNSEL,
-            null,
-            new uk.gov.justice.laa.dstew.access.content.priorauthority.CounselDetails(
-                uk.gov.justice.laa.dstew.access.content.priorauthority.CounselType
-                    .TWO_JUNIOR_COUNSEL),
-            null);
+        PriorAuthorityResult.builder()
+            .priorAuthorityId(priorAuthorityId)
+            .applicationId(applicationId)
+            .justification("Counsel is required")
+            .status("SUBMITTED")
+            .priorAuthorityType(PriorAuthorityType.COUNSEL)
+            .counselDetails(
+                new uk.gov.justice.laa.dstew.access.content.priorauthority.CounselDetails(
+                    uk.gov.justice.laa.dstew.access.content.priorauthority.CounselType
+                        .TWO_JUNIOR_COUNSEL))
+            .build();
     when(queryGateway.query(
             any(FindPriorAuthorityByPriorAuthorityIdQuery.class), eq(PriorAuthorityResult.class)))
         .thenReturn(CompletableFuture.completedFuture(projectedResult));

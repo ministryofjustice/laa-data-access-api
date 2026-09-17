@@ -48,15 +48,13 @@ class MakePriorAuthorityDecisionUseCaseTest {
             PriorAuthorityResult.class))
         .thenReturn(
             CompletableFuture.completedFuture(
-                new PriorAuthorityResult(
-                    priorAuthorityId,
-                    applicationId,
-                    "Need expert",
-                    "SUBMITTED",
-                    PriorAuthorityType.EXPERT,
-                    null,
-                    null,
-                    null)));
+                PriorAuthorityResult.builder()
+                    .priorAuthorityId(priorAuthorityId)
+                    .applicationId(applicationId)
+                    .justification("Need expert")
+                    .status("SUBMITTED")
+                    .priorAuthorityType(PriorAuthorityType.EXPERT)
+                    .build()));
 
     useCase.execute(command);
 

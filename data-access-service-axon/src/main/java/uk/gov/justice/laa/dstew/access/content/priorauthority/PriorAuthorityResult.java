@@ -2,10 +2,12 @@ package uk.gov.justice.laa.dstew.access.content.priorauthority;
 
 import java.util.List;
 import java.util.UUID;
+import lombok.Builder;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
 
 /** Typed result of retrieving a prior-authority submission. */
+@Builder
 public record PriorAuthorityResult(
     UUID priorAuthorityId,
     UUID applicationId,
@@ -18,81 +20,6 @@ public record PriorAuthorityResult(
     CounselDetails counselDetails,
     DisbursementDetails disbursementDetails,
     List<PriorAuthorityDocument> uploadedDocuments) {
-
-  /** Backward-compatible constructor when decision values and uploaded documents are absent. */
-  public PriorAuthorityResult(
-      UUID priorAuthorityId,
-      UUID applicationId,
-      String justification,
-      String status,
-      PriorAuthorityType priorAuthorityType,
-      ExpertDetails expertDetails,
-      CounselDetails counselDetails,
-      DisbursementDetails disbursementDetails) {
-    this(
-        priorAuthorityId,
-        applicationId,
-        justification,
-        status,
-        null,
-        null,
-        priorAuthorityType,
-        expertDetails,
-        counselDetails,
-        disbursementDetails,
-        null);
-  }
-
-  /** Creates a result with uploaded documents but no explicit decision values. */
-  public PriorAuthorityResult(
-      UUID priorAuthorityId,
-      UUID applicationId,
-      String justification,
-      String status,
-      PriorAuthorityType priorAuthorityType,
-      ExpertDetails expertDetails,
-      CounselDetails counselDetails,
-      DisbursementDetails disbursementDetails,
-      List<PriorAuthorityDocument> uploadedDocuments) {
-    this(
-        priorAuthorityId,
-        applicationId,
-        justification,
-        status,
-        null,
-        null,
-        priorAuthorityType,
-        expertDetails,
-        counselDetails,
-        disbursementDetails,
-        uploadedDocuments);
-  }
-
-  /** Creates a result with decision values but no uploaded documents. */
-  public PriorAuthorityResult(
-      UUID priorAuthorityId,
-      UUID applicationId,
-      String justification,
-      String status,
-      String decision,
-      String decisionJustification,
-      PriorAuthorityType priorAuthorityType,
-      ExpertDetails expertDetails,
-      CounselDetails counselDetails,
-      DisbursementDetails disbursementDetails) {
-    this(
-        priorAuthorityId,
-        applicationId,
-        justification,
-        status,
-        decision,
-        decisionJustification,
-        priorAuthorityType,
-        expertDetails,
-        counselDetails,
-        disbursementDetails,
-        null);
-  }
 
   /** Builds the use-case result from the current-state projection and versioned content. */
   public static PriorAuthorityResult from(
