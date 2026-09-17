@@ -16,7 +16,6 @@ components:
           type: string
         amountGranted:
           type: number
-          format: double
         dateGranted:
           type: string
           format: date-time
@@ -39,7 +38,6 @@ components:
       properties:
         newClientShareAmount:
           type: number
-          format: double
           description: New client share amount if applicable
 
     DisbursementMakePriorAuthorityDecisionRequest:
@@ -48,7 +46,6 @@ components:
       properties:
         newAmount:
           type: number
-          format: double
           description: New amount if applicable
 
     ExpertMakePriorAuthorityDecisionRequest:
@@ -57,11 +54,9 @@ components:
       properties:
         newFixedRateAmount:
           type: number
-          format: double
           description: New fixed rate amount if applicable
         newHourlyRateAmount:
           type: number
-          format: double
           description: New hourly rate amount if applicable
 
     PriorAuthorityResponse:
@@ -258,7 +253,6 @@ components:
           minLength: 1
         disbursementAmount:
           type: number
-          format: double
           minimum: 0
           exclusiveMinimum: true
 
@@ -289,7 +283,6 @@ components:
           minimum: 2
         clientShareAmount:
           type: number
-          format: double
 
     SubmitExpertCosts:
       type: object
@@ -303,14 +296,12 @@ components:
           $ref: "#/components/schemas/BillingType"
         hourlyRate:
           type: number
-          format: double
           minimum: 0
           exclusiveMinimum: true
         timeRequested:
           $ref: "#/components/schemas/SubmitTimeRequested"
         totalAmount:
           type: number
-          format: double
         costsSharedWithOtherParties:
           type: boolean
         apportionment:
@@ -491,7 +482,6 @@ components:
           minimum: 2
         clientShareAmount:
           type: number
-          format: double
 
     ExpertCosts:
       type: object
@@ -500,12 +490,10 @@ components:
           $ref: "#/components/schemas/BillingType"
         hourlyRate:
           type: number
-          format: double
         timeRequested:
           $ref: "#/components/schemas/TimeRequested"
         totalAmount:
           type: number
-          format: double
         costsSharedWithOtherParties:
           type: boolean
         apportionment:
@@ -536,4 +524,3 @@ components:
           type: string
         disbursementAmount:
           type: number
-          format: double

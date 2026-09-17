@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.command.application.priorauthority;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 import org.axonframework.messaging.commandhandling.annotation.Command;
@@ -13,7 +14,7 @@ public record MakePriorAuthorityDecisionCommand(
     long expectedPriorAuthorityVersion,
     String overallDecision,
     String decisionJustification,
-    Double amountGranted,
+    BigDecimal amountGranted,
     ExpertFeeInformation expertFee,
     DisbursementInformation disbursementInformation,
     ApportionmentInformation apportionmentInformation,

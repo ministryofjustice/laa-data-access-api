@@ -11,6 +11,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType.*;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -439,11 +440,14 @@ class PriorAuthorityAggregateTest {
     Instant submittedAt = Instant.parse("2026-08-02T10:00:00Z");
     Instant decidedAt = Instant.parse("2026-08-02T11:00:00Z");
     ExpertFeeInformation expertFee =
-        ExpertFeeInformation.builder().newFixedRateAmount(250.0).newHourlyRateAmount(125.0).build();
+        ExpertFeeInformation.builder()
+            .newFixedRateAmount(BigDecimal.valueOf(250.0))
+            .newHourlyRateAmount(BigDecimal.valueOf(125.0))
+            .build();
     DisbursementInformation disbursementInformation =
-        DisbursementInformation.builder().newAmount(75.5).build();
+        DisbursementInformation.builder().newAmount(BigDecimal.valueOf(75.5)).build();
     ApportionmentInformation apportionmentInformation =
-        ApportionmentInformation.builder().newClientShareAmount(10.25).build();
+        ApportionmentInformation.builder().newClientShareAmount(BigDecimal.valueOf(10.25)).build();
     PriorAuthorityDataPayload current =
         new PriorAuthorityDataPayload(
             priorAuthorityId,
@@ -460,7 +464,7 @@ class PriorAuthorityAggregateTest {
             0L,
             "GRANTED",
             "Decision recorded",
-            1234.56,
+            BigDecimal.valueOf(1234.56),
             expertFee,
             disbursementInformation,
             apportionmentInformation,
@@ -495,7 +499,7 @@ class PriorAuthorityAggregateTest {
                 1L,
                 "GRANTED",
                 "Decision recorded",
-                1234.56,
+                BigDecimal.valueOf(1234.56),
                 decidedAt,
                 decidedAt));
 
@@ -513,7 +517,7 @@ class PriorAuthorityAggregateTest {
     PriorAuthorityDataPayload persisted = payloadCaptor.getValue();
     assertThat(persisted.decision()).isEqualTo("GRANTED");
     assertThat(persisted.decisionJustification()).isEqualTo("Decision recorded");
-    assertThat(persisted.amountGranted()).isEqualTo(1234.56);
+    assertThat(persisted.amountGranted()).isEqualByComparingTo(BigDecimal.valueOf(1234.56));
     assertThat(persisted.dateGranted()).isEqualTo(decidedAt);
     assertThat(persisted.expert()).isEqualTo(expertFee);
     assertThat(persisted.disbursement()).isEqualTo(disbursementInformation);
@@ -540,7 +544,7 @@ class PriorAuthorityAggregateTest {
                 new PriorAuthorityDataPayload.DecisionDetails(
                     "GRANTED",
                     "Initial",
-                    100.0,
+                    BigDecimal.valueOf(100.0),
                     firstDecisionAt,
                     ExpertFeeInformation.builder().build(),
                     DisbursementInformation.builder().build(),
@@ -554,7 +558,7 @@ class PriorAuthorityAggregateTest {
             1L,
             "GRANTED",
             "Initial",
-            100.0,
+            BigDecimal.valueOf(100.0),
             null,
             null,
             null,
@@ -583,7 +587,7 @@ class PriorAuthorityAggregateTest {
                 1L,
                 "GRANTED",
                 "Initial",
-                100.0,
+                BigDecimal.valueOf(100.0),
                 firstDecisionAt,
                 firstDecisionAt))
         .when()
@@ -612,7 +616,7 @@ class PriorAuthorityAggregateTest {
                 new PriorAuthorityDataPayload.DecisionDetails(
                     "GRANTED",
                     "Initial",
-                    100.0,
+                    BigDecimal.valueOf(100.0),
                     firstDecisionAt,
                     ExpertFeeInformation.builder().build(),
                     DisbursementInformation.builder().build(),
@@ -626,7 +630,7 @@ class PriorAuthorityAggregateTest {
             1L,
             "REFUSED",
             "Changed",
-            0.0,
+            BigDecimal.ZERO,
             null,
             null,
             null,
@@ -655,7 +659,7 @@ class PriorAuthorityAggregateTest {
                 1L,
                 "GRANTED",
                 "Initial",
-                100.0,
+                BigDecimal.valueOf(100.0),
                 firstDecisionAt,
                 firstDecisionAt))
         .when()
@@ -677,7 +681,7 @@ class PriorAuthorityAggregateTest {
             0L,
             "GRANTED",
             "Decision recorded",
-            1234.56,
+            BigDecimal.valueOf(1234.56),
             null,
             null,
             null,

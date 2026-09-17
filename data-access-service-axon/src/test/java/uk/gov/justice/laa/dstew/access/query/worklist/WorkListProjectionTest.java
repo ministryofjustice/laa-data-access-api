@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -365,7 +366,7 @@ class WorkListProjectionTest {
             2L,
             "REFUSED",
             "Recorded",
-            0.0,
+            BigDecimal.ZERO,
             Instant.now(),
             Instant.now());
 

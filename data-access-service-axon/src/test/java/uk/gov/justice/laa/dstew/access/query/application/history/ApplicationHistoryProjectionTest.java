@@ -6,6 +6,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationCreationDetails;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -334,7 +335,7 @@ class ApplicationHistoryProjectionTest {
             1L,
             "GRANTED",
             "Decision recorded",
-            123.45,
+            BigDecimal.valueOf(123.45),
             Instant.parse("2026-08-05T10:30:00Z"),
             occurredAt);
     var msg = message(event, "pa-decision-event-id");

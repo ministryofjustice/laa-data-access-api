@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
@@ -267,7 +268,7 @@ class WorkListIntegrationTest {
                         .expertCosts(
                             ExpertCosts.builder()
                                 .billingType(BillingType.FIXED_RATE)
-                                .totalAmount(100.0)
+                                .totalAmount(BigDecimal.valueOf(100.0))
                                 .costsSharedWithOtherParties(false)
                                 .build())
                         .build())
@@ -645,7 +646,7 @@ class WorkListIntegrationTest {
         new MakePriorAuthorityDecisionRequest()
             .decision(DecisionStatus.GRANTED)
             .decisionJustification("Granted")
-            .amountGranted(150.0)
+            .amountGranted(BigDecimal.valueOf(150.0))
             .dateGranted(OffsetDateTime.now())
             .eventHistory(
                 EventHistoryRequest.builder().eventDescription("Decision recorded").build())
@@ -744,7 +745,7 @@ class WorkListIntegrationTest {
             .disbursementDetails(
                 DisbursementDetails.builder()
                     .disbursementPurpose("Court interpreter")
-                    .disbursementAmount(150.0)
+                    .disbursementAmount(BigDecimal.valueOf(150.0))
                     .build())
             .build());
   }

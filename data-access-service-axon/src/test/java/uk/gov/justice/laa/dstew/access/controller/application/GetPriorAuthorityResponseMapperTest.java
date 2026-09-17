@@ -62,14 +62,15 @@ class GetPriorAuthorityResponseMapperTest {
     assertThat(response.getDecisionJustification()).isEqualTo("Decision recorded");
     assertThat(response.getExpertDetails().getExpertCosts().getBillingType().getValue())
         .isEqualTo("HOURLY");
-    assertThat(response.getExpertDetails().getExpertCosts().getHourlyRate()).isEqualTo(150.0);
+    assertThat(response.getExpertDetails().getExpertCosts().getHourlyRate())
+        .isEqualByComparingTo(BigDecimal.valueOf(150.0));
     assertThat(response.getExpertDetails().getExpertCosts().getTimeRequested().getHours())
         .isEqualTo(2);
     assertThat(response.getExpertDetails().getExpertCosts().getTimeRequested().getMinutes())
         .isEqualTo(30);
     assertThat(
             response.getExpertDetails().getExpertCosts().getApportionment().getClientShareAmount())
-        .isEqualTo(150.0);
+        .isEqualByComparingTo(BigDecimal.valueOf(150.0));
   }
 
   @Test
@@ -101,7 +102,7 @@ class GetPriorAuthorityResponseMapperTest {
     assertThat(counselResponse.getCounselDetails().getCounselType().getValue())
         .isEqualTo("TWO_JUNIOR_COUNSEL");
     assertThat(disbursementResponse.getDisbursementDetails().getDisbursementAmount())
-        .isEqualTo(10.0);
+        .isEqualByComparingTo(BigDecimal.valueOf(10.0));
   }
 
   @Test

@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.command.application.priorauthority;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
@@ -95,7 +96,7 @@ class PriorAuthorityDeciderTest {
             4L,
             "GRANTED",
             "Recorded",
-            350.0,
+            BigDecimal.valueOf(350.0),
             null,
             null,
             null,
@@ -128,7 +129,7 @@ class PriorAuthorityDeciderTest {
             1L,
             "REFUSED",
             "Recorded",
-            0.0,
+            BigDecimal.ZERO,
             null,
             null,
             null,
@@ -145,7 +146,7 @@ class PriorAuthorityDeciderTest {
             new PriorAuthorityDataPayload.DecisionDetails(
                 "REFUSED",
                 "Recorded",
-                0.0,
+                BigDecimal.ZERO,
                 OCCURRED_AT,
                 null,
                 null,
@@ -170,7 +171,7 @@ class PriorAuthorityDeciderTest {
             0L,
             "PART_GRANTED",
             "Recorded",
-            0.0,
+            BigDecimal.ZERO,
             null,
             null,
             null,
@@ -197,7 +198,7 @@ class PriorAuthorityDeciderTest {
             2L,
             "GRANTED",
             "Recorded",
-            100.0,
+            BigDecimal.valueOf(100.0),
             null,
             null,
             null,
@@ -225,7 +226,7 @@ class PriorAuthorityDeciderTest {
             1L,
             "REFUSED",
             "Recorded",
-            0.0,
+            BigDecimal.ZERO,
             null,
             null,
             null,
@@ -253,7 +254,7 @@ class PriorAuthorityDeciderTest {
             1L,
             "GRANTED",
             "Recorded",
-            100.0,
+            BigDecimal.valueOf(100.0),
             null,
             null,
             null,
@@ -282,7 +283,7 @@ class PriorAuthorityDeciderTest {
             1L,
             "GRANTED",
             "Recorded",
-            100.0,
+            BigDecimal.valueOf(100.0),
             null,
             null,
             null,
@@ -297,7 +298,14 @@ class PriorAuthorityDeciderTest {
             "{}",
             OCCURRED_AT,
             new PriorAuthorityDataPayload.DecisionDetails(
-                "GRANTED", "Recorded", 100.0, OCCURRED_AT, null, null, null, null));
+                "GRANTED",
+                "Recorded",
+                BigDecimal.valueOf(100.0),
+                OCCURRED_AT,
+                null,
+                null,
+                null,
+                null));
 
     assertThatThrownBy(() -> PriorAuthorityDecider.decideDecision(state, command, payload))
         .isInstanceOf(PriorAuthorityStatusConflictException.class);
@@ -326,7 +334,7 @@ class PriorAuthorityDeciderTest {
         new PriorAuthorityDataPayload.DecisionDetails(
             "GRANTED",
             "Recorded",
-            0.0,
+            BigDecimal.ZERO,
             OCCURRED_AT,
             null,
             null,

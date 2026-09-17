@@ -89,9 +89,9 @@ public class GetPriorAuthorityResponseMapper {
     return new ExpertCosts()
         .billingType(
             costs.billingType() == null ? null : BillingType.valueOf(costs.billingType().name()))
-        .hourlyRate(toDouble(costs.hourlyRate()))
+        .hourlyRate(costs.hourlyRate())
         .timeRequested(toTimeRequested(costs.timeRequested()))
-        .totalAmount(toDouble(costs.totalAmount()))
+        .totalAmount(costs.totalAmount())
         .costsSharedWithOtherParties(costs.costsSharedWithOtherParties())
         .apportionment(toApportionment(costs.apportionment()));
   }
@@ -113,7 +113,7 @@ public class GetPriorAuthorityResponseMapper {
         ? null
         : new DisbursementDetails()
             .disbursementPurpose(details.disbursementPurpose())
-            .disbursementAmount(toDouble(details.disbursementAmount()));
+            .disbursementAmount(details.disbursementAmount());
   }
 
   private TimeRequested toTimeRequested(
@@ -129,11 +129,7 @@ public class GetPriorAuthorityResponseMapper {
         ? null
         : new Apportionment()
             .partiesSharingCosts(apportionment.partiesSharingCosts())
-            .clientShareAmount(toDouble(apportionment.clientShareAmount()));
-  }
-
-  private Double toDouble(java.math.BigDecimal value) {
-    return value == null ? null : value.doubleValue();
+            .clientShareAmount(apportionment.clientShareAmount());
   }
 
   private PriorAuthorityResponse.DecisionEnum toDecision(String decision) {

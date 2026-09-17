@@ -6,6 +6,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -35,7 +36,7 @@ class MakePriorAuthorityDecisionUseCaseTest {
             0L,
             "GRANTED",
             "Decision recorded",
-            100.0,
+            BigDecimal.valueOf(100.0),
             null,
             null,
             null,
@@ -78,7 +79,7 @@ class MakePriorAuthorityDecisionUseCaseTest {
             0L,
             "GRANTED",
             "Decision recorded",
-            100.0,
+            BigDecimal.valueOf(100.0),
             null,
             null,
             null,

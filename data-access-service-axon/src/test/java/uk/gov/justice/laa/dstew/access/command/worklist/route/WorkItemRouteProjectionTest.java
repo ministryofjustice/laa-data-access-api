@@ -5,6 +5,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -78,7 +79,7 @@ class WorkItemRouteProjectionTest {
             1L,
             "GRANTED",
             "Recorded",
-            100.0,
+            BigDecimal.valueOf(100.0),
             Instant.parse("2026-09-03T10:00:00Z"),
             Instant.parse("2026-09-03T10:00:00Z"));
 

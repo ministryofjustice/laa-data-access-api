@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.command.application.priorauthority.data;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.With;
@@ -22,7 +23,7 @@ public record PriorAuthorityDataPayload(
   public record DecisionDetails(
       String decision,
       String decisionJustification,
-      Double amountGranted,
+      BigDecimal amountGranted,
       Instant dateGranted,
       ExpertFeeInformation expert,
       DisbursementInformation disbursement,
@@ -56,7 +57,7 @@ public record PriorAuthorityDataPayload(
   }
 
   /** Returns the amount granted, or {@code null} if undecided. */
-  public Double amountGranted() {
+  public BigDecimal amountGranted() {
     return decisionDetails == null ? null : decisionDetails.amountGranted();
   }
 

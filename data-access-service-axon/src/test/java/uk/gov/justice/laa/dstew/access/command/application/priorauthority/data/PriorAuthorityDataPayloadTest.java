@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.command.application.priorauthority.data;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -47,7 +48,7 @@ class PriorAuthorityDataPayloadTest {
 
     assertThat(decided.decision()).isEqualTo("GRANTED");
     assertThat(decided.decisionJustification()).isEqualTo("Reasoned decision");
-    assertThat(decided.amountGranted()).isEqualTo(123.45);
+    assertThat(decided.amountGranted()).isEqualByComparingTo(BigDecimal.valueOf(123.45));
     assertThat(decided.dateGranted()).isEqualTo(GRANTED_AT);
     assertThat(decided.expert()).isEqualTo(decisionDetails.expert());
     assertThat(decided.disbursement()).isEqualTo(decisionDetails.disbursement());
@@ -68,11 +69,14 @@ class PriorAuthorityDataPayloadTest {
     return new PriorAuthorityDataPayload.DecisionDetails(
         "GRANTED",
         "Reasoned decision",
-        123.45,
+        BigDecimal.valueOf(123.45),
         GRANTED_AT,
-        ExpertFeeInformation.builder().newFixedRateAmount(250.0).newHourlyRateAmount(100.0).build(),
-        DisbursementInformation.builder().newAmount(45.0).build(),
-        ApportionmentInformation.builder().newClientShareAmount(15.0).build(),
+        ExpertFeeInformation.builder()
+            .newFixedRateAmount(BigDecimal.valueOf(250.0))
+            .newHourlyRateAmount(BigDecimal.valueOf(100.0))
+            .build(),
+        DisbursementInformation.builder().newAmount(BigDecimal.valueOf(45.0)).build(),
+        ApportionmentInformation.builder().newClientShareAmount(BigDecimal.valueOf(15.0)).build(),
         "{\"decision\":\"GRANTED\"}");
   }
 }

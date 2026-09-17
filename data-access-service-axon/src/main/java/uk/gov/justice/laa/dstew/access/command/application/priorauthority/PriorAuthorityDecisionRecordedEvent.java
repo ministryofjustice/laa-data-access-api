@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.command.application.priorauthority;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 import org.axonframework.eventsourcing.annotation.EventTag;
@@ -14,6 +15,6 @@ public record PriorAuthorityDecisionRecordedEvent(
     long dataVersion,
     String status,
     String decisionJustification,
-    Double amountGranted,
+    BigDecimal amountGranted,
     Instant dateGranted,
     Instant occurredAt) {}

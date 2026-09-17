@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.Map;
 import java.util.UUID;
@@ -89,7 +90,7 @@ public class PriorAuthorityDecisionAcceptIntegrationTest {
         new MakePriorAuthorityDecisionRequest()
             .decision(DecisionStatus.GRANTED)
             .decisionJustification("Granted as per policy guidelines")
-            .amountGranted(150.0)
+            .amountGranted(BigDecimal.valueOf(150.0))
             .dateGranted(decidedAt)
             .eventHistory(new EventHistoryRequest())
             .priorAuthorityVersion(0L);
@@ -144,7 +145,7 @@ public class PriorAuthorityDecisionAcceptIntegrationTest {
         new MakePriorAuthorityDecisionRequest()
             .decision(DecisionStatus.REFUSED)
             .decisionJustification("Insufficient justification provided")
-            .amountGranted(0.0)
+            .amountGranted(BigDecimal.ZERO)
             .dateGranted(decidedAt)
             .eventHistory(new EventHistoryRequest())
             .priorAuthorityVersion(0L);
@@ -189,7 +190,7 @@ public class PriorAuthorityDecisionAcceptIntegrationTest {
         new MakePriorAuthorityDecisionRequest()
             .decision(DecisionStatus.GRANTED)
             .decisionJustification("Should not reach here")
-            .amountGranted(0.0)
+            .amountGranted(BigDecimal.ZERO)
             .dateGranted(decidedAt)
             .eventHistory(new EventHistoryRequest())
             .priorAuthorityVersion(0L);
@@ -222,7 +223,7 @@ public class PriorAuthorityDecisionAcceptIntegrationTest {
         new MakePriorAuthorityDecisionRequest()
             .decision(DecisionStatus.GRANTED)
             .decisionJustification("Granted as per policy guidelines")
-            .amountGranted(150.0)
+            .amountGranted(BigDecimal.valueOf(150.0))
             .dateGranted(decidedAt)
             .eventHistory(new EventHistoryRequest())
             .priorAuthorityVersion(0L);
@@ -239,7 +240,7 @@ public class PriorAuthorityDecisionAcceptIntegrationTest {
         new MakePriorAuthorityDecisionRequest()
             .decision(DecisionStatus.REFUSED)
             .decisionJustification("Actually refused")
-            .amountGranted(0.0)
+            .amountGranted(BigDecimal.ZERO)
             .dateGranted(decidedAt)
             .eventHistory(new EventHistoryRequest())
             .priorAuthorityVersion(0L);
@@ -309,7 +310,7 @@ public class PriorAuthorityDecisionAcceptIntegrationTest {
   private DisbursementDetails validDisbursementRequest() {
     return DisbursementDetails.builder()
         .disbursementPurpose("Court interpreter")
-        .disbursementAmount(150.0)
+        .disbursementAmount(BigDecimal.valueOf(150.0))
         .build();
   }
 
@@ -321,7 +322,7 @@ public class PriorAuthorityDecisionAcceptIntegrationTest {
         .expertCosts(
             ExpertCosts.builder()
                 .billingType(BillingType.FIXED_RATE)
-                .totalAmount(1500.0)
+                .totalAmount(BigDecimal.valueOf(1500.0))
                 .costsSharedWithOtherParties(false)
                 .build())
         .build();

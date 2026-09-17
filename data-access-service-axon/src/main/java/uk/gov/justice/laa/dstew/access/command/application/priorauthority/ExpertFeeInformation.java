@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.command.application.priorauthority;
 
+import java.math.BigDecimal;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -11,6 +12,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ExpertFeeInformation {
-  private Double newFixedRateAmount;
-  private Double newHourlyRateAmount;
+  private BigDecimal newFixedRateAmount;
+  private BigDecimal newHourlyRateAmount;
 }
