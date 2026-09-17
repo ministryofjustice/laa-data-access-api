@@ -13,15 +13,19 @@ import uk.gov.justice.laa.dstew.access.model.ApportionmentMakePriorAuthorityDeci
 import uk.gov.justice.laa.dstew.access.model.DisbursementMakePriorAuthorityDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.ExpertMakePriorAuthorityDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.MakePriorAuthorityDecisionRequest;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedUserId;
 
 /** Maps the make-decision HTTP contract to a prior-authority decision command. */
 @Component
 public class MakePriorAuthorityDecisionCommandMapper {
 
   private final ObjectMapper objectMapper;
+  private final AuthenticatedUserId authenticatedUserId;
 
-  public MakePriorAuthorityDecisionCommandMapper(ObjectMapper objectMapper) {
+  public MakePriorAuthorityDecisionCommandMapper(
+      ObjectMapper objectMapper, AuthenticatedUserId authenticatedUserId) {
     this.objectMapper = objectMapper;
+    this.authenticatedUserId = authenticatedUserId;
   }
 
   /** Maps a request for the supplied PriorAuthority identifier. */
@@ -29,6 +33,7 @@ public class MakePriorAuthorityDecisionCommandMapper {
       UUID priorAuthorityId, MakePriorAuthorityDecisionRequest request) {
     return new MakePriorAuthorityDecisionCommand(
         priorAuthorityId,
+        authenticatedUserId.get(),
         request.getPriorAuthorityVersion(),
         request.getDecision().name(),
         decisionJustification(request),

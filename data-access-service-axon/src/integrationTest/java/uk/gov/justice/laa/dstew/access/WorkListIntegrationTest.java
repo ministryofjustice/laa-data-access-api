@@ -635,7 +635,7 @@ class WorkListIntegrationTest {
   void
       givenSubmittedPriorAuthorityAssignedToCaseworker_whenDecided_thenItIsRemovedAndCannotBeAssignedAgain() {
     UUID parentApplicationId = UUID.randomUUID();
-    UUID caseworkerId = createCaseworker("prior-authority-decider@example.com");
+    UUID caseworkerId = TestJwtDecoderConfig.CASEWORKER_ID;
     createGrantedApplication(parentApplicationId);
     UUID priorAuthorityId = createAndSubmitPriorAuthorityDraft(parentApplicationId);
 
@@ -659,7 +659,7 @@ class WorkListIntegrationTest {
                 + priorAuthorityId
                 + "/decision",
             HttpMethod.PATCH,
-            new HttpEntity<>(decisionRequest, headers()),
+            new HttpEntity<>(decisionRequest, headersFor(caseworkerId)),
             Void.class);
     assertThat(decided.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
 
@@ -679,7 +679,7 @@ class WorkListIntegrationTest {
         restTemplate.exchange(
             assignmentUrl(priorAuthorityId, "assign"),
             HttpMethod.POST,
-            new HttpEntity<>(new WorkListAssignRequest(caseworkerId, 1L), headers()),
+            new HttpEntity<>(new WorkListAssignRequest(1L), headersFor(caseworkerId)),
             Void.class);
     assertThat(reassigned.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
   }

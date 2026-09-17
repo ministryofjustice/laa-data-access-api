@@ -13,6 +13,7 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStat
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityStatusConflictException;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityVersionConflictException;
+import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /** Unit tests for {@link PriorAuthorityDecider}. */
@@ -90,6 +91,7 @@ class PriorAuthorityDeciderTest {
     MakePriorAuthorityDecisionCommand command =
         new MakePriorAuthorityDecisionCommand(
             priorAuthorityId,
+            TestJwtDecoderConfig.CASEWORKER_ID,
             4L,
             "GRANTED",
             "Recorded",
@@ -122,6 +124,7 @@ class PriorAuthorityDeciderTest {
     MakePriorAuthorityDecisionCommand command =
         new MakePriorAuthorityDecisionCommand(
             priorAuthorityId,
+            TestJwtDecoderConfig.CASEWORKER_ID,
             1L,
             "REFUSED",
             "Recorded",
@@ -163,6 +166,7 @@ class PriorAuthorityDeciderTest {
     MakePriorAuthorityDecisionCommand command =
         new MakePriorAuthorityDecisionCommand(
             priorAuthorityId,
+            TestJwtDecoderConfig.CASEWORKER_ID,
             0L,
             "PART_GRANTED",
             "Recorded",
@@ -189,6 +193,7 @@ class PriorAuthorityDeciderTest {
     MakePriorAuthorityDecisionCommand command =
         new MakePriorAuthorityDecisionCommand(
             priorAuthorityId,
+            TestJwtDecoderConfig.CASEWORKER_ID,
             2L,
             "GRANTED",
             "Recorded",
@@ -216,6 +221,7 @@ class PriorAuthorityDeciderTest {
     MakePriorAuthorityDecisionCommand command =
         new MakePriorAuthorityDecisionCommand(
             priorAuthorityId,
+            TestJwtDecoderConfig.CASEWORKER_ID,
             1L,
             "REFUSED",
             "Recorded",
@@ -243,6 +249,7 @@ class PriorAuthorityDeciderTest {
     MakePriorAuthorityDecisionCommand command =
         new MakePriorAuthorityDecisionCommand(
             priorAuthorityId,
+            TestJwtDecoderConfig.CASEWORKER_ID,
             1L,
             "GRANTED",
             "Recorded",
@@ -271,6 +278,7 @@ class PriorAuthorityDeciderTest {
     MakePriorAuthorityDecisionCommand command =
         new MakePriorAuthorityDecisionCommand(
             priorAuthorityId,
+            TestJwtDecoderConfig.CASEWORKER_ID,
             1L,
             "GRANTED",
             "Recorded",
@@ -303,6 +311,7 @@ class PriorAuthorityDeciderTest {
     state.priorAuthorityType = PriorAuthorityType.EXPERT.name();
     state.schemaVersion = 1;
     state.dataVersion = dataVersion;
+    state.caseworkerId = TestJwtDecoderConfig.CASEWORKER_ID;
     state.status = PriorAuthorityStatus.SUBMITTED.name();
     return state;
   }

@@ -18,16 +18,22 @@ import uk.gov.justice.laa.dstew.access.model.DisbursementMakePriorAuthorityDecis
 import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
 import uk.gov.justice.laa.dstew.access.model.ExpertMakePriorAuthorityDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.MakePriorAuthorityDecisionRequest;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedUserId;
+import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 
 class MakePriorAuthorityDecisionCommandMapperTest {
 
+  private final AuthenticatedUserId authenticatedUserId = mock(AuthenticatedUserId.class);
+
   private final MakePriorAuthorityDecisionCommandMapper mapper =
-      new MakePriorAuthorityDecisionCommandMapper(JsonMapper.builder().build());
+      new MakePriorAuthorityDecisionCommandMapper(
+          JsonMapper.builder().build(), authenticatedUserId);
 
   @Test
   void givenRequestWithEventDescription_whenMapped_thenUsesEventDescriptionAsJustification() {
     UUID submissionId = UUID.randomUUID();
     OffsetDateTime dateGranted = OffsetDateTime.parse("2026-09-08T12:30:00Z");
+    when(authenticatedUserId.get()).thenReturn(TestJwtDecoderConfig.CASEWORKER_ID);
     MakePriorAuthorityDecisionRequest request =
         MakePriorAuthorityDecisionRequest.builder()
             .priorAuthorityVersion(7L)
@@ -53,6 +59,7 @@ class MakePriorAuthorityDecisionCommandMapperTest {
     MakePriorAuthorityDecisionCommand command = mapper.toCommand(submissionId, request);
 
     assertThat(command.submissionId()).isEqualTo(submissionId);
+    assertThat(command.caseworkerId()).isEqualTo(TestJwtDecoderConfig.CASEWORKER_ID);
     assertThat(command.expectedPriorAuthorityVersion()).isEqualTo(7L);
     assertThat(command.overallDecision()).isEqualTo("GRANTED");
     assertThat(command.decisionJustification()).isEqualTo("Decision recorded");
@@ -72,6 +79,7 @@ class MakePriorAuthorityDecisionCommandMapperTest {
   @Test
   void givenRequestWithExpertFeeDetails_whenMapped_thenStoresExpertFeeInformation() {
     UUID submissionId = UUID.randomUUID();
+    when(authenticatedUserId.get()).thenReturn(TestJwtDecoderConfig.CASEWORKER_ID);
     MakePriorAuthorityDecisionRequest request =
         MakePriorAuthorityDecisionRequest.builder()
             .priorAuthorityVersion(7L)
@@ -104,6 +112,7 @@ class MakePriorAuthorityDecisionCommandMapperTest {
 
   @Test
   void givenDecisionJustificationWithWhitespace_whenMapped_thenStoresTrimmedJustification() {
+    when(authenticatedUserId.get()).thenReturn(TestJwtDecoderConfig.CASEWORKER_ID);
     MakePriorAuthorityDecisionRequest request =
         MakePriorAuthorityDecisionRequest.builder()
             .priorAuthorityVersion(8L)
@@ -131,6 +140,7 @@ class MakePriorAuthorityDecisionCommandMapperTest {
 
   @Test
   void givenNullDecisionJustification_whenMapped_thenStoresNullJustification() {
+    when(authenticatedUserId.get()).thenReturn(TestJwtDecoderConfig.CASEWORKER_ID);
     MakePriorAuthorityDecisionRequest request =
         MakePriorAuthorityDecisionRequest.builder()
             .priorAuthorityVersion(10L)
@@ -152,8 +162,9 @@ class MakePriorAuthorityDecisionCommandMapperTest {
   @Test
   void givenSerializationFailure_whenMapped_thenWrapsInIllegalStateException() throws Exception {
     ObjectMapper objectMapper = mock(ObjectMapper.class);
+    AuthenticatedUserId authenticatedUserId = mock(AuthenticatedUserId.class);
     MakePriorAuthorityDecisionCommandMapper failingMapper =
-        new MakePriorAuthorityDecisionCommandMapper(objectMapper);
+        new MakePriorAuthorityDecisionCommandMapper(objectMapper, authenticatedUserId);
     MakePriorAuthorityDecisionRequest request =
         MakePriorAuthorityDecisionRequest.builder()
             .priorAuthorityVersion(9L)
@@ -164,6 +175,7 @@ class MakePriorAuthorityDecisionCommandMapperTest {
             .eventHistory(
                 EventHistoryRequest.builder().eventDescription("Decision recorded").build())
             .build();
+    when(authenticatedUserId.get()).thenReturn(TestJwtDecoderConfig.CASEWORKER_ID);
     when(objectMapper.writeValueAsString(request)).thenThrow(new JacksonException("boom") {});
 
     assertThatThrownBy(() -> failingMapper.toCommand(UUID.randomUUID(), request))

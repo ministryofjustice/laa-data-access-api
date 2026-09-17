@@ -44,6 +44,7 @@ import uk.gov.justice.laa.dstew.access.model.PriorAuthorityResponse;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.model.SavePriorAuthorityDraftResponse;
 import uk.gov.justice.laa.dstew.access.model.SubmitPriorAuthorityDraftResponse;
+import uk.gov.justice.laa.dstew.access.model.WorkListAssignRequest;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.FindPriorAuthorityByPriorAuthorityIdQuery;
@@ -81,6 +82,7 @@ public class PriorAuthorityDecisionAcceptIntegrationTest {
             PriorAuthorityType.DISBURSEMENT,
             "Interpreter costs for proceedings",
             validDisbursementRequest());
+    assignPriorAuthority(priorAuthorityId);
 
     OffsetDateTime decidedAt = OffsetDateTime.now();
     MakePriorAuthorityDecisionRequest decisionRequest =
@@ -135,6 +137,7 @@ public class PriorAuthorityDecisionAcceptIntegrationTest {
             PriorAuthorityType.EXPERT,
             "Expert witness for case",
             validExpertDetails());
+    assignPriorAuthority(priorAuthorityId);
 
     OffsetDateTime decidedAt = OffsetDateTime.now();
     MakePriorAuthorityDecisionRequest decisionRequest =
@@ -212,6 +215,7 @@ public class PriorAuthorityDecisionAcceptIntegrationTest {
             PriorAuthorityType.DISBURSEMENT,
             "Interpreter costs for proceedings",
             validDisbursementRequest());
+    assignPriorAuthority(priorAuthorityId);
 
     OffsetDateTime decidedAt = OffsetDateTime.now();
     MakePriorAuthorityDecisionRequest firstDecisionRequest =
@@ -414,6 +418,16 @@ public class PriorAuthorityDecisionAcceptIntegrationTest {
 
   private String decisionUrl(UUID priorAuthorityId) {
     return priorAuthorityUrl(priorAuthorityId) + "/decision";
+  }
+
+  private void assignPriorAuthority(UUID priorAuthorityId) {
+    ResponseEntity<Void> response =
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/work-list/" + priorAuthorityId + "/assign",
+            HttpMethod.POST,
+            new HttpEntity<>(new WorkListAssignRequest(0L), headers()),
+            Void.class);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
   }
 
   private HttpHeaders headers() {

@@ -73,6 +73,7 @@ public final class PriorAuthorityDecider {
       MakePriorAuthorityDecisionCommand command,
       PriorAuthorityDataPayload current) {
     validateDecision(command);
+    validateDecisionAssignment(state, command);
 
     if (command.expectedPriorAuthorityVersion() != state.dataVersion) {
       throw new PriorAuthorityVersionConflictException(
@@ -107,6 +108,20 @@ public final class PriorAuthorityDecider {
     if (!DecisionValue.GRANTED.name().equals(command.overallDecision())
         && !DecisionValue.REFUSED.name().equals(command.overallDecision())) {
       throw new ValidationException(List.of("overallDecision must be one of: GRANTED, REFUSED"));
+    }
+  }
+
+  /** Ensures a prior-authority decision is made by its current assignment owner. */
+  private static void validateDecisionAssignment(
+      PriorAuthorityState state, MakePriorAuthorityDecisionCommand command) {
+    if (state.caseworkerId == null) {
+      throw new PriorAuthorityStatusConflictException(
+          command.submissionId(), "Prior authority is unassigned and cannot be decided");
+    }
+    if (!state.caseworkerId.equals(command.caseworkerId())) {
+      throw new PriorAuthorityStatusConflictException(
+          command.submissionId(),
+          "Prior authority is assigned to a different caseworker and cannot be decided by this user");
     }
   }
 

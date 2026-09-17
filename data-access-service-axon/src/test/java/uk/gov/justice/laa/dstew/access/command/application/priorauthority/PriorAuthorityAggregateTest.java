@@ -31,11 +31,14 @@ import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataS
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityDocument;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityStatusConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
@@ -453,6 +456,7 @@ class PriorAuthorityAggregateTest {
     MakePriorAuthorityDecisionCommand command =
         new MakePriorAuthorityDecisionCommand(
             priorAuthorityId,
+            TestJwtDecoderConfig.CASEWORKER_ID,
             0L,
             "GRANTED",
             "Decision recorded",
@@ -464,17 +468,26 @@ class PriorAuthorityAggregateTest {
             "{\"decision\":\"GRANTED\"}",
             decidedAt);
 
-    fixture
-        .given()
-        .events(
-            new PriorAuthorityDraftStartedEvent(
-                priorAuthorityId, applicationId, EXPERT.name(), 1, startedAt),
-            new PriorAuthoritySubmittedEvent(
-                priorAuthorityId, applicationId, EXPERT.name(), 1, 0L, 0L, submittedAt))
-        .when()
-        .command(command)
-        .then()
-        .events(
+    PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
+    aggregate.on(
+        new PriorAuthorityDraftStartedEvent(
+            priorAuthorityId, applicationId, EXPERT.name(), 1, startedAt));
+    aggregate.on(
+        new PriorAuthoritySubmittedEvent(
+            priorAuthorityId, applicationId, EXPERT.name(), 1, 0L, 0L, submittedAt));
+    aggregate.on(
+        new WorkItemAssigned(
+            priorAuthorityId,
+            WorkItemType.PRIOR_AUTHORITY,
+            0L,
+            1L,
+            TestJwtDecoderConfig.CASEWORKER_ID,
+            submittedAt));
+
+    aggregate.handle(command, dataStore, eventAppender);
+
+    verify(eventAppender)
+        .append(
             new PriorAuthorityDecisionRecordedEvent(
                 priorAuthorityId,
                 applicationId,
@@ -537,6 +550,7 @@ class PriorAuthorityAggregateTest {
     MakePriorAuthorityDecisionCommand command =
         new MakePriorAuthorityDecisionCommand(
             priorAuthorityId,
+            TestJwtDecoderConfig.CASEWORKER_ID,
             1L,
             "GRANTED",
             "Initial",
@@ -555,6 +569,13 @@ class PriorAuthorityAggregateTest {
                 priorAuthorityId, applicationId, EXPERT.name(), 1, startedAt),
             new PriorAuthoritySubmittedEvent(
                 priorAuthorityId, applicationId, EXPERT.name(), 1, 0L, 0L, submittedAt),
+            new WorkItemAssigned(
+                priorAuthorityId,
+                WorkItemType.PRIOR_AUTHORITY,
+                0L,
+                1L,
+                TestJwtDecoderConfig.CASEWORKER_ID,
+                submittedAt),
             new PriorAuthorityDecisionRecordedEvent(
                 priorAuthorityId,
                 applicationId,
@@ -601,6 +622,7 @@ class PriorAuthorityAggregateTest {
     MakePriorAuthorityDecisionCommand command =
         new MakePriorAuthorityDecisionCommand(
             priorAuthorityId,
+            TestJwtDecoderConfig.CASEWORKER_ID,
             1L,
             "REFUSED",
             "Changed",
@@ -619,6 +641,13 @@ class PriorAuthorityAggregateTest {
                 priorAuthorityId, applicationId, EXPERT.name(), 1, startedAt),
             new PriorAuthoritySubmittedEvent(
                 priorAuthorityId, applicationId, EXPERT.name(), 1, 0L, 0L, submittedAt),
+            new WorkItemAssigned(
+                priorAuthorityId,
+                WorkItemType.PRIOR_AUTHORITY,
+                0L,
+                1L,
+                TestJwtDecoderConfig.CASEWORKER_ID,
+                submittedAt),
             new PriorAuthorityDecisionRecordedEvent(
                 priorAuthorityId,
                 applicationId,
@@ -644,6 +673,7 @@ class PriorAuthorityAggregateTest {
     MakePriorAuthorityDecisionCommand command =
         new MakePriorAuthorityDecisionCommand(
             priorAuthorityId,
+            TestJwtDecoderConfig.CASEWORKER_ID,
             0L,
             "GRANTED",
             "Decision recorded",

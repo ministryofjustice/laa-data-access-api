@@ -16,6 +16,7 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResu
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.FindPriorAuthorityByPriorAuthorityIdQuery;
+import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 
 class MakePriorAuthorityDecisionUseCaseTest {
 
@@ -30,6 +31,7 @@ class MakePriorAuthorityDecisionUseCaseTest {
     MakePriorAuthorityDecisionCommand command =
         new MakePriorAuthorityDecisionCommand(
             submissionId,
+            TestJwtDecoderConfig.CASEWORKER_ID,
             0L,
             "GRANTED",
             "Decision recorded",
@@ -72,6 +74,7 @@ class MakePriorAuthorityDecisionUseCaseTest {
     MakePriorAuthorityDecisionCommand command =
         new MakePriorAuthorityDecisionCommand(
             submissionId,
+            TestJwtDecoderConfig.CASEWORKER_ID,
             0L,
             "GRANTED",
             "Decision recorded",

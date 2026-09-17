@@ -9,6 +9,7 @@ import org.axonframework.modelling.annotation.TargetEntityId;
 @Command(routingKey = "submissionId")
 public record MakePriorAuthorityDecisionCommand(
     @TargetEntityId UUID submissionId,
+    UUID caseworkerId,
     long expectedPriorAuthorityVersion,
     String overallDecision,
     String decisionJustification,
