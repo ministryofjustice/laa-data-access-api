@@ -19,7 +19,8 @@ public record PriorAuthorityResult(
     ExpertDetails expertDetails,
     CounselDetails counselDetails,
     DisbursementDetails disbursementDetails,
-    List<PriorAuthorityDocument> uploadedDocuments) {
+    List<PriorAuthorityDocument> uploadedDocuments,
+    PriorAuthorityDataPayload.DecisionDetails decisionDetails) {
 
   /** Builds the use-case result from the current-state projection and versioned content. */
   public static PriorAuthorityResult from(
@@ -36,7 +37,8 @@ public record PriorAuthorityResult(
         status,
         payload.content(),
         payload.decision(),
-        payload.decisionJustification());
+        payload.decisionJustification(),
+        payload.decisionDetails());
   }
 
   /**
@@ -50,7 +52,8 @@ public record PriorAuthorityResult(
         PriorAuthorityStatus.DRAFT.name(),
         payload.content(),
         payload.decision(),
-        payload.decisionJustification());
+        payload.decisionJustification(),
+        payload.decisionDetails());
   }
 
   private static PriorAuthorityResult build(
@@ -59,7 +62,8 @@ public record PriorAuthorityResult(
       String status,
       PriorAuthorityContent content,
       String decision,
-      String decisionJustification) {
+      String decisionJustification,
+      PriorAuthorityDataPayload.DecisionDetails decisionDetails) {
     PriorAuthorityType priorAuthorityType = content.priorAuthorityType();
     return new PriorAuthorityResult(
         priorAuthorityId,
@@ -74,7 +78,8 @@ public record PriorAuthorityResult(
         priorAuthorityType == PriorAuthorityType.DISBURSEMENT
             ? toDisbursementDetails(content)
             : null,
-        content.uploadedDocuments());
+        content.uploadedDocuments(),
+        decisionDetails);
   }
 
   private static ExpertDetails toExpertDetails(PriorAuthorityContent content) {

@@ -87,6 +87,9 @@ components:
           enum: [GRANTED, REFUSED]
         decisionJustification:
           type: string
+        decisionDetails:
+          description: Full decision details including granted amounts and fee information
+          $ref: "#/components/schemas/PriorAuthorityDecisionDetails"
         uploadedDocuments:
           type: array
           items:
@@ -524,3 +527,49 @@ components:
           type: string
         disbursementAmount:
           type: number
+    PriorAuthorityDecisionDetails:
+      type: object
+      description: Complete decision details for a prior authority request
+      properties:
+        decision:
+          type: string
+          description: Overall decision
+          enum: [GRANTED, REFUSED]
+        decisionJustification:
+          type: string
+          description: Justification for the decision (sensitive - hydrated on demand)
+        amountGranted:
+          type: number
+          description: Amount granted if decision is GRANTED
+        dateGranted:
+          type: string
+          format: date-time
+          description: Date granted if decision is GRANTED
+        expert:
+          description: Expert fee details if applicable
+          $ref: "#/components/schemas/ExpertFeeInformation"
+        disbursement:
+          description: Disbursement details if applicable
+          $ref: "#/components/schemas/DisbursementInformation"
+        apportionment:
+          description: Apportionment details if applicable
+          $ref: "#/components/schemas/Apportionment"
+
+    ExpertFeeInformation:
+      type: object
+      description: Expert fee information for a prior authority decision
+      properties:
+        newFixedRateAmount:
+          type: number
+          description: New fixed rate amount if applicable
+        newHourlyRateAmount:
+          type: number
+          description: New hourly rate amount if applicable
+
+    DisbursementInformation:
+      type: object
+      description: Disbursement information for a prior authority decision
+      properties:
+        newAmount:
+          type: number
+          description: New disbursement amount if applicable

@@ -355,7 +355,7 @@ class ApplicationHistoryProjectionTest {
     assertThat(saved.getEventData()).contains("\"status\":\"DECIDED\"");
     assertThat(saved.getEventData()).contains("\"decision\":\"GRANTED\"");
     assertThat(saved.getEventData()).contains("\"dataVersion\":1");
-    assertThat(saved.getEventData()).contains("\"decisionJustification\":\"Decision recorded\"");
+    assertThat(saved.getEventData()).doesNotContain("decisionJustification");
     assertThat(saved.getEventData()).contains("\"amountGranted\":123.45");
     assertThat(saved.getEventData()).contains("\"dateGranted\":\"2026-08-05T10:30:00Z\"");
   }
@@ -385,7 +385,7 @@ class ApplicationHistoryProjectionTest {
     assertThat(captor.getValue().getEventData())
         .contains("\"status\":\"DECIDED\"")
         .contains("\"decision\":\"REFUSED\"")
-        .contains("\"decisionJustification\":\"Refused on merits\"")
+        .doesNotContain("decisionJustification")
         .doesNotContain("amountGranted")
         .doesNotContain("dateGranted");
   }

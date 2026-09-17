@@ -10,6 +10,7 @@ import uk.gov.justice.laa.dstew.access.model.CounselType;
 import uk.gov.justice.laa.dstew.access.model.DisbursementDetails;
 import uk.gov.justice.laa.dstew.access.model.ExpertCosts;
 import uk.gov.justice.laa.dstew.access.model.ExpertDetails;
+import uk.gov.justice.laa.dstew.access.model.PriorAuthorityDecisionDetails;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityDocumentType;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityResponse;
 import uk.gov.justice.laa.dstew.access.model.TimeRequested;
@@ -31,6 +32,7 @@ public class GetPriorAuthorityResponseMapper {
             : PriorAuthorityResponse.StatusEnum.fromValue(result.status()));
     response.setDecision(toDecision(result.decision()));
     response.setDecisionJustification(result.decisionJustification());
+    response.setDecisionDetails(toDecisionDetails(result.decisionDetails()));
     response.setPriorAuthorityType(
         result.priorAuthorityType() == null
             ? null
@@ -141,5 +143,47 @@ public class GetPriorAuthorityResponseMapper {
     } catch (IllegalArgumentException exception) {
       return null;
     }
+  }
+
+  private PriorAuthorityDecisionDetails toDecisionDetails(
+      uk.gov.justice.laa.dstew.access.command.application.priorauthority.data
+              .PriorAuthorityDataPayload.DecisionDetails
+          details) {
+    if (details == null) {
+      return null;
+    }
+    PriorAuthorityDecisionDetails result = new PriorAuthorityDecisionDetails();
+    if (details.decision() != null) {
+      result.setDecision(PriorAuthorityDecisionDetails.DecisionEnum.fromValue(details.decision()));
+    }
+    if (details.decisionJustification() != null) {
+      result.setDecisionJustification(details.decisionJustification());
+    }
+    if (details.amountGranted() != null) {
+      result.setAmountGranted(details.amountGranted());
+    }
+    if (details.dateGranted() != null) {
+      result.setDateGranted(details.dateGranted().atOffset(java.time.ZoneOffset.UTC));
+    }
+    if (details.expert() != null) {
+      uk.gov.justice.laa.dstew.access.model.ExpertFeeInformation expertInfo =
+          new uk.gov.justice.laa.dstew.access.model.ExpertFeeInformation();
+      expertInfo.setNewFixedRateAmount(details.expert().getNewFixedRateAmount());
+      expertInfo.setNewHourlyRateAmount(details.expert().getNewHourlyRateAmount());
+      result.setExpert(expertInfo);
+    }
+    if (details.disbursement() != null) {
+      uk.gov.justice.laa.dstew.access.model.DisbursementInformation disbursementInfo =
+          new uk.gov.justice.laa.dstew.access.model.DisbursementInformation();
+      disbursementInfo.setNewAmount(details.disbursement().getNewAmount());
+      result.setDisbursement(disbursementInfo);
+    }
+    if (details.apportionment() != null) {
+      Apportionment apportionmentInfo = new Apportionment();
+      // apportionmentInfo.setPartiesSharingCosts(...) // Not available in command object
+      apportionmentInfo.setClientShareAmount(details.apportionment().getNewClientShareAmount());
+      result.setApportionment(apportionmentInfo);
+    }
+    return result;
   }
 }
