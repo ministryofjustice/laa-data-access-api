@@ -117,6 +117,7 @@ class PriorAuthorityApplicationHistoryProjectionTest {
     assertThat(saved.getEventType()).isEqualTo("ASSIGN_APPLICATION_TO_CASEWORKER");
     assertThat(saved.getServiceName()).isEqualTo("CIVIL_APPLY");
     assertThat(saved.getOccurredAt()).isEqualTo(occurredAt);
+    assertThat(saved.getCaseworkerId()).isEqualTo(caseworkerId);
     var payload = objectMapper.readTree(saved.getEventData());
     assertThat(payload.get("caseworkerId").asString()).isEqualTo(caseworkerId.toString());
     assertThat(payload.get("workItemType").asString()).isEqualTo("PRIOR_AUTHORITY");
@@ -224,6 +225,7 @@ class PriorAuthorityApplicationHistoryProjectionTest {
     assertThat(saved.getPriorAuthorityType()).isEqualTo("EXPERT");
     assertThat(saved.getEventType()).isEqualTo("UNASSIGN_APPLICATION_TO_CASEWORKER");
     assertThat(saved.getOccurredAt()).isEqualTo(occurredAt);
+    assertThat(saved.getCaseworkerId()).isNull();
     var payload = objectMapper.readTree(saved.getEventData());
     assertThat(payload.get("workItemType").asString()).isEqualTo("PRIOR_AUTHORITY");
     assertThat(payload.get("caseworkerId")).isNull();

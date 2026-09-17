@@ -79,6 +79,7 @@ public class PriorAuthorityApplicationHistoryProjection {
         ref.priorAuthorityType(),
         "ASSIGN_APPLICATION_TO_CASEWORKER",
         serialise(event),
+        event.caseworkerId(),
         event.occurredAt());
   }
 
@@ -126,6 +127,26 @@ public class PriorAuthorityApplicationHistoryProjection {
       String eventType,
       String eventData,
       Instant occurredAt) {
+    append(
+        message,
+        applicationId,
+        priorAuthorityId,
+        priorAuthorityType,
+        eventType,
+        eventData,
+        null,
+        occurredAt);
+  }
+
+  private void append(
+      EventMessage message,
+      UUID applicationId,
+      UUID priorAuthorityId,
+      String priorAuthorityType,
+      String eventType,
+      String eventData,
+      UUID caseworkerId,
+      Instant occurredAt) {
     Object serviceName =
         message.metadata().get(ServiceNameMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY);
     priorAuthorityHistoryReadRepository.save(
@@ -137,6 +158,7 @@ public class PriorAuthorityApplicationHistoryProjection {
             .eventType(eventType)
             .eventData(eventData)
             .serviceName(serviceName == null ? null : serviceName.toString())
+            .caseworkerId(caseworkerId)
             .occurredAt(occurredAt)
             .build());
   }
