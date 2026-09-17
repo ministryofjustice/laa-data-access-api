@@ -12,31 +12,24 @@ public final class DecisionRequestFactory {
         .formatted(application.laaReference());
   }
 
-  public String create(
-      ApplicationRequestFactory.ApplicationData application, Decision decision, UUID caseworkerId) {
+  public String create(ApplicationRequestFactory.ApplicationData application, Decision decision) {
     return create(
-        application.laaReference(),
-        java.util.List.of(application.proceedingId()),
-        1,
-        decision,
-        caseworkerId);
+        application.laaReference(), java.util.List.of(application.proceedingId()), 1, decision);
   }
 
-  public String create(ApplicationDecisionData application, Decision decision, UUID caseworkerId) {
+  public String create(ApplicationDecisionData application, Decision decision) {
     return create(
         application.laaReference(),
         application.proceedingIds(),
         application.applicationVersion(),
-        decision,
-        caseworkerId);
+        decision);
   }
 
   private String create(
       String laaReference,
       java.util.List<UUID> proceedingIds,
       long applicationVersion,
-      Decision decision,
-      UUID caseworkerId) {
+      Decision decision) {
     String certificate =
         decision == Decision.GRANTED
             ? ",\"certificate\":{\"certificateNumber\":\"CERT-" + laaReference + "\"}"
@@ -49,9 +42,9 @@ public final class DecisionRequestFactory {
                         .formatted(proceedingId, decision))
             .collect(Collectors.joining(","));
     return """
-      {"overallDecision":"%s","proceedings":[%s],"eventHistory":{"eventDescription":"Decision created by data-access-tools"},"autoGranted":false%s,"applicationVersion":%d,"caseworkerId":"%s"}
+      {"overallDecision":"%s","proceedings":[%s],"eventHistory":{"eventDescription":"Decision created by data-access-tools"},"autoGranted":false%s,"applicationVersion":%d}
         """
-        .formatted(decision, proceedings, certificate, applicationVersion, caseworkerId);
+        .formatted(decision, proceedings, certificate, applicationVersion);
   }
 
   public enum Decision {

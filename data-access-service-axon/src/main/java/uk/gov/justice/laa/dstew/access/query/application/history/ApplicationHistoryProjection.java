@@ -133,6 +133,7 @@ public class ApplicationHistoryProjection {
             ? "APPLICATION_MAKE_DECISION_GRANTED"
             : "APPLICATION_MAKE_DECISION_REFUSED",
         serialise(event),
+        event.caseworkerId(),
         event.occurredAt());
   }
 
@@ -144,6 +145,7 @@ public class ApplicationHistoryProjection {
         event.workItemId(),
         "ASSIGN_APPLICATION_TO_CASEWORKER",
         serialise(event),
+        event.caseworkerId(),
         event.occurredAt());
   }
 
@@ -230,6 +232,7 @@ public class ApplicationHistoryProjection {
             .eventType(history.getEventType())
             .requestPayload(objectMapper.writeValueAsString(reconstructedPayload))
             .serviceName(history.getServiceName())
+            .caseworkerId(history.getCaseworkerId())
             .occurredAt(history.getOccurredAt())
             .build();
       }
@@ -245,6 +248,7 @@ public class ApplicationHistoryProjection {
             .requestPayload(
                 objectMapper.writeValueAsString(Map.of("noteText", lastNote.noteText())))
             .serviceName(history.getServiceName())
+            .caseworkerId(history.getCaseworkerId())
             .occurredAt(history.getOccurredAt())
             .build();
       }
@@ -257,6 +261,7 @@ public class ApplicationHistoryProjection {
           .eventType(history.getEventType())
           .requestPayload(objectMapper.writeValueAsString(reconstructedPayload))
           .serviceName(history.getServiceName())
+          .caseworkerId(history.getCaseworkerId())
           .occurredAt(history.getOccurredAt())
           .build();
     } catch (Exception exception) {
@@ -276,7 +281,7 @@ public class ApplicationHistoryProjection {
       String eventType,
       String requestPayload,
       Instant occurredAt) {
-    append(message, applicationId, eventType, requestPayload, occurredAt, message.identifier());
+    append(message, applicationId, eventType, requestPayload, null, occurredAt);
   }
 
   private void append(
@@ -284,6 +289,34 @@ public class ApplicationHistoryProjection {
       UUID applicationId,
       String eventType,
       String requestPayload,
+      UUID caseworkerId,
+      Instant occurredAt) {
+    append(
+        message,
+        applicationId,
+        eventType,
+        requestPayload,
+        caseworkerId,
+        occurredAt,
+        message.identifier());
+  }
+
+  private void append(
+      EventMessage message,
+      UUID applicationId,
+      String eventType,
+      String requestPayload,
+      Instant occurredAt,
+      String historyId) {
+    append(message, applicationId, eventType, requestPayload, null, occurredAt, historyId);
+  }
+
+  private void append(
+      EventMessage message,
+      UUID applicationId,
+      String eventType,
+      String requestPayload,
+      UUID caseworkerId,
       Instant occurredAt,
       String historyId) {
     Object serviceName =
@@ -295,6 +328,7 @@ public class ApplicationHistoryProjection {
             .eventType(eventType)
             .requestPayload(requestPayload)
             .serviceName(serviceName == null ? null : serviceName.toString())
+            .caseworkerId(caseworkerId)
             .occurredAt(occurredAt)
             .build());
   }

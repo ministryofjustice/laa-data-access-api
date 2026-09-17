@@ -25,6 +25,8 @@ flowchart LR
 ## Write path
 
 1. A controller maps the generated API request to a command.
+   For assignment and manual decisions it first converts the authenticated Entra `oid` claim to a
+   UUID; request JSON cannot choose an actor or assignee.
 2. `CommandGateway` routes the command using its `@TargetAggregateIdentifier`.
 3. Axon loads the aggregate by replaying its events. A command targeting a missing aggregate fails
    with `AggregateNotFoundException` unless the handler uses `CREATE_IF_MISSING`.
@@ -45,13 +47,13 @@ fail naturally if the application stream does not exist.
 There are two aggregate types:
 
 - `ApplicationAggregate` owns one application's lifecycle, optimistic-lock version, current
-  caseworker assignment, and pointer to its sensitive-data version.
+  Entra-OID assignment, and pointer to its sensitive-data version.
 - `LinkedApplicationGroupAggregate` owns one group's identity, single lead, and membership.
 
-A caseworker is currently reference data, not an aggregate. `AssignCaseworkerService` checks that
-the referenced row exists and then dispatches the application command. If caseworkers later gain
-rules such as capacity, availability, or workload limits, they may justify their own consistency
-boundary and a coordinated cross-aggregate workflow.
+Caseworker identity is authenticated Entra identity, not Axon reference data. Assignment UUID
+columns and events retain the OID for ownership, projections, responses, and history; no
+`caseworkers` table lookup is made. If workload rules are later needed, they require a separately
+designed consistency boundary rather than an identity registry.
 
 ## Read path
 

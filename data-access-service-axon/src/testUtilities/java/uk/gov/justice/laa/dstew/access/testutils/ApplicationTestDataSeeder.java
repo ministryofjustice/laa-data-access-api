@@ -78,6 +78,7 @@ public class ApplicationTestDataSeeder {
       makeApplicationDecisionUseCase.execute(
           makeDecisionCommandMapper.toCommand(
               applicationId,
+              caseworkerId == null ? UUID.randomUUID() : caseworkerId,
               new GeneratedRequestFactory("").decision(proceedingId, lifecycle.decisionStatus())));
     }
   }
