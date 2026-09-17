@@ -8,6 +8,10 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.DisbursementInformation;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.ExpertFeeInformation;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.ApportionmentInformation;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.Apportionment;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.BillingType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.CounselDetails;
@@ -118,6 +122,132 @@ class GetPriorAuthorityResponseMapperTest {
     assertThat(response.getExpertDetails()).isNull();
     assertThat(response.getCounselDetails()).isNull();
     assertThat(response.getDisbursementDetails()).isNull();
+  }
+
+  @Test
+  void givenResultWithBlankOrInvalidDecisionAndNullStatus_whenMapped_thenLeavesThoseValuesNull() {
+    PriorAuthorityResult blankDecisionResult =
+        PriorAuthorityResult.builder()
+            .priorAuthorityId(UUID.randomUUID())
+            .applicationId(UUID.randomUUID())
+            .decision("   ")
+            .build();
+    PriorAuthorityResult invalidDecisionResult =
+        PriorAuthorityResult.builder()
+            .priorAuthorityId(UUID.randomUUID())
+            .applicationId(UUID.randomUUID())
+            .decision("NOT_A_REAL_DECISION")
+            .status("SUBMITTED")
+            .build();
+
+    var blankResponse = mapper.toResponse(blankDecisionResult);
+    var invalidResponse = mapper.toResponse(invalidDecisionResult);
+
+    assertThat(blankResponse.getStatus()).isNull();
+    assertThat(blankResponse.getDecision()).isNull();
+    assertThat(invalidResponse.getDecision()).isNull();
+  }
+
+  @Test
+  void givenDecisionDetailsAndDocumentsWithNullType_whenMapped_thenMapsNestedFields() {
+    Instant decisionDate = Instant.parse("2026-09-08T12:00:00Z");
+    PriorAuthorityResult result =
+        PriorAuthorityResult.builder()
+            .priorAuthorityId(UUID.randomUUID())
+            .applicationId(UUID.randomUUID())
+            .justification("justification")
+            .status("DECIDED")
+            .decision("GRANTED")
+            .decisionJustification("Decision recorded")
+            .decisionDetails(
+                new PriorAuthorityDataPayload.DecisionDetails(
+                    "GRANTED",
+                    "Decision recorded",
+                    BigDecimal.valueOf(99.99),
+                    decisionDate,
+                    ExpertFeeInformation.builder()
+                        .newFixedRateAmount(BigDecimal.valueOf(250))
+                        .newHourlyRateAmount(BigDecimal.valueOf(175))
+                        .build(),
+                    DisbursementInformation.builder().newAmount(BigDecimal.valueOf(50)).build(),
+                    ApportionmentInformation.builder()
+                        .newClientShareAmount(BigDecimal.valueOf(25))
+                        .build(),
+                    "{}"))
+            .uploadedDocuments(
+                List.of(
+                    new PriorAuthorityDocument(
+                        UUID.randomUUID(),
+                        null,
+                        "evidence.pdf",
+                        "PDF",
+                        "application/pdf",
+                        42L,
+                        null,
+                        "CIVIL_APPLY",
+                        "checksum")))
+            .build();
+
+    var response = mapper.toResponse(result);
+
+    assertThat(response.getStatus()).isEqualTo(PriorAuthorityResponse.StatusEnum.DECIDED);
+    assertThat(response.getDecision().getValue()).isEqualTo("GRANTED");
+    assertThat(response.getDecisionDetails().getDecision().getValue()).isEqualTo("GRANTED");
+    assertThat(response.getDecisionDetails().getDecisionJustification())
+        .isEqualTo("Decision recorded");
+    assertThat(response.getDecisionDetails().getAmountGranted()).isEqualByComparingTo("99.99");
+    assertThat(response.getDecisionDetails().getDateGranted())
+        .isEqualTo(decisionDate.atOffset(ZoneOffset.UTC));
+    assertThat(response.getDecisionDetails().getExpert().getNewFixedRateAmount())
+        .isEqualByComparingTo("250");
+    assertThat(response.getDecisionDetails().getExpert().getNewHourlyRateAmount())
+        .isEqualByComparingTo("175");
+    assertThat(response.getDecisionDetails().getDisbursement().getNewAmount())
+        .isEqualByComparingTo("50");
+    assertThat(response.getDecisionDetails().getApportionment().getClientShareAmount())
+        .isEqualByComparingTo("25");
+    assertThat(response.getUploadedDocuments()).hasSize(1);
+    assertThat(response.getUploadedDocuments().get(0).getDocumentType()).isNull();
+    assertThat(response.getUploadedDocuments().get(0).getUploadedAt()).isNull();
+  }
+
+  @Test
+  void givenDecisionDetailsWithNullNestedValues_whenMapped_thenLeavesNestedDecisionValuesNull() {
+    PriorAuthorityResult result =
+        PriorAuthorityResult.builder()
+            .priorAuthorityId(UUID.randomUUID())
+            .applicationId(UUID.randomUUID())
+            .status("DECIDED")
+            .decisionDetails(
+                new PriorAuthorityDataPayload.DecisionDetails(
+                    null, null, null, null, null, null, null, "{}"))
+            .build();
+
+    var response = mapper.toResponse(result);
+
+    assertThat(response.getDecisionDetails()).isNotNull();
+    assertThat(response.getDecisionDetails().getDecision()).isNull();
+    assertThat(response.getDecisionDetails().getDecisionJustification()).isNull();
+    assertThat(response.getDecisionDetails().getAmountGranted()).isNull();
+    assertThat(response.getDecisionDetails().getDateGranted()).isNull();
+    assertThat(response.getDecisionDetails().getExpert()).isNull();
+    assertThat(response.getDecisionDetails().getDisbursement()).isNull();
+    assertThat(response.getDecisionDetails().getApportionment()).isNull();
+  }
+
+  @Test
+  void givenNullUploadedDocuments_whenMapped_thenLeavesUploadedDocumentsNull() {
+    PriorAuthorityResult result =
+        PriorAuthorityResult.builder()
+            .priorAuthorityId(UUID.randomUUID())
+            .applicationId(UUID.randomUUID())
+            .justification("justification")
+            .status("DRAFT")
+            .build();
+
+    var response = mapper.toResponse(result);
+
+    assertThat(response.getUploadedDocuments()).isNull();
   }
 
   @Test
