@@ -530,7 +530,7 @@ class PriorAuthorityAggregateTest {
 
   @Test
   void
-      givenAlreadyDecidedPriorAuthority_whenSameDecisionRecorded_thenEmitsNoEventAndDoesNotAppend() {
+      givenAlreadyDecidedPriorAuthority_whenSameDecisionRecorded_thenThrowsConflictAndDoesNotAppend() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     Instant startedAt = Instant.parse("2026-08-01T10:00:00Z");
@@ -596,6 +596,7 @@ class PriorAuthorityAggregateTest {
         .when()
         .command(command)
         .then()
+        .exception(PriorAuthorityStatusConflictException.class)
         .noEvents();
 
     verify(dataStore, never()).append(any(), anyLong(), any(), any(), any(), any());

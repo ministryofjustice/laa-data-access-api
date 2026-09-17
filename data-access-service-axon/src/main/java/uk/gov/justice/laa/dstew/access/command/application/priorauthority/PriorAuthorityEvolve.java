@@ -36,7 +36,7 @@ public final class PriorAuthorityEvolve {
     state.applicationId = event.applicationId();
     state.priorAuthorityType = event.priorAuthorityType();
     state.dataVersion = event.dataVersion();
-    state.status = event.status();
+    state.status = PriorAuthorityStatus.DECIDED.name();
   }
 
   /** Applies a generic direct PA assignment. */

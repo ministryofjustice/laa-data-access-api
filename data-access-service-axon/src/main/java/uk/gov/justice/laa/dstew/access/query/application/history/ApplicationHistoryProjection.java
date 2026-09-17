@@ -199,7 +199,8 @@ public class ApplicationHistoryProjection {
   @EventHandler
   public void on(PriorAuthorityDecisionRecordedEvent event, EventMessage message) {
     Map<String, Object> eventData = new LinkedHashMap<>();
-    eventData.put("status", event.status());
+    eventData.put("status", PriorAuthorityStatus.DECIDED.name());
+    eventData.put("decision", event.overallDecision());
     eventData.put("dataVersion", event.dataVersion());
     eventData.put("decisionJustification", event.decisionJustification());
     if (event.amountGranted() != null) {
@@ -215,7 +216,7 @@ public class ApplicationHistoryProjection {
             .priorAuthorityId(event.priorAuthorityId())
             .priorAuthorityType(event.priorAuthorityType())
             .eventType(
-                DecisionValue.GRANTED.name().equals(event.status())
+                DecisionValue.GRANTED.name().equals(event.overallDecision())
                     ? "PRIOR_AUTHORITY_DECISION_GRANTED"
                     : "PRIOR_AUTHORITY_DECISION_REFUSED")
             .eventData(serialise(eventData))

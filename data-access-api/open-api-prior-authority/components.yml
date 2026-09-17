@@ -103,7 +103,7 @@ components:
         status:
           type: string
           description: Lifecycle status of the prior authority request
-          enum: [DRAFT, SUBMITTED]
+          enum: [DRAFT, SUBMITTED, DECIDED]
         assignedTo:
           type: string
           format: uuid

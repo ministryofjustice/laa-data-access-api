@@ -296,7 +296,7 @@ class PriorAuthorityProjectionTest {
             null,
             Instant.now()));
 
-    assertThat(model.getStatus()).isEqualTo("SUBMITTED");
+    assertThat(model.getStatus()).isEqualTo("DECIDED");
     assertThat(model.getDataVersion()).isEqualTo(1L);
     verify(repository).save(model);
   }
@@ -310,7 +310,7 @@ class PriorAuthorityProjectionTest {
             .priorAuthorityId(priorAuthorityId)
             .applicationId(applicationId)
             .dataVersion(2L)
-            .status("SUBMITTED")
+            .status("DECIDED")
             .build();
     PriorAuthorityContent content =
         new PriorAuthorityContent(EXPERT, "Expert required", null, null, null);
@@ -336,7 +336,8 @@ class PriorAuthorityProjectionTest {
     PriorAuthorityResult result =
         projection.handle(new FindPriorAuthorityByPriorAuthorityIdQuery(priorAuthorityId));
 
-    assertThat(result.status()).isEqualTo("SUBMITTED");
+    assertThat(result.status()).isEqualTo("DECIDED");
+    assertThat(result.decision()).isEqualTo("GRANTED");
   }
 
   @Test

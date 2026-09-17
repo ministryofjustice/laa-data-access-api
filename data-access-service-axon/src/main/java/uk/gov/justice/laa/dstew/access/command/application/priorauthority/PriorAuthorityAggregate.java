@@ -187,7 +187,7 @@ public class PriorAuthorityAggregate {
                   event.applicationId(),
                   current.withDecision(
                       new PriorAuthorityDataPayload.DecisionDetails(
-                          event.status(),
+                          event.overallDecision(),
                           command.decisionJustification(),
                           command.amountGranted(),
                           command.dateGranted(),

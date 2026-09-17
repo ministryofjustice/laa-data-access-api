@@ -115,15 +115,15 @@ class PriorAuthorityDeciderTest {
     assertThat(result.get().applicationId()).isEqualTo(applicationId);
     assertThat(result.get().priorAuthorityType()).isEqualTo(PriorAuthorityType.EXPERT.name());
     assertThat(result.get().dataVersion()).isEqualTo(5L);
-    assertThat(result.get().status()).isEqualTo("GRANTED");
+    assertThat(result.get().overallDecision()).isEqualTo("GRANTED");
   }
 
   @Test
-  void givenAlreadyDecidedWithSameDecisionAndPayload_whenDecideDecision_thenReturnsEmpty() {
+  void givenDecidedStatusWithSameDecisionAndPayload_whenDecideDecision_thenThrowsConflict() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     PriorAuthorityState state = submittedState(priorAuthorityId, applicationId, 1L);
-    state.status = "REFUSED";
+    state.status = PriorAuthorityStatus.DECIDED.name();
     MakePriorAuthorityDecisionCommand command =
         new MakePriorAuthorityDecisionCommand(
             priorAuthorityId,
@@ -155,10 +155,8 @@ class PriorAuthorityDeciderTest {
                 null,
                 "{\"decision\":\"REFUSED\"}"));
 
-    Optional<PriorAuthorityDecisionRecordedEvent> result =
-        PriorAuthorityDecider.decideDecision(state, command, payload);
-
-    assertThat(result).isEmpty();
+    assertThatThrownBy(() -> PriorAuthorityDecider.decideDecision(state, command, payload))
+        .isInstanceOf(PriorAuthorityStatusConflictException.class);
   }
 
   @Test
@@ -220,7 +218,7 @@ class PriorAuthorityDeciderTest {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     PriorAuthorityState state = submittedState(priorAuthorityId, applicationId, 1L);
-    state.status = "GRANTED";
+    state.status = PriorAuthorityStatus.DECIDED.name();
     MakePriorAuthorityDecisionCommand command =
         new MakePriorAuthorityDecisionCommand(
             priorAuthorityId,
@@ -277,7 +275,7 @@ class PriorAuthorityDeciderTest {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     PriorAuthorityState state = submittedState(priorAuthorityId, applicationId, 1L);
-    state.status = "GRANTED";
+    state.status = PriorAuthorityStatus.DECIDED.name();
     MakePriorAuthorityDecisionCommand command =
         new MakePriorAuthorityDecisionCommand(
             priorAuthorityId,

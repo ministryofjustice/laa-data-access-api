@@ -173,11 +173,11 @@ class ApplicationExceptionHandlerTest {
 
     var response =
         handler.handlePriorAuthorityStatusConflictException(
-            new PriorAuthorityStatusConflictException(submissionId, "GRANTED"));
+            new PriorAuthorityStatusConflictException(submissionId, "DECIDED"));
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
     assertThat(response.getBody().getDetail())
-        .isEqualTo("Prior authority " + submissionId + " cannot be decided from status GRANTED");
+        .isEqualTo("Prior authority " + submissionId + " cannot be decided from status DECIDED");
   }
 
   @Test

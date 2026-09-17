@@ -352,7 +352,8 @@ class ApplicationHistoryProjectionTest {
     assertThat(saved.getEventType()).isEqualTo("PRIOR_AUTHORITY_DECISION_GRANTED");
     assertThat(saved.getServiceName()).isEqualTo("CIVIL_APPLY");
     assertThat(saved.getOccurredAt()).isEqualTo(occurredAt);
-    assertThat(saved.getEventData()).contains("\"status\":\"GRANTED\"");
+    assertThat(saved.getEventData()).contains("\"status\":\"DECIDED\"");
+    assertThat(saved.getEventData()).contains("\"decision\":\"GRANTED\"");
     assertThat(saved.getEventData()).contains("\"dataVersion\":1");
     assertThat(saved.getEventData()).contains("\"decisionJustification\":\"Decision recorded\"");
     assertThat(saved.getEventData()).contains("\"amountGranted\":123.45");
@@ -382,6 +383,8 @@ class ApplicationHistoryProjectionTest {
     verify(paRepository).save(captor.capture());
     assertThat(captor.getValue().getEventType()).isEqualTo("PRIOR_AUTHORITY_DECISION_REFUSED");
     assertThat(captor.getValue().getEventData())
+        .contains("\"status\":\"DECIDED\"")
+        .contains("\"decision\":\"REFUSED\"")
         .contains("\"decisionJustification\":\"Refused on merits\"")
         .doesNotContain("amountGranted")
         .doesNotContain("dateGranted");

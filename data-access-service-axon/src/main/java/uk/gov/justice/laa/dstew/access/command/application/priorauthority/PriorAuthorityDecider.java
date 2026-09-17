@@ -67,8 +67,8 @@ public final class PriorAuthorityDecider {
   }
 
   /**
-   * Returns a decision event for a submitted prior-authority, empty for an idempotent retry, or
-   * throws on a stale version or invalid lifecycle state.
+   * Returns a decision event for a submitted prior-authority or throws on a stale version or
+   * invalid lifecycle state.
    */
   public static Optional<PriorAuthorityDecisionRecordedEvent> decideDecision(
       PriorAuthorityState state,
@@ -82,28 +82,34 @@ public final class PriorAuthorityDecider {
           command.priorAuthorityId(), command.expectedPriorAuthorityVersion());
     }
 
-    if (!PriorAuthorityStatus.SUBMITTED.name().equals(state.status)) {
-      boolean sameDecision = state.status != null && state.status.equals(command.overallDecision());
-      boolean sameRequest =
-          current.decisionSerialisedRequest() != null
-              && current.decisionSerialisedRequest().equals(command.serialisedRequest());
-      if (sameDecision && sameRequest) {
-        return Optional.empty();
-      }
+    return switch (resolveStatus(state, command)) {
+      case DRAFT, DECIDED ->
+          throw new PriorAuthorityStatusConflictException(command.priorAuthorityId(), state.status);
+      case SUBMITTED -> Optional.of(createDecisionRecordedEvent(state, command));
+    };
+  }
+
+  private static PriorAuthorityDecisionRecordedEvent createDecisionRecordedEvent(
+      PriorAuthorityState state, MakePriorAuthorityDecisionCommand command) {
+    return new PriorAuthorityDecisionRecordedEvent(
+        command.priorAuthorityId(),
+        state.applicationId,
+        state.priorAuthorityType,
+        state.dataVersion + 1,
+        command.overallDecision(),
+        command.decisionJustification(),
+        command.amountGranted(),
+        command.dateGranted(),
+        command.occurredAt());
+  }
+
+  private static PriorAuthorityStatus resolveStatus(
+      PriorAuthorityState state, MakePriorAuthorityDecisionCommand command) {
+    try {
+      return PriorAuthorityStatus.valueOf(state.status);
+    } catch (RuntimeException exception) {
       throw new PriorAuthorityStatusConflictException(command.priorAuthorityId(), state.status);
     }
-
-    return Optional.of(
-        new PriorAuthorityDecisionRecordedEvent(
-            command.priorAuthorityId(),
-            state.applicationId,
-            state.priorAuthorityType,
-            state.dataVersion + 1,
-            command.overallDecision(),
-            command.decisionJustification(),
-            command.amountGranted(),
-            command.dateGranted(),
-            command.occurredAt()));
   }
 
   private static void validateDecision(MakePriorAuthorityDecisionCommand command) {

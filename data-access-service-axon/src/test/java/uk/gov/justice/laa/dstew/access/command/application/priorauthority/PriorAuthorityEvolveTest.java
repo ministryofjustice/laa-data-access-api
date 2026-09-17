@@ -76,7 +76,7 @@ class PriorAuthorityEvolveTest {
     assertThat(state.getApplicationId()).isEqualTo(applicationId);
     assertThat(state.getPriorAuthorityType()).isEqualTo("EXPERT");
     assertThat(state.getDataVersion()).isEqualTo(1L);
-    assertThat(state.getStatus()).isEqualTo("REFUSED");
+    assertThat(state.getStatus()).isEqualTo(PriorAuthorityStatus.DECIDED.name());
   }
 
   @Test

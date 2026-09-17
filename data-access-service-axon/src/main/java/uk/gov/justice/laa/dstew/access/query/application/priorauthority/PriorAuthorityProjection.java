@@ -107,6 +107,7 @@ public class PriorAuthorityProjection {
         .ifPresent(
             current -> {
               current.setDataVersion(event.dataVersion());
+              current.setStatus(PriorAuthorityStatus.DECIDED.name());
               repository.save(current);
             });
   }

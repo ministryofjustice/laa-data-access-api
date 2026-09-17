@@ -13,7 +13,7 @@ public record PriorAuthorityDecisionRecordedEvent(
     UUID applicationId,
     String priorAuthorityType,
     long dataVersion,
-    String status,
+    String overallDecision,
     String decisionJustification,
     BigDecimal amountGranted,
     Instant dateGranted,
