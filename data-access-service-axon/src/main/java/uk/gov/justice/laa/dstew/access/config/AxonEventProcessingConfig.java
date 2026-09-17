@@ -6,7 +6,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
-/** Defines isolated processors for projections and the synchronous linked-application router. */
+/** Defines isolated processors for projections and synchronous command-side route updates. */
 @Configuration
 @ExcludeFromGeneratedCodeCoverage
 public class AxonEventProcessingConfig {
@@ -27,11 +27,6 @@ public class AxonEventProcessingConfig {
   }
 
   @Bean
-  EventProcessorDefinition linkedApplicationGroupInitializerProcessor() {
-    return pooledStreamingProcessor("linked-application-group-initializer");
-  }
-
-  @Bean
   EventProcessorDefinition linkedGroupWorkItemLifecycleProcessor() {
     return pooledStreamingProcessor("linked-group-work-item-lifecycle");
   }
@@ -47,9 +42,10 @@ public class AxonEventProcessingConfig {
     return pooledStreamingProcessor("work-list-projection");
   }
 
+  /** Keeps write-side application-group routes synchronous with group membership events. */
   @Bean
-  EventProcessorDefinition linkedApplicationGroupRouterProcessor() {
-    return EventProcessorDefinition.subscribingMatching("linked-application-group-router")
+  EventProcessorDefinition applicationGroupRouteProcessor() {
+    return EventProcessorDefinition.subscribingMatching("application-group-route")
         .customized(
             configuration -> configuration.errorHandler(PropagatingErrorHandler.instance()));
   }

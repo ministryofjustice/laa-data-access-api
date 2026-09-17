@@ -1,24 +1,20 @@
 package uk.gov.justice.laa.dstew.access.command.application;
 
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
-import uk.gov.justice.laa.dstew.access.applicationcontent.LinkedApplication;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeDecisionProceeding;
-import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupRequested;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand;
@@ -28,7 +24,6 @@ import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicat
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
-import uk.gov.justice.laa.dstew.access.exception.ApplicationGroupInvariantException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException;
 import uk.gov.justice.laa.dstew.access.exception.InvalidApplicationStateException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
@@ -60,27 +55,8 @@ public final class ApplicationDecider {
       throw new ApplicationCreationConflictException(state.applicationId);
     }
 
-    if (details.leadApplicationId() != null && details.leadApplicationId().equals(applicationId)) {
-      throw new ApplicationGroupInvariantException(
-          "Application " + applicationId + " cannot be its own lead");
-    }
-
     return List.of(
         buildApplicationCreatedEvent(applicationId, applicationDataVersion, fingerprint, details));
-  }
-
-  /** Returns a singleton {@link LinkedApplicationGroupRequested} or throws if already a member. */
-  public static LinkedApplicationGroupRequested decideCreateLinkedGroup(
-      ApplicationState state, UUID groupId, List<UUID> allMemberIds, Instant occurredAt) {
-
-    if (state.isAssociatedMember) {
-      throw new ApplicationGroupInvariantException(
-          "Application "
-              + state.applicationId
-              + " is already a member of another group and cannot be a lead");
-    }
-    return new LinkedApplicationGroupRequested(
-        groupId, state.applicationId, allMemberIds, occurredAt);
   }
 
   /**
@@ -246,14 +222,6 @@ public final class ApplicationDecider {
         fingerprint,
         details.status(),
         details.schemaVersion(),
-        details.occurredAt(),
-        details.leadApplicationId(),
-        details.allLinkedApplications() == null
-            ? List.of()
-            : details.allLinkedApplications().stream()
-                .map(LinkedApplication::getAssociatedApplicationId)
-                .filter(Objects::nonNull)
-                .distinct()
-                .toList());
+        details.occurredAt());
   }
 }

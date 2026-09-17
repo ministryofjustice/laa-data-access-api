@@ -54,8 +54,7 @@ public class GetAllApplicationsResponseMapper {
     summary.setSubmittedAt(
         app.getSubmittedAt() != null ? app.getSubmittedAt().atOffset(ZoneOffset.UTC) : null);
     summary.setLastUpdated(app.getModifiedAt().atOffset(ZoneOffset.UTC));
-    // Linked groups are not yet exposed; always false until the grouping endpoint is available.
-    summary.setIsLead(false);
+    summary.setIsLead(isLead(app, groupsByLeadId));
     summary.setAssignedTo(app.getCaseworkerId());
     summary.setAutoGranted(
         uk.gov.justice.laa.dstew.access.model.AutoGranted.valueOf(app.getAutoGranted().name()));
@@ -64,6 +63,14 @@ public class GetAllApplicationsResponseMapper {
 
     summary.setLinkedApplications(toLinkedSummaries(app, groupsByLeadId));
     return summary;
+  }
+
+  private boolean isLead(
+      ApplicationReadModel app, Map<UUID, LinkedApplicationGroupReadModel> groupsByLeadId) {
+    UUID effectiveLeadId =
+        app.getLeadApplicationId() != null ? app.getLeadApplicationId() : app.getApplicationId();
+    LinkedApplicationGroupReadModel group = groupsByLeadId.get(effectiveLeadId);
+    return group != null && app.getApplicationId().equals(group.getLeadApplicationId());
   }
 
   private CategoryOfLaw toCategoryOfLaw(String categoryOfLaw) {

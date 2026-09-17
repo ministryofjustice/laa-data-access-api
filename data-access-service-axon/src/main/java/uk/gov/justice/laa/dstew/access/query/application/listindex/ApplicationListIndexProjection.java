@@ -1,5 +1,7 @@
 package uk.gov.justice.laa.dstew.access.query.application.listindex;
 
+import java.time.Instant;
+import java.util.UUID;
 import org.axonframework.messaging.core.annotation.Namespace;
 import org.axonframework.messaging.eventhandling.EventMessage;
 import org.axonframework.messaging.eventhandling.annotation.EventHandler;
@@ -8,11 +10,12 @@ import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
 import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
@@ -72,7 +75,7 @@ public class ApplicationListIndexProjection {
             .autoGranted(AutoGrantedState.PENDING)
             .submittedAt(data.submittedAt())
             .modifiedAt(event.occurredAt())
-            .leadApplicationId(event.leadApplicationId())
+            .leadApplicationId(null)
             .clientFirstName(client != null ? client.getFirstName() : null)
             .clientLastName(client != null ? client.getLastName() : null)
             .clientDateOfBirth(client != null ? client.getDateOfBirth() : null)
@@ -81,18 +84,27 @@ public class ApplicationListIndexProjection {
             .build());
   }
 
-  /** Updates the {@code lead_application_id} when an application is linked to a group. */
+  /** Updates application index rows when a linked group is established explicitly. */
   @EventHandler
-  public void on(ApplicationLinkedEvent event, EventMessage message) {
-    listIndexRepository
-        .findById(event.applicationId())
-        .ifPresent(
-            row -> {
-              row.setLeadApplicationId(event.leadApplicationId());
-              row.setModifiedAt(event.occurredAt());
-              row.setProjectionPosition(message.identifier().hashCode());
-              listIndexRepository.save(row);
-            });
+  public void on(LinkedApplicationGroupCreatedEvent event, EventMessage message) {
+    event
+        .memberApplicationIds()
+        .forEach(
+            memberApplicationId ->
+                updateLeadApplicationId(
+                    memberApplicationId,
+                    memberApplicationId.equals(event.leadApplicationId())
+                        ? null
+                        : event.leadApplicationId(),
+                    event.occurredAt(),
+                    message));
+  }
+
+  /** Updates the added member index row when it joins an existing linked group explicitly. */
+  @EventHandler
+  public void on(MemberAddedToGroupEvent event, EventMessage message) {
+    updateLeadApplicationId(
+        event.memberId(), event.leadApplicationId(), event.occurredAt(), message);
   }
 
   /**
@@ -217,6 +229,19 @@ public class ApplicationListIndexProjection {
         .ifPresent(
             row -> {
               row.setModifiedAt(event.occurredAt());
+              row.setProjectionPosition(message.identifier().hashCode());
+              listIndexRepository.save(row);
+            });
+  }
+
+  private void updateLeadApplicationId(
+      UUID applicationId, UUID leadApplicationId, Instant occurredAt, EventMessage message) {
+    listIndexRepository
+        .findById(applicationId)
+        .ifPresent(
+            row -> {
+              row.setLeadApplicationId(leadApplicationId);
+              row.setModifiedAt(occurredAt);
               row.setProjectionPosition(message.identifier().hashCode());
               listIndexRepository.save(row);
             });

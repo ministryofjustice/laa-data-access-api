@@ -87,7 +87,7 @@ class LinkedApplicationGroupProjectionTest {
 
     when(groupReadRepository.findById(groupId)).thenReturn(Optional.of(existing));
 
-    projection.on(new MemberAddedToGroupEvent(groupId, newMemberId, occurredAt));
+    projection.on(new MemberAddedToGroupEvent(groupId, leadId, newMemberId, occurredAt));
 
     assertThat(existing.getMemberIds()).contains(newMemberId);
     assertThat(existing.getModifiedAt()).isEqualTo(occurredAt);

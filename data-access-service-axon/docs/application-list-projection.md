@@ -40,8 +40,9 @@ An Axon `@EventHandler` component that maintains the list index in response to d
 
 | Event | Action |
 |---|---|
-| `ApplicationCreatedEvent` | Inserts a new index row; fetches client PII from `application_data` at this point |
-| `ApplicationLinkedEvent` | Updates `lead_application_id` |
+| `ApplicationCreatedEvent` | Inserts a standalone index row; fetches client PII from `application_data` at this point |
+| `LinkedApplicationGroupCreatedEvent` | Updates `lead_application_id` for non-lead group members |
+| `MemberAddedToGroupEvent` | Updates `lead_application_id` for the added group member |
 | `ApplicationDecisionMadeEvent` | Updates `status` and `is_auto_granted` |
 | `ApplicationAssignedToCaseworkerEvent` | Updates `caseworker_id` |
 | `ApplicationUnassignedFromCaseworkerEvent` | Clears `caseworker_id` |
