@@ -31,7 +31,7 @@ public final class PriorAuthorityEvolve {
 
   /** Applies a {@link PriorAuthorityDecisionRecordedEvent} to the given state. */
   public static void apply(PriorAuthorityState state, PriorAuthorityDecisionRecordedEvent event) {
-    state.priorAuthorityId = event.submissionId();
+    state.priorAuthorityId = event.priorAuthorityId();
     state.applicationId = event.applicationId();
     state.priorAuthorityType = event.priorAuthorityType();
     state.dataVersion = event.dataVersion();

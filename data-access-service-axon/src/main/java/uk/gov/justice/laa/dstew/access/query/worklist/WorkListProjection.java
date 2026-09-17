@@ -113,7 +113,7 @@ public class WorkListProjection {
   /** A terminal prior-authority decision removes its prior-authority work row. */
   @EventHandler
   public void on(PriorAuthorityDecisionRecordedEvent event) {
-    items.deleteById(event.submissionId());
+    items.deleteById(event.priorAuthorityId());
   }
 
   /** Applies a generic direct assignment to the event's immutable work-item identity. */

@@ -103,7 +103,7 @@ public class PriorAuthorityProjection {
   @EventHandler
   public void on(PriorAuthorityDecisionRecordedEvent event) {
     repository
-        .findById(event.submissionId())
+        .findById(event.priorAuthorityId())
         .ifPresent(
             current -> {
               current.setDataVersion(event.dataVersion());

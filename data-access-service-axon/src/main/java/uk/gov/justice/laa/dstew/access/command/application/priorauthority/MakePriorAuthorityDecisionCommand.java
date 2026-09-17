@@ -7,9 +7,9 @@ import org.axonframework.messaging.commandhandling.annotation.Command;
 import org.axonframework.modelling.annotation.TargetEntityId;
 
 /** Requests a terminal decision against an existing PriorAuthority submission. */
-@Command(routingKey = "submissionId")
+@Command(routingKey = "priorAuthorityId")
 public record MakePriorAuthorityDecisionCommand(
-    @TargetEntityId UUID submissionId,
+    @TargetEntityId UUID priorAuthorityId,
     UUID caseworkerId,
     long expectedPriorAuthorityVersion,
     String overallDecision,

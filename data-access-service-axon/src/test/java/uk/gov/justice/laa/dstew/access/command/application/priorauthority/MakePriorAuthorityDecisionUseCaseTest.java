@@ -27,11 +27,11 @@ class MakePriorAuthorityDecisionUseCaseTest {
     QueryGateway queryGateway = mock(QueryGateway.class);
     MakePriorAuthorityDecisionUseCase useCase =
         new MakePriorAuthorityDecisionUseCase(dispatcher, queryGateway);
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     MakePriorAuthorityDecisionCommand command =
         new MakePriorAuthorityDecisionCommand(
-            submissionId,
+            priorAuthorityId,
             TestJwtDecoderConfig.CASEWORKER_ID,
             0L,
             "GRANTED",
@@ -44,12 +44,12 @@ class MakePriorAuthorityDecisionUseCaseTest {
             "{}",
             Instant.now());
     when(queryGateway.query(
-            new FindPriorAuthorityByPriorAuthorityIdQuery(submissionId),
+            new FindPriorAuthorityByPriorAuthorityIdQuery(priorAuthorityId),
             PriorAuthorityResult.class))
         .thenReturn(
             CompletableFuture.completedFuture(
                 new PriorAuthorityResult(
-                    submissionId,
+                    priorAuthorityId,
                     applicationId,
                     "Need expert",
                     "SUBMITTED",
@@ -71,10 +71,10 @@ class MakePriorAuthorityDecisionUseCaseTest {
     QueryGateway queryGateway = mock(QueryGateway.class);
     MakePriorAuthorityDecisionUseCase useCase =
         new MakePriorAuthorityDecisionUseCase(dispatcher, queryGateway);
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
     MakePriorAuthorityDecisionCommand command =
         new MakePriorAuthorityDecisionCommand(
-            submissionId,
+            priorAuthorityId,
             TestJwtDecoderConfig.CASEWORKER_ID,
             0L,
             "GRANTED",
@@ -87,13 +87,13 @@ class MakePriorAuthorityDecisionUseCaseTest {
             "{}",
             Instant.now());
     when(queryGateway.query(
-            new FindPriorAuthorityByPriorAuthorityIdQuery(submissionId),
+            new FindPriorAuthorityByPriorAuthorityIdQuery(priorAuthorityId),
             PriorAuthorityResult.class))
         .thenReturn(CompletableFuture.completedFuture(null));
 
     assertThatExceptionOfType(ResourceNotFoundException.class)
         .isThrownBy(() -> useCase.execute(command))
-        .withMessage("No prior authority found with ID: " + submissionId);
+        .withMessage("No prior authority found with ID: " + priorAuthorityId);
 
     verifyNoInteractions(dispatcher);
   }

@@ -77,7 +77,7 @@ public final class PriorAuthorityDecider {
 
     if (command.expectedPriorAuthorityVersion() != state.dataVersion) {
       throw new PriorAuthorityVersionConflictException(
-          command.submissionId(), command.expectedPriorAuthorityVersion());
+          command.priorAuthorityId(), command.expectedPriorAuthorityVersion());
     }
 
     if (!PriorAuthorityStatus.SUBMITTED.name().equals(state.status)) {
@@ -88,12 +88,12 @@ public final class PriorAuthorityDecider {
       if (sameDecision && sameRequest) {
         return Optional.empty();
       }
-      throw new PriorAuthorityStatusConflictException(command.submissionId(), state.status);
+      throw new PriorAuthorityStatusConflictException(command.priorAuthorityId(), state.status);
     }
 
     return Optional.of(
         new PriorAuthorityDecisionRecordedEvent(
-            command.submissionId(),
+            command.priorAuthorityId(),
             state.applicationId,
             state.priorAuthorityType,
             state.dataVersion + 1,
@@ -116,11 +116,11 @@ public final class PriorAuthorityDecider {
       PriorAuthorityState state, MakePriorAuthorityDecisionCommand command) {
     if (state.caseworkerId == null) {
       throw new PriorAuthorityStatusConflictException(
-          command.submissionId(), "Prior authority is unassigned and cannot be decided");
+          command.priorAuthorityId(), "Prior authority is unassigned and cannot be decided");
     }
     if (!state.caseworkerId.equals(command.caseworkerId())) {
       throw new PriorAuthorityStatusConflictException(
-          command.submissionId(),
+          command.priorAuthorityId(),
           "Prior authority is assigned to a different caseworker and cannot be decided by this user");
     }
   }

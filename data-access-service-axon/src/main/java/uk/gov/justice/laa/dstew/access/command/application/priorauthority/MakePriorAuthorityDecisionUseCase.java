@@ -27,12 +27,12 @@ public class MakePriorAuthorityDecisionUseCase {
     PriorAuthorityResult priorAuthorityResult =
         queryGateway
             .query(
-                new FindPriorAuthorityByPriorAuthorityIdQuery(command.submissionId()),
+                new FindPriorAuthorityByPriorAuthorityIdQuery(command.priorAuthorityId()),
                 PriorAuthorityResult.class)
             .join();
     if (priorAuthorityResult == null) {
       throw new ResourceNotFoundException(
-          "No prior authority found with ID: " + command.submissionId());
+          "No prior authority found with ID: " + command.priorAuthorityId());
     }
     dispatcher.dispatch(
         new ValidateApplicationGrantedCommand(priorAuthorityResult.applicationId()));

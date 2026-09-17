@@ -109,7 +109,7 @@ class PriorAuthorityDeciderTest {
             state, command, payload(priorAuthorityId, applicationId));
 
     assertThat(result).isPresent();
-    assertThat(result.get().submissionId()).isEqualTo(priorAuthorityId);
+    assertThat(result.get().priorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(result.get().applicationId()).isEqualTo(applicationId);
     assertThat(result.get().priorAuthorityType()).isEqualTo(PriorAuthorityType.EXPERT.name());
     assertThat(result.get().dataVersion()).isEqualTo(5L);

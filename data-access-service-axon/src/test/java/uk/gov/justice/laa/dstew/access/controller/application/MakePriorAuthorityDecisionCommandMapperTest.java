@@ -32,7 +32,7 @@ class MakePriorAuthorityDecisionCommandMapperTest {
 
   @Test
   void givenRequestWithEventDescription_whenMapped_thenUsesEventDescriptionAsJustification() {
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
     OffsetDateTime dateGranted = OffsetDateTime.parse("2026-09-08T12:30:00Z");
     when(authenticatedUserId.get()).thenReturn(TestJwtDecoderConfig.CASEWORKER_ID);
     MakePriorAuthorityDecisionRequest request =
@@ -59,9 +59,9 @@ class MakePriorAuthorityDecisionCommandMapperTest {
                 EventHistoryRequest.builder().eventDescription("Decision recorded").build())
             .build();
 
-    MakePriorAuthorityDecisionCommand command = mapper.toCommand(submissionId, request);
+    MakePriorAuthorityDecisionCommand command = mapper.toCommand(priorAuthorityId, request);
 
-    assertThat(command.submissionId()).isEqualTo(submissionId);
+    assertThat(command.priorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(command.caseworkerId()).isEqualTo(TestJwtDecoderConfig.CASEWORKER_ID);
     assertThat(command.expectedPriorAuthorityVersion()).isEqualTo(7L);
     assertThat(command.overallDecision()).isEqualTo("GRANTED");
@@ -85,7 +85,7 @@ class MakePriorAuthorityDecisionCommandMapperTest {
 
   @Test
   void givenRequestWithExpertFeeDetails_whenMapped_thenStoresExpertFeeInformation() {
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
     when(authenticatedUserId.get()).thenReturn(TestJwtDecoderConfig.CASEWORKER_ID);
     MakePriorAuthorityDecisionRequest request =
         MakePriorAuthorityDecisionRequest.builder()
@@ -104,9 +104,9 @@ class MakePriorAuthorityDecisionCommandMapperTest {
             .apportionment(null)
             .build();
 
-    MakePriorAuthorityDecisionCommand command = mapper.toCommand(submissionId, request);
+    MakePriorAuthorityDecisionCommand command = mapper.toCommand(priorAuthorityId, request);
 
-    assertThat(command.submissionId()).isEqualTo(submissionId);
+    assertThat(command.priorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(command.expertFee()).isNotNull();
     assertThat(command.expertFee().getNewFixedRateAmount()).isNull();
     assertThat(command.expertFee().getNewHourlyRateAmount())

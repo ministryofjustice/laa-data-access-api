@@ -9,7 +9,7 @@ import org.axonframework.messaging.eventhandling.annotation.Event;
 /** Event recording a terminal decision against a PriorAuthority submission. */
 @Event
 public record PriorAuthorityDecisionRecordedEvent(
-    @EventTag(key = "PriorAuthorityAggregate") UUID submissionId,
+    @EventTag(key = "PriorAuthorityAggregate") UUID priorAuthorityId,
     UUID applicationId,
     String priorAuthorityType,
     long dataVersion,

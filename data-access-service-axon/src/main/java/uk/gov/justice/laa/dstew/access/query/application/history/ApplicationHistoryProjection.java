@@ -212,7 +212,7 @@ public class ApplicationHistoryProjection {
         PriorAuthorityHistoryReadModel.builder()
             .eventId(message.identifier())
             .applicationId(event.applicationId())
-            .priorAuthorityId(event.submissionId())
+            .priorAuthorityId(event.priorAuthorityId())
             .priorAuthorityType(event.priorAuthorityType())
             .eventType(
                 DecisionValue.GRANTED.name().equals(event.status())

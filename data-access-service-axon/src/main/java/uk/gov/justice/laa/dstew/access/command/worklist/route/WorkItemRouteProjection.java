@@ -63,6 +63,6 @@ public class WorkItemRouteProjection {
   @EventHandler
   @Transactional
   public void on(PriorAuthorityDecisionRecordedEvent event) {
-    routes.deleteById(event.submissionId());
+    routes.deleteById(event.priorAuthorityId());
   }
 }
