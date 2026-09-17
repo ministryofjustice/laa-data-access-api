@@ -22,7 +22,7 @@ import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApp
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionRecordedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
@@ -197,7 +197,7 @@ public class ApplicationHistoryProjection {
 
   /** Records a prior-authority decision in the PA history table. */
   @EventHandler
-  public void on(PriorAuthorityDecisionRecordedEvent event, EventMessage message) {
+  public void on(PriorAuthorityDecisionMadeEvent event, EventMessage message) {
     Map<String, Object> eventData = new LinkedHashMap<>();
     eventData.put("status", PriorAuthorityStatus.DECIDED.name());
     eventData.put("decision", event.overallDecision());

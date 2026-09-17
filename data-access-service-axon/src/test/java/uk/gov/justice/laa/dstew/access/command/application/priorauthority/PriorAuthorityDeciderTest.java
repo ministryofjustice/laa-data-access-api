@@ -10,7 +10,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.MakePriorAuthorityDecisionCommand;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionRecordedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityStatusConflictException;
@@ -86,7 +86,7 @@ class PriorAuthorityDeciderTest {
   }
 
   @Test
-  void givenSubmittedState_whenDecideDecision_thenReturnsDecisionRecordedEvent() {
+  void givenSubmittedState_whenDecideDecision_thenReturnsDecisionMadeEvent() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     PriorAuthorityState state = submittedState(priorAuthorityId, applicationId, 4L);
@@ -105,7 +105,7 @@ class PriorAuthorityDeciderTest {
             "{\"decision\":\"GRANTED\"}",
             OCCURRED_AT);
 
-    Optional<PriorAuthorityDecisionRecordedEvent> result =
+    Optional<PriorAuthorityDecisionMadeEvent> result =
         PriorAuthorityDecider.decideDecision(
             state, command, payload(priorAuthorityId, applicationId));
 

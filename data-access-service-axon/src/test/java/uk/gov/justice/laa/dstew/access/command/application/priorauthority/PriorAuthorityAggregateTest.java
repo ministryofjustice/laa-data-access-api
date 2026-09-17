@@ -34,7 +34,7 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.ApportionmentInformation;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.MakePriorAuthorityDecisionCommand;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionRecordedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
@@ -436,7 +436,7 @@ class PriorAuthorityAggregateTest {
   }
 
   @Test
-  void givenSubmittedPriorAuthority_whenDecisionRecorded_thenPersistsNextVersionAndEmitsEvent() {
+  void givenSubmittedPriorAuthority_whenDecisionMade_thenPersistsNextVersionAndEmitsEvent() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     Instant startedAt = Instant.parse("2026-08-01T10:00:00Z");
@@ -495,7 +495,7 @@ class PriorAuthorityAggregateTest {
 
     verify(eventAppender)
         .append(
-            new PriorAuthorityDecisionRecordedEvent(
+            new PriorAuthorityDecisionMadeEvent(
                 priorAuthorityId,
                 applicationId,
                 EXPERT.name(),
@@ -529,8 +529,7 @@ class PriorAuthorityAggregateTest {
   }
 
   @Test
-  void
-      givenAlreadyDecidedPriorAuthority_whenSameDecisionRecorded_thenThrowsConflictAndDoesNotAppend() {
+  void givenAlreadyDecidedPriorAuthority_whenSameDecisionMade_thenThrowsConflictAndDoesNotAppend() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     Instant startedAt = Instant.parse("2026-08-01T10:00:00Z");
@@ -583,7 +582,7 @@ class PriorAuthorityAggregateTest {
                 1L,
                 TestJwtDecoderConfig.CASEWORKER_ID,
                 submittedAt),
-            new PriorAuthorityDecisionRecordedEvent(
+            new PriorAuthorityDecisionMadeEvent(
                 priorAuthorityId,
                 applicationId,
                 EXPERT.name(),
@@ -603,7 +602,7 @@ class PriorAuthorityAggregateTest {
   }
 
   @Test
-  void givenAlreadyDecidedPriorAuthority_whenDifferentDecisionRecorded_thenThrowsConflict() {
+  void givenAlreadyDecidedPriorAuthority_whenDifferentDecisionMade_thenThrowsConflict() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     Instant startedAt = Instant.parse("2026-08-01T10:00:00Z");
@@ -656,7 +655,7 @@ class PriorAuthorityAggregateTest {
                 1L,
                 TestJwtDecoderConfig.CASEWORKER_ID,
                 submittedAt),
-            new PriorAuthorityDecisionRecordedEvent(
+            new PriorAuthorityDecisionMadeEvent(
                 priorAuthorityId,
                 applicationId,
                 EXPERT.name(),

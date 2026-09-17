@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.MakePriorAuthorityDecisionCommand;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionRecordedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityStatusConflictException;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityVersionConflictException;
@@ -70,7 +70,7 @@ public final class PriorAuthorityDecider {
    * Returns a decision event for a submitted prior-authority or throws on a stale version or
    * invalid lifecycle state.
    */
-  public static Optional<PriorAuthorityDecisionRecordedEvent> decideDecision(
+  public static Optional<PriorAuthorityDecisionMadeEvent> decideDecision(
       PriorAuthorityState state,
       MakePriorAuthorityDecisionCommand command,
       PriorAuthorityDataPayload current) {
@@ -86,13 +86,13 @@ public final class PriorAuthorityDecider {
       case DRAFT, DECIDED ->
           throw new PriorAuthorityStatusConflictException(
               command.priorAuthorityId(), statusOf(state).name());
-      case SUBMITTED -> Optional.of(createDecisionRecordedEvent(state, command));
+      case SUBMITTED -> Optional.of(createDecisionMadeEvent(state, command));
     };
   }
 
-  private static PriorAuthorityDecisionRecordedEvent createDecisionRecordedEvent(
+  private static PriorAuthorityDecisionMadeEvent createDecisionMadeEvent(
       PriorAuthorityState state, MakePriorAuthorityDecisionCommand command) {
-    return new PriorAuthorityDecisionRecordedEvent(
+    return new PriorAuthorityDecisionMadeEvent(
         command.priorAuthorityId(),
         state.applicationId,
         state.priorAuthorityType,

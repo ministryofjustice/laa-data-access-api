@@ -24,7 +24,7 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorA
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionRecordedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.Apportionment;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.BillingType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.CounselDetails;
@@ -272,7 +272,7 @@ class PriorAuthorityProjectionTest {
   }
 
   @Test
-  void givenDecisionRecordedEvent_whenHandled_thenUpdatesCurrentStateVersion() {
+  void givenDecisionMadeEvent_whenHandled_thenUpdatesCurrentStateVersion() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     PriorAuthorityReadModel model =
@@ -285,7 +285,7 @@ class PriorAuthorityProjectionTest {
     when(repository.findById(priorAuthorityId)).thenReturn(Optional.of(model));
 
     projection.on(
-        new PriorAuthorityDecisionRecordedEvent(
+        new PriorAuthorityDecisionMadeEvent(
             priorAuthorityId,
             applicationId,
             "EXPERT",

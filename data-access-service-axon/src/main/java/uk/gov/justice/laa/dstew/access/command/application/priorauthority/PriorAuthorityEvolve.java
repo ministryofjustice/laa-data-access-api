@@ -2,7 +2,7 @@ package uk.gov.justice.laa.dstew.access.command.application.priorauthority;
 
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionRecordedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 
@@ -30,8 +30,8 @@ public final class PriorAuthorityEvolve {
     state.submitted = true;
   }
 
-  /** Applies a {@link PriorAuthorityDecisionRecordedEvent} to the given state. */
-  public static void apply(PriorAuthorityState state, PriorAuthorityDecisionRecordedEvent event) {
+  /** Applies a {@link PriorAuthorityDecisionMadeEvent} to the given state. */
+  public static void apply(PriorAuthorityState state, PriorAuthorityDecisionMadeEvent event) {
     state.priorAuthorityId = event.priorAuthorityId();
     state.applicationId = event.applicationId();
     state.priorAuthorityType = event.priorAuthorityType();

@@ -6,9 +6,9 @@ import java.util.UUID;
 import org.axonframework.eventsourcing.annotation.EventTag;
 import org.axonframework.messaging.eventhandling.annotation.Event;
 
-/** Event recording a terminal decision against a PriorAuthority submission. */
+/** Event raised when a terminal decision is made against a PriorAuthority submission. */
 @Event
-public record PriorAuthorityDecisionRecordedEvent(
+public record PriorAuthorityDecisionMadeEvent(
     @EventTag(key = "PriorAuthorityAggregate") UUID priorAuthorityId,
     UUID applicationId,
     String priorAuthorityType,

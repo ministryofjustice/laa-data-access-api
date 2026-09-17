@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionRecordedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
@@ -55,13 +55,13 @@ class PriorAuthorityEvolveTest {
   }
 
   @Test
-  void givenDecisionRecordedEvent_whenApply_thenMutatesDecisionStateFields() {
+  void givenDecisionMadeEvent_whenApply_thenMutatesDecisionStateFields() {
     PriorAuthorityState state = new PriorAuthorityState();
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
-    PriorAuthorityDecisionRecordedEvent event =
-        new PriorAuthorityDecisionRecordedEvent(
+    PriorAuthorityDecisionMadeEvent event =
+        new PriorAuthorityDecisionMadeEvent(
             priorAuthorityId,
             applicationId,
             "EXPERT",

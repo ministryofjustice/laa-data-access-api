@@ -15,7 +15,7 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorA
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionRecordedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
 
@@ -97,7 +97,7 @@ public class PriorAuthorityProjection {
 
   /** Updates current-state data version after a terminal prior-authority decision. */
   @EventHandler
-  public void on(PriorAuthorityDecisionRecordedEvent event) {
+  public void on(PriorAuthorityDecisionMadeEvent event) {
     repository
         .findById(event.priorAuthorityId())
         .ifPresent(

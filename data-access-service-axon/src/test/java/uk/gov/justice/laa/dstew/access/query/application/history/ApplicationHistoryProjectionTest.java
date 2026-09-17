@@ -32,7 +32,7 @@ import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApp
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionRecordedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
@@ -323,12 +323,12 @@ class ApplicationHistoryProjectionTest {
   }
 
   @Test
-  void givenPriorAuthorityDecisionRecordedEvent_whenHandled_thenStoresInPaHistoryTable() {
+  void givenPriorAuthorityDecisionMadeEvent_whenHandled_thenStoresInPaHistoryTable() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-05T11:00:00Z");
     var event =
-        new PriorAuthorityDecisionRecordedEvent(
+        new PriorAuthorityDecisionMadeEvent(
             priorAuthorityId,
             applicationId,
             "EXPERT",
@@ -366,7 +366,7 @@ class ApplicationHistoryProjectionTest {
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-05T11:05:00Z");
     var event =
-        new PriorAuthorityDecisionRecordedEvent(
+        new PriorAuthorityDecisionMadeEvent(
             priorAuthorityId,
             applicationId,
             "EXPERT",

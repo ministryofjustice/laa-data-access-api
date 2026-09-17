@@ -16,7 +16,7 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.MakePriorAuthorityDecisionCommand;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionRecordedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
@@ -306,7 +306,7 @@ public class PriorAuthorityAggregate {
   }
 
   @EventSourcingHandler
-  void on(PriorAuthorityDecisionRecordedEvent event) {
+  void on(PriorAuthorityDecisionMadeEvent event) {
     PriorAuthorityEvolve.apply(state, event);
     this.priorAuthorityId = state.priorAuthorityId;
   }
