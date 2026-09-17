@@ -82,9 +82,10 @@ public final class PriorAuthorityDecider {
           command.priorAuthorityId(), command.expectedPriorAuthorityVersion());
     }
 
-    return switch (resolveStatus(state, command)) {
+    return switch (statusOf(state)) {
       case DRAFT, DECIDED ->
-          throw new PriorAuthorityStatusConflictException(command.priorAuthorityId(), state.status);
+          throw new PriorAuthorityStatusConflictException(
+              command.priorAuthorityId(), statusOf(state).name());
       case SUBMITTED -> Optional.of(createDecisionRecordedEvent(state, command));
     };
   }
@@ -103,13 +104,14 @@ public final class PriorAuthorityDecider {
         command.occurredAt());
   }
 
-  private static PriorAuthorityStatus resolveStatus(
-      PriorAuthorityState state, MakePriorAuthorityDecisionCommand command) {
-    try {
-      return PriorAuthorityStatus.valueOf(state.status);
-    } catch (RuntimeException exception) {
-      throw new PriorAuthorityStatusConflictException(command.priorAuthorityId(), state.status);
+  private static PriorAuthorityStatus statusOf(PriorAuthorityState state) {
+    if (!state.submitted) {
+      return PriorAuthorityStatus.DRAFT;
     }
+    if (state.overallDecision != null) {
+      return PriorAuthorityStatus.DECIDED;
+    }
+    return PriorAuthorityStatus.SUBMITTED;
   }
 
   private static void validateDecision(MakePriorAuthorityDecisionCommand command) {

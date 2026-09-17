@@ -5,7 +5,6 @@ import lombok.NoArgsConstructor;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionRecordedEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
 
 /** Event-fold functions for {@link PriorAuthorityState}. */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
@@ -17,7 +16,8 @@ public final class PriorAuthorityEvolve {
     state.applicationId = event.applicationId();
     state.priorAuthorityType = event.priorAuthorityType();
     state.schemaVersion = event.schemaVersion();
-    state.status = PriorAuthorityStatus.DRAFT.name();
+    state.submitted = false;
+    state.overallDecision = null;
   }
 
   /** Applies a {@link PriorAuthoritySubmittedEvent} to the given state. */
@@ -27,7 +27,7 @@ public final class PriorAuthorityEvolve {
     state.priorAuthorityType = event.priorAuthorityType();
     state.schemaVersion = event.schemaVersion();
     state.dataVersion = event.dataVersion();
-    state.status = PriorAuthorityStatus.SUBMITTED.name();
+    state.submitted = true;
   }
 
   /** Applies a {@link PriorAuthorityDecisionRecordedEvent} to the given state. */
@@ -36,7 +36,8 @@ public final class PriorAuthorityEvolve {
     state.applicationId = event.applicationId();
     state.priorAuthorityType = event.priorAuthorityType();
     state.dataVersion = event.dataVersion();
-    state.status = PriorAuthorityStatus.DECIDED.name();
+    state.submitted = true;
+    state.overallDecision = event.overallDecision();
   }
 
   /** Applies a generic direct PA assignment. */

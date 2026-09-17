@@ -12,7 +12,6 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.MakePriorAuthorityDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionRecordedEvent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityStatusConflictException;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityVersionConflictException;
@@ -123,7 +122,7 @@ class PriorAuthorityDeciderTest {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     PriorAuthorityState state = submittedState(priorAuthorityId, applicationId, 1L);
-    state.status = PriorAuthorityStatus.DECIDED.name();
+    state.overallDecision = "REFUSED";
     MakePriorAuthorityDecisionCommand command =
         new MakePriorAuthorityDecisionCommand(
             priorAuthorityId,
@@ -218,7 +217,7 @@ class PriorAuthorityDeciderTest {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     PriorAuthorityState state = submittedState(priorAuthorityId, applicationId, 1L);
-    state.status = PriorAuthorityStatus.DECIDED.name();
+    state.overallDecision = "GRANTED";
     MakePriorAuthorityDecisionCommand command =
         new MakePriorAuthorityDecisionCommand(
             priorAuthorityId,
@@ -242,16 +241,15 @@ class PriorAuthorityDeciderTest {
   }
 
   @Test
-  void givenNullStatus_whenDecideDecision_thenThrowsConflict() {
+  void givenDraftState_whenDecideDecision_thenThrowsConflict() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
-    PriorAuthorityState state = submittedState(priorAuthorityId, applicationId, 1L);
-    state.status = null;
+    PriorAuthorityState state = draftState(priorAuthorityId, applicationId);
     MakePriorAuthorityDecisionCommand command =
         new MakePriorAuthorityDecisionCommand(
             priorAuthorityId,
             TestJwtDecoderConfig.CASEWORKER_ID,
-            1L,
+            0L,
             "GRANTED",
             "Recorded",
             BigDecimal.valueOf(100.0),
@@ -275,7 +273,7 @@ class PriorAuthorityDeciderTest {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     PriorAuthorityState state = submittedState(priorAuthorityId, applicationId, 1L);
-    state.status = PriorAuthorityStatus.DECIDED.name();
+    state.overallDecision = "GRANTED";
     MakePriorAuthorityDecisionCommand command =
         new MakePriorAuthorityDecisionCommand(
             priorAuthorityId,
@@ -320,7 +318,19 @@ class PriorAuthorityDeciderTest {
     state.schemaVersion = 1;
     state.dataVersion = dataVersion;
     state.caseworkerId = TestJwtDecoderConfig.CASEWORKER_ID;
-    state.status = PriorAuthorityStatus.SUBMITTED.name();
+    state.submitted = true;
+    return state;
+  }
+
+  private static PriorAuthorityState draftState(UUID priorAuthorityId, UUID applicationId) {
+    PriorAuthorityState state = new PriorAuthorityState();
+    state.priorAuthorityId = priorAuthorityId;
+    state.applicationId = applicationId;
+    state.priorAuthorityType = PriorAuthorityType.EXPERT.name();
+    state.schemaVersion = 1;
+    state.dataVersion = 0L;
+    state.caseworkerId = TestJwtDecoderConfig.CASEWORKER_ID;
+    state.submitted = false;
     return state;
   }
 

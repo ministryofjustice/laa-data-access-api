@@ -296,7 +296,7 @@ class PriorAuthorityProjectionTest {
             null,
             Instant.now()));
 
-    assertThat(model.getStatus()).isEqualTo("DECIDED");
+    assertThat(model.getStatus()).isEqualTo("SUBMITTED");
     assertThat(model.getDataVersion()).isEqualTo(1L);
     verify(repository).save(model);
   }
@@ -310,7 +310,7 @@ class PriorAuthorityProjectionTest {
             .priorAuthorityId(priorAuthorityId)
             .applicationId(applicationId)
             .dataVersion(2L)
-            .status("DECIDED")
+            .status("SUBMITTED")
             .build();
     PriorAuthorityContent content =
         new PriorAuthorityContent(EXPERT, "Expert required", null, null, null);
@@ -338,6 +338,40 @@ class PriorAuthorityProjectionTest {
 
     assertThat(result.status()).isEqualTo("DECIDED");
     assertThat(result.decision()).isEqualTo("GRANTED");
+  }
+
+  @Test
+  void givenDecidedPayload_whenPendingQueryHandled_thenReturnsFalse() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    PriorAuthorityReadModel model =
+        PriorAuthorityReadModel.builder()
+            .priorAuthorityId(priorAuthorityId)
+            .applicationId(UUID.randomUUID())
+            .dataVersion(1L)
+            .status("SUBMITTED")
+            .build();
+    when(repository.findById(priorAuthorityId)).thenReturn(Optional.of(model));
+    when(dataStore.get(priorAuthorityId, 1L))
+        .thenReturn(
+            new PriorAuthorityDataPayload(
+                priorAuthorityId,
+                model.getApplicationId(),
+                new PriorAuthorityContent(EXPERT, "Expert required", null, null, null),
+                "{}",
+                Instant.now(),
+                new PriorAuthorityDataPayload.DecisionDetails(
+                    "GRANTED",
+                    "Decision recorded",
+                    BigDecimal.ONE,
+                    Instant.now(),
+                    null,
+                    null,
+                    null,
+                    "{}")));
+
+    assertThat(
+            projection.handle(new PriorAuthorityPendingByPriorAuthorityIdQuery(priorAuthorityId)))
+        .isFalse();
   }
 
   @Test

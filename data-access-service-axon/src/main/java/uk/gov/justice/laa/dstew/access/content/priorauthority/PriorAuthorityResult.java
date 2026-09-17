@@ -97,10 +97,16 @@ public record PriorAuthorityResult(
   /** Builds the use-case result from the current-state projection and versioned content. */
   public static PriorAuthorityResult from(
       PriorAuthorityReadModel priorAuthority, PriorAuthorityDataPayload payload) {
+    return from(priorAuthority, payload, priorAuthority.getStatus());
+  }
+
+  /** Builds the use-case result from the current-state projection, versioned content and status. */
+  public static PriorAuthorityResult from(
+      PriorAuthorityReadModel priorAuthority, PriorAuthorityDataPayload payload, String status) {
     return build(
         priorAuthority.getPriorAuthorityId(),
         priorAuthority.getApplicationId(),
-        priorAuthority.getStatus(),
+        status,
         payload.content(),
         payload.decision(),
         payload.decisionJustification());

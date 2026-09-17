@@ -57,12 +57,7 @@ public class PriorAuthorityProjection {
   /** Confirms whether a current-state projection has reached SUBMITTED. */
   @QueryHandler
   public boolean handle(PriorAuthorityPendingByPriorAuthorityIdQuery query) {
-    return repository
-        .findById(query.priorAuthorityId())
-        .map(
-            priorAuthority ->
-                PriorAuthorityStatus.SUBMITTED.name().equals(priorAuthority.getStatus()))
-        .orElse(false);
+    return repository.findById(query.priorAuthorityId()).map(this::isPending).orElse(false);
   }
 
   private Optional<@NonNull PriorAuthorityResult> hydrate(
@@ -72,7 +67,8 @@ public class PriorAuthorityProjection {
     }
     PriorAuthorityDataPayload payload =
         priorAuthorityDataStore.get(priorAuthorityId, priorAuthority.getDataVersion());
-    return Optional.of(PriorAuthorityResult.from(priorAuthority, payload));
+    return Optional.of(
+        PriorAuthorityResult.from(priorAuthority, payload, statusOf(priorAuthority, payload)));
   }
 
   /** Creates the current-state row when a prior-authority draft is started. */
@@ -107,9 +103,28 @@ public class PriorAuthorityProjection {
         .ifPresent(
             current -> {
               current.setDataVersion(event.dataVersion());
-              current.setStatus(PriorAuthorityStatus.DECIDED.name());
               repository.save(current);
             });
+  }
+
+  private boolean isPending(PriorAuthorityReadModel priorAuthority) {
+    if (!PriorAuthorityStatus.SUBMITTED.name().equals(priorAuthority.getStatus())) {
+      return false;
+    }
+    PriorAuthorityDataPayload payload =
+        priorAuthorityDataStore.get(
+            priorAuthority.getPriorAuthorityId(), priorAuthority.getDataVersion());
+    return payload.decision() == null;
+  }
+
+  private String statusOf(
+      PriorAuthorityReadModel priorAuthority, PriorAuthorityDataPayload payload) {
+    if (PriorAuthorityStatus.DRAFT.name().equals(priorAuthority.getStatus())) {
+      return PriorAuthorityStatus.DRAFT.name();
+    }
+    return payload.decision() == null
+        ? PriorAuthorityStatus.SUBMITTED.name()
+        : PriorAuthorityStatus.DECIDED.name();
   }
 
   private void createRow(

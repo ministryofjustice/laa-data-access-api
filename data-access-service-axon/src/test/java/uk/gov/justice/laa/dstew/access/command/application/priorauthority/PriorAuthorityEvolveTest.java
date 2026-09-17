@@ -9,7 +9,6 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decisi
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
 
 /** Unit tests for {@link PriorAuthorityEvolve}. */
 class PriorAuthorityEvolveTest {
@@ -30,6 +29,8 @@ class PriorAuthorityEvolveTest {
     assertThat(state.getApplicationId()).isEqualTo(applicationId);
     assertThat(state.getPriorAuthorityType()).isEqualTo("EXPERT");
     assertThat(state.getSchemaVersion()).isEqualTo(3);
+    assertThat(state.isSubmitted()).isFalse();
+    assertThat(state.getOverallDecision()).isNull();
   }
 
   @Test
@@ -49,7 +50,8 @@ class PriorAuthorityEvolveTest {
     assertThat(state.getPriorAuthorityType()).isEqualTo("EXPERT");
     assertThat(state.getSchemaVersion()).isEqualTo(3);
     assertThat(state.getDataVersion()).isEqualTo(0L);
-    assertThat(state.getStatus()).isEqualTo(PriorAuthorityStatus.SUBMITTED.name());
+    assertThat(state.isSubmitted()).isTrue();
+    assertThat(state.getOverallDecision()).isNull();
   }
 
   @Test
@@ -76,7 +78,8 @@ class PriorAuthorityEvolveTest {
     assertThat(state.getApplicationId()).isEqualTo(applicationId);
     assertThat(state.getPriorAuthorityType()).isEqualTo("EXPERT");
     assertThat(state.getDataVersion()).isEqualTo(1L);
-    assertThat(state.getStatus()).isEqualTo(PriorAuthorityStatus.DECIDED.name());
+    assertThat(state.isSubmitted()).isTrue();
+    assertThat(state.getOverallDecision()).isEqualTo("REFUSED");
   }
 
   @Test
