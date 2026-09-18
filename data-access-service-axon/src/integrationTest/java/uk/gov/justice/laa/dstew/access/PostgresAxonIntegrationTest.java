@@ -1587,6 +1587,7 @@ class PostgresAxonIntegrationTest {
     assertThat(group.getPriorAuthorityType()).isEqualTo(PriorAuthorityType.EXPERT);
     assertThat(group.getEvents()).hasSize(1);
     assertThat(group.getEvents().get(0).getEventType()).isEqualTo("PRIOR_AUTHORITY_SUBMITTED");
+    assertThat(group.getEvents().get(0).getCaseworkerId()).isNull();
     assertThat(historyResponse.getBody().getEvents()).isNotEmpty();
   }
 
@@ -1669,6 +1670,16 @@ class PostgresAxonIntegrationTest {
     assertThat(group.getEvents())
         .extracting(event -> event.getEventType())
         .containsExactlyInAnyOrder("PRIOR_AUTHORITY_SUBMITTED", "ASSIGN_APPLICATION_TO_CASEWORKER");
+    assertThat(group.getEvents())
+        .filteredOn(event -> event.getEventType().equals("PRIOR_AUTHORITY_SUBMITTED"))
+        .singleElement()
+        .satisfies(event -> assertThat(event.getCaseworkerId()).isNull());
+    assertThat(group.getEvents())
+        .filteredOn(event -> event.getEventType().equals("ASSIGN_APPLICATION_TO_CASEWORKER"))
+        .singleElement()
+        .satisfies(
+            event ->
+                assertThat(event.getCaseworkerId()).isEqualTo(TestJwtDecoderConfig.CASEWORKER_ID));
   }
 
   @Test
@@ -1761,6 +1772,20 @@ class PostgresAxonIntegrationTest {
             "PRIOR_AUTHORITY_SUBMITTED",
             "UNASSIGN_APPLICATION_TO_CASEWORKER",
             "ASSIGN_APPLICATION_TO_CASEWORKER");
+    assertThat(group.getEvents())
+        .filteredOn(event -> event.getEventType().equals("PRIOR_AUTHORITY_SUBMITTED"))
+        .singleElement()
+        .satisfies(event -> assertThat(event.getCaseworkerId()).isNull());
+    assertThat(group.getEvents())
+        .filteredOn(event -> event.getEventType().equals("ASSIGN_APPLICATION_TO_CASEWORKER"))
+        .singleElement()
+        .satisfies(
+            event ->
+                assertThat(event.getCaseworkerId()).isEqualTo(TestJwtDecoderConfig.CASEWORKER_ID));
+    assertThat(group.getEvents())
+        .filteredOn(event -> event.getEventType().equals("UNASSIGN_APPLICATION_TO_CASEWORKER"))
+        .singleElement()
+        .satisfies(event -> assertThat(event.getCaseworkerId()).isNull());
   }
 
   @Test
@@ -1864,6 +1889,18 @@ class PostgresAxonIntegrationTest {
             "UNASSIGN_APPLICATION_TO_CASEWORKER",
             "ASSIGN_APPLICATION_TO_CASEWORKER",
             "ASSIGN_APPLICATION_TO_CASEWORKER");
+    assertThat(group.getEvents())
+        .filteredOn(event -> event.getEventType().equals("PRIOR_AUTHORITY_SUBMITTED"))
+        .singleElement()
+        .satisfies(event -> assertThat(event.getCaseworkerId()).isNull());
+    assertThat(group.getEvents())
+        .filteredOn(event -> event.getEventType().equals("UNASSIGN_APPLICATION_TO_CASEWORKER"))
+        .singleElement()
+        .satisfies(event -> assertThat(event.getCaseworkerId()).isNull());
+    assertThat(group.getEvents())
+        .filteredOn(event -> event.getEventType().equals("ASSIGN_APPLICATION_TO_CASEWORKER"))
+        .hasSize(2)
+        .allSatisfy(event -> assertThat(event.getCaseworkerId()).isNotNull());
   }
 
   @Test
@@ -1964,6 +2001,16 @@ class PostgresAxonIntegrationTest {
     assertThat(assignedGroup.getEvents())
         .extracting(event -> event.getEventType())
         .containsExactlyInAnyOrder("PRIOR_AUTHORITY_SUBMITTED", "ASSIGN_APPLICATION_TO_CASEWORKER");
+    assertThat(assignedGroup.getEvents())
+        .filteredOn(event -> event.getEventType().equals("PRIOR_AUTHORITY_SUBMITTED"))
+        .singleElement()
+        .satisfies(event -> assertThat(event.getCaseworkerId()).isNull());
+    assertThat(assignedGroup.getEvents())
+        .filteredOn(event -> event.getEventType().equals("ASSIGN_APPLICATION_TO_CASEWORKER"))
+        .singleElement()
+        .satisfies(
+            event ->
+                assertThat(event.getCaseworkerId()).isEqualTo(TestJwtDecoderConfig.CASEWORKER_ID));
 
     PriorAuthorityHistoryGroup untouchedGroup =
         historyResponse.getBody().getPriorAuthorities().stream()
@@ -1974,6 +2021,7 @@ class PostgresAxonIntegrationTest {
     assertThat(untouchedGroup.getEvents()).hasSize(1);
     assertThat(untouchedGroup.getEvents().get(0).getEventType())
         .isEqualTo("PRIOR_AUTHORITY_SUBMITTED");
+    assertThat(untouchedGroup.getEvents().get(0).getCaseworkerId()).isNull();
   }
 
   @Test

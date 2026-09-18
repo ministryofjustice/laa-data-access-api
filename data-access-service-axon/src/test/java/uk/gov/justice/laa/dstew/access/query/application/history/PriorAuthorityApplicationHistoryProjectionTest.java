@@ -22,6 +22,7 @@ import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityData;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataId;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataRepository;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
@@ -71,6 +72,7 @@ class PriorAuthorityApplicationHistoryProjectionTest {
     assertThat(saved.getEventType()).isEqualTo("PRIOR_AUTHORITY_SUBMITTED");
     assertThat(saved.getServiceName()).isEqualTo("CIVIL_APPLY");
     assertThat(saved.getOccurredAt()).isEqualTo(occurredAt);
+    assertThat(saved.getCaseworkerId()).isNull();
     assertThat(saved.getEventData()).contains("\"status\":\"SUBMITTED\"");
     assertThat(saved.getEventData()).contains("\"dataVersion\":0");
   }
@@ -101,7 +103,7 @@ class PriorAuthorityApplicationHistoryProjectionTest {
     WorkItemAssigned event =
         new WorkItemAssigned(
             priorAuthorityId, WorkItemType.PRIOR_AUTHORITY, 1L, 1L, caseworkerId, occurredAt);
-    when(paDataRepository.findFirstByPriorAuthorityId(priorAuthorityId))
+    when(paDataRepository.findById(new PriorAuthorityDataId(priorAuthorityId, 0L)))
         .thenReturn(
             Optional.of(paData(priorAuthorityId, applicationId, PriorAuthorityType.EXPERT)));
 
@@ -136,7 +138,7 @@ class PriorAuthorityApplicationHistoryProjectionTest {
             1L,
             UUID.randomUUID(),
             Instant.parse("2026-08-05T11:00:00Z"));
-    when(paDataRepository.findFirstByPriorAuthorityId(priorAuthorityId))
+    when(paDataRepository.findById(new PriorAuthorityDataId(priorAuthorityId, 0L)))
         .thenReturn(Optional.of(paData(priorAuthorityId, applicationId, null)));
 
     projection.on(event, message(event, "pa-assign-event-id"));
@@ -159,7 +161,7 @@ class PriorAuthorityApplicationHistoryProjectionTest {
             1L,
             UUID.randomUUID(),
             Instant.parse("2026-08-05T11:00:00Z"));
-    when(paDataRepository.findFirstByPriorAuthorityId(priorAuthorityId))
+    when(paDataRepository.findById(new PriorAuthorityDataId(priorAuthorityId, 0L)))
         .thenReturn(
             Optional.of(paData(priorAuthorityId, applicationId, PriorAuthorityType.EXPERT)));
 
@@ -194,7 +196,7 @@ class PriorAuthorityApplicationHistoryProjectionTest {
     WorkItemAssigned event =
         new WorkItemAssigned(
             priorAuthorityId, WorkItemType.PRIOR_AUTHORITY, 1L, 1L, caseworkerId, occurredAt);
-    when(paDataRepository.findFirstByPriorAuthorityId(priorAuthorityId))
+    when(paDataRepository.findById(new PriorAuthorityDataId(priorAuthorityId, 0L)))
         .thenReturn(Optional.empty());
 
     projection.on(event, message(event, "pa-assign-event-id"));
@@ -210,7 +212,7 @@ class PriorAuthorityApplicationHistoryProjectionTest {
     Instant occurredAt = Instant.parse("2026-08-05T12:00:00Z");
     WorkItemUnassigned event =
         new WorkItemUnassigned(priorAuthorityId, WorkItemType.PRIOR_AUTHORITY, 1L, 2L, occurredAt);
-    when(paDataRepository.findFirstByPriorAuthorityId(priorAuthorityId))
+    when(paDataRepository.findById(new PriorAuthorityDataId(priorAuthorityId, 0L)))
         .thenReturn(
             Optional.of(paData(priorAuthorityId, applicationId, PriorAuthorityType.EXPERT)));
 
@@ -251,7 +253,7 @@ class PriorAuthorityApplicationHistoryProjectionTest {
     Instant occurredAt = Instant.parse("2026-08-05T12:00:00Z");
     WorkItemUnassigned event =
         new WorkItemUnassigned(priorAuthorityId, WorkItemType.PRIOR_AUTHORITY, 1L, 2L, occurredAt);
-    when(paDataRepository.findFirstByPriorAuthorityId(priorAuthorityId))
+    when(paDataRepository.findById(new PriorAuthorityDataId(priorAuthorityId, 0L)))
         .thenReturn(Optional.empty());
 
     projection.on(event, message(event, "pa-unassign-event-id"));

@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataId;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataRepository;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
@@ -107,7 +108,7 @@ public class PriorAuthorityApplicationHistoryProjection {
 
   private PriorAuthorityRef lookupPriorAuthorityRef(UUID priorAuthorityId) {
     return priorAuthorityDataRepository
-        .findFirstByPriorAuthorityId(priorAuthorityId)
+        .findById(new PriorAuthorityDataId(priorAuthorityId, 0L))
         .map(
             pa -> {
               PriorAuthorityType type = pa.getPayload().content().priorAuthorityType();
