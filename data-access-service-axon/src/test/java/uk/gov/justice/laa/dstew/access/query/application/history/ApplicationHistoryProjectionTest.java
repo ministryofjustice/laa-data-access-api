@@ -30,7 +30,6 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationD
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
@@ -276,48 +275,6 @@ class ApplicationHistoryProjectionTest {
     var payload =
         objectMapper.readTree(result.applicationHistoryEvents().getFirst().getRequestPayload());
     assertThat(payload.get("noteText").asString()).isEqualTo("My note text");
-  }
-
-  @Test
-  void givenPriorAuthoritySubmittedEvent_whenHandled_thenStoresInPaHistoryTable() {
-    UUID priorAuthorityId = UUID.randomUUID();
-    UUID applicationId = UUID.randomUUID();
-    Instant occurredAt = Instant.parse("2026-08-05T10:00:00Z");
-    var event =
-        new PriorAuthoritySubmittedEvent(
-            priorAuthorityId, applicationId, "EXPERT", 1, 0L, 0L, occurredAt);
-    var msg = message(event, "pa-submit-event-id");
-
-    projection.on(event, msg);
-
-    var captor = ArgumentCaptor.forClass(PriorAuthorityHistoryReadModel.class);
-    verify(paRepository).save(captor.capture());
-    var saved = captor.getValue();
-    assertThat(saved.getEventId()).isEqualTo("pa-submit-event-id");
-    assertThat(saved.getApplicationId()).isEqualTo(applicationId);
-    assertThat(saved.getPriorAuthorityId()).isEqualTo(priorAuthorityId);
-    assertThat(saved.getPriorAuthorityType()).isEqualTo("EXPERT");
-    assertThat(saved.getEventType()).isEqualTo("PRIOR_AUTHORITY_SUBMITTED");
-    assertThat(saved.getServiceName()).isEqualTo("CIVIL_APPLY");
-    assertThat(saved.getOccurredAt()).isEqualTo(occurredAt);
-    assertThat(saved.getEventData()).contains("\"status\":\"SUBMITTED\"");
-    assertThat(saved.getEventData()).contains("\"dataVersion\":0");
-  }
-
-  @Test
-  void givenPriorAuthoritySubmittedEventWithoutServiceName_whenHandled_thenStoresNullServiceName() {
-    UUID priorAuthorityId = UUID.randomUUID();
-    UUID applicationId = UUID.randomUUID();
-    Instant occurredAt = Instant.parse("2026-08-05T10:00:00Z");
-    var event =
-        new PriorAuthoritySubmittedEvent(
-            priorAuthorityId, applicationId, "EXPERT", 1, 0L, 0L, occurredAt);
-
-    projection.on(event, messageWithoutServiceName(event, "pa-submit-event-id"));
-
-    var captor = ArgumentCaptor.forClass(PriorAuthorityHistoryReadModel.class);
-    verify(paRepository).save(captor.capture());
-    assertThat(captor.getValue().getServiceName()).isNull();
   }
 
   @Test

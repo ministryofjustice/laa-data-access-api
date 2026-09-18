@@ -20,12 +20,11 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationD
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.config.interceptor.ServiceNameMetadataDispatchInterceptor;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
 
 /** Independently replayable, append-only audit projection of Application events. */
 @Component
@@ -140,6 +139,9 @@ public class ApplicationHistoryProjection {
   /** Appends a thin audit entry for an application work-list assignment. */
   @EventHandler
   public void on(WorkItemAssigned event, EventMessage message) {
+    if (WorkItemType.PRIOR_AUTHORITY.equals(event.workItemType())) {
+      return;
+    }
     append(
         message,
         event.workItemId(),
@@ -152,6 +154,9 @@ public class ApplicationHistoryProjection {
   /** Appends a thin audit entry for an application work-list unassignment. */
   @EventHandler
   public void on(WorkItemUnassigned event, EventMessage message) {
+    if (WorkItemType.PRIOR_AUTHORITY.equals(event.workItemType())) {
+      return;
+    }
     append(
         message,
         event.workItemId(),
@@ -169,28 +174,6 @@ public class ApplicationHistoryProjection {
         "APPLICATION_NOTE_CREATED",
         serialise(event),
         event.occurredAt());
-  }
-
-  /** Records a submitted PriorAuthority in the PA history table for the public history API. */
-  @EventHandler
-  public void on(PriorAuthoritySubmittedEvent event, EventMessage message) {
-    Object serviceName =
-        message.metadata().get(ServiceNameMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY);
-    priorAuthorityHistoryReadRepository.save(
-        PriorAuthorityHistoryReadModel.builder()
-            .eventId(message.identifier())
-            .applicationId(event.applicationId())
-            .priorAuthorityId(event.priorAuthorityId())
-            .priorAuthorityType(event.priorAuthorityType())
-            .eventType("PRIOR_AUTHORITY_SUBMITTED")
-            .eventData(
-                serialise(
-                    Map.of(
-                        "status", PriorAuthorityStatus.SUBMITTED.name(),
-                        "dataVersion", event.dataVersion())))
-            .serviceName(serviceName == null ? null : serviceName.toString())
-            .occurredAt(event.occurredAt())
-            .build());
   }
 
   /** Returns chronologically ordered history rows matching the requested public event types. */

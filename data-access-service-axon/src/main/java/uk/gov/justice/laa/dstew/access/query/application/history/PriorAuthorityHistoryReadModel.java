@@ -45,6 +45,9 @@ public class PriorAuthorityHistoryReadModel {
   @Column(name = "service_name")
   String serviceName;
 
+  @Column(name = "caseworker_id")
+  UUID caseworkerId;
+
   @Column(name = "occurred_at", nullable = false)
   Instant occurredAt;
 }
