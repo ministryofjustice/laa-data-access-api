@@ -20,6 +20,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentUploadedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityData;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataId;
@@ -257,6 +258,70 @@ class PriorAuthorityApplicationHistoryProjectionTest {
         .thenReturn(Optional.empty());
 
     projection.on(event, message(event, "pa-unassign-event-id"));
+
+    verify(paRepository, never()).save(org.mockito.ArgumentMatchers.any());
+  }
+
+  @Test
+  void givenPriorAuthorityDocumentUploadedEvent_whenHandled_thenStoresInPaHistoryTable()
+      throws Exception {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID parentApplicationId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    Instant uploadedAt = Instant.parse("2026-08-05T13:00:00Z");
+    var event =
+        new PriorAuthorityDocumentUploadedEvent(
+            priorAuthorityId,
+            documentId,
+            uploadedAt,
+            1024L,
+            "application/pdf",
+            "abc123def456",
+            parentApplicationId);
+    when(paDataRepository.findById(new PriorAuthorityDataId(priorAuthorityId, 0L)))
+        .thenReturn(
+            Optional.of(paData(priorAuthorityId, parentApplicationId, PriorAuthorityType.EXPERT)));
+
+    projection.on(event, message(event, "pa-document-upload-event-id"));
+
+    var captor = ArgumentCaptor.forClass(PriorAuthorityHistoryReadModel.class);
+    verify(paRepository).save(captor.capture());
+    var saved = captor.getValue();
+    assertThat(saved.getEventId()).isEqualTo("pa-document-upload-event-id");
+    assertThat(saved.getApplicationId()).isEqualTo(parentApplicationId);
+    assertThat(saved.getPriorAuthorityId()).isEqualTo(priorAuthorityId);
+    assertThat(saved.getPriorAuthorityType()).isEqualTo("EXPERT");
+    assertThat(saved.getEventType()).isEqualTo("PRIOR_AUTHORITY_DOCUMENT_UPLOADED");
+    assertThat(saved.getServiceName()).isEqualTo("CIVIL_APPLY");
+    assertThat(saved.getOccurredAt()).isEqualTo(uploadedAt);
+    assertThat(saved.getCaseworkerId()).isNull();
+    var payload = objectMapper.readTree(saved.getEventData());
+    assertThat(payload.get("priorAuthorityId").asString()).isEqualTo(priorAuthorityId.toString());
+    assertThat(payload.get("documentId").asString()).isEqualTo(documentId.toString());
+    assertThat(payload.get("size").asLong()).isEqualTo(1024L);
+    assertThat(payload.get("contentType").asString()).isEqualTo("application/pdf");
+    assertThat(payload.get("checksum").asString()).isEqualTo("abc123def456");
+  }
+
+  @Test
+  void givenPriorAuthorityDocumentUploadedEventButNoDataFound_whenHandled_thenNothingSaved() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID parentApplicationId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    Instant uploadedAt = Instant.parse("2026-08-05T13:00:00Z");
+    var event =
+        new PriorAuthorityDocumentUploadedEvent(
+            priorAuthorityId,
+            documentId,
+            uploadedAt,
+            1024L,
+            "application/pdf",
+            "abc123def456",
+            parentApplicationId);
+    when(paDataRepository.findById(new PriorAuthorityDataId(priorAuthorityId, 0L)))
+        .thenReturn(Optional.empty());
+
+    projection.on(event, message(event, "pa-document-upload-event-id"));
 
     verify(paRepository, never()).save(org.mockito.ArgumentMatchers.any());
   }

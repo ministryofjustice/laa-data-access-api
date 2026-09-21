@@ -38,15 +38,19 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.springframework.context.annotation.Import;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.env.Environment;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
@@ -2090,6 +2094,73 @@ class PostgresAxonIntegrationTest {
     }
   }
 
+  @Test
+  void
+      givenSubmittedPriorAuthorityWithUploadedDocument_whenGetHistory_thenIncludesDocumentUploadedEvent() {
+    UUID applicationId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
+
+    jdbcTemplate.update(
+        """
+        INSERT INTO axon.prior_authority_history
+            (event_id, application_id, prior_authority_id, prior_authority_type,
+             event_type, event_data, service_name, occurred_at)
+        VALUES (?, ?, ?, ?, ?, ?::jsonb, ?, ?)
+        """,
+        "pa-submit-evt-1",
+        applicationId,
+        priorAuthorityId,
+        "EXPERT",
+        "PRIOR_AUTHORITY_SUBMITTED",
+        "{\"status\":\"SUBMITTED\",\"dataVersion\":0}",
+        "CIVIL_APPLY",
+        OffsetDateTime.parse("2026-09-18T10:00:00Z"));
+
+    jdbcTemplate.update(
+        """
+        INSERT INTO axon.prior_authority_history
+            (event_id, application_id, prior_authority_id, prior_authority_type,
+             event_type, event_data, service_name, occurred_at)
+        VALUES (?, ?, ?, ?, ?, ?::jsonb, ?, ?)
+        """,
+        "pa-upload-evt-1",
+        applicationId,
+        priorAuthorityId,
+        "EXPERT",
+        "PRIOR_AUTHORITY_DOCUMENT_UPLOADED",
+        """
+        {"priorAuthorityId":"%s","documentId":"%s","uploadedAt":"2026-09-18T11:00:00Z",\
+        "size":1024,"contentType":"application/pdf","checksum":"abc123","parentApplicationId":"%s"}
+        """
+            .formatted(priorAuthorityId, UUID.randomUUID(), applicationId),
+        "CIVIL_APPLY",
+        OffsetDateTime.parse("2026-09-18T11:00:00Z"));
+
+    ResponseEntity<ApplicationHistoryResponse> historyResponse =
+        restTemplate.exchange(
+            "http://localhost:"
+                + port
+                + "/api/v0/applications/"
+                + applicationId
+                + "/history-search",
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            ApplicationHistoryResponse.class);
+    assertThat(historyResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+    assertThat(historyResponse.getBody().getPriorAuthorities()).hasSize(1);
+    PriorAuthorityHistoryGroup group = historyResponse.getBody().getPriorAuthorities().get(0);
+    assertThat(group.getPriorAuthorityId()).isEqualTo(priorAuthorityId);
+    assertThat(group.getPriorAuthorityType()).isEqualTo(PriorAuthorityType.EXPERT);
+    assertThat(group.getEvents())
+        .extracting(event -> event.getEventType())
+        .contains("PRIOR_AUTHORITY_SUBMITTED", "PRIOR_AUTHORITY_DOCUMENT_UPLOADED");
+    assertThat(group.getEvents())
+        .filteredOn(event -> event.getEventType().equals("PRIOR_AUTHORITY_DOCUMENT_UPLOADED"))
+        .singleElement()
+        .satisfies(event -> assertThat(event.getCaseworkerId()).isNull());
+  }
+
   private CreatePriorAuthorityDraftRequest fixedRateExpertDraftRequest(UUID applicationId) {
     return CreatePriorAuthorityDraftRequest.builder()
         .applicationId(applicationId)
@@ -2132,6 +2203,24 @@ class PostgresAxonIntegrationTest {
     headers.set("X-Schema-Version", String.valueOf(schemaVersion));
     headers.setBearerAuth(bearerAuthToken);
     return headers;
+  }
+
+  private HttpEntity<MultiValueMap<String, Object>> uploadRequest(String filename) {
+    MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+    body.add(
+        "file",
+        new ByteArrayResource("%PDF-1.4\ncontent".getBytes()) {
+          @Override
+          public String getFilename() {
+            return filename;
+          }
+        });
+
+    HttpHeaders multipartHeaders = new HttpHeaders();
+    multipartHeaders.set("X-Service-Name", "CIVIL_APPLY");
+    multipartHeaders.setContentType(MediaType.MULTIPART_FORM_DATA);
+    multipartHeaders.setBearerAuth(TestJwtDecoderConfig.BEARER_TOKEN);
+    return new HttpEntity<>(body, multipartHeaders);
   }
 
   private HttpHeaders headersWithoutAuth() {

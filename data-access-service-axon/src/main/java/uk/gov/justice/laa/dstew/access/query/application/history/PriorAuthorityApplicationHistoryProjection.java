@@ -10,6 +10,7 @@ import org.axonframework.messaging.eventhandling.replay.annotation.ResetHandler;
 import org.springframework.stereotype.Component;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentUploadedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataId;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataRepository;
@@ -104,6 +105,24 @@ public class PriorAuthorityApplicationHistoryProjection {
         "UNASSIGN_APPLICATION_TO_CASEWORKER",
         serialise(event),
         event.occurredAt());
+  }
+
+  /** Records Prior Authority document upload in parent application's history. */
+  @EventHandler
+  public void on(PriorAuthorityDocumentUploadedEvent event, EventMessage message) {
+    PriorAuthorityRef ref = lookupPriorAuthorityRef(event.priorAuthorityId());
+    if (ref == null) {
+      return;
+    }
+
+    append(
+        message,
+        event.parentApplicationId(),
+        event.priorAuthorityId(),
+        ref.priorAuthorityType(),
+        "PRIOR_AUTHORITY_DOCUMENT_UPLOADED",
+        serialise(event),
+        event.uploadedAt());
   }
 
   private PriorAuthorityRef lookupPriorAuthorityRef(UUID priorAuthorityId) {
