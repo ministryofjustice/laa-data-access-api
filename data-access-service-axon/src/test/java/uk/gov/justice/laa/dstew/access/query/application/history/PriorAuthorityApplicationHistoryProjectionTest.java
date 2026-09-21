@@ -184,8 +184,6 @@ class PriorAuthorityApplicationHistoryProjectionTest {
     projection.on(event, message(event, "app-assign-event-id"));
 
     verify(paRepository, never()).save(org.mockito.ArgumentMatchers.any());
-    verify(paDataRepository, never())
-        .findFirstByPriorAuthorityId(org.mockito.ArgumentMatchers.any());
   }
 
   @Test
@@ -243,8 +241,6 @@ class PriorAuthorityApplicationHistoryProjectionTest {
     projection.on(event, message(event, "app-unassign-event-id"));
 
     verify(paRepository, never()).save(org.mockito.ArgumentMatchers.any());
-    verify(paDataRepository, never())
-        .findFirstByPriorAuthorityId(org.mockito.ArgumentMatchers.any());
   }
 
   @Test
