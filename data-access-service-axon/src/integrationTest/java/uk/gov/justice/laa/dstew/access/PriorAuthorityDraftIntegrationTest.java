@@ -1,15 +1,13 @@
 package uk.gov.justice.laa.dstew.access;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
 
+import jakarta.annotation.PostConstruct;
 import java.util.Map;
-import java.util.Objects;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,7 +33,6 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.ObjectMapper;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantedOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityDraftRequest;
@@ -49,11 +46,9 @@ import uk.gov.justice.laa.dstew.access.model.SavePriorAuthorityDraftResponse;
 import uk.gov.justice.laa.dstew.access.model.SubmitPriorAuthorityDraftResponse;
 import uk.gov.justice.laa.dstew.access.model.UpdatePriorAuthorityDocumentTypeRequest;
 import uk.gov.justice.laa.dstew.access.model.UploadPriorAuthorityDocumentResponse;
-import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
-import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
-import uk.gov.justice.laa.dstew.access.query.application.priorauthority.FindPriorAuthorityByPriorAuthorityIdQuery;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
+import util.ProjectionAwaiter;
 
 /** Full HTTP/Postgres/Axon integration tests for the Prior Authority draft/submit lifecycle. */
 @Testcontainers
@@ -79,6 +74,13 @@ class PriorAuthorityDraftIntegrationTest {
   @Autowired private QueryGateway queryGateway;
 
   @MockitoBean private SdsService sdsService;
+
+  private ProjectionAwaiter projectionAwaiter;
+
+  @PostConstruct
+  void initialiseProjectionAwaiter() {
+    projectionAwaiter = new ProjectionAwaiter(queryGateway);
+  }
 
   @Test
   void givenGrantedApplication_whenSavePriorAuthorityDraft_thenPersistsDraftAndProjects() {
@@ -106,7 +108,7 @@ class PriorAuthorityDraftIntegrationTest {
                 UUID.class,
                 priorAuthorityId))
         .isEqualTo(applicationId);
-    awaitPriorAuthorityProjection(priorAuthorityId);
+    projectionAwaiter.awaitPriorAuthority(priorAuthorityId);
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM axon.prior_authority_current_state WHERE prior_authority_id = ?",
@@ -156,7 +158,7 @@ class PriorAuthorityDraftIntegrationTest {
   void givenUngrantedApplication_whenSavePriorAuthorityDraft_thenReturnsBadRequest() {
     UUID applicationId = UUID.randomUUID();
     createApplication(applicationId, UUID.randomUUID());
-    awaitApplicationProjection(applicationId);
+    projectionAwaiter.awaitApplication(applicationId);
     CreatePriorAuthorityDraftRequest request =
         CreatePriorAuthorityDraftRequest.builder()
             .applicationId(applicationId)
@@ -178,8 +180,7 @@ class PriorAuthorityDraftIntegrationTest {
   }
 
   @Test
-  void givenExistingDraft_whenUpdatePriorAuthorityDraft_thenReturns204AndPersistsUpdatedContent()
-      throws Exception {
+  void givenExistingDraft_whenUpdatePriorAuthorityDraft_thenReturns204AndPersistsUpdatedContent() {
     UUID applicationId = grantedApplication();
     UUID priorAuthorityId = saveDraft(applicationId, PriorAuthorityType.EXPERT, null, null);
 
@@ -226,8 +227,7 @@ class PriorAuthorityDraftIntegrationTest {
   }
 
   @Test
-  void givenDraft_whenSubmitPriorAuthorityDraft_thenTransitionsToSubmittedAndDeletesDraft()
-      throws Exception {
+  void givenDraft_whenSubmitPriorAuthorityDraft_thenTransitionsToSubmittedAndDeletesDraft() {
     UUID applicationId = grantedApplication();
     UUID priorAuthorityId =
         saveDraft(
@@ -336,8 +336,7 @@ class PriorAuthorityDraftIntegrationTest {
 
   @Test
   void
-      givenDraftViolatesSchema_whenSubmitPriorAuthorityDraft_thenReturnsBadRequestAndDraftPersists()
-          throws Exception {
+      givenDraftViolatesSchema_whenSubmitPriorAuthorityDraft_thenReturnsBadRequestAndDraftPersists() {
     UUID applicationId = grantedApplication();
     // Missing justification, which the full PriorAuthority schema requires at submit time.
     UUID priorAuthorityId = saveDraft(applicationId, PriorAuthorityType.EXPERT, null, null);
@@ -414,7 +413,7 @@ class PriorAuthorityDraftIntegrationTest {
         objectMapper
             .readValue(response.getBody(), SavePriorAuthorityDraftResponse.class)
             .getPriorAuthorityId();
-    awaitPriorAuthorityProjection(priorAuthorityId);
+    projectionAwaiter.awaitPriorAuthority(priorAuthorityId);
     return priorAuthorityId;
   }
 
@@ -438,9 +437,9 @@ class PriorAuthorityDraftIntegrationTest {
   private UUID grantedApplication() {
     UUID applicationId = UUID.randomUUID();
     createApplication(applicationId, UUID.randomUUID());
-    awaitApplicationProjection(applicationId);
+    projectionAwaiter.awaitApplication(applicationId);
     grantApplication(applicationId);
-    awaitApplicationProjectionVersion(applicationId, 1L);
+    projectionAwaiter.awaitApplicationVersion(applicationId, 1L);
     return applicationId;
   }
 
@@ -459,47 +458,6 @@ class PriorAuthorityDraftIntegrationTest {
                 headers()),
             Void.class);
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-  }
-
-  private ApplicationReadModel awaitApplicationProjection(UUID applicationId) {
-    return await()
-        .alias("application projection to be populated for " + applicationId)
-        .atMost(15, TimeUnit.SECONDS)
-        .pollInterval(100, TimeUnit.MILLISECONDS)
-        .until(
-            () ->
-                queryGateway
-                    .query(new FindApplicationByIdQuery(applicationId), ApplicationReadModel.class)
-                    .join(),
-            Objects::nonNull);
-  }
-
-  private ApplicationReadModel awaitApplicationProjectionVersion(UUID applicationId, long version) {
-    return await()
-        .alias("application projection to reach version " + version + " for " + applicationId)
-        .atMost(15, TimeUnit.SECONDS)
-        .pollInterval(100, TimeUnit.MILLISECONDS)
-        .until(
-            () ->
-                queryGateway
-                    .query(new FindApplicationByIdQuery(applicationId), ApplicationReadModel.class)
-                    .join(),
-            projected -> projected != null && projected.getApplicationDataVersion() == version);
-  }
-
-  private PriorAuthorityResult awaitPriorAuthorityProjection(UUID priorAuthorityId) {
-    return await()
-        .alias("prior authority projection to be populated for " + priorAuthorityId)
-        .atMost(15, TimeUnit.SECONDS)
-        .pollInterval(100, TimeUnit.MILLISECONDS)
-        .until(
-            () ->
-                queryGateway
-                    .query(
-                        new FindPriorAuthorityByPriorAuthorityIdQuery(priorAuthorityId),
-                        PriorAuthorityResult.class)
-                    .join(),
-            Objects::nonNull);
   }
 
   private String saveDraftUrl() {

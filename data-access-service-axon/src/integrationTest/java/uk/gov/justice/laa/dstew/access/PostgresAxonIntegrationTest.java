@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
 
+import jakarta.annotation.PostConstruct;
 import java.io.IOException;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -14,19 +15,15 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.axonframework.eventsourcing.eventstore.EventStorageEngine;
 import org.axonframework.eventsourcing.eventstore.jpa.AggregateBasedJpaEventStorageEngine;
@@ -48,7 +45,6 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.annotation.DirtiesContext;
@@ -57,22 +53,11 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
-import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.EstablishLinkedApplicationGroupCommand;
-import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
-import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRoute;
-import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteKind;
-import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteRepository;
-import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
-import uk.gov.justice.laa.dstew.access.model.ApplicationLinkRequest;
-import uk.gov.justice.laa.dstew.access.model.ApplicationLinkType;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
-import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
-import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.AutoGranted;
@@ -87,7 +72,6 @@ import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
 import uk.gov.justice.laa.dstew.access.model.ExpertCosts;
 import uk.gov.justice.laa.dstew.access.model.ExpertDetails;
 import uk.gov.justice.laa.dstew.access.model.InvolvedChildResponse;
-import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceedingRequest;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
@@ -101,14 +85,11 @@ import uk.gov.justice.laa.dstew.access.model.ProviderResponse;
 import uk.gov.justice.laa.dstew.access.model.ScopeLimitationResponse;
 import uk.gov.justice.laa.dstew.access.model.WorkListAssignRequest;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
-import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadRepository;
-import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.history.PriorAuthorityHistoryReadRepository;
-import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
-import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
+import util.ProjectionAwaiter;
 
 @Testcontainers
 @SpringBootTest(
@@ -132,21 +113,22 @@ class PostgresAxonIntegrationTest {
 
   @Autowired private JdbcTemplate jdbcTemplate;
 
-  @Autowired private ApplicationReadRepository applicationReadRepository;
-
-  @Autowired private ApplicationGroupRouteRepository applicationGroupRouteRepository;
-
   @Autowired private ApplicationHistoryReadRepository applicationHistoryReadRepository;
 
   @Autowired private PriorAuthorityHistoryReadRepository priorAuthorityHistoryReadRepository;
-
-  @Autowired private LinkedApplicationGroupReadRepository groupReadRepository;
 
   @Autowired private CommandGateway commandGateway;
 
   @Autowired private QueryGateway queryGateway;
 
   @Autowired private Environment environment;
+
+  private ProjectionAwaiter projectionAwaiter;
+
+  @PostConstruct
+  void initialiseProjectionAwaiter() {
+    projectionAwaiter = new ProjectionAwaiter(queryGateway);
+  }
 
   @Test
   void givenPostgresAxonStore_whenHealthRequested_thenReportsUp() {
@@ -243,7 +225,7 @@ class PostgresAxonIntegrationTest {
   void givenApplicationData_whenMutated_thenOnlyControlledRetentionDeleteIsAllowed() {
     UUID applicationId = UUID.randomUUID();
     applicationId(post(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()));
-    awaitProjection(applicationId);
+    projectionAwaiter.awaitApplication(applicationId);
 
     assertThat(
             jdbcTemplate.queryForObject(
@@ -326,7 +308,7 @@ class PostgresAxonIntegrationTest {
     UUID createdApplicationId = applicationId(response);
     assertThat(createdApplicationId).isEqualTo(applicationId);
 
-    ApplicationReadModel projected = awaitProjection(createdApplicationId);
+    ApplicationReadModel projected = projectionAwaiter.awaitApplication(createdApplicationId);
     assertThat(projected.getApplicationId()).isEqualTo(createdApplicationId);
     assertThat(projected.getStatus()).isEqualTo("APPLICATION_SUBMITTED");
     assertThat(projected.getLaaReference()).isEqualTo("LAA-123");
@@ -389,12 +371,12 @@ class PostgresAxonIntegrationTest {
     ApplicationCreateRequest submitted =
         validCreateApplicationRequest(applicationId, UUID.randomUUID());
     applicationId(post(inProgress(submitted), headers()));
-    awaitProjection(applicationId);
+    projectionAwaiter.awaitApplication(applicationId);
 
     ResponseEntity<Void> response = patchSubmitted(applicationId, submitted);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-    ApplicationReadModel projected = awaitProjectionVersion(applicationId, 1L);
+    ApplicationReadModel projected = projectionAwaiter.awaitApplicationVersion(applicationId, 1L);
     assertThat(projected.getStatus()).isEqualTo("APPLICATION_SUBMITTED");
     assertThat(projected.getAutoGranted()).isEqualTo(AutoGrantedState.PENDING);
     assertThat(
@@ -425,7 +407,7 @@ class PostgresAxonIntegrationTest {
     ApplicationCreateRequest submitted =
         validCreateApplicationRequest(applicationId, UUID.randomUUID());
     applicationId(post(inProgress(submitted), headers()));
-    awaitProjection(applicationId);
+    projectionAwaiter.awaitApplication(applicationId);
     jdbcTemplate.execute(
         """
         CREATE OR REPLACE FUNCTION axon.reject_test_application_update()
@@ -474,18 +456,17 @@ class PostgresAxonIntegrationTest {
                 Integer.class,
                 applicationId.toString()))
         .isEqualTo(1);
-    assertThat(awaitProjection(applicationId).getApplicationVersion()).isZero();
+    assertThat(projectionAwaiter.awaitApplication(applicationId).getApplicationVersion()).isZero();
   }
 
   @Test
-  void givenApplication_whenMakeDecision_thenAppendsSensitiveVersionAndThinEvent()
-      throws Exception {
+  void givenApplication_whenMakeDecision_thenAppendsSensitiveVersionAndThinEvent() {
     UUID applicationId = UUID.randomUUID();
     UUID applyProceedingId = UUID.randomUUID();
     applicationId(post(validCreateApplicationRequest(applicationId, applyProceedingId), headers()));
-    ApplicationReadModel created = awaitProjection(applicationId);
+    ApplicationReadModel created = projectionAwaiter.awaitApplication(applicationId);
     markReadyForManualDecision(applicationId);
-    UUID caseworkerId = assignForManualDecision(applicationId);
+    assignForManualDecision(applicationId);
     UUID proceedingId = created.getProceedings().getFirst().getId();
 
     MakeDecisionRequest request =
@@ -515,7 +496,7 @@ class PostgresAxonIntegrationTest {
             Void.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-    ApplicationReadModel decided = awaitProjectionVersion(applicationId, 2L);
+    ApplicationReadModel decided = projectionAwaiter.awaitApplicationVersion(applicationId, 2L);
     assertThat(decided.getDecisionStatus()).isEqualTo("REFUSED");
     assertThat(decided.getAutoGranted()).isEqualTo(AutoGrantedState.MANUAL);
     assertThat(decided.getMeritsDecisions().get(proceedingId).justification())
@@ -584,7 +565,8 @@ class PostgresAxonIntegrationTest {
   void givenSubmittedApplication_whenAutomaticallyGranted_thenPersistsCompleteDecision() {
     UUID applicationId = UUID.randomUUID();
     applicationId(post(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()));
-    UUID proceedingId = awaitProjection(applicationId).getProceedings().getFirst().getId();
+    UUID proceedingId =
+        projectionAwaiter.awaitApplication(applicationId).getProceedings().getFirst().getId();
     var request =
         new AutoGrantedOutcomeRequest(
             AutoGrantOutcome.AUTOGRANTED, Map.of("certificateNumber", "AUTO-2126"));
@@ -601,7 +583,7 @@ class PostgresAxonIntegrationTest {
             Void.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-    ApplicationReadModel granted = awaitProjectionVersion(applicationId, 1L);
+    ApplicationReadModel granted = projectionAwaiter.awaitApplicationVersion(applicationId, 1L);
     assertThat(granted.getAutoGranted()).isEqualTo(AutoGrantedState.AUTOGRANTED);
     assertThat(granted.getDecisionStatus()).isEqualTo("GRANTED");
     assertThat(granted.getMeritsDecisions()).containsKey(proceedingId);
@@ -618,7 +600,7 @@ class PostgresAxonIntegrationTest {
   void givenSubmittedApplication_whenMarkedReady_thenPersistsManualOutcomeAndThinEvent() {
     UUID applicationId = UUID.randomUUID();
     applicationId(post(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()));
-    awaitProjection(applicationId);
+    projectionAwaiter.awaitApplication(applicationId);
     ManualOutcomeRequest request = new ManualOutcomeRequest(AutoGrantOutcome.MANUAL);
 
     ResponseEntity<Void> response =
@@ -633,7 +615,7 @@ class PostgresAxonIntegrationTest {
             Void.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-    ApplicationReadModel ready = awaitProjectionVersion(applicationId, 1L);
+    ApplicationReadModel ready = projectionAwaiter.awaitApplicationVersion(applicationId, 1L);
     assertThat(ready.getStatus()).isEqualTo("APPLICATION_SUBMITTED");
     assertThat(ready.getAutoGranted()).isEqualTo(AutoGrantedState.MANUAL);
     assertThat(
@@ -660,14 +642,14 @@ class PostgresAxonIntegrationTest {
   }
 
   @Test
-  void givenApplicationCertificate_whenGetCertificate_thenReturnsCurrentCertificate()
-      throws Exception {
+  void givenApplicationCertificate_whenGetCertificate_thenReturnsCurrentCertificate() {
     UUID applicationId = UUID.randomUUID();
     UUID applyProceedingId = UUID.randomUUID();
     applicationId(post(validCreateApplicationRequest(applicationId, applyProceedingId), headers()));
     markReadyForManualDecision(applicationId);
-    UUID caseworkerId = assignForManualDecision(applicationId);
-    UUID proceedingId = awaitProjection(applicationId).getProceedings().getFirst().getId();
+    assignForManualDecision(applicationId);
+    UUID proceedingId =
+        projectionAwaiter.awaitApplication(applicationId).getProceedings().getFirst().getId();
     Map<String, Object> certificate =
         Map.of(
             "certificateNumber", "TESTCERT001",
@@ -699,7 +681,7 @@ class PostgresAxonIntegrationTest {
             new HttpEntity<>(request, headers()),
             Void.class);
     assertThat(decisionResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-    awaitProjectionVersion(applicationId, 2L);
+    projectionAwaiter.awaitApplicationVersion(applicationId, 2L);
 
     ResponseEntity<Map<String, Object>> certificateResponse =
         restTemplate.exchange(
@@ -716,7 +698,7 @@ class PostgresAxonIntegrationTest {
         post(
             validCreateApplicationRequest(applicationWithoutCertificate, UUID.randomUUID()),
             headers()));
-    awaitProjection(applicationWithoutCertificate);
+    projectionAwaiter.awaitApplication(applicationWithoutCertificate);
     ResponseEntity<String> missingCertificateResponse =
         restTemplate.exchange(
             "http://localhost:"
@@ -867,7 +849,7 @@ class PostgresAxonIntegrationTest {
     ResponseEntity<Void> firstResponse =
         restTemplate.postForEntity(
             "http://localhost:" + port + "/api/v0/applications", request, Void.class);
-    awaitProjection(applicationId(firstResponse));
+    projectionAwaiter.awaitApplication(applicationId(firstResponse));
 
     ResponseEntity<Void> retryResponse =
         restTemplate.postForEntity(
@@ -897,7 +879,7 @@ class PostgresAxonIntegrationTest {
 
     ResponseEntity<Void> firstResponse =
         post(validCreateApplicationRequest(applicationId, applyProceedingId), headers());
-    awaitProjection(applicationId(firstResponse));
+    projectionAwaiter.awaitApplication(applicationId(firstResponse));
 
     ResponseEntity<String> conflictResponse =
         post(
@@ -1047,7 +1029,7 @@ class PostgresAxonIntegrationTest {
     }
 
     // The event store must contain exactly one ApplicationCreatedEvent.
-    awaitProjection(applicationId);
+    projectionAwaiter.awaitApplication(applicationId);
     List<Map<String, Object>> events =
         jdbcTemplate.queryForList(
             "SELECT payload_type, sequence_number FROM axon.domain_event_entry "
@@ -1068,8 +1050,9 @@ class PostgresAxonIntegrationTest {
     UUID applicationId = UUID.randomUUID();
     applicationId(post(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()));
     markReadyForManualDecision(applicationId);
-    UUID caseworkerId = assignForManualDecision(applicationId);
-    UUID proceedingId = awaitProjection(applicationId).getProceedings().getFirst().getId();
+    assignForManualDecision(applicationId);
+    UUID proceedingId =
+        projectionAwaiter.awaitApplication(applicationId).getProceedings().getFirst().getId();
     MakeDecisionRequest request =
         MakeDecisionRequest.builder()
             .applicationVersion(1L)
@@ -1104,7 +1087,8 @@ class PostgresAxonIntegrationTest {
       executor.shutdown();
     }
 
-    assertThat(awaitProjectionVersion(applicationId, 2L).getApplicationVersion()).isEqualTo(2L);
+    assertThat(projectionAwaiter.awaitApplicationVersion(applicationId, 2L).getApplicationVersion())
+        .isEqualTo(2L);
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM axon.application_data WHERE application_id = ?",
@@ -1124,7 +1108,7 @@ class PostgresAxonIntegrationTest {
       throws Exception {
     UUID applicationId = UUID.randomUUID();
     applicationId(post(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()));
-    awaitProjection(applicationId);
+    projectionAwaiter.awaitApplication(applicationId);
     ManualOutcomeRequest request = new ManualOutcomeRequest(AutoGrantOutcome.MANUAL);
     HttpEntity<ManualOutcomeRequest> entity = new HttpEntity<>(request, headers());
     String url =
@@ -1148,7 +1132,7 @@ class PostgresAxonIntegrationTest {
       executor.shutdown();
     }
 
-    assertThat(awaitProjectionVersion(applicationId, 1L).getAutoGranted())
+    assertThat(projectionAwaiter.awaitApplicationVersion(applicationId, 1L).getAutoGranted())
         .isEqualTo(AutoGrantedState.MANUAL);
     assertThat(
             jdbcTemplate.queryForObject(
@@ -1177,7 +1161,7 @@ class PostgresAxonIntegrationTest {
             Void.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-    awaitProjectionVersion(applicationId, 1L);
+    projectionAwaiter.awaitApplicationVersion(applicationId, 1L);
   }
 
   private UUID assignForManualDecision(UUID applicationId) {
@@ -1190,7 +1174,8 @@ class PostgresAxonIntegrationTest {
             Void.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-    assertThat(awaitProjectionVersion(applicationId, 1L).getCaseworkerId()).isEqualTo(caseworkerId);
+    assertThat(projectionAwaiter.awaitApplicationVersion(applicationId, 1L).getCaseworkerId())
+        .isEqualTo(caseworkerId);
     return caseworkerId;
   }
 
@@ -1272,483 +1257,6 @@ class PostgresAxonIntegrationTest {
         HttpMethod.POST,
         "/api/v0/applications/" + applicationId + "/unassign",
         unassignRequestBody());
-  }
-
-  @Test
-  void givenTwoStandaloneApplications_whenApplicationsAreLinked_thenLinkIsSuccessful() {
-    UUID sourceApplicationId = UUID.randomUUID();
-    UUID targetApplicationId = UUID.randomUUID();
-    String clientLastName = uniqueClientLastName();
-    createApplication(sourceApplicationId, clientLastName);
-    createApplication(targetApplicationId, clientLastName);
-    long createdEventCount = countDomainEvents(LinkedApplicationGroupCreatedEvent.class.getName());
-
-    ResponseEntity<Void> response = linkApplication(sourceApplicationId, targetApplicationId);
-
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-
-    var routesByApplicationId = awaitRoutes(sourceApplicationId, targetApplicationId);
-    ApplicationGroupRoute targetRoute = routesByApplicationId.get(targetApplicationId);
-    ApplicationGroupRoute sourceRoute = routesByApplicationId.get(sourceApplicationId);
-    UUID groupId = targetRoute.getGroupId();
-    assertThat(targetRoute.getRouteKind()).isEqualTo(ApplicationGroupRouteKind.LINKED_GROUP);
-    assertThat(sourceRoute.getRouteKind()).isEqualTo(ApplicationGroupRouteKind.LINKED_GROUP);
-    assertThat(groupId).isNotNull().isNotIn(sourceApplicationId, targetApplicationId);
-    assertThat(sourceRoute.getGroupId()).isEqualTo(groupId);
-    assertThat(countDomainEvents(LinkedApplicationGroupCreatedEvent.class.getName()))
-        .isEqualTo(createdEventCount + 1);
-    assertThat(countDomainEvents(groupId, LinkedApplicationGroupCreatedEvent.class.getName()))
-        .isOne();
-
-    LinkedApplicationGroupReadModel group =
-        awaitGroupProjection(
-            groupId, targetApplicationId, targetApplicationId, sourceApplicationId);
-    assertThat(group.getMemberIds())
-        .containsExactlyInAnyOrder(targetApplicationId, sourceApplicationId);
-    assertThat(group.getLeadApplicationId()).isEqualTo(targetApplicationId);
-
-    var applicationSummaries =
-        awaitApplicationSummaryGroup(clientLastName, targetApplicationId, sourceApplicationId);
-    assertApplicationSummaryGroup(applicationSummaries, targetApplicationId, sourceApplicationId);
-  }
-
-  @Test
-  void givenApplicationsFromDifferentOffices_whenApplicationsAreLinked_thenRequestIsRejected() {
-    UUID sourceApplicationId = UUID.randomUUID();
-    UUID targetApplicationId = UUID.randomUUID();
-    String clientLastName = uniqueClientLastName();
-    createApplication(sourceApplicationId, clientLastName, "1A001B");
-    createApplication(targetApplicationId, clientLastName, "2B002C");
-    long groupEventCount = countGroupEvents();
-
-    ResponseEntity<Void> response = linkApplication(sourceApplicationId, targetApplicationId);
-
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-    assertThat(countGroupEvents()).isEqualTo(groupEventCount);
-    assertStandaloneRoute(sourceApplicationId);
-    assertStandaloneRoute(targetApplicationId);
-  }
-
-  @Test
-  void givenApplicationWithoutOfficeCode_whenApplicationIsCreated_thenRequestIsRejected() {
-    UUID applicationId = UUID.randomUUID();
-    String clientLastName = uniqueClientLastName();
-    var request = createApplicationRequest(applicationId, clientLastName);
-    var applicationContent = new HashMap<>(request.getApplicationContent());
-    var originalProvider = (Map<?, ?>) applicationContent.get("provider");
-    var provider = new HashMap<String, Object>();
-    originalProvider.forEach((key, value) -> provider.put(key.toString(), value));
-    provider.remove("officeCode");
-    applicationContent.put("provider", provider);
-    request.setApplicationContent(applicationContent);
-
-    var response = post(request, headers());
-
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-    assertThat(countRoutes(applicationId)).isZero();
-  }
-
-  @Test
-  void givenApplicationsWithBlankOfficeCodes_whenApplicationsAreLinked_thenRequestIsRejected() {
-    UUID sourceApplicationId = UUID.randomUUID();
-    UUID targetApplicationId = UUID.randomUUID();
-    String clientLastName = uniqueClientLastName();
-    createApplication(sourceApplicationId, clientLastName, " ");
-    createApplication(targetApplicationId, clientLastName, " ");
-    long groupEventCount = countGroupEvents();
-
-    ResponseEntity<Void> response = linkApplication(sourceApplicationId, targetApplicationId);
-
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-    assertThat(countGroupEvents()).isEqualTo(groupEventCount);
-    assertStandaloneRoute(sourceApplicationId);
-    assertStandaloneRoute(targetApplicationId);
-  }
-
-  @Test
-  void
-      givenStandaloneSourceAndGroupedTarget_whenApplicationsAreLinked_thenSourceJoinsTargetGroup() {
-    UUID sourceApplicationId = UUID.randomUUID();
-    UUID targetApplicationId = UUID.randomUUID();
-    UUID existingMemberApplicationId = UUID.randomUUID();
-    String clientLastName = uniqueClientLastName();
-    createApplication(sourceApplicationId, clientLastName);
-    createApplication(targetApplicationId, clientLastName);
-    createApplication(existingMemberApplicationId, clientLastName);
-    assertThat(linkApplication(existingMemberApplicationId, targetApplicationId).getStatusCode())
-        .isEqualTo(HttpStatus.NO_CONTENT);
-    UUID groupId =
-        awaitRoutes(targetApplicationId, existingMemberApplicationId)
-            .get(targetApplicationId)
-            .getGroupId();
-    awaitGroupProjection(
-        groupId, targetApplicationId, targetApplicationId, existingMemberApplicationId);
-    long memberAddedEventCount =
-        countDomainEvents(groupId, MemberAddedToGroupEvent.class.getName());
-
-    ResponseEntity<Void> response = linkApplication(sourceApplicationId, targetApplicationId);
-
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-    assertThat(countDomainEvents(groupId, MemberAddedToGroupEvent.class.getName()))
-        .isEqualTo(memberAddedEventCount + 1);
-    assertRoutesInGroup(
-        groupId, targetApplicationId, existingMemberApplicationId, sourceApplicationId);
-    LinkedApplicationGroupReadModel group =
-        awaitGroupProjection(
-            groupId,
-            targetApplicationId,
-            targetApplicationId,
-            existingMemberApplicationId,
-            sourceApplicationId);
-    assertThat(group.getLeadApplicationId()).isEqualTo(targetApplicationId);
-    assertThat(group.getMemberIds())
-        .containsExactlyInAnyOrder(
-            targetApplicationId, existingMemberApplicationId, sourceApplicationId);
-  }
-
-  @Test
-  void givenSameSourceAndTarget_whenApplicationsAreLinked_thenRequestIsRejected() {
-    UUID applicationId = UUID.randomUUID();
-    createApplication(applicationId, uniqueClientLastName());
-    long groupEventCount = countGroupEvents();
-
-    ResponseEntity<Void> response = linkApplication(applicationId, applicationId);
-
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-    assertThat(countGroupEvents()).isEqualTo(groupEventCount);
-    assertStandaloneRoute(applicationId);
-  }
-
-  @Test
-  void givenSourceAlreadyBelongsToAnotherGroup_whenApplicationsAreLinked_thenRequestConflicts() {
-    UUID sourceApplicationId = UUID.randomUUID();
-    UUID originalLeadApplicationId = UUID.randomUUID();
-    UUID targetApplicationId = UUID.randomUUID();
-    UUID targetLeadApplicationId = UUID.randomUUID();
-    String clientLastName = uniqueClientLastName();
-    createApplication(sourceApplicationId, clientLastName);
-    createApplication(originalLeadApplicationId, clientLastName);
-    createApplication(targetApplicationId, clientLastName);
-    createApplication(targetLeadApplicationId, clientLastName);
-    assertThat(linkApplication(sourceApplicationId, originalLeadApplicationId).getStatusCode())
-        .isEqualTo(HttpStatus.NO_CONTENT);
-    UUID originalGroupId =
-        awaitRoutes(sourceApplicationId, originalLeadApplicationId)
-            .get(sourceApplicationId)
-            .getGroupId();
-    awaitGroupProjection(
-        originalGroupId, originalLeadApplicationId, originalLeadApplicationId, sourceApplicationId);
-    assertThat(linkApplication(targetApplicationId, targetLeadApplicationId).getStatusCode())
-        .isEqualTo(HttpStatus.NO_CONTENT);
-    UUID targetGroupId =
-        awaitRoutes(targetApplicationId, targetLeadApplicationId)
-            .get(targetApplicationId)
-            .getGroupId();
-    awaitGroupProjection(
-        targetGroupId, targetLeadApplicationId, targetLeadApplicationId, targetApplicationId);
-    long groupEventCount = countGroupEvents();
-
-    ResponseEntity<Void> response = linkApplication(sourceApplicationId, targetApplicationId);
-
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-    assertThat(countGroupEvents()).isEqualTo(groupEventCount);
-    assertRoutesInGroup(originalGroupId, originalLeadApplicationId, sourceApplicationId);
-    assertRoutesInGroup(targetGroupId, targetLeadApplicationId, targetApplicationId);
-    assertGroupMembers(
-        awaitGroupProjection(
-            originalGroupId,
-            originalLeadApplicationId,
-            originalLeadApplicationId,
-            sourceApplicationId),
-        originalLeadApplicationId,
-        originalLeadApplicationId,
-        sourceApplicationId);
-    assertGroupMembers(
-        awaitGroupProjection(
-            targetGroupId, targetLeadApplicationId, targetLeadApplicationId, targetApplicationId),
-        targetLeadApplicationId,
-        targetLeadApplicationId,
-        targetApplicationId);
-  }
-
-  @Test
-  void
-      givenRepeatedSourceToTargetLinkRequest_whenApplicationsAreLinked_thenSecondRequestIsIdempotent() {
-    UUID sourceApplicationId = UUID.randomUUID();
-    UUID targetApplicationId = UUID.randomUUID();
-    String clientLastName = uniqueClientLastName();
-    createApplication(sourceApplicationId, clientLastName);
-    createApplication(targetApplicationId, clientLastName);
-
-    ResponseEntity<Void> firstResponse = linkApplication(sourceApplicationId, targetApplicationId);
-
-    assertThat(firstResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-    UUID groupId =
-        awaitRoutes(sourceApplicationId, targetApplicationId).get(targetApplicationId).getGroupId();
-    LinkedApplicationGroupReadModel initialGroup =
-        awaitGroupProjection(
-            groupId, targetApplicationId, targetApplicationId, sourceApplicationId);
-    long createdEventCount =
-        countDomainEvents(groupId, LinkedApplicationGroupCreatedEvent.class.getName());
-    long memberAddedEventCount =
-        countDomainEvents(groupId, MemberAddedToGroupEvent.class.getName());
-
-    ResponseEntity<Void> secondResponse = linkApplication(sourceApplicationId, targetApplicationId);
-
-    assertThat(secondResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-    assertThat(countDomainEvents(groupId, LinkedApplicationGroupCreatedEvent.class.getName()))
-        .isEqualTo(createdEventCount);
-    assertThat(countDomainEvents(groupId, MemberAddedToGroupEvent.class.getName()))
-        .isEqualTo(memberAddedEventCount);
-    LinkedApplicationGroupReadModel finalGroup =
-        awaitGroupProjection(
-            groupId, targetApplicationId, targetApplicationId, sourceApplicationId);
-    assertThat(finalGroup.getMemberIds()).containsExactlyElementsOf(initialGroup.getMemberIds());
-    assertThat(new HashSet<>(finalGroup.getMemberIds())).hasSameSizeAs(finalGroup.getMemberIds());
-  }
-
-  @Test
-  void givenUnsupportedRawJsonLinkType_whenApplicationsAreLinked_thenRequestIsRejected() {
-    UUID sourceApplicationId = UUID.randomUUID();
-    UUID targetApplicationId = UUID.randomUUID();
-    String clientLastName = uniqueClientLastName();
-    createApplication(sourceApplicationId, clientLastName);
-    createApplication(targetApplicationId, clientLastName);
-    long groupEventCount = countGroupEvents();
-    long groupProjectionCount = groupReadRepository.count();
-    String requestBody =
-        """
-        {
-          "applicationId": "%s",
-          "linkType": "OTHER"
-        }
-        """
-            .formatted(targetApplicationId);
-
-    ResponseEntity<String> response = linkApplicationWithRawJson(sourceApplicationId, requestBody);
-
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-    assertThat(countGroupEvents()).isEqualTo(groupEventCount);
-    assertThat(groupReadRepository.count()).isEqualTo(groupProjectionCount);
-    assertStandaloneRoute(sourceApplicationId);
-    assertStandaloneRoute(targetApplicationId);
-  }
-
-  @Test
-  void givenMissingSourceApplication_whenApplicationsAreLinked_thenRequestReturnsNotFound() {
-    UUID missingSourceApplicationId = UUID.randomUUID();
-    UUID targetApplicationId = UUID.randomUUID();
-    createApplication(targetApplicationId, uniqueClientLastName());
-    long groupEventCount = countGroupEvents();
-
-    ResponseEntity<Void> response =
-        linkApplication(missingSourceApplicationId, targetApplicationId);
-
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-    assertThat(countGroupEvents()).isEqualTo(groupEventCount);
-    assertStandaloneRoute(targetApplicationId);
-  }
-
-  @Test
-  void givenMissingTargetApplication_whenApplicationsAreLinked_thenRequestReturnsNotFound() {
-    UUID sourceApplicationId = UUID.randomUUID();
-    UUID missingTargetApplicationId = UUID.randomUUID();
-    createApplication(sourceApplicationId, uniqueClientLastName());
-    long groupEventCount = countGroupEvents();
-
-    ResponseEntity<Void> response =
-        linkApplication(sourceApplicationId, missingTargetApplicationId);
-
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-    assertThat(countGroupEvents()).isEqualTo(groupEventCount);
-    assertStandaloneRoute(sourceApplicationId);
-  }
-
-  @Test
-  void
-      givenConcurrentRequestsLinkingOneSourceToDifferentTargetGroups_whenApplicationsAreLinked_thenOneSucceedsAndOneConflicts()
-          throws Exception {
-    UUID sourceApplicationId = UUID.randomUUID();
-    UUID firstTargetApplicationId = UUID.randomUUID();
-    UUID firstExistingMemberApplicationId = UUID.randomUUID();
-    UUID secondTargetApplicationId = UUID.randomUUID();
-    UUID secondExistingMemberApplicationId = UUID.randomUUID();
-    String clientLastName = uniqueClientLastName();
-    createApplication(sourceApplicationId, clientLastName);
-    createApplication(firstTargetApplicationId, clientLastName);
-    createApplication(firstExistingMemberApplicationId, clientLastName);
-    createApplication(secondTargetApplicationId, clientLastName);
-    createApplication(secondExistingMemberApplicationId, clientLastName);
-    assertThat(
-            linkApplication(firstExistingMemberApplicationId, firstTargetApplicationId)
-                .getStatusCode())
-        .isEqualTo(HttpStatus.NO_CONTENT);
-    UUID firstGroupId =
-        awaitRoutes(firstTargetApplicationId, firstExistingMemberApplicationId)
-            .get(firstTargetApplicationId)
-            .getGroupId();
-    awaitGroupProjection(
-        firstGroupId,
-        firstTargetApplicationId,
-        firstTargetApplicationId,
-        firstExistingMemberApplicationId);
-    assertThat(
-            linkApplication(secondExistingMemberApplicationId, secondTargetApplicationId)
-                .getStatusCode())
-        .isEqualTo(HttpStatus.NO_CONTENT);
-    UUID secondGroupId =
-        awaitRoutes(secondTargetApplicationId, secondExistingMemberApplicationId)
-            .get(secondTargetApplicationId)
-            .getGroupId();
-    awaitGroupProjection(
-        secondGroupId,
-        secondTargetApplicationId,
-        secondTargetApplicationId,
-        secondExistingMemberApplicationId);
-    long memberAddedEventCount =
-        countDomainEvents(firstGroupId, MemberAddedToGroupEvent.class.getName())
-            + countDomainEvents(secondGroupId, MemberAddedToGroupEvent.class.getName());
-
-    CyclicBarrier barrier = new CyclicBarrier(2);
-    ExecutorService executor = Executors.newFixedThreadPool(2);
-    try {
-      CompletableFuture<ResponseEntity<Void>> first =
-          concurrentLink(executor, barrier, sourceApplicationId, firstTargetApplicationId);
-      CompletableFuture<ResponseEntity<Void>> second =
-          concurrentLink(executor, barrier, sourceApplicationId, secondTargetApplicationId);
-
-      assertThat(List.of(first.get(20, TimeUnit.SECONDS), second.get(20, TimeUnit.SECONDS)))
-          .extracting(ResponseEntity::getStatusCode)
-          .containsExactlyInAnyOrder(HttpStatus.NO_CONTENT, HttpStatus.CONFLICT);
-    } finally {
-      executor.shutdown();
-    }
-
-    ApplicationGroupRoute sourceRoute =
-        awaitRoute(sourceApplicationId, ApplicationGroupRouteKind.LINKED_GROUP);
-    assertThat(sourceRoute.getGroupId()).isIn(firstGroupId, secondGroupId);
-    assertThat(countRoutes(sourceApplicationId)).isOne();
-    assertThat(
-            countDomainEvents(firstGroupId, MemberAddedToGroupEvent.class.getName())
-                + countDomainEvents(secondGroupId, MemberAddedToGroupEvent.class.getName()))
-        .isEqualTo(memberAddedEventCount + 1);
-    if (sourceRoute.getGroupId().equals(firstGroupId)) {
-      assertGroupMembers(
-          awaitGroupProjection(
-              firstGroupId,
-              firstTargetApplicationId,
-              firstTargetApplicationId,
-              firstExistingMemberApplicationId,
-              sourceApplicationId),
-          firstTargetApplicationId,
-          firstTargetApplicationId,
-          firstExistingMemberApplicationId,
-          sourceApplicationId);
-      assertGroupMembers(
-          awaitGroupProjection(
-              secondGroupId,
-              secondTargetApplicationId,
-              secondTargetApplicationId,
-              secondExistingMemberApplicationId),
-          secondTargetApplicationId,
-          secondTargetApplicationId,
-          secondExistingMemberApplicationId);
-    } else {
-      assertGroupMembers(
-          awaitGroupProjection(
-              firstGroupId,
-              firstTargetApplicationId,
-              firstTargetApplicationId,
-              firstExistingMemberApplicationId),
-          firstTargetApplicationId,
-          firstTargetApplicationId,
-          firstExistingMemberApplicationId);
-      assertGroupMembers(
-          awaitGroupProjection(
-              secondGroupId,
-              secondTargetApplicationId,
-              secondTargetApplicationId,
-              secondExistingMemberApplicationId,
-              sourceApplicationId),
-          secondTargetApplicationId,
-          secondTargetApplicationId,
-          secondExistingMemberApplicationId,
-          sourceApplicationId);
-    }
-  }
-
-  @Test
-  void givenRouteUpdateFails_whenLinkedGroupCommandIsDispatched_thenEventAndRoutesRollBack() {
-    UUID groupId = UUID.randomUUID();
-    UUID leadApplicationId = UUID.randomUUID();
-    UUID memberApplicationId = UUID.randomUUID();
-    var memberApplicationIds = List.of(leadApplicationId, memberApplicationId);
-    String clientLastName = uniqueClientLastName();
-    createApplication(leadApplicationId, clientLastName);
-    createApplication(memberApplicationId, clientLastName);
-    var command =
-        new EstablishLinkedApplicationGroupCommand(
-            groupId, leadApplicationId, memberApplicationIds, Instant.now());
-
-    try {
-      jdbcTemplate.execute(
-          """
-          CREATE OR REPLACE FUNCTION axon.reject_test_group_route_update()
-          RETURNS trigger AS $$
-          BEGIN
-            IF NEW.group_id = '%s' THEN
-              RAISE EXCEPTION 'forced application group route update failure';
-            END IF;
-            RETURN NEW;
-          END;
-          $$ LANGUAGE plpgsql
-          """
-              .formatted(groupId));
-      jdbcTemplate.execute(
-          """
-          CREATE TRIGGER reject_test_group_route_update
-          BEFORE UPDATE ON axon.application_group_route
-          FOR EACH ROW EXECUTE FUNCTION axon.reject_test_group_route_update()
-          """);
-      assertThatThrownBy(() -> commandGateway.sendAndWait(command))
-          .satisfies(
-              failure ->
-                  assertThat(rootCause(failure))
-                      .hasMessageContaining("forced application group route update failure"));
-    } finally {
-      jdbcTemplate.execute(
-          "DROP TRIGGER IF EXISTS reject_test_group_route_update ON axon.application_group_route");
-      jdbcTemplate.execute("DROP FUNCTION IF EXISTS axon.reject_test_group_route_update()");
-    }
-
-    assertThat(countDomainEvents(groupId)).isZero();
-    assertThat(groupReadRepository.findById(groupId)).isEmpty();
-    assertStandaloneRoute(leadApplicationId);
-    assertStandaloneRoute(memberApplicationId);
-  }
-
-  @Test
-  void givenMissingRoutes_whenLinkedGroupCommandIsDispatched_thenEventAppendRollsBack() {
-    UUID groupId = UUID.randomUUID();
-    UUID leadApplicationId = UUID.randomUUID();
-    UUID memberApplicationId = UUID.randomUUID();
-    var memberApplicationIds = List.of(leadApplicationId, memberApplicationId);
-
-    var command =
-        new EstablishLinkedApplicationGroupCommand(
-            groupId, leadApplicationId, memberApplicationIds, Instant.now());
-
-    assertThatThrownBy(() -> commandGateway.sendAndWait(command))
-        .satisfies(
-            failure -> {
-              Throwable rootCause = rootCause(failure);
-              assertThat(rootCause).isInstanceOf(ResourceNotFoundException.class);
-              assertThat(rootCause)
-                  .hasMessageContaining("No application group routes found for applications");
-            });
-
-    assertThat(countDomainEvents(groupId)).isZero();
-    assertThat(groupReadRepository.findById(groupId)).isEmpty();
   }
 
   private ApplicationUpdateRequest submittedUpdateBody() {
@@ -1844,7 +1352,7 @@ class PostgresAxonIntegrationTest {
   void givenExistingApplication_whenCreateNote_thenReturns204AndPersistsNoteInApplicationData() {
     UUID applicationId = UUID.randomUUID();
     applicationId(post(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()));
-    awaitProjection(applicationId);
+    projectionAwaiter.awaitApplication(applicationId);
 
     ResponseEntity<Void> response =
         restTemplate.exchange(
@@ -1856,7 +1364,7 @@ class PostgresAxonIntegrationTest {
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
 
     // applicationDataVersion advances to 1; applicationVersion stays at 0
-    ApplicationReadModel model = awaitProjectionVersion(applicationId, 1L);
+    ApplicationReadModel model = projectionAwaiter.awaitApplicationVersion(applicationId, 1L);
     assertThat(model.getApplicationVersion()).isEqualTo(0L);
 
     // Note text persisted in application_data JSONB at version 1
@@ -1894,17 +1402,17 @@ class PostgresAxonIntegrationTest {
   }
 
   @Test
-  void givenApplicationWithNote_whenGetNotes_thenReturnsNoteInResponse() throws Exception {
+  void givenApplicationWithNote_whenGetNotes_thenReturnsNoteInResponse() {
     UUID applicationId = UUID.randomUUID();
     applicationId(post(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()));
-    awaitProjection(applicationId);
+    projectionAwaiter.awaitApplication(applicationId);
 
     restTemplate.exchange(
         "http://localhost:" + port + "/api/v0/applications/" + applicationId + "/notes",
         HttpMethod.POST,
         new HttpEntity<>(new CreateNoteRequest("Hello from GET notes test"), headers()),
         Void.class);
-    awaitProjectionVersion(applicationId, 1L);
+    projectionAwaiter.awaitApplicationVersion(applicationId, 1L);
 
     ResponseEntity<String> response =
         restTemplate.exchange(
@@ -1933,7 +1441,7 @@ class PostgresAxonIntegrationTest {
   void givenApplicationWithPriorAuthority_whenGetHistory_thenReturnsPriorAuthoritiesSection() {
     UUID applicationId = UUID.randomUUID();
     applicationId(post(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()));
-    awaitProjection(applicationId);
+    projectionAwaiter.awaitApplication(applicationId);
 
     restTemplate.exchange(
         "http://localhost:"
@@ -1947,7 +1455,7 @@ class PostgresAxonIntegrationTest {
                 AutoGrantOutcome.AUTOGRANTED, Map.of("certificateNumber", "PA-CERT-001")),
             headers()),
         Void.class);
-    awaitProjectionVersion(applicationId, 1L);
+    projectionAwaiter.awaitApplicationVersion(applicationId, 1L);
 
     ResponseEntity<String> paResponse =
         restTemplate.postForEntity(
@@ -2144,240 +1652,6 @@ class PostgresAxonIntegrationTest {
         response.getStatusCode());
   }
 
-  private String uniqueClientLastName() {
-    return "Link" + UUID.randomUUID().toString().replace("-", "");
-  }
-
-  private void createApplication(UUID applicationId, String clientLastName) {
-    createApplication(applicationId, clientLastName, "1A001B");
-  }
-
-  private void createApplication(UUID applicationId, String clientLastName, String officeCode) {
-    var request = createApplicationRequest(applicationId, clientLastName);
-    var applicationContent = new HashMap<>(request.getApplicationContent());
-    var originalProvider = (Map<?, ?>) applicationContent.get("provider");
-    var provider = new HashMap<String, Object>();
-    originalProvider.forEach((key, value) -> provider.put(key.toString(), value));
-    provider.put("officeCode", officeCode);
-    applicationContent.put("provider", provider);
-    request.setApplicationContent(applicationContent);
-
-    applicationId(post(request, headers()));
-    awaitProjection(applicationId);
-    awaitRoute(applicationId, ApplicationGroupRouteKind.STANDALONE);
-  }
-
-  private ApplicationCreateRequest createApplicationRequest(
-      UUID applicationId, String clientLastName) {
-    ApplicationCreateRequest request =
-        validCreateApplicationRequest(applicationId, UUID.randomUUID());
-    Map<String, Object> applicationContent = new HashMap<>(request.getApplicationContent());
-    Map<?, ?> originalClient = (Map<?, ?>) applicationContent.get("client");
-    Map<String, Object> client = new HashMap<>();
-    originalClient.forEach((key, value) -> client.put(key.toString(), value));
-    client.put("lastName", clientLastName);
-    applicationContent.put("client", client);
-    request.setApplicationContent(applicationContent);
-    return request;
-  }
-
-  private Map<UUID, ApplicationGroupRoute> awaitRoutes(UUID... applicationIds) {
-    List<UUID> expectedApplicationIds = List.of(applicationIds);
-    return await()
-        .alias("application group routes for " + expectedApplicationIds)
-        .atMost(15, TimeUnit.SECONDS)
-        .pollInterval(100, TimeUnit.MILLISECONDS)
-        .until(
-            () -> routesByApplicationId(expectedApplicationIds),
-            routes -> routes.keySet().containsAll(expectedApplicationIds));
-  }
-
-  private Map<UUID, ApplicationGroupRoute> routesByApplicationId(List<UUID> applicationIds) {
-    return applicationGroupRouteRepository.findAllById(applicationIds).stream()
-        .collect(Collectors.toMap(ApplicationGroupRoute::getApplicationId, Function.identity()));
-  }
-
-  private ApplicationGroupRoute awaitRoute(
-      UUID applicationId, ApplicationGroupRouteKind routeKind) {
-    return await()
-        .alias("application group route " + routeKind + " for " + applicationId)
-        .atMost(15, TimeUnit.SECONDS)
-        .pollInterval(100, TimeUnit.MILLISECONDS)
-        .until(
-            () -> applicationGroupRouteRepository.findById(applicationId).orElse(null),
-            route -> route != null && route.getRouteKind() == routeKind);
-  }
-
-  private void assertStandaloneRoute(UUID applicationId) {
-    ApplicationGroupRoute route = awaitRoute(applicationId, ApplicationGroupRouteKind.STANDALONE);
-    assertThat(route.getGroupId()).isNull();
-  }
-
-  private void assertRoutesInGroup(UUID groupId, UUID... applicationIds) {
-    Map<UUID, ApplicationGroupRoute> routes = awaitRoutes(applicationIds);
-    assertThat(routes.keySet()).containsAll(List.of(applicationIds));
-    routes
-        .values()
-        .forEach(
-            route -> {
-              assertThat(route.getRouteKind()).isEqualTo(ApplicationGroupRouteKind.LINKED_GROUP);
-              assertThat(route.getGroupId()).isEqualTo(groupId);
-            });
-  }
-
-  private LinkedApplicationGroupReadModel awaitGroupProjection(
-      UUID groupId, UUID leadApplicationId, UUID... memberApplicationIds) {
-    List<UUID> expectedMemberIds = List.of(memberApplicationIds);
-    return await()
-        .alias("linked application group projection for " + groupId)
-        .atMost(15, TimeUnit.SECONDS)
-        .pollInterval(100, TimeUnit.MILLISECONDS)
-        .until(
-            () -> groupReadRepository.findById(groupId).orElse(null),
-            group ->
-                group != null
-                    && leadApplicationId.equals(group.getLeadApplicationId())
-                    && group.getMemberIds().size() == expectedMemberIds.size()
-                    && new HashSet<>(group.getMemberIds()).equals(Set.copyOf(expectedMemberIds)));
-  }
-
-  private void assertGroupMembers(
-      LinkedApplicationGroupReadModel group, UUID leadApplicationId, UUID... memberApplicationIds) {
-    assertThat(group.getLeadApplicationId()).isEqualTo(leadApplicationId);
-    assertThat(group.getMemberIds()).containsExactlyInAnyOrder(memberApplicationIds);
-    assertThat(new HashSet<>(group.getMemberIds())).hasSameSizeAs(group.getMemberIds());
-  }
-
-  private Map<UUID, ApplicationSummary> awaitApplicationSummaryGroup(
-      String clientLastName, UUID leadApplicationId, UUID... memberApplicationIds) {
-    List<UUID> expectedApplicationIds =
-        Stream.concat(Stream.of(leadApplicationId), Stream.of(memberApplicationIds)).toList();
-    return await()
-        .alias("application summaries to show linked group for " + expectedApplicationIds)
-        .atMost(15, TimeUnit.SECONDS)
-        .pollInterval(100, TimeUnit.MILLISECONDS)
-        .until(
-            () -> applicationSummaries(clientLastName, expectedApplicationIds),
-            summaries -> summaryGroupReady(summaries, leadApplicationId, expectedApplicationIds));
-  }
-
-  private Map<UUID, ApplicationSummary> applicationSummaries(
-      String clientLastName, List<UUID> expectedApplicationIds) {
-    ResponseEntity<String> response =
-        restTemplate.exchange(
-            "http://localhost:"
-                + port
-                + "/api/v0/applications?clientLastName="
-                + clientLastName
-                + "&pageSize=100",
-            HttpMethod.GET,
-            new HttpEntity<>(headers()),
-            String.class);
-    if (response.getStatusCode() != HttpStatus.OK) {
-      return Map.of();
-    }
-    ApplicationSummaryResponse body =
-        objectMapper.readValue(response.getBody(), ApplicationSummaryResponse.class);
-    if (body.getApplications() == null) {
-      return Map.of();
-    }
-    return body.getApplications().stream()
-        .filter(summary -> expectedApplicationIds.contains(summary.getApplicationId()))
-        .collect(Collectors.toMap(ApplicationSummary::getApplicationId, Function.identity()));
-  }
-
-  private boolean summaryGroupReady(
-      Map<UUID, ApplicationSummary> summaries,
-      UUID leadApplicationId,
-      List<UUID> expectedApplicationIds) {
-    if (!summaries.keySet().containsAll(expectedApplicationIds)) {
-      return false;
-    }
-    return expectedApplicationIds.stream()
-        .allMatch(
-            applicationId -> {
-              ApplicationSummary summary = summaries.get(applicationId);
-              if (!Objects.equals(summary.getIsLead(), applicationId.equals(leadApplicationId))) {
-                return false;
-              }
-              List<LinkedApplicationSummaryResponse> linkedApplications =
-                  summary.getLinkedApplications() == null
-                      ? List.of()
-                      : summary.getLinkedApplications();
-              Set<UUID> expectedLinkedApplicationIds =
-                  expectedApplicationIds.stream()
-                      .filter(expectedApplicationId -> !expectedApplicationId.equals(applicationId))
-                      .collect(Collectors.toSet());
-              Set<UUID> actualLinkedApplicationIds =
-                  linkedApplications.stream()
-                      .map(LinkedApplicationSummaryResponse::getApplicationId)
-                      .collect(Collectors.toSet());
-              return linkedApplications.size() == expectedLinkedApplicationIds.size()
-                  && actualLinkedApplicationIds.equals(expectedLinkedApplicationIds)
-                  && linkedApplications.stream()
-                      .allMatch(
-                          linkedApplication ->
-                              Objects.equals(
-                                  linkedApplication.getIsLead(),
-                                  Objects.equals(
-                                      linkedApplication.getApplicationId(), leadApplicationId)));
-            });
-  }
-
-  private void assertApplicationSummaryGroup(
-      Map<UUID, ApplicationSummary> summaries,
-      UUID leadApplicationId,
-      UUID... memberApplicationIds) {
-    List<UUID> expectedApplicationIds =
-        Stream.concat(Stream.of(leadApplicationId), Stream.of(memberApplicationIds)).toList();
-    assertThat(summaries.keySet()).containsAll(expectedApplicationIds);
-    expectedApplicationIds.forEach(
-        applicationId -> {
-          ApplicationSummary summary = summaries.get(applicationId);
-          assertThat(summary.getIsLead()).isEqualTo(applicationId.equals(leadApplicationId));
-          List<UUID> expectedLinkedApplicationIds =
-              expectedApplicationIds.stream()
-                  .filter(expectedApplicationId -> !expectedApplicationId.equals(applicationId))
-                  .toList();
-          assertThat(summary.getLinkedApplications())
-              .extracting(LinkedApplicationSummaryResponse::getApplicationId)
-              .containsExactlyInAnyOrderElementsOf(expectedLinkedApplicationIds);
-          assertThat(summary.getLinkedApplications())
-              .allSatisfy(
-                  linkedApplication ->
-                      assertThat(linkedApplication.getIsLead())
-                          .isEqualTo(
-                              Objects.equals(
-                                  linkedApplication.getApplicationId(), leadApplicationId)));
-        });
-  }
-
-  private ApplicationReadModel awaitProjection(UUID applicationId) {
-    return await()
-        .alias("application projection to be populated for " + applicationId)
-        .atMost(15, TimeUnit.SECONDS)
-        .pollInterval(100, TimeUnit.MILLISECONDS)
-        .until(
-            () ->
-                queryGateway
-                    .query(new FindApplicationByIdQuery(applicationId), ApplicationReadModel.class)
-                    .join(),
-            Objects::nonNull);
-  }
-
-  private ApplicationReadModel awaitProjectionVersion(UUID applicationId, long version) {
-    return await()
-        .alias("application projection to reach version " + version + " for " + applicationId)
-        .atMost(15, TimeUnit.SECONDS)
-        .pollInterval(100, TimeUnit.MILLISECONDS)
-        .until(
-            () ->
-                queryGateway
-                    .query(new FindApplicationByIdQuery(applicationId), ApplicationReadModel.class)
-                    .join(),
-            projected -> projected != null && projected.getApplicationDataVersion() == version);
-  }
-
   private List<ApplicationHistoryReadModel> awaitHistory(UUID applicationId, int expectedCount) {
     return await()
         .alias(
@@ -2413,17 +1687,6 @@ class PostgresAxonIntegrationTest {
             });
   }
 
-  private void assertRejectedApplicationWasRolledBack(UUID applicationId) {
-    Integer eventCount =
-        jdbcTemplate.queryForObject(
-            "SELECT COUNT(*) FROM axon.domain_event_entry WHERE aggregate_identifier = ?",
-            Integer.class,
-            applicationId.toString());
-    assertThat(eventCount).isZero();
-    assertThat(applicationReadRepository.findById(applicationId)).isEmpty();
-    assertThat(applicationHistoryReadRepository.countByApplicationId(applicationId)).isZero();
-  }
-
   private static List<String> expectedMigrationVersions() throws IOException {
     Resource[] resources =
         new PathMatchingResourcePatternResolver().getResources("classpath:db/migration/V*__*.sql");
@@ -2438,103 +1701,5 @@ class PostgresAxonIntegrationTest {
   private static Optional<String> extractVersionNumber(String filename) {
     Matcher matcher = Pattern.compile("V(\\d+)__").matcher(filename);
     return matcher.find() ? Optional.of(matcher.group(1)) : Optional.empty();
-  }
-
-  private long countDomainEvents(String payloadType) {
-    return Objects.requireNonNull(
-            jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.domain_event_entry WHERE payload_type = ?",
-                Long.class,
-                payloadType))
-        .longValue();
-  }
-
-  private long countDomainEvents(UUID aggregateId, String payloadType) {
-    return Objects.requireNonNull(
-            jdbcTemplate.queryForObject(
-                """
-            SELECT COUNT(*)
-            FROM axon.domain_event_entry
-            WHERE aggregate_identifier = ?
-              AND payload_type = ?
-            """,
-                Long.class,
-                aggregateId.toString(),
-                payloadType))
-        .longValue();
-  }
-
-  private long countDomainEvents(UUID aggregateId) {
-    return Objects.requireNonNull(
-            jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.domain_event_entry WHERE aggregate_identifier = ?",
-                Long.class,
-                aggregateId.toString()))
-        .longValue();
-  }
-
-  private long countGroupEvents() {
-    return Objects.requireNonNull(
-            jdbcTemplate.queryForObject(
-                """
-            SELECT COUNT(*)
-            FROM axon.domain_event_entry
-            WHERE payload_type IN (?, ?)
-            """,
-                Long.class,
-                LinkedApplicationGroupCreatedEvent.class.getName(),
-                MemberAddedToGroupEvent.class.getName()))
-        .longValue();
-  }
-
-  private long countRoutes(UUID applicationId) {
-    return Objects.requireNonNull(
-            jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.application_group_route WHERE application_id = ?",
-                Long.class,
-                applicationId))
-        .longValue();
-  }
-
-  private ResponseEntity<Void> linkApplication(UUID sourceId, UUID targetId) {
-    ApplicationLinkRequest request =
-        new ApplicationLinkRequest(targetId, ApplicationLinkType.FAMILY);
-    return restTemplate.exchange(
-        "/api/v0/applications/" + sourceId + "/link",
-        HttpMethod.POST,
-        new HttpEntity<>(request, headers()),
-        Void.class);
-  }
-
-  private ResponseEntity<String> linkApplicationWithRawJson(UUID sourceId, String requestBody) {
-    HttpHeaders rawJsonHeaders = headers();
-    rawJsonHeaders.setContentType(MediaType.APPLICATION_JSON);
-    return restTemplate.exchange(
-        "/api/v0/applications/" + sourceId + "/link",
-        HttpMethod.POST,
-        new HttpEntity<>(requestBody, rawJsonHeaders),
-        String.class);
-  }
-
-  private CompletableFuture<ResponseEntity<Void>> concurrentLink(
-      ExecutorService executor, CyclicBarrier barrier, UUID sourceId, UUID targetId) {
-    return CompletableFuture.supplyAsync(
-        () -> {
-          try {
-            barrier.await(10, TimeUnit.SECONDS);
-            return linkApplication(sourceId, targetId);
-          } catch (Exception exception) {
-            throw new RuntimeException(exception);
-          }
-        },
-        executor);
-  }
-
-  private Throwable rootCause(Throwable throwable) {
-    Throwable cause = throwable;
-    while (cause.getCause() != null) {
-      cause = cause.getCause();
-    }
-    return cause;
   }
 }
