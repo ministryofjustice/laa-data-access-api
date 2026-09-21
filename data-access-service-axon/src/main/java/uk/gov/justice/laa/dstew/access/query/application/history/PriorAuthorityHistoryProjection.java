@@ -16,8 +16,8 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
-import uk.gov.justice.laa.dstew.access.config.interceptor.ServiceNameMetadataDispatchInterceptor;
 import uk.gov.justice.laa.dstew.access.config.interceptor.RequestMetadataDispatchInterceptor;
+import uk.gov.justice.laa.dstew.access.config.interceptor.ServiceNameMetadataDispatchInterceptor;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 
 /** Projection that records Prior Authority activity to parent Application history. */
@@ -149,8 +149,7 @@ public class PriorAuthorityHistoryProjection {
             .eventType(eventType)
             .itemVersion(itemVersion)
             .serviceName(serviceName == null ? null : serviceName.toString())
-            .caseworkerId(
-                authenticatedUserId == null ? null : UUID.fromString(authenticatedUserId))
+            .caseworkerId(authenticatedUserId == null ? null : UUID.fromString(authenticatedUserId))
             .occurredAt(occurredAt)
             .build());
   }

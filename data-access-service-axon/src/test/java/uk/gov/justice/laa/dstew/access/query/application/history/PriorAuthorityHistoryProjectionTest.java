@@ -101,7 +101,6 @@ class PriorAuthorityHistoryProjectionTest {
     Instant occurredAt = Instant.parse("2026-08-05T11:00:00Z");
     WorkItemAssigned event =
         new WorkItemAssigned(
-            priorAuthorityId, WorkItemType.PRIOR_AUTHORITY, 2L, 1L, caseworkerId, occurredAt);
             priorAuthorityId,
             WorkItemType.PRIOR_AUTHORITY,
             2L,
@@ -232,7 +231,8 @@ class PriorAuthorityHistoryProjectionTest {
     assertThat(saved.getPriorAuthorityType()).isEqualTo("EXPERT");
     assertThat(saved.getEventType()).isEqualTo("UNASSIGN_APPLICATION_TO_CASEWORKER");
     assertThat(saved.getOccurredAt()).isEqualTo(occurredAt);
-    assertThat(saved.getCaseworkerId()).isEqualTo(ACTOR_CASEWORKER_ID);    assertThat(saved.getItemVersion()).isEqualTo(2L);
+    assertThat(saved.getCaseworkerId()).isEqualTo(ACTOR_CASEWORKER_ID);
+    assertThat(saved.getItemVersion()).isEqualTo(2L);
   }
 
   @Test
