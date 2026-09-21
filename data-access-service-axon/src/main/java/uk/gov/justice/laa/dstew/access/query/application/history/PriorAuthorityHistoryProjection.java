@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.query.application.history;
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.axonframework.messaging.core.annotation.Namespace;
 import org.axonframework.messaging.eventhandling.EventMessage;
 import org.axonframework.messaging.eventhandling.annotation.EventHandler;
@@ -16,49 +17,30 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
-import uk.gov.justice.laa.dstew.access.config.interceptor.ServiceNameMetadataDispatchInterceptor;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
+import uk.gov.justice.laa.dstew.access.config.interceptor.RequestMetadataDispatchInterceptor;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 
 /** Projection that records Prior Authority activity to parent Application history. */
 @Component
+@RequiredArgsConstructor
 @Namespace("prior-authority-history-projection")
 public class PriorAuthorityHistoryProjection {
 
-  private final PriorAuthorityHistoryReadRepository priorAuthorityHistoryReadRepository;
-  private final PriorAuthorityDataRepository priorAuthorityDataRepository;
   private final ObjectMapper objectMapper;
-
-  /** Creates the projection with its persistence and data lookup dependencies. */
-  public PriorAuthorityHistoryProjection(
-      PriorAuthorityHistoryReadRepository priorAuthorityHistoryReadRepository,
-      PriorAuthorityDataRepository priorAuthorityDataRepository,
-      ObjectMapper objectMapper) {
-    this.priorAuthorityHistoryReadRepository = priorAuthorityHistoryReadRepository;
-    this.priorAuthorityDataRepository = priorAuthorityDataRepository;
-    this.objectMapper = objectMapper;
-  }
+  private final PriorAuthorityDataRepository priorAuthorityDataRepository;
+  private final PriorAuthorityHistoryReadRepository priorAuthorityHistoryReadRepository;
 
   /** Records a submitted Prior Authority in parent application's history. */
   @EventHandler
   public void on(PriorAuthoritySubmittedEvent event, EventMessage message) {
-    Object serviceName =
-        message.metadata().get(ServiceNameMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY);
-    priorAuthorityHistoryReadRepository.save(
-        PriorAuthorityHistoryReadModel.builder()
-            .eventId(message.identifier())
-            .applicationId(event.applicationId())
-            .priorAuthorityId(event.priorAuthorityId())
-            .priorAuthorityType(event.priorAuthorityType())
-            .eventType("PRIOR_AUTHORITY_SUBMITTED")
-            .eventData(
-                serialise(
-                    Map.of(
-                        "status", PriorAuthorityStatus.SUBMITTED.name(),
-                        "dataVersion", event.dataVersion())))
-            .serviceName(serviceName == null ? null : serviceName.toString())
-            .occurredAt(event.occurredAt())
-            .build());
+    append(
+        message,
+        event.applicationId(),
+        event.priorAuthorityId(),
+        event.priorAuthorityType(),
+        "PRIOR_AUTHORITY_SUBMITTED",
+        serialise(Map.of("dataVersion", event.dataVersion())),
+        event.occurredAt());
   }
 
   /** Records Prior Authority assignment in parent application's history. */
@@ -80,7 +62,6 @@ public class PriorAuthorityHistoryProjection {
         ref.priorAuthorityType(),
         "ASSIGN_APPLICATION_TO_CASEWORKER",
         serialise(event),
-        event.caseworkerId(),
         event.occurredAt());
   }
 
@@ -128,28 +109,12 @@ public class PriorAuthorityHistoryProjection {
       String eventType,
       String eventData,
       Instant occurredAt) {
-    append(
-        message,
-        applicationId,
-        priorAuthorityId,
-        priorAuthorityType,
-        eventType,
-        eventData,
-        null,
-        occurredAt);
-  }
 
-  private void append(
-      EventMessage message,
-      UUID applicationId,
-      UUID priorAuthorityId,
-      String priorAuthorityType,
-      String eventType,
-      String eventData,
-      UUID caseworkerId,
-      Instant occurredAt) {
     Object serviceName =
-        message.metadata().get(ServiceNameMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY);
+        message.metadata().get(RequestMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY);
+    String authenticatedUserId =
+        message.metadata().get(RequestMetadataDispatchInterceptor.AUTHENTICATED_USER_ID_KEY);
+
     priorAuthorityHistoryReadRepository.save(
         PriorAuthorityHistoryReadModel.builder()
             .eventId(message.identifier())
@@ -159,7 +124,8 @@ public class PriorAuthorityHistoryProjection {
             .eventType(eventType)
             .eventData(eventData)
             .serviceName(serviceName == null ? null : serviceName.toString())
-            .caseworkerId(caseworkerId)
+            .caseworkerId(
+                authenticatedUserId == null ? null : UUID.fromString(authenticatedUserId))
             .occurredAt(occurredAt)
             .build());
   }
