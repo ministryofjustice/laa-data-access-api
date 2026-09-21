@@ -2034,15 +2034,15 @@ class PostgresAxonIntegrationTest {
         """
         INSERT INTO axon.prior_authority_history
             (event_id, application_id, prior_authority_id, prior_authority_type,
-             event_type, event_data, service_name, occurred_at)
-        VALUES (?, ?, ?, ?, ?, ?::jsonb, ?, ?)
+             event_type, item_version, service_name, occurred_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """,
         "conflict-evt-1",
         applicationId,
         priorAuthorityId,
         "EXPERT",
         "PRIOR_AUTHORITY_SUBMITTED",
-        "{\"status\":\"PENDING\",\"dataVersion\":0}",
+        2L,
         "CIVIL_APPLY",
         OffsetDateTime.parse("2026-08-01T09:00:00Z"));
 
@@ -2050,15 +2050,15 @@ class PostgresAxonIntegrationTest {
         """
         INSERT INTO axon.prior_authority_history
             (event_id, application_id, prior_authority_id, prior_authority_type,
-             event_type, event_data, service_name, occurred_at)
-        VALUES (?, ?, ?, ?, ?, ?::jsonb, ?, ?)
+             event_type, item_version, service_name, occurred_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """,
         "conflict-evt-2",
         applicationId,
         priorAuthorityId,
         "COUNSEL",
         "PRIOR_AUTHORITY_SUBMITTED",
-        "{\"status\":\"PENDING\",\"dataVersion\":0}",
+        2L,
         "CIVIL_APPLY",
         OffsetDateTime.parse("2026-08-01T10:00:00Z"));
 
@@ -2100,15 +2100,15 @@ class PostgresAxonIntegrationTest {
         """
         INSERT INTO axon.prior_authority_history
             (event_id, application_id, prior_authority_id, prior_authority_type,
-             event_type, event_data, service_name, occurred_at)
-        VALUES (?, ?, ?, ?, ?, ?::jsonb, ?, ?)
+             event_type, item_version, service_name, occurred_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """,
         "pa-submit-evt-1",
         applicationId,
         priorAuthorityId,
         "EXPERT",
         "PRIOR_AUTHORITY_SUBMITTED",
-        "{\"status\":\"SUBMITTED\",\"dataVersion\":0}",
+        2L,
         "CIVIL_APPLY",
         OffsetDateTime.parse("2026-09-18T10:00:00Z"));
 
@@ -2116,19 +2116,15 @@ class PostgresAxonIntegrationTest {
         """
         INSERT INTO axon.prior_authority_history
             (event_id, application_id, prior_authority_id, prior_authority_type,
-             event_type, event_data, service_name, occurred_at)
-        VALUES (?, ?, ?, ?, ?, ?::jsonb, ?, ?)
+             event_type, item_version, service_name, occurred_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """,
         "pa-upload-evt-1",
         applicationId,
         priorAuthorityId,
         "EXPERT",
         "PRIOR_AUTHORITY_DOCUMENT_UPLOADED",
-        """
-        {"priorAuthorityId":"%s","documentId":"%s","uploadedAt":"2026-09-18T11:00:00Z",\
-        "size":1024,"contentType":"application/pdf","checksum":"abc123","parentApplicationId":"%s"}
-        """
-            .formatted(priorAuthorityId, UUID.randomUUID(), applicationId),
+        2L,
         "CIVIL_APPLY",
         OffsetDateTime.parse("2026-09-18T11:00:00Z"));
 

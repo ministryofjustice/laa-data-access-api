@@ -1,7 +1,6 @@
 package uk.gov.justice.laa.dstew.access.query.application.history;
 
 import java.time.Instant;
-import java.util.Map;
 import java.util.UUID;
 import org.axonframework.messaging.core.annotation.Namespace;
 import org.axonframework.messaging.eventhandling.EventMessage;
@@ -17,7 +16,6 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.config.interceptor.ServiceNameMetadataDispatchInterceptor;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 
 /** Projection that records Prior Authority activity to parent Application history. */
@@ -51,11 +49,7 @@ public class PriorAuthorityHistoryProjection {
             .priorAuthorityId(event.priorAuthorityId())
             .priorAuthorityType(event.priorAuthorityType())
             .eventType("PRIOR_AUTHORITY_SUBMITTED")
-            .eventData(
-                serialise(
-                    Map.of(
-                        "status", PriorAuthorityStatus.SUBMITTED.name(),
-                        "dataVersion", event.dataVersion())))
+            .itemVersion(event.dataVersion())
             .serviceName(serviceName == null ? null : serviceName.toString())
             .occurredAt(event.occurredAt())
             .build());
@@ -79,7 +73,7 @@ public class PriorAuthorityHistoryProjection {
         event.workItemId(),
         ref.priorAuthorityType(),
         "ASSIGN_APPLICATION_TO_CASEWORKER",
-        serialise(event),
+        event.itemVersion(),
         event.caseworkerId(),
         event.occurredAt());
   }
@@ -102,7 +96,7 @@ public class PriorAuthorityHistoryProjection {
         event.workItemId(),
         ref.priorAuthorityType(),
         "UNASSIGN_APPLICATION_TO_CASEWORKER",
-        serialise(event),
+        event.itemVersion(),
         event.occurredAt());
   }
 
@@ -126,7 +120,7 @@ public class PriorAuthorityHistoryProjection {
       UUID priorAuthorityId,
       String priorAuthorityType,
       String eventType,
-      String eventData,
+      Long itemVersion,
       Instant occurredAt) {
     append(
         message,
@@ -134,7 +128,7 @@ public class PriorAuthorityHistoryProjection {
         priorAuthorityId,
         priorAuthorityType,
         eventType,
-        eventData,
+        itemVersion,
         null,
         occurredAt);
   }
@@ -145,7 +139,7 @@ public class PriorAuthorityHistoryProjection {
       UUID priorAuthorityId,
       String priorAuthorityType,
       String eventType,
-      String eventData,
+      Long itemVersion,
       UUID caseworkerId,
       Instant occurredAt) {
     Object serviceName =
@@ -157,7 +151,7 @@ public class PriorAuthorityHistoryProjection {
             .priorAuthorityId(priorAuthorityId)
             .priorAuthorityType(priorAuthorityType)
             .eventType(eventType)
-            .eventData(eventData)
+            .itemVersion(itemVersion)
             .serviceName(serviceName == null ? null : serviceName.toString())
             .caseworkerId(caseworkerId)
             .occurredAt(occurredAt)

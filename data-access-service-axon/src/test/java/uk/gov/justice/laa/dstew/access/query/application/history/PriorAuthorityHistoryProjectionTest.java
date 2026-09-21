@@ -55,7 +55,7 @@ class PriorAuthorityHistoryProjectionTest {
     Instant occurredAt = Instant.parse("2026-08-05T10:00:00Z");
     var event =
         new PriorAuthoritySubmittedEvent(
-            priorAuthorityId, applicationId, "EXPERT", 1, 0L, 0L, occurredAt);
+            priorAuthorityId, applicationId, "EXPERT", 1, 2L, 0L, occurredAt);
     var msg = message(event, "pa-submit-event-id");
 
     projection.on(event, msg);
@@ -71,8 +71,7 @@ class PriorAuthorityHistoryProjectionTest {
     assertThat(saved.getServiceName()).isEqualTo("CIVIL_APPLY");
     assertThat(saved.getOccurredAt()).isEqualTo(occurredAt);
     assertThat(saved.getCaseworkerId()).isNull();
-    assertThat(saved.getEventData()).contains("\"status\":\"SUBMITTED\"");
-    assertThat(saved.getEventData()).contains("\"dataVersion\":0");
+    assertThat(saved.getItemVersion()).isEqualTo(2L);
   }
 
   @Test
@@ -100,7 +99,7 @@ class PriorAuthorityHistoryProjectionTest {
     Instant occurredAt = Instant.parse("2026-08-05T11:00:00Z");
     WorkItemAssigned event =
         new WorkItemAssigned(
-            priorAuthorityId, WorkItemType.PRIOR_AUTHORITY, 1L, 1L, caseworkerId, occurredAt);
+            priorAuthorityId, WorkItemType.PRIOR_AUTHORITY, 2L, 1L, caseworkerId, occurredAt);
     when(paDataRepository.findById(new PriorAuthorityDataId(priorAuthorityId, 0L)))
         .thenReturn(
             Optional.of(paData(priorAuthorityId, applicationId, PriorAuthorityType.EXPERT)));
@@ -118,9 +117,7 @@ class PriorAuthorityHistoryProjectionTest {
     assertThat(saved.getServiceName()).isEqualTo("CIVIL_APPLY");
     assertThat(saved.getOccurredAt()).isEqualTo(occurredAt);
     assertThat(saved.getCaseworkerId()).isEqualTo(caseworkerId);
-    var payload = objectMapper.readTree(saved.getEventData());
-    assertThat(payload.get("caseworkerId").asString()).isEqualTo(caseworkerId.toString());
-    assertThat(payload.get("workItemType").asString()).isEqualTo("PRIOR_AUTHORITY");
+    assertThat(saved.getItemVersion()).isEqualTo(2L);
   }
 
   @Test
@@ -207,7 +204,7 @@ class PriorAuthorityHistoryProjectionTest {
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-05T12:00:00Z");
     WorkItemUnassigned event =
-        new WorkItemUnassigned(priorAuthorityId, WorkItemType.PRIOR_AUTHORITY, 1L, 2L, occurredAt);
+        new WorkItemUnassigned(priorAuthorityId, WorkItemType.PRIOR_AUTHORITY, 2L, 2L, occurredAt);
     when(paDataRepository.findById(new PriorAuthorityDataId(priorAuthorityId, 0L)))
         .thenReturn(
             Optional.of(paData(priorAuthorityId, applicationId, PriorAuthorityType.EXPERT)));
@@ -224,9 +221,7 @@ class PriorAuthorityHistoryProjectionTest {
     assertThat(saved.getEventType()).isEqualTo("UNASSIGN_APPLICATION_TO_CASEWORKER");
     assertThat(saved.getOccurredAt()).isEqualTo(occurredAt);
     assertThat(saved.getCaseworkerId()).isNull();
-    var payload = objectMapper.readTree(saved.getEventData());
-    assertThat(payload.get("workItemType").asString()).isEqualTo("PRIOR_AUTHORITY");
-    assertThat(payload.get("caseworkerId")).isNull();
+    assertThat(saved.getItemVersion()).isEqualTo(2L);
   }
 
   @Test

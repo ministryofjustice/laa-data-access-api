@@ -340,7 +340,7 @@ class ApplicationHistoryProjectionTest {
         .priorAuthorityId(priorAuthorityId)
         .priorAuthorityType("EXPERT")
         .eventType("PRIOR_AUTHORITY_SUBMITTED")
-        .eventData("{\"status\":\"PENDING\",\"dataVersion\":0}")
+        .itemVersion(2L)
         .serviceName("CIVIL_APPLY")
         .occurredAt(Instant.parse("2026-08-05T10:00:00Z"))
         .build();
