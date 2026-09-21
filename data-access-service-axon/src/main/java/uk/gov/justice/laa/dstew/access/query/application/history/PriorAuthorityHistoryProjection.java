@@ -22,15 +22,15 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType
 
 /** Projection that records Prior Authority activity to parent Application history. */
 @Component
-@Namespace("prior-authority-application-history-projection")
-public class PriorAuthorityApplicationHistoryProjection {
+@Namespace("prior-authority-history-projection")
+public class PriorAuthorityHistoryProjection {
 
   private final PriorAuthorityHistoryReadRepository priorAuthorityHistoryReadRepository;
   private final PriorAuthorityDataRepository priorAuthorityDataRepository;
   private final ObjectMapper objectMapper;
 
   /** Creates the projection with its persistence and data lookup dependencies. */
-  public PriorAuthorityApplicationHistoryProjection(
+  public PriorAuthorityHistoryProjection(
       PriorAuthorityHistoryReadRepository priorAuthorityHistoryReadRepository,
       PriorAuthorityDataRepository priorAuthorityDataRepository,
       ObjectMapper objectMapper) {

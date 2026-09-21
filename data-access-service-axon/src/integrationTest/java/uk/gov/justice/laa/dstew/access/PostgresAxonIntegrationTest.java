@@ -2090,6 +2090,73 @@ class PostgresAxonIntegrationTest {
     }
   }
 
+  @Test
+  void
+      givenSubmittedPriorAuthorityWithUploadedDocument_whenGetHistory_thenIncludesDocumentUploadedEvent() {
+    UUID applicationId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
+
+    jdbcTemplate.update(
+        """
+        INSERT INTO axon.prior_authority_history
+            (event_id, application_id, prior_authority_id, prior_authority_type,
+             event_type, event_data, service_name, occurred_at)
+        VALUES (?, ?, ?, ?, ?, ?::jsonb, ?, ?)
+        """,
+        "pa-submit-evt-1",
+        applicationId,
+        priorAuthorityId,
+        "EXPERT",
+        "PRIOR_AUTHORITY_SUBMITTED",
+        "{\"status\":\"SUBMITTED\",\"dataVersion\":0}",
+        "CIVIL_APPLY",
+        OffsetDateTime.parse("2026-09-18T10:00:00Z"));
+
+    jdbcTemplate.update(
+        """
+        INSERT INTO axon.prior_authority_history
+            (event_id, application_id, prior_authority_id, prior_authority_type,
+             event_type, event_data, service_name, occurred_at)
+        VALUES (?, ?, ?, ?, ?, ?::jsonb, ?, ?)
+        """,
+        "pa-upload-evt-1",
+        applicationId,
+        priorAuthorityId,
+        "EXPERT",
+        "PRIOR_AUTHORITY_DOCUMENT_UPLOADED",
+        """
+        {"priorAuthorityId":"%s","documentId":"%s","uploadedAt":"2026-09-18T11:00:00Z",\
+        "size":1024,"contentType":"application/pdf","checksum":"abc123","parentApplicationId":"%s"}
+        """
+            .formatted(priorAuthorityId, UUID.randomUUID(), applicationId),
+        "CIVIL_APPLY",
+        OffsetDateTime.parse("2026-09-18T11:00:00Z"));
+
+    ResponseEntity<ApplicationHistoryResponse> historyResponse =
+        restTemplate.exchange(
+            "http://localhost:"
+                + port
+                + "/api/v0/applications/"
+                + applicationId
+                + "/history-search",
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            ApplicationHistoryResponse.class);
+    assertThat(historyResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+    assertThat(historyResponse.getBody().getPriorAuthorities()).hasSize(1);
+    PriorAuthorityHistoryGroup group = historyResponse.getBody().getPriorAuthorities().get(0);
+    assertThat(group.getPriorAuthorityId()).isEqualTo(priorAuthorityId);
+    assertThat(group.getPriorAuthorityType()).isEqualTo(PriorAuthorityType.EXPERT);
+    assertThat(group.getEvents())
+        .extracting(event -> event.getEventType())
+        .contains("PRIOR_AUTHORITY_SUBMITTED", "PRIOR_AUTHORITY_DOCUMENT_UPLOADED");
+    assertThat(group.getEvents())
+        .filteredOn(event -> event.getEventType().equals("PRIOR_AUTHORITY_DOCUMENT_UPLOADED"))
+        .singleElement()
+        .satisfies(event -> assertThat(event.getCaseworkerId()).isNull());
+  }
+
   private CreatePriorAuthorityDraftRequest fixedRateExpertDraftRequest(UUID applicationId) {
     return CreatePriorAuthorityDraftRequest.builder()
         .applicationId(applicationId)

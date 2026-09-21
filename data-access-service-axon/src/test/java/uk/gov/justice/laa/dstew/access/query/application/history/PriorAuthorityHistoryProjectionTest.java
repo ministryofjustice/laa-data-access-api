@@ -33,7 +33,7 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityCont
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 
 @ExtendWith(MockitoExtension.class)
-class PriorAuthorityApplicationHistoryProjectionTest {
+class PriorAuthorityHistoryProjectionTest {
 
   @Mock private PriorAuthorityHistoryReadRepository paRepository;
 
@@ -41,13 +41,11 @@ class PriorAuthorityApplicationHistoryProjectionTest {
 
   private final ObjectMapper objectMapper = JsonMapper.builder().build();
 
-  private PriorAuthorityApplicationHistoryProjection projection;
+  private PriorAuthorityHistoryProjection projection;
 
   @BeforeEach
   void setUp() {
-    projection =
-        new PriorAuthorityApplicationHistoryProjection(
-            paRepository, paDataRepository, objectMapper);
+    projection = new PriorAuthorityHistoryProjection(paRepository, paDataRepository, objectMapper);
   }
 
   @Test
