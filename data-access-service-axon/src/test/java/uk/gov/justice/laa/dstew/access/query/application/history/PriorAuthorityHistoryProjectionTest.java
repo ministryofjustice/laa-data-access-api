@@ -16,6 +16,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import tools.jackson.databind.ObjectMapper;
@@ -28,24 +29,25 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
-import uk.gov.justice.laa.dstew.access.config.interceptor.ServiceNameMetadataDispatchInterceptor;
+import uk.gov.justice.laa.dstew.access.config.interceptor.RequestMetadataDispatchInterceptor;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 
 @ExtendWith(MockitoExtension.class)
 class PriorAuthorityHistoryProjectionTest {
 
+  @Mock private PriorAuthorityDataRepository paDataRepository;
   @Mock private PriorAuthorityHistoryReadRepository paRepository;
 
-  @Mock private PriorAuthorityDataRepository paDataRepository;
-
+  private PriorAuthorityHistoryProjection projection;
   private final ObjectMapper objectMapper = JsonMapper.builder().build();
 
-  private PriorAuthorityHistoryProjection projection;
+  private static final UUID ACTOR_CASEWORKER_ID =
+      UUID.nameUUIDFromBytes("entra-object-id".getBytes());
 
   @BeforeEach
   void setUp() {
-    projection = new PriorAuthorityHistoryProjection(paRepository, paDataRepository, objectMapper);
+    projection = new PriorAuthorityHistoryProjection(objectMapper, paDataRepository, paRepository);
   }
 
   @Test
@@ -95,11 +97,18 @@ class PriorAuthorityHistoryProjectionTest {
       throws Exception {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
-    UUID caseworkerId = UUID.randomUUID();
+    UUID assigneeCaseworkerId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-05T11:00:00Z");
     WorkItemAssigned event =
         new WorkItemAssigned(
             priorAuthorityId, WorkItemType.PRIOR_AUTHORITY, 2L, 1L, caseworkerId, occurredAt);
+            priorAuthorityId,
+            WorkItemType.PRIOR_AUTHORITY,
+            2L,
+            1L,
+            assigneeCaseworkerId,
+            occurredAt);
+
     when(paDataRepository.findById(new PriorAuthorityDataId(priorAuthorityId, 0L)))
         .thenReturn(
             Optional.of(paData(priorAuthorityId, applicationId, PriorAuthorityType.EXPERT)));
@@ -116,13 +125,13 @@ class PriorAuthorityHistoryProjectionTest {
     assertThat(saved.getEventType()).isEqualTo("ASSIGN_APPLICATION_TO_CASEWORKER");
     assertThat(saved.getServiceName()).isEqualTo("CIVIL_APPLY");
     assertThat(saved.getOccurredAt()).isEqualTo(occurredAt);
-    assertThat(saved.getCaseworkerId()).isEqualTo(caseworkerId);
+    assertThat(saved.getCaseworkerId()).isEqualTo(ACTOR_CASEWORKER_ID);
+    assertThat(saved.getCaseworkerId()).isEqualTo(assigneeCaseworkerId.toString());
     assertThat(saved.getItemVersion()).isEqualTo(2L);
   }
 
   @Test
-  void
-      givenPriorAuthorityWorkItemAssignedWithNoPriorAuthorityType_whenHandled_thenStoresNullType() {
+  void givenPriorAuthorityWorkItemAssignedWithNoType_whenHandled_thenStoresNullType() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     WorkItemAssigned event =
@@ -170,36 +179,39 @@ class PriorAuthorityHistoryProjectionTest {
   @Test
   void givenApplicationWorkItemAssigned_whenHandled_thenIgnored() {
     UUID applicationId = UUID.randomUUID();
-    UUID caseworkerId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-05T11:00:00Z");
     WorkItemAssigned event =
         new WorkItemAssigned(
-            applicationId, WorkItemType.APPLICATION, 1L, 1L, caseworkerId, occurredAt);
+            applicationId, WorkItemType.APPLICATION, 1L, 1L, ACTOR_CASEWORKER_ID, occurredAt);
 
     projection.on(event, message(event, "app-assign-event-id"));
 
-    verify(paRepository, never()).save(org.mockito.ArgumentMatchers.any());
+    verify(paRepository, never()).save(ArgumentMatchers.any());
+    verify(paDataRepository, never()).findById(ArgumentMatchers.any());
   }
 
   @Test
   void givenPriorAuthorityWorkItemAssignedButNoDataFound_whenHandled_thenNothingSaved() {
     UUID priorAuthorityId = UUID.randomUUID();
-    UUID caseworkerId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-05T11:00:00Z");
     WorkItemAssigned event =
         new WorkItemAssigned(
-            priorAuthorityId, WorkItemType.PRIOR_AUTHORITY, 1L, 1L, caseworkerId, occurredAt);
+            priorAuthorityId,
+            WorkItemType.PRIOR_AUTHORITY,
+            1L,
+            1L,
+            ACTOR_CASEWORKER_ID,
+            occurredAt);
     when(paDataRepository.findById(new PriorAuthorityDataId(priorAuthorityId, 0L)))
         .thenReturn(Optional.empty());
 
     projection.on(event, message(event, "pa-assign-event-id"));
 
-    verify(paRepository, never()).save(org.mockito.ArgumentMatchers.any());
+    verify(paRepository, never()).save(ArgumentMatchers.any());
   }
 
   @Test
-  void givenPriorAuthorityWorkItemUnassigned_whenHandled_thenStoresInPaHistoryTable()
-      throws Exception {
+  void givenPriorAuthorityWorkItemUnassigned_whenHandled_thenStoresInPaHistoryTable() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-05T12:00:00Z");
@@ -220,8 +232,7 @@ class PriorAuthorityHistoryProjectionTest {
     assertThat(saved.getPriorAuthorityType()).isEqualTo("EXPERT");
     assertThat(saved.getEventType()).isEqualTo("UNASSIGN_APPLICATION_TO_CASEWORKER");
     assertThat(saved.getOccurredAt()).isEqualTo(occurredAt);
-    assertThat(saved.getCaseworkerId()).isNull();
-    assertThat(saved.getItemVersion()).isEqualTo(2L);
+    assertThat(saved.getCaseworkerId()).isEqualTo(ACTOR_CASEWORKER_ID);    assertThat(saved.getItemVersion()).isEqualTo(2L);
   }
 
   @Test
@@ -233,7 +244,8 @@ class PriorAuthorityHistoryProjectionTest {
 
     projection.on(event, message(event, "app-unassign-event-id"));
 
-    verify(paRepository, never()).save(org.mockito.ArgumentMatchers.any());
+    verify(paRepository, never()).save(ArgumentMatchers.any());
+    verify(paDataRepository, never()).findById(ArgumentMatchers.any());
   }
 
   @Test
@@ -247,7 +259,7 @@ class PriorAuthorityHistoryProjectionTest {
 
     projection.on(event, message(event, "pa-unassign-event-id"));
 
-    verify(paRepository, never()).save(org.mockito.ArgumentMatchers.any());
+    verify(paRepository, never()).save(ArgumentMatchers.any());
   }
 
   @Test
@@ -276,7 +288,11 @@ class PriorAuthorityHistoryProjectionTest {
         identifier,
         new MessageType(payload.getClass()),
         payload,
-        Map.of(ServiceNameMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY, "CIVIL_APPLY"),
+        Map.of(
+            RequestMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY,
+            "CIVIL_APPLY",
+            RequestMetadataDispatchInterceptor.AUTHENTICATED_USER_ID_KEY,
+            ACTOR_CASEWORKER_ID.toString()),
         Instant.parse("2026-07-15T08:00:00Z"));
   }
 
@@ -285,7 +301,18 @@ class PriorAuthorityHistoryProjectionTest {
         identifier,
         new MessageType(payload.getClass()),
         payload,
-        Map.of(),
+        Map.of(
+            RequestMetadataDispatchInterceptor.AUTHENTICATED_USER_ID_KEY,
+            ACTOR_CASEWORKER_ID.toString()),
+        Instant.parse("2026-07-15T08:00:00Z"));
+  }
+
+  private EventMessage messageWithoutActorMetadata(Object payload, String identifier) {
+    return new GenericEventMessage(
+        identifier,
+        new MessageType(payload.getClass()),
+        payload,
+        Map.of(RequestMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY, "CIVIL_APPLY"),
         Instant.parse("2026-07-15T08:00:00Z"));
   }
 }
