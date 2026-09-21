@@ -6,15 +6,27 @@ import uk.gov.justice.laa.dstew.access.query.PaginationHelper;
 
 /** Server-paged filters for the replayable active-work projection. */
 public record FindWorkListItemsQuery(
-    UUID assignedTo, WorkItemType itemType, Boolean unassigned, Integer page, Integer pageSize) {
+    Boolean assignedToMe,
+    WorkItemType itemType,
+    Boolean unassigned,
+    Integer page,
+    Integer pageSize,
+    UUID authenticatedUserId) {
 
-  /** Defaults to unassigned items when no assignee is requested and normalises pagination. */
+  /** Defaults to open applications and normalises pagination. */
   public FindWorkListItemsQuery {
-    if (assignedTo != null && Boolean.TRUE.equals(unassigned)) {
-      throw new IllegalArgumentException("assignedTo and unassigned=true cannot be used together");
+    if (assignedToMe == null) {
+      assignedToMe = false;
     }
-    if (assignedTo == null && unassigned == null) {
+    if (unassigned == null) {
       unassigned = true;
+    }
+    if (!assignedToMe && !unassigned) {
+      throw new IllegalArgumentException("assignedToMe and unassigned cannot both be false");
+    }
+    if (assignedToMe && authenticatedUserId == null) {
+      throw new IllegalArgumentException(
+          "authenticatedUserId is required when assignedToMe is true");
     }
     page = PaginationHelper.validatePage(page);
     pageSize = PaginationHelper.validatePageSize(pageSize);

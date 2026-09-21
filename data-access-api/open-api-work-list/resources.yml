@@ -8,14 +8,14 @@ paths:
       parameters:
         - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
         - in: query
-          name: assignedTo
-          description: Return only items assigned to this caseworker UUID
+          name: assignedToMe
+          description: Return items assigned to the authenticated caseworker's Entra OID. Defaults to false.
           schema:
-            type: string
-            format: uuid
+            type: boolean
+            default: false
         - in: query
           name: unassigned
-          description: Return only unassigned items. Defaults to true when assignedTo is omitted.
+          description: Include unassigned items. Defaults to true. At least one of unassigned or assignedToMe must be true.
           schema:
             type: boolean
         - in: query
@@ -40,12 +40,13 @@ paths:
             application/json:
               schema:
                 $ref: "./components.yml#/components/schemas/WorkListResponse"
+        "400": { description: At least one of assignedToMe or unassigned must be true }
 
   /api/v0/work-list/{itemId}/assign:
     post:
       tags:
         - work-list-command
-      summary: Assign an open work-list item
+      summary: Assign an open work-list item to the authenticated caseworker
       operationId: assignWorkListItem
       parameters:
         - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
@@ -58,6 +59,7 @@ paths:
             format: uuid
       requestBody:
         required: true
+        description: Supplies optimistic-concurrency and optional audit detail; the assignee is derived from the authenticated Entra OID.
         content:
           application/json:
             schema:

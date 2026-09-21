@@ -78,7 +78,6 @@ import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.AutoGranted;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantedOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.BillingType;
-import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.CreateNoteRequest;
@@ -216,7 +215,6 @@ class PostgresAxonIntegrationTest {
             "application_group_route",
             "application_history",
             "application_list_index",
-            "caseworkers",
             "domain_event_entry",
             "flyway_schema_history",
             "linked_application_group_current_state",
@@ -493,7 +491,6 @@ class PostgresAxonIntegrationTest {
     MakeDecisionRequest request =
         MakeDecisionRequest.builder()
             .applicationVersion(1L)
-            .caseworkerId(caseworkerId)
             .overallDecision(DecisionStatus.REFUSED)
             .eventHistory(
                 EventHistoryRequest.builder().eventDescription("Decision recorded").build())
@@ -679,7 +676,6 @@ class PostgresAxonIntegrationTest {
     MakeDecisionRequest request =
         MakeDecisionRequest.builder()
             .applicationVersion(1L)
-            .caseworkerId(caseworkerId)
             .overallDecision(DecisionStatus.GRANTED)
             .certificate(certificate)
             .eventHistory(
@@ -749,147 +745,6 @@ class PostgresAxonIntegrationTest {
     assertThat(missingApplicationResponse.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     assertThat(missingApplicationResponse.getBody())
         .contains("No application found with ID: " + missingApplicationId);
-  }
-
-  void givenKnownCaseworkerAndApplication_whenAssigned_thenUpdatesOnlyRequestedApplication() {
-    UUID caseworkerId = UUID.randomUUID();
-    jdbcTemplate.update(
-        "INSERT INTO axon.caseworkers (id, username) VALUES (?, ?)",
-        caseworkerId,
-        "caseworker@example.com");
-    UUID firstApplicationId = UUID.randomUUID();
-    UUID secondApplicationId = UUID.randomUUID();
-    applicationId(
-        post(validCreateApplicationRequest(firstApplicationId, UUID.randomUUID()), headers()));
-    applicationId(
-        post(validCreateApplicationRequest(secondApplicationId, UUID.randomUUID()), headers()));
-    awaitProjection(firstApplicationId);
-    awaitProjection(secondApplicationId);
-
-    CaseworkerAssignRequest request =
-        CaseworkerAssignRequest.builder()
-            .caseworkerId(caseworkerId)
-            .applicationIds(List.of(firstApplicationId))
-            .eventHistory(
-                EventHistoryRequest.builder().eventDescription("Assigned for assessment").build())
-            .build();
-    ResponseEntity<Void> response =
-        restTemplate.postForEntity(
-            "http://localhost:" + port + "/api/v0/applications/assign",
-            new HttpEntity<>(request, headers()),
-            Void.class);
-
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-    assertThat(awaitProjectionVersion(firstApplicationId, 1L).getCaseworkerId())
-        .isEqualTo(caseworkerId);
-    assertThat(awaitProjection(secondApplicationId).getCaseworkerId()).isNull();
-    assertThat(awaitGetApplication(firstApplicationId).getBody().getAssignedTo())
-        .isEqualTo(caseworkerId);
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT convert_from(payload, 'UTF8') FROM axon.domain_event_entry "
-                    + "WHERE aggregate_identifier = ? AND sequence_number = 1",
-                String.class,
-                firstApplicationId.toString()))
-        .contains("caseworkerId", caseworkerId.toString())
-        .doesNotContain("Assigned for assessment");
-
-    ResponseEntity<ApplicationHistoryResponse> historyResponse =
-        restTemplate.exchange(
-            "http://localhost:"
-                + port
-                + "/api/v0/applications/"
-                + firstApplicationId
-                + "/history-search?eventType=ASSIGN_APPLICATION_TO_CASEWORKER",
-            HttpMethod.GET,
-            new HttpEntity<>(headers()),
-            ApplicationHistoryResponse.class);
-    assertThat(historyResponse.getBody().getEvents())
-        .singleElement()
-        .satisfies(
-            event -> {
-              assertThat(event.getCaseworkerId()).isEqualTo(caseworkerId);
-              assertThat(event.getEventDescription()).isEqualTo("Assigned for assessment");
-            });
-
-    CaseworkerUnassignRequest unassignRequest =
-        CaseworkerUnassignRequest.builder()
-            .eventHistory(
-                EventHistoryRequest.builder().eventDescription("Returned to queue").build())
-            .build();
-    ResponseEntity<Void> unassignResponse =
-        restTemplate.postForEntity(
-            "http://localhost:" + port + "/api/v0/applications/" + firstApplicationId + "/unassign",
-            new HttpEntity<>(unassignRequest, headers()),
-            Void.class);
-    assertThat(unassignResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-    assertThat(awaitProjectionVersion(firstApplicationId, 2L).getCaseworkerId()).isNull();
-    assertThat(awaitGetApplication(firstApplicationId).getBody().getAssignedTo()).isNull();
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT convert_from(payload, 'UTF8') FROM axon.domain_event_entry "
-                    + "WHERE aggregate_identifier = ? AND sequence_number = 2",
-                String.class,
-                firstApplicationId.toString()))
-        .doesNotContain("Returned to queue");
-
-    ResponseEntity<ApplicationHistoryResponse> unassignHistoryResponse =
-        restTemplate.exchange(
-            "http://localhost:"
-                + port
-                + "/api/v0/applications/"
-                + firstApplicationId
-                + "/history-search?eventType=UNASSIGN_APPLICATION_TO_CASEWORKER",
-            HttpMethod.GET,
-            new HttpEntity<>(headers()),
-            ApplicationHistoryResponse.class);
-    assertThat(unassignHistoryResponse.getBody().getEvents())
-        .singleElement()
-        .satisfies(
-            event -> {
-              assertThat(event.getCaseworkerId()).isNull();
-              assertThat(event.getEventDescription()).isEqualTo("Returned to queue");
-            });
-
-    ResponseEntity<Void> repeatedUnassignResponse =
-        restTemplate.postForEntity(
-            "http://localhost:" + port + "/api/v0/applications/" + firstApplicationId + "/unassign",
-            new HttpEntity<>(unassignRequest, headers()),
-            Void.class);
-    assertThat(repeatedUnassignResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-    assertThat(awaitProjection(firstApplicationId).getApplicationVersion()).isEqualTo(2L);
-
-    CaseworkerAssignRequest multipleApplicationsRequest =
-        CaseworkerAssignRequest.builder()
-            .caseworkerId(caseworkerId)
-            .applicationIds(List.of(firstApplicationId, secondApplicationId))
-            .build();
-    ResponseEntity<Void> listResponse =
-        restTemplate.postForEntity(
-            "http://localhost:" + port + "/api/v0/applications/assign",
-            new HttpEntity<>(multipleApplicationsRequest, headers()),
-            Void.class);
-    assertThat(listResponse.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-
-    CaseworkerAssignRequest missingApplicationRequest =
-        CaseworkerAssignRequest.builder()
-            .caseworkerId(caseworkerId)
-            .applicationIds(List.of(UUID.randomUUID()))
-            .build();
-    ResponseEntity<Void> missingResponse =
-        restTemplate.postForEntity(
-            "http://localhost:" + port + "/api/v0/applications/assign",
-            new HttpEntity<>(missingApplicationRequest, headers()),
-            Void.class);
-    assertThat(missingResponse.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-
-    ResponseEntity<Void> missingUnassignResponse =
-        restTemplate.postForEntity(
-            "http://localhost:" + port + "/api/v0/applications/" + UUID.randomUUID() + "/unassign",
-            new HttpEntity<>(unassignRequest, headers()),
-            Void.class);
-    assertThat(missingUnassignResponse.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-    assertThat(awaitProjection(secondApplicationId).getApplicationVersion()).isZero();
   }
 
   @Test
@@ -1218,7 +1073,6 @@ class PostgresAxonIntegrationTest {
     MakeDecisionRequest request =
         MakeDecisionRequest.builder()
             .applicationVersion(1L)
-            .caseworkerId(caseworkerId)
             .overallDecision(DecisionStatus.REFUSED)
             .eventHistory(EventHistoryRequest.builder().eventDescription("Concurrent").build())
             .proceedings(
@@ -1327,16 +1181,12 @@ class PostgresAxonIntegrationTest {
   }
 
   private UUID assignForManualDecision(UUID applicationId) {
-    UUID caseworkerId = UUID.randomUUID();
-    jdbcTemplate.update(
-        "INSERT INTO axon.caseworkers (id, username) VALUES (?, ?)",
-        caseworkerId,
-        "decision-" + caseworkerId + "@example.com");
+    UUID caseworkerId = TestJwtDecoderConfig.CASEWORKER_ID;
     ResponseEntity<Void> response =
         restTemplate.exchange(
             "http://localhost:" + port + "/api/v0/work-list/" + applicationId + "/assign",
             HttpMethod.POST,
-            new HttpEntity<>(new WorkListAssignRequest(caseworkerId, 0L), headers()),
+            new HttpEntity<>(new WorkListAssignRequest(0L), headers()),
             Void.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -1359,50 +1209,9 @@ class PostgresAxonIntegrationTest {
   }
 
   @Test
-  void givenSeededCaseworkers_whenGetCaseworkers_thenReturnsAllCaseworkers() {
-    UUID firstId = UUID.randomUUID();
-    UUID secondId = UUID.randomUUID();
-    jdbcTemplate.update(
-        "INSERT INTO axon.caseworkers (id, username) VALUES (?, ?)", firstId, "alice@example.com");
-    jdbcTemplate.update(
-        "INSERT INTO axon.caseworkers (id, username) VALUES (?, ?)", secondId, "bob@example.com");
-
-    HttpHeaders headers = new HttpHeaders();
-    headers.set("X-Service-Name", "CIVIL_APPLY");
-    headers.setBearerAuth(TestJwtDecoderConfig.BEARER_TOKEN);
-    ResponseEntity<List<Map<String, Object>>> response =
-        restTemplate.exchange(
-            "http://localhost:" + port + "/api/v0/caseworkers",
-            HttpMethod.GET,
-            new HttpEntity<>(headers),
-            new ParameterizedTypeReference<>() {});
-
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-    assertThat(response.getBody())
-        .extracting(item -> item.get("username"))
-        .contains("alice@example.com", "bob@example.com");
-  }
-
-  @Test
-  void givenMissingServiceNameHeader_whenGetCaseworkers_thenReturnsBadRequest() {
-    HttpHeaders headers = new HttpHeaders();
-    headers.setBearerAuth(TestJwtDecoderConfig.BEARER_TOKEN);
-    // Intentionally omit X-Service-Name to test validation
-    ResponseEntity<String> response =
-        restTemplate.exchange(
-            "http://localhost:" + port + "/api/v0/caseworkers",
-            HttpMethod.GET,
-            new HttpEntity<>(headers),
-            String.class);
-
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-  }
-
-  @Test
   void givenNoToken_whenCallingSecuredEndpoints_thenReturnsUnauthorized() {
     UUID applicationId = UUID.randomUUID();
 
-    assertUnauthorized(HttpMethod.GET, "/api/v0/caseworkers", null);
     assertUnauthorized(HttpMethod.GET, "/api/v0/applications", null);
     assertUnauthorized(HttpMethod.GET, "/api/v0/individuals", null);
     assertUnauthorized(HttpMethod.GET, "/api/v0/applications/" + applicationId, null);
@@ -1427,7 +1236,6 @@ class PostgresAxonIntegrationTest {
         HttpMethod.POST,
         "/api/v0/applications/" + applicationId + "/notes",
         new CreateNoteRequest("note"));
-    assertUnauthorized(HttpMethod.POST, "/api/v0/applications/assign", assignRequestBody());
     assertUnauthorized(
         HttpMethod.POST,
         "/api/v0/applications/" + applicationId + "/unassign",
@@ -1437,8 +1245,6 @@ class PostgresAxonIntegrationTest {
   @Test
   void givenUnknownToken_whenCallingSecuredEndpoints_thenReturnsForbidden() {
     UUID applicationId = UUID.randomUUID();
-
-    assertForbidden(HttpMethod.GET, "/api/v0/caseworkers", null);
     assertForbidden(HttpMethod.GET, "/api/v0/applications", null);
     assertForbidden(HttpMethod.GET, "/api/v0/individuals", null);
     assertForbidden(HttpMethod.GET, "/api/v0/applications/" + applicationId, null);
@@ -1462,7 +1268,6 @@ class PostgresAxonIntegrationTest {
         HttpMethod.POST,
         "/api/v0/applications/" + applicationId + "/notes",
         new CreateNoteRequest("note"));
-    assertForbidden(HttpMethod.POST, "/api/v0/applications/assign", assignRequestBody());
     assertForbidden(
         HttpMethod.POST,
         "/api/v0/applications/" + applicationId + "/unassign",
@@ -1955,7 +1760,6 @@ class PostgresAxonIntegrationTest {
   private MakeDecisionRequest decisionBody() {
     return MakeDecisionRequest.builder()
         .applicationVersion(0L)
-        .caseworkerId(UUID.randomUUID())
         .overallDecision(DecisionStatus.REFUSED)
         .autoGranted(false)
         .eventHistory(EventHistoryRequest.builder().eventDescription("decision").build())
@@ -1975,13 +1779,6 @@ class PostgresAxonIntegrationTest {
 
   private ManualOutcomeRequest autoGrantOutcomeBody() {
     return new ManualOutcomeRequest(AutoGrantOutcome.MANUAL);
-  }
-
-  private CaseworkerAssignRequest assignRequestBody() {
-    return new CaseworkerAssignRequest()
-        .caseworkerId(UUID.randomUUID())
-        .applicationIds(List.of(UUID.randomUUID()))
-        .eventHistory(EventHistoryRequest.builder().eventDescription("assign").build());
   }
 
   private CaseworkerUnassignRequest unassignRequestBody() {

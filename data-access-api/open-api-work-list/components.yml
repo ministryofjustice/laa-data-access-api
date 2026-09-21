@@ -68,12 +68,8 @@ components:
     WorkListAssignRequest:
       type: object
       required:
-        - caseworkerId
         - expectedAssignmentVersion
       properties:
-        caseworkerId:
-          type: string
-          format: uuid
         expectedAssignmentVersion:
           type: integer
           format: int64

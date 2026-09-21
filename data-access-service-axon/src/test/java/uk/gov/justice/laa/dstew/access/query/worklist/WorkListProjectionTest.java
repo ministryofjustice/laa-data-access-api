@@ -200,7 +200,7 @@ class WorkListProjectionTest {
         .thenReturn(new PageImpl<>(List.of(item)));
 
     FindWorkListItemsResult result =
-        projection.handle(new FindWorkListItemsQuery(null, null, null, null, null));
+        projection.handle(new FindWorkListItemsQuery(null, null, null, null, null, null));
 
     ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
     verify(items)

@@ -13,10 +13,6 @@ paths:
     $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1{id}"
   /api/v0/applications/{id}/link:
     $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1{id}~1link"
-  /api/v0/caseworkers:
-    $ref: "./open-api-caseworkers/resources.yml#/paths/~1api~1v0~1caseworkers"
-  /api/v0/applications/assign:
-    $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1assign"
   /api/v0/applications/{id}/unassign:
     $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1{id}~1unassign"
   /api/v0/applications/{id}/history-search:
@@ -79,12 +75,6 @@ components:
       $ref: "./open-api-applications/components.yml#/components/schemas/ApplicationSummaryResponse"
     ApplicationSummary:
       $ref: "./open-api-applications/components.yml#/components/schemas/ApplicationSummary"
-    CaseworkerResponse:
-      $ref: "./open-api-caseworkers/components.yml#/components/schemas/CaseworkerResponse"
-    CaseworkersResponse:
-      $ref: "./open-api-caseworkers/components.yml#/components/schemas/CaseworkersResponse"
-    CaseworkerAssignRequest:
-      $ref: "./open-api-caseworkers/components.yml#/components/schemas/CaseworkerAssignRequest"
     ApplicationDomainEventResponse:
       $ref: "./open-api-applications/components.yml#/components/schemas/ApplicationDomainEventResponse"
     PagingResponse:

@@ -14,4 +14,24 @@ public record ApplicationDecisionMadeEvent(
     long applicationDataVersion,
     String overallDecision,
     AutoGrantedState autoGranted,
-    Instant occurredAt) {}
+    UUID caseworkerId,
+    Instant occurredAt) {
+
+  /** Supports historical events created before decision actors were persisted explicitly. */
+  public ApplicationDecisionMadeEvent(
+      UUID applicationId,
+      long applicationVersion,
+      long applicationDataVersion,
+      String overallDecision,
+      AutoGrantedState autoGranted,
+      Instant occurredAt) {
+    this(
+        applicationId,
+        applicationVersion,
+        applicationDataVersion,
+        overallDecision,
+        autoGranted,
+        null,
+        occurredAt);
+  }
+}

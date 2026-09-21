@@ -225,28 +225,6 @@ paths:
         '404': { description: Not found }
         '500': { description: Internal server error }
 
-  /api/v0/applications/assign:
-    post:
-      tags:
-        - application-command
-      operationId: assignCaseworker
-      parameters:
-        - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
-      summary: Assign a caseworker to one or more applications.
-      requestBody:
-        description: Assign the supplied caseworker to one or more applications.
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '../open-api-caseworkers/components.yml#/components/schemas/CaseworkerAssignRequest'
-      responses:
-        '200': { description: OK }
-        '400': { description: Bad request }
-        '401': { description: Unauthorized }
-        '403': { description: Forbidden }
-        '404': { description: Not found }
-        '500': { description: Internal server error }
 
   /api/v0/applications/{id}/unassign:
     post:

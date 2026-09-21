@@ -25,8 +25,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.annotation.DirtiesContext;
-import uk.gov.justice.laa.dstew.access.command.caseworker.Caseworker;
-import uk.gov.justice.laa.dstew.access.command.caseworker.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
@@ -70,8 +68,6 @@ class ProjectionTimeoutInMemoryTest {
   @Autowired private AxonConfiguration axonConfiguration;
 
   @Autowired private JdbcTemplate jdbcTemplate;
-
-  @Autowired private CaseworkerRepository caseworkers;
 
   @Test
   void givenStoppedProjectionProcessor_whenPostApplication_thenReturnsAcceptedWithLocation() {
@@ -254,21 +250,18 @@ class ProjectionTimeoutInMemoryTest {
             .getComponents(StreamingEventProcessor.class)
             .get("application-projection");
     processor.shutdown().join();
-    UUID caseworkerId = UUID.randomUUID();
-    caseworkers.save(new Caseworker(caseworkerId, "timeout-decider@example.com"));
     assertThat(
             restTemplate
                 .exchange(
                     "/api/v0/work-list/" + applicationId + "/assign",
                     HttpMethod.POST,
-                    new HttpEntity<>(new WorkListAssignRequest(caseworkerId, 0L), headers),
+                    new HttpEntity<>(new WorkListAssignRequest(0L), headers),
                     Void.class)
                 .getStatusCode())
         .isEqualTo(HttpStatus.OK);
     MakeDecisionRequest decisionRequest =
         MakeDecisionRequest.builder()
             .applicationVersion(1L)
-            .caseworkerId(caseworkerId)
             .overallDecision(DecisionStatus.GRANTED)
             .certificate(
                 Map.of(

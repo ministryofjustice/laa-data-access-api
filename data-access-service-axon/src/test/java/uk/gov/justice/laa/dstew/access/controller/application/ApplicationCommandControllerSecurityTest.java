@@ -51,6 +51,7 @@ import uk.gov.justice.laa.dstew.access.config.SecurityConfig;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkType;
 import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedUserId;
 import uk.gov.laa.springboot.oauth2.testsupport.StubJwtDecoder;
 import uk.gov.laa.springboot.oauth2.testsupport.StubJwtToken;
 
@@ -86,6 +87,7 @@ class ApplicationCommandControllerSecurityTest {
   @MockitoBean private AutoGrantOutcomeCommandMapper autoGrantOutcomeCommandMapper;
   @MockitoBean private UpdateApplicationCommandMapper updateApplicationCommandMapper;
   @MockitoBean private LinkApplicationCommandMapper linkApplicationCommandMapper;
+  @MockitoBean private AuthenticatedUserId authenticatedUserId;
 
   @Test
   void givenNoCredentials_whenCreateApplication_thenReturnsUnauthorized() {

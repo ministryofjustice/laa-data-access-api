@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.dataaccesstools.cli.applications;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
@@ -30,14 +31,13 @@ class ApplicationCreationWorkflowTest {
   }
 
   @Test
-  void includesCaseworkerIdInDecisionRequest() {
+  void doesNotIncludeCaseworkerIdInDecisionRequest() {
     var application = new ApplicationRequestFactory().create();
 
     String request =
-        new DecisionRequestFactory()
-            .create(application, DecisionRequestFactory.Decision.GRANTED, UUID.randomUUID());
+        new DecisionRequestFactory().create(application, DecisionRequestFactory.Decision.GRANTED);
 
-    assertTrue(request.matches("(?s).*\\\"caseworkerId\\\":\\\"[0-9a-f-]{36}\\\".*"));
+    assertFalse(request.contains("\"caseworkerId\""));
   }
 
   @Test
@@ -68,7 +68,6 @@ class ApplicationCreationWorkflowTest {
 
   private static final class RecordingClient implements DataAccessApiClient {
     private final List<String> operations = new ArrayList<>();
-    private UUID assignedCaseworkerId;
 
     @Override
     public void createApplication(String requestBody) {
@@ -89,16 +88,14 @@ class ApplicationCreationWorkflowTest {
 
     @Override
     public void assignWorkListItem(
-        UUID itemId, UUID caseworkerId, long expectedAssignmentVersion, String eventDescription) {
+        UUID itemId, long expectedAssignmentVersion, String eventDescription) {
       assertEquals(0, expectedAssignmentVersion);
-      assertEquals(ApplicationCreationWorkflow.DEFAULT_CASEWORKER_ID, caseworkerId);
-      assignedCaseworkerId = caseworkerId;
       operations.add("assign");
     }
 
     @Override
     public void makeDecision(UUID applicationId, String requestBody) {
-      assertTrue(requestBody.contains("\"caseworkerId\":\"" + assignedCaseworkerId + "\""));
+      assertFalse(requestBody.contains("\"caseworkerId\""));
       operations.add(requestBody.contains("GRANTED") ? "decision:GRANTED" : "decision:REFUSED");
     }
 
