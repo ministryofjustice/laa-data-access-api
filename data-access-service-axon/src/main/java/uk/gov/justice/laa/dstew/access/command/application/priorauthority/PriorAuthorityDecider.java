@@ -83,9 +83,13 @@ public final class PriorAuthorityDecider {
     }
 
     return switch (statusOf(state)) {
-      case DRAFT, DECIDED ->
+      case DRAFT ->
           throw new PriorAuthorityStatusConflictException(
-              command.priorAuthorityId(), statusOf(state).name());
+              command.priorAuthorityId(),
+              "Prior authority must be submitted before a decision can be made");
+      case DECIDED ->
+          throw new PriorAuthorityStatusConflictException(
+              command.priorAuthorityId(), "Prior authority has already been decided");
       case SUBMITTED -> Optional.of(createDecisionMadeEvent(state, command));
     };
   }

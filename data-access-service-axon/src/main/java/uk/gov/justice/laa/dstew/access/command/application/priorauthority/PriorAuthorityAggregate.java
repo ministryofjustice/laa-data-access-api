@@ -332,10 +332,10 @@ public class PriorAuthorityAggregate {
     PriorAuthorityEvolve.apply(state, event);
   }
 
-  private void requirePriorAuthorityExists(UUID requestedSubmissionId) {
+  private void requirePriorAuthorityExists(UUID requestedPriorAuthorityId) {
     if (priorAuthorityId == null) {
       throw new ResourceNotFoundException(
-          "No prior authority found with submission ID: " + requestedSubmissionId);
+          "No prior authority found with prior authority ID: " + requestedPriorAuthorityId);
     }
   }
 

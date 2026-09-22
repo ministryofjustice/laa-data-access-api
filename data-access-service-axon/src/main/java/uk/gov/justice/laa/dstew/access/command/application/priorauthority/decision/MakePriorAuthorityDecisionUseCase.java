@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.command.application.priorauthority.decis
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.ValidateApplicationGrantedCommand;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.FindPriorAuthorityByPriorAuthorityIdQuery;
@@ -35,8 +36,7 @@ public class MakePriorAuthorityDecisionUseCase {
           "No prior authority found with ID: " + command.priorAuthorityId());
     }
     dispatcher.dispatch(
-        new uk.gov.justice.laa.dstew.access.command.application.priorauthority
-            .ValidateApplicationGrantedCommand(priorAuthorityResult.applicationId()));
+        new ValidateApplicationGrantedCommand(priorAuthorityResult.applicationId()));
     dispatcher.dispatch(command);
   }
 }
