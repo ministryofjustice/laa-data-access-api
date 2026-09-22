@@ -7,6 +7,7 @@ import org.axonframework.messaging.core.annotation.Namespace;
 import org.axonframework.messaging.eventhandling.EventMessage;
 import org.axonframework.messaging.eventhandling.annotation.EventHandler;
 import org.axonframework.messaging.eventhandling.replay.annotation.ResetHandler;
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
@@ -31,19 +32,14 @@ public class PriorAuthorityHistoryProjection {
   /** Records a submitted Prior Authority in parent application's history. */
   @EventHandler
   public void on(PriorAuthoritySubmittedEvent event, EventMessage message) {
-    Object serviceName =
-        message.metadata().get(RequestMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY);
-    priorAuthorityHistoryReadRepository.save(
-        PriorAuthorityHistoryReadModel.builder()
-            .eventId(message.identifier())
-            .applicationId(event.applicationId())
-            .priorAuthorityId(event.priorAuthorityId())
-            .priorAuthorityType(event.priorAuthorityType())
-            .eventType("PRIOR_AUTHORITY_SUBMITTED")
-            .itemVersion(event.dataVersion())
-            .serviceName(serviceName == null ? null : serviceName.toString())
-            .occurredAt(event.occurredAt())
-            .build());
+    append(
+        message,
+        event.applicationId(),
+        event.priorAuthorityId(),
+        event.priorAuthorityType(),
+        "PRIOR_AUTHORITY_SUBMITTED",
+        event.dataVersion(),
+        event.occurredAt());
   }
 
   /** Records Prior Authority assignment in parent application's history. */
@@ -65,7 +61,6 @@ public class PriorAuthorityHistoryProjection {
         ref.priorAuthorityType(),
         "ASSIGN_APPLICATION_TO_CASEWORKER",
         event.itemVersion(),
-        event.caseworkerId(),
         event.occurredAt());
   }
 
@@ -113,31 +108,6 @@ public class PriorAuthorityHistoryProjection {
       String eventType,
       Long itemVersion,
       Instant occurredAt) {
-    append(
-        message,
-        applicationId,
-        priorAuthorityId,
-        priorAuthorityType,
-        eventType,
-        itemVersion,
-        null,
-        occurredAt);
-  }
-
-  private void append(
-      EventMessage message,
-      UUID applicationId,
-      UUID priorAuthorityId,
-      String priorAuthorityType,
-      String eventType,
-      Long itemVersion,
-      UUID caseworkerId,
-      Instant occurredAt) {
-    Object serviceName =
-        message.metadata().get(RequestMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY);
-    String authenticatedUserId =
-        message.metadata().get(RequestMetadataDispatchInterceptor.AUTHENTICATED_USER_ID_KEY);
-
     priorAuthorityHistoryReadRepository.save(
         PriorAuthorityHistoryReadModel.builder()
             .eventId(message.identifier())
@@ -146,10 +116,22 @@ public class PriorAuthorityHistoryProjection {
             .priorAuthorityType(priorAuthorityType)
             .eventType(eventType)
             .itemVersion(itemVersion)
-            .serviceName(serviceName == null ? null : serviceName.toString())
-            .caseworkerId(authenticatedUserId == null ? null : UUID.fromString(authenticatedUserId))
+            .serviceName(getServiceName(message))
+            .caseworkerId(getAuthenticatedUserId(message))
             .occurredAt(occurredAt)
             .build());
+  }
+
+  private static @Nullable String getServiceName(EventMessage message) {
+    Object serviceName =
+        message.metadata().get(RequestMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY);
+    return serviceName == null ? null : serviceName.toString();
+  }
+
+  private static @Nullable UUID getAuthenticatedUserId(EventMessage message) {
+    Object authenticatedUserId =
+        message.metadata().get(RequestMetadataDispatchInterceptor.AUTHENTICATED_USER_ID_KEY);
+    return authenticatedUserId == null ? null : UUID.fromString(authenticatedUserId.toString());
   }
 
   @ResetHandler

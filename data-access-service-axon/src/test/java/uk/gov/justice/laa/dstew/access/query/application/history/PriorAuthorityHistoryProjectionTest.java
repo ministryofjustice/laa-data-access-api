@@ -72,7 +72,7 @@ class PriorAuthorityHistoryProjectionTest {
     assertThat(saved.getEventType()).isEqualTo("PRIOR_AUTHORITY_SUBMITTED");
     assertThat(saved.getServiceName()).isEqualTo("CIVIL_APPLY");
     assertThat(saved.getOccurredAt()).isEqualTo(occurredAt);
-    assertThat(saved.getCaseworkerId()).isNull();
+    assertThat(saved.getCaseworkerId()).isEqualTo(ACTOR_CASEWORKER_ID);
     assertThat(saved.getItemVersion()).isEqualTo(2L);
   }
 
@@ -93,8 +93,7 @@ class PriorAuthorityHistoryProjectionTest {
   }
 
   @Test
-  void givenPriorAuthorityWorkItemAssigned_whenHandled_thenStoresInPaHistoryTable()
-      throws Exception {
+  void givenPriorAuthorityWorkItemAssigned_whenHandled_thenStoresInPaHistoryTable() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     UUID assigneeCaseworkerId = UUID.randomUUID();
@@ -172,6 +171,30 @@ class PriorAuthorityHistoryProjectionTest {
     var captor = ArgumentCaptor.forClass(PriorAuthorityHistoryReadModel.class);
     verify(paRepository).save(captor.capture());
     assertThat(captor.getValue().getServiceName()).isNull();
+  }
+
+  @Test
+  void
+      givenPriorAuthorityWorkItemAssignedWithoutAuthenticatedUser_whenHandled_thenStoresNullCaseworkerId() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    WorkItemAssigned event =
+        new WorkItemAssigned(
+            priorAuthorityId,
+            WorkItemType.PRIOR_AUTHORITY,
+            1L,
+            1L,
+            UUID.randomUUID(),
+            Instant.parse("2026-08-05T11:00:00Z"));
+    when(paDataRepository.findById(new PriorAuthorityDataId(priorAuthorityId, 0L)))
+        .thenReturn(
+            Optional.of(paData(priorAuthorityId, applicationId, PriorAuthorityType.EXPERT)));
+
+    projection.on(event, messageWithoutActorMetadata(event, "pa-assign-event-id"));
+
+    var captor = ArgumentCaptor.forClass(PriorAuthorityHistoryReadModel.class);
+    verify(paRepository).save(captor.capture());
+    assertThat(captor.getValue().getCaseworkerId()).isNull();
   }
 
   @Test
