@@ -105,6 +105,23 @@ class PriorAuthorityDeciderTest {
   }
 
   @Test
+  void givenDeleteCommand_whenDecideDocumentDeleted_thenMapsDeleteFields() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    PriorAuthorityDocumentDeleteCommand command =
+        new PriorAuthorityDocumentDeleteCommand(priorAuthorityId, documentId, "{}", OCCURRED_AT);
+    UUID applicationId = UUID.randomUUID();
+
+    PriorAuthorityDocumentDeletedEvent event =
+        PriorAuthorityDecider.decideDocumentDeleted(command, applicationId);
+
+    assertThat(event.priorAuthorityId()).isEqualTo(priorAuthorityId);
+    assertThat(event.documentId()).isEqualTo(documentId);
+    assertThat(event.deletedAt()).isEqualTo(OCCURRED_AT);
+    assertThat(event.parentApplicationId()).isEqualTo(applicationId);
+  }
+
+  @Test
   void givenDocumentTypeUpdateCommand_whenDecideDocumentTypeUpdated_thenMapsUpdateFields() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
