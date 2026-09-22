@@ -467,7 +467,7 @@ class PostgresAxonIntegrationTest {
     applicationId(post(validCreateApplicationRequest(applicationId, applyProceedingId), headers()));
     ApplicationReadModel created = awaitProjection(applicationId);
     markReadyForManualDecision(applicationId);
-    UUID caseworkerId = assignForManualDecision(applicationId);
+    assignForManualDecision(applicationId);
     UUID proceedingId = created.getProceedings().getFirst().getId();
 
     MakeDecisionRequest request =
@@ -650,7 +650,7 @@ class PostgresAxonIntegrationTest {
     UUID applyProceedingId = UUID.randomUUID();
     applicationId(post(validCreateApplicationRequest(applicationId, applyProceedingId), headers()));
     markReadyForManualDecision(applicationId);
-    UUID caseworkerId = assignForManualDecision(applicationId);
+    assignForManualDecision(applicationId);
     UUID proceedingId = awaitProjection(applicationId).getProceedings().getFirst().getId();
     Map<String, Object> certificate =
         Map.of(
@@ -732,8 +732,7 @@ class PostgresAxonIntegrationTest {
   }
 
   @Test
-  void givenCreatedApplication_whenGetApplication_thenReturnsCurrentStateProjection()
-      throws Exception {
+  void givenCreatedApplication_whenGetApplication_thenReturnsCurrentStateProjection() {
     UUID applicationId = UUID.randomUUID();
     UUID applyProceedingId = UUID.randomUUID();
     final UUID involvedChildId = UUID.randomUUID();
@@ -843,8 +842,7 @@ class PostgresAxonIntegrationTest {
   }
 
   @Test
-  void givenIdenticalRetry_whenPostApplicationAgain_thenReturnsCreatedIdempotently()
-      throws Exception {
+  void givenIdenticalRetry_whenPostApplicationAgain_thenReturnsCreatedIdempotently() {
     UUID applicationId = UUID.randomUUID();
     HttpEntity<ApplicationCreateRequest> request =
         new HttpEntity<>(
@@ -898,8 +896,7 @@ class PostgresAxonIntegrationTest {
 
   @Test
   @Disabled("Linked applications removed from schema; orchestration retained for future endpoint")
-  void givenExistingLeadApplication_whenPostLinkedApplication_thenProjectsCurrentStateAndHistory()
-      throws Exception {
+  void givenExistingLeadApplication_whenPostLinkedApplication_thenProjectsCurrentStateAndHistory() {
     UUID leadApplicationId = UUID.randomUUID();
     ResponseEntity<Void> leadResponse =
         post(validCreateApplicationRequest(leadApplicationId, UUID.randomUUID()), headers());
@@ -951,8 +948,7 @@ class PostgresAxonIntegrationTest {
 
   @Test
   @Disabled("Linked applications removed from schema; orchestration retained for future endpoint")
-  void givenMissingAssociatedApplication_whenPostApplication_thenReturnsNotFound()
-      throws Exception {
+  void givenMissingAssociatedApplication_whenPostApplication_thenReturnsNotFound() {
     UUID leadApplicationId = UUID.randomUUID();
     UUID createdLeadApplicationId =
         applicationId(
@@ -1135,7 +1131,7 @@ class PostgresAxonIntegrationTest {
     UUID applicationId = UUID.randomUUID();
     applicationId(post(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()));
     markReadyForManualDecision(applicationId);
-    UUID caseworkerId = assignForManualDecision(applicationId);
+    assignForManualDecision(applicationId);
     UUID proceedingId = awaitProjection(applicationId).getProceedings().getFirst().getId();
     MakeDecisionRequest request =
         MakeDecisionRequest.builder()
@@ -1231,7 +1227,7 @@ class PostgresAxonIntegrationTest {
         .isEqualTo(2);
   }
 
-  private void markReadyForManualDecision(UUID applicationId) throws Exception {
+  private void markReadyForManualDecision(UUID applicationId) {
     ResponseEntity<Void> response =
         restTemplate.exchange(
             "http://localhost:"
@@ -1586,8 +1582,9 @@ class PostgresAxonIntegrationTest {
     assertThat(group.getPriorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(group.getPriorAuthorityType()).isEqualTo(PriorAuthorityType.EXPERT);
     assertThat(group.getEvents()).hasSize(1);
-    assertThat(group.getEvents().get(0).getEventType()).isEqualTo("PRIOR_AUTHORITY_SUBMITTED");
-    assertThat(group.getEvents().get(0).getCaseworkerId()).isNull();
+    assertThat(group.getEvents().getFirst().getEventType()).isEqualTo("PRIOR_AUTHORITY_SUBMITTED");
+    assertThat(group.getEvents().getFirst().getCaseworkerId())
+        .isEqualTo(TestJwtDecoderConfig.CASEWORKER_ID);
     assertThat(historyResponse.getBody().getEvents()).isNotEmpty();
   }
 
@@ -1671,15 +1668,9 @@ class PostgresAxonIntegrationTest {
         .extracting(event -> event.getEventType())
         .containsExactlyInAnyOrder("PRIOR_AUTHORITY_SUBMITTED", "ASSIGN_APPLICATION_TO_CASEWORKER");
     assertThat(group.getEvents())
-        .filteredOn(event -> event.getEventType().equals("PRIOR_AUTHORITY_SUBMITTED"))
-        .singleElement()
-        .satisfies(event -> assertThat(event.getCaseworkerId()).isNull());
-    assertThat(group.getEvents())
-        .filteredOn(event -> event.getEventType().equals("ASSIGN_APPLICATION_TO_CASEWORKER"))
-        .singleElement()
-        .satisfies(
-            event ->
-                assertThat(event.getCaseworkerId()).isEqualTo(TestJwtDecoderConfig.CASEWORKER_ID));
+        .extracting(event -> event.getCaseworkerId())
+        .allSatisfy(
+            caseworkerId -> assertThat(caseworkerId).isEqualTo(TestJwtDecoderConfig.CASEWORKER_ID));
   }
 
   @Test
@@ -1762,7 +1753,7 @@ class PostgresAxonIntegrationTest {
     assertThat(historyResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
 
     assertThat(historyResponse.getBody().getPriorAuthorities()).hasSize(1);
-    PriorAuthorityHistoryGroup group = historyResponse.getBody().getPriorAuthorities().get(0);
+    PriorAuthorityHistoryGroup group = historyResponse.getBody().getPriorAuthorities().getFirst();
     assertThat(group.getPriorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(group.getPriorAuthorityType()).isEqualTo(PriorAuthorityType.EXPERT);
     assertThat(group.getEvents()).hasSize(3);
@@ -1775,7 +1766,9 @@ class PostgresAxonIntegrationTest {
     assertThat(group.getEvents())
         .filteredOn(event -> event.getEventType().equals("PRIOR_AUTHORITY_SUBMITTED"))
         .singleElement()
-        .satisfies(event -> assertThat(event.getCaseworkerId()).isNull());
+        .satisfies(
+            event ->
+                assertThat(event.getCaseworkerId()).isEqualTo(TestJwtDecoderConfig.CASEWORKER_ID));
     assertThat(group.getEvents())
         .filteredOn(event -> event.getEventType().equals("ASSIGN_APPLICATION_TO_CASEWORKER"))
         .singleElement()
@@ -1894,7 +1887,9 @@ class PostgresAxonIntegrationTest {
     assertThat(group.getEvents())
         .filteredOn(event -> event.getEventType().equals("PRIOR_AUTHORITY_SUBMITTED"))
         .singleElement()
-        .satisfies(event -> assertThat(event.getCaseworkerId()).isNull());
+        .satisfies(
+            event ->
+                assertThat(event.getCaseworkerId()).isEqualTo(TestJwtDecoderConfig.CASEWORKER_ID));
     assertThat(group.getEvents())
         .filteredOn(event -> event.getEventType().equals("UNASSIGN_APPLICATION_TO_CASEWORKER"))
         .singleElement()
@@ -2006,16 +2001,11 @@ class PostgresAxonIntegrationTest {
     assertThat(assignedGroup.getEvents())
         .extracting(event -> event.getEventType())
         .containsExactlyInAnyOrder("PRIOR_AUTHORITY_SUBMITTED", "ASSIGN_APPLICATION_TO_CASEWORKER");
+
     assertThat(assignedGroup.getEvents())
-        .filteredOn(event -> event.getEventType().equals("PRIOR_AUTHORITY_SUBMITTED"))
-        .singleElement()
-        .satisfies(event -> assertThat(event.getCaseworkerId()).isNull());
-    assertThat(assignedGroup.getEvents())
-        .filteredOn(event -> event.getEventType().equals("ASSIGN_APPLICATION_TO_CASEWORKER"))
-        .singleElement()
-        .satisfies(
-            event ->
-                assertThat(event.getCaseworkerId()).isEqualTo(TestJwtDecoderConfig.CASEWORKER_ID));
+        .extracting(event -> event.getCaseworkerId())
+        .allSatisfy(
+            caseworkerId -> assertThat(caseworkerId).isEqualTo(TestJwtDecoderConfig.CASEWORKER_ID));
 
     PriorAuthorityHistoryGroup untouchedGroup =
         historyResponse.getBody().getPriorAuthorities().stream()
@@ -2024,9 +2014,8 @@ class PostgresAxonIntegrationTest {
             .orElseThrow();
     assertThat(untouchedGroup.getPriorAuthorityType()).isEqualTo(PriorAuthorityType.EXPERT);
     assertThat(untouchedGroup.getEvents()).hasSize(1);
-    assertThat(untouchedGroup.getEvents().get(0).getEventType())
+    assertThat(untouchedGroup.getEvents().getFirst().getEventType())
         .isEqualTo("PRIOR_AUTHORITY_SUBMITTED");
-    assertThat(untouchedGroup.getEvents().get(0).getCaseworkerId()).isNull();
   }
 
   @Test
@@ -2229,7 +2218,7 @@ class PostgresAxonIntegrationTest {
     return proceeding;
   }
 
-  private ResponseEntity<ApplicationResponse> awaitGet(UUID applicationId) throws Exception {
+  private ResponseEntity<ApplicationResponse> awaitGet(UUID applicationId) {
     ResponseEntity<String> response =
         await()
             .alias("application to be available from the query projection: " + applicationId)
@@ -2275,9 +2264,7 @@ class PostgresAxonIntegrationTest {
             projected -> projected != null && projected.getApplicationDataVersion() == version);
   }
 
-  private java.util.List<
-          uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadModel>
-      awaitHistory(UUID applicationId, int expectedCount) {
+  private List<ApplicationHistoryReadModel> awaitHistory(UUID applicationId, int expectedCount) {
     return await()
         .alias(
             "application history projection to contain "
