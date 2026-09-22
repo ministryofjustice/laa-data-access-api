@@ -125,7 +125,6 @@ class PriorAuthorityHistoryProjectionTest {
     assertThat(saved.getServiceName()).isEqualTo("CIVIL_APPLY");
     assertThat(saved.getOccurredAt()).isEqualTo(occurredAt);
     assertThat(saved.getCaseworkerId()).isEqualTo(ACTOR_CASEWORKER_ID);
-    assertThat(saved.getCaseworkerId()).isEqualTo(assigneeCaseworkerId.toString());
     assertThat(saved.getItemVersion()).isEqualTo(2L);
   }
 

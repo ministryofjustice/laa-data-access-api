@@ -66,7 +66,7 @@ public class RequestMetadataDispatchInterceptor
       metadata.put(AUTHENTICATED_USER_ID_KEY, oid);
 
       return Map.copyOf(metadata);
-    } catch (ScopeNotActiveException _) {
+    } catch (ScopeNotActiveException exception) {
       return Map.of();
     }
   }

@@ -1785,7 +1785,9 @@ class PostgresAxonIntegrationTest {
     assertThat(group.getEvents())
         .filteredOn(event -> event.getEventType().equals("UNASSIGN_APPLICATION_TO_CASEWORKER"))
         .singleElement()
-        .satisfies(event -> assertThat(event.getCaseworkerId()).isNull());
+        .satisfies(
+            event ->
+                assertThat(event.getCaseworkerId()).isEqualTo(TestJwtDecoderConfig.CASEWORKER_ID));
   }
 
   @Test
@@ -1896,7 +1898,10 @@ class PostgresAxonIntegrationTest {
     assertThat(group.getEvents())
         .filteredOn(event -> event.getEventType().equals("UNASSIGN_APPLICATION_TO_CASEWORKER"))
         .singleElement()
-        .satisfies(event -> assertThat(event.getCaseworkerId()).isNull());
+        .satisfies(
+            event ->
+                assertThat(event.getCaseworkerId()).isEqualTo(TestJwtDecoderConfig.CASEWORKER_ID));
+
     assertThat(group.getEvents())
         .filteredOn(event -> event.getEventType().equals("ASSIGN_APPLICATION_TO_CASEWORKER"))
         .hasSize(2)

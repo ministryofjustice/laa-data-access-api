@@ -8,7 +8,6 @@ import org.axonframework.messaging.eventhandling.EventMessage;
 import org.axonframework.messaging.eventhandling.annotation.EventHandler;
 import org.axonframework.messaging.eventhandling.replay.annotation.ResetHandler;
 import org.springframework.stereotype.Component;
-import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataId;
@@ -17,7 +16,6 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.config.interceptor.RequestMetadataDispatchInterceptor;
-import uk.gov.justice.laa.dstew.access.config.interceptor.ServiceNameMetadataDispatchInterceptor;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 
 /** Projection that records Prior Authority activity to parent Application history. */
@@ -34,7 +32,7 @@ public class PriorAuthorityHistoryProjection {
   @EventHandler
   public void on(PriorAuthoritySubmittedEvent event, EventMessage message) {
     Object serviceName =
-        message.metadata().get(ServiceNameMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY);
+        message.metadata().get(RequestMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY);
     priorAuthorityHistoryReadRepository.save(
         PriorAuthorityHistoryReadModel.builder()
             .eventId(message.identifier())
@@ -152,14 +150,6 @@ public class PriorAuthorityHistoryProjection {
             .caseworkerId(authenticatedUserId == null ? null : UUID.fromString(authenticatedUserId))
             .occurredAt(occurredAt)
             .build());
-  }
-
-  private String serialise(Object event) {
-    try {
-      return objectMapper.writeValueAsString(event);
-    } catch (JacksonException exception) {
-      throw new IllegalStateException("Failed to serialise event data", exception);
-    }
   }
 
   @ResetHandler
