@@ -17,7 +17,7 @@ public final class PriorAuthorityEvolve {
     state.priorAuthorityType = event.priorAuthorityType();
     state.schemaVersion = event.schemaVersion();
     state.submitted = false;
-    state.overallDecision = null;
+    state.decided = false;
   }
 
   /** Applies a {@link PriorAuthoritySubmittedEvent} to the given state. */
@@ -28,6 +28,7 @@ public final class PriorAuthorityEvolve {
     state.schemaVersion = event.schemaVersion();
     state.dataVersion = event.dataVersion();
     state.submitted = true;
+    state.decided = false;
   }
 
   /** Applies a {@link PriorAuthorityDecisionMadeEvent} to the given state. */
@@ -37,7 +38,7 @@ public final class PriorAuthorityEvolve {
     state.priorAuthorityType = event.priorAuthorityType();
     state.dataVersion = event.dataVersion();
     state.submitted = true;
-    state.overallDecision = event.overallDecision();
+    state.decided = true;
   }
 
   /** Applies a generic direct PA assignment. */

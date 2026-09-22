@@ -13,20 +13,12 @@ public record PriorAuthorityResult(
     UUID applicationId,
     String justification,
     String status,
-    String decision,
-    String decisionJustification,
     PriorAuthorityType priorAuthorityType,
     ExpertDetails expertDetails,
     CounselDetails counselDetails,
     DisbursementDetails disbursementDetails,
     List<PriorAuthorityDocument> uploadedDocuments,
     PriorAuthorityDataPayload.DecisionDetails decisionDetails) {
-
-  /** Builds the use-case result from the current-state projection and versioned content. */
-  public static PriorAuthorityResult from(
-      PriorAuthorityReadModel priorAuthority, PriorAuthorityDataPayload payload) {
-    return from(priorAuthority, payload, priorAuthority.getStatus());
-  }
 
   /** Builds the use-case result from the current-state projection, versioned content and status. */
   public static PriorAuthorityResult from(
@@ -36,8 +28,6 @@ public record PriorAuthorityResult(
         priorAuthority.getApplicationId(),
         status,
         payload.content(),
-        payload.decision(),
-        payload.decisionJustification(),
         payload.decisionDetails());
   }
 
@@ -51,8 +41,6 @@ public record PriorAuthorityResult(
         payload.applicationId(),
         PriorAuthorityStatus.DRAFT.name(),
         payload.content(),
-        payload.decision(),
-        payload.decisionJustification(),
         payload.decisionDetails());
   }
 
@@ -61,8 +49,6 @@ public record PriorAuthorityResult(
       UUID applicationId,
       String status,
       PriorAuthorityContent content,
-      String decision,
-      String decisionJustification,
       PriorAuthorityDataPayload.DecisionDetails decisionDetails) {
     PriorAuthorityType priorAuthorityType = content.priorAuthorityType();
     return new PriorAuthorityResult(
@@ -70,8 +56,6 @@ public record PriorAuthorityResult(
         applicationId,
         content.justification(),
         status,
-        decision,
-        decisionJustification,
         priorAuthorityType,
         priorAuthorityType == PriorAuthorityType.EXPERT ? toExpertDetails(content) : null,
         priorAuthorityType == PriorAuthorityType.COUNSEL ? toCounselDetails(content) : null,

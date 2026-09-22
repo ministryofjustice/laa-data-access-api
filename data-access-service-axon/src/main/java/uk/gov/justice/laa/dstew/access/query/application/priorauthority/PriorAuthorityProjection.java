@@ -68,7 +68,7 @@ public class PriorAuthorityProjection {
     PriorAuthorityDataPayload payload =
         priorAuthorityDataStore.get(priorAuthorityId, priorAuthority.getDataVersion());
     return Optional.of(
-        PriorAuthorityResult.from(priorAuthority, payload, statusOf(priorAuthority, payload)));
+        PriorAuthorityResult.from(priorAuthority, payload, priorAuthority.getStatus()));
   }
 
   /** Creates the current-state row when a prior-authority draft is started. */
@@ -103,28 +103,14 @@ public class PriorAuthorityProjection {
         .ifPresent(
             current -> {
               current.setDataVersion(event.dataVersion());
+              current.setStatus(PriorAuthorityStatus.DECIDED.name());
+              current.setModifiedAt(event.occurredAt());
               repository.save(current);
             });
   }
 
   private boolean isPending(PriorAuthorityReadModel priorAuthority) {
-    if (!PriorAuthorityStatus.SUBMITTED.name().equals(priorAuthority.getStatus())) {
-      return false;
-    }
-    PriorAuthorityDataPayload payload =
-        priorAuthorityDataStore.get(
-            priorAuthority.getPriorAuthorityId(), priorAuthority.getDataVersion());
-    return payload.decision() == null;
-  }
-
-  private String statusOf(
-      PriorAuthorityReadModel priorAuthority, PriorAuthorityDataPayload payload) {
-    if (PriorAuthorityStatus.DRAFT.name().equals(priorAuthority.getStatus())) {
-      return PriorAuthorityStatus.DRAFT.name();
-    }
-    return payload.decision() == null
-        ? PriorAuthorityStatus.SUBMITTED.name()
-        : PriorAuthorityStatus.DECIDED.name();
+    return PriorAuthorityStatus.SUBMITTED.name().equals(priorAuthority.getStatus());
   }
 
   private void createRow(
@@ -132,7 +118,7 @@ public class PriorAuthorityProjection {
       UUID applicationId,
       long dataVersion,
       String status,
-      Instant createdAt,
+      Instant occurredAt,
       QueryUpdateEmitter queryUpdateEmitter) {
     repository.save(
         PriorAuthorityReadModel.builder()
@@ -140,7 +126,8 @@ public class PriorAuthorityProjection {
             .applicationId(applicationId)
             .dataVersion(dataVersion)
             .status(status)
-            .createdAt(createdAt)
+            .createdAt(occurredAt)
+            .modifiedAt(occurredAt)
             .build());
     if (PriorAuthorityStatus.SUBMITTED.name().equals(status)) {
       queryUpdateEmitter.emit(

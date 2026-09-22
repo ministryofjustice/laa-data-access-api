@@ -30,8 +30,10 @@ public class GetPriorAuthorityResponseMapper {
         result.status() == null
             ? null
             : PriorAuthorityResponse.StatusEnum.fromValue(result.status()));
-    response.setDecision(toDecision(result.decision()));
-    response.setDecisionJustification(result.decisionJustification());
+    response.setDecision(
+        result.decisionDetails() == null ? null : toDecision(result.decisionDetails().decision()));
+    response.setDecisionJustification(
+        result.decisionDetails() == null ? null : result.decisionDetails().decisionJustification());
     response.setDecisionDetails(toDecisionDetails(result.decisionDetails()));
     response.setPriorAuthorityType(
         result.priorAuthorityType() == null

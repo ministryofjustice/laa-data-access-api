@@ -6,7 +6,6 @@ import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.MakePriorAuthorityDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
@@ -71,9 +70,7 @@ public final class PriorAuthorityDecider {
    * invalid lifecycle state.
    */
   public static Optional<PriorAuthorityDecisionMadeEvent> decideDecision(
-      PriorAuthorityState state,
-      MakePriorAuthorityDecisionCommand command,
-      PriorAuthorityDataPayload current) {
+      PriorAuthorityState state, MakePriorAuthorityDecisionCommand command) {
     validateDecision(command);
     validateDecisionAssignment(state, command);
 
@@ -112,7 +109,7 @@ public final class PriorAuthorityDecider {
     if (!state.submitted) {
       return PriorAuthorityStatus.DRAFT;
     }
-    if (state.overallDecision != null) {
+    if (state.decided) {
       return PriorAuthorityStatus.DECIDED;
     }
     return PriorAuthorityStatus.SUBMITTED;

@@ -178,7 +178,7 @@ public class PriorAuthorityAggregate {
     requirePriorAuthorityExists(command.priorAuthorityId());
     PriorAuthorityDataPayload current =
         dataStore.get(command.priorAuthorityId(), state.dataVersion);
-    PriorAuthorityDecider.decideDecision(state, command, current)
+    PriorAuthorityDecider.decideDecision(state, command)
         .ifPresent(
             event -> {
               dataStore.append(
