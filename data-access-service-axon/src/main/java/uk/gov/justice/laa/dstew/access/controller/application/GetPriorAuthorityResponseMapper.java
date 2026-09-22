@@ -141,7 +141,18 @@ public class GetPriorAuthorityResponseMapper {
       return null;
     }
     try {
-      return PriorAuthorityResponse.DecisionEnum.valueOf(decision);
+      return PriorAuthorityResponse.DecisionEnum.valueOf(decision.trim());
+    } catch (IllegalArgumentException exception) {
+      return null;
+    }
+  }
+
+  private PriorAuthorityDecisionDetails.DecisionEnum toDecisionDetailsEnum(String decision) {
+    if (decision == null || decision.isBlank()) {
+      return null;
+    }
+    try {
+      return PriorAuthorityDecisionDetails.DecisionEnum.fromValue(decision.trim());
     } catch (IllegalArgumentException exception) {
       return null;
     }
@@ -156,7 +167,7 @@ public class GetPriorAuthorityResponseMapper {
     }
     PriorAuthorityDecisionDetails result = new PriorAuthorityDecisionDetails();
     if (details.decision() != null) {
-      result.setDecision(PriorAuthorityDecisionDetails.DecisionEnum.fromValue(details.decision()));
+      result.setDecision(toDecisionDetailsEnum(details.decision()));
     }
     if (details.decisionJustification() != null) {
       result.setDecisionJustification(details.decisionJustification());

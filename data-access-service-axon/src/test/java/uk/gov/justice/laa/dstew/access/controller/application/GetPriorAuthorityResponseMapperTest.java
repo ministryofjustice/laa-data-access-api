@@ -39,8 +39,9 @@ class GetPriorAuthorityResponseMapperTest {
             .applicationId(applicationId)
             .justification("Expert is required")
             .status("SUBMITTED")
-            .decision("GRANTED")
-            .decisionJustification("Decision recorded")
+            .decisionDetails(
+                new PriorAuthorityDataPayload.DecisionDetails(
+                    "GRANTED", "Decision recorded", null, null, null, null, null, "{}"))
             .priorAuthorityType(PriorAuthorityType.EXPERT)
             .expertDetails(
                 new ExpertDetails(
@@ -130,14 +131,18 @@ class GetPriorAuthorityResponseMapperTest {
         PriorAuthorityResult.builder()
             .priorAuthorityId(UUID.randomUUID())
             .applicationId(UUID.randomUUID())
-            .decision("   ")
+            .decisionDetails(
+                new PriorAuthorityDataPayload.DecisionDetails(
+                    "   ", null, null, null, null, null, null, "{}"))
             .build();
     PriorAuthorityResult invalidDecisionResult =
         PriorAuthorityResult.builder()
             .priorAuthorityId(UUID.randomUUID())
             .applicationId(UUID.randomUUID())
-            .decision("NOT_A_REAL_DECISION")
             .status("SUBMITTED")
+            .decisionDetails(
+                new PriorAuthorityDataPayload.DecisionDetails(
+                    "NOT_A_REAL_DECISION", null, null, null, null, null, null, "{}"))
             .build();
 
     var blankResponse = mapper.toResponse(blankDecisionResult);
@@ -157,8 +162,6 @@ class GetPriorAuthorityResponseMapperTest {
             .applicationId(UUID.randomUUID())
             .justification("justification")
             .status("DECIDED")
-            .decision("GRANTED")
-            .decisionJustification("Decision recorded")
             .decisionDetails(
                 new PriorAuthorityDataPayload.DecisionDetails(
                     "GRANTED",

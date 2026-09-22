@@ -30,7 +30,7 @@ class PriorAuthorityEvolveTest {
     assertThat(state.getPriorAuthorityType()).isEqualTo("EXPERT");
     assertThat(state.getSchemaVersion()).isEqualTo(3);
     assertThat(state.isSubmitted()).isFalse();
-    assertThat(state.getOverallDecision()).isNull();
+    assertThat(state.isDecided()).isFalse();
   }
 
   @Test
@@ -51,7 +51,7 @@ class PriorAuthorityEvolveTest {
     assertThat(state.getSchemaVersion()).isEqualTo(3);
     assertThat(state.getDataVersion()).isEqualTo(0L);
     assertThat(state.isSubmitted()).isTrue();
-    assertThat(state.getOverallDecision()).isNull();
+    assertThat(state.isDecided()).isFalse();
   }
 
   @Test
@@ -79,7 +79,7 @@ class PriorAuthorityEvolveTest {
     assertThat(state.getPriorAuthorityType()).isEqualTo("EXPERT");
     assertThat(state.getDataVersion()).isEqualTo(1L);
     assertThat(state.isSubmitted()).isTrue();
-    assertThat(state.getOverallDecision()).isEqualTo("REFUSED");
+    assertThat(state.isDecided()).isTrue();
   }
 
   @Test
