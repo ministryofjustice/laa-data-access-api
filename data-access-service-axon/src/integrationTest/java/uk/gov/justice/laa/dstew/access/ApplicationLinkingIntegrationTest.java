@@ -25,6 +25,9 @@ import java.util.stream.Stream;
 import org.axonframework.messaging.commandhandling.gateway.CommandGateway;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
@@ -171,13 +174,15 @@ public class ApplicationLinkingIntegrationTest {
     assertThat(countRoutes(applicationId)).isZero();
   }
 
-  @Test
-  void givenApplicationsWithBlankOfficeCodes_whenApplicationsAreLinked_thenRequestIsRejected() {
+  @ParameterizedTest
+  @MethodSource("invalidOfficeCodeCombinations")
+  void givenApplicationsWithMissingOfficeCode_whenApplicationsAreLinked_thenRequestIsRejected(
+      String sourceOfficeCode, String targetOfficeCode) {
     UUID sourceApplicationId = UUID.randomUUID();
     UUID targetApplicationId = UUID.randomUUID();
     String clientLastName = uniqueClientLastName();
-    createApplication(sourceApplicationId, clientLastName, " ");
-    createApplication(targetApplicationId, clientLastName, " ");
+    createApplication(sourceApplicationId, clientLastName, sourceOfficeCode);
+    createApplication(targetApplicationId, clientLastName, targetOfficeCode);
     long groupEventCount = countGroupEvents();
 
     ResponseEntity<Void> response = linkApplication(sourceApplicationId, targetApplicationId);
@@ -186,6 +191,11 @@ public class ApplicationLinkingIntegrationTest {
     assertThat(countGroupEvents()).isEqualTo(groupEventCount);
     assertStandaloneRoute(sourceApplicationId);
     assertStandaloneRoute(targetApplicationId);
+  }
+
+  private static Stream<Arguments> invalidOfficeCodeCombinations() {
+    return Stream.of(
+        Arguments.of("1A001B", " "), Arguments.of(" ", "1A001B"), Arguments.of(" ", " "));
   }
 
   @Test
@@ -685,16 +695,13 @@ public class ApplicationLinkingIntegrationTest {
     applicationContent.put("provider", provider);
     request.setApplicationContent(applicationContent);
 
-    applicationId(post(request, headers()));
-    projectionAwaiter.awaitApplication(applicationId);
-    awaitRoute(applicationId, ApplicationGroupRouteKind.STANDALONE);
-  }
+    var response = post(request, headers());
 
-  private UUID applicationId(ResponseEntity<Void> response) {
     assertThat(response.getStatusCode()).isIn(HttpStatus.CREATED, HttpStatus.ACCEPTED);
     assertThat(response.getHeaders().getLocation()).isNotNull();
-    return UUID.fromString(
-        response.getHeaders().getLocation().getPath().replace("/api/v0/applications/", ""));
+
+    projectionAwaiter.awaitApplication(applicationId);
+    awaitRoute(applicationId, ApplicationGroupRouteKind.STANDALONE);
   }
 
   private Map<UUID, ApplicationGroupRoute> awaitRoutes(UUID... applicationIds) {
