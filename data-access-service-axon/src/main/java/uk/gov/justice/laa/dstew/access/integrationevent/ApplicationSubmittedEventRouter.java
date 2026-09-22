@@ -16,7 +16,7 @@ import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
-import uk.gov.justice.laa.dstew.access.config.interceptor.ServiceNameMetadataDispatchInterceptor;
+import uk.gov.justice.laa.dstew.access.config.interceptor.RequestMetadataDispatchInterceptor;
 
 /** Schedules non-replayable integration-event publication after the command commit. */
 @Component
@@ -92,7 +92,7 @@ public class ApplicationSubmittedEventRouter {
 
   private String correlationId(EventMessage message) {
     Object value =
-        message.metadata().get(ServiceNameMetadataDispatchInterceptor.CORRELATION_ID_METADATA_KEY);
+        message.metadata().get(RequestMetadataDispatchInterceptor.CORRELATION_ID_METADATA_KEY);
     return value == null || value.toString().isBlank() ? message.identifier() : value.toString();
   }
 

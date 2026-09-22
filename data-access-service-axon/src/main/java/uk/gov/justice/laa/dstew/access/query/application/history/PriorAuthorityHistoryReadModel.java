@@ -10,8 +10,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 /** JPA read model for the {@code prior_authority_history} audit table. */
 @Entity
@@ -38,12 +36,14 @@ public class PriorAuthorityHistoryReadModel {
   @Column(name = "event_type", nullable = false)
   String eventType;
 
-  @JdbcTypeCode(SqlTypes.JSON)
-  @Column(name = "event_data", nullable = false)
-  String eventData;
+  @Column(name = "item_version", nullable = false)
+  Long itemVersion;
 
   @Column(name = "service_name")
   String serviceName;
+
+  @Column(name = "caseworker_id")
+  UUID caseworkerId;
 
   @Column(name = "occurred_at", nullable = false)
   Instant occurredAt;
