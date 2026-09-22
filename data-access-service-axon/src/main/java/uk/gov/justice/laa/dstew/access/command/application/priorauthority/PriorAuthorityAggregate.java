@@ -123,6 +123,37 @@ public class PriorAuthorityAggregate {
 
   @CommandHandler
   UUID handle(
+      PriorAuthorityDocumentDeleteCommand command,
+      PriorAuthorityDraftStore draftStore,
+      EventAppender eventAppender) {
+    PriorAuthorityDataPayload existingDraft = requireDraft(command.priorAuthorityId(), draftStore);
+    List<PriorAuthorityDocument> updatedDocuments = copyUploadedDocuments(existingDraft);
+    boolean removed =
+        updatedDocuments.removeIf(document -> document.documentId().equals(command.documentId()));
+    if (!removed) {
+      throw new ResourceNotFoundException(
+          "Document %s not found for Prior Authority %s"
+              .formatted(command.documentId(), command.priorAuthorityId()));
+    }
+
+    PriorAuthorityContent updatedContent =
+        existingDraft.content().withUploadedDocuments(List.copyOf(updatedDocuments));
+    PriorAuthorityDataPayload updatedPayload =
+        existingDraft
+            .withContent(updatedContent)
+            .withSerialisedRequest(command.serialisedRequest());
+    draftStore.upsert(
+        command.priorAuthorityId(),
+        existingDraft.applicationId(),
+        updatedPayload,
+        command.serialisedRequest(),
+        command.occurredAt());
+    eventAppender.append(PriorAuthorityDecider.decideDocumentDeleted(command, state.applicationId));
+    return command.documentId();
+  }
+
+  @CommandHandler
+  UUID handle(
       PriorAuthorityDocumentTypeUpdateCommand command,
       PriorAuthorityDraftStore draftStore,
       EventAppender eventAppender) {
@@ -313,6 +344,12 @@ public class PriorAuthorityAggregate {
 
   @EventSourcingHandler
   void on(PriorAuthorityDocumentUploadedEvent event) {
+    PriorAuthorityEvolve.apply(state, event);
+    this.priorAuthorityId = state.priorAuthorityId;
+  }
+
+  @EventSourcingHandler
+  void on(PriorAuthorityDocumentDeletedEvent event) {
     PriorAuthorityEvolve.apply(state, event);
     this.priorAuthorityId = state.priorAuthorityId;
   }

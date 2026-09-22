@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.config.interceptor.ContentSchemaValidationDispatchInterceptor;
-import uk.gov.justice.laa.dstew.access.config.interceptor.ServiceNameMetadataDispatchInterceptor;
+import uk.gov.justice.laa.dstew.access.config.interceptor.RequestMetadataDispatchInterceptor;
 
 /** Configures the default Axon command bus with dispatch interceptors and metadata correlation. */
 @Configuration
@@ -18,18 +18,19 @@ public class AxonCommandBusConfig {
   @Bean
   CorrelationDataProvider serviceNameCorrelationDataProvider() {
     return new SimpleCorrelationDataProvider(
-        ServiceNameMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY,
-        ServiceNameMetadataDispatchInterceptor.CORRELATION_ID_METADATA_KEY);
+        RequestMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY,
+        RequestMetadataDispatchInterceptor.CORRELATION_ID_METADATA_KEY,
+        RequestMetadataDispatchInterceptor.AUTHENTICATED_USER_ID_KEY);
   }
 
   @Bean
   ConfigurationEnhancer commandDispatchInterceptors(
-      ServiceNameMetadataDispatchInterceptor serviceNameInterceptor,
+      RequestMetadataDispatchInterceptor serviceNameInterceptor,
       ContentSchemaValidationDispatchInterceptor schemaInterceptor) {
     return registry ->
         registry
             .registerComponent(
-                ServiceNameMetadataDispatchInterceptor.class, config -> serviceNameInterceptor)
+                RequestMetadataDispatchInterceptor.class, config -> serviceNameInterceptor)
             .registerComponent(
                 ContentSchemaValidationDispatchInterceptor.class, config -> schemaInterceptor);
   }

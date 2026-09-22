@@ -188,7 +188,7 @@ class PriorAuthorityHistoryAssemblerTest {
             .priorAuthorityId(priorAuthorityId)
             .priorAuthorityType("EXPERT")
             .eventType("PRIOR_AUTHORITY_SUBMITTED")
-            .eventData("{}")
+            .itemVersion(2L)
             .serviceName(null)
             .occurredAt(Instant.parse("2026-08-01T10:00:00Z"))
             .build();
@@ -272,7 +272,7 @@ class PriorAuthorityHistoryAssemblerTest {
         .priorAuthorityId(priorAuthorityId)
         .priorAuthorityType(priorAuthorityType)
         .eventType("PRIOR_AUTHORITY_SUBMITTED")
-        .eventData("{\"status\":\"SUBMITTED\",\"dataVersion\":0}")
+        .itemVersion(2L)
         .serviceName(serviceName)
         .occurredAt(occurredAt)
         .build();

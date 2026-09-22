@@ -2,7 +2,6 @@ package uk.gov.justice.laa.dstew.access.query.application.history;
 
 import java.time.Instant;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -21,13 +20,11 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationD
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
-import uk.gov.justice.laa.dstew.access.config.interceptor.ServiceNameMetadataDispatchInterceptor;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
+import uk.gov.justice.laa.dstew.access.config.interceptor.RequestMetadataDispatchInterceptor;
 
 /** Independently replayable, append-only audit projection of Application events. */
 @Component
@@ -142,6 +139,9 @@ public class ApplicationHistoryProjection {
   /** Appends a thin audit entry for an application work-list assignment. */
   @EventHandler
   public void on(WorkItemAssigned event, EventMessage message) {
+    if (WorkItemType.PRIOR_AUTHORITY.equals(event.workItemType())) {
+      return;
+    }
     append(
         message,
         event.workItemId(),
@@ -154,6 +154,9 @@ public class ApplicationHistoryProjection {
   /** Appends a thin audit entry for an application work-list unassignment. */
   @EventHandler
   public void on(WorkItemUnassigned event, EventMessage message) {
+    if (WorkItemType.PRIOR_AUTHORITY.equals(event.workItemType())) {
+      return;
+    }
     append(
         message,
         event.workItemId(),
@@ -171,57 +174,6 @@ public class ApplicationHistoryProjection {
         "APPLICATION_NOTE_CREATED",
         serialise(event),
         event.occurredAt());
-  }
-
-  /** Records a submitted PriorAuthority in the PA history table for the public history API. */
-  @EventHandler
-  public void on(PriorAuthoritySubmittedEvent event, EventMessage message) {
-    Object serviceName =
-        message.metadata().get(ServiceNameMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY);
-    priorAuthorityHistoryReadRepository.save(
-        PriorAuthorityHistoryReadModel.builder()
-            .eventId(message.identifier())
-            .applicationId(event.applicationId())
-            .priorAuthorityId(event.priorAuthorityId())
-            .priorAuthorityType(event.priorAuthorityType())
-            .eventType("PRIOR_AUTHORITY_SUBMITTED")
-            .eventData(
-                serialise(
-                    Map.of(
-                        "status", PriorAuthorityStatus.SUBMITTED.name(),
-                        "dataVersion", event.dataVersion())))
-            .serviceName(serviceName == null ? null : serviceName.toString())
-            .occurredAt(event.occurredAt())
-            .build());
-  }
-
-  /** Records a prior-authority decision in the PA history table. */
-  @EventHandler
-  public void on(PriorAuthorityDecisionMadeEvent event, EventMessage message) {
-    Map<String, Object> eventData = new LinkedHashMap<>();
-    eventData.put("status", PriorAuthorityStatus.DECIDED.name());
-    eventData.put("decision", event.overallDecision());
-    eventData.put("dataVersion", event.dataVersion());
-    if (event.amountGranted() != null) {
-      eventData.put("amountGranted", event.amountGranted());
-    }
-    if (event.dateGranted() != null) {
-      eventData.put("dateGranted", event.dateGranted());
-    }
-    priorAuthorityHistoryReadRepository.save(
-        PriorAuthorityHistoryReadModel.builder()
-            .eventId(message.identifier())
-            .applicationId(event.applicationId())
-            .priorAuthorityId(event.priorAuthorityId())
-            .priorAuthorityType(event.priorAuthorityType())
-            .eventType(
-                DecisionValue.GRANTED.name().equals(event.overallDecision())
-                    ? "PRIOR_AUTHORITY_DECISION_GRANTED"
-                    : "PRIOR_AUTHORITY_DECISION_REFUSED")
-            .eventData(serialise(eventData))
-            .serviceName(resolveServiceName(message))
-            .occurredAt(event.occurredAt())
-            .build());
   }
 
   /** Returns chronologically ordered history rows matching the requested public event types. */
@@ -351,7 +303,7 @@ public class ApplicationHistoryProjection {
       Instant occurredAt,
       String historyId) {
     Object serviceName =
-        message.metadata().get(ServiceNameMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY);
+        message.metadata().get(RequestMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY);
     applicationHistoryReadRepository.save(
         ApplicationHistoryReadModel.builder()
             .eventId(historyId)
@@ -366,12 +318,6 @@ public class ApplicationHistoryProjection {
 
   private String groupHistoryId(EventMessage message, UUID applicationId) {
     return message.identifier() + ":" + applicationId;
-  }
-
-  private String resolveServiceName(EventMessage message) {
-    Object serviceName =
-        message.metadata().get(ServiceNameMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY);
-    return serviceName == null ? null : serviceName.toString();
   }
 
   private String serialise(Object event) {

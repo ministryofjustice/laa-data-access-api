@@ -149,6 +149,13 @@ public final class PriorAuthorityDecider {
         applicationId);
   }
 
+  /** Returns the persisted event for removing a prior-authority document. */
+  public static PriorAuthorityDocumentDeletedEvent decideDocumentDeleted(
+      PriorAuthorityDocumentDeleteCommand command, UUID applicationId) {
+    return new PriorAuthorityDocumentDeletedEvent(
+        command.priorAuthorityId(), command.documentId(), command.occurredAt(), applicationId);
+  }
+
   /** Returns the persisted event for setting or replacing a document type. */
   public static PriorAuthorityDocumentTypeUpdatedEvent decideDocumentTypeUpdated(
       PriorAuthorityDocumentTypeUpdateCommand command) {

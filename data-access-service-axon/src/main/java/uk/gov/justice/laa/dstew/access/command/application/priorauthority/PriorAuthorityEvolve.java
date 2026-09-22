@@ -57,4 +57,9 @@ public final class PriorAuthorityEvolve {
   public static void apply(PriorAuthorityState state, PriorAuthorityDocumentUploadedEvent event) {
     state.uploadedDocumentIds.add(event.documentId());
   }
+
+  /** Applies a {@link PriorAuthorityDocumentDeletedEvent} to the given state. */
+  public static void apply(PriorAuthorityState state, PriorAuthorityDocumentDeletedEvent event) {
+    state.uploadedDocumentIds.remove(event.documentId());
+  }
 }

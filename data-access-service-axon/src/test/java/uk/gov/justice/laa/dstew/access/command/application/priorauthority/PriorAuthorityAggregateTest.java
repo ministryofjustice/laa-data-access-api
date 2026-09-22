@@ -1055,4 +1055,104 @@ class PriorAuthorityAggregateTest {
     verify(eventAppender).append(eventCaptor.capture());
     assertThat(eventCaptor.getValue().checksum()).isNull();
   }
+
+  @Test
+  void givenDraftWithDocument_whenDelete_thenRemovesItAndEmitsDeletedEvent() {
+    PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    UUID remainingDocumentId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-09-08T12:00:00Z");
+    PriorAuthorityDocumentDeleteCommand command =
+        new PriorAuthorityDocumentDeleteCommand(priorAuthorityId, documentId, "{}", occurredAt);
+
+    aggregate.on(
+        new PriorAuthorityDraftStartedEvent(
+            priorAuthorityId, applicationId, "EXPERT", 1, occurredAt));
+    when(draftStore.find(priorAuthorityId))
+        .thenReturn(
+            Optional.of(
+                new PriorAuthorityDataPayload(
+                    priorAuthorityId,
+                    applicationId,
+                    new PriorAuthorityContent(
+                        EXPERT,
+                        "why",
+                        null,
+                        null,
+                        null,
+                        List.of(
+                            new PriorAuthorityDocument(
+                                documentId,
+                                null,
+                                "delete.pdf",
+                                "PDF",
+                                "application/pdf",
+                                1L,
+                                occurredAt,
+                                "CIVIL_APPLY",
+                                "delete-checksum"),
+                            new PriorAuthorityDocument(
+                                remainingDocumentId,
+                                null,
+                                "keep.pdf",
+                                "PDF",
+                                "application/pdf",
+                                1L,
+                                occurredAt,
+                                "CIVIL_APPLY",
+                                "keep-checksum"))),
+                    "{}",
+                    occurredAt)));
+
+    assertThat(aggregate.handle(command, draftStore, eventAppender)).isEqualTo(documentId);
+
+    ArgumentCaptor<PriorAuthorityDataPayload> payloadCaptor =
+        ArgumentCaptor.forClass(PriorAuthorityDataPayload.class);
+    verify(draftStore)
+        .upsert(
+            eq(priorAuthorityId),
+            eq(applicationId),
+            payloadCaptor.capture(),
+            eq("{}"),
+            eq(occurredAt));
+    assertThat(payloadCaptor.getValue().content().uploadedDocuments())
+        .extracting(PriorAuthorityDocument::documentId)
+        .containsExactly(remainingDocumentId);
+    verify(eventAppender)
+        .append(
+            new PriorAuthorityDocumentDeletedEvent(
+                priorAuthorityId, documentId, occurredAt, applicationId));
+  }
+
+  @Test
+  void givenDraftWithoutDocuments_whenDelete_thenThrowsNotFoundWithoutPersistingChanges() {
+    PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-09-08T12:00:00Z");
+    PriorAuthorityDocumentDeleteCommand command =
+        new PriorAuthorityDocumentDeleteCommand(priorAuthorityId, documentId, "{}", occurredAt);
+
+    aggregate.on(
+        new PriorAuthorityDraftStartedEvent(
+            priorAuthorityId, applicationId, "EXPERT", 1, occurredAt));
+    when(draftStore.find(priorAuthorityId))
+        .thenReturn(
+            Optional.of(
+                new PriorAuthorityDataPayload(
+                    priorAuthorityId,
+                    applicationId,
+                    new PriorAuthorityContent(EXPERT, "why", null, null, null),
+                    "{}",
+                    occurredAt)));
+
+    org.assertj.core.api.Assertions.assertThatExceptionOfType(ResourceNotFoundException.class)
+        .isThrownBy(() -> aggregate.handle(command, draftStore, eventAppender));
+
+    verify(draftStore, never()).upsert(any(), any(), any(), any(), any());
+    verify(eventAppender, never()).append(any(PriorAuthorityDocumentDeletedEvent.class));
+  }
 }
