@@ -106,11 +106,11 @@ public final class PriorAuthorityDecider {
   }
 
   private static PriorAuthorityStatus statusOf(PriorAuthorityState state) {
-    if (!state.submitted) {
-      return PriorAuthorityStatus.DRAFT;
-    }
     if (state.decided) {
       return PriorAuthorityStatus.DECIDED;
+    }
+    if (!state.submitted) {
+      return PriorAuthorityStatus.DRAFT;
     }
     return PriorAuthorityStatus.SUBMITTED;
   }

@@ -239,6 +239,32 @@ class PriorAuthorityDeciderTest {
   }
 
   @Test
+  void givenDecidedStateWithSubmittedFalse_whenDecideDecision_thenThrowsDecidedConflict() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    PriorAuthorityState state = draftState(priorAuthorityId, applicationId);
+    state.decided = true;
+    MakePriorAuthorityDecisionCommand command =
+        new MakePriorAuthorityDecisionCommand(
+            priorAuthorityId,
+            TestJwtDecoderConfig.CASEWORKER_ID,
+            0L,
+            "GRANTED",
+            "Recorded",
+            BigDecimal.valueOf(100.0),
+            null,
+            null,
+            null,
+            OCCURRED_AT,
+            "{\"decision\":\"GRANTED\"}",
+            OCCURRED_AT);
+
+    assertThatThrownBy(() -> PriorAuthorityDecider.decideDecision(state, command))
+        .isInstanceOf(PriorAuthorityStatusConflictException.class)
+        .hasMessageContaining("Prior authority has already been decided");
+  }
+
+  @Test
   void
       givenAlreadyDecidedWithNullDecisionSerialisedRequest_whenDecideDecision_thenThrowsConflict() {
     UUID priorAuthorityId = UUID.randomUUID();
