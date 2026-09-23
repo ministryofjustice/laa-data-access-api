@@ -253,6 +253,9 @@ components:
           format: date-time
         createdBy:
           type: string
+        caseworkerId:
+          type: string
+          format: uuid
         eventDescription:
           type: string
 
