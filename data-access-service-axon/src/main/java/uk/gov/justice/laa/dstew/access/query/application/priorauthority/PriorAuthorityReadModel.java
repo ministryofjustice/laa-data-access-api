@@ -36,4 +36,7 @@ public class PriorAuthorityReadModel {
 
   @Column(name = "created_at")
   private Instant createdAt;
+
+  @Column(name = "modified_at")
+  private Instant modifiedAt;
 }

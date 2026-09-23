@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
@@ -28,6 +29,8 @@ class PriorAuthorityEvolveTest {
     assertThat(state.getApplicationId()).isEqualTo(applicationId);
     assertThat(state.getPriorAuthorityType()).isEqualTo("EXPERT");
     assertThat(state.getSchemaVersion()).isEqualTo(3);
+    assertThat(state.isSubmitted()).isFalse();
+    assertThat(state.isDecided()).isFalse();
   }
 
   @Test
@@ -47,6 +50,36 @@ class PriorAuthorityEvolveTest {
     assertThat(state.getPriorAuthorityType()).isEqualTo("EXPERT");
     assertThat(state.getSchemaVersion()).isEqualTo(3);
     assertThat(state.getDataVersion()).isEqualTo(0L);
+    assertThat(state.isSubmitted()).isTrue();
+    assertThat(state.isDecided()).isFalse();
+  }
+
+  @Test
+  void givenDecisionMadeEvent_whenApply_thenMutatesDecisionStateFields() {
+    PriorAuthorityState state = new PriorAuthorityState();
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
+    PriorAuthorityDecisionMadeEvent event =
+        new PriorAuthorityDecisionMadeEvent(
+            priorAuthorityId,
+            applicationId,
+            "EXPERT",
+            1L,
+            "REFUSED",
+            "Reason",
+            null,
+            null,
+            occurredAt);
+
+    PriorAuthorityEvolve.apply(state, event);
+
+    assertThat(state.getPriorAuthorityId()).isEqualTo(priorAuthorityId);
+    assertThat(state.getApplicationId()).isEqualTo(applicationId);
+    assertThat(state.getPriorAuthorityType()).isEqualTo("EXPERT");
+    assertThat(state.getDataVersion()).isEqualTo(1L);
+    assertThat(state.isSubmitted()).isTrue();
+    assertThat(state.isDecided()).isTrue();
   }
 
   @Test

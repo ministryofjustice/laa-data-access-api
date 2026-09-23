@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
 
+import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -39,6 +41,7 @@ import uk.gov.justice.laa.dstew.access.model.ExpertCosts;
 import uk.gov.justice.laa.dstew.access.model.ExpertDetails;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceedingRequest;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
+import uk.gov.justice.laa.dstew.access.model.MakePriorAuthorityDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetailsRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
@@ -265,7 +268,7 @@ class WorkListIntegrationTest {
                         .expertCosts(
                             ExpertCosts.builder()
                                 .billingType(BillingType.FIXED_RATE)
-                                .totalAmount(100.0)
+                                .totalAmount(BigDecimal.valueOf(100.0))
                                 .costsSharedWithOtherParties(false)
                                 .build())
                         .build())
@@ -629,6 +632,59 @@ class WorkListIntegrationTest {
     awaitWorkListContains("?assignedToMe=true&unassigned=false", applicationId, caseworkerId, 1L);
   }
 
+  @Test
+  void
+      givenSubmittedPriorAuthorityAssignedToCaseworker_whenDecided_thenItIsRemovedAndCannotBeAssignedAgain() {
+    UUID parentApplicationId = UUID.randomUUID();
+    UUID caseworkerId = TestJwtDecoderConfig.CASEWORKER_ID;
+    createGrantedApplication(parentApplicationId);
+    UUID priorAuthorityId = createAndSubmitPriorAuthorityDraft(parentApplicationId);
+
+    assertThat(assign(priorAuthorityId, caseworkerId).getStatusCode()).isEqualTo(HttpStatus.OK);
+
+    MakePriorAuthorityDecisionRequest decisionRequest =
+        new MakePriorAuthorityDecisionRequest()
+            .decision(DecisionStatus.GRANTED)
+            .decisionJustification("Granted")
+            .amountGranted(BigDecimal.valueOf(150.0))
+            .dateGranted(OffsetDateTime.now())
+            .eventHistory(
+                EventHistoryRequest.builder().eventDescription("Decision recorded").build())
+            .priorAuthorityVersion(0L);
+
+    ResponseEntity<Void> decided =
+        restTemplate.exchange(
+            "http://localhost:"
+                + port
+                + "/api/v0/prior-authorities/"
+                + priorAuthorityId
+                + "/decision",
+            HttpMethod.PATCH,
+            new HttpEntity<>(decisionRequest, headersFor(caseworkerId)),
+            Void.class);
+    assertThat(decided.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+
+    await()
+        .atMost(15, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              assertThat(getWorkList("").getItems())
+                  .extracting(WorkListItem::getItemId)
+                  .doesNotContain(priorAuthorityId);
+              assertThat(getWorkList("?assignedTo=" + caseworkerId).getItems())
+                  .extracting(WorkListItem::getItemId)
+                  .doesNotContain(priorAuthorityId);
+            });
+
+    ResponseEntity<Void> reassigned =
+        restTemplate.exchange(
+            assignmentUrl(priorAuthorityId, "assign"),
+            HttpMethod.POST,
+            new HttpEntity<>(new WorkListAssignRequest(1L), headersFor(caseworkerId)),
+            Void.class);
+    assertThat(reassigned.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+  }
+
   private void createManualApplication(UUID applicationId) {
     ResponseEntity<Void> created =
         restTemplate.postForEntity(
@@ -689,7 +745,7 @@ class WorkListIntegrationTest {
             .disbursementDetails(
                 DisbursementDetails.builder()
                     .disbursementPurpose("Court interpreter")
-                    .disbursementAmount(150.0)
+                    .disbursementAmount(BigDecimal.valueOf(150.0))
                     .build())
             .build());
   }

@@ -355,15 +355,6 @@ class ApplicationHistoryProjectionTest {
         Instant.parse("2026-07-15T08:00:00Z"));
   }
 
-  private EventMessage messageWithoutServiceName(Object payload, String identifier) {
-    return new GenericEventMessage(
-        identifier,
-        new MessageType(payload.getClass()),
-        payload,
-        Map.of(),
-        Instant.parse("2026-07-15T08:00:00Z"));
-  }
-
   private ApplicationHistoryReadModel history(
       UUID applicationId, String eventType, Instant occurredAt) {
     return ApplicationHistoryReadModel.builder()

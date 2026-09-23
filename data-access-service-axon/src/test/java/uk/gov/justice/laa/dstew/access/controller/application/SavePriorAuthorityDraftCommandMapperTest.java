@@ -198,14 +198,14 @@ class SavePriorAuthorityDraftCommandMapperTest {
                 .expertCosts(
                     ExpertCosts.builder()
                         .billingType(BillingType.HOURLY)
-                        .hourlyRate(300.0)
+                        .hourlyRate(BigDecimal.valueOf(300.0))
                         .timeRequested(TimeRequested.builder().hours(2).minutes(30).build())
-                        .totalAmount(900.0)
+                        .totalAmount(BigDecimal.valueOf(900.0))
                         .costsSharedWithOtherParties(true)
                         .apportionment(
                             Apportionment.builder()
                                 .partiesSharingCosts(2)
-                                .clientShareAmount(450.0)
+                                .clientShareAmount(BigDecimal.valueOf(450.0))
                                 .build())
                         .build())
                 .build())
@@ -230,7 +230,7 @@ class SavePriorAuthorityDraftCommandMapperTest {
         .disbursementDetails(
             DisbursementDetails.builder()
                 .disbursementPurpose("Interpreter")
-                .disbursementAmount(150.25)
+                .disbursementAmount(BigDecimal.valueOf(150.25))
                 .build())
         .build();
   }

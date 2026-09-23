@@ -147,9 +147,9 @@ class ApplicationDeciderTest {
             state,
             new MakeApplicationDecisionCommand(
                 applicationId,
+                null,
                 0L,
                 "REFUSED",
-                false,
                 List.of(new MakeDecisionProceeding(proceedingId, "REFUSED", "reason", "just")),
                 null,
                 "{}",
@@ -172,9 +172,9 @@ class ApplicationDeciderTest {
     MakeApplicationDecisionCommand command =
         new MakeApplicationDecisionCommand(
             applicationId,
+            null,
             1L, // stale: actual is 0
             "REFUSED",
-            false,
             List.of(new MakeDecisionProceeding(UUID.randomUUID(), "REFUSED", "r", "just")),
             null,
             "{}",
@@ -192,7 +192,7 @@ class ApplicationDeciderTest {
     ApplicationState state = stateAfterCreate(applicationId, "fp", 1);
     MakeApplicationDecisionCommand command =
         new MakeApplicationDecisionCommand(
-            applicationId, 0L, "REFUSED", false, List.of(), null, "{}", null, TIMESTAMP);
+            applicationId, null, 0L, "REFUSED", List.of(), null, "{}", null, TIMESTAMP);
     ApplicationDataPayload current = payloadWithProceeding(applicationId, UUID.randomUUID());
 
     assertThatThrownBy(() -> ApplicationDecider.decideDecision(state, command, current))
@@ -207,9 +207,9 @@ class ApplicationDeciderTest {
     MakeApplicationDecisionCommand command =
         new MakeApplicationDecisionCommand(
             applicationId,
+            null,
             0L,
             "GRANTED",
-            false,
             List.of(new MakeDecisionProceeding(proceedingId, "GRANTED", "r", "just")),
             null, // missing certificate
             "{}",
@@ -230,9 +230,9 @@ class ApplicationDeciderTest {
     MakeApplicationDecisionCommand command =
         new MakeApplicationDecisionCommand(
             applicationId,
+            null,
             0L,
             "REFUSED",
-            false,
             List.of(new MakeDecisionProceeding(unknownProceedingId, "REFUSED", "r", "just")),
             null,
             "{}",
@@ -254,9 +254,9 @@ class ApplicationDeciderTest {
     MakeApplicationDecisionCommand command =
         new MakeApplicationDecisionCommand(
             applicationId,
+            null,
             0L,
             "REFUSED",
-            false,
             List.of(proceeding, proceeding),
             null,
             "{}",
