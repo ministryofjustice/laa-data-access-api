@@ -546,7 +546,8 @@ class WorkListIntegrationTest {
                 history ->
                     history.stream()
                         .anyMatch(
-                            row -> "APPLICATION_MAKE_DECISION_GRANTED".equals(row.get("event_type"))));
+                            row ->
+                                "APPLICATION_MAKE_DECISION_GRANTED".equals(row.get("event_type"))));
 
     UUID priorAuthorityId = createAndSubmitPriorAuthorityDraft(parentApplicationId);
 
@@ -576,8 +577,7 @@ class WorkListIntegrationTest {
     ResponseEntity<Void> created =
         restTemplate.postForEntity(
             "http://localhost:" + port + "/api/v0/applications",
-            new HttpEntity<>(
-                validCreateApplicationRequest(applicationId, proceedingId), headers()),
+            new HttpEntity<>(validCreateApplicationRequest(applicationId, proceedingId), headers()),
             Void.class);
     assertThat(created.getStatusCode()).isEqualTo(HttpStatus.CREATED);
 
