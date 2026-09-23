@@ -535,23 +535,6 @@ class PriorAuthorityAggregateTest {
     Instant startedAt = Instant.parse("2026-08-01T10:00:00Z");
     Instant submittedAt = Instant.parse("2026-08-02T10:00:00Z");
     Instant firstDecisionAt = Instant.parse("2026-08-02T11:00:00Z");
-    when(dataStore.get(priorAuthorityId, 1L))
-        .thenReturn(
-            new PriorAuthorityDataPayload(
-                priorAuthorityId,
-                applicationId,
-                new PriorAuthorityContent(EXPERT, "Need expert", null, null, null),
-                "{}",
-                submittedAt,
-                new PriorAuthorityDataPayload.DecisionDetails(
-                    "GRANTED",
-                    "Initial",
-                    BigDecimal.valueOf(100.0),
-                    firstDecisionAt,
-                    ExpertFeeInformation.builder().build(),
-                    DisbursementInformation.builder().build(),
-                    ApportionmentInformation.builder().build(),
-                    "{\"decision\":\"GRANTED\"}")));
 
     MakePriorAuthorityDecisionCommand command =
         new MakePriorAuthorityDecisionCommand(
@@ -608,23 +591,6 @@ class PriorAuthorityAggregateTest {
     Instant startedAt = Instant.parse("2026-08-01T10:00:00Z");
     Instant submittedAt = Instant.parse("2026-08-02T10:00:00Z");
     Instant firstDecisionAt = Instant.parse("2026-08-02T11:00:00Z");
-    when(dataStore.get(priorAuthorityId, 1L))
-        .thenReturn(
-            new PriorAuthorityDataPayload(
-                priorAuthorityId,
-                applicationId,
-                new PriorAuthorityContent(EXPERT, "Need expert", null, null, null),
-                "{}",
-                submittedAt,
-                new PriorAuthorityDataPayload.DecisionDetails(
-                    "GRANTED",
-                    "Initial",
-                    BigDecimal.valueOf(100.0),
-                    firstDecisionAt,
-                    ExpertFeeInformation.builder().build(),
-                    DisbursementInformation.builder().build(),
-                    ApportionmentInformation.builder().build(),
-                    "{\"decision\":\"GRANTED\"}")));
 
     MakePriorAuthorityDecisionCommand command =
         new MakePriorAuthorityDecisionCommand(
@@ -700,6 +666,51 @@ class PriorAuthorityAggregateTest {
         .then()
         .exception(ResourceNotFoundException.class)
         .noEvents();
+  }
+
+  @Test
+  void
+      givenDraftPriorAuthority_whenMakePriorAuthorityDecision_thenThrowsStatusConflictWithoutReadingDataStore() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant startedAt = Instant.parse("2026-08-01T10:00:00Z");
+    Instant decidedAt = Instant.parse("2026-08-02T11:00:00Z");
+
+    MakePriorAuthorityDecisionCommand command =
+        new MakePriorAuthorityDecisionCommand(
+            priorAuthorityId,
+            TestJwtDecoderConfig.CASEWORKER_ID,
+            0L,
+            "GRANTED",
+            "Decision recorded",
+            BigDecimal.valueOf(1234.56),
+            null,
+            null,
+            null,
+            decidedAt,
+            "{\"decision\":\"GRANTED\"}",
+            decidedAt);
+
+    fixture
+        .given()
+        .events(
+            new PriorAuthorityDraftStartedEvent(
+                priorAuthorityId, applicationId, EXPERT.name(), 1, startedAt),
+            new WorkItemAssigned(
+                priorAuthorityId,
+                WorkItemType.PRIOR_AUTHORITY,
+                0L,
+                1L,
+                TestJwtDecoderConfig.CASEWORKER_ID,
+                startedAt))
+        .when()
+        .command(command)
+        .then()
+        .exception(PriorAuthorityStatusConflictException.class)
+        .noEvents();
+
+    verify(dataStore, never()).get(any(), anyLong());
+    verify(dataStore, never()).append(any(), anyLong(), any(), any(), any(), any());
   }
 
   @Test
