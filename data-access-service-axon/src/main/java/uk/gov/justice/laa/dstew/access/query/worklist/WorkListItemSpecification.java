@@ -10,16 +10,21 @@ public final class WorkListItemSpecification {
 
   private WorkListItemSpecification() {}
 
-  /** Applies the selected work-item type and exactly one queue view. */
+  /** Applies the selected work-item type and requested work-queue views. */
   public static Specification<WorkListItemReadModel> from(FindWorkListItemsQuery query) {
     return (root, criteriaQuery, criteriaBuilder) -> {
       List<Predicate> predicates = new ArrayList<>();
       if (query.itemType() != null) {
         predicates.add(criteriaBuilder.equal(root.get("itemType"), query.itemType()));
       }
-      if (query.assignedTo() != null) {
-        predicates.add(criteriaBuilder.equal(root.get("assigneeId"), query.assignedTo()));
-      } else if (Boolean.TRUE.equals(query.unassigned())) {
+      if (query.assignedToMe() && query.unassigned()) {
+        predicates.add(
+            criteriaBuilder.or(
+                criteriaBuilder.isNull(root.get("assigneeId")),
+                criteriaBuilder.equal(root.get("assigneeId"), query.authenticatedUserId())));
+      } else if (query.assignedToMe()) {
+        predicates.add(criteriaBuilder.equal(root.get("assigneeId"), query.authenticatedUserId()));
+      } else {
         predicates.add(criteriaBuilder.isNull(root.get("assigneeId")));
       }
       return criteriaBuilder.and(predicates.toArray(new Predicate[0]));

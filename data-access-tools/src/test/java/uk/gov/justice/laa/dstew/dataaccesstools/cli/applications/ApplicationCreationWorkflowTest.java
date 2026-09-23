@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.dataaccesstools.cli.applications;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
@@ -21,22 +22,22 @@ class ApplicationCreationWorkflowTest {
     WorkflowResult result = workflow.create(2, DecisionRequestFactory.Decision.GRANTED);
 
     assertTrue(result.succeeded());
-    assertEquals(6, client.operations.size());
+    assertEquals(8, client.operations.size());
     assertEquals("create", client.operations.get(0));
     assertEquals("manual", client.operations.get(1));
-    assertEquals("decision:GRANTED", client.operations.get(2));
-    assertEquals("create", client.operations.get(3));
+    assertEquals("assign", client.operations.get(2));
+    assertEquals("decision:GRANTED", client.operations.get(3));
+    assertEquals("create", client.operations.get(4));
   }
 
   @Test
-  void includesCaseworkerIdInDecisionRequest() {
+  void doesNotIncludeCaseworkerIdInDecisionRequest() {
     var application = new ApplicationRequestFactory().create();
 
     String request =
-        new DecisionRequestFactory()
-            .create(application, DecisionRequestFactory.Decision.GRANTED, UUID.randomUUID());
+        new DecisionRequestFactory().create(application, DecisionRequestFactory.Decision.GRANTED);
 
-    assertTrue(request.matches("(?s).*\\\"caseworkerId\\\":\\\"[0-9a-f-]{36}\\\".*"));
+    assertFalse(request.contains("\"caseworkerId\""));
   }
 
   @Test
@@ -69,9 +70,8 @@ class ApplicationCreationWorkflowTest {
     private final List<String> operations = new ArrayList<>();
 
     @Override
-    public UUID createApplication(String requestBody) {
+    public void createApplication(String requestBody) {
       operations.add("create");
-      return UUID.randomUUID();
     }
 
     @Override
@@ -87,7 +87,15 @@ class ApplicationCreationWorkflowTest {
     }
 
     @Override
+    public void assignWorkListItem(
+        UUID itemId, long expectedAssignmentVersion, String eventDescription) {
+      assertEquals(0, expectedAssignmentVersion);
+      operations.add("assign");
+    }
+
+    @Override
     public void makeDecision(UUID applicationId, String requestBody) {
+      assertFalse(requestBody.contains("\"caseworkerId\""));
       operations.add(requestBody.contains("GRANTED") ? "decision:GRANTED" : "decision:REFUSED");
     }
 

@@ -234,6 +234,9 @@ components:
           format: date-time
         createdBy:
           type: string
+        caseworkerId:
+          type: string
+          format: uuid
         eventDescription:
           type: string
 
@@ -305,7 +308,6 @@ components:
         - proceedings
         - eventHistory
         - applicationVersion
-        - caseworkerId
       properties:
         overallDecision:
           $ref: "#/components/schemas/DecisionStatus"
@@ -329,10 +331,6 @@ components:
           format: int64
           minimum: 0
           description: Version of the application being decided, used for concurrency control
-        caseworkerId:
-          type: string
-          format: uuid
-          description: Caseworker requesting the manual decision; temporary until derived from the authenticated principal
 
     AutoGrantOutcome:
       type: string

@@ -19,7 +19,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.random.RandomGeneratorFactory;
-import java.util.stream.Collectors;
 import javax.sql.DataSource;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
@@ -33,8 +32,6 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.ObjectMapper;
-import uk.gov.justice.laa.dstew.access.command.caseworker.Caseworker;
-import uk.gov.justice.laa.dstew.access.command.caseworker.CaseworkerRepository;
 import uk.gov.justice.laa.dstew.access.testutils.ApplicationLifecycle;
 import uk.gov.justice.laa.dstew.access.testutils.ApplicationTestDataSeeder;
 import uk.gov.justice.laa.dstew.access.testutils.GeneratedRequestFactory;
@@ -55,7 +52,6 @@ class GenerateAxonMassDataDumpTest extends AbstractApplicationTestSeederIntegrat
   @Autowired private ObjectMapper objectMapper;
   @Autowired private DataSource dataSource;
   @Autowired private Environment environment;
-  @Autowired private CaseworkerRepository caseworkerRepository;
 
   @Test
   void generatesAndExportsMassData() throws Exception {
@@ -238,16 +234,7 @@ class GenerateAxonMassDataDumpTest extends AbstractApplicationTestSeederIntegrat
   }
 
   private List<UUID> initialiseCaseworkers(int size) {
-    List<UUID> ids =
-        caseworkerRepository.findAll().stream()
-            .map(Caseworker::getId)
-            .collect(Collectors.toCollection(ArrayList::new));
-    while (ids.size() < size) {
-      UUID id = UUID.randomUUID();
-      caseworkerRepository.save(new Caseworker(id, "axon-mass-data-" + ids.size()));
-      ids.add(id);
-    }
-    return List.copyOf(ids);
+    return java.util.stream.Stream.generate(UUID::randomUUID).limit(size).toList();
   }
 
   private Counts awaitProjectionCounts(int expectedApplications) {

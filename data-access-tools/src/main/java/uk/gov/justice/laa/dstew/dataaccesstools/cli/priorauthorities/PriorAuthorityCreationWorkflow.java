@@ -36,12 +36,11 @@ public final class PriorAuthorityCreationWorkflow {
     return new WorkflowResult(results);
   }
 
-  public WorkflowResult createSubmitted(
-      int count, PriorAuthorityTypeSelector typeSelector, UUID caseworkerId) {
+  public WorkflowResult createSubmitted(int count, PriorAuthorityTypeSelector typeSelector) {
     var results = new ArrayList<WorkflowResult.ItemResult>();
     for (PriorAuthorityType type : requestFactory.types(typeSelector)) {
       for (int item = 0; item < count; item++) {
-        results.add(createSubmitted(type, caseworkerId));
+        results.add(createSubmitted(type));
       }
     }
     return new WorkflowResult(results);
@@ -57,7 +56,7 @@ public final class PriorAuthorityCreationWorkflow {
     }
   }
 
-  private WorkflowResult.ItemResult createSubmitted(PriorAuthorityType type, UUID caseworkerId) {
+  private WorkflowResult.ItemResult createSubmitted(PriorAuthorityType type) {
     var application = applicationFactory.create();
     UUID priorAuthorityId = null;
     try {
@@ -65,13 +64,11 @@ public final class PriorAuthorityCreationWorkflow {
       client.recordManualOutcome(application.applicationId());
       client.assignWorkListItem(
           application.applicationId(),
-          caseworkerId,
           0,
           "Application assigned by data-access-tools for prior-authority submission");
       client.makeDecision(
           application.applicationId(),
-          decisionFactory.create(
-              application, DecisionRequestFactory.Decision.GRANTED, caseworkerId));
+          decisionFactory.create(application, DecisionRequestFactory.Decision.GRANTED));
       priorAuthorityId =
           client.createPriorAuthorityDraft(
               requestFactory.createDraft(application.applicationId(), type));

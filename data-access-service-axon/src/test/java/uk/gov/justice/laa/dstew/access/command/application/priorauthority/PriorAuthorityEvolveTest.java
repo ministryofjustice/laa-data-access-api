@@ -38,7 +38,7 @@ class PriorAuthorityEvolveTest {
     Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
     PriorAuthoritySubmittedEvent event =
         new PriorAuthoritySubmittedEvent(
-            priorAuthorityId, applicationId, "EXPERT", 3, 0L, occurredAt);
+            priorAuthorityId, applicationId, "EXPERT", 3, 0L, 0L, occurredAt);
 
     PriorAuthorityEvolve.apply(state, event);
 
@@ -89,5 +89,19 @@ class PriorAuthorityEvolveTest {
             UUID.randomUUID()));
 
     assertThat(state.getUploadedDocumentIds()).contains(documentId);
+  }
+
+  @Test
+  void givenDocumentDeletedEvent_whenApply_thenRemovesDocumentId() {
+    PriorAuthorityState state = new PriorAuthorityState();
+    UUID documentId = UUID.randomUUID();
+    state.uploadedDocumentIds.add(documentId);
+
+    PriorAuthorityEvolve.apply(
+        state,
+        new PriorAuthorityDocumentDeletedEvent(
+            UUID.randomUUID(), documentId, Instant.now(), UUID.randomUUID()));
+
+    assertThat(state.getUploadedDocumentIds()).doesNotContain(documentId);
   }
 }

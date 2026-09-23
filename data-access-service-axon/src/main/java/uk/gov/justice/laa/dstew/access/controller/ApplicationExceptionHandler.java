@@ -7,6 +7,7 @@ import org.axonframework.modelling.entity.EntityMissingForInstanceCommandHandler
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.oauth2.client.ClientAuthorizationException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -29,6 +30,13 @@ import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 @Slf4j
 @RestControllerAdvice
 public class ApplicationExceptionHandler {
+
+  /** Returns a forbidden response when the authenticated identity has no usable Entra OID. */
+  @ExceptionHandler(AccessDeniedException.class)
+  ResponseEntity<ProblemDetail> handleAccessDeniedException(AccessDeniedException exception) {
+    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+        .body(ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, exception.getMessage()));
+  }
 
   /** Returns validation errors using the production service's Problem Detail shape. */
   @ExceptionHandler(ValidationException.class)

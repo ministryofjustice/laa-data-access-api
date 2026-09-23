@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import uk.gov.justice.laa.dstew.access.api.ApplicationQueryApi;
@@ -29,6 +28,7 @@ import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsQuer
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsResult;
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryResult;
+import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
 import uk.gov.justice.laa.dstew.access.usecase.application.ApplicationQueryUseCase;
@@ -43,6 +43,7 @@ public class ApplicationQueryController implements ApplicationQueryApi {
   private final GetApplicationHistoryResponseMapper historyResponseMapper;
   private final GetAllNotesForApplicationResponseMapper notesResponseMapper;
   private final SubscriptionProjectionGateway projectionGateway;
+  private final SdsService sdsService;
 
   /**
    * Constructs the controller with its query gateway and response mappers.
@@ -60,13 +61,15 @@ public class ApplicationQueryController implements ApplicationQueryApi {
       GetAllApplicationsResponseMapper getAllResponseMapper,
       GetApplicationHistoryResponseMapper historyResponseMapper,
       GetAllNotesForApplicationResponseMapper notesResponseMapper,
-      SubscriptionProjectionGateway projectionGateway) {
+      SubscriptionProjectionGateway projectionGateway,
+      SdsService sdsService) {
     this.applicationQueryUseCase = applicationQueryUseCase;
     this.responseMapper = responseMapper;
     this.getAllResponseMapper = getAllResponseMapper;
     this.historyResponseMapper = historyResponseMapper;
     this.notesResponseMapper = notesResponseMapper;
     this.projectionGateway = projectionGateway;
+    this.sdsService = sdsService;
   }
 
   /**
@@ -163,7 +166,8 @@ public class ApplicationQueryController implements ApplicationQueryApi {
   @LogMethodResponse
   public ResponseEntity<DocumentDownloadResponse> downloadDocument(
       ServiceName serviceName, UUID id, String documentId) {
-    return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+    DocumentDownloadResponse file = sdsService.getFile(id, documentId);
+    return ResponseEntity.ok(file);
   }
 
   private Optional<ApplicationReadModel> findApplicationAwaitingProjection(UUID applicationId) {

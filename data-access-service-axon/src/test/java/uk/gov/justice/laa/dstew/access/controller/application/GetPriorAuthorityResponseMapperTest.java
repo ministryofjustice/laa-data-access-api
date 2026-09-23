@@ -180,7 +180,7 @@ class GetPriorAuthorityResponseMapperTest {
             List.of(
                 new PriorAuthorityDocument(
                     UUID.randomUUID(),
-                    "gateway_evidence",
+                    "GATEWAY_EVIDENCE",
                     "a.pdf",
                     "PDF",
                     "application/pdf",
@@ -190,7 +190,7 @@ class GetPriorAuthorityResponseMapperTest {
                     "checksum-one"),
                 new PriorAuthorityDocument(
                     UUID.randomUUID(),
-                    "merits_report",
+                    "MERITS_REPORT",
                     "b.pdf",
                     "PDF",
                     "application/pdf",

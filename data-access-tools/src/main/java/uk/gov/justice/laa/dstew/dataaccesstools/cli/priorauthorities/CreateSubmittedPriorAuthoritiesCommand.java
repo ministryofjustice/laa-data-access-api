@@ -1,6 +1,5 @@
 package uk.gov.justice.laa.dstew.dataaccesstools.cli.priorauthorities;
 
-import java.util.UUID;
 import java.util.concurrent.Callable;
 import picocli.CommandLine;
 import uk.gov.justice.laa.dstew.dataaccesstools.cli.applications.ApplicationRequestFactory;
@@ -20,12 +19,6 @@ public final class CreateSubmittedPriorAuthoritiesCommand implements Callable<In
   private PriorAuthorityTypeSelector type;
 
   @CommandLine.Option(
-      names = "--caseworker-id",
-      required = true,
-      description = "Existing caseworker UUID used to assign and decide each application.")
-  private UUID caseworkerId;
-
-  @CommandLine.Option(
       names = "--count",
       required = true,
       description = "Number to create per selected type.")
@@ -42,6 +35,6 @@ public final class CreateSubmittedPriorAuthoritiesCommand implements Callable<In
             new PriorAuthorityRequestFactory(),
             new ApplicationRequestFactory(),
             new DecisionRequestFactory());
-    return priorAuthorities.root().print(workflow.createSubmitted(count, type, caseworkerId));
+    return priorAuthorities.root().print(workflow.createSubmitted(count, type));
   }
 }

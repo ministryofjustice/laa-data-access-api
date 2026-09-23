@@ -41,6 +41,9 @@ public class ApplicationHistoryReadModel {
   @Column(name = "service_name")
   private String serviceName;
 
+  @Column(name = "caseworker_id")
+  private UUID caseworkerId;
+
   @Column(name = "occurred_at", nullable = false)
   private Instant occurredAt;
 }

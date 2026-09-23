@@ -50,6 +50,12 @@ public class WorkListItemReadModel {
   @Column(name = "application_status")
   private String applicationStatus;
 
+  @Column(name = "prior_authority_type")
+  private String priorAuthorityType;
+
+  @Column(name = "expert_type")
+  private String expertType;
+
   @Column(name = "submitted_at")
   private Instant submittedAt;
 

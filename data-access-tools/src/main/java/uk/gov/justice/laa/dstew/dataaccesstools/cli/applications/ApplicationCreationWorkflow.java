@@ -6,6 +6,7 @@ import uk.gov.justice.laa.dstew.dataaccesstools.utils.client.DataAccessApiClient
 import uk.gov.justice.laa.dstew.dataaccesstools.utils.workflow.WorkflowResult;
 
 public final class ApplicationCreationWorkflow {
+
   private final DataAccessApiClient client;
   private final ApplicationRequestFactory applicationFactory;
   private final DecisionRequestFactory decisionFactory;
@@ -26,9 +27,12 @@ public final class ApplicationCreationWorkflow {
       try {
         client.createApplication(application.request());
         client.recordManualOutcome(application.applicationId());
-        client.makeDecision(
+        client.assignWorkListItem(
             application.applicationId(),
-            decisionFactory.create(application, decision, java.util.UUID.randomUUID()));
+            0,
+            "Application assigned by data-access-tools for decision");
+        client.makeDecision(
+            application.applicationId(), decisionFactory.create(application, decision));
         results.add(
             new WorkflowResult.ItemResult(
                 application.applicationId().toString(),
