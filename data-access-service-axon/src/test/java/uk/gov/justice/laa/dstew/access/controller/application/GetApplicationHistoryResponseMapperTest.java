@@ -136,6 +136,7 @@ class GetApplicationHistoryResponseMapperTest {
                             .isEqualTo("PRIOR_AUTHORITY_SUBMITTED");
                         assertThat(mappedEvent.getCreatedBy()).isEqualTo("CIVIL_APPLY");
                         assertThat(mappedEvent.getEventDescription()).isNull();
+                        assertThat(mappedEvent.getCaseworkerId()).isNull();
                         assertThat(mappedEvent.getCreatedAt())
                             .isEqualTo(occurredAt.atOffset(ZoneOffset.UTC));
                       });
@@ -181,7 +182,11 @@ class GetApplicationHistoryResponseMapperTest {
             priorAuthorityId,
             "EXPERT",
             new PriorAuthorityHistoryEventResult(
-                "PRIOR_AUTHORITY_SUBMITTED", Instant.parse("2026-08-05T10:00:00Z"), null, null));
+                "PRIOR_AUTHORITY_SUBMITTED",
+                Instant.parse("2026-08-05T10:00:00Z"),
+                null,
+                null,
+                null));
 
     var response =
         mapper.toResponse(new ApplicationHistoryResult(List.of(), List.of(priorAuthorityGroup)));
@@ -205,7 +210,7 @@ class GetApplicationHistoryResponseMapperTest {
 
   private PriorAuthorityHistoryEventResult event(
       String eventType, Instant occurredAt, String serviceName) {
-    return new PriorAuthorityHistoryEventResult(eventType, occurredAt, serviceName, null);
+    return new PriorAuthorityHistoryEventResult(eventType, occurredAt, serviceName, null, null);
   }
 
   @Test

@@ -90,4 +90,18 @@ class PriorAuthorityEvolveTest {
 
     assertThat(state.getUploadedDocumentIds()).contains(documentId);
   }
+
+  @Test
+  void givenDocumentDeletedEvent_whenApply_thenRemovesDocumentId() {
+    PriorAuthorityState state = new PriorAuthorityState();
+    UUID documentId = UUID.randomUUID();
+    state.uploadedDocumentIds.add(documentId);
+
+    PriorAuthorityEvolve.apply(
+        state,
+        new PriorAuthorityDocumentDeletedEvent(
+            UUID.randomUUID(), documentId, Instant.now(), UUID.randomUUID()));
+
+    assertThat(state.getUploadedDocumentIds()).doesNotContain(documentId);
+  }
 }
