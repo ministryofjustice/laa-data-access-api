@@ -2,60 +2,56 @@ package uk.gov.justice.laa.dstew.access.query.application.priorauthority;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.inOrder;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType.*;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.function.Predicate;
 import org.axonframework.messaging.queryhandling.QueryUpdateEmitter;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.InOrder;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityCreatedEvent;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDraftStartedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.Apportionment;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.BillingType;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.CounselDetails;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.CounselType;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.DisbursementDetails;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.ExpertCosts;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.ExpertDetails;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.TimeRequested;
 
+@ExtendWith(MockitoExtension.class)
 class PriorAuthorityProjectionTest {
 
-  private PriorAuthorityReadRepository repository;
-  private QueryUpdateEmitter queryUpdateEmitter;
-  private PriorAuthorityProjection projection;
-
-  @BeforeEach
-  void setUp() {
-    repository = mock(PriorAuthorityReadRepository.class);
-    queryUpdateEmitter = mock(QueryUpdateEmitter.class);
-    projection = new PriorAuthorityProjection(repository);
-  }
+  @Mock private PriorAuthorityReadRepository repository;
+  @Mock private PriorAuthorityDataStore dataStore;
+  @Mock private PriorAuthorityDraftStore draftStore;
+  @Mock private QueryUpdateEmitter queryUpdateEmitter;
+  @InjectMocks private PriorAuthorityProjection projection;
 
   @Test
-  void givenCreatedEvent_whenHandled_thenSavesBeforeEmitting() {
-    UUID submissionId = UUID.randomUUID();
-    PriorAuthorityCreatedEvent event =
-        new PriorAuthorityCreatedEvent(
-            submissionId, UUID.randomUUID(), 1L, "fp", "SUBMITTED", 1, Instant.now());
-    when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
-
-    projection.on(event, queryUpdateEmitter);
-
-    InOrder order = inOrder(repository, queryUpdateEmitter);
-    order.verify(repository).save(any(PriorAuthorityReadModel.class));
-    order
-        .verify(queryUpdateEmitter)
-        .emit(any(Class.class), any(Predicate.class), any(PriorAuthorityReadModel.class));
-  }
-
-  @Test
-  void givenCreatedEvent_whenHandled_thenSavesExactFields() {
-    UUID submissionId = UUID.randomUUID();
+  void givenSubmittedEvent_whenHandled_thenSavesExactFields() {
+    UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-19T10:00:00Z");
-    PriorAuthorityCreatedEvent event =
-        new PriorAuthorityCreatedEvent(
-            submissionId, applicationId, 1L, "fp", "SUBMITTED", 1, occurredAt);
+    PriorAuthoritySubmittedEvent event =
+        new PriorAuthoritySubmittedEvent(
+            priorAuthorityId, applicationId, "EXPERT", 1, 1L, 0L, occurredAt);
     PriorAuthorityReadModel[] savedCapture = new PriorAuthorityReadModel[1];
     when(repository.save(any()))
         .thenAnswer(
@@ -66,62 +62,211 @@ class PriorAuthorityProjectionTest {
 
     projection.on(event, queryUpdateEmitter);
 
-    assertThat(savedCapture[0].getSubmissionId()).isEqualTo(submissionId);
+    assertThat(savedCapture[0].getPriorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(savedCapture[0].getApplicationId()).isEqualTo(applicationId);
+    assertThat(savedCapture[0].getDataVersion()).isEqualTo(1L);
     assertThat(savedCapture[0].getStatus()).isEqualTo("SUBMITTED");
     assertThat(savedCapture[0].getCreatedAt()).isEqualTo(occurredAt);
   }
 
   @Test
-  @SuppressWarnings("unchecked")
-  void givenCreatedEvent_whenHandled_thenEmittedPredicateMatchesOnlyEventSubmissionId() {
-    UUID submissionId = UUID.randomUUID();
-    final UUID otherId = UUID.randomUUID();
-    PriorAuthorityCreatedEvent event =
-        new PriorAuthorityCreatedEvent(
-            submissionId, UUID.randomUUID(), 1L, "fp", "SUBMITTED", 1, Instant.now());
-    when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
-
-    Predicate<?>[] capturedPredicate = new Predicate[1];
-    doAnswer(
-            inv -> {
-              capturedPredicate[0] = (Predicate<?>) inv.getArgument(1);
-              return null;
-            })
-        .when(queryUpdateEmitter)
-        .emit(any(Class.class), any(Predicate.class), any(PriorAuthorityReadModel.class));
+  void givenDraftStartedEvent_whenHandled_thenCreatesCurrentStateRow() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-09-04T10:00:00Z");
+    PriorAuthorityDraftStartedEvent event =
+        new PriorAuthorityDraftStartedEvent(
+            priorAuthorityId, applicationId, EXPERT.name(), 1, occurredAt);
+    PriorAuthorityReadModel[] savedCapture = new PriorAuthorityReadModel[1];
+    when(repository.save(any()))
+        .thenAnswer(
+            invocation -> {
+              savedCapture[0] = invocation.getArgument(0);
+              return savedCapture[0];
+            });
 
     projection.on(event, queryUpdateEmitter);
 
-    assertThat(capturedPredicate[0]).isNotNull();
-    Predicate<FindPriorAuthorityBySubmissionIdQuery> predicate =
-        (Predicate<FindPriorAuthorityBySubmissionIdQuery>) capturedPredicate[0];
-    assertThat(predicate.test(new FindPriorAuthorityBySubmissionIdQuery(submissionId))).isTrue();
-    assertThat(predicate.test(new FindPriorAuthorityBySubmissionIdQuery(otherId))).isFalse();
+    assertThat(savedCapture[0].getPriorAuthorityId()).isEqualTo(priorAuthorityId);
+    assertThat(savedCapture[0].getApplicationId()).isEqualTo(applicationId);
+    assertThat(savedCapture[0].getDataVersion()).isZero();
+    assertThat(savedCapture[0].getStatus()).isEqualTo("DRAFT");
+    assertThat(savedCapture[0].getCreatedAt()).isEqualTo(occurredAt);
   }
 
   @Test
-  void givenSubmissionId_whenQueryHandled_thenReturnsPresentWhenFound() {
-    UUID submissionId = UUID.randomUUID();
+  void givenDraftRowWithDraftStatus_whenQueryHandled_thenHydratesDraftContent() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
     PriorAuthorityReadModel model =
-        PriorAuthorityReadModel.builder().submissionId(submissionId).build();
-    when(repository.findById(submissionId)).thenReturn(Optional.of(model));
+        PriorAuthorityReadModel.builder()
+            .priorAuthorityId(priorAuthorityId)
+            .applicationId(applicationId)
+            .dataVersion(0L)
+            .status("DRAFT")
+            .build();
+    PriorAuthorityContent content =
+        new PriorAuthorityContent(EXPERT, "Expert required", null, null, null);
+    when(repository.findById(priorAuthorityId)).thenReturn(Optional.of(model));
+    when(draftStore.find(priorAuthorityId))
+        .thenReturn(
+            Optional.of(
+                new PriorAuthorityDataPayload(
+                    priorAuthorityId, applicationId, content, "{}", Instant.now())));
 
-    Optional<PriorAuthorityReadModel> result =
-        projection.handle(new FindPriorAuthorityBySubmissionIdQuery(submissionId));
+    PriorAuthorityResult result =
+        projection.handle(new FindPriorAuthorityByPriorAuthorityIdQuery(priorAuthorityId));
 
-    assertThat(result).isPresent().contains(model);
+    assertThat(result.priorAuthorityId()).isEqualTo(priorAuthorityId);
+    assertThat(result.applicationId()).isEqualTo(applicationId);
+    assertThat(result.status()).isEqualTo("DRAFT");
+    assertThat(result.priorAuthorityType()).isEqualTo(EXPERT);
   }
 
   @Test
-  void givenMissingSubmissionId_whenQueryHandled_thenReturnsEmpty() {
-    UUID submissionId = UUID.randomUUID();
-    when(repository.findById(submissionId)).thenReturn(Optional.empty());
+  void givenPriorAuthorityId_whenQueryHandled_thenReturnsHydratedResult() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    PriorAuthorityReadModel model =
+        PriorAuthorityReadModel.builder()
+            .priorAuthorityId(priorAuthorityId)
+            .applicationId(applicationId)
+            .dataVersion(4L)
+            .status("SUBMITTED")
+            .build();
+    PriorAuthorityContent content =
+        new PriorAuthorityContent(
+            COUNSEL,
+            "Counsel is required",
+            null,
+            new CounselDetails(CounselType.TWO_JUNIOR_COUNSEL),
+            null);
+    when(repository.findById(priorAuthorityId)).thenReturn(Optional.of(model));
+    when(dataStore.get(priorAuthorityId, 4L))
+        .thenReturn(
+            new PriorAuthorityDataPayload(
+                priorAuthorityId, applicationId, content, "{}", Instant.now()));
 
-    Optional<PriorAuthorityReadModel> result =
-        projection.handle(new FindPriorAuthorityBySubmissionIdQuery(submissionId));
+    PriorAuthorityResult result =
+        projection.handle(new FindPriorAuthorityByPriorAuthorityIdQuery(priorAuthorityId));
 
-    assertThat(result).isEmpty();
+    assertThat(result.priorAuthorityId()).isEqualTo(priorAuthorityId);
+    assertThat(result.applicationId()).isEqualTo(applicationId);
+    assertThat(result.priorAuthorityType()).isEqualTo(COUNSEL);
+    assertThat(result.justification()).isEqualTo("Counsel is required");
+    assertThat(result.status()).isEqualTo("SUBMITTED");
+    assertThat(result.counselDetails().counselType()).isEqualTo(CounselType.TWO_JUNIOR_COUNSEL);
+    assertThat(result.expertDetails()).isNull();
+    assertThat(result.disbursementDetails()).isNull();
+  }
+
+  @Test
+  void givenExpertDetails_whenQueryHandled_thenHydratesOnlyExpertDetails() {
+    ExpertCosts expertCosts =
+        new ExpertCosts(
+            BillingType.HOURLY,
+            new BigDecimal("125.50"),
+            new TimeRequested(2, 30),
+            new BigDecimal("313.75"),
+            true,
+            new Apportionment(3, new BigDecimal("104.58")));
+    PriorAuthorityResult expertResult =
+        handleContent(
+            new PriorAuthorityContent(
+                EXPERT,
+                "Expert required",
+                new ExpertDetails("Accountant", "Ada Lovelace", "SW1A 1AA", expertCosts),
+                null,
+                null));
+
+    assertThat(expertResult.priorAuthorityType()).isEqualTo(EXPERT);
+    assertThat(expertResult.justification()).isEqualTo("Expert required");
+    assertThat(expertResult.expertDetails().expertType()).isEqualTo("Accountant");
+    assertThat(expertResult.expertDetails().expertFullName()).isEqualTo("Ada Lovelace");
+    assertThat(expertResult.expertDetails().expertPostcode()).isEqualTo("SW1A 1AA");
+    assertThat(expertResult.expertDetails().expertCosts().billingType())
+        .isEqualTo(BillingType.HOURLY);
+    assertThat(expertResult.expertDetails().expertCosts().hourlyRate())
+        .isEqualTo(new BigDecimal("125.50"));
+    assertThat(expertResult.expertDetails().expertCosts().timeRequested().hours()).isEqualTo(2);
+    assertThat(expertResult.expertDetails().expertCosts().timeRequested().minutes()).isEqualTo(30);
+    assertThat(expertResult.expertDetails().expertCosts().totalAmount())
+        .isEqualTo(new BigDecimal("313.75"));
+    assertThat(expertResult.expertDetails().expertCosts().costsSharedWithOtherParties()).isTrue();
+    assertThat(expertResult.expertDetails().expertCosts().apportionment().partiesSharingCosts())
+        .isEqualTo(3);
+    assertThat(expertResult.expertDetails().expertCosts().apportionment().clientShareAmount())
+        .isEqualTo(new BigDecimal("104.58"));
+    assertThat(expertResult.counselDetails()).isNull();
+    assertThat(expertResult.disbursementDetails()).isNull();
+  }
+
+  @Test
+  void givenCounselDetails_whenQueryHandled_thenHydratesOnlyCounselDetails() {
+    PriorAuthorityResult counselResult =
+        handleContent(
+            new PriorAuthorityContent(
+                COUNSEL,
+                "Counsel required",
+                null,
+                new CounselDetails(CounselType.TWO_JUNIOR_COUNSEL),
+                null));
+
+    assertThat(counselResult.priorAuthorityType()).isEqualTo(COUNSEL);
+    assertThat(counselResult.justification()).isEqualTo("Counsel required");
+    assertThat(counselResult.counselDetails().counselType())
+        .isEqualTo(CounselType.TWO_JUNIOR_COUNSEL);
+    assertThat(counselResult.expertDetails()).isNull();
+    assertThat(counselResult.disbursementDetails()).isNull();
+  }
+
+  @Test
+  void givenDisbursementDetails_whenQueryHandled_thenHydratesOnlyDisbursementDetails() {
+    PriorAuthorityResult disbursementResult =
+        handleContent(
+            new PriorAuthorityContent(
+                DISBURSEMENT,
+                "Disbursement required",
+                null,
+                null,
+                new DisbursementDetails("Travel", BigDecimal.TEN)));
+
+    assertThat(disbursementResult.priorAuthorityType()).isEqualTo(DISBURSEMENT);
+    assertThat(disbursementResult.justification()).isEqualTo("Disbursement required");
+    assertThat(disbursementResult.disbursementDetails().disbursementPurpose()).isEqualTo("Travel");
+    assertThat(disbursementResult.disbursementDetails().disbursementAmount())
+        .isEqualTo(BigDecimal.TEN);
+    assertThat(disbursementResult.expertDetails()).isNull();
+    assertThat(disbursementResult.counselDetails()).isNull();
+  }
+
+  @ParameterizedTest
+  @EnumSource(PriorAuthorityType.class)
+  void givenTypeWithAbsentDetails_whenQueryHandled_thenHydratedDetailsAreNull(
+      PriorAuthorityType type) {
+    PriorAuthorityResult result =
+        handleContent(new PriorAuthorityContent(type, "Required", null, null, null));
+
+    assertThat(result.expertDetails()).isNull();
+    assertThat(result.counselDetails()).isNull();
+    assertThat(result.disbursementDetails()).isNull();
+  }
+
+  @Test
+  void givenNullType_whenQueryHandled_thenPriorAuthorityTypeIsNull() {
+    PriorAuthorityResult result =
+        handleContent(new PriorAuthorityContent(null, "Required", null, null, null));
+
+    assertThat(result.priorAuthorityType()).isNull();
+  }
+
+  @Test
+  void givenMissingPriorAuthorityId_whenQueryHandled_thenReturnsNull() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    when(repository.findById(priorAuthorityId)).thenReturn(Optional.empty());
+
+    assertThat(projection.handle(new FindPriorAuthorityByPriorAuthorityIdQuery(priorAuthorityId)))
+        .isNull();
   }
 
   @Test
@@ -129,5 +274,23 @@ class PriorAuthorityProjectionTest {
     projection.reset();
 
     verify(repository).deleteAllInBatch();
+  }
+
+  private PriorAuthorityResult handleContent(PriorAuthorityContent content) {
+    UUID priorAuthorityId = UUID.randomUUID();
+    PriorAuthorityReadModel model =
+        PriorAuthorityReadModel.builder()
+            .priorAuthorityId(priorAuthorityId)
+            .applicationId(UUID.randomUUID())
+            .dataVersion(1L)
+            .status("SUBMITTED")
+            .build();
+    when(repository.findById(priorAuthorityId)).thenReturn(Optional.of(model));
+    when(dataStore.get(priorAuthorityId, 1L))
+        .thenReturn(
+            new PriorAuthorityDataPayload(
+                priorAuthorityId, model.getApplicationId(), content, "{}", Instant.now()));
+
+    return projection.handle(new FindPriorAuthorityByPriorAuthorityIdQuery(priorAuthorityId));
   }
 }

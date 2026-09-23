@@ -79,36 +79,6 @@ allprojects {
     }
 }
 
-tasks.register('jacocoAggregatedReport', JacocoReport) {
-    description = 'Generates JaCoCo report from data-access-service module'
-    group = 'verification'
-
-    dependsOn ':data-access-service:test', ':data-access-service:integrationTest'
-
-    jacocoClasspath = configurations.jacocoAnt
-
-    def serviceProject = project(':data-access-service')
-
-    sourceDirectories = files("${serviceProject.projectDir}/src/main/java")
-
-    classDirectories = fileTree(
-            dir: "${serviceProject.buildDir}/classes/java/main",
-            excludes: ['**/AccessApp.class', '**/generated/**', '**/config/**']
-    )
-
-    executionData = fileTree(
-            dir: "${serviceProject.buildDir}/jacoco",
-            includes: ["test.exec", "*.exec"]
-    )
-
-    reports {
-        xml.required = true
-        xml.outputLocation = layout.buildDirectory.file("reports/jacoco/aggregated.xml").get().asFile
-        html.required = true
-        html.outputLocation = layout.buildDirectory.dir("reports/jacoco/html").get().asFile
-        csv.required = false
-    }
-}
 tasks.withType(Test).configureEach {
     useJUnitPlatform()
 }

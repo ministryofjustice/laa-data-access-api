@@ -2,17 +2,26 @@ package uk.gov.justice.laa.dstew.access.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.net.URI;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.oauth2.client.ClientAuthorizationException;
+import org.springframework.security.oauth2.core.OAuth2Error;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationGroupInvariantException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException;
+import uk.gov.justice.laa.dstew.access.exception.FileConflictException;
+import uk.gov.justice.laa.dstew.access.exception.FileLengthRequiredException;
 import uk.gov.justice.laa.dstew.access.exception.InvalidApplicationStateException;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.exception.VirusDetectedException;
+import uk.gov.justice.laa.dstew.access.exception.VirusScanException;
+import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryIntegrityException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 class ApplicationExceptionHandlerTest {
@@ -81,6 +90,15 @@ class ApplicationExceptionHandlerTest {
   }
 
   @Test
+  void givenWorkItemAssignmentConflict_whenHandled_thenReturnsConflict() {
+    var response =
+        handler.handleWorkItemAssignmentConflictException(
+            new WorkItemAssignmentConflictException(UUID.randomUUID(), "it is already assigned"));
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+  }
+
+  @Test
   void givenConflictingCreation_whenHandled_thenReturnsStablePublicConflictMessage() {
     UUID applicationId = UUID.randomUUID();
 
@@ -136,17 +154,88 @@ class ApplicationExceptionHandlerTest {
 
   @Test
   void givenConflictingPriorAuthorityCreation_whenHandled_thenReturnsStablePublicConflictMessage() {
-    UUID submissionId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
 
     var response =
         handler.handlePriorAuthorityCreationConflictException(
-            new PriorAuthorityCreationConflictException(submissionId));
+            new PriorAuthorityCreationConflictException(priorAuthorityId));
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
     assertThat(response.getBody().getDetail())
-        .isEqualTo(
-            "Prior authority submission ID "
-                + submissionId
-                + " already exists with different creation data");
+        .isEqualTo("Prior authority submission ID " + priorAuthorityId + " already exists");
+  }
+
+  @Test
+  void givenFileConflict_whenHandled_thenReturnsConflict() {
+    var response =
+        handler.handleFileConflictException(
+            new FileConflictException("File already exists in SDS"));
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+    assertThat(response.getBody().getDetail()).isEqualTo("File already exists in SDS");
+  }
+
+  @Test
+  void givenFileLengthRequired_whenHandled_thenReturnsLengthRequired() {
+    var response =
+        handler.handleFileLengthRequiredException(
+            new FileLengthRequiredException("File content length is required"));
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.LENGTH_REQUIRED);
+    assertThat(response.getBody().getDetail()).isEqualTo("File content length is required");
+  }
+
+  @Test
+  void givenVirusDetected_whenHandled_thenReturnsBadRequest() {
+    var response =
+        handler.handleVirusDetectedException(
+            new VirusDetectedException("Virus detected in uploaded file"));
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(response.getBody().getDetail()).isEqualTo("Virus detected in uploaded file");
+  }
+
+  @Test
+  void givenVirusScanError_whenHandled_thenReturnsInternalServerError() {
+    var response =
+        handler.handleVirusScanException(
+            new VirusScanException("Virus scan gave a non-standard result"));
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+    assertThat(response.getBody().getDetail()).isEqualTo("Virus scan gave a non-standard result");
+  }
+
+  @Test
+  void givenIntegrityFailure_whenHandled_thenReturnsHttp500WithStableProblemDetail() {
+    UUID applicationId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
+    var integrityException =
+        new ApplicationHistoryIntegrityException(
+            applicationId,
+            priorAuthorityId,
+            "conflicting priorAuthorityType values: [EXPERT, COUNSEL]");
+
+    var response = handler.handleApplicationHistoryIntegrityException(integrityException);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+    assertThat(response.getBody().getDetail())
+        .isEqualTo("Application history data is inconsistent");
+    assertThat(response.getBody().getInstance()).isEqualTo(URI.create("about:blank"));
+    assertThat(response.getBody().toString())
+        .doesNotContain(applicationId.toString())
+        .doesNotContain(priorAuthorityId.toString())
+        .doesNotContain("conflicting");
+  }
+
+  @Test
+  void givenClientAuthorizationFailure_whenHandled_thenReturnsInternalServerError() {
+    var response =
+        handler.handleClientAuthorizationException(
+            new ClientAuthorizationException(
+                new OAuth2Error("invalid_token"), "sds-client", "Token request failed"));
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+    assertThat(response.getBody().getDetail())
+        .isEqualTo("Failed to obtain access token for an external service");
   }
 }

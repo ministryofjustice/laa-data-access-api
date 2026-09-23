@@ -2,11 +2,13 @@ package uk.gov.justice.laa.dstew.access.command.application.priorauthority.data;
 
 import java.time.Instant;
 import java.util.UUID;
+import lombok.With;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 
 /** Sensitive data associated with one prior-authority submission. */
+@With
 public record PriorAuthorityDataPayload(
-    UUID submissionId,
+    UUID priorAuthorityId,
     UUID applicationId,
     PriorAuthorityContent content,
     String serialisedRequest,

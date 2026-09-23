@@ -35,6 +35,7 @@ import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetailsRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
+import uk.gov.justice.laa.dstew.access.model.WorkListAssignRequest;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 
 /**
@@ -136,19 +137,7 @@ class ProjectionTimeoutInMemoryTest {
                     "/api/v0/applications", new HttpEntity<>(createRequest, headers), Void.class)
                 .getStatusCode())
         .isIn(HttpStatus.CREATED, HttpStatus.ACCEPTED);
-    await()
-        .atMost(Duration.ofSeconds(5))
-        .untilAsserted(
-            () ->
-                assertThat(
-                        restTemplate
-                            .exchange(
-                                "/api/v0/applications/" + applicationId,
-                                HttpMethod.GET,
-                                new HttpEntity<>(headers),
-                                ApplicationResponse.class)
-                            .getBody())
-                    .isNotNull());
+    awaitApplicationProjection(applicationId, headers);
 
     StreamingEventProcessor processor =
         axonConfiguration
@@ -219,19 +208,7 @@ class ProjectionTimeoutInMemoryTest {
                     "/api/v0/applications", new HttpEntity<>(createRequest, headers), Void.class)
                 .getStatusCode())
         .isIn(HttpStatus.CREATED, HttpStatus.ACCEPTED);
-    await()
-        .atMost(Duration.ofSeconds(5))
-        .untilAsserted(
-            () ->
-                assertThat(
-                        restTemplate
-                            .exchange(
-                                "/api/v0/applications/" + applicationId,
-                                HttpMethod.GET,
-                                new HttpEntity<>(headers),
-                                ApplicationResponse.class)
-                            .getBody())
-                    .isNotNull());
+    awaitApplicationProjection(applicationId, headers);
     ApplicationResponse created =
         restTemplate
             .exchange(
@@ -273,6 +250,15 @@ class ProjectionTimeoutInMemoryTest {
             .getComponents(StreamingEventProcessor.class)
             .get("application-projection");
     processor.shutdown().join();
+    assertThat(
+            restTemplate
+                .exchange(
+                    "/api/v0/work-list/" + applicationId + "/assign",
+                    HttpMethod.POST,
+                    new HttpEntity<>(new WorkListAssignRequest(0L), headers),
+                    Void.class)
+                .getStatusCode())
+        .isEqualTo(HttpStatus.OK);
     MakeDecisionRequest decisionRequest =
         MakeDecisionRequest.builder()
             .applicationVersion(1L)
@@ -326,7 +312,7 @@ class ProjectionTimeoutInMemoryTest {
                 "SELECT COUNT(*) FROM domain_event_entry WHERE aggregate_identifier = ?",
                 Integer.class,
                 applicationId.toString()))
-        .isEqualTo(3);
+        .isEqualTo(4);
 
     processor.start().join();
     await()
@@ -344,6 +330,21 @@ class ProjectionTimeoutInMemoryTest {
                   .isEqualTo(uk.gov.justice.laa.dstew.access.model.AutoGranted.MANUAL);
               assertThat(currentRead.getBody().getVersion()).isEqualTo(2L);
             });
+  }
+
+  private void awaitApplicationProjection(UUID applicationId, HttpHeaders headers) {
+    await()
+        .atMost(Duration.ofSeconds(5))
+        .untilAsserted(
+            () ->
+                assertThat(
+                        restTemplate.exchange(
+                            "/api/v0/applications/" + applicationId,
+                            HttpMethod.GET,
+                            new HttpEntity<>(headers),
+                            String.class))
+                    .extracting(ResponseEntity::getStatusCode)
+                    .isEqualTo(HttpStatus.OK));
   }
 
   private HttpHeaders headers() {

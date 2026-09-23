@@ -76,3 +76,14 @@ featureFlags:
   enable_dev_token: "true"
   # Keep security enabled (JWT validation active)
   disable_security: "false"
+
+aws:
+  integrationEvents:
+    enabled: true
+  topicArnSecret:
+    name: data-access-events-sns-topic
+    key: topic_arn
+
+axon:
+  schema: data_access_axon
+  flywayTable: flyway_schema_history_axon

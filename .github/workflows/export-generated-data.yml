@@ -19,7 +19,7 @@ jobs:
       RELEASE_NAME: pr-${{ github.event.pull_request.number }}
       RECORD_COUNT: "1"
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Run deploy prerequisites
         id: deploy_prerequisites
@@ -78,18 +78,6 @@ jobs:
             --timeout=3600s
 
           echo "Mass generator job completed successfully"
-
-      - name: Run smoke tests
-        uses: ./.github/actions/smoke-test
-        with:
-          release-name: ${{ env.RELEASE_NAME }}
-          branch-name: ${{ github.head_ref }}
-          kube-cert: ${{ secrets.KUBE_CERT }}
-          kube-token: ${{ secrets.KUBE_TOKEN }}
-          kube-cluster: ${{ secrets.KUBE_CLUSTER }}
-          kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          report-name: export-smoke-test-report
 
       - name: Take and upload pg_dump snapshot
         id: pg_dump

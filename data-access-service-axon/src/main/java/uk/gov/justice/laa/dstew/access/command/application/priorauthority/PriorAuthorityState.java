@@ -1,6 +1,8 @@
 package uk.gov.justice.laa.dstew.access.command.application.priorauthority;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -10,10 +12,12 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 public class PriorAuthorityState {
-  UUID submissionId;
+  UUID priorAuthorityId;
   UUID applicationId;
   long dataVersion;
-  String requestFingerprint;
-  String status;
   int schemaVersion;
+  UUID caseworkerId;
+  long assignmentVersion;
+  String priorAuthorityType;
+  Set<UUID> uploadedDocumentIds = new HashSet<>();
 }

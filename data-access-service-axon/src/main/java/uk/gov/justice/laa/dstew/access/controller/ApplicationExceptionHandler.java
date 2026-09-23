@@ -1,24 +1,42 @@
 package uk.gov.justice.laa.dstew.access.controller;
 
+import java.net.URI;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 import org.axonframework.modelling.entity.EntityMissingForInstanceCommandHandlerException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.oauth2.client.ClientAuthorizationException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationGroupInvariantException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException;
+import uk.gov.justice.laa.dstew.access.exception.FileConflictException;
+import uk.gov.justice.laa.dstew.access.exception.FileLengthRequiredException;
 import uk.gov.justice.laa.dstew.access.exception.InvalidApplicationStateException;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.exception.VirusDetectedException;
+import uk.gov.justice.laa.dstew.access.exception.VirusScanException;
+import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryIntegrityException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /** Translates command-side failures to the existing HTTP validation contract. */
+@Slf4j
 @RestControllerAdvice
 public class ApplicationExceptionHandler {
+
+  /** Returns a forbidden response when the authenticated identity has no usable Entra OID. */
+  @ExceptionHandler(AccessDeniedException.class)
+  ResponseEntity<ProblemDetail> handleAccessDeniedException(AccessDeniedException exception) {
+    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+        .body(ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, exception.getMessage()));
+  }
 
   /** Returns validation errors using the production service's Problem Detail shape. */
   @ExceptionHandler(ValidationException.class)
@@ -70,9 +88,7 @@ public class ApplicationExceptionHandler {
                     + " already exists with different creation data"));
   }
 
-  /**
-   * Returns a conflict when a prior-authority submission ID is reused with different creation data.
-   */
+  /** Returns a conflict when a prior-authority submission ID is reused on create. */
   @ExceptionHandler(PriorAuthorityCreationConflictException.class)
   ResponseEntity<ProblemDetail> handlePriorAuthorityCreationConflictException(
       PriorAuthorityCreationConflictException exception) {
@@ -81,14 +97,22 @@ public class ApplicationExceptionHandler {
             ProblemDetail.forStatusAndDetail(
                 HttpStatus.CONFLICT,
                 "Prior authority submission ID "
-                    + exception.getSubmissionId()
-                    + " already exists with different creation data"));
+                    + exception.getPriorAuthorityId()
+                    + " already exists"));
   }
 
   /** Returns a conflict when a decision was based on a stale Application version. */
   @ExceptionHandler(ApplicationVersionConflictException.class)
   ResponseEntity<ProblemDetail> handleApplicationVersionConflictException(
       ApplicationVersionConflictException exception) {
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage()));
+  }
+
+  /** Returns a conflict when a work-item assignment is stale or incompatible with its state. */
+  @ExceptionHandler(WorkItemAssignmentConflictException.class)
+  ResponseEntity<ProblemDetail> handleWorkItemAssignmentConflictException(
+      WorkItemAssignmentConflictException exception) {
     return ResponseEntity.status(HttpStatus.CONFLICT)
         .body(ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage()));
   }
@@ -109,6 +133,70 @@ public class ApplicationExceptionHandler {
         .body(
             ProblemDetail.forStatusAndDetail(
                 HttpStatus.UNPROCESSABLE_CONTENT, exception.getMessage()));
+  }
+
+  /** Returns 409 when a file with the same name already exists in SDS. */
+  @ExceptionHandler(FileConflictException.class)
+  ResponseEntity<ProblemDetail> handleFileConflictException(FileConflictException exception) {
+    ProblemDetail problemDetail =
+        ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage());
+    problemDetail.setTitle("Conflict");
+    return ResponseEntity.status(HttpStatus.CONFLICT).body(problemDetail);
+  }
+
+  /** Returns 411 when file content length is missing from the SDS request. */
+  @ExceptionHandler(FileLengthRequiredException.class)
+  ResponseEntity<ProblemDetail> handleFileLengthRequiredException(
+      FileLengthRequiredException exception) {
+    ProblemDetail problemDetail =
+        ProblemDetail.forStatusAndDetail(HttpStatus.LENGTH_REQUIRED, exception.getMessage());
+    problemDetail.setTitle("Length Required");
+    return ResponseEntity.status(HttpStatus.LENGTH_REQUIRED).body(problemDetail);
+  }
+
+  /** Returns 400 when a virus is detected in an uploaded file by SDS. */
+  @ExceptionHandler(VirusDetectedException.class)
+  ResponseEntity<ProblemDetail> handleVirusDetectedException(VirusDetectedException exception) {
+    ProblemDetail problemDetail =
+        ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, exception.getMessage());
+    problemDetail.setTitle("Virus Detected");
+    return ResponseEntity.badRequest().body(problemDetail);
+  }
+
+  /** Returns 500 when SDS virus scan gives an unexpected result. */
+  @ExceptionHandler(VirusScanException.class)
+  ResponseEntity<ProblemDetail> handleVirusScanException(VirusScanException exception) {
+    ProblemDetail problemDetail =
+        ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR, exception.getMessage());
+    problemDetail.setTitle("Virus Scan Error");
+    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(problemDetail);
+  }
+
+  /** Returns 500 when the SDS OAuth2 token cannot be obtained. */
+  @ExceptionHandler(ClientAuthorizationException.class)
+  ResponseEntity<ProblemDetail> handleClientAuthorizationException(
+      ClientAuthorizationException exception) {
+    ProblemDetail problemDetail =
+        ProblemDetail.forStatusAndDetail(
+            HttpStatus.INTERNAL_SERVER_ERROR,
+            "Failed to obtain access token for an external service");
+    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(problemDetail);
+  }
+
+  /** Returns HTTP 500 with a stable, safe detail when application-history data is inconsistent. */
+  @ExceptionHandler(ApplicationHistoryIntegrityException.class)
+  ResponseEntity<ProblemDetail> handleApplicationHistoryIntegrityException(
+      ApplicationHistoryIntegrityException exception) {
+    log.error(
+        "Application history integrity failure [applicationId={}, priorAuthorityId={}, reason={}]",
+        exception.getApplicationId(),
+        exception.getPriorAuthorityId(),
+        exception.getReason());
+    ProblemDetail problemDetail =
+        ProblemDetail.forStatusAndDetail(
+            HttpStatus.INTERNAL_SERVER_ERROR, "Application history data is inconsistent");
+    problemDetail.setInstance(URI.create("about:blank"));
+    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(problemDetail);
   }
 
   private ResponseEntity<ProblemDetail> validationError(List<String> errors) {

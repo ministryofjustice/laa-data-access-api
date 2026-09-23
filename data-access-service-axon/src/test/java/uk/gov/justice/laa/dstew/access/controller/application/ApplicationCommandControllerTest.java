@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -17,16 +16,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationUseCase;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.AssignCaseworkerUseCase;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.CaseworkerAssignment;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.UnassignCaseworkerFromApplicationCommand;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.UnassignCaseworkerUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionUseCase;
+import uk.gov.justice.laa.dstew.access.command.application.document.UploadDocumentUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand;
@@ -35,7 +32,9 @@ import uk.gov.justice.laa.dstew.access.command.application.ready.RecordAutoGrant
 import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
+import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
 import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedUserId;
 
 /** Verifies that each controller endpoint delegates to the appropriate use case. */
 class ApplicationCommandControllerTest {
@@ -43,17 +42,15 @@ class ApplicationCommandControllerTest {
   private CreateApplicationUseCase createApplicationUseCase;
   private MakeApplicationDecisionUseCase makeDecisionUseCase;
   private CreateNoteUseCase createNoteUseCase;
-  private UnassignCaseworkerUseCase unassignCaseworkerUseCase;
-  private AssignCaseworkerUseCase assignCaseworkerUseCase;
   private RecordAutoGrantOutcomeUseCase recordAutoGrantOutcomeUseCase;
   private UpdateApplicationUseCase updateApplicationUseCase;
+  private UploadDocumentUseCase uploadDocumentUseCase;
   private CreateApplicationCommandMapper commandMapper;
   private MakeDecisionCommandMapper decisionCommandMapper;
-  private AssignCaseworkerRequestMapper assignCaseworkerRequestMapper;
-  private UnassignCaseworkerRequestMapper unassignCaseworkerRequestMapper;
   private CreateNoteCommandMapper createNoteCommandMapper;
   private AutoGrantOutcomeCommandMapper autoGrantOutcomeCommandMapper;
   private UpdateApplicationCommandMapper updateApplicationCommandMapper;
+  private AuthenticatedUserId authenticatedUserId;
   private ApplicationCommandController controller;
 
   @BeforeEach
@@ -63,33 +60,29 @@ class ApplicationCommandControllerTest {
     createApplicationUseCase = mock(CreateApplicationUseCase.class);
     makeDecisionUseCase = mock(MakeApplicationDecisionUseCase.class);
     createNoteUseCase = mock(CreateNoteUseCase.class);
-    unassignCaseworkerUseCase = mock(UnassignCaseworkerUseCase.class);
-    assignCaseworkerUseCase = mock(AssignCaseworkerUseCase.class);
     recordAutoGrantOutcomeUseCase = mock(RecordAutoGrantOutcomeUseCase.class);
     updateApplicationUseCase = mock(UpdateApplicationUseCase.class);
+    uploadDocumentUseCase = mock(UploadDocumentUseCase.class);
     commandMapper = mock(CreateApplicationCommandMapper.class);
     decisionCommandMapper = mock(MakeDecisionCommandMapper.class);
-    assignCaseworkerRequestMapper = mock(AssignCaseworkerRequestMapper.class);
-    unassignCaseworkerRequestMapper = mock(UnassignCaseworkerRequestMapper.class);
     createNoteCommandMapper = mock(CreateNoteCommandMapper.class);
     autoGrantOutcomeCommandMapper = mock(AutoGrantOutcomeCommandMapper.class);
     updateApplicationCommandMapper = mock(UpdateApplicationCommandMapper.class);
+    authenticatedUserId = mock(AuthenticatedUserId.class);
     controller =
         new ApplicationCommandController(
             createApplicationUseCase,
             makeDecisionUseCase,
             createNoteUseCase,
-            unassignCaseworkerUseCase,
-            assignCaseworkerUseCase,
             recordAutoGrantOutcomeUseCase,
             updateApplicationUseCase,
+            uploadDocumentUseCase,
             commandMapper,
             decisionCommandMapper,
-            assignCaseworkerRequestMapper,
-            unassignCaseworkerRequestMapper,
             createNoteCommandMapper,
             autoGrantOutcomeCommandMapper,
-            updateApplicationCommandMapper);
+            updateApplicationCommandMapper,
+            authenticatedUserId);
   }
 
   @AfterEach
@@ -139,7 +132,7 @@ class ApplicationCommandControllerTest {
     CreateApplicationCommand command = stubCreateCommand();
     when(commandMapper.toCommand(any(), anyInt())).thenReturn(command);
     when(createApplicationUseCase.execute(command)).thenReturn(true);
-    ResponseEntity<Void> response = controller.createApplication(null, 1, null);
+    ResponseEntity<Void> response = controller.createApplication(null, null, 1);
     verify(createApplicationUseCase).execute(command);
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
   }
@@ -149,7 +142,7 @@ class ApplicationCommandControllerTest {
     CreateApplicationCommand command = stubCreateCommand();
     when(commandMapper.toCommand(any(), anyInt())).thenReturn(command);
     when(createApplicationUseCase.execute(command)).thenReturn(false);
-    ResponseEntity<Void> response = controller.createApplication(null, 1, null);
+    ResponseEntity<Void> response = controller.createApplication(null, null, 1);
     verify(createApplicationUseCase).execute(command);
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
   }
@@ -157,8 +150,10 @@ class ApplicationCommandControllerTest {
   @Test
   void givenRequest_whenMakeDecision_thenDelegatesToUseCase() {
     UUID id = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
     MakeApplicationDecisionCommand command = mock(MakeApplicationDecisionCommand.class);
-    when(decisionCommandMapper.toCommand(id, null)).thenReturn(command);
+    when(authenticatedUserId.get()).thenReturn(caseworkerId);
+    when(decisionCommandMapper.toCommand(id, caseworkerId, null)).thenReturn(command);
     controller.makeDecision(null, id, null);
     verify(makeDecisionUseCase).execute(command);
   }
@@ -168,36 +163,23 @@ class ApplicationCommandControllerTest {
     UUID id = UUID.randomUUID();
     CreateNoteCommand command = mock(CreateNoteCommand.class);
     when(createNoteCommandMapper.toCommand(id, null)).thenReturn(command);
-    controller.createNote(null, id, null);
+    controller.createApplicationNotes(null, id, null);
     verify(createNoteUseCase).execute(command);
   }
 
   @Test
-  void givenRequest_whenUnassignCaseworker_thenDelegatesToUseCase() {
+  void givenValidFile_whenUploadDocument_thenDelegatesToUseCaseAndReturns201() {
     UUID id = UUID.randomUUID();
-    UnassignCaseworkerFromApplicationCommand command =
-        mock(UnassignCaseworkerFromApplicationCommand.class);
-    when(unassignCaseworkerRequestMapper.toCommand(id, null)).thenReturn(command);
-    controller.unassignCaseworker(null, id, null);
-    verify(unassignCaseworkerUseCase).execute(command);
-  }
+    MockMultipartFile file =
+        new MockMultipartFile("file", "test.pdf", "application/pdf", "content".getBytes());
+    DocumentUploadResponse expected = mock(DocumentUploadResponse.class);
+    when(uploadDocumentUseCase.execute(id, file)).thenReturn(expected);
 
-  @Test
-  void givenRequest_whenAssignCaseworker_thenDelegatesToUseCase() {
-    CaseworkerAssignment assignment =
-        new CaseworkerAssignment(UUID.randomUUID(), UUID.randomUUID(), "{}", "desc");
-    when(assignCaseworkerRequestMapper.toAssignment(any())).thenReturn(assignment);
-    controller.assignCaseworker(null, null);
-    verify(assignCaseworkerUseCase)
-        .assign(
-            assignment.caseworkerId(),
-            assignment.applicationId(),
-            assignment.serialisedRequest(),
-            assignment.eventDescription());
-    verify(makeDecisionUseCase, never()).execute(any());
-    verify(createNoteUseCase, never()).execute(any());
-    verify(unassignCaseworkerUseCase, never()).execute(any());
-    verify(createApplicationUseCase, never()).execute(any());
+    ResponseEntity<DocumentUploadResponse> response = controller.uploadDocument(null, id, file);
+
+    verify(uploadDocumentUseCase).execute(id, file);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    assertThat(response.getBody()).isEqualTo(expected);
   }
 
   private CreateApplicationCommand stubCreateCommand() {

@@ -1,6 +1,9 @@
 package uk.gov.justice.laa.dstew.access.query.application.history;
 
 import java.time.Instant;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.axonframework.messaging.core.annotation.Namespace;
 import org.axonframework.messaging.eventhandling.EventMessage;
@@ -12,15 +15,16 @@ import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
-import uk.gov.justice.laa.dstew.access.config.interceptor.ServiceNameMetadataDispatchInterceptor;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
+import uk.gov.justice.laa.dstew.access.config.interceptor.RequestMetadataDispatchInterceptor;
 
 /** Independently replayable, append-only audit projection of Application events. */
 @Component
@@ -30,15 +34,21 @@ public class ApplicationHistoryProjection {
   private final ApplicationHistoryReadRepository applicationHistoryReadRepository;
   private final ObjectMapper objectMapper;
   private final ApplicationDataStore applicationDataStore;
+  private final PriorAuthorityHistoryReadRepository priorAuthorityHistoryReadRepository;
+  private final PriorAuthorityHistoryAssembler priorAuthorityHistoryAssembler;
 
   /** Creates the history projection with its persistence and reconstruction dependencies. */
   public ApplicationHistoryProjection(
       ApplicationHistoryReadRepository applicationHistoryReadRepository,
       ObjectMapper objectMapper,
-      ApplicationDataStore applicationDataStore) {
+      ApplicationDataStore applicationDataStore,
+      PriorAuthorityHistoryReadRepository priorAuthorityHistoryReadRepository,
+      PriorAuthorityHistoryAssembler priorAuthorityHistoryAssembler) {
     this.applicationHistoryReadRepository = applicationHistoryReadRepository;
     this.objectMapper = objectMapper;
     this.applicationDataStore = applicationDataStore;
+    this.priorAuthorityHistoryReadRepository = priorAuthorityHistoryReadRepository;
+    this.priorAuthorityHistoryAssembler = priorAuthorityHistoryAssembler;
   }
 
   /**
@@ -122,26 +132,34 @@ public class ApplicationHistoryProjection {
             ? "APPLICATION_MAKE_DECISION_GRANTED"
             : "APPLICATION_MAKE_DECISION_REFUSED",
         serialise(event),
+        event.caseworkerId(),
         event.occurredAt());
   }
 
-  /** Appends a thin audit entry for a caseworker assignment. */
+  /** Appends a thin audit entry for an application work-list assignment. */
   @EventHandler
-  public void on(ApplicationAssignedToCaseworkerEvent event, EventMessage message) {
+  public void on(WorkItemAssigned event, EventMessage message) {
+    if (WorkItemType.PRIOR_AUTHORITY.equals(event.workItemType())) {
+      return;
+    }
     append(
         message,
-        event.applicationId(),
+        event.workItemId(),
         "ASSIGN_APPLICATION_TO_CASEWORKER",
         serialise(event),
+        event.caseworkerId(),
         event.occurredAt());
   }
 
-  /** Appends a thin audit entry for a caseworker unassignment. */
+  /** Appends a thin audit entry for an application work-list unassignment. */
   @EventHandler
-  public void on(ApplicationUnassignedFromCaseworkerEvent event, EventMessage message) {
+  public void on(WorkItemUnassigned event, EventMessage message) {
+    if (WorkItemType.PRIOR_AUTHORITY.equals(event.workItemType())) {
+      return;
+    }
     append(
         message,
-        event.applicationId(),
+        event.workItemId(),
         "UNASSIGN_APPLICATION_TO_CASEWORKER",
         serialise(event),
         event.occurredAt());
@@ -160,13 +178,20 @@ public class ApplicationHistoryProjection {
 
   /** Returns chronologically ordered history rows matching the requested public event types. */
   @QueryHandler
-  public java.util.List<ApplicationHistoryReadModel> handle(FindApplicationHistoryQuery query) {
-    return applicationHistoryReadRepository
-        .findAllByApplicationIdOrderByOccurredAtAsc(query.applicationId())
-        .stream()
-        .filter(history -> query.eventTypes().contains(history.getEventType()))
-        .map(this::hydrateEventDescription)
-        .toList();
+  public ApplicationHistoryResult handle(FindApplicationHistoryQuery query) {
+    List<ApplicationHistoryReadModel> applicationEvents =
+        applicationHistoryReadRepository
+            .findAllByApplicationIdOrderByOccurredAtAsc(query.applicationId())
+            .stream()
+            .filter(h -> query.eventTypes().contains(h.getEventType()))
+            .map(this::hydrateEventDescription)
+            .toList();
+    List<PriorAuthorityHistoryReadModel> priorAuthorityRows =
+        priorAuthorityHistoryReadRepository.findAllByApplicationIdOrderByOccurredAtAsc(
+            query.applicationId());
+    List<PriorAuthorityHistoryGroupResult> priorAuthorityGroups =
+        priorAuthorityHistoryAssembler.assemble(priorAuthorityRows);
+    return new ApplicationHistoryResult(applicationEvents, priorAuthorityGroups);
   }
 
   private ApplicationHistoryReadModel hydrateEventDescription(ApplicationHistoryReadModel history) {
@@ -179,7 +204,23 @@ public class ApplicationHistoryProjection {
     }
     try {
       var thinPayload = objectMapper.readTree(history.getRequestPayload());
-      long version = thinPayload.get("applicationDataVersion").asLong();
+      if (assignment || unassignment) {
+        Map<String, Object> reconstructedPayload = new HashMap<>();
+        if (assignment) {
+          reconstructedPayload.put("caseworkerId", thinPayload.get("caseworkerId").asString());
+        }
+        return ApplicationHistoryReadModel.builder()
+            .eventId(history.getEventId())
+            .applicationId(history.getApplicationId())
+            .eventType(history.getEventType())
+            .requestPayload(objectMapper.writeValueAsString(reconstructedPayload))
+            .serviceName(history.getServiceName())
+            .caseworkerId(history.getCaseworkerId())
+            .occurredAt(history.getOccurredAt())
+            .build();
+      }
+      var versionNode = thinPayload.get("applicationDataVersion");
+      long version = (versionNode == null ? thinPayload.get("dataVersion") : versionNode).asLong();
       var data = applicationDataStore.get(history.getApplicationId(), version);
       if (note) {
         var lastNote = data.notes().getLast();
@@ -188,24 +229,22 @@ public class ApplicationHistoryProjection {
             .applicationId(history.getApplicationId())
             .eventType(history.getEventType())
             .requestPayload(
-                objectMapper.writeValueAsString(java.util.Map.of("noteText", lastNote.noteText())))
+                objectMapper.writeValueAsString(Map.of("noteText", lastNote.noteText())))
             .serviceName(history.getServiceName())
+            .caseworkerId(history.getCaseworkerId())
             .occurredAt(history.getOccurredAt())
             .build();
       }
-      String description =
-          decision ? data.decisionEventDescription() : data.assignmentEventDescription();
-      java.util.Map<String, Object> reconstructedPayload = new java.util.HashMap<>();
+      String description = data.decisionEventDescription();
+      Map<String, Object> reconstructedPayload = new HashMap<>();
       reconstructedPayload.put("eventDescription", description);
-      if (assignment && thinPayload.get("caseworkerId") != null) {
-        reconstructedPayload.put("caseworkerId", thinPayload.get("caseworkerId").asString());
-      }
       return ApplicationHistoryReadModel.builder()
           .eventId(history.getEventId())
           .applicationId(history.getApplicationId())
           .eventType(history.getEventType())
           .requestPayload(objectMapper.writeValueAsString(reconstructedPayload))
           .serviceName(history.getServiceName())
+          .caseworkerId(history.getCaseworkerId())
           .occurredAt(history.getOccurredAt())
           .build();
     } catch (Exception exception) {
@@ -216,6 +255,7 @@ public class ApplicationHistoryProjection {
   @ResetHandler
   public void reset() {
     applicationHistoryReadRepository.deleteAllInBatch();
+    priorAuthorityHistoryReadRepository.deleteAllInBatch();
   }
 
   private void append(
@@ -224,7 +264,24 @@ public class ApplicationHistoryProjection {
       String eventType,
       String requestPayload,
       Instant occurredAt) {
-    append(message, applicationId, eventType, requestPayload, occurredAt, message.identifier());
+    append(message, applicationId, eventType, requestPayload, null, occurredAt);
+  }
+
+  private void append(
+      EventMessage message,
+      UUID applicationId,
+      String eventType,
+      String requestPayload,
+      UUID caseworkerId,
+      Instant occurredAt) {
+    append(
+        message,
+        applicationId,
+        eventType,
+        requestPayload,
+        caseworkerId,
+        occurredAt,
+        message.identifier());
   }
 
   private void append(
@@ -234,8 +291,19 @@ public class ApplicationHistoryProjection {
       String requestPayload,
       Instant occurredAt,
       String historyId) {
+    append(message, applicationId, eventType, requestPayload, null, occurredAt, historyId);
+  }
+
+  private void append(
+      EventMessage message,
+      UUID applicationId,
+      String eventType,
+      String requestPayload,
+      UUID caseworkerId,
+      Instant occurredAt,
+      String historyId) {
     Object serviceName =
-        message.metadata().get(ServiceNameMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY);
+        message.metadata().get(RequestMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY);
     applicationHistoryReadRepository.save(
         ApplicationHistoryReadModel.builder()
             .eventId(historyId)
@@ -243,6 +311,7 @@ public class ApplicationHistoryProjection {
             .eventType(eventType)
             .requestPayload(requestPayload)
             .serviceName(serviceName == null ? null : serviceName.toString())
+            .caseworkerId(caseworkerId)
             .occurredAt(occurredAt)
             .build());
   }

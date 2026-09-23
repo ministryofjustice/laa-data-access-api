@@ -4,13 +4,13 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationAssignedToCaseworkerEvent;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.ApplicationUnassignedFromCaseworkerEvent;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupRequested;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 
 /** Event-fold functions for {@link ApplicationState}. */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
@@ -57,17 +57,15 @@ public final class ApplicationEvolve {
     state.autoGranted = AutoGrantedState.MANUAL;
   }
 
-  /** Applies an {@link ApplicationAssignedToCaseworkerEvent} to the given state. */
-  public static void apply(ApplicationState state, ApplicationAssignedToCaseworkerEvent event) {
-    state.applicationVersion = event.applicationVersion();
-    state.applicationDataVersion = event.applicationDataVersion();
+  /** Applies a generic direct assignment event to the owning application state. */
+  public static void apply(ApplicationState state, WorkItemAssigned event) {
+    state.assignmentVersion = event.assignmentVersion();
     state.caseworkerId = event.caseworkerId();
   }
 
-  /** Applies an {@link ApplicationUnassignedFromCaseworkerEvent} to the given state. */
-  public static void apply(ApplicationState state, ApplicationUnassignedFromCaseworkerEvent event) {
-    state.applicationVersion = event.applicationVersion();
-    state.applicationDataVersion = event.applicationDataVersion();
+  /** Applies a generic direct unassignment event to the owning application state. */
+  public static void apply(ApplicationState state, WorkItemUnassigned event) {
+    state.assignmentVersion = event.assignmentVersion();
     state.caseworkerId = null;
   }
 

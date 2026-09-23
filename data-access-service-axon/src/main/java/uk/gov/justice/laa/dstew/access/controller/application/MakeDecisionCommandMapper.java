@@ -22,9 +22,11 @@ public class MakeDecisionCommandMapper {
   }
 
   /** Maps a request for the supplied Application identifier. */
-  public MakeApplicationDecisionCommand toCommand(UUID applicationId, MakeDecisionRequest request) {
+  public MakeApplicationDecisionCommand toCommand(
+      UUID applicationId, UUID caseworkerId, MakeDecisionRequest request) {
     return new MakeApplicationDecisionCommand(
         applicationId,
+        caseworkerId,
         request.getApplicationVersion(),
         request.getOverallDecision().name(),
         proceedings(request.getProceedings()),

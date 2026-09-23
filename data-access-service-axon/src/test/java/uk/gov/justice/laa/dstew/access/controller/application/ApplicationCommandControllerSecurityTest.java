@@ -34,14 +34,16 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationUseCase;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.AssignCaseworkerUseCase;
-import uk.gov.justice.laa.dstew.access.command.application.assignment.UnassignCaseworkerUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionUseCase;
+import uk.gov.justice.laa.dstew.access.command.application.document.UploadDocumentUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.ready.RecordAutoGrantOutcomeUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationUseCase;
+import uk.gov.justice.laa.dstew.access.config.SecondaryAuthorizationConfig;
+import uk.gov.justice.laa.dstew.access.config.SecondaryAuthorizationFilter;
 import uk.gov.justice.laa.dstew.access.config.SecurityConfig;
 import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedUserId;
 import uk.gov.laa.springboot.oauth2.testsupport.StubJwtDecoder;
 import uk.gov.laa.springboot.oauth2.testsupport.StubJwtToken;
 
@@ -67,17 +69,15 @@ class ApplicationCommandControllerSecurityTest {
   @MockitoBean private SubscriptionProjectionGateway projectionGateway;
   @MockitoBean private MakeApplicationDecisionUseCase makeDecisionUseCase;
   @MockitoBean private CreateNoteUseCase createNoteUseCase;
-  @MockitoBean private UnassignCaseworkerUseCase unassignCaseworkerUseCase;
-  @MockitoBean private AssignCaseworkerUseCase assignCaseworkerUseCase;
   @MockitoBean private RecordAutoGrantOutcomeUseCase recordAutoGrantOutcomeUseCase;
   @MockitoBean private UpdateApplicationUseCase updateApplicationUseCase;
+  @MockitoBean private UploadDocumentUseCase uploadDocumentUseCase;
   @MockitoBean private CreateApplicationCommandMapper commandMapper;
   @MockitoBean private MakeDecisionCommandMapper decisionCommandMapper;
-  @MockitoBean private AssignCaseworkerRequestMapper assignCaseworkerRequestMapper;
-  @MockitoBean private UnassignCaseworkerRequestMapper unassignCaseworkerRequestMapper;
   @MockitoBean private CreateNoteCommandMapper createNoteCommandMapper;
   @MockitoBean private AutoGrantOutcomeCommandMapper autoGrantOutcomeCommandMapper;
   @MockitoBean private UpdateApplicationCommandMapper updateApplicationCommandMapper;
+  @MockitoBean private AuthenticatedUserId authenticatedUserId;
 
   @Test
   void givenNoCredentials_whenCreateApplication_thenReturnsUnauthorized() {
@@ -145,6 +145,8 @@ class ApplicationCommandControllerSecurityTest {
     ApplicationCommandController.class,
     CreateApplicationUseCase.class,
     SecurityConfig.class,
+    SecondaryAuthorizationConfig.class,
+    SecondaryAuthorizationFilter.class,
     UnknownRoleJwtConfig.class
   })
   static class TestApplication {}

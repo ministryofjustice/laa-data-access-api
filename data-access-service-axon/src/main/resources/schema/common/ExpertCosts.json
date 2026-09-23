@@ -49,6 +49,20 @@
       "then": {
         "required": ["apportionment"]
       }
+    },
+    {
+      "if": {
+        "properties": {
+          "costsSharedWithOtherParties": {
+            "const": false
+          }
+        }
+      },
+      "then": {
+        "not": {
+          "required": ["apportionment"]
+        }
+      }
     }
   ]
 }

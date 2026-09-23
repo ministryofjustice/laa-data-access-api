@@ -1,38 +1,88 @@
 package uk.gov.justice.laa.dstew.access.command.application.priorauthority;
 
-import java.util.Optional;
+import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
-import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
 
 /** Decision functions: derive events from current state and command inputs. */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class PriorAuthorityDecider {
 
+  /** Returns a {@link PriorAuthorityDraftStartedEvent} for the first save of a new draft. */
+  public static PriorAuthorityDraftStartedEvent decideStartDraft(
+      CreatePriorAuthorityDraftCommand command) {
+    String priorAuthorityType =
+        command.content().priorAuthorityType() == null
+            ? null
+            : command.content().priorAuthorityType().name();
+    return new PriorAuthorityDraftStartedEvent(
+        command.priorAuthorityId(),
+        command.applicationId(),
+        priorAuthorityType,
+        command.schemaVersion(),
+        command.occurredAt());
+  }
+
   /**
-   * Returns a singleton {@link PriorAuthorityCreatedEvent} for a new submission, {@link
-   * Optional#empty()} for an idempotent retry with the same fingerprint, or throws {@link
-   * PriorAuthorityCreationConflictException} on a conflicting retry.
+   * Returns a {@link PriorAuthoritySubmittedEvent} — a thin pointer with no personal data — for the
+   * given submit command. The submitted content is always appended as version 0 of {@code
+   * prior_authority_data}, since a submission's draft content is not itself versioned.
+   *
+   * @param applicationDataVersion the parent application's current data version, pinned into the
+   *     event so the work-list projection hydrates parent fields deterministically on replay
    */
-  public static Optional<PriorAuthorityCreatedEvent> decideCreate(
-      PriorAuthorityState state, CreatePriorAuthorityCommand command, String fingerprint) {
+  public static PriorAuthoritySubmittedEvent decideSubmit(
+      SubmitPriorAuthorityDraftCommand command,
+      PriorAuthorityState state,
+      long applicationDataVersion) {
+    return new PriorAuthoritySubmittedEvent(
+        command.priorAuthorityId(),
+        state.applicationId,
+        state.priorAuthorityType,
+        state.schemaVersion,
+        0L,
+        applicationDataVersion,
+        command.occurredAt());
+  }
 
-    if (state.submissionId != null) {
-      if (state.requestFingerprint.equals(fingerprint)) {
-        return Optional.empty();
-      }
-      throw new PriorAuthorityCreationConflictException(command.submissionId());
-    }
+  /**
+   * Returns a {@link PriorAuthorityDraftUpdatedEvent} — a thin, PII-free pointer with no draft
+   * content — for a draft-body update. It exists to seal the write through the aggregate's
+   * optimistic-concurrency gate.
+   */
+  public static PriorAuthorityDraftUpdatedEvent decideDraftUpdated(
+      UpdatePriorAuthorityDraftCommand command, UUID applicationId) {
+    return new PriorAuthorityDraftUpdatedEvent(
+        command.priorAuthorityId(), applicationId, command.occurredAt());
+  }
 
-    return Optional.of(
-        new PriorAuthorityCreatedEvent(
-            command.submissionId(),
-            command.applicationId(),
-            0L,
-            fingerprint,
-            PriorAuthorityStatus.PENDING.name(),
-            command.schemaVersion(),
-            command.occurredAt()));
+  /** Returns a persisted upload event for a prior-authority document finalize command. */
+  public static PriorAuthorityDocumentUploadedEvent decideDocumentUploaded(
+      PriorAuthorityDocumentUploadCommand command, UUID applicationId) {
+    return new PriorAuthorityDocumentUploadedEvent(
+        command.priorAuthorityId(),
+        command.documentId(),
+        command.occurredAt(),
+        command.fileSize(),
+        command.contentType(),
+        command.checksum(),
+        applicationId);
+  }
+
+  /** Returns the persisted event for removing a prior-authority document. */
+  public static PriorAuthorityDocumentDeletedEvent decideDocumentDeleted(
+      PriorAuthorityDocumentDeleteCommand command, UUID applicationId) {
+    return new PriorAuthorityDocumentDeletedEvent(
+        command.priorAuthorityId(), command.documentId(), command.occurredAt(), applicationId);
+  }
+
+  /** Returns the persisted event for setting or replacing a document type. */
+  public static PriorAuthorityDocumentTypeUpdatedEvent decideDocumentTypeUpdated(
+      PriorAuthorityDocumentTypeUpdateCommand command) {
+    return new PriorAuthorityDocumentTypeUpdatedEvent(
+        command.priorAuthorityId(),
+        command.documentId(),
+        command.documentType(),
+        command.occurredAt());
   }
 }

@@ -1,0 +1,280 @@
+package uk.gov.justice.laa.dstew.access.query.application.history;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+
+class PriorAuthorityHistoryAssemblerTest {
+
+  private final PriorAuthorityHistoryAssembler assembler = new PriorAuthorityHistoryAssembler();
+
+  // --- grouping and ordering ---
+
+  @Test
+  void givenRowsForTwoSubmissions_whenAssembled_thenOneGroupPerPriorAuthorityId() {
+    UUID applicationId = UUID.randomUUID();
+    UUID firstPriorAuthorityId = UUID.randomUUID();
+    UUID secondPriorAuthorityId = UUID.randomUUID();
+    var rows =
+        List.of(
+            row(
+                applicationId,
+                firstPriorAuthorityId,
+                "EXPERT",
+                "evt-a",
+                Instant.parse("2026-08-01T10:00:00Z")),
+            row(
+                applicationId,
+                secondPriorAuthorityId,
+                "COUNSEL",
+                "evt-b",
+                Instant.parse("2026-08-01T11:00:00Z")));
+
+    var groups = assembler.assemble(rows);
+
+    assertThat(groups)
+        .extracting(PriorAuthorityHistoryGroupResult::priorAuthorityId)
+        .containsExactly(firstPriorAuthorityId, secondPriorAuthorityId);
+  }
+
+  @Test
+  void
+      givenMultipleEventsForOneSubmission_whenAssembled_thenEventsOrderedByOccurredAtThenEventId() {
+    UUID applicationId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
+    var earlierRow =
+        row(
+            applicationId,
+            priorAuthorityId,
+            "EXPERT",
+            "evt-aaa",
+            Instant.parse("2026-08-01T09:00:00Z"));
+    // Both later rows have the same timestamp but distinct service names, making the tie-break
+    // observable.
+    var firstLaterRow =
+        row(
+            applicationId,
+            priorAuthorityId,
+            "EXPERT",
+            "evt-aab",
+            Instant.parse("2026-08-01T10:00:00Z"),
+            "SERVICE_A");
+    var secondLaterRow =
+        row(
+            applicationId,
+            priorAuthorityId,
+            "EXPERT",
+            "evt-aac",
+            Instant.parse("2026-08-01T10:00:00Z"),
+            "SERVICE_B");
+
+    var groups = assembler.assemble(List.of(secondLaterRow, firstLaterRow, earlierRow));
+
+    assertThat(groups)
+        .singleElement()
+        .satisfies(
+            group -> {
+              assertThat(group.events())
+                  .extracting(PriorAuthorityHistoryEventResult::serviceName)
+                  .containsExactly("CIVIL_APPLY", "SERVICE_A", "SERVICE_B");
+              assertThat(group.events())
+                  .extracting(PriorAuthorityHistoryEventResult::occurredAt)
+                  .containsExactly(
+                      Instant.parse("2026-08-01T09:00:00Z"),
+                      Instant.parse("2026-08-01T10:00:00Z"),
+                      Instant.parse("2026-08-01T10:00:00Z"));
+            });
+  }
+
+  @Test
+  void givenTwoSubmissions_whenAssembled_thenGroupOrderFollowsEarliestEvent() {
+    UUID applicationId = UUID.randomUUID();
+    UUID laterPriorAuthorityId = UUID.randomUUID();
+    UUID earlierPriorAuthorityId = UUID.randomUUID();
+    var rows =
+        List.of(
+            row(
+                applicationId,
+                laterPriorAuthorityId,
+                "EXPERT",
+                "evt-1",
+                Instant.parse("2026-08-01T12:00:00Z")),
+            row(
+                applicationId,
+                earlierPriorAuthorityId,
+                "COUNSEL",
+                "evt-2",
+                Instant.parse("2026-08-01T08:00:00Z")));
+
+    var groups = assembler.assemble(rows);
+
+    assertThat(groups)
+        .extracting(PriorAuthorityHistoryGroupResult::priorAuthorityId)
+        .containsExactly(earlierPriorAuthorityId, laterPriorAuthorityId);
+  }
+
+  @Test
+  void givenEmptyInput_whenAssembled_thenReturnsEmptyList() {
+    assertThat(assembler.assemble(List.of())).isEmpty();
+  }
+
+  // --- immutability ---
+
+  @Test
+  void givenValidRows_whenAssembled_thenReturnedGroupListIsUnmodifiable() {
+    UUID applicationId = UUID.randomUUID();
+    var groups =
+        assembler.assemble(
+            List.of(
+                row(
+                    applicationId,
+                    UUID.randomUUID(),
+                    "EXPERT",
+                    "e1",
+                    Instant.parse("2026-08-01T10:00:00Z"))));
+
+    assertThatThrownBy(() -> groups.add(null)).isInstanceOf(UnsupportedOperationException.class);
+  }
+
+  @Test
+  void givenValidRows_whenAssembled_thenEventsListIsUnmodifiable() {
+    UUID applicationId = UUID.randomUUID();
+    var groups =
+        assembler.assemble(
+            List.of(
+                row(
+                    applicationId,
+                    UUID.randomUUID(),
+                    "EXPERT",
+                    "e1",
+                    Instant.parse("2026-08-01T10:00:00Z"))));
+
+    assertThatThrownBy(() -> groups.getFirst().events().add(null))
+        .isInstanceOf(UnsupportedOperationException.class);
+  }
+
+  // --- event hydration ---
+
+  @Test
+  void givenPriorAuthorityCreatedRow_whenAssembled_thenEventDescriptionIsNull() {
+    UUID applicationId = UUID.randomUUID();
+    var groups =
+        assembler.assemble(
+            List.of(
+                row(
+                    applicationId,
+                    UUID.randomUUID(),
+                    "EXPERT",
+                    "e1",
+                    Instant.parse("2026-08-01T10:00:00Z"))));
+
+    assertThat(groups.getFirst().events().getFirst().eventDescription()).isNull();
+  }
+
+  @Test
+  void givenRowWithNullServiceName_whenAssembled_thenServiceNameIsPreservedAsNull() {
+    UUID applicationId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
+    var historyRow =
+        PriorAuthorityHistoryReadModel.builder()
+            .eventId("e1")
+            .applicationId(applicationId)
+            .priorAuthorityId(priorAuthorityId)
+            .priorAuthorityType("EXPERT")
+            .eventType("PRIOR_AUTHORITY_SUBMITTED")
+            .itemVersion(2L)
+            .serviceName(null)
+            .occurredAt(Instant.parse("2026-08-01T10:00:00Z"))
+            .build();
+
+    var groups = assembler.assemble(List.of(historyRow));
+
+    assertThat(groups.getFirst().events().getFirst().serviceName()).isNull();
+  }
+
+  // --- integrity: conflicting types ---
+
+  @Test
+  void
+      givenTwoRowsSameSubmissionDifferentTypes_whenAssembled_thenThrowsApplicationHistoryIntegrityException() {
+    UUID applicationId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
+    var expertHistoryRow =
+        row(applicationId, priorAuthorityId, "EXPERT", "e1", Instant.parse("2026-08-01T09:00:00Z"));
+    var counselHistoryRow =
+        row(
+            applicationId,
+            priorAuthorityId,
+            "COUNSEL",
+            "e2",
+            Instant.parse("2026-08-01T10:00:00Z"));
+
+    assertThatThrownBy(() -> assembler.assemble(List.of(expertHistoryRow, counselHistoryRow)))
+        .isInstanceOf(ApplicationHistoryIntegrityException.class)
+        .satisfies(
+            throwable -> {
+              var integrityException = (ApplicationHistoryIntegrityException) throwable;
+              assertThat(integrityException.getApplicationId()).isEqualTo(applicationId);
+              assertThat(integrityException.getPriorAuthorityId()).isEqualTo(priorAuthorityId);
+              assertThat(integrityException.getReason()).contains("conflicting");
+            });
+  }
+
+  // --- single-value pass-through ---
+
+  @ParameterizedTest(name = "preserves single prior authority type [{0}]")
+  @ValueSource(strings = {"EXPERT", "COUNSEL", "DISBURSEMENT", "", "   ", "UNKNOWN_TYPE"})
+  void givenSinglePriorAuthorityType_whenAssembled_thenGroupPreservesType(
+      String priorAuthorityType) {
+    var groups =
+        assembler.assemble(
+            List.of(
+                row(
+                    UUID.randomUUID(),
+                    UUID.randomUUID(),
+                    priorAuthorityType,
+                    "e1",
+                    Instant.parse("2026-08-01T10:00:00Z"))));
+
+    assertThat(groups)
+        .extracting(PriorAuthorityHistoryGroupResult::priorAuthorityType)
+        .containsExactly(priorAuthorityType);
+  }
+
+  // --- helpers ---
+
+  private PriorAuthorityHistoryReadModel row(
+      UUID applicationId,
+      UUID priorAuthorityId,
+      String priorAuthorityType,
+      String eventId,
+      Instant occurredAt) {
+    return row(
+        applicationId, priorAuthorityId, priorAuthorityType, eventId, occurredAt, "CIVIL_APPLY");
+  }
+
+  private PriorAuthorityHistoryReadModel row(
+      UUID applicationId,
+      UUID priorAuthorityId,
+      String priorAuthorityType,
+      String eventId,
+      Instant occurredAt,
+      String serviceName) {
+    return PriorAuthorityHistoryReadModel.builder()
+        .eventId(eventId)
+        .applicationId(applicationId)
+        .priorAuthorityId(priorAuthorityId)
+        .priorAuthorityType(priorAuthorityType)
+        .eventType("PRIOR_AUTHORITY_SUBMITTED")
+        .itemVersion(2L)
+        .serviceName(serviceName)
+        .occurredAt(occurredAt)
+        .build();
+  }
+}

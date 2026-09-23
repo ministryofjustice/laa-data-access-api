@@ -18,7 +18,7 @@ public class PriorAuthorityDataStore {
   /**
    * Appends an immutable version of a prior-authority submission's sensitive data.
    *
-   * @param submissionId the prior-authority submission identifier
+   * @param priorAuthorityId the prior-authority submission identifier
    * @param dataVersion the data version
    * @param applicationId the parent application identifier
    * @param payload the payload to persist
@@ -27,7 +27,7 @@ public class PriorAuthorityDataStore {
    * @return the fingerprint of the serialised request
    */
   public String append(
-      UUID submissionId,
+      UUID priorAuthorityId,
       long dataVersion,
       UUID applicationId,
       PriorAuthorityDataPayload payload,
@@ -36,7 +36,7 @@ public class PriorAuthorityDataStore {
     String fingerprint = PayloadFingerprint.compute(serialisedRequest);
     repository.saveAndFlush(
         PriorAuthorityData.builder()
-            .id(new PriorAuthorityDataId(submissionId, dataVersion))
+            .id(new PriorAuthorityDataId(priorAuthorityId, dataVersion))
             .applicationId(applicationId)
             .payload(payload)
             .payloadHash(fingerprint)
@@ -48,19 +48,19 @@ public class PriorAuthorityDataStore {
   /**
    * Retrieves a specific version of a prior-authority submission's sensitive data.
    *
-   * @param submissionId the prior-authority submission identifier
+   * @param priorAuthorityId the prior-authority submission identifier
    * @param dataVersion the data version
    * @return the stored prior-authority data payload
    * @throws IllegalStateException when the referenced version does not exist
    */
-  public PriorAuthorityDataPayload get(UUID submissionId, long dataVersion) {
+  public PriorAuthorityDataPayload get(UUID priorAuthorityId, long dataVersion) {
     return repository
-        .findById(new PriorAuthorityDataId(submissionId, dataVersion))
+        .findById(new PriorAuthorityDataId(priorAuthorityId, dataVersion))
         .orElseThrow(
             () ->
                 new IllegalStateException(
                     "Prior authority data not found for submission "
-                        + submissionId
+                        + priorAuthorityId
                         + " version "
                         + dataVersion))
         .getPayload();

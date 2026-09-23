@@ -1,19 +1,15 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
+import io.swagger.v3.oas.annotations.Hidden;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import uk.gov.justice.laa.dstew.access.api.ApplicationQueryApi;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationNotesResponse;
@@ -22,6 +18,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSortBy;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
+import uk.gov.justice.laa.dstew.access.model.DocumentDownloadResponse;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
@@ -30,13 +27,15 @@ import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsQuery;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsResult;
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
-import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadModel;
+import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryResult;
+import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
+import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
+import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
 import uk.gov.justice.laa.dstew.access.usecase.application.ApplicationQueryUseCase;
 
 /** HTTP query adapter for Application reads. */
 @RestController
-@RequestMapping("/api/v0/applications")
-public class ApplicationQueryController {
+public class ApplicationQueryController implements ApplicationQueryApi {
 
   private final ApplicationQueryUseCase applicationQueryUseCase;
   private final GetApplicationResponseMapper responseMapper;
@@ -44,18 +43,16 @@ public class ApplicationQueryController {
   private final GetApplicationHistoryResponseMapper historyResponseMapper;
   private final GetAllNotesForApplicationResponseMapper notesResponseMapper;
   private final SubscriptionProjectionGateway projectionGateway;
+  private final SdsService sdsService;
 
   /**
    * Constructs the controller with its query gateway and response mappers.
    *
    * @param applicationQueryUseCase secured application read use case
-   * @param responseMapper maps a single {@link ApplicationReadModel} to {@link
-   *     uk.gov.justice.laa.dstew.access.model.ApplicationResponse}
-   * @param getAllResponseMapper maps application summaries to {@link
-   *     uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse}
-   * @param historyResponseMapper maps a list of {@link
-   *     uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadModel} to
-   *     {@link uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse}
+   * @param responseMapper maps a single {@link ApplicationReadModel} to {@link ApplicationResponse}
+   * @param getAllResponseMapper maps application summaries to {@link ApplicationSummaryResponse}
+   * @param historyResponseMapper maps {@link ApplicationHistoryResult} to {@link
+   *     ApplicationHistoryResponse}
    * @param notesResponseMapper maps notes to {@link ApplicationNotesResponse}
    */
   public ApplicationQueryController(
@@ -64,13 +61,15 @@ public class ApplicationQueryController {
       GetAllApplicationsResponseMapper getAllResponseMapper,
       GetApplicationHistoryResponseMapper historyResponseMapper,
       GetAllNotesForApplicationResponseMapper notesResponseMapper,
-      SubscriptionProjectionGateway projectionGateway) {
+      SubscriptionProjectionGateway projectionGateway,
+      SdsService sdsService) {
     this.applicationQueryUseCase = applicationQueryUseCase;
     this.responseMapper = responseMapper;
     this.getAllResponseMapper = getAllResponseMapper;
     this.historyResponseMapper = historyResponseMapper;
     this.notesResponseMapper = notesResponseMapper;
     this.projectionGateway = projectionGateway;
+    this.sdsService = sdsService;
   }
 
   /**
@@ -82,20 +81,23 @@ public class ApplicationQueryController {
    * migration will denormalise client fields from the {@code individuals} JSON column to enable
    * them.
    */
-  @GetMapping
+  @Override
+  @LogMethodArguments
+  @LogMethodResponse
   public ResponseEntity<ApplicationSummaryResponse> getApplications(
-      @RequestParam(required = false) ApplicationStatus status,
-      @RequestParam(required = false) String laaReference,
-      @RequestParam(required = false) String clientFirstName,
-      @RequestParam(required = false) String clientLastName,
-      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-          LocalDate clientDateOfBirth,
-      @RequestParam(required = false) uk.gov.justice.laa.dstew.access.model.AutoGranted autoGranted,
-      @RequestParam(required = false) MatterType matterType,
-      @RequestParam(required = false) ApplicationSortBy sortBy,
-      @RequestParam(required = false) ApplicationOrderBy orderBy,
-      @RequestParam(required = false) Integer page,
-      @RequestParam(required = false) Integer pageSize) {
+      ServiceName serviceName,
+      ApplicationStatus status,
+      String laaReference,
+      String clientFirstName,
+      String clientLastName,
+      LocalDate clientDateOfBirth,
+      UUID userId,
+      uk.gov.justice.laa.dstew.access.model.AutoGranted autoGranted,
+      MatterType matterType,
+      ApplicationSortBy sortBy,
+      ApplicationOrderBy orderBy,
+      Integer page,
+      Integer pageSize) {
     FindAllApplicationsResult result =
         applicationQueryUseCase.getApplications(
             new FindAllApplicationsQuery(
@@ -114,8 +116,10 @@ public class ApplicationQueryController {
   }
 
   /** Returns the current-state projection for the requested Application. */
-  @GetMapping("/{id}")
-  public ResponseEntity<ApplicationResponse> getApplicationById(@PathVariable UUID id) {
+  @Override
+  @LogMethodArguments
+  @LogMethodResponse
+  public ResponseEntity<ApplicationResponse> getApplicationById(ServiceName serviceName, UUID id) {
     ApplicationReadModel application =
         findApplicationAwaitingProjection(id)
             .orElseGet(() -> applicationQueryUseCase.getApplicationById(id));
@@ -123,33 +127,47 @@ public class ApplicationQueryController {
   }
 
   /** Returns the certificate stored in the Application's current immutable data version. */
-  @GetMapping("/{id}/certificate")
-  public ResponseEntity<Map<String, Object>> getCertificate(
-      @RequestHeader("X-Service-Name") ServiceName serviceName, @PathVariable UUID id) {
+  @Override
+  @LogMethodArguments
+  @LogMethodResponse
+  public ResponseEntity<Map<String, Object>> getCertificate(ServiceName serviceName, UUID id) {
     return ResponseEntity.ok(applicationQueryUseCase.getCertificate(id));
   }
 
   /** Returns domain-event history for the requested Application. */
-  @GetMapping("/{id}/history-search")
+  @Override
+  @LogMethodArguments
+  @LogMethodResponse
   public ResponseEntity<ApplicationHistoryResponse> getApplicationHistory(
-      @RequestHeader("X-Service-Name") ServiceName serviceName,
-      @PathVariable UUID id,
-      @RequestParam(required = false) List<DomainEventType> eventType) {
+      ServiceName serviceName, UUID id, List<DomainEventType> eventType) {
     List<String> requestedTypes =
         (eventType == null || eventType.isEmpty())
             ? Arrays.stream(DomainEventType.values()).map(DomainEventType::getValue).toList()
             : eventType.stream().map(DomainEventType::getValue).toList();
-    List<ApplicationHistoryReadModel> history =
+    ApplicationHistoryResult history =
         applicationQueryUseCase.getApplicationHistory(id, requestedTypes);
     return ResponseEntity.ok(historyResponseMapper.toResponse(history));
   }
 
   /** Returns all notes for the requested Application, ordered by creation time ascending. */
-  @GetMapping("/{id}/notes")
-  public ResponseEntity<ApplicationNotesResponse> getNotesForApplication(@PathVariable UUID id) {
+  @Override
+  @LogMethodArguments
+  @LogMethodResponse
+  public ResponseEntity<ApplicationNotesResponse> getApplicationNotes(
+      ServiceName serviceName, UUID id) {
     ApplicationNotesResponse response =
         notesResponseMapper.toResponse(applicationQueryUseCase.getNotesForApplication(id).notes());
     return ResponseEntity.ok(response);
+  }
+
+  @Hidden
+  @Override
+  @LogMethodArguments
+  @LogMethodResponse
+  public ResponseEntity<DocumentDownloadResponse> downloadDocument(
+      ServiceName serviceName, UUID id, String documentId) {
+    DocumentDownloadResponse file = sdsService.getFile(id, documentId);
+    return ResponseEntity.ok(file);
   }
 
   private Optional<ApplicationReadModel> findApplicationAwaitingProjection(UUID applicationId) {
