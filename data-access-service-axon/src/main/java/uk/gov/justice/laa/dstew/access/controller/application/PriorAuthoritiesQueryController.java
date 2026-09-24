@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
+import uk.gov.justice.laa.dstew.access.api.PriorAuthorityDocumentQueryApi;
 import uk.gov.justice.laa.dstew.access.api.PriorAuthorityQueryApi;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityResponse;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
@@ -22,7 +23,8 @@ import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAut
 
 /** HTTP query adapter for retrieving Prior Authority requests. */
 @RestController
-public class PriorAuthoritiesQueryController implements PriorAuthorityQueryApi {
+public class PriorAuthoritiesQueryController
+    implements PriorAuthorityQueryApi, PriorAuthorityDocumentQueryApi {
   private final GetPriorAuthorityUseCase getPriorAuthorityUseCase;
   private final DownloadPriorAuthorityDocumentUseCase downloadPriorAuthorityDocumentUseCase;
   private final GetPriorAuthorityResponseMapper getPriorAuthorityResponseMapper;
@@ -64,7 +66,7 @@ public class PriorAuthoritiesQueryController implements PriorAuthorityQueryApi {
   /** Streams an owned Prior Authority document using its original filename. */
   @Override
   @Operation(security = @SecurityRequirement(name = "BearerAuth"))
-  @GetMapping(PriorAuthorityQueryApi.PATH_DOWNLOAD_PRIOR_AUTHORITY_DOCUMENT)
+  @GetMapping(PriorAuthorityDocumentQueryApi.PATH_DOWNLOAD_PRIOR_AUTHORITY_DOCUMENT)
   public ResponseEntity<Resource> downloadPriorAuthorityDocument(
       @RequestHeader("X-Service-Name") ServiceName serviceName,
       @PathVariable UUID priorAuthorityId,

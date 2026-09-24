@@ -178,6 +178,19 @@ capacity.
 - Treat byte-range support as unsupported until the proxy explicitly forwards `Range`, `Accept-Ranges`,
   `Content-Range`, and relevant status codes and has tests for partial responses.
 
+## Open questions
+
+### Should documents use `Content-Disposition: inline` or `attachment`?
+
+The current endpoint uses `attachment`, which asks a browser to download the document using its
+stored filename. The UI may need an in-browser viewing experience for supported content types such
+as PDFs. In that case, the API could use `inline` with the stored media type and the UI could present
+a view action instead of a download action.
+
+This is a user-experience decision, not an access-control boundary. A browser can still save, print,
+inspect, or otherwise copy content that it renders inline. The agreed disposition must be documented
+in the API contract and covered by response-header tests.
+
 ## Operational requirements
 
 Before this ADR is accepted, define and implement:
@@ -193,6 +206,7 @@ Before this ADR is accepted, define and implement:
 - logs or audit events that identify the caller, Prior Authority ID, document ID, and outcome, but
   do not record signed URLs or document contents;
 - load tests using 10 MB documents and slow clients while normal API traffic is active; and
+- a decision on `Content-Disposition: inline` versus `attachment`; and
 - a decision on whether byte-range download support is required.
 
 ## Alternatives considered
