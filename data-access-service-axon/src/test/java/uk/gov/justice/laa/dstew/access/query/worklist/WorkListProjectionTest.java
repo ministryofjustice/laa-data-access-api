@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -36,6 +37,7 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationD
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
@@ -351,6 +353,27 @@ class WorkListProjectionTest {
     projection.on(event);
 
     verify(items, times(2)).deleteById(applicationId);
+  }
+
+  @Test
+  void givenFinalPriorAuthorityDecision_whenReplayed_thenDeletesItsWorkItemIdempotently() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    PriorAuthorityDecisionMadeEvent event =
+        new PriorAuthorityDecisionMadeEvent(
+            priorAuthorityId,
+            UUID.randomUUID(),
+            "DISBURSEMENT",
+            2L,
+            "REFUSED",
+            "Recorded",
+            BigDecimal.ZERO,
+            Instant.now(),
+            Instant.now());
+
+    projection.on(event);
+    projection.on(event);
+
+    verify(items, times(2)).deleteById(priorAuthorityId);
   }
 
   @Test

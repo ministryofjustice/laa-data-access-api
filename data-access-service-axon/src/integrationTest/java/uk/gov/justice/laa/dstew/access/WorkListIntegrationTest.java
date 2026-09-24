@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
 
+import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -39,6 +41,7 @@ import uk.gov.justice.laa.dstew.access.model.ExpertCosts;
 import uk.gov.justice.laa.dstew.access.model.ExpertDetails;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceedingRequest;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
+import uk.gov.justice.laa.dstew.access.model.MakePriorAuthorityDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetailsRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
@@ -265,7 +268,7 @@ class WorkListIntegrationTest {
                         .expertCosts(
                             ExpertCosts.builder()
                                 .billingType(BillingType.FIXED_RATE)
-                                .totalAmount(100.0)
+                                .totalAmount(BigDecimal.valueOf(100.0))
                                 .costsSharedWithOtherParties(false)
                                 .build())
                         .build())
@@ -520,6 +523,118 @@ class WorkListIntegrationTest {
 
   @Test
   void
+      givenGrantedApplicationWithHistoricOwnership_whenPriorAuthorityOwnershipIsEstablished_thenApplicationHistoryIsUnchanged() {
+    UUID parentApplicationId = UUID.randomUUID();
+    UUID proceedingId = UUID.randomUUID();
+    UUID initialApplicationCaseworkerId = TestJwtDecoderConfig.CASEWORKER_ID;
+    UUID priorAuthorityCaseworkerId = TestJwtDecoderConfig.OTHER_CASEWORKER_ID;
+
+    createManualApplication(parentApplicationId, proceedingId);
+
+    assertThat(assign(parentApplicationId, initialApplicationCaseworkerId).getStatusCode())
+        .isEqualTo(HttpStatus.OK);
+    awaitWorkListContains(
+        "?assignedToMe=true&unassigned=false",
+        parentApplicationId,
+        initialApplicationCaseworkerId,
+        1L);
+
+    grantApplication(parentApplicationId, proceedingId);
+
+    List<Map<String, Object>> historyBeforePriorAuthorityAssignment =
+        await()
+            .atMost(15, TimeUnit.SECONDS)
+            .until(
+                () -> queryApplicationHistory(parentApplicationId),
+                history ->
+                    history.stream()
+                        .anyMatch(
+                            row ->
+                                "APPLICATION_MAKE_DECISION_GRANTED".equals(row.get("event_type"))));
+
+    UUID priorAuthorityId = createAndSubmitPriorAuthorityDraft(parentApplicationId);
+
+    assertThat(assign(priorAuthorityId, priorAuthorityCaseworkerId).getStatusCode())
+        .isEqualTo(HttpStatus.OK);
+
+    await()
+        .atMost(15, TimeUnit.SECONDS)
+        .untilAsserted(
+            () ->
+                assertThat(
+                        getWorkList(
+                                "?assignedToMe=true&unassigned=false", priorAuthorityCaseworkerId)
+                            .getItems())
+                    .extracting(WorkListItem::getItemId)
+                    .contains(priorAuthorityId));
+
+    List<Map<String, Object>> historyAfterPriorAuthorityAssignment =
+        queryApplicationHistory(parentApplicationId);
+
+    assertThat(historyAfterPriorAuthorityAssignment)
+        .as("Initial Application's historic ownership information remains unchanged")
+        .isEqualTo(historyBeforePriorAuthorityAssignment);
+  }
+
+  private void createManualApplication(UUID applicationId, UUID proceedingId) {
+    ResponseEntity<Void> created =
+        restTemplate.postForEntity(
+            "http://localhost:" + port + "/api/v0/applications",
+            new HttpEntity<>(validCreateApplicationRequest(applicationId, proceedingId), headers()),
+            Void.class);
+    assertThat(created.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+
+    ResponseEntity<Void> ready =
+        restTemplate.exchange(
+            "http://localhost:"
+                + port
+                + "/api/v0/applications/"
+                + applicationId
+                + "/auto-grant-outcome",
+            HttpMethod.PATCH,
+            new HttpEntity<>(new ManualOutcomeRequest(AutoGrantOutcome.MANUAL), headers()),
+            Void.class);
+    assertThat(ready.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+  }
+
+  private void grantApplication(UUID applicationId, UUID proceedingId) {
+    MakeDecisionRequest decision =
+        MakeDecisionRequest.builder()
+            .applicationVersion(1L)
+            .overallDecision(DecisionStatus.GRANTED)
+            .certificate(Map.of("certificateNumber", "PA-CERT-001"))
+            .eventHistory(
+                EventHistoryRequest.builder().eventDescription("Decision recorded").build())
+            .proceedings(
+                List.of(
+                    MakeDecisionProceedingRequest.builder()
+                        .proceedingId(proceedingId)
+                        .meritsDecision(
+                            MeritsDecisionDetailsRequest.builder()
+                                .decision(MeritsDecisionStatus.GRANTED)
+                                .justification("Decision approved")
+                                .build())
+                        .build()))
+            .build();
+    ResponseEntity<Void> decided =
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/applications/" + applicationId + "/decision",
+            HttpMethod.PATCH,
+            new HttpEntity<>(decision, headers()),
+            Void.class);
+    assertThat(decided.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+  }
+
+  private List<Map<String, Object>> queryApplicationHistory(UUID applicationId) {
+    return jdbcTemplate.queryForList(
+        "SELECT event_id, event_type, caseworker_id, occurred_at "
+            + "FROM axon.application_history WHERE application_id = ? "
+            + "ORDER BY occurred_at, event_id",
+        applicationId);
+  }
+
+  @Test
+  void
       givenOpenAndAssignedWork_whenCombinedPersonalAndOpenApplicationsAreViewed_thenOnlyOpenAndCallersWorkIsReturned() {
     UUID callersApplicationId = UUID.randomUUID();
     UUID openApplicationId = UUID.randomUUID();
@@ -629,6 +744,59 @@ class WorkListIntegrationTest {
     awaitWorkListContains("?assignedToMe=true&unassigned=false", applicationId, caseworkerId, 1L);
   }
 
+  @Test
+  void
+      givenSubmittedPriorAuthorityAssignedToCaseworker_whenDecided_thenItIsRemovedAndCannotBeAssignedAgain() {
+    UUID parentApplicationId = UUID.randomUUID();
+    UUID caseworkerId = TestJwtDecoderConfig.CASEWORKER_ID;
+    createGrantedApplication(parentApplicationId);
+    UUID priorAuthorityId = createAndSubmitPriorAuthorityDraft(parentApplicationId);
+
+    assertThat(assign(priorAuthorityId, caseworkerId).getStatusCode()).isEqualTo(HttpStatus.OK);
+
+    MakePriorAuthorityDecisionRequest decisionRequest =
+        new MakePriorAuthorityDecisionRequest()
+            .decision(DecisionStatus.GRANTED)
+            .decisionJustification("Granted")
+            .amountGranted(BigDecimal.valueOf(150.0))
+            .dateGranted(OffsetDateTime.now())
+            .eventHistory(
+                EventHistoryRequest.builder().eventDescription("Decision recorded").build())
+            .priorAuthorityVersion(0L);
+
+    ResponseEntity<Void> decided =
+        restTemplate.exchange(
+            "http://localhost:"
+                + port
+                + "/api/v0/prior-authorities/"
+                + priorAuthorityId
+                + "/decision",
+            HttpMethod.PATCH,
+            new HttpEntity<>(decisionRequest, headersFor(caseworkerId)),
+            Void.class);
+    assertThat(decided.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+
+    await()
+        .atMost(15, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              assertThat(getWorkList("").getItems())
+                  .extracting(WorkListItem::getItemId)
+                  .doesNotContain(priorAuthorityId);
+              assertThat(getWorkList("?assignedTo=" + caseworkerId).getItems())
+                  .extracting(WorkListItem::getItemId)
+                  .doesNotContain(priorAuthorityId);
+            });
+
+    ResponseEntity<Void> reassigned =
+        restTemplate.exchange(
+            assignmentUrl(priorAuthorityId, "assign"),
+            HttpMethod.POST,
+            new HttpEntity<>(new WorkListAssignRequest(1L), headersFor(caseworkerId)),
+            Void.class);
+    assertThat(reassigned.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+  }
+
   private void createManualApplication(UUID applicationId) {
     ResponseEntity<Void> created =
         restTemplate.postForEntity(
@@ -689,7 +857,7 @@ class WorkListIntegrationTest {
             .disbursementDetails(
                 DisbursementDetails.builder()
                     .disbursementPurpose("Court interpreter")
-                    .disbursementAmount(150.0)
+                    .disbursementAmount(BigDecimal.valueOf(150.0))
                     .build())
             .build());
   }

@@ -7,6 +7,7 @@ import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequest
 
 import jakarta.annotation.PostConstruct;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -2082,7 +2083,7 @@ class PostgresAxonIntegrationTest {
                 .expertCosts(
                     ExpertCosts.builder()
                         .billingType(BillingType.FIXED_RATE)
-                        .totalAmount(900.0)
+                        .totalAmount(BigDecimal.valueOf(900.0))
                         .costsSharedWithOtherParties(false)
                         .build())
                 .build())

@@ -150,9 +150,9 @@ class ApplicationAggregateTest {
         .command(
             new MakeApplicationDecisionCommand(
                 applicationId,
+                null,
                 1L,
                 "REFUSED",
-                false,
                 List.of(
                     new MakeDecisionProceeding(proceedingId, "REFUSED", "reason", "justification")),
                 null,
@@ -179,6 +179,7 @@ class ApplicationAggregateTest {
         .command(
             new MakeApplicationDecisionCommand(
                 applicationId,
+                null,
                 0L,
                 "REFUSED",
                 List.of(
@@ -260,9 +261,9 @@ class ApplicationAggregateTest {
         .command(
             new MakeApplicationDecisionCommand(
                 applicationId,
+                null,
                 1L,
                 "REFUSED",
-                false,
                 List.of(
                     new MakeDecisionProceeding(proceedingId, "REFUSED", "reason", "justification")),
                 null,
@@ -428,7 +429,7 @@ class ApplicationAggregateTest {
         .when()
         .command(
             new MakeApplicationDecisionCommand(
-                applicationId, 1L, "GRANTED", false, List.of(), null, "{}", null, Instant.now()))
+                applicationId, null, 1L, "GRANTED", List.of(), null, "{}", null, Instant.now()))
         .then()
         .exception(ValidationException.class)
         .noEvents();
@@ -473,9 +474,9 @@ class ApplicationAggregateTest {
         .command(
             new MakeApplicationDecisionCommand(
                 applicationId,
+                null,
                 1L,
                 "REFUSED",
-                false,
                 List.of(proceeding, proceeding),
                 null,
                 "{}",
@@ -599,9 +600,9 @@ class ApplicationAggregateTest {
       Map<String, Object> certificate) {
     return new MakeApplicationDecisionCommand(
         applicationId,
+        null,
         expectedVersion,
         decision,
-        false,
         List.of(new MakeDecisionProceeding(proceedingId, decision, "reason", justification)),
         certificate,
         "{}",

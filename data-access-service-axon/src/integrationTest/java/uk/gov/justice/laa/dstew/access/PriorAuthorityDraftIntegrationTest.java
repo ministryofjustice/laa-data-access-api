@@ -6,6 +6,7 @@ import static org.mockito.Mockito.when;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
 
 import jakarta.annotation.PostConstruct;
+import java.math.BigDecimal;
 import java.util.Map;
 import java.util.UUID;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
@@ -420,7 +421,7 @@ class PriorAuthorityDraftIntegrationTest {
   private DisbursementDetails validDisbursementRequest() {
     return DisbursementDetails.builder()
         .disbursementPurpose("Court interpreter")
-        .disbursementAmount(150.0)
+        .disbursementAmount(BigDecimal.valueOf(150.0))
         .build();
   }
 
