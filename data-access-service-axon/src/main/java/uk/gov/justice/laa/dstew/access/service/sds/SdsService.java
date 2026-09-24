@@ -4,6 +4,7 @@ import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.http.MediaType.APPLICATION_OCTET_STREAM;
 import static org.springframework.http.MediaType.MULTIPART_FORM_DATA;
 
+import java.net.MalformedURLException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -13,6 +14,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.client.MultipartBodyBuilder;
 import org.springframework.stereotype.Service;
@@ -169,10 +172,31 @@ public class SdsService {
         .retrieve()
         .onStatus(
             status -> status.value() == HttpStatus.NOT_FOUND.value(),
-            (request, response) -> {
+            (request, _) -> {
               throw new ResourceNotFoundException("File not found");
             })
         .body(DocumentDownloadResponse.class);
+  }
+
+  /**
+   * Gets a resource backed by the SDS signed URL for a Prior Authority document.
+   *
+   * <p>The resource opens the signed URL only when Spring writes it to the HTTP response, avoiding
+   * buffering the document in this service.
+   */
+  public Resource getPriorAuthorityFile(
+      UUID priorAuthorityId, UUID documentId, String originalFileName) {
+    DocumentDownloadResponse response =
+        getFile(priorAuthorityId, documentId + getFileExtension(originalFileName));
+    String fileUrl = response == null ? null : response.getFileURL();
+    if (fileUrl == null || fileUrl.isBlank()) {
+      throw new ResourceNotFoundException("File not found");
+    }
+    try {
+      return new UrlResource(fileUrl);
+    } catch (MalformedURLException exception) {
+      throw new IllegalStateException("SDS returned an invalid document URL", exception);
+    }
   }
 
   /**
@@ -196,7 +220,7 @@ public class SdsService {
                   return deleteFilesUri.build();
                 })
             .retrieve()
-            .body(new ParameterizedTypeReference<Map<String, Integer>>() {});
+            .body(new ParameterizedTypeReference<>() {});
 
     List<DocumentDeleteResult> results =
         sdsResults == null

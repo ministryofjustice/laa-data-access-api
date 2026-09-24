@@ -276,6 +276,32 @@ class SdsServiceTest {
   }
 
   @Test
+  void givenPriorAuthorityDocument_whenGetFile_thenReturnsResourceBackedBySignedUrl()
+      throws Exception {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    DocumentDownloadResponse sdsResponse =
+        new DocumentDownloadResponse().fileURL("https://signed.example/evidence.pdf");
+    RestClient.RequestHeadersUriSpec requestHeadersUriSpec =
+        mock(RestClient.RequestHeadersUriSpec.class);
+    RestClient.RequestHeadersSpec requestHeadersSpec = mock(RestClient.RequestHeadersSpec.class);
+    RestClient.ResponseSpec responseSpec = mock(RestClient.ResponseSpec.class);
+    when(sdsRestClient.get()).thenReturn(requestHeadersUriSpec);
+    when(requestHeadersUriSpec.uri(any(Function.class))).thenReturn(requestHeadersSpec);
+    when(requestHeadersSpec.accept(MediaType.APPLICATION_JSON)).thenReturn(requestHeadersSpec);
+    when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
+    when(responseSpec.onStatus(
+            any(Predicate.class), any(RestClient.ResponseSpec.ErrorHandler.class)))
+        .thenReturn(responseSpec);
+    when(responseSpec.body(DocumentDownloadResponse.class)).thenReturn(sdsResponse);
+
+    var resource =
+        sdsService.getPriorAuthorityFile(priorAuthorityId, documentId, "original evidence.pdf");
+
+    assertThat(resource.getURL().toString()).isEqualTo("https://signed.example/evidence.pdf");
+  }
+
+  @Test
   void givenValidApplicationIdAndFileIds_whenDeleteFiles_thenReturnDeleteResponse() {
     UUID applicationId = UUID.randomUUID();
     List<String> fileIds = List.of("file-1.pdf", "file-2.pdf");
