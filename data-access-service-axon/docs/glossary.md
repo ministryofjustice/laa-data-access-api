@@ -44,7 +44,7 @@ event-sourcing handler and publishes the event to projections and other event ha
 ## Event handler
 
 A component that reacts to a published event. Projection event handlers update read models;
-`ApplicationGroupEventRouter` dispatches the next linking command.
+some subscribing handlers also update durable command-side routing tables.
 
 ## Event-sourcing handler
 

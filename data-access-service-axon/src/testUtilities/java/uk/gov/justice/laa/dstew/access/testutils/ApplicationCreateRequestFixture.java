@@ -1,6 +1,5 @@
 package uk.gov.justice.laa.dstew.access.testutils;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -96,42 +95,6 @@ public final class ApplicationCreateRequestFixture {
         .status(ApplicationStatus.APPLICATION_SUBMITTED)
         .applicationContent(validApplicationContentWithRandomData(applicationId, applyProceedingId))
         .laaReference("LAA-123")
-        .build();
-  }
-
-  /** Creates a valid request that links the new Application to an existing Application. */
-  public static ApplicationCreateRequest validLinkedCreateApplicationRequest(
-      UUID applicationId, UUID applyProceedingId, UUID leadApplicationId) {
-    return validLinkedCreateApplicationRequest(
-        applicationId, applyProceedingId, leadApplicationId, applicationId);
-  }
-
-  /** Creates a valid request with an explicitly declared linked Application group member. */
-  public static ApplicationCreateRequest validLinkedCreateApplicationRequest(
-      UUID applicationId,
-      UUID applyProceedingId,
-      UUID leadApplicationId,
-      UUID associatedApplicationId) {
-    ApplicationCreateRequest request =
-        validCreateApplicationRequest(applicationId, applyProceedingId);
-    Map<String, Object> content = new HashMap<>(request.getApplicationContent());
-    content.put(
-        "allLinkedApplications",
-        List.of(
-            Map.ofEntries(
-                Map.entry("id", UUID.randomUUID().toString()),
-                Map.entry("leadApplicationId", leadApplicationId.toString()),
-                Map.entry("associatedApplicationId", associatedApplicationId.toString()),
-                Map.entry("targetApplicationId", applicationId.toString()),
-                Map.entry("linkTypeCode", "ASSOCIATED"),
-                Map.entry("createdAt", "2026-07-14T12:00:00Z"),
-                Map.entry("updatedAt", "2026-07-14T12:30:00Z"),
-                Map.entry("confirmLink", true))));
-    return ApplicationCreateRequest.builder()
-        .id(applicationId)
-        .status(request.getStatus())
-        .applicationContent(content)
-        .laaReference(request.getLaaReference())
         .build();
   }
 

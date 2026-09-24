@@ -20,7 +20,6 @@ import org.axonframework.test.fixture.AxonTestFixture;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationProvider;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
@@ -28,9 +27,6 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationD
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeDecisionProceeding;
 import uk.gov.justice.laa.dstew.access.command.application.decision.RecordAutoGrantedOutcomeCommand;
-import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.CreateLinkedApplicationGroupCommand;
-import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupRequested;
-import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.ValidateApplicationExistsCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.ValidateApplicationGrantedCommand;
@@ -42,7 +38,6 @@ import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpd
 import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationCommand;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
-import uk.gov.justice.laa.dstew.access.exception.ApplicationGroupInvariantException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException;
 import uk.gov.justice.laa.dstew.access.exception.InvalidApplicationStateException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
@@ -87,52 +82,6 @@ class ApplicationAggregateTest {
         .then()
         .resultMessagePayload(applicationId)
         .events(expected);
-  }
-
-  @Test
-  void givenLeadApplication_whenCreated_thenCreatesApplicationWithLeadId() {
-    UUID applicationId = UUID.randomUUID();
-    UUID leadApplicationId = UUID.randomUUID();
-    ApplicationCreationDetails detailsWithLead =
-        new ApplicationCreationDetails(
-            "APPLICATION_SUBMITTED",
-            "LAA-123",
-            null,
-            ApplicationProvider.builder().officeCode("1A001B").build(),
-            null,
-            null,
-            1,
-            java.time.Instant.parse("2026-07-14T12:30:00Z"),
-            false,
-            null,
-            null,
-            List.of(),
-            "{}",
-            java.time.Instant.parse("2026-07-15T08:00:00Z"),
-            leadApplicationId);
-
-    ApplicationCreationDetailsFactory factoryWithLead =
-        new ApplicationCreationDetailsFactory(null, null) {
-          @Override
-          public ApplicationCreationDetails prepare(CreateApplicationCommand command) {
-            return detailsWithLead;
-          }
-        };
-    fixture.stop();
-    fixture = fixtureWith(factoryWithLead);
-
-    ApplicationCreatedEvent createdEvent = applicationCreatedEvent(applicationId, detailsWithLead);
-
-    // ApplicationLinkedEvent is no longer emitted; linking is initiated by
-    // ApplicationGroupEventRouter after the projection picks up ApplicationCreatedEvent.
-    fixture
-        .given()
-        .noPriorActivity()
-        .when()
-        .command(createCommand(applicationId, "{}"))
-        .then()
-        .resultMessagePayload(applicationId)
-        .events(createdEvent);
   }
 
   @Test
@@ -451,9 +400,7 @@ class ApplicationAggregateTest {
             "fingerprint",
             "APPLICATION_IN_PROGRESS",
             1,
-            Instant.parse("2026-07-21T09:00:00Z"),
-            null,
-            List.of());
+            Instant.parse("2026-07-21T09:00:00Z"));
 
     fixture
         .given()
@@ -537,125 +484,6 @@ class ApplicationAggregateTest {
                 Instant.now()))
         .then()
         .exception(ValidationException.class)
-        .noEvents();
-  }
-
-  @Test
-  void givenExistingLeadApplication_whenCreateLinkedApplicationGroupCommand_thenEmitsRequested() {
-    UUID leadApplicationId = UUID.randomUUID();
-    ApplicationCreatedEvent leadCreated = applicationCreatedEvent(leadApplicationId);
-    List<UUID> members = List.of(leadApplicationId, UUID.randomUUID());
-    java.time.Instant occurredAt = java.time.Instant.parse("2026-07-15T08:00:00Z");
-    UUID expectedGroupId =
-        UUID.nameUUIDFromBytes(
-            ("linked-group:" + leadApplicationId).getBytes(StandardCharsets.UTF_8));
-
-    fixture
-        .given()
-        .events(leadCreated)
-        .when()
-        .command(
-            new CreateLinkedApplicationGroupCommand(
-                leadApplicationId, members.get(1), members, occurredAt))
-        .then()
-        .events(
-            new LinkedApplicationGroupRequested(
-                expectedGroupId, leadApplicationId, members, occurredAt));
-  }
-
-  @Test
-  void givenMissingLeadApplication_whenCreateLinkedApplicationGroupCommand_thenThrowsNotFound() {
-    UUID missingLeadId = UUID.randomUUID();
-    List<UUID> members = List.of(missingLeadId, UUID.randomUUID());
-
-    fixture
-        .given()
-        .noPriorActivity()
-        .when()
-        .command(
-            new CreateLinkedApplicationGroupCommand(
-                missingLeadId, members.get(1), members, Instant.parse("2026-07-15T08:00:00Z")))
-        .then()
-        .exception(ResourceNotFoundException.class)
-        .noEvents();
-  }
-
-  @Test
-  void givenSelfReferentialLead_whenCreateApplication_thenRejectsWithIllegalArgument() {
-    UUID applicationId = UUID.randomUUID();
-    ApplicationCreationDetailsFactory selfLeadFactory =
-        new ApplicationCreationDetailsFactory(null, null) {
-          @Override
-          public ApplicationCreationDetails prepare(CreateApplicationCommand command) {
-            return new ApplicationCreationDetails(
-                "APPLICATION_SUBMITTED",
-                "LAA-123",
-                null,
-                ApplicationProvider.builder().officeCode("1A001B").build(),
-                null,
-                null,
-                1,
-                Instant.parse("2026-07-14T12:30:00Z"),
-                false,
-                null,
-                null,
-                List.of(),
-                "{}",
-                Instant.parse("2026-07-15T08:00:00Z"),
-                applicationId); // leadApplicationId == self
-          }
-        };
-    fixture.stop();
-    fixture = fixtureWith(selfLeadFactory);
-
-    fixture
-        .given()
-        .noPriorActivity()
-        .when()
-        .command(createCommand(applicationId, "{}"))
-        .then()
-        .exception(ApplicationGroupInvariantException.class)
-        .noEvents();
-  }
-
-  @Test
-  void
-      givenAssociatedApplication_whenCreateLinkedApplicationGroupCommand_thenRejectsWithIllegalState() {
-    UUID applicationId = UUID.randomUUID();
-    UUID otherLeadId = UUID.randomUUID();
-    // Build an event representing this app having been created as an associated member
-    ApplicationCreationDetails associatedDetails =
-        new ApplicationCreationDetails(
-            "APPLICATION_SUBMITTED",
-            "LAA-123",
-            null,
-            ApplicationProvider.builder().officeCode("1A001B").build(),
-            null,
-            null,
-            1,
-            Instant.parse("2026-07-14T12:30:00Z"),
-            false,
-            null,
-            null,
-            List.of(),
-            "{}",
-            Instant.parse("2026-07-15T08:00:00Z"),
-            otherLeadId); // already a member of another group
-    ApplicationCreatedEvent associatedCreated =
-        applicationCreatedEvent(applicationId, associatedDetails);
-
-    fixture
-        .given()
-        .events(associatedCreated)
-        .when()
-        .command(
-            new CreateLinkedApplicationGroupCommand(
-                applicationId,
-                UUID.randomUUID(),
-                List.of(applicationId, UUID.randomUUID()),
-                Instant.parse("2026-07-15T08:00:00Z")))
-        .then()
-        .exception(ApplicationGroupInvariantException.class)
         .noEvents();
   }
 
@@ -790,7 +618,6 @@ class ApplicationAggregateTest {
         original.client(),
         original.provider(),
         original.opponents(),
-        original.allLinkedApplications(),
         original.schemaVersion(),
         original.submittedAt(),
         original.usedDelegatedFunctions(),
@@ -804,8 +631,7 @@ class ApplicationAggregateTest {
                 .code("SE003")
                 .build()),
         original.serialisedRequest(),
-        original.occurredAt(),
-        original.leadApplicationId());
+        original.occurredAt());
   }
 
   private CreateApplicationCommand createCommandWithSchema(
@@ -822,32 +648,6 @@ class ApplicationAggregateTest {
 
   private UUID proceedingIdFor(UUID applicationId) {
     return UUID.nameUUIDFromBytes(("proceeding-" + applicationId).getBytes(StandardCharsets.UTF_8));
-  }
-
-  @Test
-  void givenExistingApplication_whenValidateApplicationExists_thenSucceedsWithNoEvents() {
-    UUID applicationId = UUID.randomUUID();
-
-    fixture
-        .given()
-        .events(applicationCreatedEvent(applicationId))
-        .when()
-        .command(new ValidateApplicationExistsCommand(applicationId))
-        .then()
-        .success()
-        .noEvents();
-  }
-
-  @Test
-  void givenNoApplication_whenValidateApplicationExists_thenThrowsResourceNotFoundException() {
-    fixture
-        .given()
-        .noPriorActivity()
-        .when()
-        .command(new ValidateApplicationExistsCommand(UUID.randomUUID()))
-        .then()
-        .exception(ResourceNotFoundException.class)
-        .noEvents();
   }
 
   @Test
@@ -916,22 +716,6 @@ class ApplicationAggregateTest {
                 UUID.randomUUID(), "APPLICATION_SUBMITTED", Map.of(), "{}", Instant.now()))
         .then()
         .exception(ResourceNotFoundException.class)
-        .noEvents();
-  }
-
-  @Test
-  void givenApplicationLinkedEvent_whenAggregateReconstituted_thenHandlerIsInvoked() {
-    UUID applicationId = UUID.randomUUID();
-
-    fixture
-        .given()
-        .events(
-            applicationCreatedEvent(applicationId),
-            new ApplicationLinkedEvent(
-                applicationId, UUID.randomUUID(), Instant.parse("2026-07-22T10:00:00Z")))
-        .when()
-        .command(new ValidateApplicationExistsCommand(applicationId))
-        .then()
         .noEvents();
   }
 

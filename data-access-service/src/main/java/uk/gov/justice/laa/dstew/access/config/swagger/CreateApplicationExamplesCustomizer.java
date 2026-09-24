@@ -96,7 +96,7 @@ public class CreateApplicationExamplesCustomizer implements OperationCustomizer 
     MediaType mediaType =
         content.computeIfAbsent(
             MEDIA_TYPE,
-            _ -> {
+            ignoredMediaType -> {
               MediaType mt = new MediaType();
               mt.setSchema(new Schema<>().$ref("#/components/schemas/ApplicationCreateRequest"));
               return mt;

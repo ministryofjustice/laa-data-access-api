@@ -24,11 +24,12 @@ import org.mockito.ArgumentCaptor;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
 
@@ -150,30 +151,65 @@ class ApplicationListIndexProjectionTest {
   }
 
   // -------------------------------------------------------------------------
-  // ApplicationLinkedEvent
+  // Linked application group events
   // -------------------------------------------------------------------------
 
   @Test
-  void givenLinkedEvent_whenHandled_thenUpdatesLeadApplicationId() {
-    UUID applicationId = UUID.randomUUID();
-    UUID leadId = UUID.randomUUID();
-    ApplicationListIndexReadModel existing =
-        ApplicationListIndexReadModel.builder().applicationId(applicationId).build();
-    when(listIndexRepository.findById(applicationId)).thenReturn(Optional.of(existing));
+  void givenGroupCreatedEvent_whenHandled_thenKeepsLeadUnlinkedAndLinksMembers() {
+    UUID leadApplicationId = UUID.randomUUID();
+    UUID memberApplicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-15T08:00:00Z");
+    ApplicationListIndexReadModel lead =
+        ApplicationListIndexReadModel.builder().applicationId(leadApplicationId).build();
+    ApplicationListIndexReadModel member =
+        ApplicationListIndexReadModel.builder().applicationId(memberApplicationId).build();
+    when(listIndexRepository.findById(leadApplicationId)).thenReturn(Optional.of(lead));
+    when(listIndexRepository.findById(memberApplicationId)).thenReturn(Optional.of(member));
 
-    projection.on(new ApplicationLinkedEvent(applicationId, leadId, Instant.now()), anyMessage());
+    projection.on(
+        new LinkedApplicationGroupCreatedEvent(
+            UUID.randomUUID(),
+            leadApplicationId,
+            List.of(leadApplicationId, memberApplicationId),
+            occurredAt),
+        anyMessage());
 
-    assertThat(existing.getLeadApplicationId()).isEqualTo(leadId);
-    verify(listIndexRepository).save(existing);
+    assertThat(lead.getLeadApplicationId()).isNull();
+    assertThat(lead.getModifiedAt()).isEqualTo(occurredAt);
+    assertThat(member.getLeadApplicationId()).isEqualTo(leadApplicationId);
+    assertThat(member.getModifiedAt()).isEqualTo(occurredAt);
+    verify(listIndexRepository).save(lead);
+    verify(listIndexRepository).save(member);
   }
 
   @Test
-  void givenLinkedEventForUnknownApplication_whenHandled_thenDoesNothing() {
-    UUID applicationId = UUID.randomUUID();
-    when(listIndexRepository.findById(applicationId)).thenReturn(Optional.empty());
+  void givenMemberAddedToGroupEvent_whenHandled_thenLinksAddedMemberToLead() {
+    UUID leadApplicationId = UUID.randomUUID();
+    UUID memberApplicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-15T09:00:00Z");
+    ApplicationListIndexReadModel member =
+        ApplicationListIndexReadModel.builder().applicationId(memberApplicationId).build();
+    when(listIndexRepository.findById(memberApplicationId)).thenReturn(Optional.of(member));
 
     projection.on(
-        new ApplicationLinkedEvent(applicationId, UUID.randomUUID(), Instant.now()), anyMessage());
+        new MemberAddedToGroupEvent(
+            UUID.randomUUID(), leadApplicationId, memberApplicationId, occurredAt),
+        anyMessage());
+
+    assertThat(member.getLeadApplicationId()).isEqualTo(leadApplicationId);
+    assertThat(member.getModifiedAt()).isEqualTo(occurredAt);
+    verify(listIndexRepository).save(member);
+  }
+
+  @Test
+  void givenMemberAddedToGroupEventForUnknownApplication_whenHandled_thenDoesNothing() {
+    UUID memberApplicationId = UUID.randomUUID();
+    when(listIndexRepository.findById(memberApplicationId)).thenReturn(Optional.empty());
+
+    projection.on(
+        new MemberAddedToGroupEvent(
+            UUID.randomUUID(), UUID.randomUUID(), memberApplicationId, Instant.now()),
+        anyMessage());
 
     verify(listIndexRepository, never()).save(any());
   }

@@ -33,7 +33,7 @@ experience should follow the learning path below before using the documents as a
 | [Failure behaviour](failure-behaviour.md) | Expected API, transaction, projection, and recovery outcomes for common failures |
 | [Running and operating](running-and-operating.md) | Local startup, tests, store inspection, processor recovery, and retention operations |
 | [Glossary](glossary.md) | Axon and module-specific terminology used throughout these guides |
-| [Sequence diagrams](sequence-diagrams/README.md) | Step-by-step application creation and linking flows |
+| [Sequence diagrams](sequence-diagrams/README.md) | Step-by-step application creation and projection flows |
 | [Architecture decisions](adr/README.md) | Why significant design choices were made and when they should be revisited |
 | [Example payloads](example-payloads.md) | Worked request/response examples for every endpoint |
 | [ApplicationSubmitted integration event](application-submitted-integration-event.md) | Producer trigger, v1 SNS contract, delivery guarantee, and operations |
@@ -42,10 +42,10 @@ experience should follow the learning path below before using the documents as a
 
 - `ApplicationCommandController` accepts write requests and dispatches commands.
 - `ApplicationAggregate` owns the state and rules of one application.
+- `LinkApplicationCommandHandler` validates and routes explicit application-link requests.
 - `LinkedApplicationGroupAggregate` owns the lead and membership of a linked group.
-- `ApplicationGroupEventRouter` validates linked applications synchronously.
+- `ApplicationGroupRouteProjection` maintains durable write-side linking routes.
 - `ApplicationSubmittedEventRouter` schedules live-only SNS publication after command commit.
-- `LinkedApplicationGroupInitializer` creates or extends the group after the request event commits.
 - `ApplicationDataStore` reads and appends immutable sensitive-data versions.
 - `ApplicationProjection` and `ApplicationHistoryProjection` build query-side views.
 

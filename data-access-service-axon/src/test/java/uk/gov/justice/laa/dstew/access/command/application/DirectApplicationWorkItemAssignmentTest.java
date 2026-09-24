@@ -5,7 +5,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.UUID;
 import org.axonframework.eventsourcing.configuration.EventSourcedEntityModule;
 import org.axonframework.eventsourcing.configuration.EventSourcingConfigurer;
@@ -121,7 +120,6 @@ class DirectApplicationWorkItemAssignmentTest {
   }
 
   private ApplicationCreatedEvent created(UUID id, Instant occurredAt) {
-    return new ApplicationCreatedEvent(
-        id, 0L, "hash", "APPLICATION_SUBMITTED", 1, occurredAt, null, List.of());
+    return new ApplicationCreatedEvent(id, 0L, "hash", "APPLICATION_SUBMITTED", 1, occurredAt);
   }
 }
