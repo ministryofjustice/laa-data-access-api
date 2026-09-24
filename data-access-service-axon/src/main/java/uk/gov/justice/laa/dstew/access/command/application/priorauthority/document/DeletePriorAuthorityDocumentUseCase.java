@@ -23,6 +23,7 @@ public class DeletePriorAuthorityDocumentUseCase {
       LoggerFactory.getLogger(DeletePriorAuthorityDocumentUseCase.class);
 
   private final PriorAuthorityDraftStore draftStore;
+  private final UploadedDocumentStore uploadedDocumentStore;
   private final RetryingCommandDispatcher dispatcher;
   private final SdsService sdsService;
   private final ObjectMapper objectMapper;
@@ -30,10 +31,12 @@ public class DeletePriorAuthorityDocumentUseCase {
   /** Creates the use case with draft lookup, command dispatch, and SDS dependencies. */
   public DeletePriorAuthorityDocumentUseCase(
       PriorAuthorityDraftStore draftStore,
+      UploadedDocumentStore uploadedDocumentStore,
       RetryingCommandDispatcher dispatcher,
       SdsService sdsService,
       ObjectMapper objectMapper) {
     this.draftStore = draftStore;
+    this.uploadedDocumentStore = uploadedDocumentStore;
     this.dispatcher = dispatcher;
     this.sdsService = sdsService;
     this.objectMapper = objectMapper;
@@ -50,8 +53,7 @@ public class DeletePriorAuthorityDocumentUseCase {
                     new ResourceNotFoundException(
                         "Prior Authority %s not found".formatted(priorAuthorityId)));
     PriorAuthorityDocument document =
-        draft.content().uploadedDocuments().stream()
-            .filter(candidate -> candidate.documentId().equals(documentId))
+        uploadedDocumentStore.findAllInOrder(List.of(documentId)).stream()
             .findFirst()
             .orElseThrow(
                 () ->

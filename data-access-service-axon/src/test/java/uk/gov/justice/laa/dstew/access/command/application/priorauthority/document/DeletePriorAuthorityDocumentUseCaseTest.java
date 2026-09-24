@@ -33,6 +33,7 @@ import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
 class DeletePriorAuthorityDocumentUseCaseTest {
 
   @Mock private PriorAuthorityDraftStore draftStore;
+  @Mock private UploadedDocumentStore uploadedDocumentStore;
   @Mock private RetryingCommandDispatcher dispatcher;
   @Mock private SdsService sdsService;
 
@@ -40,7 +41,7 @@ class DeletePriorAuthorityDocumentUseCaseTest {
   void givenDraftExists_whenExecute_thenDispatchesBeforeDeletingTheSdsFile() {
     DeletePriorAuthorityDocumentUseCase useCase =
         new DeletePriorAuthorityDocumentUseCase(
-            draftStore, dispatcher, sdsService, new ObjectMapper());
+            draftStore, uploadedDocumentStore, dispatcher, sdsService, new ObjectMapper());
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
@@ -53,6 +54,8 @@ class DeletePriorAuthorityDocumentUseCaseTest {
                     contentWithPdfDocument(documentId),
                     "{}",
                     Instant.now())));
+    when(uploadedDocumentStore.findAllInOrder(List.of(documentId)))
+        .thenReturn(List.of(document(documentId)));
 
     useCase.execute(priorAuthorityId, documentId);
 
@@ -72,7 +75,7 @@ class DeletePriorAuthorityDocumentUseCaseTest {
   void givenSdsDeletionFails_whenExecute_thenDoesNotPropagateTheFailure() {
     DeletePriorAuthorityDocumentUseCase useCase =
         new DeletePriorAuthorityDocumentUseCase(
-            draftStore, dispatcher, sdsService, new ObjectMapper());
+            draftStore, uploadedDocumentStore, dispatcher, sdsService, new ObjectMapper());
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
@@ -85,6 +88,8 @@ class DeletePriorAuthorityDocumentUseCaseTest {
                     contentWithPdfDocument(documentId),
                     "{}",
                     Instant.now())));
+    when(uploadedDocumentStore.findAllInOrder(List.of(documentId)))
+        .thenReturn(List.of(document(documentId)));
     doThrow(new IllegalStateException("SDS unavailable"))
         .when(sdsService)
         .deleteFiles(priorAuthorityId, List.of(documentId.toString() + ".pdf"));
@@ -99,7 +104,7 @@ class DeletePriorAuthorityDocumentUseCaseTest {
   void givenDraftMissing_whenExecute_thenThrowsNotFoundWithoutDeletingFromSds() {
     DeletePriorAuthorityDocumentUseCase useCase =
         new DeletePriorAuthorityDocumentUseCase(
-            draftStore, dispatcher, sdsService, new ObjectMapper());
+            draftStore, uploadedDocumentStore, dispatcher, sdsService, new ObjectMapper());
     UUID priorAuthorityId = UUID.randomUUID();
     when(draftStore.find(priorAuthorityId)).thenReturn(Optional.empty());
 
@@ -109,23 +114,45 @@ class DeletePriorAuthorityDocumentUseCaseTest {
     verifyNoInteractions(dispatcher, sdsService);
   }
 
+  @Test
+  void givenDocumentMissing_whenExecute_thenThrowsNotFoundWithoutDeletingFromSds() {
+    DeletePriorAuthorityDocumentUseCase useCase =
+        new DeletePriorAuthorityDocumentUseCase(
+            draftStore, uploadedDocumentStore, dispatcher, sdsService, new ObjectMapper());
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    when(draftStore.find(priorAuthorityId))
+        .thenReturn(
+            Optional.of(
+                new PriorAuthorityDataPayload(
+                    priorAuthorityId,
+                    applicationId,
+                    contentWithPdfDocument(documentId),
+                    "{}",
+                    Instant.now())));
+    when(uploadedDocumentStore.findAllInOrder(List.of(documentId))).thenReturn(List.of());
+
+    assertThatExceptionOfType(ResourceNotFoundException.class)
+        .isThrownBy(() -> useCase.execute(priorAuthorityId, documentId));
+
+    verifyNoInteractions(dispatcher, sdsService);
+  }
+
+  private PriorAuthorityDocument document(UUID documentId) {
+    return new PriorAuthorityDocument(
+        documentId,
+        null,
+        "evidence.pdf",
+        "PDF",
+        "application/pdf",
+        1L,
+        Instant.now(),
+        "test",
+        null);
+  }
+
   private PriorAuthorityContent contentWithPdfDocument(UUID documentId) {
-    return new PriorAuthorityContent(
-        null,
-        null,
-        null,
-        null,
-        null,
-        List.of(
-            new PriorAuthorityDocument(
-                documentId,
-                null,
-                "evidence.pdf",
-                "PDF",
-                "application/pdf",
-                1L,
-                Instant.now(),
-                "test",
-                null)));
+    return new PriorAuthorityContent(null, null, null, null, null, List.of(document(documentId)));
   }
 }
