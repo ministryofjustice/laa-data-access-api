@@ -235,11 +235,16 @@ This section explains how to get JWT tokens for testing the API in different env
 
 **Setup:**
 ```bash
-# 1. Start the infrastructure
+# 1. Create expected user in your local database
+psql -U <your-local-postgres-superuser-name> -d postgres
+CREATE ROLE laa_user WITH LOGIN PASSWORD 'laa_password';
+CREATE DATABASE laa_data_access_api WITH OWNER laa_user;
+
+# 2. Start the infrastructure
 docker compose up -d
 
-# 2. Run the app with local profile (includes all OAuth2 config)
-./gradlew bootRun --args='--spring.profiles.active=local'
+# 3. Run the app (includes all OAuth2 config)
+./gradlew :data-access-service-axon:bootRun
 ```
 
 **Get a token:**
