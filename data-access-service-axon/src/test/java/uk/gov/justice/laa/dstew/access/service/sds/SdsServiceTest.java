@@ -302,6 +302,57 @@ class SdsServiceTest {
   }
 
   @Test
+  void givenNoSdsDownloadResponse_whenGetPriorAuthorityFile_thenThrowsNotFound() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    stubSdsDownloadResponse(null);
+
+    assertThatExceptionOfType(ResourceNotFoundException.class)
+        .isThrownBy(
+            () -> sdsService.getPriorAuthorityFile(priorAuthorityId, documentId, "evidence.pdf"))
+        .withMessage("File not found");
+  }
+
+  @Test
+  void givenBlankSdsDownloadUrl_whenGetPriorAuthorityFile_thenThrowsNotFound() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    stubSdsDownloadResponse(new DocumentDownloadResponse().fileURL(" "));
+
+    assertThatExceptionOfType(ResourceNotFoundException.class)
+        .isThrownBy(
+            () -> sdsService.getPriorAuthorityFile(priorAuthorityId, documentId, "evidence.pdf"))
+        .withMessage("File not found");
+  }
+
+  @Test
+  void givenInvalidSdsDownloadUrl_whenGetPriorAuthorityFile_thenThrowsIllegalStateException() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    stubSdsDownloadResponse(new DocumentDownloadResponse().fileURL("not a URL"));
+
+    assertThatExceptionOfType(IllegalStateException.class)
+        .isThrownBy(
+            () -> sdsService.getPriorAuthorityFile(priorAuthorityId, documentId, "evidence.pdf"))
+        .withMessage("SDS returned an invalid document URL");
+  }
+
+  private void stubSdsDownloadResponse(DocumentDownloadResponse response) {
+    RestClient.RequestHeadersUriSpec requestHeadersUriSpec =
+        mock(RestClient.RequestHeadersUriSpec.class);
+    RestClient.RequestHeadersSpec requestHeadersSpec = mock(RestClient.RequestHeadersSpec.class);
+    RestClient.ResponseSpec responseSpec = mock(RestClient.ResponseSpec.class);
+    when(sdsRestClient.get()).thenReturn(requestHeadersUriSpec);
+    when(requestHeadersUriSpec.uri(any(Function.class))).thenReturn(requestHeadersSpec);
+    when(requestHeadersSpec.accept(MediaType.APPLICATION_JSON)).thenReturn(requestHeadersSpec);
+    when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
+    when(responseSpec.onStatus(
+            any(Predicate.class), any(RestClient.ResponseSpec.ErrorHandler.class)))
+        .thenReturn(responseSpec);
+    when(responseSpec.body(DocumentDownloadResponse.class)).thenReturn(response);
+  }
+
+  @Test
   void givenValidApplicationIdAndFileIds_whenDeleteFiles_thenReturnDeleteResponse() {
     UUID applicationId = UUID.randomUUID();
     List<String> fileIds = List.of("file-1.pdf", "file-2.pdf");

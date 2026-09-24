@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
@@ -338,6 +339,50 @@ class PriorAuthorityDraftIntegrationTest {
   }
 
   @Test
+  void givenUploadedDocument_whenDownloaded_thenStreamsContentWithOriginalFilename() {
+    UUID applicationId = grantedApplication();
+    UUID priorAuthorityId = saveDraft(applicationId, PriorAuthorityType.EXPERT, null, null);
+    when(sdsService.savePriorAuthorityFile(any(), any(), any()))
+        .thenReturn(new DocumentUploadResponse().checksum("checksum"));
+    UUID documentId = uploadDocument(priorAuthorityId, "evidence.pdf");
+    byte[] content = "%PDF-1.4\ncontent".getBytes();
+    when(sdsService.getPriorAuthorityFile(priorAuthorityId, documentId, "evidence.pdf"))
+        .thenReturn(new ByteArrayResource(content));
+
+    ResponseEntity<byte[]> response =
+        restTemplate.exchange(
+            documentContentUrl(priorAuthorityId, documentId),
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            byte[].class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(response.getHeaders().getContentType()).isEqualTo(MediaType.APPLICATION_PDF);
+    assertThat(response.getHeaders().getContentLength()).isEqualTo(content.length);
+    assertThat(response.getHeaders().getContentDisposition().getType()).isEqualTo("attachment");
+    assertThat(response.getHeaders().getContentDisposition().getFilename())
+        .isEqualTo("evidence.pdf");
+    assertThat(response.getBody()).containsExactly(content);
+    verify(sdsService).getPriorAuthorityFile(priorAuthorityId, documentId, "evidence.pdf");
+  }
+
+  @Test
+  void givenUnknownDocument_whenDownloaded_thenReturnsNotFoundWithoutCallingSds() {
+    UUID applicationId = grantedApplication();
+    UUID priorAuthorityId = saveDraft(applicationId, PriorAuthorityType.EXPERT, null, null);
+
+    ResponseEntity<String> response =
+        restTemplate.exchange(
+            documentContentUrl(priorAuthorityId, UUID.randomUUID()),
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    verify(sdsService, never()).getPriorAuthorityFile(any(), any(), any());
+  }
+
+  @Test
   void
       givenDraftWithUploadedDocument_whenDeletePriorAuthorityDocument_thenReturnsNoContentAndRemovesDocument() {
     UUID applicationId = grantedApplication();
@@ -605,6 +650,10 @@ class PriorAuthorityDraftIntegrationTest {
 
   private String documentUrl(UUID priorAuthorityId, UUID documentId) {
     return uploadUrl(priorAuthorityId) + "/" + documentId;
+  }
+
+  private String documentContentUrl(UUID priorAuthorityId, UUID documentId) {
+    return documentUrl(priorAuthorityId, documentId) + "/content";
   }
 
   private String deleteDocumentUrl(UUID priorAuthorityId, UUID documentId) {

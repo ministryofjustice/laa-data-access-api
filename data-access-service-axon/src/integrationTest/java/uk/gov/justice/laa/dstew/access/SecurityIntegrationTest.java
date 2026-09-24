@@ -67,6 +67,14 @@ class SecurityIntegrationTest {
     assertUnauthorized(HttpMethod.GET, "/api/v0/work-list", null);
     assertUnauthorized(HttpMethod.GET, "/api/v0/applications", null);
     assertUnauthorized(HttpMethod.GET, "/api/v0/prior-authorities/" + applicationId, null);
+    assertUnauthorized(
+        HttpMethod.GET,
+        "/api/v0/prior-authorities/"
+            + applicationId
+            + "/documents/"
+            + UUID.randomUUID()
+            + "/content",
+        null);
     assertUnauthorized(HttpMethod.GET, "/api/v0/individuals", null);
     assertUnauthorized(
         HttpMethod.POST,
@@ -100,6 +108,14 @@ class SecurityIntegrationTest {
     assertForbidden(HttpMethod.GET, "/api/v0/work-list", null);
     assertForbidden(HttpMethod.GET, "/api/v0/applications", null);
     assertForbidden(HttpMethod.GET, "/api/v0/individuals", null);
+    assertForbidden(
+        HttpMethod.GET,
+        "/api/v0/prior-authorities/"
+            + applicationId
+            + "/documents/"
+            + UUID.randomUUID()
+            + "/content",
+        null);
     assertForbidden(
         HttpMethod.POST,
         "/api/v0/applications",

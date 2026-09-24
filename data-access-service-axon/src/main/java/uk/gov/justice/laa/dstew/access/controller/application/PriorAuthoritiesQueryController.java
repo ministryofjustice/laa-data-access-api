@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import uk.gov.justice.laa.dstew.access.api.PriorAuthorityQueryApi;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityResponse;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
+import uk.gov.justice.laa.dstew.access.query.application.priorauthority.DownloadPriorAuthorityDocumentUseCase;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.GetPriorAuthorityUseCase;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityDocumentDownload;
 
@@ -23,6 +24,7 @@ import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAut
 @RestController
 public class PriorAuthoritiesQueryController implements PriorAuthorityQueryApi {
   private final GetPriorAuthorityUseCase getPriorAuthorityUseCase;
+  private final DownloadPriorAuthorityDocumentUseCase downloadPriorAuthorityDocumentUseCase;
   private final GetPriorAuthorityResponseMapper getPriorAuthorityResponseMapper;
 
   /**
@@ -33,8 +35,10 @@ public class PriorAuthoritiesQueryController implements PriorAuthorityQueryApi {
    */
   public PriorAuthoritiesQueryController(
       GetPriorAuthorityUseCase getPriorAuthorityUseCase,
+      DownloadPriorAuthorityDocumentUseCase downloadPriorAuthorityDocumentUseCase,
       GetPriorAuthorityResponseMapper getPriorAuthorityResponseMapper) {
     this.getPriorAuthorityUseCase = getPriorAuthorityUseCase;
+    this.downloadPriorAuthorityDocumentUseCase = downloadPriorAuthorityDocumentUseCase;
     this.getPriorAuthorityResponseMapper = getPriorAuthorityResponseMapper;
   }
 
@@ -66,7 +70,7 @@ public class PriorAuthoritiesQueryController implements PriorAuthorityQueryApi {
       @PathVariable UUID priorAuthorityId,
       @PathVariable UUID documentId) {
     PriorAuthorityDocumentDownload download =
-        getPriorAuthorityUseCase.downloadDocument(priorAuthorityId, documentId);
+        downloadPriorAuthorityDocumentUseCase.downloadDocument(priorAuthorityId, documentId);
 
     ResponseEntity.BodyBuilder response =
         ResponseEntity.ok()
