@@ -106,9 +106,11 @@ class ApplicationHistoryProjectionTest {
   void givenMemberAddedEvent_whenHandled_thenStoresJoinedHistoryWithSyntheticPayload()
       throws Exception {
     UUID groupId = UUID.randomUUID();
+    UUID leadId = UUID.randomUUID();
     UUID memberId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-07-15T08:00:00Z");
-    MemberAddedToGroupEvent event = new MemberAddedToGroupEvent(groupId, memberId, occurredAt);
+    MemberAddedToGroupEvent event =
+        new MemberAddedToGroupEvent(groupId, leadId, memberId, occurredAt);
 
     projection.on(event, message(event, "member-event-id"));
 
@@ -121,6 +123,7 @@ class ApplicationHistoryProjectionTest {
     assertThat(history.getEventType()).isEqualTo("APPLICATION_GROUP_JOINED");
     var payload = objectMapper.readTree(history.getRequestPayload());
     assertThat(payload.get("groupId").asString()).isEqualTo(groupId.toString());
+    assertThat(payload.get("leadApplicationId").asString()).isEqualTo(leadId.toString());
     assertThat(payload.get("memberId").asString()).isEqualTo(memberId.toString());
     assertThat(payload.get("occurredAt")).isNotNull();
   }

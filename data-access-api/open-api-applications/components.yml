@@ -123,6 +123,25 @@ components:
           additionalProperties: true
           minProperties: 1
 
+    ApplicationLinkType:
+      type: string
+      enum:
+        - FAMILY
+
+    ApplicationLinkRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - applicationId
+        - linkType
+      properties:
+        applicationId:
+          type: string
+          format: uuid
+          description: Target Application whose group the source Application should join
+        linkType:
+          $ref: "#/components/schemas/ApplicationLinkType"
+
     ApplicationSummary:
       type: object
       description: (APPLICATION LIST PAGE / VIEW - OPEN APPLICATIONS ONLY BY DEFAULT)

@@ -129,4 +129,19 @@ class AxonArchitectureTest {
             .allowEmptyShould(true);
     rule.check(classes);
   }
+
+  @Test
+  void linkedApplicationRoutingClassesMustNotDependOnQueryPackages() {
+    ArchRule rule =
+        noClasses()
+            .that()
+            .haveSimpleName("LinkApplicationCommandHandler")
+            .or()
+            .haveSimpleName("ApplicationGroupRouteResolver")
+            .should()
+            .dependOnClassesThat()
+            .resideInAPackage("..query..")
+            .allowEmptyShould(true);
+    rule.check(classes);
+  }
 }

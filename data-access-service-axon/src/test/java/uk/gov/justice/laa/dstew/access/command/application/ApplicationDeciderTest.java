@@ -3,7 +3,9 @@ package uk.gov.justice.laa.dstew.access.command.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.lang.reflect.RecordComponent;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -12,12 +14,10 @@ import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataS
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeDecisionProceeding;
-import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupRequested;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
-import uk.gov.justice.laa.dstew.access.exception.ApplicationGroupInvariantException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
@@ -33,7 +33,7 @@ class ApplicationDeciderTest {
   void givenEmptyState_whenDecideCreate_thenReturnsApplicationCreatedEvent() {
     ApplicationState state = new ApplicationState();
     UUID applicationId = UUID.randomUUID();
-    ApplicationCreationDetails details = minimalDetails(applicationId, null);
+    ApplicationCreationDetails details = minimalDetails();
     String fingerprint = ApplicationDataStore.fingerprint("{}");
 
     List<Object> events =
@@ -86,48 +86,27 @@ class ApplicationDeciderTest {
   }
 
   @Test
-  void givenSelfReferentialLead_whenDecideCreate_thenThrowsGroupInvariant() {
+  void givenEmptyState_whenDecideCreate_thenCreatedEventContainsOnlyCreationFields() {
     ApplicationState state = new ApplicationState();
     UUID applicationId = UUID.randomUUID();
-    ApplicationCreationDetails details = minimalDetails(applicationId, applicationId); // self-lead
+    ApplicationCreationDetails details = minimalDetails();
     String fingerprint = ApplicationDataStore.fingerprint("{}");
 
-    assertThatThrownBy(
-            () ->
-                ApplicationDecider.decideCreate(state, applicationId, 1, fingerprint, details, 0L))
-        .isInstanceOf(ApplicationGroupInvariantException.class);
-  }
+    List<Object> events =
+        ApplicationDecider.decideCreate(state, applicationId, 1, fingerprint, details, 0L);
 
-  // ── decideCreateLinkedGroup ────────────────────────────────────────────────────
-
-  @Test
-  void givenLeadApplication_whenDecideCreateLinkedGroup_thenReturnsRequested() {
-    UUID applicationId = UUID.randomUUID();
-    ApplicationState state = stateAfterCreate(applicationId, "fp", 1);
-    UUID groupId = UUID.randomUUID();
-    List<UUID> members = List.of(applicationId, UUID.randomUUID());
-    Instant occurredAt = Instant.parse("2026-07-15T08:00:00Z");
-
-    LinkedApplicationGroupRequested event =
-        ApplicationDecider.decideCreateLinkedGroup(state, groupId, members, occurredAt);
-
-    assertThat(event.groupId()).isEqualTo(groupId);
-    assertThat(event.leadApplicationId()).isEqualTo(applicationId);
-    assertThat(event.memberApplicationIds()).isEqualTo(members);
-    assertThat(event.occurredAt()).isEqualTo(occurredAt);
-  }
-
-  @Test
-  void givenAssociatedMember_whenDecideCreateLinkedGroup_thenThrowsGroupInvariant() {
-    UUID applicationId = UUID.randomUUID();
-    ApplicationState state = stateAfterCreate(applicationId, "fp", 1);
-    state.isAssociatedMember = true;
-
-    assertThatThrownBy(
-            () ->
-                ApplicationDecider.decideCreateLinkedGroup(
-                    state, UUID.randomUUID(), List.of(applicationId), TIMESTAMP))
-        .isInstanceOf(ApplicationGroupInvariantException.class);
+    ApplicationCreatedEvent event = (ApplicationCreatedEvent) events.getFirst();
+    assertThat(
+            Arrays.stream(event.getClass().getRecordComponents())
+                .map(RecordComponent::getName)
+                .toList())
+        .containsExactly(
+            "applicationId",
+            "applicationDataVersion",
+            "requestFingerprint",
+            "status",
+            "schemaVersion",
+            "occurredAt");
   }
 
   // ── decideDecision ─────────────────────────────────────────────────────────────
@@ -375,8 +354,7 @@ class ApplicationDeciderTest {
     return state;
   }
 
-  private static ApplicationCreationDetails minimalDetails(
-      UUID applicationId, UUID leadApplicationId) {
+  private static ApplicationCreationDetails minimalDetails() {
     return new ApplicationCreationDetails(
         "APPLICATION_SUBMITTED",
         "LAA-123",
@@ -385,7 +363,6 @@ class ApplicationDeciderTest {
             .officeCode("1A001B")
             .build(),
         null,
-        null,
         1,
         Instant.parse("2026-07-14T12:30:00Z"),
         false,
@@ -393,8 +370,7 @@ class ApplicationDeciderTest {
         null,
         List.of(),
         "{}",
-        Instant.parse("2026-07-15T08:00:00Z"),
-        leadApplicationId);
+        Instant.parse("2026-07-15T08:00:00Z"));
   }
 
   private static ApplicationDataPayload payloadWithProceeding(
@@ -407,7 +383,6 @@ class ApplicationDeciderTest {
             uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationProvider.builder()
                 .officeCode("1A001B")
                 .build(),
-            null,
             null,
             1,
             Instant.parse("2026-07-14T12:30:00Z"),
@@ -422,8 +397,7 @@ class ApplicationDeciderTest {
                     .code("SE003")
                     .build()),
             "{}",
-            Instant.parse("2026-07-15T08:00:00Z"),
-            null);
+            Instant.parse("2026-07-15T08:00:00Z"));
     return ApplicationDataPayload.from(details);
   }
 }

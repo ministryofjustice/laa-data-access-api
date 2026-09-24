@@ -185,6 +185,57 @@ class WorkListIntegrationTest {
   }
 
   @Test
+  void givenPriorAuthorityAssignedToCaseworker_whenDecided_thenItIsRemovedFromTheWorkQueue() {
+    UUID parentApplicationId = UUID.randomUUID();
+    UUID priorAuthorityId;
+    UUID caseworkerId = TestJwtDecoderConfig.CASEWORKER_ID;
+    createGrantedApplication(parentApplicationId);
+    priorAuthorityId = createAndSubmitPriorAuthorityDraft(parentApplicationId);
+    awaitWorkListContains("", priorAuthorityId, null, 0L, WorkListItemType.PRIOR_AUTHORITY);
+
+    assertThat(assign(priorAuthorityId, caseworkerId).getStatusCode()).isEqualTo(HttpStatus.OK);
+    awaitWorkListContains(
+        "?assignedToMe=true&unassigned=false",
+        priorAuthorityId,
+        caseworkerId,
+        1L,
+        WorkListItemType.PRIOR_AUTHORITY);
+
+    OffsetDateTime decidedAt = OffsetDateTime.now();
+    MakePriorAuthorityDecisionRequest decision =
+        new MakePriorAuthorityDecisionRequest()
+            .decision(DecisionStatus.REFUSED)
+            .decisionJustification("Does not meet policy guidelines")
+            .amountGranted(BigDecimal.ZERO)
+            .dateGranted(decidedAt)
+            .eventHistory(new EventHistoryRequest())
+            .priorAuthorityVersion(0L);
+    ResponseEntity<Void> decided =
+        restTemplate.exchange(
+            "http://localhost:"
+                + port
+                + "/api/v0/prior-authorities/"
+                + priorAuthorityId
+                + "/decision",
+            HttpMethod.PATCH,
+            new HttpEntity<>(decision, headers()),
+            Void.class);
+    assertThat(decided.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+
+    await()
+        .atMost(15, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              assertThat(getWorkList("").getItems())
+                  .extracting(item -> item.getItemId())
+                  .doesNotContain(priorAuthorityId);
+              assertThat(getWorkList("?assignedToMe=true&unassigned=false").getItems())
+                  .extracting(item -> item.getItemId())
+                  .doesNotContain(priorAuthorityId);
+            });
+  }
+
+  @Test
   void givenSubmittedApplication_whenAutoGrantOutcomeIsGranted_thenItDoesNotReachTheWorkList() {
     UUID applicationId = UUID.randomUUID();
 
@@ -891,6 +942,20 @@ class WorkListIntegrationTest {
 
   private void awaitWorkListContains(
       String query, UUID applicationId, UUID expectedAssignee, long expectedAssignmentVersion) {
+    awaitWorkListContains(
+        query,
+        applicationId,
+        expectedAssignee,
+        expectedAssignmentVersion,
+        WorkListItemType.APPLICATION);
+  }
+
+  private void awaitWorkListContains(
+      String query,
+      UUID itemId,
+      UUID expectedAssignee,
+      long expectedAssignmentVersion,
+      WorkListItemType expectedItemType) {
     await()
         .atMost(15, TimeUnit.SECONDS)
         .untilAsserted(
@@ -904,11 +969,11 @@ class WorkListIntegrationTest {
               assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
               assertThat(response.getBody()).isNotNull();
               assertThat(response.getBody().getItems())
-                  .filteredOn(item -> item.getItemId().equals(applicationId))
+                  .filteredOn(item -> item.getItemId().equals(itemId))
                   .singleElement()
                   .satisfies(
                       item -> {
-                        assertThat(item.getItemType()).isEqualTo(WorkListItemType.APPLICATION);
+                        assertThat(item.getItemType()).isEqualTo(expectedItemType);
                         assertThat(item.getAssignedTo()).isEqualTo(expectedAssignee);
                         assertThat(item.getAssignmentVersion())
                             .isEqualTo(expectedAssignmentVersion);

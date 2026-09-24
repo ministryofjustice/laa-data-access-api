@@ -152,7 +152,6 @@ class IndividualsQueryHandlerTest {
             client,
             base.provider(),
             base.opponents(),
-            base.allLinkedApplications(),
             base.schemaVersion(),
             base.submittedAt(),
             base.usedDelegatedFunctions(),
@@ -160,7 +159,6 @@ class IndividualsQueryHandlerTest {
             base.matterType(),
             base.proceedings(),
             base.serialisedRequest(),
-            base.occurredAt(),
-            base.leadApplicationId()));
+            base.occurredAt()));
   }
 }
