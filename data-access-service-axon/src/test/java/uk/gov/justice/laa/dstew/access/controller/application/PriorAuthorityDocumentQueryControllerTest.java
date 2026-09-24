@@ -46,7 +46,36 @@ class PriorAuthorityDocumentQueryControllerTest {
     assertThat(response.getHeaders().getFirst("Content-Disposition"))
         .contains("attachment")
         .contains("original evidence.pdf");
+    assertThat(response.getHeaders().getFirst("X-Document-Type")).isNull();
     verify(downloadPriorAuthorityDocumentUseCase).downloadDocument(priorAuthorityId, documentId);
+  }
+
+  @Test
+  void givenDocumentMetadata_whenDownloaded_thenReturnsMetadataHeaders() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    Instant uploadedAt = Instant.parse("2026-09-08T12:00:00Z");
+    PriorAuthorityDocument document =
+        new PriorAuthorityDocument(
+            documentId,
+            "GATEWAY_EVIDENCE",
+            "evidence.pdf",
+            "PDF",
+            "application/pdf",
+            123L,
+            uploadedAt,
+            "CIVIL_APPLY",
+            "checksum");
+    Resource resource = mock(Resource.class);
+    when(downloadPriorAuthorityDocumentUseCase.downloadDocument(priorAuthorityId, documentId))
+        .thenReturn(new PriorAuthorityDocumentDownload(document, resource));
+
+    ResponseEntity<Resource> response =
+        controller.downloadPriorAuthorityDocument(null, priorAuthorityId, documentId);
+
+    assertThat(response.getHeaders().getFirst("X-Document-Uploaded-At"))
+        .isEqualTo("2026-09-08T12:00:00Z");
+    assertThat(response.getHeaders().getFirst("X-Document-Type")).isEqualTo("GATEWAY_EVIDENCE");
   }
 
   @Test

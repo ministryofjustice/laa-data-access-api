@@ -257,6 +257,15 @@ paths:
               schema:
                 type: string
               description: Attachment filename
+            X-Document-Uploaded-At:
+              schema:
+                type: string
+                format: date-time
+              description: Timestamp when the document was uploaded
+            X-Document-Type:
+              schema:
+                type: string
+              description: Supporting document type assigned to the document
           content:
             application/octet-stream:
               schema:

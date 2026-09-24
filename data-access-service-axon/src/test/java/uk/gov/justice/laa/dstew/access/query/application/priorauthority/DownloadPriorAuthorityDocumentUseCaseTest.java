@@ -48,6 +48,30 @@ class DownloadPriorAuthorityDocumentUseCaseTest {
   }
 
   @Test
+  void givenSameNamedDocuments_whenOneIsDownloaded_thenUsesItsIndependentDocumentId() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID firstDocumentId = UUID.randomUUID();
+    UUID secondDocumentId = UUID.randomUUID();
+    PriorAuthorityDocument firstDocument = document(firstDocumentId);
+    PriorAuthorityDocument secondDocument = document(secondDocumentId);
+    PriorAuthorityResult result =
+        PriorAuthorityResult.builder()
+            .uploadedDocuments(List.of(firstDocument, secondDocument))
+            .build();
+    Resource resource = org.mockito.Mockito.mock(Resource.class);
+    when(getPriorAuthorityUseCase.getPriorAuthority(priorAuthorityId)).thenReturn(result);
+    when(sdsService.getPriorAuthorityFile(priorAuthorityId, secondDocumentId, "evidence.pdf"))
+        .thenReturn(resource);
+
+    PriorAuthorityDocumentDownload download =
+        useCase.downloadDocument(priorAuthorityId, secondDocumentId);
+
+    assertThat(download.document()).isSameAs(secondDocument);
+    assertThat(download.resource()).isSameAs(resource);
+    verify(sdsService).getPriorAuthorityFile(priorAuthorityId, secondDocumentId, "evidence.pdf");
+  }
+
+  @Test
   void givenUnownedDocument_whenDownloaded_thenThrowsNotFound() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();

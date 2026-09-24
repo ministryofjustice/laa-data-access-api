@@ -51,6 +51,10 @@ public class PriorAuthorityDocumentQueryController implements PriorAuthorityDocu
     if (download.document().size() != null) {
       response.contentLength(download.document().size());
     }
+    response.header("X-Document-Uploaded-At", download.document().uploadedAt().toString());
+    if (download.document().documentType() != null) {
+      response.header("X-Document-Type", download.document().documentType());
+    }
     return response.body(download.resource());
   }
 

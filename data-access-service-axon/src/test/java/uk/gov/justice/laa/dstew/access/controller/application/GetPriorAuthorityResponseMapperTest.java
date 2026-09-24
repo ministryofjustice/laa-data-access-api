@@ -23,6 +23,7 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityDocu
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.TimeRequested;
+import uk.gov.justice.laa.dstew.access.model.PriorAuthorityDocumentType;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityResponse;
 
 class GetPriorAuthorityResponseMapperTest {
@@ -212,6 +213,69 @@ class GetPriorAuthorityResponseMapperTest {
     assertThat(response.getUploadedDocuments()).hasSize(1);
     assertThat(response.getUploadedDocuments().get(0).getDocumentType()).isNull();
     assertThat(response.getUploadedDocuments().get(0).getUploadedAt()).isNull();
+  }
+
+  @Test
+  void givenDocumentsWithTheSameFilename_whenMapped_thenKeepsEachDocumentIdentifiable() {
+    UUID firstDocumentId = UUID.randomUUID();
+    UUID secondDocumentId = UUID.randomUUID();
+    Instant firstUploadedAt = Instant.parse("2026-09-08T12:00:00Z");
+    Instant secondUploadedAt = Instant.parse("2026-09-08T12:01:00Z");
+    PriorAuthorityResult result =
+        PriorAuthorityResult.builder()
+            .uploadedDocuments(
+                List.of(
+                    new PriorAuthorityDocument(
+                        firstDocumentId,
+                        "GATEWAY_EVIDENCE",
+                        "evidence.pdf",
+                        "PDF",
+                        "application/pdf",
+                        42L,
+                        firstUploadedAt,
+                        "CIVIL_APPLY",
+                        "first-checksum"),
+                    new PriorAuthorityDocument(
+                        secondDocumentId,
+                        "GATEWAY_EVIDENCE",
+                        "evidence.pdf",
+                        "PDF",
+                        "application/pdf",
+                        84L,
+                        secondUploadedAt,
+                        "CIVIL_APPLY",
+                        "second-checksum")))
+            .build();
+
+    var response = mapper.toResponse(result);
+
+    assertThat(response.getUploadedDocuments())
+        .extracting("documentId")
+        .containsExactly(firstDocumentId, secondDocumentId);
+    assertThat(response.getUploadedDocuments())
+        .extracting("fileName")
+        .containsExactly("evidence.pdf", "evidence.pdf");
+    assertThat(response.getUploadedDocuments())
+        .extracting("uploadedAt")
+        .containsExactly(
+            firstUploadedAt.atOffset(ZoneOffset.UTC), secondUploadedAt.atOffset(ZoneOffset.UTC));
+    assertThat(response.getUploadedDocuments())
+        .extracting("documentType", "fileType", "mediaType", "size", "sourceService", "checksum")
+        .containsExactly(
+            org.assertj.core.groups.Tuple.tuple(
+                PriorAuthorityDocumentType.GATEWAY_EVIDENCE,
+                "PDF",
+                "application/pdf",
+                42L,
+                "CIVIL_APPLY",
+                "first-checksum"),
+            org.assertj.core.groups.Tuple.tuple(
+                PriorAuthorityDocumentType.GATEWAY_EVIDENCE,
+                "PDF",
+                "application/pdf",
+                84L,
+                "CIVIL_APPLY",
+                "second-checksum"));
   }
 
   @Test
