@@ -5,12 +5,14 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 
@@ -54,7 +56,7 @@ class WorkItemRouteProjectionTest {
 
     projection.on(
         new PriorAuthoritySubmittedEvent(
-            priorAuthorityId, UUID.randomUUID(), "type", 1, 1L, occurredAt));
+            priorAuthorityId, UUID.randomUUID(), "type", 1, 1L, 0L, occurredAt));
 
     WorkItemRoute route = savedRoute();
     assertThat(route.getWorkItemType()).isEqualTo(WorkItemType.PRIOR_AUTHORITY);
@@ -64,6 +66,27 @@ class WorkItemRouteProjectionTest {
     assertThat(route.getMembershipVersion()).isZero();
     assertThat(route.getCreatedAt()).isEqualTo(occurredAt);
     assertThat(route.getUpdatedAt()).isEqualTo(occurredAt);
+  }
+
+  @Test
+  void deletesPriorAuthorityRouteIdempotentlyWhenDecided() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    PriorAuthorityDecisionMadeEvent event =
+        new PriorAuthorityDecisionMadeEvent(
+            priorAuthorityId,
+            UUID.randomUUID(),
+            "DISBURSEMENT",
+            1L,
+            "GRANTED",
+            "Recorded",
+            BigDecimal.valueOf(100.0),
+            Instant.parse("2026-09-03T10:00:00Z"),
+            Instant.parse("2026-09-03T10:00:00Z"));
+
+    projection.on(event);
+    projection.on(event);
+
+    verify(routes, times(2)).deleteById(priorAuthorityId);
   }
 
   private WorkItemRoute savedRoute() {

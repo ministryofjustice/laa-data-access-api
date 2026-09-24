@@ -9,15 +9,17 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.oauth2.client.ClientAuthorizationException;
 import org.springframework.security.oauth2.core.OAuth2Error;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationLinkConflictException;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
-import uk.gov.justice.laa.dstew.access.exception.ApplicationGroupInvariantException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException;
 import uk.gov.justice.laa.dstew.access.exception.FileConflictException;
 import uk.gov.justice.laa.dstew.access.exception.FileLengthRequiredException;
 import uk.gov.justice.laa.dstew.access.exception.InvalidApplicationStateException;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
+import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityStatusConflictException;
+import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityVersionConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.exception.VirusDetectedException;
 import uk.gov.justice.laa.dstew.access.exception.VirusScanException;
@@ -113,13 +115,17 @@ class ApplicationExceptionHandlerTest {
   }
 
   @Test
-  void givenGroupInvariantFailure_whenHandled_thenReturnsBadRequest() {
-    var response =
-        handler.handleApplicationGroupInvariantException(
-            new ApplicationGroupInvariantException("Application cannot be its own lead"));
+  void givenApplicationLinkConflict_whenHandled_thenReturnsConflict() {
+    UUID applicationId = UUID.randomUUID();
 
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-    assertThat(response.getBody().getDetail()).isEqualTo("Application cannot be its own lead");
+    var response =
+        handler.handleApplicationLinkConflictException(
+            new ApplicationLinkConflictException(
+                "Application " + applicationId + " already belongs to a different linked group"));
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+    assertThat(response.getBody().getDetail())
+        .isEqualTo("Application " + applicationId + " already belongs to a different linked group");
   }
 
   @Test
@@ -166,6 +172,33 @@ class ApplicationExceptionHandlerTest {
   }
 
   @Test
+  void givenPriorAuthorityStatusConflict_whenHandled_thenReturnsConflict() {
+    UUID submissionId = UUID.randomUUID();
+
+    var response =
+        handler.handlePriorAuthorityStatusConflictException(
+            new PriorAuthorityStatusConflictException(submissionId, "DECIDED"));
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+    assertThat(response.getBody().getDetail())
+        .isEqualTo("Prior authority " + submissionId + " cannot be decided from status DECIDED");
+  }
+
+  @Test
+  void givenPriorAuthorityVersionConflict_whenHandled_thenReturnsConflict() {
+    UUID submissionId = UUID.randomUUID();
+
+    var response =
+        handler.handlePriorAuthorityVersionConflictException(
+            new PriorAuthorityVersionConflictException(submissionId, 3L));
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+    assertThat(response.getBody().getDetail())
+        .isEqualTo(
+            "Prior authority with submission id " + submissionId + " and version 3 not found");
+  }
+
+  @Test
   void givenFileConflict_whenHandled_thenReturnsConflict() {
     var response =
         handler.handleFileConflictException(
@@ -203,6 +236,18 @@ class ApplicationExceptionHandlerTest {
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
     assertThat(response.getBody().getDetail()).isEqualTo("Virus scan gave a non-standard result");
+  }
+
+  @Test
+  void givenOauthClientAuthorizationFailure_whenHandled_thenReturnsInternalServerError() {
+    var response =
+        handler.handleClientAuthorizationException(
+            new ClientAuthorizationException(
+                new OAuth2Error("invalid_client", "invalid credentials", null), "sds-client"));
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+    assertThat(response.getBody().getDetail())
+        .isEqualTo("Failed to obtain access token for an external service");
   }
 
   @Test

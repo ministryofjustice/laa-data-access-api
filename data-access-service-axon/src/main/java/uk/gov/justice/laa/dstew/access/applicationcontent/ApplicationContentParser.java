@@ -28,7 +28,7 @@ public class ApplicationContentParser {
 
   /**
    * Validates {@code rawContent} against {@link ApplicationContent} constraints, then parses and
-   * returns extracted details including proceedings and linked applications.
+   * returns extracted details including proceedings.
    *
    * @param rawContent the raw application-content map from the command
    * @return parsed details
@@ -71,11 +71,6 @@ public class ApplicationContentParser {
             ? applicationContent.getProceedings()
             : Collections.emptyList();
 
-    List<LinkedApplication> allLinkedApplications =
-        applicationContent.getAllLinkedApplications() != null
-            ? applicationContent.getAllLinkedApplications()
-            : Collections.emptyList();
-
     List<Opponent> opponents =
         applicationContent.getOpponents() != null
             ? applicationContent.getOpponents()
@@ -90,7 +85,6 @@ public class ApplicationContentParser {
         .submittedAt(parseSubmittedAt(applicationContent.getSubmittedAt()))
         .usedDelegatedFunctions(usedDelegatedFunction)
         .proceedings(proceedings)
-        .allLinkedApplications(allLinkedApplications)
         .build();
   }
 

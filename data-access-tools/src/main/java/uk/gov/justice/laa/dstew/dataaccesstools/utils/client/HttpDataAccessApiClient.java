@@ -1,5 +1,8 @@
 package uk.gov.justice.laa.dstew.dataaccesstools.utils.client;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -11,6 +14,7 @@ import java.util.UUID;
 
 public final class HttpDataAccessApiClient implements DataAccessApiClient {
   private static final String DEV_TOKEN = "swagger-caseworker-token";
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private final URI baseUri;
   private final HttpClient client;
 
@@ -26,6 +30,26 @@ public final class HttpDataAccessApiClient implements DataAccessApiClient {
   @Override
   public void createApplication(String requestBody) {
     execute("POST", "api/v0/applications", requestBody, "CIVIL_APPLY", Set.of(201, 202));
+  }
+
+  @Override
+  public ApplicationDecisionData getApplicationDecisionData(UUID applicationId) {
+    HttpResponse<String> response =
+        execute("GET", "api/v0/applications/" + applicationId, "", "CIVIL_APPLY", Set.of(200));
+    try {
+      JsonNode application = OBJECT_MAPPER.readTree(response.body());
+      return new ApplicationDecisionData(
+          application.required("laaReference").asText(),
+          application
+              .required("proceedings")
+              .valueStream()
+              .map(proceeding -> UUID.fromString(proceeding.required("proceedingId").asText()))
+              .toList(),
+          application.required("version").asLong());
+    } catch (JsonProcessingException | IllegalArgumentException exception) {
+      throw new ApiException(
+          "GET /api/v0/applications/" + applicationId + " returned invalid JSON", exception);
+    }
   }
 
   @Override
@@ -83,11 +107,10 @@ public final class HttpDataAccessApiClient implements DataAccessApiClient {
 
   @Override
   public void assignWorkListItem(
-      UUID itemId, UUID caseworkerId, long expectedAssignmentVersion, String eventDescription) {
+      UUID itemId, long expectedAssignmentVersion, String eventDescription) {
     String body =
-        "{\"caseworkerId\":\"%s\",\"expectedAssignmentVersion\":%d%s}"
+        "{\"expectedAssignmentVersion\":%d%s}"
             .formatted(
-                caseworkerId,
                 expectedAssignmentVersion,
                 eventDescription == null
                     ? ""

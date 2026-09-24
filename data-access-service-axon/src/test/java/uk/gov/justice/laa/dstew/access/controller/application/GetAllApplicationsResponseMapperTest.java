@@ -220,9 +220,41 @@ class GetAllApplicationsResponseMapperTest {
             .getApplications()
             .get(0);
 
+    assertThat(summary.getIsLead()).isTrue();
     assertThat(summary.getLinkedApplications()).hasSize(1);
     assertThat(summary.getLinkedApplications().get(0).getApplicationId()).isEqualTo(memberId);
     assertThat(summary.getLinkedApplications().get(0).getIsLead()).isFalse();
+  }
+
+  @Test
+  void givenMemberApplicationWithGroup_whenToResponse_thenIsLeadFalse() {
+    UUID leadId = UUID.randomUUID();
+    UUID memberId = UUID.randomUUID();
+    ApplicationReadModel memberApp =
+        ApplicationReadModel.builder()
+            .autoGranted(AutoGrantedState.PENDING)
+            .applicationId(memberId)
+            .modifiedAt(Instant.now())
+            .leadApplicationId(leadId)
+            .build();
+    LinkedApplicationGroupReadModel group =
+        LinkedApplicationGroupReadModel.builder()
+            .groupId(UUID.randomUUID())
+            .leadApplicationId(leadId)
+            .memberIds(new ArrayList<>(List.of(leadId, memberId)))
+            .createdAt(Instant.now())
+            .modifiedAt(Instant.now())
+            .build();
+
+    ApplicationSummary summary =
+        mapper
+            .toResponse(
+                new FindAllApplicationsResult(List.of(memberApp), Map.of(leadId, group), 1L, 1, 20))
+            .getBody()
+            .getApplications()
+            .get(0);
+
+    assertThat(summary.getIsLead()).isFalse();
   }
 
   @Test

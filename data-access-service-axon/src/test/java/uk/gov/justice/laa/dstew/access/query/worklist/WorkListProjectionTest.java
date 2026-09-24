@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +35,9 @@ import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataP
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
@@ -42,13 +46,15 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 class WorkListProjectionTest {
   private WorkListItemReadRepository items;
   private ApplicationDataStore applicationDataStore;
+  private PriorAuthorityDataStore priorAuthorityDataStore;
   private WorkListProjection projection;
 
   @BeforeEach
   void setUp() {
     items = mock(WorkListItemReadRepository.class);
     applicationDataStore = mock(ApplicationDataStore.class);
-    projection = new WorkListProjection(items, applicationDataStore);
+    priorAuthorityDataStore = mock(PriorAuthorityDataStore.class);
+    projection = new WorkListProjection(items, applicationDataStore, priorAuthorityDataStore);
   }
 
   @Test
@@ -91,10 +97,35 @@ class WorkListProjectionTest {
   void givenCreatedPriorAuthority_whenHandled_thenCreatesDirectWorkUnderItsParent() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
+    ApplicationDataPayload parentData = mock(ApplicationDataPayload.class);
+    Proceeding proceeding = mock(Proceeding.class);
+    PriorAuthorityDataPayload priorAuthorityData = mock(PriorAuthorityDataPayload.class);
+    uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent content =
+        mock(uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent.class);
+    uk.gov.justice.laa.dstew.access.content.priorauthority.ExpertDetails expertDetails =
+        mock(uk.gov.justice.laa.dstew.access.content.priorauthority.ExpertDetails.class);
+    when(applicationDataStore.get(applicationId, 7L)).thenReturn(parentData);
+    when(parentData.laaReference()).thenReturn("LAA-654321");
+    when(parentData.categoryOfLaw()).thenReturn("FAMILY");
+    when(parentData.proceedings()).thenReturn(List.of(proceeding));
+    when(proceeding.getMatterType()).thenReturn("SPECIAL_CHILDREN_ACT");
+    when(priorAuthorityDataStore.get(priorAuthorityId, 0L)).thenReturn(priorAuthorityData);
+    when(priorAuthorityData.content()).thenReturn(content);
+    when(content.priorAuthorityType())
+        .thenReturn(
+            uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType.EXPERT);
+    when(content.expertDetails()).thenReturn(expertDetails);
+    when(expertDetails.expertType()).thenReturn("Pathologist");
 
     projection.on(
         new PriorAuthoritySubmittedEvent(
-            priorAuthorityId, applicationId, "type", 1, 0L, Instant.parse("2026-08-28T10:00:00Z")),
+            priorAuthorityId,
+            applicationId,
+            "type",
+            1,
+            0,
+            7L,
+            Instant.parse("2026-08-28T10:00:00Z")),
         message());
 
     ArgumentCaptor<WorkListItemReadModel> captor =
@@ -104,6 +135,38 @@ class WorkListProjectionTest {
     assertThat(captor.getValue().getAssignmentBoundaryId()).isEqualTo(priorAuthorityId);
     assertThat(captor.getValue().getAssignmentVersion()).isZero();
     assertThat(captor.getValue().getSubmittedAt()).isEqualTo(Instant.parse("2026-08-28T10:00:00Z"));
+    assertThat(captor.getValue().getLaaReference()).isEqualTo("LAA-654321");
+    assertThat(captor.getValue().getCategoryOfLaw()).isEqualTo("FAMILY");
+    assertThat(captor.getValue().getMatterTypes()).containsExactly("SPECIAL_CHILDREN_ACT");
+    assertThat(captor.getValue().getPriorAuthorityType()).isEqualTo("EXPERT");
+    assertThat(captor.getValue().getExpertType()).isEqualTo("Pathologist");
+  }
+
+  @Test
+  void givenNonExpertPriorAuthority_whenHandled_thenStoresNoExpertType() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    ApplicationDataPayload parentData = mock(ApplicationDataPayload.class);
+    PriorAuthorityDataPayload priorAuthorityData = mock(PriorAuthorityDataPayload.class);
+    uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent content =
+        mock(uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent.class);
+    when(applicationDataStore.get(applicationId, 4L)).thenReturn(parentData);
+    when(priorAuthorityDataStore.get(priorAuthorityId, 1)).thenReturn(priorAuthorityData);
+    when(priorAuthorityData.content()).thenReturn(content);
+    when(content.priorAuthorityType())
+        .thenReturn(
+            uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType.COUNSEL);
+
+    projection.on(
+        new PriorAuthoritySubmittedEvent(
+            priorAuthorityId, applicationId, "EXPERT", 0, 1, 4L, Instant.now()),
+        message());
+
+    ArgumentCaptor<WorkListItemReadModel> captor =
+        ArgumentCaptor.forClass(WorkListItemReadModel.class);
+    verify(items).save(captor.capture());
+    assertThat(captor.getValue().getPriorAuthorityType()).isEqualTo("COUNSEL");
+    assertThat(captor.getValue().getExpertType()).isNull();
   }
 
   @Test
@@ -139,7 +202,7 @@ class WorkListProjectionTest {
         .thenReturn(new PageImpl<>(List.of(item)));
 
     FindWorkListItemsResult result =
-        projection.handle(new FindWorkListItemsQuery(null, null, null, null, null));
+        projection.handle(new FindWorkListItemsQuery(null, null, null, null, null, null));
 
     ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
     verify(items)
@@ -290,6 +353,27 @@ class WorkListProjectionTest {
     projection.on(event);
 
     verify(items, times(2)).deleteById(applicationId);
+  }
+
+  @Test
+  void givenFinalPriorAuthorityDecision_whenReplayed_thenDeletesItsWorkItemIdempotently() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    PriorAuthorityDecisionMadeEvent event =
+        new PriorAuthorityDecisionMadeEvent(
+            priorAuthorityId,
+            UUID.randomUUID(),
+            "DISBURSEMENT",
+            2L,
+            "REFUSED",
+            "Recorded",
+            BigDecimal.ZERO,
+            Instant.now(),
+            Instant.now());
+
+    projection.on(event);
+    projection.on(event);
+
+    verify(items, times(2)).deleteById(priorAuthorityId);
   }
 
   @Test

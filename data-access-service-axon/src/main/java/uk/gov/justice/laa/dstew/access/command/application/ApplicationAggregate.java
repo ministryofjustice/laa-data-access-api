@@ -1,7 +1,6 @@
 package uk.gov.justice.laa.dstew.access.command.application;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
-import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Objects;
 import java.util.UUID;
@@ -18,10 +17,6 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationD
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeDecisionProceeding;
 import uk.gov.justice.laa.dstew.access.command.application.decision.RecordAutoGrantedOutcomeCommand;
-import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.CreateLinkedApplicationGroupCommand;
-import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupAggregate;
-import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupRequested;
-import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.ValidateApplicationExistsCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.ValidateApplicationGrantedCommand;
@@ -57,10 +52,7 @@ public class ApplicationAggregate {
    * schema version), throws {@link
    * uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException} with no events.
    *
-   * <p>Linking to a lead application is initiated asynchronously by {@link
-   * uk.gov.justice.laa.dstew.access.command.application.linkedgroup.ApplicationGroupEventRouter}
-   * after {@link ApplicationCreatedEvent} is processed; {@link ApplicationLinkedEvent} is no longer
-   * emitted for new operations.
+   * <p>Application linking is handled explicitly by the application-link endpoint after creation.
    */
   @CommandHandler
   UUID handle(
@@ -87,37 +79,6 @@ public class ApplicationAggregate {
           state, command.applicationId(), command.schemaVersion(), fingerprint, null, 0L);
     }
     return applicationId;
-  }
-
-  /**
-   * Validates the lead exists and records a group-formation request.
-   *
-   * <p>The {@code groupId} is derived deterministically from the lead's {@code applicationId} via
-   * {@link UUID#nameUUIDFromBytes}. This ensures all applications that reference the same lead
-   * converge on the same {@link LinkedApplicationGroupAggregate}, while remaining distinct from the
-   * lead's UUID.
-   */
-  @CommandHandler
-  void handle(CreateLinkedApplicationGroupCommand command, EventAppender eventAppender) {
-    if (applicationId == null) {
-      throw new ResourceNotFoundException(
-          "No linked application found with Application ID: " + command.leadApplicationId());
-    }
-    UUID groupId =
-        UUID.nameUUIDFromBytes(("linked-group:" + applicationId).getBytes(StandardCharsets.UTF_8));
-    eventAppender.append(
-        ApplicationDecider.decideCreateLinkedGroup(
-            state, groupId, command.allMemberApplicationIds(), command.occurredAt()));
-  }
-
-  /** Proves that the targeted application exists. */
-  @CommandHandler
-  void handle(ValidateApplicationExistsCommand command) {
-    if (applicationId == null) {
-      throw new ResourceNotFoundException(
-          "No linked application found with Application ID: " + command.applicationId());
-    }
-    // Application exists — no events, no state change.
   }
 
   /** Validates that the targeted application has an overall decision of {@code GRANTED}. */
@@ -386,11 +347,6 @@ public class ApplicationAggregate {
   }
 
   @EventSourcingHandler
-  void on(LinkedApplicationGroupRequested event) {
-    ApplicationEvolve.apply(state, event);
-  }
-
-  @EventSourcingHandler
   void on(ApplicationCreatedEvent event) {
     ApplicationEvolve.apply(state, event);
     this.applicationId = state.applicationId;
@@ -423,11 +379,6 @@ public class ApplicationAggregate {
 
   @EventSourcingHandler
   void on(ApplicationUpdatedEvent event) {
-    ApplicationEvolve.apply(state, event);
-  }
-
-  @EventSourcingHandler
-  void on(ApplicationLinkedEvent event) {
     ApplicationEvolve.apply(state, event);
   }
 

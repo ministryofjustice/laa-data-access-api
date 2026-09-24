@@ -33,13 +33,14 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationNote;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
@@ -155,19 +156,48 @@ class ApplicationProjectionTest {
   }
 
   @Test
-  void givenLinkedEvent_whenHandled_thenUpdatesLeadApplicationId() {
-    UUID applicationId = UUID.randomUUID();
+  void givenGroupCreatedEvent_whenHandled_thenKeepsLeadUnlinkedAndLinksMembers() {
     UUID leadApplicationId = UUID.randomUUID();
-    ApplicationReadModel existing =
-        ApplicationReadModel.builder().applicationId(applicationId).build();
-    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(existing));
-    ApplicationLinkedEvent event =
-        new ApplicationLinkedEvent(applicationId, leadApplicationId, Instant.now());
+    UUID memberApplicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-15T08:00:00Z");
+    ApplicationReadModel lead =
+        ApplicationReadModel.builder().applicationId(leadApplicationId).build();
+    ApplicationReadModel member =
+        ApplicationReadModel.builder().applicationId(memberApplicationId).build();
+    when(applicationReadRepository.findById(leadApplicationId)).thenReturn(Optional.of(lead));
+    when(applicationReadRepository.findById(memberApplicationId)).thenReturn(Optional.of(member));
 
-    projection.on(event);
+    projection.on(
+        new LinkedApplicationGroupCreatedEvent(
+            UUID.randomUUID(),
+            leadApplicationId,
+            List.of(leadApplicationId, memberApplicationId),
+            occurredAt));
 
-    assertThat(existing.getLeadApplicationId()).isEqualTo(leadApplicationId);
-    verify(applicationReadRepository).save(existing);
+    assertThat(lead.getLeadApplicationId()).isNull();
+    assertThat(lead.getModifiedAt()).isEqualTo(occurredAt);
+    assertThat(member.getLeadApplicationId()).isEqualTo(leadApplicationId);
+    assertThat(member.getModifiedAt()).isEqualTo(occurredAt);
+    verify(applicationReadRepository).save(lead);
+    verify(applicationReadRepository).save(member);
+  }
+
+  @Test
+  void givenMemberAddedToGroupEvent_whenHandled_thenLinksAddedMemberToLead() {
+    UUID leadApplicationId = UUID.randomUUID();
+    UUID memberApplicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-15T09:00:00Z");
+    ApplicationReadModel member =
+        ApplicationReadModel.builder().applicationId(memberApplicationId).build();
+    when(applicationReadRepository.findById(memberApplicationId)).thenReturn(Optional.of(member));
+
+    projection.on(
+        new MemberAddedToGroupEvent(
+            UUID.randomUUID(), leadApplicationId, memberApplicationId, occurredAt));
+
+    assertThat(member.getLeadApplicationId()).isEqualTo(leadApplicationId);
+    assertThat(member.getModifiedAt()).isEqualTo(occurredAt);
+    verify(applicationReadRepository).save(member);
   }
 
   @Test

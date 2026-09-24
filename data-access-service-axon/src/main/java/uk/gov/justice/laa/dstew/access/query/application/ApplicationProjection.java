@@ -24,13 +24,14 @@ import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationNote;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
@@ -210,7 +211,7 @@ public class ApplicationProjection {
                 .schemaVersion(event.schemaVersion())
                 .createdAt(event.occurredAt())
                 .modifiedAt(event.occurredAt())
-                .leadApplicationId(event.leadApplicationId())
+                .leadApplicationId(null)
                 .build());
     queryUpdateEmitter.emit(
         FindApplicationByIdQuery.class,
@@ -218,17 +219,25 @@ public class ApplicationProjection {
         saved);
   }
 
-  /** Updates the linked-group membership after the Application is created. */
+  /** Updates application rows when a linked group is established explicitly. */
   @EventHandler
-  public void on(ApplicationLinkedEvent event) {
-    applicationReadRepository
-        .findById(event.applicationId())
-        .ifPresent(
-            application -> {
-              application.setLeadApplicationId(event.leadApplicationId());
-              application.setModifiedAt(event.occurredAt());
-              applicationReadRepository.save(application);
-            });
+  public void on(LinkedApplicationGroupCreatedEvent event) {
+    event
+        .memberApplicationIds()
+        .forEach(
+            memberApplicationId ->
+                updateLeadApplicationId(
+                    memberApplicationId,
+                    memberApplicationId.equals(event.leadApplicationId())
+                        ? null
+                        : event.leadApplicationId(),
+                    event.occurredAt()));
+  }
+
+  /** Updates the added member row when it joins an existing linked group explicitly. */
+  @EventHandler
+  public void on(MemberAddedToGroupEvent event) {
+    updateLeadApplicationId(event.memberId(), event.leadApplicationId(), event.occurredAt());
   }
 
   /** Advances the current-state row to the immutable data version containing the decision. */
@@ -315,6 +324,18 @@ public class ApplicationProjection {
             application -> {
               application.setApplicationDataVersion(event.applicationDataVersion());
               application.setModifiedAt(event.occurredAt());
+              applicationReadRepository.save(application);
+            });
+  }
+
+  private void updateLeadApplicationId(
+      UUID applicationId, UUID leadApplicationId, Instant occurredAt) {
+    applicationReadRepository
+        .findById(applicationId)
+        .ifPresent(
+            application -> {
+              application.setLeadApplicationId(leadApplicationId);
+              application.setModifiedAt(occurredAt);
               applicationReadRepository.save(application);
             });
   }

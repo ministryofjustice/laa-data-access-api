@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
 
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,13 +12,11 @@ import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRe
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.annotation.DirtiesContext;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -28,8 +25,6 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
-import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
-import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
 import uk.gov.justice.laa.dstew.access.model.CreateNoteRequest;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
@@ -38,6 +33,8 @@ import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetailsRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
+import uk.gov.justice.laa.dstew.access.model.WorkListAssignRequest;
+import uk.gov.justice.laa.dstew.access.model.WorkListUnassignRequest;
 
 @Testcontainers
 @SpringBootTest(
@@ -63,13 +60,11 @@ class SecurityIntegrationTest {
 
   @Autowired private TestRestTemplate restTemplate;
 
-  @Autowired private JdbcTemplate jdbcTemplate;
-
   @Test
   void givenNoUser_whenCallingSecuredEndpoints_thenReturnsUnauthorized() {
     UUID applicationId = UUID.randomUUID();
 
-    assertUnauthorized(HttpMethod.GET, "/api/v0/caseworkers", null);
+    assertUnauthorized(HttpMethod.GET, "/api/v0/work-list", null);
     assertUnauthorized(HttpMethod.GET, "/api/v0/applications", null);
     assertUnauthorized(HttpMethod.GET, "/api/v0/prior-authorities/" + applicationId, null);
     assertUnauthorized(HttpMethod.GET, "/api/v0/individuals", null);
@@ -92,16 +87,17 @@ class SecurityIntegrationTest {
     assertUnauthorized(
         HttpMethod.POST, "/api/v0/applications/" + applicationId + "/notes", noteRequest());
     assertUnauthorized(HttpMethod.GET, "/api/v0/applications/" + applicationId + "/notes", null);
-    assertUnauthorized(HttpMethod.POST, "/api/v0/applications/assign", assignRequest());
     assertUnauthorized(
-        HttpMethod.POST, "/api/v0/applications/" + applicationId + "/unassign", unassignRequest());
+        HttpMethod.POST, "/api/v0/work-list/" + applicationId + "/assign", assignRequest());
+    assertUnauthorized(
+        HttpMethod.POST, "/api/v0/work-list/" + applicationId + "/unassign", unassignRequest());
   }
 
   @Test
   void givenUnknownToken_whenCallingSecuredEndpoints_thenReturnsForbidden() {
     UUID applicationId = UUID.randomUUID();
 
-    assertForbidden(HttpMethod.GET, "/api/v0/caseworkers", null);
+    assertForbidden(HttpMethod.GET, "/api/v0/work-list", null);
     assertForbidden(HttpMethod.GET, "/api/v0/applications", null);
     assertForbidden(HttpMethod.GET, "/api/v0/individuals", null);
     assertForbidden(
@@ -122,31 +118,17 @@ class SecurityIntegrationTest {
     assertForbidden(
         HttpMethod.POST, "/api/v0/applications/" + applicationId + "/notes", noteRequest());
     assertForbidden(HttpMethod.GET, "/api/v0/applications/" + applicationId + "/notes", null);
-    assertForbidden(HttpMethod.POST, "/api/v0/applications/assign", assignRequest());
     assertForbidden(
-        HttpMethod.POST, "/api/v0/applications/" + applicationId + "/unassign", unassignRequest());
+        HttpMethod.POST, "/api/v0/work-list/" + applicationId + "/assign", assignRequest());
+    assertForbidden(
+        HttpMethod.POST, "/api/v0/work-list/" + applicationId + "/unassign", unassignRequest());
   }
 
   @Test
   void givenCaseworkerDevToken_whenGetUnknownPriorAuthority_thenReturnsNotFound() {
-    UUID firstId = UUID.randomUUID();
-    UUID secondId = UUID.randomUUID();
-    jdbcTemplate.update(
-        "INSERT INTO axon.caseworkers (id, username) VALUES (?, ?)", firstId, "alice@example.com");
-    jdbcTemplate.update(
-        "INSERT INTO axon.caseworkers (id, username) VALUES (?, ?)", secondId, "bob@example.com");
-
     HttpHeaders headers = new HttpHeaders();
     headers.set("X-Service-Name", "CIVIL_APPLY");
     headers.setBearerAuth(CASEWORKER_TOKEN);
-
-    ResponseEntity<List<Map<String, Object>>> response =
-        exchangeCaseworkers(new HttpEntity<>(headers), new ParameterizedTypeReference<>() {});
-
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-    assertThat(response.getBody())
-        .extracting(item -> item.get("username"))
-        .contains("alice@example.com", "bob@example.com");
 
     ResponseEntity<String> priorAuthorityResponse =
         exchangeString(
@@ -168,7 +150,6 @@ class SecurityIntegrationTest {
   private MakeDecisionRequest decisionRequest() {
     return MakeDecisionRequest.builder()
         .applicationVersion(0L)
-        .caseworkerId(UUID.randomUUID())
         .overallDecision(DecisionStatus.REFUSED)
         .autoGranted(false)
         .eventHistory(EventHistoryRequest.builder().eventDescription("decision").build())
@@ -194,16 +175,12 @@ class SecurityIntegrationTest {
     return new CreateNoteRequest("security test note");
   }
 
-  private CaseworkerAssignRequest assignRequest() {
-    return new CaseworkerAssignRequest()
-        .caseworkerId(UUID.randomUUID())
-        .applicationIds(List.of(UUID.randomUUID()))
-        .eventHistory(EventHistoryRequest.builder().eventDescription("assign").build());
+  private WorkListAssignRequest assignRequest() {
+    return new WorkListAssignRequest(0L);
   }
 
-  private CaseworkerUnassignRequest unassignRequest() {
-    return new CaseworkerUnassignRequest()
-        .eventHistory(EventHistoryRequest.builder().eventDescription("unassign").build());
+  private WorkListUnassignRequest unassignRequest() {
+    return new WorkListUnassignRequest(0L);
   }
 
   private void assertUnauthorized(HttpMethod method, String path, Object body) {
@@ -224,11 +201,5 @@ class SecurityIntegrationTest {
   private ResponseEntity<String> exchangeString(
       HttpMethod method, String path, HttpEntity<?> entity) {
     return restTemplate.exchange("http://localhost:" + port + path, method, entity, String.class);
-  }
-
-  private <T> ResponseEntity<T> exchangeCaseworkers(
-      HttpEntity<?> entity, ParameterizedTypeReference<T> responseType) {
-    return restTemplate.exchange(
-        "http://localhost:" + port + "/api/v0/caseworkers", HttpMethod.GET, entity, responseType);
   }
 }

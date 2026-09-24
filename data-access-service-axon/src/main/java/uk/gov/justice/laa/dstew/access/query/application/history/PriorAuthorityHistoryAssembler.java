@@ -66,6 +66,6 @@ public class PriorAuthorityHistoryAssembler {
 
   private PriorAuthorityHistoryEventResult toEvent(PriorAuthorityHistoryReadModel row) {
     return new PriorAuthorityHistoryEventResult(
-        row.getEventType(), row.getOccurredAt(), row.getServiceName(), null);
+        row.getEventType(), row.getOccurredAt(), row.getServiceName(), null, row.getCaseworkerId());
   }
 }

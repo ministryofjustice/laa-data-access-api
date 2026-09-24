@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.command.application.priorauthority;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
@@ -10,6 +11,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType.*;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -26,13 +28,21 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.ApportionmentInformation;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.MakePriorAuthorityDecisionCommand;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityDocument;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
+import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityStatusConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
@@ -44,6 +54,7 @@ class PriorAuthorityAggregateTest {
   private AxonTestFixture fixture;
   @Mock private PriorAuthorityDataStore dataStore;
   @Mock private PriorAuthorityDraftStore draftStore;
+  @Mock private ApplicationDataStore applicationDataStore;
   @Mock private JsonSchemaValidator jsonSchemaValidator;
   @Mock private EventAppender eventAppender;
 
@@ -62,6 +73,8 @@ class PriorAuthorityAggregateTest {
                                 PriorAuthorityDataStore.class, configuration -> dataStore)
                             .registerComponent(
                                 PriorAuthorityDraftStore.class, configuration -> draftStore)
+                            .registerComponent(
+                                ApplicationDataStore.class, configuration -> applicationDataStore)
                             .registerComponent(
                                 JsonSchemaValidator.class, configuration -> jsonSchemaValidator)));
   }
@@ -119,7 +132,7 @@ class PriorAuthorityAggregateTest {
   }
 
   @Test
-  void givenDraftInProgress_whenUpdateDraft_thenPersistsDraftAndEmitsNoEvent() {
+  void givenDraftInProgress_whenUpdateDraft_thenPersistsDraftAndEmitsDraftUpdatedEvent() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
@@ -148,7 +161,13 @@ class PriorAuthorityAggregateTest {
             "PriorAuthority.json",
             occurredAt);
 
-    fixture.given().events(existingEvent).when().command(command).then().noEvents();
+    fixture
+        .given()
+        .events(existingEvent)
+        .when()
+        .command(command)
+        .then()
+        .events(new PriorAuthorityDraftUpdatedEvent(priorAuthorityId, applicationId, occurredAt));
 
     verify(draftStore)
         .upsert(eq(priorAuthorityId), eq(applicationId), any(), eq(secondRequest), eq(occurredAt));
@@ -211,7 +230,13 @@ class PriorAuthorityAggregateTest {
             "PriorAuthority.json",
             occurredAt);
 
-    fixture.given().events(existingEvent).when().command(command).then().noEvents();
+    fixture
+        .given()
+        .events(existingEvent)
+        .when()
+        .command(command)
+        .then()
+        .events(new PriorAuthorityDraftUpdatedEvent(priorAuthorityId, applicationId, occurredAt));
 
     ArgumentCaptor<PriorAuthorityDataPayload> payloadCaptor =
         ArgumentCaptor.forClass(PriorAuthorityDataPayload.class);
@@ -278,6 +303,7 @@ class PriorAuthorityAggregateTest {
             priorAuthorityId, applicationId, EXPERT.name(), 1, startedAt);
 
     when(draftStore.find(priorAuthorityId)).thenReturn(Optional.of(draftPayload));
+    when(applicationDataStore.latestVersion(applicationId)).thenReturn(7L);
 
     SubmitPriorAuthorityDraftCommand command =
         new SubmitPriorAuthorityDraftCommand(priorAuthorityId, submittedAt);
@@ -290,7 +316,7 @@ class PriorAuthorityAggregateTest {
         .then()
         .events(
             new PriorAuthoritySubmittedEvent(
-                priorAuthorityId, applicationId, EXPERT.name(), 1, 0L, submittedAt));
+                priorAuthorityId, applicationId, EXPERT.name(), 1, 0L, 7L, submittedAt));
 
     verify(jsonSchemaValidator).validate(content, "PriorAuthority.json", 1);
     verify(dataStore)
@@ -342,14 +368,13 @@ class PriorAuthorityAggregateTest {
     UUID applicationId = UUID.randomUUID();
     Instant startedAt = Instant.parse("2026-08-01T10:00:00Z");
     Instant submittedAt = Instant.parse("2026-08-02T10:00:00Z");
-    String serialisedRequest = "{\"priorAuthorityType\":\"EXPERT\"}";
 
     PriorAuthorityDraftStartedEvent draftStartedEvent =
         new PriorAuthorityDraftStartedEvent(
             priorAuthorityId, applicationId, EXPERT.name(), 1, startedAt);
     PriorAuthoritySubmittedEvent submittedEvent =
         new PriorAuthoritySubmittedEvent(
-            priorAuthorityId, applicationId, EXPERT.name(), 1, 0L, submittedAt);
+            priorAuthorityId, applicationId, EXPERT.name(), 1, 0L, 0L, submittedAt);
 
     UpdatePriorAuthorityDraftCommand command =
         new UpdatePriorAuthorityDraftCommand(
@@ -411,6 +436,284 @@ class PriorAuthorityAggregateTest {
   }
 
   @Test
+  void givenSubmittedPriorAuthority_whenDecisionMade_thenPersistsNextVersionAndEmitsEvent() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant startedAt = Instant.parse("2026-08-01T10:00:00Z");
+    Instant submittedAt = Instant.parse("2026-08-02T10:00:00Z");
+    Instant decidedAt = Instant.parse("2026-08-02T11:00:00Z");
+    ExpertFeeInformation expertFee =
+        ExpertFeeInformation.builder()
+            .newFixedRateAmount(BigDecimal.valueOf(250.0))
+            .newHourlyRateAmount(BigDecimal.valueOf(125.0))
+            .build();
+    DisbursementInformation disbursementInformation =
+        DisbursementInformation.builder().newAmount(BigDecimal.valueOf(75.5)).build();
+    ApportionmentInformation apportionmentInformation =
+        ApportionmentInformation.builder().newClientShareAmount(BigDecimal.valueOf(10.25)).build();
+    PriorAuthorityDataPayload current =
+        new PriorAuthorityDataPayload(
+            priorAuthorityId,
+            applicationId,
+            new PriorAuthorityContent(EXPERT, "Need expert", null, null, null),
+            "{}",
+            submittedAt);
+    when(dataStore.get(priorAuthorityId, 0L)).thenReturn(current);
+
+    MakePriorAuthorityDecisionCommand command =
+        new MakePriorAuthorityDecisionCommand(
+            priorAuthorityId,
+            TestJwtDecoderConfig.CASEWORKER_ID,
+            0L,
+            "GRANTED",
+            "Decision recorded",
+            BigDecimal.valueOf(1234.56),
+            expertFee,
+            disbursementInformation,
+            apportionmentInformation,
+            decidedAt,
+            "{\"decision\":\"GRANTED\"}",
+            decidedAt);
+
+    PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
+    aggregate.on(
+        new PriorAuthorityDraftStartedEvent(
+            priorAuthorityId, applicationId, EXPERT.name(), 1, startedAt));
+    aggregate.on(
+        new PriorAuthoritySubmittedEvent(
+            priorAuthorityId, applicationId, EXPERT.name(), 1, 0L, 0L, submittedAt));
+    aggregate.on(
+        new WorkItemAssigned(
+            priorAuthorityId,
+            WorkItemType.PRIOR_AUTHORITY,
+            0L,
+            1L,
+            TestJwtDecoderConfig.CASEWORKER_ID,
+            submittedAt));
+
+    aggregate.handle(command, dataStore, eventAppender);
+
+    verify(eventAppender)
+        .append(
+            new PriorAuthorityDecisionMadeEvent(
+                priorAuthorityId,
+                applicationId,
+                EXPERT.name(),
+                1L,
+                "GRANTED",
+                "Decision recorded",
+                BigDecimal.valueOf(1234.56),
+                decidedAt,
+                decidedAt));
+
+    ArgumentCaptor<PriorAuthorityDataPayload> payloadCaptor =
+        ArgumentCaptor.forClass(PriorAuthorityDataPayload.class);
+    verify(dataStore)
+        .append(
+            eq(priorAuthorityId),
+            eq(1L),
+            eq(applicationId),
+            payloadCaptor.capture(),
+            eq("{\"decision\":\"GRANTED\"}"),
+            eq(decidedAt));
+
+    PriorAuthorityDataPayload persisted = payloadCaptor.getValue();
+    assertThat(persisted.decision()).isEqualTo("GRANTED");
+    assertThat(persisted.decisionJustification()).isEqualTo("Decision recorded");
+    assertThat(persisted.amountGranted()).isEqualByComparingTo(BigDecimal.valueOf(1234.56));
+    assertThat(persisted.dateGranted()).isEqualTo(decidedAt);
+    assertThat(persisted.expert()).isEqualTo(expertFee);
+    assertThat(persisted.disbursement()).isEqualTo(disbursementInformation);
+    assertThat(persisted.apportionment()).isEqualTo(apportionmentInformation);
+    assertThat(persisted.decisionSerialisedRequest()).isEqualTo("{\"decision\":\"GRANTED\"}");
+  }
+
+  @Test
+  void givenAlreadyDecidedPriorAuthority_whenSameDecisionMade_thenThrowsConflictAndDoesNotAppend() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant startedAt = Instant.parse("2026-08-01T10:00:00Z");
+    Instant submittedAt = Instant.parse("2026-08-02T10:00:00Z");
+    Instant firstDecisionAt = Instant.parse("2026-08-02T11:00:00Z");
+
+    MakePriorAuthorityDecisionCommand command =
+        new MakePriorAuthorityDecisionCommand(
+            priorAuthorityId,
+            TestJwtDecoderConfig.CASEWORKER_ID,
+            1L,
+            "GRANTED",
+            "Initial",
+            BigDecimal.valueOf(100.0),
+            null,
+            null,
+            null,
+            firstDecisionAt,
+            "{\"decision\":\"GRANTED\"}",
+            firstDecisionAt.plusSeconds(1));
+
+    fixture
+        .given()
+        .events(
+            new PriorAuthorityDraftStartedEvent(
+                priorAuthorityId, applicationId, EXPERT.name(), 1, startedAt),
+            new PriorAuthoritySubmittedEvent(
+                priorAuthorityId, applicationId, EXPERT.name(), 1, 0L, 0L, submittedAt),
+            new WorkItemAssigned(
+                priorAuthorityId,
+                WorkItemType.PRIOR_AUTHORITY,
+                0L,
+                1L,
+                TestJwtDecoderConfig.CASEWORKER_ID,
+                submittedAt),
+            new PriorAuthorityDecisionMadeEvent(
+                priorAuthorityId,
+                applicationId,
+                EXPERT.name(),
+                1L,
+                "GRANTED",
+                "Initial",
+                BigDecimal.valueOf(100.0),
+                firstDecisionAt,
+                firstDecisionAt))
+        .when()
+        .command(command)
+        .then()
+        .exception(PriorAuthorityStatusConflictException.class)
+        .noEvents();
+
+    verify(dataStore, never()).append(any(), anyLong(), any(), any(), any(), any());
+  }
+
+  @Test
+  void givenAlreadyDecidedPriorAuthority_whenDifferentDecisionMade_thenThrowsConflict() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant startedAt = Instant.parse("2026-08-01T10:00:00Z");
+    Instant submittedAt = Instant.parse("2026-08-02T10:00:00Z");
+    Instant firstDecisionAt = Instant.parse("2026-08-02T11:00:00Z");
+
+    MakePriorAuthorityDecisionCommand command =
+        new MakePriorAuthorityDecisionCommand(
+            priorAuthorityId,
+            TestJwtDecoderConfig.CASEWORKER_ID,
+            1L,
+            "REFUSED",
+            "Changed",
+            BigDecimal.ZERO,
+            null,
+            null,
+            null,
+            firstDecisionAt,
+            "{\"decision\":\"REFUSED\"}",
+            firstDecisionAt.plusSeconds(1));
+
+    fixture
+        .given()
+        .events(
+            new PriorAuthorityDraftStartedEvent(
+                priorAuthorityId, applicationId, EXPERT.name(), 1, startedAt),
+            new PriorAuthoritySubmittedEvent(
+                priorAuthorityId, applicationId, EXPERT.name(), 1, 0L, 0L, submittedAt),
+            new WorkItemAssigned(
+                priorAuthorityId,
+                WorkItemType.PRIOR_AUTHORITY,
+                0L,
+                1L,
+                TestJwtDecoderConfig.CASEWORKER_ID,
+                submittedAt),
+            new PriorAuthorityDecisionMadeEvent(
+                priorAuthorityId,
+                applicationId,
+                EXPERT.name(),
+                1L,
+                "GRANTED",
+                "Initial",
+                BigDecimal.valueOf(100.0),
+                firstDecisionAt,
+                firstDecisionAt))
+        .when()
+        .command(command)
+        .then()
+        .exception(PriorAuthorityStatusConflictException.class)
+        .noEvents();
+  }
+
+  @Test
+  void givenNeverInitialized_whenMakePriorAuthorityDecision_thenThrowsResourceNotFound() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    Instant decidedAt = Instant.parse("2026-08-02T11:00:00Z");
+
+    MakePriorAuthorityDecisionCommand command =
+        new MakePriorAuthorityDecisionCommand(
+            priorAuthorityId,
+            TestJwtDecoderConfig.CASEWORKER_ID,
+            0L,
+            "GRANTED",
+            "Decision recorded",
+            BigDecimal.valueOf(1234.56),
+            null,
+            null,
+            null,
+            decidedAt,
+            "{\"decision\":\"GRANTED\"}",
+            decidedAt);
+
+    fixture
+        .given()
+        .noPriorActivity()
+        .when()
+        .command(command)
+        .then()
+        .exception(ResourceNotFoundException.class)
+        .noEvents();
+  }
+
+  @Test
+  void
+      givenDraftPriorAuthority_whenMakePriorAuthorityDecision_thenThrowsStatusConflictWithoutReadingDataStore() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant startedAt = Instant.parse("2026-08-01T10:00:00Z");
+    Instant decidedAt = Instant.parse("2026-08-02T11:00:00Z");
+
+    MakePriorAuthorityDecisionCommand command =
+        new MakePriorAuthorityDecisionCommand(
+            priorAuthorityId,
+            TestJwtDecoderConfig.CASEWORKER_ID,
+            0L,
+            "GRANTED",
+            "Decision recorded",
+            BigDecimal.valueOf(1234.56),
+            null,
+            null,
+            null,
+            decidedAt,
+            "{\"decision\":\"GRANTED\"}",
+            decidedAt);
+
+    fixture
+        .given()
+        .events(
+            new PriorAuthorityDraftStartedEvent(
+                priorAuthorityId, applicationId, EXPERT.name(), 1, startedAt),
+            new WorkItemAssigned(
+                priorAuthorityId,
+                WorkItemType.PRIOR_AUTHORITY,
+                0L,
+                1L,
+                TestJwtDecoderConfig.CASEWORKER_ID,
+                startedAt))
+        .when()
+        .command(command)
+        .then()
+        .exception(PriorAuthorityStatusConflictException.class)
+        .noEvents();
+
+    verify(dataStore, never()).get(any(), anyLong());
+    verify(dataStore, never()).append(any(), anyLong(), any(), any(), any(), any());
+  }
+
+  @Test
   void givenDraftWithoutExistingDocuments_whenUpload_thenPersistsSingleUploadedDocument() {
     PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
     UUID priorAuthorityId = UUID.randomUUID();
@@ -419,17 +722,20 @@ class PriorAuthorityAggregateTest {
     MockMultipartFile file =
         new MockMultipartFile("file", "evidence.pdf", "application/pdf", "content".getBytes());
     UUID documentId = UUID.randomUUID();
+    String serialisedRequest =
+        "{\"documentId\":\"%s\",\"originalFilename\":\"evidence.pdf\"}".formatted(documentId);
     PriorAuthorityDocumentUploadCommand command =
         new PriorAuthorityDocumentUploadCommand(
             priorAuthorityId,
             documentId,
-            "gateway_evidence",
             "CIVIL_APPLY",
             "sum",
-            "{}",
+            serialisedRequest,
             occurredAt,
             file.getOriginalFilename(),
-            file.getSize());
+            file.getSize(),
+            "PDF",
+            "application/pdf");
 
     aggregate.on(
         new PriorAuthorityDraftStartedEvent(
@@ -454,11 +760,12 @@ class PriorAuthorityAggregateTest {
             eq(priorAuthorityId),
             eq(applicationId),
             payloadCaptor.capture(),
-            eq("{}"),
+            eq(serialisedRequest),
             eq(occurredAt));
+    assertThat(payloadCaptor.getValue().serialisedRequest()).isEqualTo(serialisedRequest);
     assertThat(payloadCaptor.getValue().content().uploadedDocuments()).hasSize(1);
     assertThat(payloadCaptor.getValue().content().uploadedDocuments().getFirst().documentType())
-        .isEqualTo("gateway_evidence");
+        .isNull();
     assertThat(payloadCaptor.getValue().content().uploadedDocuments().getFirst().checksum())
         .isEqualTo("sum");
     verify(eventAppender).append(any(PriorAuthorityDocumentUploadedEvent.class));
@@ -507,13 +814,14 @@ class PriorAuthorityAggregateTest {
         new PriorAuthorityDocumentUploadCommand(
             priorAuthorityId,
             documentId,
-            "gateway_evidence",
             "CIVIL_APPLY",
             "sum",
             "{}",
             occurredAt,
             file.getOriginalFilename(),
-            file.getSize());
+            file.getSize(),
+            "PDF",
+            "application/pdf");
 
     aggregate.handle(priorAuthorityDocumentUploadCommand, draftStore, eventAppender);
 
@@ -551,15 +859,168 @@ class PriorAuthorityAggregateTest {
                   new PriorAuthorityDocumentUploadCommand(
                       priorAuthorityId,
                       documentId,
-                      "gateway_evidence",
                       "CIVIL_APPLY",
                       "sum",
                       "{}",
                       occurredAt,
                       file.getOriginalFilename(),
-                      file.getSize());
+                      file.getSize(),
+                      "PDF",
+                      "application/pdf");
               aggregate.handle(priorAuthorityDocumentUploadCommand, draftStore, eventAppender);
             });
+  }
+
+  @Test
+  void givenDraftWithDocument_whenUpdateDocumentType_thenPersistsUpdatedDocumentAndEmitsEvent() {
+    PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    UUID documentTwoId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-09-08T12:00:00Z");
+    String serialisedRequest = "{\"documentType\":\"GATEWAY_EVIDENCE\"}";
+    PriorAuthorityDocumentTypeUpdateCommand command =
+        new PriorAuthorityDocumentTypeUpdateCommand(
+            priorAuthorityId, documentId, "GATEWAY_EVIDENCE", serialisedRequest, occurredAt);
+    aggregate.on(
+        new PriorAuthorityDraftStartedEvent(
+            priorAuthorityId, applicationId, "EXPERT", 1, occurredAt));
+    when(draftStore.find(priorAuthorityId))
+        .thenReturn(
+            Optional.of(
+                new PriorAuthorityDataPayload(
+                    priorAuthorityId,
+                    applicationId,
+                    new PriorAuthorityContent(
+                        EXPERT,
+                        "why",
+                        null,
+                        null,
+                        null,
+                        List.of(
+                            new PriorAuthorityDocument(
+                                documentId,
+                                null,
+                                "evidence.pdf",
+                                "PDF",
+                                "application/pdf",
+                                1L,
+                                occurredAt,
+                                "CIVIL_APPLY",
+                                "checksum"),
+                            new PriorAuthorityDocument(
+                                documentTwoId,
+                                null,
+                                "other_evidence.pdf",
+                                "PDF",
+                                "application/pdf",
+                                1L,
+                                occurredAt,
+                                "CIVIL_APPLY",
+                                "checksum"))),
+                    "{}",
+                    occurredAt)));
+
+    assertThat(aggregate.handle(command, draftStore, eventAppender)).isEqualTo(documentId);
+
+    ArgumentCaptor<PriorAuthorityDataPayload> payloadCaptor =
+        ArgumentCaptor.forClass(PriorAuthorityDataPayload.class);
+    verify(draftStore)
+        .upsert(
+            eq(priorAuthorityId),
+            eq(applicationId),
+            payloadCaptor.capture(),
+            eq(serialisedRequest),
+            eq(occurredAt));
+    assertThat(payloadCaptor.getValue().content().uploadedDocuments().getFirst().documentType())
+        .isEqualTo("GATEWAY_EVIDENCE");
+    assertThat(payloadCaptor.getValue().content().uploadedDocuments().get(1).documentType())
+        .isNull();
+    verify(eventAppender)
+        .append(
+            new PriorAuthorityDocumentTypeUpdatedEvent(
+                priorAuthorityId, documentId, "GATEWAY_EVIDENCE", occurredAt));
+  }
+
+  @Test
+  void givenDraftWithMultipleTypedDocuments_whenChangeDocumentType_thenOnlyUpdatesTargetDocument() {
+    PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    UUID documentTwoId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-09-08T12:00:00Z");
+    PriorAuthorityDocumentTypeUpdateCommand command =
+        new PriorAuthorityDocumentTypeUpdateCommand(
+            priorAuthorityId, documentId, "GATEWAY_EVIDENCE", "{}", occurredAt);
+    aggregate.on(
+        new PriorAuthorityDraftStartedEvent(
+            priorAuthorityId, applicationId, "EXPERT", 1, occurredAt));
+    when(draftStore.find(priorAuthorityId))
+        .thenReturn(
+            Optional.of(
+                new PriorAuthorityDataPayload(
+                    priorAuthorityId,
+                    applicationId,
+                    new PriorAuthorityContent(
+                        EXPERT,
+                        "why",
+                        null,
+                        null,
+                        null,
+                        List.of(
+                            new PriorAuthorityDocument(
+                                documentId,
+                                "INVOICE",
+                                "invoice.pdf",
+                                "PDF",
+                                "application/pdf",
+                                1L,
+                                occurredAt,
+                                "CIVIL_APPLY",
+                                "checksum"),
+                            new PriorAuthorityDocument(
+                                documentTwoId,
+                                "EXPERT_REPORT",
+                                "report.pdf",
+                                "PDF",
+                                "application/pdf",
+                                1L,
+                                occurredAt,
+                                "CIVIL_APPLY",
+                                "checksum"))),
+                    "{}",
+                    occurredAt)));
+
+    aggregate.handle(command, draftStore, eventAppender);
+
+    ArgumentCaptor<PriorAuthorityDataPayload> payloadCaptor =
+        ArgumentCaptor.forClass(PriorAuthorityDataPayload.class);
+    verify(draftStore)
+        .upsert(
+            eq(priorAuthorityId),
+            eq(applicationId),
+            payloadCaptor.capture(),
+            eq("{}"),
+            eq(occurredAt));
+    assertThat(payloadCaptor.getValue().content().uploadedDocuments())
+        .extracting(PriorAuthorityDocument::documentType)
+        .containsExactly("GATEWAY_EVIDENCE", "EXPERT_REPORT");
+  }
+
+  @Test
+  void givenInvalidDocumentType_whenUpdateDocumentType_thenRejectsBeforeReadingDraft() {
+    PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
+    PriorAuthorityDocumentTypeUpdateCommand command =
+        new PriorAuthorityDocumentTypeUpdateCommand(
+            UUID.randomUUID(), UUID.randomUUID(), "INVALID", "{}", Instant.now());
+
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> aggregate.handle(command, draftStore, eventAppender));
+
+    verify(draftStore, never()).find(any());
+    verify(eventAppender, never()).append(any(PriorAuthorityDocumentTypeUpdatedEvent.class));
   }
 
   @Test
@@ -589,13 +1050,14 @@ class PriorAuthorityAggregateTest {
         new PriorAuthorityDocumentUploadCommand(
             priorAuthorityId,
             documentId,
-            "gateway_evidence",
             "CIVIL_APPLY",
             null,
             "{}",
             occurredAt,
             file.getOriginalFilename(),
-            file.getSize());
+            file.getSize(),
+            "PDF",
+            "application/pdf");
 
     aggregate.handle(priorAuthorityDocumentUploadCommand, draftStore, eventAppender);
 
@@ -603,5 +1065,105 @@ class PriorAuthorityAggregateTest {
         ArgumentCaptor.forClass(PriorAuthorityDocumentUploadedEvent.class);
     verify(eventAppender).append(eventCaptor.capture());
     assertThat(eventCaptor.getValue().checksum()).isNull();
+  }
+
+  @Test
+  void givenDraftWithDocument_whenDelete_thenRemovesItAndEmitsDeletedEvent() {
+    PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    UUID remainingDocumentId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-09-08T12:00:00Z");
+    PriorAuthorityDocumentDeleteCommand command =
+        new PriorAuthorityDocumentDeleteCommand(priorAuthorityId, documentId, "{}", occurredAt);
+
+    aggregate.on(
+        new PriorAuthorityDraftStartedEvent(
+            priorAuthorityId, applicationId, "EXPERT", 1, occurredAt));
+    when(draftStore.find(priorAuthorityId))
+        .thenReturn(
+            Optional.of(
+                new PriorAuthorityDataPayload(
+                    priorAuthorityId,
+                    applicationId,
+                    new PriorAuthorityContent(
+                        EXPERT,
+                        "why",
+                        null,
+                        null,
+                        null,
+                        List.of(
+                            new PriorAuthorityDocument(
+                                documentId,
+                                null,
+                                "delete.pdf",
+                                "PDF",
+                                "application/pdf",
+                                1L,
+                                occurredAt,
+                                "CIVIL_APPLY",
+                                "delete-checksum"),
+                            new PriorAuthorityDocument(
+                                remainingDocumentId,
+                                null,
+                                "keep.pdf",
+                                "PDF",
+                                "application/pdf",
+                                1L,
+                                occurredAt,
+                                "CIVIL_APPLY",
+                                "keep-checksum"))),
+                    "{}",
+                    occurredAt)));
+
+    assertThat(aggregate.handle(command, draftStore, eventAppender)).isEqualTo(documentId);
+
+    ArgumentCaptor<PriorAuthorityDataPayload> payloadCaptor =
+        ArgumentCaptor.forClass(PriorAuthorityDataPayload.class);
+    verify(draftStore)
+        .upsert(
+            eq(priorAuthorityId),
+            eq(applicationId),
+            payloadCaptor.capture(),
+            eq("{}"),
+            eq(occurredAt));
+    assertThat(payloadCaptor.getValue().content().uploadedDocuments())
+        .extracting(PriorAuthorityDocument::documentId)
+        .containsExactly(remainingDocumentId);
+    verify(eventAppender)
+        .append(
+            new PriorAuthorityDocumentDeletedEvent(
+                priorAuthorityId, documentId, occurredAt, applicationId));
+  }
+
+  @Test
+  void givenDraftWithoutDocuments_whenDelete_thenThrowsNotFoundWithoutPersistingChanges() {
+    PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-09-08T12:00:00Z");
+    PriorAuthorityDocumentDeleteCommand command =
+        new PriorAuthorityDocumentDeleteCommand(priorAuthorityId, documentId, "{}", occurredAt);
+
+    aggregate.on(
+        new PriorAuthorityDraftStartedEvent(
+            priorAuthorityId, applicationId, "EXPERT", 1, occurredAt));
+    when(draftStore.find(priorAuthorityId))
+        .thenReturn(
+            Optional.of(
+                new PriorAuthorityDataPayload(
+                    priorAuthorityId,
+                    applicationId,
+                    new PriorAuthorityContent(EXPERT, "why", null, null, null),
+                    "{}",
+                    occurredAt)));
+
+    org.assertj.core.api.Assertions.assertThatExceptionOfType(ResourceNotFoundException.class)
+        .isThrownBy(() -> aggregate.handle(command, draftStore, eventAppender));
+
+    verify(draftStore, never()).upsert(any(), any(), any(), any(), any());
+    verify(eventAppender, never()).append(any(PriorAuthorityDocumentDeletedEvent.class));
   }
 }

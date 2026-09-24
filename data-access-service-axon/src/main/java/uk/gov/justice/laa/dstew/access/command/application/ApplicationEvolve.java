@@ -5,7 +5,6 @@ import lombok.NoArgsConstructor;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
-import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupRequested;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
@@ -19,7 +18,6 @@ public final class ApplicationEvolve {
   /** Applies an {@link ApplicationCreatedEvent} to the given state. */
   public static void apply(ApplicationState state, ApplicationCreatedEvent event) {
     state.applicationId = event.applicationId();
-    state.isAssociatedMember = event.leadApplicationId() != null;
     state.schemaVersion = event.schemaVersion();
     state.requestFingerprint = event.requestFingerprint();
     state.status = event.status();
@@ -74,12 +72,4 @@ public final class ApplicationEvolve {
     state.applicationDataVersion = event.applicationDataVersion();
     // applicationVersion intentionally not updated — notes are decoupled from optimistic locking
   }
-
-  /** Applies an {@link ApplicationLinkedEvent} to the given state. */
-  public static void apply(ApplicationState state, ApplicationLinkedEvent event) {
-    state.isAssociatedMember = true;
-  }
-
-  /** Applies a {@link LinkedApplicationGroupRequested} to the given state. */
-  public static void apply(ApplicationState state, LinkedApplicationGroupRequested event) {}
 }

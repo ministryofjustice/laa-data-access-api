@@ -7,18 +7,21 @@ import org.axonframework.modelling.entity.EntityMissingForInstanceCommandHandler
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.oauth2.client.ClientAuthorizationException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationLinkConflictException;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
-import uk.gov.justice.laa.dstew.access.exception.ApplicationGroupInvariantException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException;
 import uk.gov.justice.laa.dstew.access.exception.FileConflictException;
 import uk.gov.justice.laa.dstew.access.exception.FileLengthRequiredException;
 import uk.gov.justice.laa.dstew.access.exception.InvalidApplicationStateException;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
+import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityStatusConflictException;
+import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityVersionConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.exception.VirusDetectedException;
 import uk.gov.justice.laa.dstew.access.exception.VirusScanException;
@@ -29,6 +32,13 @@ import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 @Slf4j
 @RestControllerAdvice
 public class ApplicationExceptionHandler {
+
+  /** Returns a forbidden response when the authenticated identity has no usable Entra OID. */
+  @ExceptionHandler(AccessDeniedException.class)
+  ResponseEntity<ProblemDetail> handleAccessDeniedException(AccessDeniedException exception) {
+    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+        .body(ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, exception.getMessage()));
+  }
 
   /** Returns validation errors using the production service's Problem Detail shape. */
   @ExceptionHandler(ValidationException.class)
@@ -42,12 +52,12 @@ public class ApplicationExceptionHandler {
     return validationError(List.of(exception.getMessage()));
   }
 
-  /** Returns a 400 when a command would violate an application-group invariant. */
-  @ExceptionHandler(ApplicationGroupInvariantException.class)
-  ResponseEntity<ProblemDetail> handleApplicationGroupInvariantException(
-      ApplicationGroupInvariantException exception) {
-    return ResponseEntity.badRequest()
-        .body(ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, exception.getMessage()));
+  /** Returns a conflict when linked-application membership is incompatible with current state. */
+  @ExceptionHandler(ApplicationLinkConflictException.class)
+  ResponseEntity<ProblemDetail> handleApplicationLinkConflictException(
+      ApplicationLinkConflictException exception) {
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage()));
   }
 
   /** Returns a missing linked application as a standard HTTP not-found response. */
@@ -91,6 +101,22 @@ public class ApplicationExceptionHandler {
                 "Prior authority submission ID "
                     + exception.getPriorAuthorityId()
                     + " already exists"));
+  }
+
+  /** Returns a conflict when a prior-authority decision is incompatible with current status. */
+  @ExceptionHandler(PriorAuthorityStatusConflictException.class)
+  ResponseEntity<ProblemDetail> handlePriorAuthorityStatusConflictException(
+      PriorAuthorityStatusConflictException exception) {
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage()));
+  }
+
+  /** Returns a conflict when a decision was based on a stale Prior Authority version. */
+  @ExceptionHandler(PriorAuthorityVersionConflictException.class)
+  ResponseEntity<ProblemDetail> handlePriorAuthorityVersionConflictException(
+      PriorAuthorityVersionConflictException exception) {
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage()));
   }
 
   /** Returns a conflict when a decision was based on a stale Application version. */

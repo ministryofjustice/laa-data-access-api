@@ -15,15 +15,16 @@ import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationComm
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.document.UploadDocumentUseCase;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ReadyApplicationResult;
 import uk.gov.justice.laa.dstew.access.command.application.ready.RecordAutoGrantOutcomeUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationLinkRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcomeRequest;
-import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
 import uk.gov.justice.laa.dstew.access.model.CreateNoteRequest;
 import uk.gov.justice.laa.dstew.access.model.DocumentDeleteResponse;
@@ -31,6 +32,7 @@ import uk.gov.justice.laa.dstew.access.model.DocumentUpdateResponse;
 import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedUserId;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
 
@@ -45,11 +47,14 @@ public class ApplicationCommandController
   private final RecordAutoGrantOutcomeUseCase recordAutoGrantOutcomeUseCase;
   private final UpdateApplicationUseCase updateApplicationUseCase;
   private final UploadDocumentUseCase uploadDocumentUseCase;
+  private final LinkApplicationUseCase linkApplicationUseCase;
   private final CreateApplicationCommandMapper commandMapper;
   private final MakeDecisionCommandMapper decisionCommandMapper;
   private final CreateNoteCommandMapper createNoteCommandMapper;
   private final AutoGrantOutcomeCommandMapper autoGrantOutcomeCommandMapper;
   private final UpdateApplicationCommandMapper updateApplicationCommandMapper;
+  private final LinkApplicationCommandMapper linkCommandMapper;
+  private final AuthenticatedUserId authenticatedUserId;
 
   /** Creates the command adapter. */
   public ApplicationCommandController(
@@ -59,31 +64,28 @@ public class ApplicationCommandController
       RecordAutoGrantOutcomeUseCase recordAutoGrantOutcomeUseCase,
       UpdateApplicationUseCase updateApplicationUseCase,
       UploadDocumentUseCase uploadDocumentUseCase,
+      LinkApplicationUseCase linkApplicationUseCase,
       CreateApplicationCommandMapper commandMapper,
       MakeDecisionCommandMapper decisionCommandMapper,
       CreateNoteCommandMapper createNoteCommandMapper,
       AutoGrantOutcomeCommandMapper autoGrantOutcomeCommandMapper,
-      UpdateApplicationCommandMapper updateApplicationCommandMapper) {
+      UpdateApplicationCommandMapper updateApplicationCommandMapper,
+      LinkApplicationCommandMapper linkCommandMapper,
+      AuthenticatedUserId authenticatedUserId) {
     this.createApplicationUseCase = createApplicationUseCase;
     this.makeDecisionUseCase = makeDecisionUseCase;
     this.createNoteUseCase = createNoteUseCase;
     this.recordAutoGrantOutcomeUseCase = recordAutoGrantOutcomeUseCase;
     this.updateApplicationUseCase = updateApplicationUseCase;
     this.uploadDocumentUseCase = uploadDocumentUseCase;
+    this.linkApplicationUseCase = linkApplicationUseCase;
     this.commandMapper = commandMapper;
     this.decisionCommandMapper = decisionCommandMapper;
     this.createNoteCommandMapper = createNoteCommandMapper;
     this.autoGrantOutcomeCommandMapper = autoGrantOutcomeCommandMapper;
     this.updateApplicationCommandMapper = updateApplicationCommandMapper;
-  }
-
-  /** Assigns a caseworker to one or more Applications after validating the complete batch. */
-  @Override
-  @LogMethodArguments
-  @LogMethodResponse
-  public ResponseEntity<Void> assignCaseworker(
-      ServiceName serviceName, CaseworkerAssignRequest request) {
-    throw new UnsupportedOperationException("Deprecated: use the work-list/assign method");
+    this.linkCommandMapper = linkCommandMapper;
+    this.authenticatedUserId = authenticatedUserId;
   }
 
   /** Removes the current caseworker assignment from an Application. */
@@ -95,13 +97,24 @@ public class ApplicationCommandController
     throw new UnsupportedOperationException("Deprecated: use the work-list/unassign method");
   }
 
+  /** Links an Application to an existing Application family group. */
+  @Override
+  @LogMethodArguments
+  @LogMethodResponse
+  public ResponseEntity<Void> linkApplication(
+      ServiceName serviceName, UUID id, ApplicationLinkRequest request) {
+    linkApplicationUseCase.execute(linkCommandMapper.toCommand(id, request));
+    return ResponseEntity.noContent().build();
+  }
+
   /** Applies an overall and per-proceeding decision to an existing Application version. */
   @Override
   @LogMethodArguments
   @LogMethodResponse
   public ResponseEntity<Void> makeDecision(
       ServiceName serviceName, UUID id, MakeDecisionRequest request) {
-    makeDecisionUseCase.execute(decisionCommandMapper.toCommand(id, request));
+    makeDecisionUseCase.execute(
+        decisionCommandMapper.toCommand(id, authenticatedUserId.get(), request));
     return ResponseEntity.noContent().build();
   }
 

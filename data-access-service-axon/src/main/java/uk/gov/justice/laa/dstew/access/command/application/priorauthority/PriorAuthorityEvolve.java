@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.command.application.priorauthority;
 
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 
@@ -15,6 +16,8 @@ public final class PriorAuthorityEvolve {
     state.applicationId = event.applicationId();
     state.priorAuthorityType = event.priorAuthorityType();
     state.schemaVersion = event.schemaVersion();
+    state.submitted = false;
+    state.decided = false;
   }
 
   /** Applies a {@link PriorAuthoritySubmittedEvent} to the given state. */
@@ -24,6 +27,18 @@ public final class PriorAuthorityEvolve {
     state.priorAuthorityType = event.priorAuthorityType();
     state.schemaVersion = event.schemaVersion();
     state.dataVersion = event.dataVersion();
+    state.submitted = true;
+    state.decided = false;
+  }
+
+  /** Applies a {@link PriorAuthorityDecisionMadeEvent} to the given state. */
+  public static void apply(PriorAuthorityState state, PriorAuthorityDecisionMadeEvent event) {
+    state.priorAuthorityId = event.priorAuthorityId();
+    state.applicationId = event.applicationId();
+    state.priorAuthorityType = event.priorAuthorityType();
+    state.dataVersion = event.dataVersion();
+    state.submitted = true;
+    state.decided = true;
   }
 
   /** Applies a generic direct PA assignment. */
@@ -41,5 +56,10 @@ public final class PriorAuthorityEvolve {
   /** Applies a {@link PriorAuthorityDocumentUploadedEvent} to the given state. */
   public static void apply(PriorAuthorityState state, PriorAuthorityDocumentUploadedEvent event) {
     state.uploadedDocumentIds.add(event.documentId());
+  }
+
+  /** Applies a {@link PriorAuthorityDocumentDeletedEvent} to the given state. */
+  public static void apply(PriorAuthorityState state, PriorAuthorityDocumentDeletedEvent event) {
+    state.uploadedDocumentIds.remove(event.documentId());
   }
 }

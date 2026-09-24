@@ -3,20 +3,17 @@ package uk.gov.justice.laa.dstew.access;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
-import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validLinkedCreateApplicationRequest;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import org.axonframework.common.configuration.AxonConfiguration;
 import org.axonframework.messaging.eventhandling.processing.streaming.StreamingEventProcessor;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
@@ -33,6 +30,8 @@ import org.springframework.test.annotation.DirtiesContext;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataRepository;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteKind;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteRepository;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
@@ -75,6 +74,7 @@ class CreateApplicationInMemoryTest {
   @Autowired private ApplicationReadRepository applicationReadRepository;
   @Autowired private ApplicationHistoryReadRepository applicationHistoryReadRepository;
   @Autowired private LinkedApplicationGroupReadRepository groupReadRepository;
+  @Autowired private ApplicationGroupRouteRepository routeRepository;
   @Autowired private AxonConfiguration axonConfiguration;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private QueryGateway queryGateway;
@@ -121,7 +121,6 @@ class CreateApplicationInMemoryTest {
     assertThat(response.getBody())
         .contains("\"openapi\":\"3.1")
         .contains("\"/api/v0/applications\"")
-        .contains("\"/api/v0/caseworkers\"")
         .contains("\"/api/v0/individuals\"");
 
     JsonNode openApi = new ObjectMapper().readTree(response.getBody());
@@ -640,192 +639,36 @@ class CreateApplicationInMemoryTest {
   }
 
   @Test
-  @Disabled("Linked applications removed from schema; orchestration retained for future endpoint")
-  void givenMissingLeadApplication_whenPostApplication_thenReturnsNotFound() {
-    UUID missingApplicationId = UUID.randomUUID();
-    UUID rejectedApplicationId = UUID.randomUUID();
+  void givenApplicationContent_whenPostApplication_thenCreatesStandaloneRouteOnly() {
+    UUID applicationId = UUID.randomUUID();
+    UUID applyProceedingId = UUID.randomUUID();
     ApplicationCreateRequest request =
-        validLinkedCreateApplicationRequest(
-            rejectedApplicationId, UUID.randomUUID(), missingApplicationId);
+        validCreateApplicationRequest(applicationId, applyProceedingId);
 
-    ResponseEntity<String> response =
+    ResponseEntity<Void> response =
         restTemplate.postForEntity(
-            "/api/v0/applications", new HttpEntity<>(request, headers()), String.class);
+            "/api/v0/applications", new HttpEntity<>(request, headers()), Void.class);
+    UUID createdApplicationId = applicationId(response);
+    ApplicationReadModel projected = awaitProjection(createdApplicationId);
 
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-    assertThat(response.getBody()).contains(missingApplicationId.toString());
-    assertRejectedApplicationWasRolledBack(rejectedApplicationId);
-    assertThat(groupReadRepository.findByLeadApplicationId(missingApplicationId)).isEmpty();
-  }
-
-  @Test
-  @Disabled("Linked applications removed from schema; orchestration retained for future endpoint")
-  void givenMissingAssociatedApplication_whenPostApplication_thenReturnsNotFound() {
-    UUID leadApplicationId = UUID.randomUUID();
-    ResponseEntity<Void> leadResponse =
-        restTemplate.postForEntity(
-            "/api/v0/applications",
-            new HttpEntity<>(
-                validCreateApplicationRequest(leadApplicationId, UUID.randomUUID()), headers()),
-            Void.class);
-    awaitProjection(applicationId(leadResponse));
-
-    UUID missingAssociatedApplicationId = UUID.randomUUID();
-    UUID rejectedApplicationId = UUID.randomUUID();
-    ApplicationCreateRequest request =
-        validLinkedCreateApplicationRequest(
-            rejectedApplicationId,
-            UUID.randomUUID(),
-            leadApplicationId,
-            missingAssociatedApplicationId);
-
-    ResponseEntity<String> response =
-        restTemplate.postForEntity(
-            "/api/v0/applications", new HttpEntity<>(request, headers()), String.class);
-
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-    assertThat(response.getBody()).contains(missingAssociatedApplicationId.toString());
-    assertRejectedApplicationWasRolledBack(rejectedApplicationId);
-    assertThat(groupReadRepository.findByLeadApplicationId(leadApplicationId)).isEmpty();
-  }
-
-  @Test
-  @Disabled("Linked applications removed from schema; orchestration retained for future endpoint")
-  void givenExistingLeadApplication_whenPostLinkedApplication_thenProjectsLeadLink() {
-    UUID leadApplicationId = UUID.randomUUID();
-    ResponseEntity<Void> leadResponse =
-        restTemplate.postForEntity(
-            "/api/v0/applications",
-            new HttpEntity<>(
-                validCreateApplicationRequest(leadApplicationId, UUID.randomUUID()), headers()),
-            Void.class);
-    UUID createdLeadApplicationId = applicationId(leadResponse);
-    awaitProjection(createdLeadApplicationId);
-
-    UUID linkedApplicationId = UUID.randomUUID();
-    ResponseEntity<Void> linkedResponse =
-        restTemplate.postForEntity(
-            "/api/v0/applications",
-            new HttpEntity<>(
-                validLinkedCreateApplicationRequest(
-                    linkedApplicationId, UUID.randomUUID(), createdLeadApplicationId),
-                headers()),
-            Void.class);
-
-    assertThat(linkedResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-    UUID createdLinkedApplicationId = applicationId(linkedResponse);
-
-    // ApplicationCreatedEvent carries leadApplicationId directly — projection sets it immediately.
-    ApplicationReadModel projected = awaitProjection(createdLinkedApplicationId);
-    assertThat(projected.getLeadApplicationId()).isEqualTo(createdLeadApplicationId);
-
-    // LinkedApplicationGroupProjection (tracking) records group membership asynchronously.
+    assertThat(projected.getLeadApplicationId()).isNull();
     await()
         .atMost(10, TimeUnit.SECONDS)
         .pollInterval(50, TimeUnit.MILLISECONDS)
         .untilAsserted(
             () ->
-                assertThat(groupReadRepository.findByLeadApplicationId(createdLeadApplicationId))
+                assertThat(routeRepository.findById(createdApplicationId))
                     .isPresent()
                     .hasValueSatisfying(
-                        group -> {
-                          assertThat(group.getLeadApplicationId())
-                              .isEqualTo(createdLeadApplicationId);
-                          assertThat(group.getMemberIds())
-                              .contains(createdLeadApplicationId, createdLinkedApplicationId);
+                        route -> {
+                          assertThat(route.getRouteKind())
+                              .isEqualTo(ApplicationGroupRouteKind.STANDALONE);
+                          assertThat(route.getGroupId()).isNull();
                         }));
-
-    assertThat(
-            awaitHistoryTypes(
-                createdLinkedApplicationId, "APPLICATION_CREATED", "APPLICATION_GROUP_JOINED"))
-        .extracting(ApplicationHistoryReadModel::getEventType)
-        .containsExactlyInAnyOrder("APPLICATION_CREATED", "APPLICATION_GROUP_JOINED");
-    assertThat(
-            awaitHistoryTypes(
-                createdLeadApplicationId, "APPLICATION_CREATED", "APPLICATION_GROUP_CREATED"))
-        .extracting(ApplicationHistoryReadModel::getEventType)
-        .containsExactlyInAnyOrder("APPLICATION_CREATED", "APPLICATION_GROUP_CREATED");
-
-    ResponseEntity<ApplicationHistoryResponse> linkedHistoryResponse =
-        getApplicationHistory(createdLinkedApplicationId, null);
-    assertThat(linkedHistoryResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-    assertThat(linkedHistoryResponse.getBody()).isNotNull();
-    assertThat(linkedHistoryResponse.getBody().getEvents())
-        .extracting(event -> event.getDomainEventType())
-        .containsExactlyInAnyOrder(
-            DomainEventType.APPLICATION_CREATED, DomainEventType.APPLICATION_GROUP_JOINED);
-
-    ResponseEntity<ApplicationHistoryResponse> filteredGroupHistoryResponse =
-        getApplicationHistory(createdLinkedApplicationId, DomainEventType.APPLICATION_GROUP_JOINED);
-    assertThat(filteredGroupHistoryResponse.getBody()).isNotNull();
-    assertThat(filteredGroupHistoryResponse.getBody().getEvents())
+    assertThat(groupReadRepository.count()).isZero();
+    assertThat(awaitHistory(createdApplicationId, 1))
         .singleElement()
-        .satisfies(
-            event ->
-                assertThat(event.getDomainEventType())
-                    .isEqualTo(DomainEventType.APPLICATION_GROUP_JOINED));
-  }
-
-  @Test
-  @Disabled("Linked applications removed from schema; orchestration retained for future endpoint")
-  void givenExistingLeadAndFirstLinked_whenPostSecondLinkedApplication_thenJoinsExistingGroup() {
-    UUID leadApplicationId = UUID.randomUUID();
-    UUID createdLeadApplicationId =
-        applicationId(
-            restTemplate.postForEntity(
-                "/api/v0/applications",
-                new HttpEntity<>(
-                    validCreateApplicationRequest(leadApplicationId, UUID.randomUUID()), headers()),
-                Void.class));
-    awaitProjection(createdLeadApplicationId);
-
-    UUID firstLinkedApplicationId = UUID.randomUUID();
-    UUID createdFirstLinkedApplicationId =
-        applicationId(
-            restTemplate.postForEntity(
-                "/api/v0/applications",
-                new HttpEntity<>(
-                    validLinkedCreateApplicationRequest(
-                        firstLinkedApplicationId, UUID.randomUUID(), createdLeadApplicationId),
-                    headers()),
-                Void.class));
-    awaitProjection(createdFirstLinkedApplicationId);
-
-    UUID secondLinkedApplicationId = UUID.randomUUID();
-    UUID createdSecondLinkedApplicationId =
-        applicationId(
-            restTemplate.postForEntity(
-                "/api/v0/applications",
-                new HttpEntity<>(
-                    validLinkedCreateApplicationRequest(
-                        secondLinkedApplicationId, UUID.randomUUID(), createdLeadApplicationId),
-                    headers()),
-                Void.class));
-    awaitProjection(createdSecondLinkedApplicationId);
-
-    assertThat(
-            awaitHistoryTypes(
-                createdSecondLinkedApplicationId,
-                "APPLICATION_CREATED",
-                "APPLICATION_GROUP_JOINED"))
-        .extracting(ApplicationHistoryReadModel::getEventType)
-        .containsExactlyInAnyOrder("APPLICATION_CREATED", "APPLICATION_GROUP_JOINED");
-
-    // All three should end up in the same group.
-    await()
-        .atMost(10, TimeUnit.SECONDS)
-        .pollInterval(50, TimeUnit.MILLISECONDS)
-        .untilAsserted(
-            () ->
-                assertThat(groupReadRepository.findByLeadApplicationId(createdLeadApplicationId))
-                    .isPresent()
-                    .hasValueSatisfying(
-                        group ->
-                            assertThat(group.getMemberIds())
-                                .containsExactlyInAnyOrder(
-                                    createdLeadApplicationId,
-                                    createdFirstLinkedApplicationId,
-                                    createdSecondLinkedApplicationId)));
+        .satisfies(history -> assertThat(history.getEventType()).isEqualTo("APPLICATION_CREATED"));
   }
 
   @Test
@@ -871,60 +714,6 @@ class CreateApplicationInMemoryTest {
               assertThat(summary.getIsLead()).isFalse();
               assertThat(summary.getClientFirstName()).isEqualTo("Ada");
               assertThat(summary.getClientLastName()).isEqualTo("Lovelace");
-            });
-  }
-
-  @Test
-  @Disabled("Linked applications removed from schema; orchestration retained for future endpoint")
-  void givenLinkedApplications_whenGetApplications_thenLinkedApplicationsPopulatedOnLead() {
-    UUID leadApplicationId = UUID.randomUUID();
-    UUID createdLeadApplicationId =
-        applicationId(
-            restTemplate.postForEntity(
-                "/api/v0/applications",
-                new HttpEntity<>(
-                    validCreateApplicationRequest(leadApplicationId, UUID.randomUUID()), headers()),
-                Void.class));
-    awaitProjection(createdLeadApplicationId);
-
-    UUID linkedApplicationId = UUID.randomUUID();
-    UUID createdLinkedApplicationId =
-        applicationId(
-            restTemplate.postForEntity(
-                "/api/v0/applications",
-                new HttpEntity<>(
-                    validLinkedCreateApplicationRequest(
-                        linkedApplicationId, UUID.randomUUID(), createdLeadApplicationId),
-                    headers()),
-                Void.class));
-    awaitProjection(createdLinkedApplicationId);
-
-    // Wait for the group to be projected before asserting linked apps in the list response.
-    await()
-        .atMost(10, TimeUnit.SECONDS)
-        .pollInterval(50, TimeUnit.MILLISECONDS)
-        .until(
-            () -> groupReadRepository.findByLeadApplicationId(leadApplicationId),
-            Optional::isPresent);
-
-    ResponseEntity<ApplicationSummaryResponse> response =
-        restTemplate.exchange(
-            "/api/v0/applications",
-            HttpMethod.GET,
-            new HttpEntity<>(headers()),
-            ApplicationSummaryResponse.class);
-
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-    assertThat(response.getBody().getApplications())
-        .anySatisfy(
-            summary -> {
-              assertThat(summary.getApplicationId()).isEqualTo(leadApplicationId);
-              assertThat(summary.getIsLead()).isTrue();
-              assertThat(summary.getLinkedApplications())
-                  .singleElement()
-                  .satisfies(
-                      linked ->
-                          assertThat(linked.getApplicationId()).isEqualTo(linkedApplicationId));
             });
   }
 

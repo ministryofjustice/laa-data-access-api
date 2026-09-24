@@ -26,10 +26,8 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationEvolve;
-import uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationState;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
-import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupRequested;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 
@@ -114,12 +112,6 @@ class RawReplayContractTest {
               state, objectMapper.readValue(payload, ApplicationDecisionMadeEvent.class));
       case "uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent" ->
           ApplicationEvolve.apply(state, objectMapper.readValue(payload, NoteCreatedEvent.class));
-      case "uk.gov.justice.laa.dstew.access.command.application.ApplicationLinkedEvent" ->
-          ApplicationEvolve.apply(
-              state, objectMapper.readValue(payload, ApplicationLinkedEvent.class));
-      case "uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupRequested" ->
-          ApplicationEvolve.apply(
-              state, objectMapper.readValue(payload, LinkedApplicationGroupRequested.class));
       default -> throw new IllegalArgumentException("Unknown event type: " + payloadType);
     }
   }

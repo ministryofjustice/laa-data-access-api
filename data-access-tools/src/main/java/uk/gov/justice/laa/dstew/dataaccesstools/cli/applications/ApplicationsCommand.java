@@ -11,6 +11,7 @@ import uk.gov.justice.laa.dstew.dataaccesstools.cli.DataAccessToolsCommand;
       CreateGrantedApplicationsCommand.class,
       CreateRefusedApplicationsCommand.class,
       CreateManualApplicationsCommand.class,
+      MakeDecisionCommand.class,
       AssignApplicationCommand.class
     })
 public final class ApplicationsCommand {

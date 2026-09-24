@@ -5,9 +5,6 @@ import picocli.CommandLine;
 
 /** Shared API-backed assignment behaviour for a single work-list item. */
 public abstract class WorkListAssignmentCommand {
-  @CommandLine.Option(names = "--caseworker-id", required = true, description = "Caseworker UUID.")
-  private UUID caseworkerId;
-
   @CommandLine.Option(
       names = "--expected-assignment-version",
       required = true,
@@ -24,9 +21,8 @@ public abstract class WorkListAssignmentCommand {
       throw new CommandLine.ParameterException(
           new CommandLine(this), "--expected-assignment-version must not be negative");
     }
-    root.client()
-        .assignWorkListItem(itemId, caseworkerId, expectedAssignmentVersion, eventDescription);
-    System.out.printf("%s: SUCCESS - assigned to %s%n", itemId, caseworkerId);
+    root.client().assignWorkListItem(itemId, expectedAssignmentVersion, eventDescription);
+    System.out.printf("%s: SUCCESS - assigned to authenticated user%n", itemId);
     return 0;
   }
 }

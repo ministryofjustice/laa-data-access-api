@@ -50,6 +50,7 @@ public class GetApplicationHistoryResponseMapper {
         .eventType(event.eventType())
         .createdAt(event.occurredAt().atOffset(ZoneOffset.UTC))
         .createdBy(event.serviceName() == null ? "UNKNOWN" : event.serviceName())
+        .caseworkerId(event.caseworkerId())
         .eventDescription(event.eventDescription())
         .build();
   }
@@ -60,7 +61,10 @@ public class GetApplicationHistoryResponseMapper {
         .domainEventType(DomainEventType.fromValue(history.getEventType()))
         .createdAt(history.getOccurredAt().atOffset(ZoneOffset.UTC))
         .createdBy(history.getServiceName() == null ? "UNKNOWN" : history.getServiceName())
-        .caseworkerId(caseworkerId(history.getRequestPayload()))
+        .caseworkerId(
+            history.getCaseworkerId() == null
+                ? caseworkerId(history.getRequestPayload())
+                : history.getCaseworkerId())
         .eventDescription(eventDescription(history.getRequestPayload()))
         .build();
   }

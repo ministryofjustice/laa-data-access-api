@@ -88,6 +88,33 @@ class ApplicationDataStoreTest {
   }
 
   @Test
+  void givenStoredApplicationData_whenLatestVersionRetrieved_thenReturnsHighestVersion() {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationDataPayload payload =
+        ApplicationDataPayload.from(applicationCreationDetails(applicationId));
+    when(repository.findFirstByIdApplicationIdOrderByIdVersionDesc(applicationId))
+        .thenReturn(
+            Optional.of(
+                ApplicationData.builder()
+                    .id(new ApplicationDataId(applicationId, 3L))
+                    .payload(payload)
+                    .build()));
+
+    assertThat(store.latestVersion(applicationId)).isEqualTo(3L);
+  }
+
+  @Test
+  void givenNoStoredApplicationData_whenLatestVersionRetrieved_thenReportsApplication() {
+    UUID applicationId = UUID.randomUUID();
+    when(repository.findFirstByIdApplicationIdOrderByIdVersionDesc(applicationId))
+        .thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> store.latestVersion(applicationId))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Application data not found for " + applicationId);
+  }
+
+  @Test
   void givenRequestedVersions_whenRetrieved_thenReturnsOnlyStoredPayloadsByIdentifier() {
     UUID applicationId = UUID.randomUUID();
     ApplicationDataId firstId = new ApplicationDataId(applicationId, 0L);
