@@ -45,6 +45,7 @@ import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationRead
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
+import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadRepository;
@@ -643,6 +644,62 @@ class ApplicationProjectionTest {
     ApplicationReadModel result = projection.handle(new FindApplicationByIdQuery(applicationId));
 
     assertThat(result).isNull();
+  }
+
+  @Test
+  void givenApplication_whenAssociationsQueried_thenReturnsRelatedData() {
+    UUID applicationId = UUID.randomUUID();
+    UUID linkedApplicationId = UUID.randomUUID();
+    ApplicationReadModel application =
+        ApplicationReadModel.builder().applicationId(applicationId).build();
+    LinkedApplicationGroupReadModel group =
+        LinkedApplicationGroupReadModel.builder()
+            .leadApplicationId(applicationId)
+            .memberIds(List.of(applicationId, linkedApplicationId))
+            .build();
+    PriorAuthorityReadModel priorAuthority =
+        PriorAuthorityReadModel.builder()
+            .priorAuthorityId(UUID.randomUUID())
+            .applicationId(applicationId)
+            .status("DRAFT")
+            .createdAt(Instant.parse("2026-09-01T10:00:00Z"))
+            .build();
+    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(application));
+    when(groupReadRepository.findByLeadApplicationId(applicationId)).thenReturn(Optional.of(group));
+    when(priorAuthorityReadRepository.findAllByApplicationIdIn(List.of(applicationId)))
+        .thenReturn(List.of(priorAuthority));
+
+    ApplicationAssociationsResult result =
+        projection.handle(new FindApplicationAssociationsQuery(applicationId));
+
+    assertThat(result.linkedGroup()).isSameAs(group);
+    assertThat(result.priorAuthorities()).containsExactly(priorAuthority);
+  }
+
+  @Test
+  void givenMemberApplication_whenAssociationsQueried_thenFindsLeadGroup() {
+    UUID applicationId = UUID.randomUUID();
+    UUID leadApplicationId = UUID.randomUUID();
+    ApplicationReadModel application =
+        ApplicationReadModel.builder()
+            .applicationId(applicationId)
+            .leadApplicationId(leadApplicationId)
+            .build();
+    LinkedApplicationGroupReadModel group =
+        LinkedApplicationGroupReadModel.builder()
+            .leadApplicationId(leadApplicationId)
+            .memberIds(List.of(leadApplicationId, applicationId))
+            .build();
+    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(application));
+    when(groupReadRepository.findByLeadApplicationId(leadApplicationId))
+        .thenReturn(Optional.of(group));
+    when(priorAuthorityReadRepository.findAllByApplicationIdIn(List.of(applicationId)))
+        .thenReturn(List.of());
+
+    ApplicationAssociationsResult result =
+        projection.handle(new FindApplicationAssociationsQuery(applicationId));
+
+    assertThat(result.linkedGroup()).isSameAs(group);
   }
 
   @Test

@@ -21,10 +21,12 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.query.application.ApplicationAssociationsResult;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationNotesResult;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsQuery;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsResult;
+import uk.gov.justice.laa.dstew.access.query.application.FindApplicationAssociationsQuery;
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
 import uk.gov.justice.laa.dstew.access.query.application.FindNotesForApplicationQuery;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryResult;
@@ -82,6 +84,43 @@ class ApplicationQueryUseCaseSecurityTest extends BaseSecuredUseCaseTest {
     FindAllApplicationsResult result = useCase.getApplications(query);
 
     assertThat(result).isSameAs(expected);
+  }
+
+  @Test
+  void givenCaseworker_whenGettingAssociations_thenQueriesGateway() {
+    setSecurityContext(CASEWORKER_ROLE);
+    UUID applicationId = UUID.randomUUID();
+    ApplicationAssociationsResult expected = new ApplicationAssociationsResult(null, List.of());
+    when(queryGateway.query(
+            any(FindApplicationAssociationsQuery.class), eq(ApplicationAssociationsResult.class)))
+        .thenReturn(CompletableFuture.completedFuture(expected));
+
+    assertThat(useCase.getApplicationAssociations(applicationId)).isSameAs(expected);
+  }
+
+  @Test
+  void givenNoRole_whenGettingAssociations_thenDeniesAccess() {
+    setSecurityContext(NO_ROLE);
+    UUID applicationId = UUID.randomUUID();
+
+    assertThatExceptionOfType(AuthorizationDeniedException.class)
+        .isThrownBy(() -> useCase.getApplicationAssociations(applicationId))
+        .withMessageContaining("Access Denied");
+
+    verifyNoInteractions(queryGateway);
+  }
+
+  @Test
+  void givenMissingApplication_whenGettingAssociations_thenThrowsNotFound() {
+    setSecurityContext(CASEWORKER_ROLE);
+    UUID applicationId = UUID.randomUUID();
+    when(queryGateway.query(
+            any(FindApplicationAssociationsQuery.class), eq(ApplicationAssociationsResult.class)))
+        .thenReturn(CompletableFuture.completedFuture(null));
+
+    assertThatExceptionOfType(ResourceNotFoundException.class)
+        .isThrownBy(() -> useCase.getApplicationAssociations(applicationId))
+        .withMessageContaining("No application found with ID: " + applicationId);
   }
 
   @Test

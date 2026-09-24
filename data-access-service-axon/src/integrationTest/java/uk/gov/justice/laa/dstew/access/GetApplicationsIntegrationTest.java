@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.tuple;
 import static org.awaitility.Awaitility.await;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
@@ -29,6 +30,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
+import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
@@ -134,6 +136,40 @@ class GetApplicationsIntegrationTest {
             .findFirst()
             .orElseThrow();
     assertThat(submittedSummary.getCreatedAt().toInstant()).isEqualTo(originalCreatedAt);
+  }
+
+  @Test
+  void givenPriorAuthority_whenGetById_thenIncludesSummary() {
+    UUID applicationId = grantedApplication();
+    UUID priorAuthorityId = saveDisbursementDraft(applicationId);
+    awaitPriorAuthorityProjection(priorAuthorityId);
+    String storedPriorAuthorityType =
+        jdbcTemplate.queryForObject(
+            "SELECT payload #>> '{content,priorAuthorityType}' "
+                + "FROM axon.prior_authority_draft WHERE prior_authority_id = ?",
+            String.class,
+            priorAuthorityId);
+    assertThat(storedPriorAuthorityType).isEqualTo("DISBURSEMENT");
+
+    ResponseEntity<ApplicationResponse> response =
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/applications/" + applicationId,
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            ApplicationResponse.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(response.getBody()).isNotNull();
+    assertThat(response.getBody().getPriorAuthorities())
+        .singleElement()
+        .satisfies(
+            summary -> {
+              assertThat(summary.getPriorAuthorityId()).isEqualTo(priorAuthorityId);
+              assertThat(summary.getStatus()).isEqualTo(PriorAuthoritySummary.StatusEnum.DRAFT);
+              assertThat(summary.getPriorAuthorityType())
+                  .isEqualTo(PriorAuthoritySummary.PriorAuthorityTypeEnum.DISBURSEMENT);
+              assertThat(summary.getCreatedAt()).isNotNull();
+            });
   }
 
   @Test
@@ -253,7 +289,7 @@ class GetApplicationsIntegrationTest {
             .disbursementDetails(
                 DisbursementDetails.builder()
                     .disbursementPurpose("Court interpreter")
-                    .disbursementAmount(150.0)
+                    .disbursementAmount(BigDecimal.valueOf(150))
                     .build())
             .build();
     ResponseEntity<SavePriorAuthorityDraftResponse> draftResponse =

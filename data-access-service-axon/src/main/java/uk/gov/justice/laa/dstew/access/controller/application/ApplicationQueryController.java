@@ -18,11 +18,13 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSortBy;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
+import uk.gov.justice.laa.dstew.access.model.AutoGranted;
 import uk.gov.justice.laa.dstew.access.model.DocumentDownloadResponse;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
+import uk.gov.justice.laa.dstew.access.query.application.ApplicationAssociationsResult;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsQuery;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsResult;
@@ -92,7 +94,7 @@ public class ApplicationQueryController implements ApplicationQueryApi {
       String clientLastName,
       LocalDate clientDateOfBirth,
       UUID userId,
-      uk.gov.justice.laa.dstew.access.model.AutoGranted autoGranted,
+      AutoGranted autoGranted,
       MatterType matterType,
       ApplicationSortBy sortBy,
       ApplicationOrderBy orderBy,
@@ -123,7 +125,11 @@ public class ApplicationQueryController implements ApplicationQueryApi {
     ApplicationReadModel application =
         findApplicationAwaitingProjection(id)
             .orElseGet(() -> applicationQueryUseCase.getApplicationById(id));
-    return ResponseEntity.ok(responseMapper.toResponse(application));
+    ApplicationAssociationsResult associations =
+        applicationQueryUseCase.getApplicationAssociations(id);
+    return ResponseEntity.ok(
+        responseMapper.toResponse(
+            application, associations.linkedGroup(), associations.priorAuthorities()));
   }
 
   /** Returns the certificate stored in the Application's current immutable data version. */

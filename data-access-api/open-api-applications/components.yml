@@ -42,6 +42,8 @@ components:
         - proceedings
         - applicationVersion
         - autoGranted
+        - priorAuthorities
+        - linkedApplications
       properties:
         applicationId:
           type: string
@@ -75,6 +77,14 @@ components:
           $ref: "#/components/schemas/ApplicationProceedingsResponse"
         provider:
           $ref: "#/components/schemas/ProviderResponse"
+        priorAuthorities:
+          type: array
+          items:
+            $ref: "#/components/schemas/PriorAuthoritySummary"
+        linkedApplications:
+          type: array
+          items:
+            $ref: "#/components/schemas/LinkedApplicationSummaryResponse"
         version:
           type: integer
           format: int64
@@ -225,9 +235,13 @@ components:
         priorAuthorityId:
           type: string
           format: uuid
+        priorAuthorityType:
+          type: string
+          nullable: true
+          enum: [EXPERT, DISBURSEMENT, COUNSEL]
         status:
           type: string
-          enum: [DRAFT, SUBMITTED]
+          enum: [DRAFT, SUBMITTED, DECIDED]
         decision:
           type: string
           nullable: true

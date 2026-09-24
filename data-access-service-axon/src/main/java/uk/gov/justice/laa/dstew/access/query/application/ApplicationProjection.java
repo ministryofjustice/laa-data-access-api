@@ -62,13 +62,13 @@ public class ApplicationProjection {
    *
    * @param applicationReadRepository persistence interface for {@code application_current_state}
    * @param groupReadRepository persistence interface for {@code
-   *     linked_application_group_current_state}; used by {@link FindAllApplicationsQuery} to
-   *     batch-fetch group membership for the result page
+   *     linked_application_group_current_state}; used to fetch group membership for application
+   *     responses
    * @param listIndexRepository persistence interface for {@code application_list_index}; used by
    *     {@link FindAllApplicationsQuery} for database-side filtering and paging
    * @param priorAuthorityReadRepository persistence interface for {@code
-   *     prior_authority_current_state}; used by {@link FindAllApplicationsQuery} to batch-fetch
-   *     linked prior authorities for the result page
+   *     prior_authority_current_state}; used to fetch linked prior authorities for application
+   *     responses
    */
   public ApplicationProjection(
       ApplicationReadRepository applicationReadRepository,
@@ -81,6 +81,26 @@ public class ApplicationProjection {
     this.applicationDataStore = applicationDataStore;
     this.listIndexRepository = listIndexRepository;
     this.priorAuthorityReadRepository = priorAuthorityReadRepository;
+  }
+
+  /**
+   * Returns the related group and prior authorities, or {@code null} if the application is absent.
+   */
+  @QueryHandler
+  public ApplicationAssociationsResult handle(FindApplicationAssociationsQuery query) {
+    return applicationReadRepository
+        .findById(query.applicationId())
+        .map(
+            application -> {
+              UUID leadId = resolveLeadApplicationIdForGroupLookup(application);
+              LinkedApplicationGroupReadModel linkedGroup =
+                  groupReadRepository.findByLeadApplicationId(leadId).orElse(null);
+              List<PriorAuthorityReadModel> priorAuthorities =
+                  priorAuthorityReadRepository.findAllByApplicationIdIn(
+                      List.of(query.applicationId()));
+              return new ApplicationAssociationsResult(linkedGroup, priorAuthorities);
+            })
+        .orElse(null);
   }
 
   /** Returns the current-state projection for the requested Application. */
@@ -459,17 +479,16 @@ public class ApplicationProjection {
   private Map<UUID, LinkedApplicationGroupReadModel> fetchGroups(
       List<ApplicationReadModel> applications) {
     List<UUID> leadIds =
-        applications.stream()
-            .map(
-                app ->
-                    app.getLeadApplicationId() != null
-                        ? app.getLeadApplicationId()
-                        : app.getApplicationId())
-            .distinct()
-            .toList();
+        applications.stream().map(this::resolveLeadApplicationIdForGroupLookup).distinct().toList();
     return groupReadRepository.findAllByLeadApplicationIdIn(leadIds).stream()
         .collect(
             Collectors.toMap(
                 LinkedApplicationGroupReadModel::getLeadApplicationId, g -> g, (a, ignored) -> a));
+  }
+
+  private UUID resolveLeadApplicationIdForGroupLookup(ApplicationReadModel application) {
+    return application.getLeadApplicationId() != null
+        ? application.getLeadApplicationId()
+        : application.getApplicationId();
   }
 }

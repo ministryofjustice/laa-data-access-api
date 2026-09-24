@@ -16,7 +16,6 @@ import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.PagingResponse;
-import uk.gov.justice.laa.dstew.access.model.PriorAuthoritySummary;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsResult;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
@@ -72,7 +71,8 @@ public class GetAllApplicationsResponseMapper {
 
     summary.setLinkedApplications(toLinkedSummaries(app, groupsByLeadId));
     summary.setPriorAuthorities(
-        toPriorAuthoritySummaries(app.getApplicationId(), priorAuthoritiesByApplicationId));
+        PriorAuthoritySummaryMapper.toSummaries(
+            priorAuthoritiesByApplicationId.getOrDefault(app.getApplicationId(), List.of())));
     return summary;
   }
 
@@ -134,24 +134,6 @@ public class GetAllApplicationsResponseMapper {
               linked.setIsLead(memberId.equals(group.getLeadApplicationId()));
               return linked;
             })
-        .toList();
-  }
-
-  private List<PriorAuthoritySummary> toPriorAuthoritySummaries(
-      UUID applicationId,
-      Map<UUID, List<PriorAuthorityReadModel>> priorAuthoritiesByApplicationId) {
-    return priorAuthoritiesByApplicationId.getOrDefault(applicationId, List.of()).stream()
-        .map(
-            priorAuthority ->
-                new PriorAuthoritySummary()
-                    .priorAuthorityId(priorAuthority.getPriorAuthorityId())
-                    .status(PriorAuthoritySummary.StatusEnum.fromValue(priorAuthority.getStatus()))
-                    .decision(
-                        priorAuthority.getDecision() == null
-                            ? null
-                            : PriorAuthoritySummary.DecisionEnum.fromValue(
-                                priorAuthority.getDecision()))
-                    .createdAt(priorAuthority.getCreatedAt().atOffset(ZoneOffset.UTC)))
         .toList();
   }
 }

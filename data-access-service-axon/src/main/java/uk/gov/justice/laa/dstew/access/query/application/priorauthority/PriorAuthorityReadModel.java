@@ -26,6 +26,9 @@ public class PriorAuthorityReadModel {
   @Column(name = "prior_authority_id")
   private UUID priorAuthorityId;
 
+  @Column(name = "prior_authority_type")
+  private String priorAuthorityType;
+
   @Column(name = "application_id")
   private UUID applicationId;
 

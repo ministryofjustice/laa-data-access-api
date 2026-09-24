@@ -70,6 +70,7 @@ class PriorAuthorityProjectionTest {
         queryUpdateEmitter);
 
     assertThat(draft.getStatus()).isEqualTo("SUBMITTED");
+    assertThat(draft.getPriorAuthorityType()).isEqualTo("EXPERT");
     assertThat(draft.getDataVersion()).isEqualTo(1L);
     assertThat(draft.getCreatedAt()).isEqualTo(createdAt);
     assertThat(draft.getDecision()).isNull();
@@ -98,7 +99,9 @@ class PriorAuthorityProjectionTest {
     assertThat(savedCapture[0].getApplicationId()).isEqualTo(applicationId);
     assertThat(savedCapture[0].getDataVersion()).isZero();
     assertThat(savedCapture[0].getStatus()).isEqualTo("DRAFT");
+    assertThat(savedCapture[0].getPriorAuthorityType()).isEqualTo(EXPERT.name());
     assertThat(savedCapture[0].getCreatedAt()).isEqualTo(occurredAt);
+    assertThat(savedCapture[0].getModifiedAt()).isEqualTo(occurredAt);
   }
 
   @Test
@@ -302,6 +305,7 @@ class PriorAuthorityProjectionTest {
             Instant.now()));
 
     assertThat(model.getStatus()).isEqualTo("DECIDED");
+    assertThat(model.getPriorAuthorityType()).isEqualTo("EXPERT");
     assertThat(model.getDataVersion()).isEqualTo(1L);
     verify(repository).save(model);
   }

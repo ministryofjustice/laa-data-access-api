@@ -78,10 +78,12 @@ public class PriorAuthorityProjection {
     repository.save(
         PriorAuthorityReadModel.builder()
             .priorAuthorityId(event.priorAuthorityId())
+            .priorAuthorityType(event.priorAuthorityType())
             .applicationId(event.applicationId())
             .dataVersion(0L)
             .status(PriorAuthorityStatus.DRAFT.name())
             .createdAt(event.occurredAt())
+            .modifiedAt(event.occurredAt())
             .build());
   }
 
@@ -95,6 +97,7 @@ public class PriorAuthorityProjection {
         .findById(event.priorAuthorityId())
         .ifPresent(
             current -> {
+              current.setPriorAuthorityType(event.priorAuthorityType());
               current.setDataVersion(event.dataVersion());
               current.setStatus(PriorAuthorityStatus.SUBMITTED.name());
               current.setModifiedAt(event.occurredAt());
@@ -114,7 +117,9 @@ public class PriorAuthorityProjection {
         .findById(event.priorAuthorityId())
         .ifPresent(
             current -> {
+              current.setPriorAuthorityType(event.priorAuthorityType());
               current.setDataVersion(event.dataVersion());
+              current.setDecision(event.overallDecision());
               current.setStatus(PriorAuthorityStatus.DECIDED.name());
               current.setModifiedAt(event.occurredAt());
               repository.save(current);

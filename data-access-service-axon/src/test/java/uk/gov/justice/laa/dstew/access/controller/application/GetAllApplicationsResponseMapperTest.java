@@ -249,7 +249,8 @@ class GetAllApplicationsResponseMapperTest {
     ApplicationSummary summary =
         mapper
             .toResponse(
-                new FindAllApplicationsResult(List.of(memberApp), Map.of(leadId, group), 1L, 1, 20))
+                new FindAllApplicationsResult(
+                    List.of(memberApp), Map.of(leadId, group), Map.of(), 1L, 1, 20))
             .getBody()
             .getApplications()
             .get(0);

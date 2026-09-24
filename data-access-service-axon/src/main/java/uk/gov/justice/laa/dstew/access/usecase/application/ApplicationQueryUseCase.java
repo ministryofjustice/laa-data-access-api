@@ -7,10 +7,12 @@ import java.util.concurrent.CompletionException;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.query.application.ApplicationAssociationsResult;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationNotesResult;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsQuery;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsResult;
+import uk.gov.justice.laa.dstew.access.query.application.FindApplicationAssociationsQuery;
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
 import uk.gov.justice.laa.dstew.access.query.application.FindNotesForApplicationQuery;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryIntegrityException;
@@ -43,6 +45,21 @@ public class ApplicationQueryUseCase {
       throw new ResourceNotFoundException("No application found with ID: " + id);
     }
     return application;
+  }
+
+  /** Returns the linked group and prior authorities for an application. */
+  @AllowApiCaseworker
+  public ApplicationAssociationsResult getApplicationAssociations(UUID applicationId) {
+    ApplicationAssociationsResult associations =
+        queryGateway
+            .query(
+                new FindApplicationAssociationsQuery(applicationId),
+                ApplicationAssociationsResult.class)
+            .join();
+    if (associations == null) {
+      throw new ResourceNotFoundException("No application found with ID: " + applicationId);
+    }
+    return associations;
   }
 
   /** Returns the stored certificate for an application. */
