@@ -2,11 +2,13 @@ package uk.gov.justice.laa.dstew.access;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
 
 import jakarta.annotation.PostConstruct;
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
@@ -337,6 +339,130 @@ class PriorAuthorityDraftIntegrationTest {
 
   @Test
   void
+      givenDraftWithUploadedDocument_whenDeletePriorAuthorityDocument_thenReturnsNoContentAndRemovesDocument() {
+    UUID applicationId = grantedApplication();
+    UUID priorAuthorityId = saveDraft(applicationId, PriorAuthorityType.EXPERT, null, null);
+    when(sdsService.savePriorAuthorityFile(any(), any(), any()))
+        .thenReturn(new DocumentUploadResponse().checksum("checksum"));
+    UUID documentId = uploadDocument(priorAuthorityId, "evidence.pdf");
+
+    ResponseEntity<Void> deleteResponse =
+        restTemplate.exchange(
+            deleteDocumentUrl(priorAuthorityId, documentId),
+            HttpMethod.DELETE,
+            new HttpEntity<>(headers()),
+            Void.class);
+
+    assertThat(deleteResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    verify(sdsService).deleteFiles(priorAuthorityId, List.of(documentId.toString() + ".pdf"));
+
+    ResponseEntity<String> draftResponse =
+        restTemplate.exchange(
+            priorAuthorityUrl(priorAuthorityId),
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            String.class);
+    assertThat(draftResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+    PriorAuthorityResponse draft =
+        objectMapper.readValue(draftResponse.getBody(), PriorAuthorityResponse.class);
+    assertThat(draft.getUploadedDocuments()).isEmpty();
+  }
+
+  @Test
+  void givenDeletedDocument_whenSubmitPriorAuthorityDraft_thenSubmittedPayloadExcludesDocument() {
+    UUID applicationId = grantedApplication();
+    UUID priorAuthorityId =
+        saveDraft(
+            applicationId,
+            PriorAuthorityType.DISBURSEMENT,
+            "Interpreter costs for proceedings",
+            validDisbursementRequest());
+    when(sdsService.savePriorAuthorityFile(any(), any(), any()))
+        .thenReturn(new DocumentUploadResponse().checksum("checksum"));
+    UUID documentId = uploadDocument(priorAuthorityId, "evidence.pdf");
+
+    ResponseEntity<Void> deleteResponse =
+        restTemplate.exchange(
+            deleteDocumentUrl(priorAuthorityId, documentId),
+            HttpMethod.DELETE,
+            new HttpEntity<>(headers()),
+            Void.class);
+    assertThat(deleteResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+
+    ResponseEntity<String> submitResponse =
+        restTemplate.postForEntity(
+            submitUrl(priorAuthorityId), new HttpEntity<>(null, headers()), String.class);
+    assertThat(submitResponse.getStatusCode())
+        .withFailMessage("Submit response: %s", submitResponse.getBody())
+        .isIn(HttpStatus.OK, HttpStatus.ACCEPTED);
+
+    ResponseEntity<String> getResponse =
+        restTemplate.exchange(
+            priorAuthorityUrl(priorAuthorityId),
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            String.class);
+    assertThat(getResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+    PriorAuthorityResponse priorAuthority =
+        objectMapper.readValue(getResponse.getBody(), PriorAuthorityResponse.class);
+    assertThat(priorAuthority.getStatus()).isEqualTo(PriorAuthorityResponse.StatusEnum.SUBMITTED);
+    assertThat(priorAuthority.getUploadedDocuments()).isEmpty();
+  }
+
+  @Test
+  void givenNonexistentPriorAuthority_whenDeletePriorAuthorityDocument_thenReturnsNotFound() {
+    ResponseEntity<String> response =
+        restTemplate.exchange(
+            deleteDocumentUrl(UUID.randomUUID(), UUID.randomUUID()),
+            HttpMethod.DELETE,
+            new HttpEntity<>(headers()),
+            String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+  }
+
+  @Test
+  void givenSubmittedPriorAuthority_whenDeletePriorAuthorityDocument_thenReturnsNotFound() {
+    UUID applicationId = grantedApplication();
+    UUID priorAuthorityId =
+        saveDraft(
+            applicationId,
+            PriorAuthorityType.DISBURSEMENT,
+            "Interpreter costs for proceedings",
+            validDisbursementRequest());
+    when(sdsService.savePriorAuthorityFile(any(), any(), any()))
+        .thenReturn(new DocumentUploadResponse().checksum("checksum"));
+    UUID documentId = uploadDocument(priorAuthorityId, "evidence.pdf");
+    ResponseEntity<Void> updateDocumentTypeResponse =
+        restTemplate.exchange(
+            documentUrl(priorAuthorityId, documentId),
+            HttpMethod.PATCH,
+            new HttpEntity<>(
+                new UpdatePriorAuthorityDocumentTypeRequest(
+                    PriorAuthorityDocumentType.GATEWAY_EVIDENCE),
+                headers()),
+            Void.class);
+    assertThat(updateDocumentTypeResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+    ResponseEntity<String> submitResponse =
+        restTemplate.postForEntity(
+            submitUrl(priorAuthorityId), new HttpEntity<>(null, headers()), String.class);
+    assertThat(submitResponse.getStatusCode())
+        .withFailMessage("Submit response: %s", submitResponse.getBody())
+        .isIn(HttpStatus.OK, HttpStatus.ACCEPTED);
+
+    ResponseEntity<String> deleteResponse =
+        restTemplate.exchange(
+            deleteDocumentUrl(priorAuthorityId, documentId),
+            HttpMethod.DELETE,
+            new HttpEntity<>(headers()),
+            String.class);
+
+    assertThat(deleteResponse.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+  }
+
+  @Test
+  void
       givenDraftViolatesSchema_whenSubmitPriorAuthorityDraft_thenReturnsBadRequestAndDraftPersists() {
     UUID applicationId = grantedApplication();
     // Missing justification, which the full PriorAuthority schema requires at submit time.
@@ -479,6 +605,20 @@ class PriorAuthorityDraftIntegrationTest {
 
   private String documentUrl(UUID priorAuthorityId, UUID documentId) {
     return uploadUrl(priorAuthorityId) + "/" + documentId;
+  }
+
+  private String deleteDocumentUrl(UUID priorAuthorityId, UUID documentId) {
+    return priorAuthorityUrl(priorAuthorityId) + "/documents/" + documentId;
+  }
+
+  private UUID uploadDocument(UUID priorAuthorityId, String filename) {
+    ResponseEntity<String> uploadResponse =
+        restTemplate.postForEntity(
+            uploadUrl(priorAuthorityId), uploadRequest(filename), String.class);
+    assertThat(uploadResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    return objectMapper
+        .readValue(uploadResponse.getBody(), UploadPriorAuthorityDocumentResponse.class)
+        .getDocumentId();
   }
 
   private HttpEntity<MultiValueMap<String, Object>> uploadRequest(String filename) {

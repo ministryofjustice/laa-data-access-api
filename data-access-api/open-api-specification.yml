@@ -47,8 +47,6 @@ paths:
     $ref: "./open-api-prior-authority/resources.yml#/paths/~1api~1v0~1prior-authorities~1{priorAuthorityId}~1documents"
   /api/v0/prior-authorities/{priorAuthorityId}/documents/{documentId}:
     $ref: "./open-api-prior-authority/resources.yml#/paths/~1api~1v0~1prior-authorities~1{priorAuthorityId}~1documents~1{documentId}"
-  /api/v0/prior-authorities/{priorAuthorityId}/document/{documentId}:
-    $ref: "./open-api-prior-authority/resources.yml#/paths/~1api~1v0~1prior-authorities~1{priorAuthorityId}~1document~1{documentId}"
   /api/v0/work-list:
     $ref: "./open-api-work-list/resources.yml#/paths/~1api~1v0~1work-list"
   /api/v0/work-list/{itemId}/assign:
