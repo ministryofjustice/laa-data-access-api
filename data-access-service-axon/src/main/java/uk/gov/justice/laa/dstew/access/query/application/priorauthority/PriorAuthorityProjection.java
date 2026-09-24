@@ -15,6 +15,7 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorA
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
 
@@ -56,12 +57,7 @@ public class PriorAuthorityProjection {
   /** Confirms whether a current-state projection has reached SUBMITTED. */
   @QueryHandler
   public boolean handle(PriorAuthorityPendingByPriorAuthorityIdQuery query) {
-    return repository
-        .findById(query.priorAuthorityId())
-        .map(
-            priorAuthority ->
-                PriorAuthorityStatus.SUBMITTED.name().equals(priorAuthority.getStatus()))
-        .orElse(false);
+    return repository.findById(query.priorAuthorityId()).map(this::isPending).orElse(false);
   }
 
   private Optional<@NonNull PriorAuthorityResult> hydrate(
@@ -71,7 +67,8 @@ public class PriorAuthorityProjection {
     }
     PriorAuthorityDataPayload payload =
         priorAuthorityDataStore.get(priorAuthorityId, priorAuthority.getDataVersion());
-    return Optional.of(PriorAuthorityResult.from(priorAuthority, payload.content()));
+    return Optional.of(
+        PriorAuthorityResult.from(priorAuthority, payload, priorAuthority.getStatus()));
   }
 
   /** Creates the current-state row when a prior-authority draft is started. */
@@ -98,12 +95,30 @@ public class PriorAuthorityProjection {
         queryUpdateEmitter);
   }
 
+  /** Updates current-state data version after a terminal prior-authority decision. */
+  @EventHandler
+  public void on(PriorAuthorityDecisionMadeEvent event) {
+    repository
+        .findById(event.priorAuthorityId())
+        .ifPresent(
+            current -> {
+              current.setDataVersion(event.dataVersion());
+              current.setStatus(PriorAuthorityStatus.DECIDED.name());
+              current.setModifiedAt(event.occurredAt());
+              repository.save(current);
+            });
+  }
+
+  private boolean isPending(PriorAuthorityReadModel priorAuthority) {
+    return PriorAuthorityStatus.SUBMITTED.name().equals(priorAuthority.getStatus());
+  }
+
   private void createRow(
       UUID priorAuthorityId,
       UUID applicationId,
       long dataVersion,
       String status,
-      Instant createdAt,
+      Instant occurredAt,
       QueryUpdateEmitter queryUpdateEmitter) {
     repository.save(
         PriorAuthorityReadModel.builder()
@@ -111,7 +126,8 @@ public class PriorAuthorityProjection {
             .applicationId(applicationId)
             .dataVersion(dataVersion)
             .status(status)
-            .createdAt(createdAt)
+            .createdAt(occurredAt)
+            .modifiedAt(occurredAt)
             .build());
     if (PriorAuthorityStatus.SUBMITTED.name().equals(status)) {
       queryUpdateEmitter.emit(
