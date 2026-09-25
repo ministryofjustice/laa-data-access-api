@@ -80,6 +80,7 @@ import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetailsRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.OpponentResponse;
+import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityHistoryGroup;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.model.ProviderResponse;
@@ -839,6 +840,145 @@ class PostgresAxonIntegrationTest {
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     assertThat(response.getBody()).contains("No application found with ID: " + applicationId);
+  }
+
+  @Test
+  void givenApplicationWithPotentialDuplicates_whenPostedAndRetrieved_thenReturnsPotentialDuplicates() {
+    UUID applicationId = UUID.randomUUID();
+    UUID applyProceedingId = UUID.randomUUID();
+    UUID dupApplicationId1 = UUID.randomUUID();
+    UUID dupApplicationId2 = UUID.randomUUID();
+
+    ApplicationCreateRequest request =
+        validCreateApplicationRequest(applicationId, applyProceedingId);
+    request.setPotentialDuplicates(
+        List.of(
+            new uk.gov.justice.laa.dstew.access.model.PotentialDuplicate()
+                .laaReference("LAA-DUP-001")
+                .applicationId(dupApplicationId1)
+                .legacyReference("LEGACY-001"),
+            new uk.gov.justice.laa.dstew.access.model.PotentialDuplicate()
+                .laaReference("LAA-DUP-002")
+                .applicationId(dupApplicationId2)
+                .legacyReference("LEGACY-002")));
+
+    UUID createdApplicationId = applicationId(post(request, headers()));
+    ResponseEntity<ApplicationResponse> response = awaitGetApplication(createdApplicationId);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    ApplicationResponse actual = response.getBody();
+    assertThat(actual).isNotNull();
+    assertThat(actual.getPotentialDuplicates())
+        .isNotNull()
+        .hasSize(2)
+        .anySatisfy(
+            dup ->
+                assertThat(dup)
+                    .hasFieldOrPropertyWithValue("laaReference", "LAA-DUP-001")
+                    .hasFieldOrPropertyWithValue("applicationId", dupApplicationId1)
+                    .hasFieldOrPropertyWithValue("legacyReference", "LEGACY-001"))
+        .anySatisfy(
+            dup ->
+                assertThat(dup)
+                    .hasFieldOrPropertyWithValue("laaReference", "LAA-DUP-002")
+                    .hasFieldOrPropertyWithValue("applicationId", dupApplicationId2)
+                    .hasFieldOrPropertyWithValue("legacyReference", "LEGACY-002"));
+  }
+
+  @Test
+  void givenApplicationWithPartialPotentialDuplicates_whenRetrieved_thenPreservesNullFields() {
+    UUID applicationId = UUID.randomUUID();
+    UUID applyProceedingId = UUID.randomUUID();
+
+    ApplicationCreateRequest request =
+        validCreateApplicationRequest(applicationId, applyProceedingId);
+    request.setPotentialDuplicates(
+        List.of(
+            new uk.gov.justice.laa.dstew.access.model.PotentialDuplicate()
+                .laaReference("LAA-DUP-PARTIAL")));
+
+    UUID createdApplicationId = applicationId(post(request, headers()));
+    ResponseEntity<ApplicationResponse> response = awaitGetApplication(createdApplicationId);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    ApplicationResponse actual = response.getBody();
+    assertThat(actual).isNotNull();
+    assertThat(actual.getPotentialDuplicates())
+        .isNotNull()
+        .hasSize(1)
+        .anySatisfy(
+            dup ->
+                assertThat(dup)
+                    .hasFieldOrPropertyWithValue("laaReference", "LAA-DUP-PARTIAL")
+                    .hasFieldOrPropertyWithValue("applicationId", null)
+                    .hasFieldOrPropertyWithValue("legacyReference", null));
+  }
+
+  @Test
+  void givenApplicationWithEmptyPotentialDuplicates_whenRetrieved_thenReturnsEmptyList() {
+    UUID applicationId = UUID.randomUUID();
+    UUID applyProceedingId = UUID.randomUUID();
+
+    ApplicationCreateRequest request =
+        validCreateApplicationRequest(applicationId, applyProceedingId);
+    request.setPotentialDuplicates(List.of());
+
+    UUID createdApplicationId = applicationId(post(request, headers()));
+    ResponseEntity<ApplicationResponse> response = awaitGetApplication(createdApplicationId);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    ApplicationResponse actual = response.getBody();
+    assertThat(actual).isNotNull();
+    assertThat(actual.getPotentialDuplicates()).isNotNull().isEmpty();
+  }
+
+  @Test
+  void givenApplicationWithoutPotentialDuplicates_whenRetrieved_thenReturnedAsNull() {
+    UUID applicationId = UUID.randomUUID();
+    UUID applyProceedingId = UUID.randomUUID();
+
+    ApplicationCreateRequest request =
+        validCreateApplicationRequest(applicationId, applyProceedingId);
+    // potentialDuplicates not set, should default to null
+
+    UUID createdApplicationId = applicationId(post(request, headers()));
+    ResponseEntity<ApplicationResponse> response = awaitGetApplication(createdApplicationId);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    ApplicationResponse actual = response.getBody();
+    assertThat(actual).isNotNull();
+    assertThat(actual.getPotentialDuplicates()).isNull();
+  }
+
+  @Test
+  void givenApplicationWithPotentialDuplicates_whenStoredInDatabase_thenPersistedAsJsonb() {
+    UUID applicationId = UUID.randomUUID();
+    UUID applyProceedingId = UUID.randomUUID();
+    UUID dupApplicationId = UUID.randomUUID();
+
+    ApplicationCreateRequest request =
+        validCreateApplicationRequest(applicationId, applyProceedingId);
+    request.setPotentialDuplicates(
+        List.of(
+            new uk.gov.justice.laa.dstew.access.model.PotentialDuplicate()
+                .laaReference("LAA-PERSIST-001")
+                .applicationId(dupApplicationId)
+                .legacyReference("LEGACY-PERSIST-001")));
+
+    UUID createdApplicationId = applicationId(post(request, headers()));
+    projectionAwaiter.awaitApplication(createdApplicationId);
+
+    String jsonbContent =
+        jdbcTemplate.queryForObject(
+            "SELECT potential_duplicates FROM axon.application_data WHERE application_id = ?",
+            String.class,
+            createdApplicationId);
+
+    assertThat(jsonbContent).isNotNull();
+    assertThat(jsonbContent)
+        .contains("LAA-PERSIST-001")
+        .contains(dupApplicationId.toString())
+        .contains("LEGACY-PERSIST-001");
   }
 
   @Test
