@@ -268,4 +268,91 @@ class GetApplicationResponseMapperTest {
     assertThat(response.getProceedings().getFirst().getInvolvedChildren()).isEmpty();
     assertThat(response.getProceedings().getFirst().getScopeLimitations()).isEmpty();
   }
+
+  @Test
+  void givenValidPotentialDuplicates_whenMapped_thenResponseContainsAllDuplicates() {
+    java.util.UUID dupId1 = java.util.UUID.randomUUID();
+    java.util.UUID dupId2 = java.util.UUID.randomUUID();
+    List<uk.gov.justice.laa.dstew.access.model.PotentialDuplicate> duplicates =
+        List.of(
+            new uk.gov.justice.laa.dstew.access.model.PotentialDuplicate()
+                .laaReference("LAA-123")
+                .applicationId(dupId1)
+                .legacyReference("LEGACY-999"),
+            new uk.gov.justice.laa.dstew.access.model.PotentialDuplicate()
+                .laaReference("LAA-456")
+                .applicationId(dupId2)
+                .legacyReference("LEGACY-888"));
+    ApplicationReadModel readModel =
+        DataGenerator.createDefault(
+            ApplicationReadModelGenerator.class, builder -> builder.potentialDuplicates(duplicates));
+
+    ApplicationResponse response = responseMapper.toGetApplicationResponse(readModel).getBody();
+
+    assertThat(response).isNotNull();
+    assertThat(response.getPotentialDuplicates())
+        .isNotNull()
+        .hasSize(2)
+        .anySatisfy(
+            dup ->
+                assertThat(dup)
+                    .hasFieldOrPropertyWithValue("laaReference", "LAA-123")
+                    .hasFieldOrPropertyWithValue("applicationId", dupId1)
+                    .hasFieldOrPropertyWithValue("legacyReference", "LEGACY-999"))
+        .anySatisfy(
+            dup ->
+                assertThat(dup)
+                    .hasFieldOrPropertyWithValue("laaReference", "LAA-456")
+                    .hasFieldOrPropertyWithValue("applicationId", dupId2)
+                    .hasFieldOrPropertyWithValue("legacyReference", "LEGACY-888"));
+  }
+
+  @Test
+  void givenPartialPotentialDuplicates_whenMapped_thenResponsePreservesNullFields() {
+    List<uk.gov.justice.laa.dstew.access.model.PotentialDuplicate> duplicates =
+        List.of(
+            new uk.gov.justice.laa.dstew.access.model.PotentialDuplicate()
+                .laaReference("LAA-123"));
+    ApplicationReadModel readModel =
+        DataGenerator.createDefault(
+            ApplicationReadModelGenerator.class, builder -> builder.potentialDuplicates(duplicates));
+
+    ApplicationResponse response = responseMapper.toGetApplicationResponse(readModel).getBody();
+
+    assertThat(response).isNotNull();
+    assertThat(response.getPotentialDuplicates())
+        .isNotNull()
+        .hasSize(1)
+        .anySatisfy(
+            dup ->
+                assertThat(dup)
+                    .hasFieldOrPropertyWithValue("laaReference", "LAA-123")
+                    .hasFieldOrPropertyWithValue("applicationId", null)
+                    .hasFieldOrPropertyWithValue("legacyReference", null));
+  }
+
+  @Test
+  void givenEmptyPotentialDuplicates_whenMapped_thenResponseContainsEmptyList() {
+    ApplicationReadModel readModel =
+        DataGenerator.createDefault(
+            ApplicationReadModelGenerator.class,
+            builder -> builder.potentialDuplicates(List.of()));
+
+    ApplicationResponse response = responseMapper.toGetApplicationResponse(readModel).getBody();
+
+    assertThat(response).isNotNull();
+    assertThat(response.getPotentialDuplicates()).isNotNull().isEmpty();
+  }
+
+  @Test
+  void givenNullPotentialDuplicates_whenMapped_thenResponseContainsNull() {
+    ApplicationReadModel readModel =
+        DataGenerator.createDefault(
+            ApplicationReadModelGenerator.class, builder -> builder.potentialDuplicates(null));
+
+    ApplicationResponse response = responseMapper.toGetApplicationResponse(readModel).getBody();
+
+    assertThat(response).isNotNull();
+    assertThat(response.getPotentialDuplicates()).isNull();
+  }
 }

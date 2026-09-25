@@ -442,4 +442,161 @@ class ApplicationGatewayMapperTest {
     assertThat(domain.justification()).isEqualTo("justification");
     assertThat(domain.modifiedAt()).isEqualTo(now);
   }
+
+  // ── potentialDuplicates serialization ────────────────────────────────────
+
+  @Test
+  void toApplicationEntity_withValidPotentialDuplicates_serializesToJson() {
+    UUID dupId1 = UUID.randomUUID();
+    UUID dupId2 = UUID.randomUUID();
+    ApplicationDomain domain =
+        DataGenerator.createDefault(
+            ApplicationDomainGenerator.class,
+            b ->
+                b.potentialDuplicates(
+                    Set.of(
+                        new uk.gov.justice.laa.dstew.access.model.PotentialDuplicate()
+                            .laaReference("LAA-123")
+                            .applicationId(dupId1)
+                            .legacyReference("LEGACY-999"),
+                        new uk.gov.justice.laa.dstew.access.model.PotentialDuplicate()
+                            .laaReference("LAA-456")
+                            .applicationId(dupId2)
+                            .legacyReference("LEGACY-888"))));
+
+    ApplicationEntity entity = mapper.toApplicationEntity(domain);
+
+    assertThat(entity.getPotentialDuplicates())
+        .isNotNull()
+        .contains("LAA-123")
+        .contains("LAA-456")
+        .contains("LEGACY-999")
+        .contains("LEGACY-888");
+  }
+
+  @Test
+  void toApplicationEntity_withPartialPotentialDuplicates_serializesWithNullFields() {
+    ApplicationDomain domain =
+        DataGenerator.createDefault(
+            ApplicationDomainGenerator.class,
+            b ->
+                b.potentialDuplicates(
+                    Set.of(
+                        new uk.gov.justice.laa.dstew.access.model.PotentialDuplicate()
+                            .laaReference("LAA-123"))));
+
+    ApplicationEntity entity = mapper.toApplicationEntity(domain);
+
+    assertThat(entity.getPotentialDuplicates())
+        .isNotNull()
+        .contains("\"laaReference\":\"LAA-123\"")
+        .contains("\"applicationId\":null")
+        .contains("\"legacyReference\":null");
+  }
+
+  @Test
+  void toApplicationEntity_withEmptyPotentialDuplicates_serializesToEmptyArray() {
+    ApplicationDomain domain =
+        DataGenerator.createDefault(
+            ApplicationDomainGenerator.class, b -> b.potentialDuplicates(Set.of()));
+
+    ApplicationEntity entity = mapper.toApplicationEntity(domain);
+
+    assertThat(entity.getPotentialDuplicates()).isNotNull().isEqualTo("[]");
+  }
+
+  @Test
+  void toApplicationEntity_withNullPotentialDuplicates_remainsNull() {
+    ApplicationDomain domain =
+        DataGenerator.createDefault(
+            ApplicationDomainGenerator.class, b -> b.potentialDuplicates(null));
+
+    ApplicationEntity entity = mapper.toApplicationEntity(domain);
+
+    assertThat(entity.getPotentialDuplicates()).isNull();
+  }
+
+  @Test
+  void toApplicationDomain_withValidPotentialDuplicatesJson_deserializesCorrectly() {
+    ApplicationEntity entity =
+        ApplicationEntity.builder()
+            .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
+            .potentialDuplicates(
+                "[{\"laaReference\":\"LAA-123\",\"applicationId\":\"579c8b2a-288a-4aab-b58c-af140b5e01cf\",\"legacyReference\":\"LEGACY-999\"}]")
+            .build();
+
+    ApplicationDomain domain = mapper.toApplicationDomain(entity);
+
+    assertThat(domain.potentialDuplicates())
+        .isNotNull()
+        .hasSize(1)
+        .anySatisfy(
+            dup ->
+                assertThat(dup)
+                    .hasFieldOrPropertyWithValue("laaReference", "LAA-123")
+                    .hasFieldOrPropertyWithValue(
+                        "applicationId", UUID.fromString("579c8b2a-288a-4aab-b58c-af140b5e01cf"))
+                    .hasFieldOrPropertyWithValue("legacyReference", "LEGACY-999"));
+  }
+
+  @Test
+  void toApplicationDomain_withPartialPotentialDuplicatesJson_deserializesWithNulls() {
+    ApplicationEntity entity =
+        ApplicationEntity.builder()
+            .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
+            .potentialDuplicates(
+                "[{\"laaReference\":\"LAA-123\",\"applicationId\":null,\"legacyReference\":null}]")
+            .build();
+
+    ApplicationDomain domain = mapper.toApplicationDomain(entity);
+
+    assertThat(domain.potentialDuplicates())
+        .isNotNull()
+        .hasSize(1)
+        .anySatisfy(
+            dup ->
+                assertThat(dup)
+                    .hasFieldOrPropertyWithValue("laaReference", "LAA-123")
+                    .hasFieldOrPropertyWithValue("applicationId", null)
+                    .hasFieldOrPropertyWithValue("legacyReference", null));
+  }
+
+  @Test
+  void toApplicationDomain_withEmptyPotentialDuplicatesArray_deserializesEmpty() {
+    ApplicationEntity entity =
+        ApplicationEntity.builder()
+            .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
+            .potentialDuplicates("[]")
+            .build();
+
+    ApplicationDomain domain = mapper.toApplicationDomain(entity);
+
+    assertThat(domain.potentialDuplicates()).isNotNull().isEmpty();
+  }
+
+  @Test
+  void toApplicationDomain_withNullPotentialDuplicates_remainsNull() {
+    ApplicationEntity entity =
+        ApplicationEntity.builder()
+            .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
+            .potentialDuplicates(null)
+            .build();
+
+    ApplicationDomain domain = mapper.toApplicationDomain(entity);
+
+    assertThat(domain.potentialDuplicates()).isNull();
+  }
+
+  @Test
+  void toApplicationDomain_withMalformedPotentialDuplicatesJson_returnsNull() {
+    ApplicationEntity entity =
+        ApplicationEntity.builder()
+            .status(ApplicationStatus.APPLICATION_IN_PROGRESS)
+            .potentialDuplicates("{invalid json}")
+            .build();
+
+    ApplicationDomain domain = mapper.toApplicationDomain(entity);
+
+    assertThat(domain.potentialDuplicates()).isNull();
+  }
 }

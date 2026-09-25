@@ -282,6 +282,113 @@ class GetApplicationReadModelMapperTest {
         .build();
   }
 
+  @Test
+  void givenValidPotentialDuplicatesJson_whenMapped_thenDeserializedCorrectly() {
+    UUID dupId1 = UUID.randomUUID();
+    ApplicationDbProjection projection =
+        minimalProjection().toBuilder()
+            .potentialDuplicates(
+                "[{\"laaReference\":\"LAA-123\",\"applicationId\":\""
+                    + dupId1
+                    + "\",\"legacyReference\":\"LEGACY-999\"}]")
+            .build();
+
+    ApplicationReadModel actual = mapper.toApplicationReadModel(projection);
+
+    assertThat(actual.potentialDuplicates())
+        .isNotNull()
+        .hasSize(1)
+        .anySatisfy(
+            dup ->
+                assertThat(dup)
+                    .hasFieldOrPropertyWithValue("laaReference", "LAA-123")
+                    .hasFieldOrPropertyWithValue("applicationId", dupId1)
+                    .hasFieldOrPropertyWithValue("legacyReference", "LEGACY-999"));
+  }
+
+  @Test
+  void givenPartialPotentialDuplicatesJson_whenMapped_thenDeserializedWithNulls() {
+    ApplicationDbProjection projection =
+        minimalProjection().toBuilder()
+            .potentialDuplicates(
+                "[{\"laaReference\":\"LAA-123\",\"applicationId\":null,\"legacyReference\":null}]")
+            .build();
+
+    ApplicationReadModel actual = mapper.toApplicationReadModel(projection);
+
+    assertThat(actual.potentialDuplicates())
+        .isNotNull()
+        .hasSize(1)
+        .anySatisfy(
+            dup ->
+                assertThat(dup)
+                    .hasFieldOrPropertyWithValue("laaReference", "LAA-123")
+                    .hasFieldOrPropertyWithValue("applicationId", null)
+                    .hasFieldOrPropertyWithValue("legacyReference", null));
+  }
+
+  @Test
+  void givenEmptyPotentialDuplicatesArray_whenMapped_thenEmptyList() {
+    ApplicationDbProjection projection =
+        minimalProjection().toBuilder().potentialDuplicates("[]").build();
+
+    ApplicationReadModel actual = mapper.toApplicationReadModel(projection);
+
+    assertThat(actual.potentialDuplicates()).isNotNull().isEmpty();
+  }
+
+  @Test
+  void givenNullPotentialDuplicates_whenMapped_thenNull() {
+    ApplicationDbProjection projection =
+        minimalProjection().toBuilder().potentialDuplicates(null).build();
+
+    ApplicationReadModel actual = mapper.toApplicationReadModel(projection);
+
+    assertThat(actual.potentialDuplicates()).isNull();
+  }
+
+  @Test
+  void givenMalformedPotentialDuplicatesJson_whenMapped_thenGracefullyReturnsNull() {
+    ApplicationDbProjection projection =
+        minimalProjection().toBuilder().potentialDuplicates("{invalid json}").build();
+
+    ApplicationReadModel actual = mapper.toApplicationReadModel(projection);
+
+    assertThat(actual.potentialDuplicates()).isNull();
+  }
+
+  @Test
+  void givenMultiplePotentialDuplicates_whenMapped_thenAllDeserialized() {
+    UUID dupId1 = UUID.randomUUID();
+    UUID dupId2 = UUID.randomUUID();
+    ApplicationDbProjection projection =
+        minimalProjection().toBuilder()
+            .potentialDuplicates(
+                "[{\"laaReference\":\"LAA-123\",\"applicationId\":\""
+                    + dupId1
+                    + "\",\"legacyReference\":\"LEGACY-999\"},"
+                    + "{\"laaReference\":\"LAA-456\",\"applicationId\":\""
+                    + dupId2
+                    + "\",\"legacyReference\":\"LEGACY-888\"}]")
+            .build();
+
+    ApplicationReadModel actual = mapper.toApplicationReadModel(projection);
+
+    assertThat(actual.potentialDuplicates())
+        .isNotNull()
+        .hasSize(2)
+        .anySatisfy(
+            dup ->
+                assertThat(dup)
+                    .hasFieldOrPropertyWithValue("laaReference", "LAA-123")
+                    .hasFieldOrPropertyWithValue("applicationId", dupId1))
+        .anySatisfy(
+            dup ->
+                assertThat(dup)
+                    .hasFieldOrPropertyWithValue("laaReference", "LAA-456")
+                    .hasFieldOrPropertyWithValue("applicationId", dupId2));
+  }
+
   private static Stream<Arguments> providerScenarios() {
     return Stream.of(
         arguments(null, null, false, null, null),
