@@ -20,6 +20,7 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.Opponent;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationMeritsDecision;
+import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 
 /** Replayable current-state read model for an Application. */
 @Entity
@@ -77,6 +78,9 @@ public class ApplicationReadModel {
   @Transient private Map<UUID, ApplicationMeritsDecision> meritsDecisions;
 
   @Transient private Map<String, Object> certificate;
+
+  @Column(name = "potential_duplicates", columnDefinition = "jsonb")
+  private List<PotentialDuplicate> potentialDuplicates;
 
   @Column(name = "created_at")
   private Instant createdAt;
