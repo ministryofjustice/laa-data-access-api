@@ -17,7 +17,7 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResu
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityResponse;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.GetPriorAuthorityUseCase;
 
-/** Verifies that each controller endpoint delegates to the appropriate use case and mapper. */
+/** Verifies that the Prior Authority query controller delegates to its use case and mapper. */
 @ExtendWith(MockitoExtension.class)
 class PriorAuthoritiesQueryControllerTest {
 
