@@ -1,16 +1,16 @@
 package uk.gov.justice.laa.dstew.access;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
 
+import jakarta.annotation.PostConstruct;
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,7 +36,6 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.ObjectMapper;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantedOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityDraftRequest;
@@ -50,11 +49,9 @@ import uk.gov.justice.laa.dstew.access.model.SavePriorAuthorityDraftResponse;
 import uk.gov.justice.laa.dstew.access.model.SubmitPriorAuthorityDraftResponse;
 import uk.gov.justice.laa.dstew.access.model.UpdatePriorAuthorityDocumentTypeRequest;
 import uk.gov.justice.laa.dstew.access.model.UploadPriorAuthorityDocumentResponse;
-import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
-import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
-import uk.gov.justice.laa.dstew.access.query.application.priorauthority.FindPriorAuthorityByPriorAuthorityIdQuery;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
+import util.ProjectionAwaiter;
 
 /** Full HTTP/Postgres/Axon integration tests for the Prior Authority draft/submit lifecycle. */
 @Testcontainers
@@ -80,6 +77,13 @@ class PriorAuthorityDraftIntegrationTest {
   @Autowired private QueryGateway queryGateway;
 
   @MockitoBean private SdsService sdsService;
+
+  private ProjectionAwaiter projectionAwaiter;
+
+  @PostConstruct
+  void initialiseProjectionAwaiter() {
+    projectionAwaiter = new ProjectionAwaiter(queryGateway);
+  }
 
   @Test
   void givenGrantedApplication_whenSavePriorAuthorityDraft_thenPersistsDraftAndProjects() {
@@ -107,7 +111,7 @@ class PriorAuthorityDraftIntegrationTest {
                 UUID.class,
                 priorAuthorityId))
         .isEqualTo(applicationId);
-    awaitPriorAuthorityProjection(priorAuthorityId);
+    projectionAwaiter.awaitPriorAuthority(priorAuthorityId);
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM axon.prior_authority_current_state WHERE prior_authority_id = ?",
@@ -157,7 +161,7 @@ class PriorAuthorityDraftIntegrationTest {
   void givenUngrantedApplication_whenSavePriorAuthorityDraft_thenReturnsBadRequest() {
     UUID applicationId = UUID.randomUUID();
     createApplication(applicationId, UUID.randomUUID());
-    awaitApplicationProjection(applicationId);
+    projectionAwaiter.awaitApplication(applicationId);
     CreatePriorAuthorityDraftRequest request =
         CreatePriorAuthorityDraftRequest.builder()
             .applicationId(applicationId)
@@ -179,8 +183,7 @@ class PriorAuthorityDraftIntegrationTest {
   }
 
   @Test
-  void givenExistingDraft_whenUpdatePriorAuthorityDraft_thenReturns204AndPersistsUpdatedContent()
-      throws Exception {
+  void givenExistingDraft_whenUpdatePriorAuthorityDraft_thenReturns204AndPersistsUpdatedContent() {
     UUID applicationId = grantedApplication();
     UUID priorAuthorityId = saveDraft(applicationId, PriorAuthorityType.EXPERT, null, null);
 
@@ -227,8 +230,7 @@ class PriorAuthorityDraftIntegrationTest {
   }
 
   @Test
-  void givenDraft_whenSubmitPriorAuthorityDraft_thenTransitionsToSubmittedAndDeletesDraft()
-      throws Exception {
+  void givenDraft_whenSubmitPriorAuthorityDraft_thenTransitionsToSubmittedAndDeletesDraft() {
     UUID applicationId = grantedApplication();
     UUID priorAuthorityId =
         saveDraft(
@@ -337,8 +339,131 @@ class PriorAuthorityDraftIntegrationTest {
 
   @Test
   void
-      givenDraftViolatesSchema_whenSubmitPriorAuthorityDraft_thenReturnsBadRequestAndDraftPersists()
-          throws Exception {
+      givenDraftWithUploadedDocument_whenDeletePriorAuthorityDocument_thenReturnsNoContentAndRemovesDocument() {
+    UUID applicationId = grantedApplication();
+    UUID priorAuthorityId = saveDraft(applicationId, PriorAuthorityType.EXPERT, null, null);
+    when(sdsService.savePriorAuthorityFile(any(), any(), any()))
+        .thenReturn(new DocumentUploadResponse().checksum("checksum"));
+    UUID documentId = uploadDocument(priorAuthorityId, "evidence.pdf");
+
+    ResponseEntity<Void> deleteResponse =
+        restTemplate.exchange(
+            deleteDocumentUrl(priorAuthorityId, documentId),
+            HttpMethod.DELETE,
+            new HttpEntity<>(headers()),
+            Void.class);
+
+    assertThat(deleteResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    verify(sdsService).deleteFiles(priorAuthorityId, List.of(documentId.toString() + ".pdf"));
+
+    ResponseEntity<String> draftResponse =
+        restTemplate.exchange(
+            priorAuthorityUrl(priorAuthorityId),
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            String.class);
+    assertThat(draftResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+    PriorAuthorityResponse draft =
+        objectMapper.readValue(draftResponse.getBody(), PriorAuthorityResponse.class);
+    assertThat(draft.getUploadedDocuments()).isEmpty();
+  }
+
+  @Test
+  void givenDeletedDocument_whenSubmitPriorAuthorityDraft_thenSubmittedPayloadExcludesDocument() {
+    UUID applicationId = grantedApplication();
+    UUID priorAuthorityId =
+        saveDraft(
+            applicationId,
+            PriorAuthorityType.DISBURSEMENT,
+            "Interpreter costs for proceedings",
+            validDisbursementRequest());
+    when(sdsService.savePriorAuthorityFile(any(), any(), any()))
+        .thenReturn(new DocumentUploadResponse().checksum("checksum"));
+    UUID documentId = uploadDocument(priorAuthorityId, "evidence.pdf");
+
+    ResponseEntity<Void> deleteResponse =
+        restTemplate.exchange(
+            deleteDocumentUrl(priorAuthorityId, documentId),
+            HttpMethod.DELETE,
+            new HttpEntity<>(headers()),
+            Void.class);
+    assertThat(deleteResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+
+    ResponseEntity<String> submitResponse =
+        restTemplate.postForEntity(
+            submitUrl(priorAuthorityId), new HttpEntity<>(null, headers()), String.class);
+    assertThat(submitResponse.getStatusCode())
+        .withFailMessage("Submit response: %s", submitResponse.getBody())
+        .isIn(HttpStatus.OK, HttpStatus.ACCEPTED);
+
+    ResponseEntity<String> getResponse =
+        restTemplate.exchange(
+            priorAuthorityUrl(priorAuthorityId),
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            String.class);
+    assertThat(getResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+    PriorAuthorityResponse priorAuthority =
+        objectMapper.readValue(getResponse.getBody(), PriorAuthorityResponse.class);
+    assertThat(priorAuthority.getStatus()).isEqualTo(PriorAuthorityResponse.StatusEnum.SUBMITTED);
+    assertThat(priorAuthority.getUploadedDocuments()).isEmpty();
+  }
+
+  @Test
+  void givenNonexistentPriorAuthority_whenDeletePriorAuthorityDocument_thenReturnsNotFound() {
+    ResponseEntity<String> response =
+        restTemplate.exchange(
+            deleteDocumentUrl(UUID.randomUUID(), UUID.randomUUID()),
+            HttpMethod.DELETE,
+            new HttpEntity<>(headers()),
+            String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+  }
+
+  @Test
+  void givenSubmittedPriorAuthority_whenDeletePriorAuthorityDocument_thenReturnsNotFound() {
+    UUID applicationId = grantedApplication();
+    UUID priorAuthorityId =
+        saveDraft(
+            applicationId,
+            PriorAuthorityType.DISBURSEMENT,
+            "Interpreter costs for proceedings",
+            validDisbursementRequest());
+    when(sdsService.savePriorAuthorityFile(any(), any(), any()))
+        .thenReturn(new DocumentUploadResponse().checksum("checksum"));
+    UUID documentId = uploadDocument(priorAuthorityId, "evidence.pdf");
+    ResponseEntity<Void> updateDocumentTypeResponse =
+        restTemplate.exchange(
+            documentUrl(priorAuthorityId, documentId),
+            HttpMethod.PATCH,
+            new HttpEntity<>(
+                new UpdatePriorAuthorityDocumentTypeRequest(
+                    PriorAuthorityDocumentType.GATEWAY_EVIDENCE),
+                headers()),
+            Void.class);
+    assertThat(updateDocumentTypeResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+    ResponseEntity<String> submitResponse =
+        restTemplate.postForEntity(
+            submitUrl(priorAuthorityId), new HttpEntity<>(null, headers()), String.class);
+    assertThat(submitResponse.getStatusCode())
+        .withFailMessage("Submit response: %s", submitResponse.getBody())
+        .isIn(HttpStatus.OK, HttpStatus.ACCEPTED);
+
+    ResponseEntity<String> deleteResponse =
+        restTemplate.exchange(
+            deleteDocumentUrl(priorAuthorityId, documentId),
+            HttpMethod.DELETE,
+            new HttpEntity<>(headers()),
+            String.class);
+
+    assertThat(deleteResponse.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+  }
+
+  @Test
+  void
+      givenDraftViolatesSchema_whenSubmitPriorAuthorityDraft_thenReturnsBadRequestAndDraftPersists() {
     UUID applicationId = grantedApplication();
     // Missing justification, which the full PriorAuthority schema requires at submit time.
     UUID priorAuthorityId = saveDraft(applicationId, PriorAuthorityType.EXPERT, null, null);
@@ -395,31 +520,6 @@ class PriorAuthorityDraftIntegrationTest {
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
   }
 
-  @Test
-  void givenGrantedApplication_whenPostingLegacyPriorAuthorityEndpoint_thenReturnsNotFound() {
-    UUID applicationId = grantedApplication();
-    String payload =
-        """
-        {
-          "priorAuthorityType":"DISBURSEMENT",
-          "justification":"Interpreter costs for proceedings",
-          "disbursementDetails":{"disbursementPurpose":"Court interpreter","disbursementAmount":150.0}
-        }
-        """;
-
-    ResponseEntity<String> response =
-        restTemplate.postForEntity(
-            "http://localhost:"
-                + port
-                + "/api/v0/applications/"
-                + applicationId
-                + "/prior-authority",
-            new HttpEntity<>(payload, headers()),
-            String.class);
-
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-  }
-
   private UUID saveDraft(
       UUID applicationId,
       PriorAuthorityType priorAuthorityType,
@@ -440,7 +540,7 @@ class PriorAuthorityDraftIntegrationTest {
         objectMapper
             .readValue(response.getBody(), SavePriorAuthorityDraftResponse.class)
             .getPriorAuthorityId();
-    awaitPriorAuthorityProjection(priorAuthorityId);
+    projectionAwaiter.awaitPriorAuthority(priorAuthorityId);
     return priorAuthorityId;
   }
 
@@ -464,9 +564,9 @@ class PriorAuthorityDraftIntegrationTest {
   private UUID grantedApplication() {
     UUID applicationId = UUID.randomUUID();
     createApplication(applicationId, UUID.randomUUID());
-    awaitApplicationProjection(applicationId);
+    projectionAwaiter.awaitApplication(applicationId);
     grantApplication(applicationId);
-    awaitApplicationProjectionVersion(applicationId, 1L);
+    projectionAwaiter.awaitApplicationVersion(applicationId, 1L);
     return applicationId;
   }
 
@@ -487,47 +587,6 @@ class PriorAuthorityDraftIntegrationTest {
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
   }
 
-  private ApplicationReadModel awaitApplicationProjection(UUID applicationId) {
-    return await()
-        .alias("application projection to be populated for " + applicationId)
-        .atMost(15, TimeUnit.SECONDS)
-        .pollInterval(100, TimeUnit.MILLISECONDS)
-        .until(
-            () ->
-                queryGateway
-                    .query(new FindApplicationByIdQuery(applicationId), ApplicationReadModel.class)
-                    .join(),
-            Objects::nonNull);
-  }
-
-  private ApplicationReadModel awaitApplicationProjectionVersion(UUID applicationId, long version) {
-    return await()
-        .alias("application projection to reach version " + version + " for " + applicationId)
-        .atMost(15, TimeUnit.SECONDS)
-        .pollInterval(100, TimeUnit.MILLISECONDS)
-        .until(
-            () ->
-                queryGateway
-                    .query(new FindApplicationByIdQuery(applicationId), ApplicationReadModel.class)
-                    .join(),
-            projected -> projected != null && projected.getApplicationDataVersion() == version);
-  }
-
-  private PriorAuthorityResult awaitPriorAuthorityProjection(UUID priorAuthorityId) {
-    return await()
-        .alias("prior authority projection to be populated for " + priorAuthorityId)
-        .atMost(15, TimeUnit.SECONDS)
-        .pollInterval(100, TimeUnit.MILLISECONDS)
-        .until(
-            () ->
-                queryGateway
-                    .query(
-                        new FindPriorAuthorityByPriorAuthorityIdQuery(priorAuthorityId),
-                        PriorAuthorityResult.class)
-                    .join(),
-            Objects::nonNull);
-  }
-
   private String saveDraftUrl() {
     return "http://localhost:" + port + "/api/v0/prior-authorities";
   }
@@ -546,6 +605,20 @@ class PriorAuthorityDraftIntegrationTest {
 
   private String documentUrl(UUID priorAuthorityId, UUID documentId) {
     return uploadUrl(priorAuthorityId) + "/" + documentId;
+  }
+
+  private String deleteDocumentUrl(UUID priorAuthorityId, UUID documentId) {
+    return priorAuthorityUrl(priorAuthorityId) + "/documents/" + documentId;
+  }
+
+  private UUID uploadDocument(UUID priorAuthorityId, String filename) {
+    ResponseEntity<String> uploadResponse =
+        restTemplate.postForEntity(
+            uploadUrl(priorAuthorityId), uploadRequest(filename), String.class);
+    assertThat(uploadResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    return objectMapper
+        .readValue(uploadResponse.getBody(), UploadPriorAuthorityDocumentResponse.class)
+        .getDocumentId();
   }
 
   private HttpEntity<MultiValueMap<String, Object>> uploadRequest(String filename) {

@@ -3,9 +3,9 @@ package uk.gov.justice.laa.dstew.access;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
-import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validLinkedCreateApplicationRequest;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.axonframework.common.configuration.AxonConfiguration;
@@ -17,7 +17,6 @@ import org.axonframework.messaging.eventhandling.GenericEventMessage;
 import org.axonframework.messaging.eventhandling.annotation.EventHandler;
 import org.axonframework.messaging.eventhandling.processing.errorhandling.PropagatingErrorHandler;
 import org.axonframework.messaging.eventhandling.processing.streaming.StreamingEventProcessor;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
@@ -66,10 +65,8 @@ class EventProcessorRecoveryInMemoryTest {
   @Autowired private PermanentlyFailingProjection permanentlyFailingProjection;
 
   @Test
-  @Disabled("Linked applications removed from schema; orchestration retained for future endpoint")
-  void givenDeletedProjections_whenProcessorsReset_thenReplayRebuildsAllReadModels() {
+  void givenDeletedProjections_whenProcessorsReset_thenReplayRebuildsApplicationReadModels() {
     UUID applicationId = UUID.randomUUID();
-    final UUID linkedApplicationId = UUID.randomUUID();
     ApplicationCreateRequest request =
         validCreateApplicationRequest(applicationId, UUID.randomUUID());
     HttpHeaders headers = new HttpHeaders();
@@ -82,28 +79,16 @@ class EventProcessorRecoveryInMemoryTest {
                     "/api/v0/applications", new HttpEntity<>(request, headers), Void.class)
                 .getStatusCode())
         .isEqualTo(HttpStatus.CREATED);
-    assertThat(
-            restTemplate
-                .postForEntity(
-                    "/api/v0/applications",
-                    new HttpEntity<>(
-                        validLinkedCreateApplicationRequest(
-                            linkedApplicationId, UUID.randomUUID(), applicationId),
-                        headers),
-                    Void.class)
-                .getStatusCode())
-        .isEqualTo(HttpStatus.CREATED);
     await()
         .atMost(Duration.ofSeconds(5))
         .until(
             () ->
                 applicationReadRepository.existsById(applicationId)
-                    && applicationReadRepository.existsById(linkedApplicationId)
-                    && groupReadRepository.findByLeadApplicationId(applicationId).isPresent()
                     && applicationHistoryReadRepository
-                            .findAllByApplicationIdOrderByOccurredAtAsc(linkedApplicationId)
+                            .findAllByApplicationIdOrderByOccurredAtAsc(applicationId)
                             .size()
-                        >= 2);
+                        == 1
+                    && groupReadRepository.count() == 0);
 
     assertThat(
             restTemplate
@@ -130,7 +115,7 @@ class EventProcessorRecoveryInMemoryTest {
                     .isEqualTo(uk.gov.justice.laa.dstew.access.model.AutoGranted.MANUAL));
 
     var processors =
-        java.util.List.of(
+        List.of(
             processor("application-projection"),
             processor("application-history-projection"),
             processor("linked-application-group-projection"));
@@ -150,12 +135,11 @@ class EventProcessorRecoveryInMemoryTest {
         .until(
             () ->
                 applicationReadRepository.existsById(applicationId)
-                    && applicationReadRepository.existsById(linkedApplicationId)
-                    && groupReadRepository.findByLeadApplicationId(applicationId).isPresent()
                     && applicationHistoryReadRepository
-                            .findAllByApplicationIdOrderByOccurredAtAsc(linkedApplicationId)
+                            .findAllByApplicationIdOrderByOccurredAtAsc(applicationId)
                             .size()
-                        >= 2);
+                        == 1
+                    && groupReadRepository.count() == 0);
     assertThat(
             restTemplate
                 .exchange(

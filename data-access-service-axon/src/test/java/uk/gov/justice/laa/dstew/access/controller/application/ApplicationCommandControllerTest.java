@@ -24,6 +24,9 @@ import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationUseC
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.document.UploadDocumentUseCase;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkApplicationCommand;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkApplicationUseCase;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkType;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand;
@@ -31,6 +34,8 @@ import uk.gov.justice.laa.dstew.access.command.application.ready.ReadyApplicatio
 import uk.gov.justice.laa.dstew.access.command.application.ready.RecordAutoGrantOutcomeUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationUseCase;
+import uk.gov.justice.laa.dstew.access.model.ApplicationLinkRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationLinkType;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
 import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
@@ -45,11 +50,13 @@ class ApplicationCommandControllerTest {
   private RecordAutoGrantOutcomeUseCase recordAutoGrantOutcomeUseCase;
   private UpdateApplicationUseCase updateApplicationUseCase;
   private UploadDocumentUseCase uploadDocumentUseCase;
+  private LinkApplicationUseCase linkApplicationUseCase;
   private CreateApplicationCommandMapper commandMapper;
   private MakeDecisionCommandMapper decisionCommandMapper;
   private CreateNoteCommandMapper createNoteCommandMapper;
   private AutoGrantOutcomeCommandMapper autoGrantOutcomeCommandMapper;
   private UpdateApplicationCommandMapper updateApplicationCommandMapper;
+  private LinkApplicationCommandMapper linkApplicationCommandMapper;
   private AuthenticatedUserId authenticatedUserId;
   private ApplicationCommandController controller;
 
@@ -63,11 +70,13 @@ class ApplicationCommandControllerTest {
     recordAutoGrantOutcomeUseCase = mock(RecordAutoGrantOutcomeUseCase.class);
     updateApplicationUseCase = mock(UpdateApplicationUseCase.class);
     uploadDocumentUseCase = mock(UploadDocumentUseCase.class);
+    linkApplicationUseCase = mock(LinkApplicationUseCase.class);
     commandMapper = mock(CreateApplicationCommandMapper.class);
     decisionCommandMapper = mock(MakeDecisionCommandMapper.class);
     createNoteCommandMapper = mock(CreateNoteCommandMapper.class);
     autoGrantOutcomeCommandMapper = mock(AutoGrantOutcomeCommandMapper.class);
     updateApplicationCommandMapper = mock(UpdateApplicationCommandMapper.class);
+    linkApplicationCommandMapper = mock(LinkApplicationCommandMapper.class);
     authenticatedUserId = mock(AuthenticatedUserId.class);
     controller =
         new ApplicationCommandController(
@@ -77,11 +86,13 @@ class ApplicationCommandControllerTest {
             recordAutoGrantOutcomeUseCase,
             updateApplicationUseCase,
             uploadDocumentUseCase,
+            linkApplicationUseCase,
             commandMapper,
             decisionCommandMapper,
             createNoteCommandMapper,
             autoGrantOutcomeCommandMapper,
             updateApplicationCommandMapper,
+            linkApplicationCommandMapper,
             authenticatedUserId);
   }
 
@@ -116,6 +127,21 @@ class ApplicationCommandControllerTest {
 
     assertThat(controller.recordAutoGrantOutcome(null, id, request).getStatusCode())
         .isEqualTo(HttpStatus.OK);
+  }
+
+  @Test
+  void givenRequest_whenLinkApplication_thenDelegatesToUseCaseAndReturnsNoContent() {
+    UUID id = UUID.randomUUID();
+    ApplicationLinkRequest request =
+        new ApplicationLinkRequest(UUID.randomUUID(), ApplicationLinkType.FAMILY);
+    var command =
+        new LinkApplicationCommand(id, request.getApplicationId(), LinkType.FAMILY, Instant.now());
+    when(linkApplicationCommandMapper.toCommand(id, request)).thenReturn(command);
+
+    ResponseEntity<Void> response = controller.linkApplication(null, id, request);
+
+    verify(linkApplicationUseCase).execute(command);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
   }
 
   @Test
