@@ -57,8 +57,4 @@ public class ApplicationContent implements Serializable {
   private List<Opponent> opponents;
 
   @Nullable private String status;
-
-  @Nullable
-  @Schema(name = "allLinkedApplications", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
-  private List<LinkedApplication> allLinkedApplications;
 }

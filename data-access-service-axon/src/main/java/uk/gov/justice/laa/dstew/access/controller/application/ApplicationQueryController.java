@@ -1,6 +1,5 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
-import io.swagger.v3.oas.annotations.Hidden;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
@@ -18,7 +17,6 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSortBy;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
-import uk.gov.justice.laa.dstew.access.model.DocumentDownloadResponse;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
@@ -28,7 +26,6 @@ import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsQuer
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsResult;
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryResult;
-import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
 import uk.gov.justice.laa.dstew.access.usecase.application.ApplicationQueryUseCase;
@@ -43,7 +40,6 @@ public class ApplicationQueryController implements ApplicationQueryApi {
   private final GetApplicationHistoryResponseMapper historyResponseMapper;
   private final GetAllNotesForApplicationResponseMapper notesResponseMapper;
   private final SubscriptionProjectionGateway projectionGateway;
-  private final SdsService sdsService;
 
   /**
    * Constructs the controller with its query gateway and response mappers.
@@ -61,15 +57,13 @@ public class ApplicationQueryController implements ApplicationQueryApi {
       GetAllApplicationsResponseMapper getAllResponseMapper,
       GetApplicationHistoryResponseMapper historyResponseMapper,
       GetAllNotesForApplicationResponseMapper notesResponseMapper,
-      SubscriptionProjectionGateway projectionGateway,
-      SdsService sdsService) {
+      SubscriptionProjectionGateway projectionGateway) {
     this.applicationQueryUseCase = applicationQueryUseCase;
     this.responseMapper = responseMapper;
     this.getAllResponseMapper = getAllResponseMapper;
     this.historyResponseMapper = historyResponseMapper;
     this.notesResponseMapper = notesResponseMapper;
     this.projectionGateway = projectionGateway;
-    this.sdsService = sdsService;
   }
 
   /**
@@ -158,16 +152,6 @@ public class ApplicationQueryController implements ApplicationQueryApi {
     ApplicationNotesResponse response =
         notesResponseMapper.toResponse(applicationQueryUseCase.getNotesForApplication(id).notes());
     return ResponseEntity.ok(response);
-  }
-
-  @Hidden
-  @Override
-  @LogMethodArguments
-  @LogMethodResponse
-  public ResponseEntity<DocumentDownloadResponse> downloadDocument(
-      ServiceName serviceName, UUID id, String documentId) {
-    DocumentDownloadResponse file = sdsService.getFile(id, documentId);
-    return ResponseEntity.ok(file);
   }
 
   private Optional<ApplicationReadModel> findApplicationAwaitingProjection(UUID applicationId) {

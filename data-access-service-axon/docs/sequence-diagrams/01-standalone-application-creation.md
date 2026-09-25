@@ -1,6 +1,7 @@
 # Standalone Application Creation
 
-An application submitted without a `leadApplicationId` — it is implicitly the lead of any future group.
+Application creation always creates an unlinked application. Linking is performed later through the
+explicit application-link endpoint.
 
 ```mermaid
 sequenceDiagram
@@ -10,7 +11,7 @@ sequenceDiagram
     participant CmdGateway as CommandGateway
     participant AppAggregate as ApplicationAggregate
     participant Factory as ApplicationCreationDetailsFactory
-    participant Router as ApplicationGroupEventRouter<br/>(subscribing)
+    participant RouteProjection as ApplicationGroupRouteProjection<br/>(subscribing)
     participant Projection as ApplicationProjection<br/>(tracking)
 
     Client->>Controller: POST /api/v0/applications
@@ -22,19 +23,17 @@ sequenceDiagram
     Controller->>CmdGateway: sendAndWait(CreateApplicationCommand)
     CmdGateway->>AppAggregate: handle(CreateApplicationCommand) [CREATE_IF_MISSING]
     AppAggregate->>Factory: prepare(command)
-    Factory-->>AppAggregate: ApplicationCreationDetails (leadApplicationId = null)
-    Note over AppAggregate: No self-referential guard triggered
+    Factory-->>AppAggregate: ApplicationCreationDetails (creation-only fields)
     AppAggregate->>AppAggregate: apply(ApplicationCreatedEvent)
-    Note over AppAggregate: isAssociatedMember = false
-
-    AppAggregate->>Router: on(ApplicationCreatedEvent) [same thread/UoW]
-    Note over Router: leadApplicationId == null → returns immediately
+    Note over AppAggregate: No linked-group commands are dispatched
 
     AppAggregate-->>CmdGateway: applicationId
     CmdGateway-->>Controller: applicationId
 
+    RouteProjection->>RouteProjection: on(ApplicationCreatedEvent) [subscribing]
+    RouteProjection->>RouteProjection: save STANDALONE route
     Projection->>Projection: on(ApplicationCreatedEvent) [async]
-    Projection->>Projection: save ApplicationReadModel
+    Projection->>Projection: save unlinked ApplicationReadModel
     Projection->>SubGateway: emit update to subscription query
 
     SubGateway-->>Controller: ApplicationReadModel received

@@ -12,5 +12,6 @@ import org.axonframework.messaging.eventhandling.annotation.Event;
 @Event
 public record MemberAddedToGroupEvent(
     @EventTag(key = "LinkedApplicationGroupAggregate") UUID groupId,
+    UUID leadApplicationId,
     UUID memberId,
     Instant occurredAt) {}

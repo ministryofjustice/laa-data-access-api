@@ -18,4 +18,13 @@ class AxonEventProcessingConfigTest {
     assertThat(definition.name()).isEqualTo("prior-authority-projection");
     assertThat(definition.mode()).isEqualTo(EventProcessorSettings.ProcessorMode.POOLED);
   }
+
+  @Test
+  void applicationGroupRouteProcessorBeanUsesSubscribingWithCorrectNamespace() {
+    EventProcessorDefinition definition = config.applicationGroupRouteProcessor();
+
+    assertThat(definition).isNotNull();
+    assertThat(definition.name()).isEqualTo("application-group-route");
+    assertThat(definition.mode()).isEqualTo(EventProcessorSettings.ProcessorMode.SUBSCRIBING);
+  }
 }

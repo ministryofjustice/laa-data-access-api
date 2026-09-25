@@ -14,5 +14,4 @@ public record ParsedAppContentDetails(
     String matterType,
     Instant submittedAt,
     Boolean usedDelegatedFunctions,
-    List<Proceeding> proceedings,
-    List<LinkedApplication> allLinkedApplications) {}
+    List<Proceeding> proceedings) {}
