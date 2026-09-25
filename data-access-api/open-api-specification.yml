@@ -23,6 +23,12 @@ paths:
     $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1{id}~1auto-grant-outcome"
   /api/v0/applications/{id}/certificate:
     $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1{id}~1certificate"
+  /api/v0/application-drafts:
+    $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1application-drafts"
+  /api/v0/application-drafts/{applicationId}:
+    $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1application-drafts~1{applicationId}"
+  /api/v0/application-drafts/{applicationId}/submit:
+    $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1application-drafts~1{applicationId}~1submit"
   /api/v0/individuals:
     $ref: "./open-api-individuals/resources.yml#/paths/~1api~1v0~1individuals"
   /api/v0/applications/{id}/notes:
