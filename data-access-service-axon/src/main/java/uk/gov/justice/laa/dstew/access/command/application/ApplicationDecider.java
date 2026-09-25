@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -15,6 +16,10 @@ import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataP
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeDecisionProceeding;
+import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftStartedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftUpdatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.draft.CreateApplicationDraftCommand;
+import uk.gov.justice.laa.dstew.access.command.application.draft.UpdateApplicationDraftCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand;
@@ -49,7 +54,8 @@ public final class ApplicationDecider {
       long applicationDataVersion) {
 
     if (state.applicationId != null) {
-      if (state.requestFingerprint.equals(fingerprint) && state.schemaVersion == schemaVersion) {
+      if (Objects.equals(state.requestFingerprint, fingerprint)
+          && state.schemaVersion == schemaVersion) {
         return Collections.emptyList();
       }
       throw new ApplicationCreationConflictException(state.applicationId);
@@ -57,6 +63,35 @@ public final class ApplicationDecider {
 
     return List.of(
         buildApplicationCreatedEvent(applicationId, applicationDataVersion, fingerprint, details));
+  }
+
+  /** Returns an {@link ApplicationDraftStartedEvent} for the first save of a new draft. */
+  public static ApplicationDraftStartedEvent decideStartDraft(
+      CreateApplicationDraftCommand command) {
+    return new ApplicationDraftStartedEvent(
+        command.applicationId(), command.schemaVersion(), command.occurredAt());
+  }
+
+  /**
+   * Returns an {@link ApplicationDraftUpdatedEvent} — a thin, PII-free pointer with no draft
+   * content — for a draft-body update.
+   */
+  public static ApplicationDraftUpdatedEvent decideDraftUpdated(
+      UpdateApplicationDraftCommand command) {
+    return new ApplicationDraftUpdatedEvent(command.applicationId(), command.occurredAt());
+  }
+
+  /**
+   * Returns the {@link ApplicationCreatedEvent} for a draft being submitted — the same event type
+   * emitted by a direct {@link CreateApplicationCommand}, so the projection requires no changes.
+   */
+  public static ApplicationCreatedEvent decideSubmitDraft(
+      UUID applicationId,
+      long applicationDataVersion,
+      String fingerprint,
+      ApplicationCreationDetails details) {
+    return buildApplicationCreatedEvent(
+        applicationId, applicationDataVersion, fingerprint, details);
   }
 
   /**

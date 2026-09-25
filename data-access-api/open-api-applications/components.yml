@@ -123,6 +123,56 @@ components:
           additionalProperties: true
           minProperties: 1
 
+    SaveApplicationDraftRequest:
+      type: object
+      properties:
+        status:
+          $ref: "../open-api-common/components.yml#/components/schemas/ApplicationStatus"
+        applicationContent:
+          type: object
+          description: Application data accumulated so far on the draft
+          additionalProperties: true
+        laaReference:
+          type: string
+
+    CreateApplicationDraftRequest:
+      allOf:
+        - type: object
+          required:
+            - id
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: The unique reference used to identify the application.
+        - $ref: "#/components/schemas/SaveApplicationDraftRequest"
+
+    SaveApplicationDraftResponse:
+      type: object
+      required:
+        - applicationId
+        - savedAt
+      properties:
+        applicationId:
+          type: string
+          format: uuid
+        savedAt:
+          type: string
+          format: date-time
+
+    SubmitApplicationDraftResponse:
+      type: object
+      required:
+        - applicationId
+        - submittedAt
+      properties:
+        applicationId:
+          type: string
+          format: uuid
+        submittedAt:
+          type: string
+          format: date-time
+
     ApplicationLinkType:
       type: string
       enum:
