@@ -265,7 +265,7 @@ class ApplicationAggregateDraftTest {
     UUID applicationId = UUID.randomUUID();
     Instant startedAt = Instant.parse("2026-08-01T10:00:00Z");
     Instant submittedAt = Instant.parse("2026-08-02T10:00:00Z");
-    Map<String, Object> applicationContent = Map.of();
+    Map<String, Object> applicationContent = Map.of("foo", "bar");
     ApplicationDraftPayload draftPayload =
         new ApplicationDraftPayload("APPLICATION_SUBMITTED", "LAA-123", applicationContent, "{}");
     ApplicationDraftStartedEvent existingEvent =
@@ -310,7 +310,7 @@ class ApplicationAggregateDraftTest {
   }
 
   @Test
-  void givenAlreadyCreatedApplication_whenSubmitDraft_thenThrowsConflict() {
+  void givenAlreadyCreatedApplication_whenSubmitDraft_thenThrowsResourceNotFound() {
     UUID applicationId = UUID.randomUUID();
     ApplicationCreatedEvent existingEvent = applicationCreatedEvent(applicationId);
 
@@ -323,9 +323,90 @@ class ApplicationAggregateDraftTest {
         .when()
         .command(command)
         .then()
-        .exception(ApplicationCreationConflictException.class)
+        .exception(ResourceNotFoundException.class)
         .noEvents();
 
+    verify(draftStore, never()).delete(any());
+  }
+
+  @Test
+  void givenNullStatus_whenSubmit_thenThrowsValidationException() {
+    UUID applicationId = UUID.randomUUID();
+    Instant startedAt = Instant.parse("2026-08-01T10:00:00Z");
+    ApplicationDraftPayload draftPayload =
+        new ApplicationDraftPayload(null, "LAA-123", Map.of("key", "value"), "{}");
+    ApplicationDraftStartedEvent existingEvent =
+        new ApplicationDraftStartedEvent(applicationId, 1, startedAt);
+
+    when(draftStore.find(applicationId)).thenReturn(Optional.of(draftPayload));
+
+    SubmitApplicationDraftCommand command =
+        new SubmitApplicationDraftCommand(applicationId, Instant.now());
+
+    fixture
+        .given()
+        .events(existingEvent)
+        .when()
+        .command(command)
+        .then()
+        .exception(ValidationException.class)
+        .noEvents();
+
+    verify(applicationDataStore, never()).append(any(), anyLong(), any());
+    verify(draftStore, never()).delete(any());
+  }
+
+  @Test
+  void givenBlankLaaReference_whenSubmit_thenThrowsValidationException() {
+    UUID applicationId = UUID.randomUUID();
+    Instant startedAt = Instant.parse("2026-08-01T10:00:00Z");
+    ApplicationDraftPayload draftPayload =
+        new ApplicationDraftPayload("APPLICATION_SUBMITTED", "   ", Map.of("key", "value"), "{}");
+    ApplicationDraftStartedEvent existingEvent =
+        new ApplicationDraftStartedEvent(applicationId, 1, startedAt);
+
+    when(draftStore.find(applicationId)).thenReturn(Optional.of(draftPayload));
+
+    SubmitApplicationDraftCommand command =
+        new SubmitApplicationDraftCommand(applicationId, Instant.now());
+
+    fixture
+        .given()
+        .events(existingEvent)
+        .when()
+        .command(command)
+        .then()
+        .exception(ValidationException.class)
+        .noEvents();
+
+    verify(applicationDataStore, never()).append(any(), anyLong(), any());
+    verify(draftStore, never()).delete(any());
+  }
+
+  @Test
+  void givenEmptyApplicationContent_whenSubmit_thenThrowsValidationException() {
+    UUID applicationId = UUID.randomUUID();
+    Instant startedAt = Instant.parse("2026-08-01T10:00:00Z");
+    ApplicationDraftPayload draftPayload =
+        new ApplicationDraftPayload("APPLICATION_SUBMITTED", "LAA-123", Map.of(), "{}");
+    ApplicationDraftStartedEvent existingEvent =
+        new ApplicationDraftStartedEvent(applicationId, 1, startedAt);
+
+    when(draftStore.find(applicationId)).thenReturn(Optional.of(draftPayload));
+
+    SubmitApplicationDraftCommand command =
+        new SubmitApplicationDraftCommand(applicationId, Instant.now());
+
+    fixture
+        .given()
+        .events(existingEvent)
+        .when()
+        .command(command)
+        .then()
+        .exception(ValidationException.class)
+        .noEvents();
+
+    verify(applicationDataStore, never()).append(any(), anyLong(), any());
     verify(draftStore, never()).delete(any());
   }
 }
