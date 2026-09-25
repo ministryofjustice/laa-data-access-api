@@ -3,14 +3,19 @@ package uk.gov.justice.laa.dstew.access.query.application.priorauthority;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.axonframework.messaging.core.annotation.Namespace;
 import org.axonframework.messaging.eventhandling.annotation.EventHandler;
 import org.axonframework.messaging.eventhandling.replay.annotation.ResetHandler;
 import org.axonframework.messaging.queryhandling.QueryUpdateEmitter;
 import org.axonframework.messaging.queryhandling.annotation.QueryHandler;
 import org.jspecify.annotations.NonNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentDeletedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentTypeUpdatedEvent;
@@ -32,6 +37,8 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStat
 @Component
 @Namespace("prior-authority-projection")
 public class PriorAuthorityProjection {
+
+  private static final Logger LOG = LoggerFactory.getLogger(PriorAuthorityProjection.class);
 
   private final PriorAuthorityReadRepository repository;
   private final PriorAuthorityDataStore priorAuthorityDataStore;
@@ -88,6 +95,19 @@ public class PriorAuthorityProjection {
         .orElse(false);
   }
 
+  /** Returns event-sourced document facts, including the soft-delete marker. */
+  @QueryHandler
+  public UploadedDocumentData handle(FindPriorAuthorityDocumentDataQuery query) {
+    return repository
+        .findById(query.priorAuthorityId())
+        .flatMap(
+            priorAuthority ->
+                documentsOf(priorAuthority).stream()
+                    .filter(document -> document.documentId().equals(query.documentId()))
+                    .findFirst())
+        .orElse(null);
+  }
+
   private Optional<@NonNull PriorAuthorityResult> hydrate(
       PriorAuthorityReadModel priorAuthority, UUID priorAuthorityId) {
     if (PriorAuthorityStatus.DRAFT.name().equals(priorAuthority.getStatus())) {
@@ -108,28 +128,39 @@ public class PriorAuthorityProjection {
     if (documents == null || documents.isEmpty()) {
       return List.of();
     }
-    return documents.stream()
-        .filter(document -> document.deletedAt() == null)
-        .map(
-            document ->
-                new PriorAuthorityDocument(
-                    document.documentId(),
-                    document.documentType(),
-                    uploadedDocumentStore
-                        .findById(document.documentId())
-                        .map(UploadedDocument::getOriginalFilename)
-                        .orElseThrow(
-                            () ->
-                                new IllegalStateException(
-                                    "Original filename not found for document %s"
-                                        .formatted(document.documentId()))),
-                    document.fileType(),
-                    document.contentType(),
-                    document.size(),
-                    document.uploadedAt(),
-                    document.sourceService(),
-                    null))
+    List<UploadedDocumentData> activeDocuments =
+        documents.stream().filter(document -> document.deletedAt() == null).toList();
+    if (activeDocuments.isEmpty()) {
+      return List.of();
+    }
+    Map<UUID, String> filenamesByDocumentId =
+        uploadedDocumentStore
+            .findAllById(activeDocuments.stream().map(UploadedDocumentData::documentId).toList())
+            .stream()
+            .collect(
+                Collectors.toMap(
+                    UploadedDocument::getDocumentId, UploadedDocument::getOriginalFilename));
+    return activeDocuments.stream()
+        .map(document -> toDocument(document, filenamesByDocumentId.get(document.documentId())))
+        .filter(Objects::nonNull)
         .toList();
+  }
+
+  private PriorAuthorityDocument toDocument(UploadedDocumentData document, String filename) {
+    if (filename == null) {
+      LOG.warn("Original filename not found for event-sourced document {}", document.documentId());
+      return null;
+    }
+    return new PriorAuthorityDocument(
+        document.documentId(),
+        document.documentType(),
+        filename,
+        document.fileType(),
+        document.contentType(),
+        document.size(),
+        document.uploadedAt(),
+        document.sourceService(),
+        null);
   }
 
   /** Creates the current-state row when a prior-authority draft is started. */
@@ -184,7 +215,7 @@ public class PriorAuthorityProjection {
 
   /** Records the aggregate's uploaded document facts in the replayable current-state projection. */
   @EventHandler
-  public void on(PriorAuthorityDocumentUploadedEvent event) {
+  public void on(PriorAuthorityDocumentUploadedEvent event, QueryUpdateEmitter queryUpdateEmitter) {
     repository
         .findById(event.priorAuthorityId())
         .ifPresent(
@@ -202,6 +233,12 @@ public class PriorAuthorityProjection {
                       null));
               priorAuthority.setUploadedDocumentIds(List.copyOf(documents));
               repository.save(priorAuthority);
+              queryUpdateEmitter.emit(
+                  PriorAuthorityDocumentPresentQuery.class,
+                  query ->
+                      query.priorAuthorityId().equals(event.priorAuthorityId())
+                          && query.documentId().equals(event.documentId()),
+                  true);
             });
   }
 

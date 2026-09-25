@@ -12,6 +12,8 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.Valida
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
+import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
+import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityDocumentPresentQuery;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
 import uk.gov.justice.laa.dstew.access.util.RequestSerialiser;
@@ -23,17 +25,20 @@ public class UploadPriorAuthorityDocumentUseCase {
   private final RetryingCommandDispatcher dispatcher;
   private final SdsService sdsService;
   private final ObjectMapper objectMapper;
+  private final SubscriptionProjectionGateway projectionGateway;
 
   /** Creates the use case with draft lookup, command dispatch, and SDS upload dependencies. */
   public UploadPriorAuthorityDocumentUseCase(
       PriorAuthorityDraftStore draftStore,
       RetryingCommandDispatcher dispatcher,
       SdsService sdsService,
-      ObjectMapper objectMapper) {
+      ObjectMapper objectMapper,
+      SubscriptionProjectionGateway projectionGateway) {
     this.draftStore = draftStore;
     this.dispatcher = dispatcher;
     this.sdsService = sdsService;
     this.objectMapper = objectMapper;
+    this.projectionGateway = projectionGateway;
   }
 
   /** Uploads a file and finalises it via a single aggregate command. */
@@ -82,6 +87,9 @@ public class UploadPriorAuthorityDocumentUseCase {
             file.getSize(),
             format.fileType(),
             format.contentType()));
+
+    projectionGateway.awaitProjection(
+        new PriorAuthorityDocumentPresentQuery(priorAuthorityId, documentId), () -> {});
 
     return new UploadPriorAuthorityDocumentResult(
         documentId,

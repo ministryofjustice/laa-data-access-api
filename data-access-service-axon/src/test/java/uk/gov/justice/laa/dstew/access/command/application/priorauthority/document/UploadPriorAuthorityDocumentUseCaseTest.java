@@ -30,6 +30,7 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityCont
 import uk.gov.justice.laa.dstew.access.exception.InvalidApplicationStateException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
+import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
 
 @ExtendWith(MockitoExtension.class)
@@ -38,12 +39,14 @@ class UploadPriorAuthorityDocumentUseCaseTest {
   @Mock private PriorAuthorityDraftStore draftStore;
   @Mock private RetryingCommandDispatcher dispatcher;
   @Mock private SdsService sdsService;
+  @Mock private SubscriptionProjectionGateway projectionGateway;
   private final ObjectMapper objectMapper = new ObjectMapper();
 
   @Test
   void givenDraftExists_whenExecute_thenValidatesApplicationAndDispatchesUploadCommand() {
     UploadPriorAuthorityDocumentUseCase useCase =
-        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService, objectMapper);
+        new UploadPriorAuthorityDocumentUseCase(
+            draftStore, dispatcher, sdsService, objectMapper, projectionGateway);
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     MockMultipartFile file =
@@ -100,7 +103,8 @@ class UploadPriorAuthorityDocumentUseCaseTest {
   @Test
   void givenDraftMissing_whenExecute_thenThrowsNotFound() {
     UploadPriorAuthorityDocumentUseCase useCase =
-        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService, objectMapper);
+        new UploadPriorAuthorityDocumentUseCase(
+            draftStore, dispatcher, sdsService, objectMapper, projectionGateway);
     UUID priorAuthorityId = UUID.randomUUID();
     MockMultipartFile file =
         new MockMultipartFile("file", "evidence.pdf", "application/pdf", "%PDF-content".getBytes());
@@ -114,7 +118,8 @@ class UploadPriorAuthorityDocumentUseCaseTest {
   @Test
   void givenFilenameWithoutExtension_whenExecute_thenRejectsBeforeUploadingToSds() {
     UploadPriorAuthorityDocumentUseCase useCase =
-        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService, objectMapper);
+        new UploadPriorAuthorityDocumentUseCase(
+            draftStore, dispatcher, sdsService, objectMapper, projectionGateway);
     UUID priorAuthorityId = UUID.randomUUID();
     MockMultipartFile file =
         new MockMultipartFile("file", "evidence", "application/pdf", "%PDF-content".getBytes());
@@ -127,9 +132,26 @@ class UploadPriorAuthorityDocumentUseCaseTest {
   }
 
   @Test
+  void givenFilenameEndingInDot_whenExecute_thenRejectsBeforeUploadingToSds() {
+    UploadPriorAuthorityDocumentUseCase useCase =
+        new UploadPriorAuthorityDocumentUseCase(
+            draftStore, dispatcher, sdsService, objectMapper, projectionGateway);
+    UUID priorAuthorityId = UUID.randomUUID();
+    MockMultipartFile file =
+        new MockMultipartFile("file", "evidence.", "application/pdf", "%PDF-content".getBytes());
+
+    assertThatExceptionOfType(IllegalArgumentException.class)
+        .isThrownBy(() -> useCase.execute(priorAuthorityId, file, "CIVIL_APPLY"))
+        .withMessage("originalFilename must include a file extension");
+
+    verifyNoInteractions(draftStore, dispatcher, sdsService);
+  }
+
+  @Test
   void givenSdsReturnsNull_whenExecute_thenDispatchesCommandWithNullChecksum() {
     UploadPriorAuthorityDocumentUseCase useCase =
-        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService, objectMapper);
+        new UploadPriorAuthorityDocumentUseCase(
+            draftStore, dispatcher, sdsService, objectMapper, projectionGateway);
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     MockMultipartFile file =
@@ -165,7 +187,8 @@ class UploadPriorAuthorityDocumentUseCaseTest {
   @Test
   void givenApplicationNotGranted_whenExecute_thenThrowsAndDoesNotDispatchUploadCommand() {
     UploadPriorAuthorityDocumentUseCase useCase =
-        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService, objectMapper);
+        new UploadPriorAuthorityDocumentUseCase(
+            draftStore, dispatcher, sdsService, objectMapper, projectionGateway);
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     MockMultipartFile file =
@@ -194,7 +217,8 @@ class UploadPriorAuthorityDocumentUseCaseTest {
   @Test
   void givenNonPdfContent_whenExecute_thenRejectsBeforeUploadingToSds() {
     UploadPriorAuthorityDocumentUseCase useCase =
-        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService, objectMapper);
+        new UploadPriorAuthorityDocumentUseCase(
+            draftStore, dispatcher, sdsService, objectMapper, projectionGateway);
     MockMultipartFile file =
         new MockMultipartFile("file", "evidence.txt", "text/plain", "not a PDF".getBytes());
 
@@ -208,7 +232,8 @@ class UploadPriorAuthorityDocumentUseCaseTest {
   @Test
   void givenPdfMimeWithInvalidSignature_whenExecute_thenRejectsBeforeUploadingToSds() {
     UploadPriorAuthorityDocumentUseCase useCase =
-        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService, objectMapper);
+        new UploadPriorAuthorityDocumentUseCase(
+            draftStore, dispatcher, sdsService, objectMapper, projectionGateway);
     MockMultipartFile file =
         new MockMultipartFile("file", "evidence.pdf", "application/pdf", "not a PDF".getBytes());
 
@@ -222,7 +247,8 @@ class UploadPriorAuthorityDocumentUseCaseTest {
   @Test
   void givenUnreadablePdf_whenExecute_thenRejectsBeforeUploadingToSds() throws IOException {
     UploadPriorAuthorityDocumentUseCase useCase =
-        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService, objectMapper);
+        new UploadPriorAuthorityDocumentUseCase(
+            draftStore, dispatcher, sdsService, objectMapper, projectionGateway);
     MultipartFile file = mock(MultipartFile.class);
     when(file.getContentType()).thenReturn("application/pdf");
     when(file.getInputStream()).thenThrow(new IOException("Unable to read file"));

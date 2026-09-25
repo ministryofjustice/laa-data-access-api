@@ -22,7 +22,6 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.assign.DirectPriorAuthorityWorkItemAssignmentCommand;
 import uk.gov.justice.laa.dstew.access.command.worklist.unassign.DirectPriorAuthorityWorkItemUnassignmentCommand;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityDocument;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
@@ -90,17 +89,7 @@ public class PriorAuthorityAggregate {
       EventAppender eventAppender) {
     requireDraft(command.priorAuthorityId(), draftStore);
     uploadedDocumentStore.save(
-        command.priorAuthorityId(),
-        new PriorAuthorityDocument(
-            command.documentId(),
-            null,
-            command.originalFilename(),
-            command.fileType(),
-            command.contentType(),
-            command.fileSize(),
-            command.occurredAt(),
-            command.sourceService(),
-            command.checksum()));
+        command.priorAuthorityId(), command.documentId(), command.originalFilename());
     eventAppender.append(
         PriorAuthorityDecider.decideDocumentUploaded(command, state.applicationId));
     return command.documentId();
@@ -113,7 +102,6 @@ public class PriorAuthorityAggregate {
       UploadedDocumentStore uploadedDocumentStore,
       EventAppender eventAppender) {
     requireDraft(command.priorAuthorityId(), draftStore);
-    uploadedDocumentStore.delete(command.priorAuthorityId(), command.documentId());
     eventAppender.append(PriorAuthorityDecider.decideDocumentDeleted(command, state.applicationId));
     return command.documentId();
   }
@@ -126,8 +114,6 @@ public class PriorAuthorityAggregate {
       EventAppender eventAppender) {
     PriorAuthorityDocumentType.fromValue(command.documentType());
     requireDraft(command.priorAuthorityId(), draftStore);
-    uploadedDocumentStore.updateDocumentType(
-        command.priorAuthorityId(), command.documentId(), command.documentType());
     eventAppender.append(PriorAuthorityDecider.decideDocumentTypeUpdated(command));
     return command.documentId();
   }
@@ -289,7 +275,8 @@ public class PriorAuthorityAggregate {
 
   @EventSourcingHandler
   void on(PriorAuthorityDocumentTypeUpdatedEvent event) {
-    this.priorAuthorityId = event.priorAuthorityId();
+    PriorAuthorityEvolve.apply(state, event);
+    this.priorAuthorityId = state.priorAuthorityId;
   }
 
   @EventSourcingHandler

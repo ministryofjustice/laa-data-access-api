@@ -364,6 +364,17 @@ class PriorAuthorityDraftIntegrationTest {
         .thenReturn(new DocumentUploadResponse().checksum("checksum"));
     UUID documentId = uploadDocument(priorAuthorityId, "evidence.pdf");
 
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM axon.domain_event_entry"
+                    + " WHERE aggregate_identifier = ?"
+                    + " AND payload_type = ?",
+                Integer.class,
+                priorAuthorityId.toString(),
+                "uk.gov.justice.laa.dstew.access.command.application.priorauthority"
+                    + ".PriorAuthorityDocumentUploadedEvent"))
+        .isEqualTo(1);
+
     ResponseEntity<Void> deleteResponse =
         restTemplate.exchange(
             deleteDocumentUrl(priorAuthorityId, documentId),

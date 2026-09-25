@@ -64,7 +64,7 @@ public record PriorAuthorityResult(
         priorAuthorityType == PriorAuthorityType.DISBURSEMENT
             ? toDisbursementDetails(content)
             : null,
-        content.uploadedDocuments(),
+        List.of(),
         decisionDetails);
   }
 
