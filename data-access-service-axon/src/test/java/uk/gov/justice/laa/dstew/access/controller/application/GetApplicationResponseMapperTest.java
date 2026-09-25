@@ -21,7 +21,10 @@ import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
+import uk.gov.justice.laa.dstew.access.model.PriorAuthoritySummary;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
+import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
+import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
 
 class GetApplicationResponseMapperTest {
 
@@ -111,6 +114,86 @@ class GetApplicationResponseMapperTest {
         .isEqualTo(MeritsDecisionStatus.REFUSED);
     assertThat(response.getProceedings().getFirst().getScopeLimitations()).hasSize(1);
     assertThat(response.getProceedings().getFirst().getInvolvedChildren()).hasSize(1);
+  }
+
+  @Test
+  void givenLeadWithAssociations_whenMapped_thenMapsResponseFields() {
+    UUID applicationId = UUID.randomUUID();
+    UUID linkedApplicationId = UUID.randomUUID();
+    Instant createdAt = Instant.parse("2026-01-01T08:00:00Z");
+    ApplicationReadModel readModel = baseReadModel().applicationId(applicationId).build();
+    LinkedApplicationGroupReadModel group =
+        LinkedApplicationGroupReadModel.builder()
+            .leadApplicationId(applicationId)
+            .memberIds(List.of(applicationId, linkedApplicationId))
+            .build();
+    PriorAuthorityReadModel priorAuthority =
+        PriorAuthorityReadModel.builder()
+            .priorAuthorityId(UUID.randomUUID())
+            .applicationId(applicationId)
+            .priorAuthorityType("EXPERT")
+            .status("DECIDED")
+            .decision("GRANTED")
+            .createdAt(createdAt)
+            .build();
+
+    var response = mapper.toResponse(readModel, group, List.of(priorAuthority));
+
+    assertThat(response.getIsLead()).isTrue();
+    assertThat(response.getLinkedApplications())
+        .singleElement()
+        .satisfies(
+            linkedApplication -> {
+              assertThat(linkedApplication.getApplicationId()).isEqualTo(linkedApplicationId);
+              assertThat(linkedApplication.getIsLead()).isFalse();
+            });
+    assertThat(response.getPriorAuthorities())
+        .singleElement()
+        .satisfies(
+            summary -> {
+              assertThat(summary.getPriorAuthorityId())
+                  .isEqualTo(priorAuthority.getPriorAuthorityId());
+              assertThat(summary.getStatus()).isEqualTo(PriorAuthoritySummary.StatusEnum.DECIDED);
+              assertThat(summary.getPriorAuthorityType())
+                  .isEqualTo(PriorAuthoritySummary.PriorAuthorityTypeEnum.EXPERT);
+              assertThat(summary.getDecision())
+                  .isEqualTo(PriorAuthoritySummary.DecisionEnum.GRANTED);
+              assertThat(summary.getCreatedAt())
+                  .isEqualTo(OffsetDateTime.ofInstant(createdAt, ZoneOffset.UTC));
+            });
+  }
+
+  @Test
+  void givenMemberApplicationWithGroup_whenMapped_thenIncludesLeadAndIsNotLead() {
+    UUID applicationId = UUID.randomUUID();
+    UUID leadApplicationId = UUID.randomUUID();
+    ApplicationReadModel readModel =
+        baseReadModel().applicationId(applicationId).leadApplicationId(leadApplicationId).build();
+    LinkedApplicationGroupReadModel group =
+        LinkedApplicationGroupReadModel.builder()
+            .leadApplicationId(leadApplicationId)
+            .memberIds(List.of(leadApplicationId, applicationId))
+            .build();
+
+    var response = mapper.toResponse(readModel, group, List.of());
+
+    assertThat(response.getIsLead()).isFalse();
+    assertThat(response.getLinkedApplications())
+        .singleElement()
+        .satisfies(
+            linkedApplication -> {
+              assertThat(linkedApplication.getApplicationId()).isEqualTo(leadApplicationId);
+              assertThat(linkedApplication.getIsLead()).isTrue();
+            });
+  }
+
+  @Test
+  void givenApplicationWithoutRelations_whenMapped_thenReturnsEmptyAssociationLists() {
+    var response = mapper.toResponse(baseReadModel().build(), null, List.of());
+
+    assertThat(response.getIsLead()).isFalse();
+    assertThat(response.getLinkedApplications()).isEmpty();
+    assertThat(response.getPriorAuthorities()).isEmpty();
   }
 
   @Test

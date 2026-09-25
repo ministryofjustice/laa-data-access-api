@@ -14,15 +14,19 @@ import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationMerit
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.model.AutoGranted;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.InvolvedChildResponse;
+import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.OpponentResponse;
 import uk.gov.justice.laa.dstew.access.model.ProviderResponse;
 import uk.gov.justice.laa.dstew.access.model.ScopeLimitationResponse;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
+import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
+import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
 
 /** Maps the typed current-state projection to the public application response. */
 @Component
@@ -30,6 +34,14 @@ public class GetApplicationResponseMapper {
 
   /** Builds a response without reparsing content from JSON. */
   public ApplicationResponse toResponse(ApplicationReadModel application) {
+    return toResponse(application, null, List.of());
+  }
+
+  /** Builds a response from the application and its related projection rows. */
+  public ApplicationResponse toResponse(
+      ApplicationReadModel application,
+      LinkedApplicationGroupReadModel linkedGroup,
+      List<PriorAuthorityReadModel> priorAuthorities) {
     ApplicationResponse response = new ApplicationResponse();
     response.setApplicationId(application.getApplicationId());
     response.setStatus(ApplicationStatus.valueOf(application.getStatus()));
@@ -39,13 +51,13 @@ public class GetApplicationResponseMapper {
         application.getSubmittedAt() == null
             ? null
             : application.getSubmittedAt().atOffset(ZoneOffset.UTC));
-    // Linked groups are not yet exposed; always false until the grouping endpoint is available.
-    response.setIsLead(false);
+    response.setIsLead(
+        linkedGroup != null
+            && application.getApplicationId().equals(linkedGroup.getLeadApplicationId()));
+    response.setLinkedApplications(toLinkedSummaries(application, linkedGroup));
     response.setAssignedTo(application.getCaseworkerId());
     response.setUsedDelegatedFunctions(application.getUsedDelegatedFunctions());
-    response.setAutoGranted(
-        uk.gov.justice.laa.dstew.access.model.AutoGranted.valueOf(
-            application.getAutoGranted().name()));
+    response.setAutoGranted(AutoGranted.valueOf(application.getAutoGranted().name()));
     response.setDecisionStatus(
         application.getDecisionStatus() == null
             ? null
@@ -55,7 +67,18 @@ public class GetApplicationResponseMapper {
     response.setOpponents(toOpponents(application.getOpponents()));
     response.setProceedings(
         toProceedings(application.getProceedings(), application.getMeritsDecisions()));
+    response.setPriorAuthorities(PriorAuthoritySummaryMapper.toSummaries(priorAuthorities));
     return response;
+  }
+
+  /** Builds a response using prior authorities indexed by application ID. */
+  public ApplicationResponse toResponse(
+      ApplicationReadModel application,
+      Map<UUID, List<PriorAuthorityReadModel>> priorAuthoritiesByApplicationId) {
+    return toResponse(
+        application,
+        null,
+        priorAuthoritiesByApplicationId.getOrDefault(application.getApplicationId(), List.of()));
   }
 
   private ProviderResponse toProvider(ApplicationReadModel application) {
@@ -165,6 +188,23 @@ public class GetApplicationResponseMapper {
                 new InvolvedChildResponse()
                     .fullName(child.getFullName())
                     .dateOfBirth(child.getDateOfBirth()))
+        .toList();
+  }
+
+  private List<LinkedApplicationSummaryResponse> toLinkedSummaries(
+      ApplicationReadModel application, LinkedApplicationGroupReadModel linkedGroup) {
+    if (linkedGroup == null) {
+      return Collections.emptyList();
+    }
+    return linkedGroup.getMemberIds().stream()
+        .filter(memberId -> !memberId.equals(application.getApplicationId()))
+        .map(
+            memberId -> {
+              LinkedApplicationSummaryResponse linked = new LinkedApplicationSummaryResponse();
+              linked.setApplicationId(memberId);
+              linked.setIsLead(memberId.equals(linkedGroup.getLeadApplicationId()));
+              return linked;
+            })
         .toList();
   }
 }

@@ -21,11 +21,13 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.query.application.ApplicationDetailResult;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationNotesResult;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsQuery;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsResult;
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
+import uk.gov.justice.laa.dstew.access.query.application.FindApplicationDetailQuery;
 import uk.gov.justice.laa.dstew.access.query.application.FindNotesForApplicationQuery;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryResult;
 import uk.gov.justice.laa.dstew.access.query.application.history.FindApplicationHistoryQuery;
@@ -74,7 +76,7 @@ class ApplicationQueryUseCaseSecurityTest extends BaseSecuredUseCaseTest {
     FindAllApplicationsQuery query =
         new FindAllApplicationsQuery(null, null, null, null, null, null, null, null, 1, 20);
     FindAllApplicationsResult expected =
-        new FindAllApplicationsResult(List.of(), Map.of(), 0, 1, 20);
+        new FindAllApplicationsResult(List.of(), Map.of(), Map.of(), 0, 1, 20);
     when(queryGateway.query(
             any(FindAllApplicationsQuery.class), eq(FindAllApplicationsResult.class)))
         .thenReturn(CompletableFuture.completedFuture(expected));
@@ -82,6 +84,45 @@ class ApplicationQueryUseCaseSecurityTest extends BaseSecuredUseCaseTest {
     FindAllApplicationsResult result = useCase.getApplications(query);
 
     assertThat(result).isSameAs(expected);
+  }
+
+  @Test
+  void givenCaseworker_whenGettingApplicationDetail_thenReturnsDetail() {
+    setSecurityContext(CASEWORKER_ROLE);
+    UUID applicationId = UUID.randomUUID();
+    ApplicationReadModel application =
+        ApplicationReadModel.builder().applicationId(applicationId).build();
+    ApplicationDetailResult expected = new ApplicationDetailResult(application, null, List.of());
+    when(queryGateway.query(
+            any(FindApplicationDetailQuery.class), eq(ApplicationDetailResult.class)))
+        .thenReturn(CompletableFuture.completedFuture(expected));
+
+    assertThat(useCase.getApplicationDetail(applicationId)).isSameAs(expected);
+  }
+
+  @Test
+  void givenNoRole_whenGettingApplicationDetail_thenDeniesAccess() {
+    setSecurityContext(NO_ROLE);
+    UUID applicationId = UUID.randomUUID();
+
+    assertThatExceptionOfType(AuthorizationDeniedException.class)
+        .isThrownBy(() -> useCase.getApplicationDetail(applicationId))
+        .withMessageContaining("Access Denied");
+
+    verifyNoInteractions(queryGateway);
+  }
+
+  @Test
+  void givenMissingApplication_whenGettingApplicationDetail_thenThrowsNotFound() {
+    setSecurityContext(CASEWORKER_ROLE);
+    UUID applicationId = UUID.randomUUID();
+    when(queryGateway.query(
+            any(FindApplicationDetailQuery.class), eq(ApplicationDetailResult.class)))
+        .thenReturn(CompletableFuture.completedFuture(null));
+
+    assertThatExceptionOfType(ResourceNotFoundException.class)
+        .isThrownBy(() -> useCase.getApplicationDetail(applicationId))
+        .withMessageContaining("No application found with ID: " + applicationId);
   }
 
   @Test

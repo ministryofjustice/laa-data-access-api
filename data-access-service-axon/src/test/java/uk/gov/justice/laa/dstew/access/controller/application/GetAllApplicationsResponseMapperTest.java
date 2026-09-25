@@ -1,24 +1,31 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
+import uk.gov.justice.laa.dstew.access.model.PriorAuthoritySummary;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsResult;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
+import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
 
 class GetAllApplicationsResponseMapperTest {
 
@@ -32,7 +39,7 @@ class GetAllApplicationsResponseMapperTest {
   @Test
   void givenEmptyResult_whenToResponse_thenReturnsEmptyListWith200() {
     FindAllApplicationsResult result =
-        new FindAllApplicationsResult(List.of(), Map.of(), 0L, 1, 20);
+        new FindAllApplicationsResult(List.of(), Map.of(), Map.of(), 0L, 1, 20);
 
     ResponseEntity<ApplicationSummaryResponse> response = mapper.toResponse(result);
 
@@ -48,6 +55,8 @@ class GetAllApplicationsResponseMapperTest {
   @Test
   void givenApplication_whenToResponse_thenMapsColumnarFieldsCorrectly() {
     UUID applicationId = UUID.randomUUID();
+    UUID draftId = UUID.randomUUID();
+    UUID submittedId = UUID.randomUUID();
     ApplicationReadModel app =
         ApplicationReadModel.builder()
             .autoGranted(AutoGrantedState.PENDING)
@@ -64,9 +73,25 @@ class GetAllApplicationsResponseMapperTest {
             .submittedAt(Instant.parse("2026-07-01T10:00:00Z"))
             .modifiedAt(Instant.parse("2026-07-02T10:00:00Z"))
             .build();
+    var priorAuthorities =
+        List.of(
+            PriorAuthorityReadModel.builder()
+                .priorAuthorityId(draftId)
+                .applicationId(applicationId)
+                .status("DRAFT")
+                .createdAt(Instant.parse("2026-07-01T09:00:00Z"))
+                .build(),
+            PriorAuthorityReadModel.builder()
+                .priorAuthorityId(submittedId)
+                .applicationId(applicationId)
+                .status("SUBMITTED")
+                .decision("GRANTED")
+                .createdAt(Instant.parse("2026-07-01T09:30:00Z"))
+                .build());
 
     FindAllApplicationsResult result =
-        new FindAllApplicationsResult(List.of(app), Map.of(), 1L, 1, 20);
+        new FindAllApplicationsResult(
+            List.of(app), Map.of(), Map.of(applicationId, priorAuthorities), 1L, 1, 20);
 
     ApplicationSummary summary = mapper.toResponse(result).getBody().getApplications().get(0);
 
@@ -77,6 +102,23 @@ class GetAllApplicationsResponseMapperTest {
     assertThat(summary.getUsedDelegatedFunctions()).isTrue();
     assertThat(summary.getSubmittedAt()).isNotNull();
     assertThat(summary.getLastUpdated()).isNotNull();
+    assertThat(summary.getPriorAuthorities())
+        .extracting(
+            PriorAuthoritySummary::getPriorAuthorityId,
+            item -> item.getStatus().getValue(),
+            PriorAuthoritySummary::getDecision,
+            PriorAuthoritySummary::getCreatedAt)
+        .containsExactlyInAnyOrder(
+            tuple(
+                draftId,
+                "DRAFT",
+                null,
+                Instant.parse("2026-07-01T09:00:00Z").atOffset(ZoneOffset.UTC)),
+            tuple(
+                submittedId,
+                "SUBMITTED",
+                PriorAuthoritySummary.DecisionEnum.GRANTED,
+                Instant.parse("2026-07-01T09:30:00Z").atOffset(ZoneOffset.UTC)));
   }
 
   @Test
@@ -91,7 +133,7 @@ class GetAllApplicationsResponseMapperTest {
 
     ApplicationSummary summary =
         mapper
-            .toResponse(new FindAllApplicationsResult(List.of(app), Map.of(), 1L, 1, 20))
+            .toResponse(new FindAllApplicationsResult(List.of(app), Map.of(), Map.of(), 1L, 1, 20))
             .getBody()
             .getApplications()
             .get(0);
@@ -111,7 +153,7 @@ class GetAllApplicationsResponseMapperTest {
 
     ApplicationSummary summary =
         mapper
-            .toResponse(new FindAllApplicationsResult(List.of(app), Map.of(), 1L, 1, 20))
+            .toResponse(new FindAllApplicationsResult(List.of(app), Map.of(), Map.of(), 1L, 1, 20))
             .getBody()
             .getApplications()
             .get(0);
@@ -137,7 +179,7 @@ class GetAllApplicationsResponseMapperTest {
 
     ApplicationSummary summary =
         mapper
-            .toResponse(new FindAllApplicationsResult(List.of(app), Map.of(), 1L, 1, 20))
+            .toResponse(new FindAllApplicationsResult(List.of(app), Map.of(), Map.of(), 1L, 1, 20))
             .getBody()
             .getApplications()
             .get(0);
@@ -172,7 +214,8 @@ class GetAllApplicationsResponseMapperTest {
     ApplicationSummary summary =
         mapper
             .toResponse(
-                new FindAllApplicationsResult(List.of(leadApp), Map.of(leadId, group), 1L, 1, 20))
+                new FindAllApplicationsResult(
+                    List.of(leadApp), Map.of(leadId, group), Map.of(), 1L, 1, 20))
             .getBody()
             .getApplications()
             .get(0);
@@ -206,7 +249,8 @@ class GetAllApplicationsResponseMapperTest {
     ApplicationSummary summary =
         mapper
             .toResponse(
-                new FindAllApplicationsResult(List.of(memberApp), Map.of(leadId, group), 1L, 1, 20))
+                new FindAllApplicationsResult(
+                    List.of(memberApp), Map.of(leadId, group), Map.of(), 1L, 1, 20))
             .getBody()
             .getApplications()
             .get(0);
@@ -225,11 +269,70 @@ class GetAllApplicationsResponseMapperTest {
 
     ApplicationSummary summary =
         mapper
-            .toResponse(new FindAllApplicationsResult(List.of(app), Map.of(), 1L, 1, 20))
+            .toResponse(new FindAllApplicationsResult(List.of(app), Map.of(), Map.of(), 1L, 1, 20))
             .getBody()
             .getApplications()
             .get(0);
 
     assertThat(summary.getLinkedApplications()).isEmpty();
+  }
+
+  @Test
+  void givenApplicationWithNoPriorAuthority_whenToResponse_thenPriorAuthoritiesEmpty() {
+    ApplicationReadModel app =
+        ApplicationReadModel.builder()
+            .autoGranted(AutoGrantedState.PENDING)
+            .applicationId(UUID.randomUUID())
+            .modifiedAt(Instant.now())
+            .build();
+
+    ApplicationSummary summary =
+        mapper
+            .toResponse(new FindAllApplicationsResult(List.of(app), Map.of(), Map.of(), 1L, 1, 20))
+            .getBody()
+            .getApplications()
+            .get(0);
+
+    assertThat(summary.getPriorAuthorities()).isEmpty();
+  }
+
+  @ParameterizedTest
+  @EnumSource(PriorAuthorityStatus.class)
+  void givenDomainPriorAuthorityStatus_whenToResponse_thenApiStatusEnumAcceptsIt(
+      PriorAuthorityStatus status) {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationReadModel app =
+        ApplicationReadModel.builder()
+            .autoGranted(AutoGrantedState.PENDING)
+            .applicationId(applicationId)
+            .modifiedAt(Instant.now())
+            .build();
+    PriorAuthorityReadModel priorAuthority =
+        PriorAuthorityReadModel.builder()
+            .priorAuthorityId(UUID.randomUUID())
+            .applicationId(applicationId)
+            .status(status.name())
+            .createdAt(Instant.parse("2026-09-11T10:00:00Z"))
+            .build();
+
+    ApplicationSummary summary =
+        mapper
+            .toResponse(
+                new FindAllApplicationsResult(
+                    List.of(app),
+                    Map.of(),
+                    Map.of(applicationId, List.of(priorAuthority)),
+                    1L,
+                    1,
+                    20))
+            .getBody()
+            .getApplications()
+            .get(0);
+
+    assertThat(PriorAuthoritySummary.StatusEnum.fromValue(status.name())).isNotNull();
+    assertThat(summary.getPriorAuthorities())
+        .singleElement()
+        .extracting(item -> item.getStatus().getValue())
+        .isEqualTo(status.name());
   }
 }

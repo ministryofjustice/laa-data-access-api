@@ -48,28 +48,33 @@ class PriorAuthorityProjectionTest {
   @InjectMocks private PriorAuthorityProjection projection;
 
   @Test
-  void givenSubmittedEvent_whenHandled_thenSavesExactFields() {
+  void givenExistingDraft_whenSubmitted_thenPreservesCreatedAtAndUpdatesCurrentState() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
-    Instant occurredAt = Instant.parse("2026-08-19T10:00:00Z");
-    PriorAuthoritySubmittedEvent event =
+    Instant createdAt = Instant.parse("2026-09-10T09:00:00Z");
+    Instant submittedAt = Instant.parse("2026-09-11T10:00:00Z");
+    PriorAuthorityReadModel draft =
+        PriorAuthorityReadModel.builder()
+            .priorAuthorityId(priorAuthorityId)
+            .applicationId(applicationId)
+            .dataVersion(0L)
+            .status("DRAFT")
+            .createdAt(createdAt)
+            .build();
+    when(repository.findById(priorAuthorityId)).thenReturn(Optional.of(draft));
+    when(repository.save(draft)).thenReturn(draft);
+
+    projection.on(
         new PriorAuthoritySubmittedEvent(
-            priorAuthorityId, applicationId, "EXPERT", 1, 1L, 0L, occurredAt);
-    PriorAuthorityReadModel[] savedCapture = new PriorAuthorityReadModel[1];
-    when(repository.save(any()))
-        .thenAnswer(
-            invocation -> {
-              savedCapture[0] = invocation.getArgument(0);
-              return savedCapture[0];
-            });
+            priorAuthorityId, applicationId, "EXPERT", 1, 1L, 0L, submittedAt),
+        queryUpdateEmitter);
 
-    projection.on(event, queryUpdateEmitter);
-
-    assertThat(savedCapture[0].getPriorAuthorityId()).isEqualTo(priorAuthorityId);
-    assertThat(savedCapture[0].getApplicationId()).isEqualTo(applicationId);
-    assertThat(savedCapture[0].getDataVersion()).isEqualTo(1L);
-    assertThat(savedCapture[0].getStatus()).isEqualTo("SUBMITTED");
-    assertThat(savedCapture[0].getCreatedAt()).isEqualTo(occurredAt);
+    assertThat(draft.getStatus()).isEqualTo("SUBMITTED");
+    assertThat(draft.getPriorAuthorityType()).isEqualTo("EXPERT");
+    assertThat(draft.getDataVersion()).isEqualTo(1L);
+    assertThat(draft.getCreatedAt()).isEqualTo(createdAt);
+    assertThat(draft.getDecision()).isNull();
+    verify(repository).save(draft);
   }
 
   @Test
@@ -88,13 +93,15 @@ class PriorAuthorityProjectionTest {
               return savedCapture[0];
             });
 
-    projection.on(event, queryUpdateEmitter);
+    projection.on(event);
 
     assertThat(savedCapture[0].getPriorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(savedCapture[0].getApplicationId()).isEqualTo(applicationId);
     assertThat(savedCapture[0].getDataVersion()).isZero();
     assertThat(savedCapture[0].getStatus()).isEqualTo("DRAFT");
+    assertThat(savedCapture[0].getPriorAuthorityType()).isEqualTo(EXPERT.name());
     assertThat(savedCapture[0].getCreatedAt()).isEqualTo(occurredAt);
+    assertThat(savedCapture[0].getModifiedAt()).isEqualTo(occurredAt);
   }
 
   @Test
@@ -298,6 +305,7 @@ class PriorAuthorityProjectionTest {
             Instant.now()));
 
     assertThat(model.getStatus()).isEqualTo("DECIDED");
+    assertThat(model.getPriorAuthorityType()).isEqualTo("EXPERT");
     assertThat(model.getDataVersion()).isEqualTo(1L);
     verify(repository).save(model);
   }
@@ -355,7 +363,7 @@ class PriorAuthorityProjectionTest {
     when(repository.findById(priorAuthorityId)).thenReturn(Optional.of(model));
 
     assertThat(
-            projection.handle(new PriorAuthorityPendingByPriorAuthorityIdQuery(priorAuthorityId)))
+            projection.handle(new PriorAuthoritySubmittedByPriorAuthorityIdQuery(priorAuthorityId)))
         .isFalse();
   }
 
@@ -372,7 +380,7 @@ class PriorAuthorityProjectionTest {
     when(repository.findById(priorAuthorityId)).thenReturn(Optional.of(model));
 
     assertThat(
-            projection.handle(new PriorAuthorityPendingByPriorAuthorityIdQuery(priorAuthorityId)))
+            projection.handle(new PriorAuthoritySubmittedByPriorAuthorityIdQuery(priorAuthorityId)))
         .isTrue();
   }
 

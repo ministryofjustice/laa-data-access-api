@@ -28,7 +28,6 @@ import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationNote;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
@@ -43,6 +42,8 @@ import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedAppli
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexSpecification;
+import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
+import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadRepository;
 
 /** Independently replayable projection of the current state of each Application. */
 @Component
@@ -53,26 +54,51 @@ public class ApplicationProjection {
   private final LinkedApplicationGroupReadRepository groupReadRepository;
   private final ApplicationDataStore applicationDataStore;
   private final ApplicationListIndexReadRepository listIndexRepository;
+  private final PriorAuthorityReadRepository priorAuthorityReadRepository;
 
   /**
    * Constructs the projection with its read repositories and application data store.
    *
    * @param applicationReadRepository persistence interface for {@code application_current_state}
    * @param groupReadRepository persistence interface for {@code
-   *     linked_application_group_current_state}; used by {@link FindAllApplicationsQuery} to
-   *     batch-fetch group membership for the result page
+   *     linked_application_group_current_state}; used to fetch group membership for application
+   *     responses
    * @param listIndexRepository persistence interface for {@code application_list_index}; used by
    *     {@link FindAllApplicationsQuery} for database-side filtering and paging
+   * @param priorAuthorityReadRepository persistence interface for {@code
+   *     prior_authority_current_state}; used to fetch linked prior authorities for application
+   *     responses
    */
   public ApplicationProjection(
       ApplicationReadRepository applicationReadRepository,
       LinkedApplicationGroupReadRepository groupReadRepository,
       ApplicationDataStore applicationDataStore,
-      ApplicationListIndexReadRepository listIndexRepository) {
+      ApplicationListIndexReadRepository listIndexRepository,
+      PriorAuthorityReadRepository priorAuthorityReadRepository) {
     this.applicationReadRepository = applicationReadRepository;
     this.groupReadRepository = groupReadRepository;
     this.applicationDataStore = applicationDataStore;
     this.listIndexRepository = listIndexRepository;
+    this.priorAuthorityReadRepository = priorAuthorityReadRepository;
+  }
+
+  /** Returns the hydrated Application and its related data, or {@code null} if absent. */
+  @QueryHandler
+  public @Nullable ApplicationDetailResult handle(FindApplicationDetailQuery query) {
+    return applicationReadRepository
+        .findById(query.applicationId())
+        .flatMap(this::hydrate)
+        .map(
+            application -> {
+              UUID leadId = resolveLeadApplicationIdForGroupLookup(application);
+              LinkedApplicationGroupReadModel linkedGroup =
+                  groupReadRepository.findByLeadApplicationId(leadId).orElse(null);
+              List<PriorAuthorityReadModel> priorAuthorities =
+                  priorAuthorityReadRepository.findAllByApplicationIdIn(
+                      List.of(query.applicationId()));
+              return new ApplicationDetailResult(application, linkedGroup, priorAuthorities);
+            })
+        .orElse(null);
   }
 
   /** Returns the current-state projection for the requested Application. */
@@ -97,8 +123,7 @@ public class ApplicationProjection {
               ApplicationDataPayload data =
                   applicationDataStore.get(
                       application.getApplicationId(), application.getApplicationDataVersion());
-              return new ApplicationNotesResult(
-                  data == null ? List.<ApplicationNote>of() : data.notes());
+              return new ApplicationNotesResult(data == null ? List.of() : data.notes());
             })
         .orElse(null);
   }
@@ -109,8 +134,9 @@ public class ApplicationProjection {
    * <p>Filtering, sorting, counting, and paging are pushed entirely to the database via {@code
    * application_list_index}. After a page of index rows is returned, {@code application_data}
    * payloads are bulk-loaded for only those application IDs, avoiding N+1 lookups. Group membership
-   * is similarly batch-fetched for the page and returned so the response mapper can populate {@code
-   * linkedApplications} without additional queries.
+   * and linked prior authorities are similarly batch-fetched for the page and returned so the
+   * response mapper can populate {@code linkedApplications} and prior-authority summaries without
+   * additional queries.
    */
   @QueryHandler
   public FindAllApplicationsResult handle(FindAllApplicationsQuery query) {
@@ -155,8 +181,21 @@ public class ApplicationProjection {
 
     Map<UUID, LinkedApplicationGroupReadModel> groupsByLeadId = fetchGroups(content);
 
+    // Derived from the hydrated content rather than pageIds: applications dropped because their
+    // data payload was missing are absent from the response, so must not be batch-loaded for.
+    List<UUID> applicationIds =
+        content.stream().map(ApplicationReadModel::getApplicationId).toList();
+    Map<UUID, List<PriorAuthorityReadModel>> priorAuthoritiesByApplicationId =
+        priorAuthorityReadRepository.findAllByApplicationIdIn(applicationIds).stream()
+            .collect(Collectors.groupingBy(PriorAuthorityReadModel::getApplicationId));
+
     return new FindAllApplicationsResult(
-        content, groupsByLeadId, indexPage.getTotalElements(), query.page(), query.pageSize());
+        content,
+        groupsByLeadId,
+        priorAuthoritiesByApplicationId,
+        indexPage.getTotalElements(),
+        query.page(),
+        query.pageSize());
   }
 
   /** Returns old submitted Applications that still have no automatic-assessment outcome. */
@@ -437,17 +476,16 @@ public class ApplicationProjection {
   private Map<UUID, LinkedApplicationGroupReadModel> fetchGroups(
       List<ApplicationReadModel> applications) {
     List<UUID> leadIds =
-        applications.stream()
-            .map(
-                app ->
-                    app.getLeadApplicationId() != null
-                        ? app.getLeadApplicationId()
-                        : app.getApplicationId())
-            .distinct()
-            .toList();
+        applications.stream().map(this::resolveLeadApplicationIdForGroupLookup).distinct().toList();
     return groupReadRepository.findAllByLeadApplicationIdIn(leadIds).stream()
         .collect(
             Collectors.toMap(
                 LinkedApplicationGroupReadModel::getLeadApplicationId, g -> g, (a, ignored) -> a));
+  }
+
+  private UUID resolveLeadApplicationIdForGroupLookup(ApplicationReadModel application) {
+    return application.getLeadApplicationId() != null
+        ? application.getLeadApplicationId()
+        : application.getApplicationId();
   }
 }
