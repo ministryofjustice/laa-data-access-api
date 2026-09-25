@@ -14,6 +14,12 @@ The Data Access API must not expose a signed storage URL to its clients. A clien
 document through an API endpoint that authenticates the caller and verifies that the requested
 document belongs to the requested Prior Authority before any document content is retrieved.
 
+The clients of this service are business-team backend applications, not browsers or other
+end-user clients. When a business team needs to make a document available to an end user, its
+backend must call this endpoint and proxy the streamed content through its own authorised
+application boundary. That downstream application remains responsible for its user-facing
+authorisation and for any browser-specific response behaviour.
+
 S3 can stream an object without loading the complete object into memory. However, direct S3
 streaming would require exposing a signed URL, AWS credentials, or another client-facing S3 access
 mechanism. Those options do not meet the API constraint.
@@ -28,6 +34,11 @@ mechanism. Those options do not meet the API constraint.
 - Keep the SDS storage contract unchanged while SDS has no streaming endpoint.
 - Make download capacity and failures observable.
 
+The initial implementation will not include rate limiting or active-download capacity management.
+That is a known, accepted risk rather than an oversight: see "Capacity and rate limiting" for the
+design this ADR commits to for a follow-up delivery, and "Consequences" for the exposure this creates
+until that follow-up lands.
+
 ## Proposed decision
 
 The Data Access API will proxy document downloads through a reusable document-streaming component.
@@ -40,7 +51,10 @@ the same SDS lookup, URL validation, streaming, timeout, and resource-cleanup be
 Each endpoint-specific use case remains responsible for authorisation and for verifying that the
 requested file belongs to the requested domain resource before it invokes the component. For Prior
 Authority documents, the folder ID is the Prior Authority ID and the file ID is the stored document
-key. The endpoint-specific use case also supplies the metadata used for the HTTP response.
+key. The endpoint-specific use case also supplies the metadata used for the HTTP response. If the
+document is removed or replaced between the ownership check and the SDS signed-URL request, SDS will
+return a not-found or invalid-URL response, which the API must map to a stable error rather than a
+partial or corrupted stream.
 
 For a request to download a document, the API will:
 
@@ -50,9 +64,14 @@ For a request to download a document, the API will:
 4. request the document's signed URL from SDS and open a streaming resource backed by that URL; and
 5. write that resource to the client response without buffering the complete document.
 
-The API will return the document's stored filename in `Content-Disposition`, its stored media type
-when valid, and its stored content length when available. It will return `404 Not Found` when the
+The API will return the document's stored filename in a `Content-Disposition: attachment` header,
+forcing download rather than inline rendering, and so removing the browser MIME-sniffing risk of
+an attacker-controlled document being rendered by a downstream application's browser client. It will
+return the stored media type only when it matches the type recorded and validated at upload time,
+and its stored content length when available. It will return `404 Not Found` when the
 Prior Authority or document does not exist, without asking SDS for document content.
+
+
 
 Documents are limited to 10 MB at upload. The download proxy must stream rather than buffer that
 content. The size limit bounds bytes per download, but it does not bound how long a slow client can
@@ -64,14 +83,17 @@ storage URL.
 
 ```mermaid
 sequenceDiagram
-  participant Client
+  participant Browser
+  participant Business as Business backend
   participant API as Data Access API
   participant Stream as Document streaming component
   participant SDS
   participant S3
 
-  Client->>API: GET document content
-  API->>API: Authenticate and verify ownership
+  Browser->>Business: GET document content
+  Business->>Business: Authenticate and authorise end user
+  Business->>API: GET document content
+  API->>API: Authenticate caller and verify ownership
   API->>Stream: Stream(folderId, fileId)
   Stream->>SDS: Request signed URL
   SDS-->>Stream: Signed URL
@@ -79,7 +101,8 @@ sequenceDiagram
   Note over Stream,S3: Resource is opened when written to the response
   S3-->>Stream: Stream document bytes
   Stream-->>API: Stream document bytes
-  API-->>Client: Stream document bytes
+  API-->>Business: Stream document bytes
+  Business-->>Browser: Stream document bytes
 ```
 
 ## Consequences
@@ -108,8 +131,20 @@ sequenceDiagram
 - The API must handle S3/SDS timeouts, failed streams, client disconnects, and resource cleanup.
 - The endpoint cannot reliably support byte-range requests unless the proxy deliberately forwards
   range headers and response headers.
+- When active-download or connection-pool limits are saturated, the API must continue to serve
+  health, readiness, and non-document traffic; download limiting must not allow proxy workload to
+  starve the servlet threads or connection pool that other endpoints depend on.
+- The initial implementation ships with no rate limiting or active-download concurrency control. A
+  caller (malicious or misbehaving) can open enough concurrent or slow downloads to exhaust servlet
+  capacity, HTTP client connections, or pod bandwidth before the follow-up in "Capacity and rate
+  limiting" is delivered. This risk is accepted for the initial release rather than blocking it.
 
 ## Capacity and rate limiting
+
+The initial implementation does not enforce any of the limits described in this section. It is
+follow-up work, tracked separately, and must land before download traffic is expected to reach a
+volume or caller mix where the risk in "Consequences" becomes material. This section records the
+agreed design for that follow-up so it does not need to be re-derived.
 
 The proxy adds a long-lived workload to an API that also handles normal commands and queries. A
 single 10 MB download consumes an inbound client connection, an outbound object-store connection,
@@ -138,8 +173,12 @@ state or an enforcement layer with equivalent distributed coordination.
 
 ### Deployment-wide enforcement options under consideration
 
-No enforcement mechanism is selected by this ADR. The following options require an operational and
-load-test decision before implementation.
+This ADR does not fix the numeric limits, but it does not leave enforcement undecided: the API will
+combine both options below rather than choosing one exclusively, because they cover different failure
+modes. Gateway-level limiting bounds request bursts before they reach a pod; the application-level
+limiter is required regardless, because it is the only layer that can track and release an
+active-stream permit across the lifetime of a proxied download. The specific numeric thresholds and
+the shared-state technology remain an operational and load-test decision before implementation.
 
 #### 1. API gateway or ingress rate limiting
 
@@ -171,25 +210,14 @@ capacity.
   client disconnect. Permits must not remain held after a partially written response.
 - Do not retry an object download after any response bytes have reached the client. Retrying would
   corrupt the response unless range semantics are deliberately implemented.
+- Until range semantics are implemented, the proxy ignores any `Range` header and returns `200 OK`
+  with the full body, rather than a `206 Partial Content` response or a silently truncated stream.
 - Map failure before response commitment to a stable API error. After the response has started, log
   the failed stream with its caller and document identifiers and close the connection.
 - Do not log signed URLs, document bytes, or credentials. Audit records may include the caller,
   folder ID, file ID, outcome, duration, and bytes relayed.
 - Treat byte-range support as unsupported until the proxy explicitly forwards `Range`, `Accept-Ranges`,
   `Content-Range`, and relevant status codes and has tests for partial responses.
-
-## Open questions
-
-### Should documents use `Content-Disposition: inline` or `attachment`?
-
-The current endpoint uses `attachment`, which asks a browser to download the document using its
-stored filename. The UI may need an in-browser viewing experience for supported content types such
-as PDFs. In that case, the API could use `inline` with the stored media type and the UI could present
-a view action instead of a download action.
-
-This is a user-experience decision, not an access-control boundary. A browser can still save, print,
-inspect, or otherwise copy content that it renders inline. The agreed disposition must be documented
-in the API contract and covered by response-header tests.
 
 ## Operational requirements
 
@@ -198,16 +226,19 @@ Before this ADR is accepted, define and implement:
 - the 10 MB maximum document size and expected peak concurrent downloads;
 - connection, read, and response-write timeouts for the SDS URL request and streamed object;
 - HTTP client connection-pool limits and a policy for saturation;
+- metrics for active downloads, bytes relayed, duration, failed streams, timeouts, and client
+  disconnects;
+- logs or audit events that identify the caller, Prior Authority ID, document ID, and outcome, but
+  do not record signed URLs or document contents; and
+- a decision on whether byte-range download support is required.
+
+Tracked as follow-up work, not required before the initial release:
+
 - a per-caller start-rate limit, per-caller active-stream limit, and deployment-wide active-stream
   limit, with a `429` and `Retry-After` response contract;
 - distributed coordination for limits when more than one API pod can serve downloads;
-- metrics for active downloads, bytes relayed, duration, failed streams, timeouts, and client
-  disconnects, plus requests rejected by each limit;
-- logs or audit events that identify the caller, Prior Authority ID, document ID, and outcome, but
-  do not record signed URLs or document contents;
-- load tests using 10 MB documents and slow clients while normal API traffic is active; and
-- a decision on `Content-Disposition: inline` versus `attachment`; and
-- a decision on whether byte-range download support is required.
+- requests-rejected metrics for each limit; and
+- load tests using 10 MB documents and slow clients while normal API traffic is active.
 
 ## Alternatives considered
 
@@ -230,6 +261,26 @@ sequenceDiagram
   Client->>S3: GET object using signed URL
   S3-->>Client: Stream document bytes
 ```
+
+### Return the signed URL and metadata to a business backend application
+
+Rejected because it would make every business team implement and operate its own document proxy.
+The Data Access API would authenticate the business backend application and return the signed URL,
+stored filename, media type, and content length. That application would then retrieve the document
+from S3 and proxy it through its own authorised boundary to its users.
+
+This option keeps signed URLs away from end users and removes the Data Access API from the document
+data path. A download would flow from S3 to the business backend and then to its user, instead of
+passing through the Data Access API as an additional hop. Streaming capacity, slow-client failures,
+and active-download limits would also be isolated to each business backend, so one team's download
+traffic would not consume the Data Access API's servlet threads, outbound connections, or bandwidth.
+
+However, it duplicates the storage access, streaming, timeout, cleanup, capacity-management, and
+audit concerns in every consuming application. It also creates inconsistent implementation and
+operational behaviour across business teams. The Data Access API would still need to rate-limit
+signed-URL requests, and the shared SDS and S3 services would still need their own capacity limits.
+Providing the proxy in the Data Access API centralises document-download behaviour while still
+leaving end-user authorisation and user-interface behaviour with the downstream application.
 
 ### Redirect the client to an S3 signed URL
 
@@ -257,13 +308,19 @@ Before changing this ADR to Accepted:
   stream resource creation; and
 - each endpoint using the component has tests that prove its own ownership check runs before the
   component is called;
-- rate-limit tests cover `429`, per-caller isolation, deployment-wide saturation, and permit release
-  after a successful stream, upstream failure, timeout, and client disconnect;
-- monitoring and limits listed above are implemented or explicitly accepted by the service owner;
-- load testing with 10 MB files and slow clients demonstrates that expected download traffic does
-  not breach normal API latency or error-rate objectives; and
+- timeout, cleanup, and observability items in "Operational requirements" are implemented or
+  explicitly accepted by the service owner; and
 - the API contract states that the download response is streamed content and does not expose a
   storage URL.
+
+Rate limiting and active-download capacity management are explicitly out of scope for this initial
+acceptance. They are tracked as follow-up work under "Capacity and rate limiting", with its own
+acceptance criteria before that follow-up is considered done:
+
+- rate-limit tests cover `429`, per-caller isolation, deployment-wide saturation, and permit release
+  after a successful stream, upstream failure, timeout, and client disconnect; and
+- load testing with 10 MB files and slow clients demonstrates that expected download traffic does
+  not breach normal API latency or error-rate objectives.
 
 ## Related documentation
 

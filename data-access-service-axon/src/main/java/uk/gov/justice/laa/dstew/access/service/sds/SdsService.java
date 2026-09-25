@@ -8,6 +8,7 @@ import java.net.MalformedURLException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -93,26 +94,26 @@ public class SdsService {
   }
 
   /**
-   * Save a prior-authority document in SDS using a UUID document key.
+   * Save a evidence document in SDS using a UUID document key.
    *
-   * @param priorAuthorityId the prior-authority ID used as folder name
+   * @param folderId the unique ID used as folder name
    * @param documentId the generated document ID used as file key
    * @param file the file to upload
    * @return the file URL response from SDS
    */
-  public DocumentUploadResponse savePriorAuthorityFile(
-      UUID priorAuthorityId, UUID documentId, MultipartFile file) {
+  public DocumentUploadResponse saveEvidenceFile(
+      UUID folderId, UUID documentId, MultipartFile file) {
     Map<String, String> bodyMap =
         Map.of(
             BUCKET_NAME_FIELD,
             bucketName,
             FOLDER_FIELD,
-            priorAuthorityId.toString(),
+            folderId.toString(),
             "key",
             documentId.toString());
     MultipartBodyBuilder builder =
         buildMultipartBody(
-            file, bodyMap, documentId + getFileExtension(file.getOriginalFilename()));
+            file, bodyMap, documentId + getFileExtension(Objects.requireNonNull(file.getOriginalFilename())));
 
     return sdsUploadResponseHandler
         .handle(
@@ -179,15 +180,14 @@ public class SdsService {
   }
 
   /**
-   * Gets a resource backed by the SDS signed URL for a Prior Authority document.
+   * Gets a resource backed by the SDS signed URL for a evidence document.
    *
    * <p>The resource opens the signed URL only when Spring writes it to the HTTP response, avoiding
    * buffering the document in this service.
    */
-  public Resource getPriorAuthorityFile(
-      UUID priorAuthorityId, UUID documentId, String originalFileName) {
+  public Resource getEvidenceFile(UUID folderId, UUID documentId, String originalFileName) {
     DocumentDownloadResponse response =
-        getFile(priorAuthorityId, documentId + getFileExtension(originalFileName));
+        getFile(folderId, documentId + getFileExtension(originalFileName));
     String fileUrl = response == null ? null : response.getFileURL();
     if (fileUrl == null || fileUrl.isBlank()) {
       throw new ResourceNotFoundException("File not found");

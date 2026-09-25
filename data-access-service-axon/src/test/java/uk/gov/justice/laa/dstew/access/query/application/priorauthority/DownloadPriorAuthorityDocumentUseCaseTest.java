@@ -36,7 +36,7 @@ class DownloadPriorAuthorityDocumentUseCaseTest {
         PriorAuthorityResult.builder().uploadedDocuments(List.of(document)).build();
     Resource resource = org.mockito.Mockito.mock(Resource.class);
     when(getPriorAuthorityUseCase.getPriorAuthority(priorAuthorityId)).thenReturn(result);
-    when(sdsService.getPriorAuthorityFile(priorAuthorityId, documentId, document.fileName()))
+    when(sdsService.getEvidenceFile(priorAuthorityId, documentId, document.fileName()))
         .thenReturn(resource);
 
     PriorAuthorityDocumentDownload download =
@@ -44,7 +44,7 @@ class DownloadPriorAuthorityDocumentUseCaseTest {
 
     assertThat(download.document()).isSameAs(document);
     assertThat(download.resource()).isSameAs(resource);
-    verify(sdsService).getPriorAuthorityFile(priorAuthorityId, documentId, document.fileName());
+    verify(sdsService).getEvidenceFile(priorAuthorityId, documentId, document.fileName());
   }
 
   @Test
@@ -60,7 +60,7 @@ class DownloadPriorAuthorityDocumentUseCaseTest {
             .build();
     Resource resource = org.mockito.Mockito.mock(Resource.class);
     when(getPriorAuthorityUseCase.getPriorAuthority(priorAuthorityId)).thenReturn(result);
-    when(sdsService.getPriorAuthorityFile(priorAuthorityId, secondDocumentId, "evidence.pdf"))
+    when(sdsService.getEvidenceFile(priorAuthorityId, secondDocumentId, "evidence.pdf"))
         .thenReturn(resource);
 
     PriorAuthorityDocumentDownload download =
@@ -68,7 +68,7 @@ class DownloadPriorAuthorityDocumentUseCaseTest {
 
     assertThat(download.document()).isSameAs(secondDocument);
     assertThat(download.resource()).isSameAs(resource);
-    verify(sdsService).getPriorAuthorityFile(priorAuthorityId, secondDocumentId, "evidence.pdf");
+    verify(sdsService).getEvidenceFile(priorAuthorityId, secondDocumentId, "evidence.pdf");
   }
 
   @Test

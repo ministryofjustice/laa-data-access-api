@@ -29,8 +29,7 @@ public class DownloadPriorAuthorityDocumentUseCase {
   public PriorAuthorityDocumentDownload downloadDocument(UUID priorAuthorityId, UUID documentId) {
     PriorAuthorityDocument document = getDocument(priorAuthorityId, documentId);
     return new PriorAuthorityDocumentDownload(
-        document,
-        sdsService.getPriorAuthorityFile(priorAuthorityId, documentId, document.fileName()));
+        document, sdsService.getEvidenceFile(priorAuthorityId, documentId, document.fileName()));
   }
 
   private PriorAuthorityDocument getDocument(UUID priorAuthorityId, UUID documentId) {

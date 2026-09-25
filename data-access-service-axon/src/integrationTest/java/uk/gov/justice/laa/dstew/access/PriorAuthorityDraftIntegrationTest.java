@@ -293,7 +293,7 @@ class PriorAuthorityDraftIntegrationTest {
             PriorAuthorityType.DISBURSEMENT,
             "Interpreter costs for proceedings",
             validDisbursementRequest());
-    when(sdsService.savePriorAuthorityFile(any(), any(), any()))
+    when(sdsService.saveEvidenceFile(any(), any(), any()))
         .thenReturn(new DocumentUploadResponse().checksum("checksum"));
 
     ResponseEntity<String> uploadResponse =
@@ -342,11 +342,11 @@ class PriorAuthorityDraftIntegrationTest {
   void givenUploadedDocument_whenDownloaded_thenStreamsContentWithOriginalFilename() {
     UUID applicationId = grantedApplication();
     UUID priorAuthorityId = saveDraft(applicationId, PriorAuthorityType.EXPERT, null, null);
-    when(sdsService.savePriorAuthorityFile(any(), any(), any()))
+    when(sdsService.saveEvidenceFile(any(), any(), any()))
         .thenReturn(new DocumentUploadResponse().checksum("checksum"));
     UUID documentId = uploadDocument(priorAuthorityId, "evidence.pdf");
     byte[] content = "%PDF-1.4\ncontent".getBytes();
-    when(sdsService.getPriorAuthorityFile(priorAuthorityId, documentId, "evidence.pdf"))
+    when(sdsService.getEvidenceFile(priorAuthorityId, documentId, "evidence.pdf"))
         .thenReturn(new ByteArrayResource(content));
 
     ResponseEntity<byte[]> response =
@@ -363,7 +363,7 @@ class PriorAuthorityDraftIntegrationTest {
     assertThat(response.getHeaders().getContentDisposition().getFilename())
         .isEqualTo("evidence.pdf");
     assertThat(response.getBody()).containsExactly(content);
-    verify(sdsService).getPriorAuthorityFile(priorAuthorityId, documentId, "evidence.pdf");
+    verify(sdsService).getEvidenceFile(priorAuthorityId, documentId, "evidence.pdf");
   }
 
   @Test
@@ -379,7 +379,7 @@ class PriorAuthorityDraftIntegrationTest {
             String.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-    verify(sdsService, never()).getPriorAuthorityFile(any(), any(), any());
+    verify(sdsService, never()).getEvidenceFile(any(), any(), any());
   }
 
   @Test
@@ -387,7 +387,7 @@ class PriorAuthorityDraftIntegrationTest {
       givenDraftWithUploadedDocument_whenDeletePriorAuthorityDocument_thenReturnsNoContentAndRemovesDocument() {
     UUID applicationId = grantedApplication();
     UUID priorAuthorityId = saveDraft(applicationId, PriorAuthorityType.EXPERT, null, null);
-    when(sdsService.savePriorAuthorityFile(any(), any(), any()))
+    when(sdsService.saveEvidenceFile(any(), any(), any()))
         .thenReturn(new DocumentUploadResponse().checksum("checksum"));
     UUID documentId = uploadDocument(priorAuthorityId, "evidence.pdf");
 
@@ -422,7 +422,7 @@ class PriorAuthorityDraftIntegrationTest {
             PriorAuthorityType.DISBURSEMENT,
             "Interpreter costs for proceedings",
             validDisbursementRequest());
-    when(sdsService.savePriorAuthorityFile(any(), any(), any()))
+    when(sdsService.saveEvidenceFile(any(), any(), any()))
         .thenReturn(new DocumentUploadResponse().checksum("checksum"));
     UUID documentId = uploadDocument(priorAuthorityId, "evidence.pdf");
 
@@ -475,7 +475,7 @@ class PriorAuthorityDraftIntegrationTest {
             PriorAuthorityType.DISBURSEMENT,
             "Interpreter costs for proceedings",
             validDisbursementRequest());
-    when(sdsService.savePriorAuthorityFile(any(), any(), any()))
+    when(sdsService.saveEvidenceFile(any(), any(), any()))
         .thenReturn(new DocumentUploadResponse().checksum("checksum"));
     UUID documentId = uploadDocument(priorAuthorityId, "evidence.pdf");
     ResponseEntity<Void> updateDocumentTypeResponse =
