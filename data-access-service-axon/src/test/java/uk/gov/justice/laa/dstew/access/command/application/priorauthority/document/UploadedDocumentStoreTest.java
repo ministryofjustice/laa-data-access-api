@@ -37,8 +37,6 @@ class UploadedDocumentStoreTest {
     assertThat(captor.getValue().getDocumentId()).isEqualTo(document.documentId());
     assertThat(captor.getValue().getSubmissionId()).isEqualTo(submissionId);
     assertThat(captor.getValue().getOriginalFilename()).isEqualTo(document.fileName());
-    assertThat(captor.getValue().getDocumentType()).isEqualTo(document.documentType());
-    assertThat(captor.getValue().getMetadata()).isEqualTo(UploadedDocumentMetadata.from(document));
   }
 
   @Test
@@ -50,9 +48,7 @@ class UploadedDocumentStoreTest {
 
     store.updateDocumentType(submissionId, documentId, "INVOICE");
 
-    ArgumentCaptor<UploadedDocument> captor = ArgumentCaptor.forClass(UploadedDocument.class);
-    verify(repository).saveAndFlush(captor.capture());
-    assertThat(captor.getValue().getDocumentType()).isEqualTo("INVOICE");
+    verify(repository).findById(documentId);
   }
 
   @Test
@@ -76,7 +72,7 @@ class UploadedDocumentStoreTest {
   }
 
   @Test
-  void givenOwnedDocument_whenDeleted_thenDeletesStoredMetadata() {
+  void givenOwnedDocument_whenDeleted_thenRetainsFilenameMapping() {
     UUID submissionId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
     UploadedDocument storedDocument = storedDocument(submissionId, documentId, "EVIDENCE");
@@ -84,7 +80,7 @@ class UploadedDocumentStoreTest {
 
     store.delete(submissionId, documentId);
 
-    verify(repository).delete(storedDocument);
+    verify(repository).findById(documentId);
   }
 
   @Test
@@ -97,11 +93,11 @@ class UploadedDocumentStoreTest {
     when(repository.findAllById(List.of(firstDocumentId, missingDocumentId, secondDocumentId)))
         .thenReturn(List.of(second, first));
 
-    List<PriorAuthorityDocument> documents =
+    List<UploadedDocument> documents =
         store.findAllInOrder(List.of(firstDocumentId, missingDocumentId, secondDocumentId));
 
     assertThat(documents)
-        .extracting(PriorAuthorityDocument::documentId)
+        .extracting(UploadedDocument::getDocumentId)
         .containsExactly(firstDocumentId, secondDocumentId);
   }
 
@@ -124,8 +120,6 @@ class UploadedDocumentStoreTest {
         .documentId(documentId)
         .submissionId(submissionId)
         .originalFilename(document.fileName())
-        .documentType(document.documentType())
-        .metadata(UploadedDocumentMetadata.from(document))
         .build();
   }
 }

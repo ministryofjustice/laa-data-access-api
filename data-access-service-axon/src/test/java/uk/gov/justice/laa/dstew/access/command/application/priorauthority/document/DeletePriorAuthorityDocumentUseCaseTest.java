@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -27,6 +28,7 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityDocument;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
 
 @ExtendWith(MockitoExtension.class)
@@ -36,12 +38,31 @@ class DeletePriorAuthorityDocumentUseCaseTest {
   @Mock private UploadedDocumentStore uploadedDocumentStore;
   @Mock private RetryingCommandDispatcher dispatcher;
   @Mock private SdsService sdsService;
+  @Mock private SubscriptionProjectionGateway projectionGateway;
+
+  @org.junit.jupiter.api.BeforeEach
+  void setUp() {
+    lenient()
+        .when(
+            projectionGateway.awaitProjection(
+                any(), (java.util.function.Predicate<Boolean>) any(), any()))
+        .thenAnswer(
+            invocation -> {
+              ((Runnable) invocation.getArgument(2)).run();
+              return true;
+            });
+  }
 
   @Test
   void givenDraftExists_whenExecute_thenDispatchesBeforeDeletingTheSdsFile() {
     DeletePriorAuthorityDocumentUseCase useCase =
         new DeletePriorAuthorityDocumentUseCase(
-            draftStore, uploadedDocumentStore, dispatcher, sdsService, new ObjectMapper());
+            draftStore,
+            uploadedDocumentStore,
+            dispatcher,
+            sdsService,
+            new ObjectMapper(),
+            projectionGateway);
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
@@ -55,7 +76,7 @@ class DeletePriorAuthorityDocumentUseCaseTest {
                     "{}",
                     Instant.now())));
     when(uploadedDocumentStore.findAllInOrder(List.of(documentId)))
-        .thenReturn(List.of(document(documentId)));
+        .thenReturn(List.of(storedDocument(documentId)));
 
     useCase.execute(priorAuthorityId, documentId);
 
@@ -75,7 +96,12 @@ class DeletePriorAuthorityDocumentUseCaseTest {
   void givenSdsDeletionFails_whenExecute_thenDoesNotPropagateTheFailure() {
     DeletePriorAuthorityDocumentUseCase useCase =
         new DeletePriorAuthorityDocumentUseCase(
-            draftStore, uploadedDocumentStore, dispatcher, sdsService, new ObjectMapper());
+            draftStore,
+            uploadedDocumentStore,
+            dispatcher,
+            sdsService,
+            new ObjectMapper(),
+            projectionGateway);
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
@@ -89,7 +115,7 @@ class DeletePriorAuthorityDocumentUseCaseTest {
                     "{}",
                     Instant.now())));
     when(uploadedDocumentStore.findAllInOrder(List.of(documentId)))
-        .thenReturn(List.of(document(documentId)));
+        .thenReturn(List.of(storedDocument(documentId)));
     doThrow(new IllegalStateException("SDS unavailable"))
         .when(sdsService)
         .deleteFiles(priorAuthorityId, List.of(documentId.toString() + ".pdf"));
@@ -104,7 +130,12 @@ class DeletePriorAuthorityDocumentUseCaseTest {
   void givenDraftMissing_whenExecute_thenThrowsNotFoundWithoutDeletingFromSds() {
     DeletePriorAuthorityDocumentUseCase useCase =
         new DeletePriorAuthorityDocumentUseCase(
-            draftStore, uploadedDocumentStore, dispatcher, sdsService, new ObjectMapper());
+            draftStore,
+            uploadedDocumentStore,
+            dispatcher,
+            sdsService,
+            new ObjectMapper(),
+            projectionGateway);
     UUID priorAuthorityId = UUID.randomUUID();
     when(draftStore.find(priorAuthorityId)).thenReturn(Optional.empty());
 
@@ -118,7 +149,12 @@ class DeletePriorAuthorityDocumentUseCaseTest {
   void givenDocumentMissing_whenExecute_thenThrowsNotFoundWithoutDeletingFromSds() {
     DeletePriorAuthorityDocumentUseCase useCase =
         new DeletePriorAuthorityDocumentUseCase(
-            draftStore, uploadedDocumentStore, dispatcher, sdsService, new ObjectMapper());
+            draftStore,
+            uploadedDocumentStore,
+            dispatcher,
+            sdsService,
+            new ObjectMapper(),
+            projectionGateway);
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
@@ -150,6 +186,13 @@ class DeletePriorAuthorityDocumentUseCaseTest {
         Instant.now(),
         "test",
         null);
+  }
+
+  private UploadedDocument storedDocument(UUID documentId) {
+    return UploadedDocument.builder()
+        .documentId(documentId)
+        .originalFilename("evidence.pdf")
+        .build();
   }
 
   private PriorAuthorityContent contentWithPdfDocument(UUID documentId) {

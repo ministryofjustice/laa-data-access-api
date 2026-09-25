@@ -231,8 +231,12 @@ public class PriorAuthorityAggregate {
     }
   }
 
-  private static @NonNull PriorAuthorityDataPayload requireDraft(
+  private @NonNull PriorAuthorityDataPayload requireDraft(
       UUID priorAuthorityId, PriorAuthorityDraftStore draftStore) {
+    if (state.priorAuthorityId == null || !state.draftOpen) {
+      throw new ResourceNotFoundException(
+          "Prior Authority %s not found".formatted(priorAuthorityId));
+    }
     return draftStore
         .find(priorAuthorityId)
         .orElseThrow(

@@ -78,8 +78,8 @@ class PriorAuthoritySchemaTest {
   }
 
   @Test
-  void givenPayloadWithUploadedDocument_whenValidate_thenAccepts() {
-    validator.validate(
+  void givenPayloadWithUploadedDocument_whenValidate_thenRejects() {
+    assertRejected(
         new PriorAuthorityContent(
             PriorAuthorityType.DISBURSEMENT,
             "Need interpreter costs",
@@ -97,8 +97,7 @@ class PriorAuthoritySchemaTest {
                     Instant.parse("2026-09-16T10:20:05Z"),
                     "CIVIL_APPLY",
                     "checksum"))),
-        "PriorAuthority.json",
-        1);
+        "additional");
   }
 
   @Test

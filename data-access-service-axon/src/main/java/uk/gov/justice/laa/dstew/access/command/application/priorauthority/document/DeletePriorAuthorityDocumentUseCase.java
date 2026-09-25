@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.command.application.priorauthority.docum
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,8 +11,9 @@ import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentDeleteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityDocument;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
+import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityDocumentPresentQuery;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
 import uk.gov.justice.laa.dstew.access.util.RequestSerialiser;
@@ -27,6 +29,7 @@ public class DeletePriorAuthorityDocumentUseCase {
   private final RetryingCommandDispatcher dispatcher;
   private final SdsService sdsService;
   private final ObjectMapper objectMapper;
+  private final SubscriptionProjectionGateway projectionGateway;
 
   /** Creates the use case with draft lookup, command dispatch, and SDS dependencies. */
   public DeletePriorAuthorityDocumentUseCase(
@@ -34,17 +37,19 @@ public class DeletePriorAuthorityDocumentUseCase {
       UploadedDocumentStore uploadedDocumentStore,
       RetryingCommandDispatcher dispatcher,
       SdsService sdsService,
-      ObjectMapper objectMapper) {
+      ObjectMapper objectMapper,
+      SubscriptionProjectionGateway projectionGateway) {
     this.draftStore = draftStore;
     this.uploadedDocumentStore = uploadedDocumentStore;
     this.dispatcher = dispatcher;
     this.sdsService = sdsService;
     this.objectMapper = objectMapper;
+    this.projectionGateway = projectionGateway;
   }
 
   /** Removes the document reference durably before attempting best-effort SDS deletion. */
   @AllowApiCaseworker
-  public void execute(UUID priorAuthorityId, UUID documentId) {
+  public boolean execute(UUID priorAuthorityId, UUID documentId) {
     var draft =
         draftStore
             .find(priorAuthorityId)
@@ -52,7 +57,7 @@ public class DeletePriorAuthorityDocumentUseCase {
                 () ->
                     new ResourceNotFoundException(
                         "Prior Authority %s not found".formatted(priorAuthorityId)));
-    PriorAuthorityDocument document =
+    UploadedDocument document =
         uploadedDocumentStore.findAllInOrder(List.of(documentId)).stream()
             .findFirst()
             .orElseThrow(
@@ -60,19 +65,23 @@ public class DeletePriorAuthorityDocumentUseCase {
                     new ResourceNotFoundException(
                         "Document %s not found for Prior Authority %s"
                             .formatted(documentId, priorAuthorityId)));
+    String extension = requireFilenameExtension(document.getOriginalFilename(), documentId);
     Instant deletedAt = Instant.now();
-    dispatcher.dispatch(
-        new PriorAuthorityDocumentDeleteCommand(
-            priorAuthorityId,
-            documentId,
-            RequestSerialiser.serialise(
-                objectMapper, new DeletePriorAuthorityDocumentRequest(documentId)),
-            deletedAt));
+    boolean projected =
+        projectionGateway.awaitProjection(
+            new PriorAuthorityDocumentPresentQuery(priorAuthorityId, documentId),
+            Boolean.FALSE::equals,
+            () ->
+                dispatcher.dispatch(
+                    new PriorAuthorityDocumentDeleteCommand(
+                        priorAuthorityId,
+                        documentId,
+                        RequestSerialiser.serialise(
+                            objectMapper, new DeletePriorAuthorityDocumentRequest(documentId)),
+                        deletedAt)));
 
     try {
-      String fileName =
-          documentId
-              + PriorAuthorityDocumentFormat.fromFileType(document.fileType()).fileExtension();
+      String fileName = documentId + extension;
       sdsService.deleteFiles(draft.priorAuthorityId(), List.of(fileName));
     } catch (RuntimeException exception) {
       LOG.error(
@@ -81,5 +90,16 @@ public class DeletePriorAuthorityDocumentUseCase {
           documentId,
           exception);
     }
+    return projected;
+  }
+
+  private static String requireFilenameExtension(String filename, UUID documentId) {
+    Objects.requireNonNull(filename, "originalFilename must not be null");
+    int extensionIndex = filename.lastIndexOf('.');
+    if (extensionIndex <= 0 || extensionIndex == filename.length() - 1) {
+      throw new IllegalStateException(
+          "Original filename must include a file extension for document " + documentId);
+    }
+    return filename.substring(extensionIndex);
   }
 }

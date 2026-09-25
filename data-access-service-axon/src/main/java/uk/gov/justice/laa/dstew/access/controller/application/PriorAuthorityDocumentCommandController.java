@@ -5,6 +5,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import uk.gov.justice.laa.dstew.access.api.PriorAuthorityDocumentCommandApi;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.document.DeletePriorAuthorityDocumentUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.document.UpdatePriorAuthorityDocumentTypeResult;
@@ -77,7 +78,14 @@ public class PriorAuthorityDocumentCommandController implements PriorAuthorityDo
   @LogMethodResponse
   public ResponseEntity<Void> deletePriorAuthorityDocument(
       ServiceName serviceName, UUID priorAuthorityId, UUID documentId) {
-    deleteUseCase.execute(priorAuthorityId, documentId);
-    return ResponseEntity.noContent().build();
+    boolean projected = deleteUseCase.execute(priorAuthorityId, documentId);
+    var location =
+        ServletUriComponentsBuilder.fromCurrentContextPath()
+            .path("/api/v0/prior-authorities/{priorAuthorityId}")
+            .buildAndExpand(priorAuthorityId)
+            .toUri();
+    return projected
+        ? ResponseEntity.noContent().build()
+        : ResponseEntity.accepted().location(location).build();
   }
 }

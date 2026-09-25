@@ -327,12 +327,6 @@ class PriorAuthorityDraftIntegrationTest {
                 headers()),
             Void.class);
     assertThat(updateDocumentTypeResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT document_type FROM axon.uploaded_documents WHERE document_id = ?",
-                String.class,
-                documentId))
-        .isEqualTo("GATEWAY_EVIDENCE");
 
     ResponseEntity<String> submitResponse =
         restTemplate.postForEntity(
@@ -353,7 +347,12 @@ class PriorAuthorityDraftIntegrationTest {
     assertThat(priorAuthority.getStatus()).isEqualTo(PriorAuthorityResponse.StatusEnum.SUBMITTED);
     assertThat(priorAuthority.getUploadedDocuments())
         .singleElement()
-        .satisfies(document -> assertThat(document.getFileName()).isEqualTo("evidence.pdf"));
+        .satisfies(
+            document -> {
+              assertThat(document.getFileName()).isEqualTo("evidence.pdf");
+              assertThat(document.getDocumentType())
+                  .isEqualTo(PriorAuthorityDocumentType.GATEWAY_EVIDENCE);
+            });
   }
 
   @Test
@@ -375,16 +374,22 @@ class PriorAuthorityDraftIntegrationTest {
     assertThat(deleteResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
     verify(sdsService).deleteFiles(priorAuthorityId, List.of(documentId.toString() + ".pdf"));
 
-    ResponseEntity<String> draftResponse =
-        restTemplate.exchange(
-            priorAuthorityUrl(priorAuthorityId),
-            HttpMethod.GET,
-            new HttpEntity<>(headers()),
-            String.class);
-    assertThat(draftResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-    PriorAuthorityResponse draft =
-        objectMapper.readValue(draftResponse.getBody(), PriorAuthorityResponse.class);
-    assertThat(draft.getUploadedDocuments()).isEmpty();
+    await()
+        .atMost(15, TimeUnit.SECONDS)
+        .pollInterval(100, TimeUnit.MILLISECONDS)
+        .untilAsserted(
+            () -> {
+              ResponseEntity<String> draftResponse =
+                  restTemplate.exchange(
+                      priorAuthorityUrl(priorAuthorityId),
+                      HttpMethod.GET,
+                      new HttpEntity<>(headers()),
+                      String.class);
+              assertThat(draftResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+              PriorAuthorityResponse draft =
+                  objectMapper.readValue(draftResponse.getBody(), PriorAuthorityResponse.class);
+              assertThat(draft.getUploadedDocuments()).isEmpty();
+            });
   }
 
   @Test

@@ -9,8 +9,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
+import lombok.NonNull;
 
 /** Query-side metadata for a file uploaded to a prior-authority submission. */
 @Entity
@@ -29,12 +28,6 @@ public class UploadedDocument {
   private UUID submissionId;
 
   @Column(name = "original_filename", nullable = false)
+  @NonNull
   private String originalFilename;
-
-  @Column(name = "document_type")
-  private String documentType;
-
-  @JdbcTypeCode(SqlTypes.JSON)
-  @Column(nullable = false)
-  private UploadedDocumentMetadata metadata;
 }

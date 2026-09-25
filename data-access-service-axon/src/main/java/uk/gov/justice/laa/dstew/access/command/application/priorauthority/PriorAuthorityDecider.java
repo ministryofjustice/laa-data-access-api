@@ -146,6 +146,9 @@ public final class PriorAuthorityDecider {
         command.fileSize(),
         command.contentType(),
         command.checksum(),
+        command.fileType(),
+        command.sourceService(),
+        null,
         applicationId);
   }
 

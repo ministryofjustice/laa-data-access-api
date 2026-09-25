@@ -353,11 +353,23 @@ class PriorAuthorityProjectionTest {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID existingDocumentId = UUID.randomUUID();
     UUID newDocumentId = UUID.randomUUID();
+    Instant existingUploadedAt = Instant.parse("2026-09-08T12:00:00Z");
     PriorAuthorityReadModel model =
         PriorAuthorityReadModel.builder()
             .priorAuthorityId(priorAuthorityId)
             .applicationId(UUID.randomUUID())
-            .uploadedDocumentIds(java.util.List.of(existingDocumentId))
+            .uploadedDocumentIds(
+                java.util.List.of(
+                    new uk.gov.justice.laa.dstew.access.command.application.priorauthority
+                        .UploadedDocumentData(
+                        existingDocumentId,
+                        12L,
+                        "PDF",
+                        "application/pdf",
+                        "CIVIL_APPLY",
+                        "INVOICE",
+                        existingUploadedAt,
+                        null)))
             .build();
     when(repository.findById(priorAuthorityId)).thenReturn(Optional.of(model));
 
@@ -369,12 +381,24 @@ class PriorAuthorityProjectionTest {
             1L,
             "application/pdf",
             "checksum",
+            "PDF",
+            "CIVIL_APPLY",
+            "INVOICE",
             UUID.randomUUID()));
     projection.on(
         new PriorAuthorityDocumentDeletedEvent(
-            priorAuthorityId, existingDocumentId, Instant.now(), UUID.randomUUID()));
+            priorAuthorityId, existingDocumentId, Instant.now(), UUID.randomUUID()),
+        queryUpdateEmitter);
 
-    assertThat(model.getUploadedDocumentIds()).containsExactly(newDocumentId);
+    assertThat(model.getUploadedDocumentIds())
+        .extracting(
+            uk.gov.justice.laa.dstew.access.command.application.priorauthority.UploadedDocumentData
+                ::documentId)
+        .containsExactly(existingDocumentId, newDocumentId);
+    assertThat(model.getUploadedDocumentIds())
+        .filteredOn(document -> document.documentId().equals(existingDocumentId))
+        .singleElement()
+        .satisfies(document -> assertThat(document.deletedAt()).isNotNull());
     verify(repository, org.mockito.Mockito.times(2)).save(model);
   }
 
@@ -398,9 +422,16 @@ class PriorAuthorityProjectionTest {
             1L,
             "application/pdf",
             "checksum",
+            "PDF",
+            "CIVIL_APPLY",
+            "INVOICE",
             UUID.randomUUID()));
 
-    assertThat(model.getUploadedDocumentIds()).containsExactly(documentId);
+    assertThat(model.getUploadedDocumentIds())
+        .extracting(
+            uk.gov.justice.laa.dstew.access.command.application.priorauthority.UploadedDocumentData
+                ::documentId)
+        .containsExactly(documentId);
     verify(repository).save(model);
   }
 
@@ -409,13 +440,36 @@ class PriorAuthorityProjectionTest {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID firstDocumentId = UUID.randomUUID();
     UUID secondDocumentId = UUID.randomUUID();
+    Instant firstUploadedAt = Instant.parse("2026-09-08T12:00:00Z");
+    Instant secondUploadedAt = Instant.parse("2026-09-08T12:05:00Z");
     PriorAuthorityReadModel model =
         PriorAuthorityReadModel.builder()
             .priorAuthorityId(priorAuthorityId)
             .applicationId(UUID.randomUUID())
             .dataVersion(1L)
             .status("SUBMITTED")
-            .uploadedDocumentIds(java.util.List.of(firstDocumentId, secondDocumentId))
+            .uploadedDocumentIds(
+                java.util.List.of(
+                    new uk.gov.justice.laa.dstew.access.command.application.priorauthority
+                        .UploadedDocumentData(
+                        firstDocumentId,
+                        10L,
+                        "PDF",
+                        "application/pdf",
+                        "CIVIL_APPLY",
+                        "INVOICE",
+                        firstUploadedAt,
+                        null),
+                    new uk.gov.justice.laa.dstew.access.command.application.priorauthority
+                        .UploadedDocumentData(
+                        secondDocumentId,
+                        11L,
+                        "PDF",
+                        "application/pdf",
+                        "CIVIL_APPLY",
+                        "INVOICE",
+                        secondUploadedAt,
+                        null)))
             .build();
     PriorAuthorityDocument firstDocument = document(firstDocumentId, "first.pdf");
     PriorAuthorityDocument secondDocument = document(secondDocumentId, "second.pdf");
@@ -428,13 +482,29 @@ class PriorAuthorityProjectionTest {
                 new PriorAuthorityContent(EXPERT, "Required", null, null, null),
                 "{}",
                 Instant.now()));
-    when(uploadedDocumentStore.findAllInOrder(model.getUploadedDocumentIds()))
-        .thenReturn(java.util.List.of(firstDocument, secondDocument));
+    when(uploadedDocumentStore.findById(firstDocumentId))
+        .thenReturn(
+            Optional.of(
+                uk.gov.justice.laa.dstew.access.command.application.priorauthority.document
+                    .UploadedDocument.builder()
+                    .documentId(firstDocumentId)
+                    .originalFilename(firstDocument.fileName())
+                    .build()));
+    when(uploadedDocumentStore.findById(secondDocumentId))
+        .thenReturn(
+            Optional.of(
+                uk.gov.justice.laa.dstew.access.command.application.priorauthority.document
+                    .UploadedDocument.builder()
+                    .documentId(secondDocumentId)
+                    .originalFilename(secondDocument.fileName())
+                    .build()));
 
     PriorAuthorityResult result =
         projection.handle(new FindPriorAuthorityByPriorAuthorityIdQuery(priorAuthorityId));
 
-    assertThat(result.uploadedDocuments()).containsExactly(firstDocument, secondDocument);
+    assertThat(result.uploadedDocuments()).hasSize(2);
+    assertThat(result.uploadedDocuments().get(0).documentId()).isEqualTo(firstDocumentId);
+    assertThat(result.uploadedDocuments().get(1).documentId()).isEqualTo(secondDocumentId);
   }
 
   @Test
@@ -462,7 +532,7 @@ class PriorAuthorityProjectionTest {
         projection.handle(new FindPriorAuthorityByPriorAuthorityIdQuery(priorAuthorityId));
 
     assertThat(result.uploadedDocuments()).isEmpty();
-    verify(uploadedDocumentStore, org.mockito.Mockito.never()).findAllInOrder(any());
+    verify(uploadedDocumentStore, org.mockito.Mockito.never()).findById(any());
   }
 
   @Test
@@ -478,10 +548,14 @@ class PriorAuthorityProjectionTest {
             1L,
             "application/pdf",
             "checksum",
+            "PDF",
+            "CIVIL_APPLY",
+            "INVOICE",
             UUID.randomUUID()));
     projection.on(
         new PriorAuthorityDocumentDeletedEvent(
-            priorAuthorityId, UUID.randomUUID(), Instant.now(), UUID.randomUUID()));
+            priorAuthorityId, UUID.randomUUID(), Instant.now(), UUID.randomUUID()),
+        queryUpdateEmitter);
 
     verify(repository, org.mockito.Mockito.never()).save(any());
   }

@@ -112,6 +112,21 @@ class UploadPriorAuthorityDocumentUseCaseTest {
   }
 
   @Test
+  void givenFilenameWithoutExtension_whenExecute_thenRejectsBeforeUploadingToSds() {
+    UploadPriorAuthorityDocumentUseCase useCase =
+        new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService, objectMapper);
+    UUID priorAuthorityId = UUID.randomUUID();
+    MockMultipartFile file =
+        new MockMultipartFile("file", "evidence", "application/pdf", "%PDF-content".getBytes());
+
+    assertThatExceptionOfType(IllegalArgumentException.class)
+        .isThrownBy(() -> useCase.execute(priorAuthorityId, file, "CIVIL_APPLY"))
+        .withMessage("originalFilename must include a file extension");
+
+    verifyNoInteractions(draftStore, dispatcher, sdsService);
+  }
+
+  @Test
   void givenSdsReturnsNull_whenExecute_thenDispatchesCommandWithNullChecksum() {
     UploadPriorAuthorityDocumentUseCase useCase =
         new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService, objectMapper);

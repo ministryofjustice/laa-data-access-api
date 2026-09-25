@@ -11,4 +11,7 @@ public record PriorAuthorityDocumentUploadedEvent(
     Long size,
     String contentType,
     String checksum,
+    String fileType,
+    String sourceService,
+    String documentType,
     UUID parentApplicationId) {}
