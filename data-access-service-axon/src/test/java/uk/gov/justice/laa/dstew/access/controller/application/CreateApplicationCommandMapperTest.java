@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -14,6 +15,7 @@ import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 
 class CreateApplicationCommandMapperTest {
 
@@ -75,6 +77,51 @@ class CreateApplicationCommandMapperTest {
 
     assertThatThrownBy(() -> failingMapper.toCommand(request, 1))
         .isInstanceOf(IllegalStateException.class);
+  }
+
+  @Test
+  void givenNullPotentialDuplicates_whenMapped_thenPotentialDuplicatesExtractsDefault() {
+    UUID id = UUID.randomUUID();
+    var request = ApplicationCreateRequest.builder().id(id).applicationContent(Map.of()).build();
+
+    var command = mapper.toCommand(request, 1);
+
+    // Request builder defaults potentialDuplicates to empty list when not explicitly set
+    assertThat(command.potentialDuplicates()).isEmpty();
+  }
+
+  @Test
+  void givenPopulatedPotentialDuplicates_whenMapped_thenExtractsAndPassesToCommand() {
+    UUID id = UUID.randomUUID();
+    List<PotentialDuplicate> duplicates =
+        List.of(
+            new PotentialDuplicate("LAA-456").applicationId(UUID.randomUUID()),
+            new PotentialDuplicate("LAA-789").legacyReference("LEGACY-001"));
+    var request =
+        ApplicationCreateRequest.builder()
+            .id(id)
+            .applicationContent(Map.of())
+            .potentialDuplicates(duplicates)
+            .build();
+
+    var command = mapper.toCommand(request, 1);
+
+    assertThat(command.potentialDuplicates()).isEqualTo(duplicates);
+  }
+
+  @Test
+  void givenEmptyPotentialDuplicates_whenMapped_thenExtractsEmptyList() {
+    UUID id = UUID.randomUUID();
+    var request =
+        ApplicationCreateRequest.builder()
+            .id(id)
+            .applicationContent(Map.of())
+            .potentialDuplicates(List.of())
+            .build();
+
+    var command = mapper.toCommand(request, 1);
+
+    assertThat(command.potentialDuplicates()).isEmpty();
   }
 
   private ApplicationCreateRequest request(UUID id) {

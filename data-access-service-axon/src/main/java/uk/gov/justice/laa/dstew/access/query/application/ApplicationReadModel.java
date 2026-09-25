@@ -13,6 +13,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationProvider;
@@ -79,7 +81,8 @@ public class ApplicationReadModel {
 
   @Transient private Map<String, Object> certificate;
 
-  @Column(name = "potential_duplicates", columnDefinition = "jsonb")
+  @Column(name = "potential_duplicates")
+  @JdbcTypeCode(SqlTypes.JSON)
   private List<PotentialDuplicate> potentialDuplicates;
 
   @Column(name = "created_at")

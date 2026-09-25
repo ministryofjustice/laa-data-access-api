@@ -106,7 +106,8 @@ class ApplicationDeciderTest {
             "requestFingerprint",
             "status",
             "schemaVersion",
-            "occurredAt");
+            "occurredAt",
+            "potentialDuplicates");
   }
 
   // ── decideDecision ─────────────────────────────────────────────────────────────
