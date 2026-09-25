@@ -114,11 +114,9 @@ sendAndWait completed
 Application creation uses a subscription query to wait briefly for its projection. It returns
 `202 Accepted` if the durable write succeeds but the projection is not visible within the timeout.
 
-The linking router deliberately uses a subscribing processor so reference-validation errors
-propagate back to the original request. Axon 5 rejects re-entrant event-store writes, so
-`LinkedApplicationGroupInitializer` creates or extends the group on a pooled streaming processor
-after the request event commits. See
-[ADR 0004](adr/0004-split-linked-group-initialisation-after-commit.md).
+Application creation does not dispatch linked-group commands. Explicit link requests use durable
+route rows, maintained by `ApplicationGroupRouteProjection`, so the command handler can validate
+and lock source/target membership before dispatching a linked-group command.
 
 ## Command state versus query state
 

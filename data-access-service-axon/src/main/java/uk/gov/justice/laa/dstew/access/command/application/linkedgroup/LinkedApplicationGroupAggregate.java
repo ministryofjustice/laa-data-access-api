@@ -12,11 +12,8 @@ import org.axonframework.messaging.eventhandling.gateway.EventAppender;
  * Event-sourced consistency boundary that owns group identity, the "exactly one lead" invariant,
  * and membership for a set of linked Applications.
  *
- * <p>The aggregate identifier is a deterministic UUID derived from the lead application ID via
- * {@link java.util.UUID#nameUUIDFromBytes}. This ensures all applications that reference the same
- * lead converge on the same group, while remaining distinct from the lead's own UUID (which avoids
- * Axon replaying the lead's event stream against this aggregate — {@code readEvents} queries by
- * identifier only, regardless of aggregate type).
+ * <p>The aggregate identifier is always the routed {@code groupId}; it does not depend on the lead
+ * or member application identifiers carried by the command payload.
  */
 @EventSourced(tagKey = "LinkedApplicationGroupAggregate", idType = UUID.class)
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
@@ -25,11 +22,17 @@ public class LinkedApplicationGroupAggregate {
   private UUID groupId;
   private final LinkedApplicationGroupState state = new LinkedApplicationGroupState();
 
-  /** Initialises the group, or adds new members idempotently if it already exists. */
+  /** Establishes the group idempotently when the routed group stream is empty. */
   @CommandHandler
-  void handle(InitialiseLinkedApplicationGroupCommand command, EventAppender eventAppender) {
-    LinkedApplicationGroupDecider.decideInitialise(state, command)
-        .forEach(e -> eventAppender.append(e));
+  void handle(EstablishLinkedApplicationGroupCommand command, EventAppender eventAppender) {
+    LinkedApplicationGroupDecider.decideEstablish(state, command).ifPresent(eventAppender::append);
+  }
+
+  /** Adds one application to an already-established group idempotently. */
+  @CommandHandler
+  void handle(AddApplicationToLinkedGroupCommand command, EventAppender eventAppender) {
+    LinkedApplicationGroupDecider.decideAddApplication(state, command)
+        .ifPresent(eventAppender::append);
   }
 
   @EventSourcingHandler

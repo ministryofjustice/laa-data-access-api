@@ -27,9 +27,7 @@ public final class ApplicationCreatedEventFixture {
         ApplicationDataStore.fingerprint(details.serialisedRequest()),
         details.status(),
         details.schemaVersion(),
-        details.occurredAt(),
-        details.leadApplicationId(),
-        List.of());
+        details.occurredAt());
   }
 
   /** Creates minimal creation details with stable values for the supplied identifier. */
@@ -40,7 +38,6 @@ public final class ApplicationCreatedEventFixture {
         null,
         ApplicationProvider.builder().officeCode("1A001B").build(),
         List.of(),
-        List.of(),
         1,
         Instant.parse("2026-07-14T12:30:00Z"),
         false,
@@ -48,7 +45,6 @@ public final class ApplicationCreatedEventFixture {
         null,
         List.of(),
         "{}",
-        Instant.parse("2026-07-15T08:00:00Z"),
-        null);
+        Instant.parse("2026-07-15T08:00:00Z"));
   }
 }

@@ -11,6 +11,8 @@ paths:
     $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications"
   /api/v0/applications/{id}:
     $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1{id}"
+  /api/v0/applications/{id}/link:
+    $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1{id}~1link"
   /api/v0/applications/{id}/unassign:
     $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1{id}~1unassign"
   /api/v0/applications/{id}/history-search:
@@ -27,8 +29,6 @@ paths:
     $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1{id}~1notes"
   /api/v0/applications/{id}/upload-document:
     $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1{id}~1upload-document"
-  /api/v0/applications/{id}/download-document/{documentId}:
-    $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1{id}~1download-document~1{documentId}"
   /api/v0/applications/{id}/update-document:
     $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1{id}~1update-document"
   /api/v0/applications/{id}/delete-document:
@@ -45,6 +45,8 @@ paths:
     $ref: "./open-api-prior-authority/resources.yml#/paths/~1api~1v0~1prior-authorities~1{priorAuthorityId}~1documents"
   /api/v0/prior-authorities/{priorAuthorityId}/documents/{documentId}:
     $ref: "./open-api-prior-authority/resources.yml#/paths/~1api~1v0~1prior-authorities~1{priorAuthorityId}~1documents~1{documentId}"
+  /api/v0/prior-authorities/{priorAuthorityId}/documents/{documentId}/content:
+    $ref: "./open-api-prior-authority/resources.yml#/paths/~1api~1v0~1prior-authorities~1{priorAuthorityId}~1documents~1{documentId}~1content"
   /api/v0/work-list:
     $ref: "./open-api-work-list/resources.yml#/paths/~1api~1v0~1work-list"
   /api/v0/work-list/{itemId}/assign:
@@ -67,6 +69,10 @@ components:
       $ref: "./open-api-applications/components.yml#/components/schemas/ApplicationCreateRequest"
     ApplicationUpdateRequest:
       $ref: "./open-api-applications/components.yml#/components/schemas/ApplicationUpdateRequest"
+    ApplicationLinkType:
+      $ref: "./open-api-applications/components.yml#/components/schemas/ApplicationLinkType"
+    ApplicationLinkRequest:
+      $ref: "./open-api-applications/components.yml#/components/schemas/ApplicationLinkRequest"
     ApplicationSummaryResponse:
       $ref: "./open-api-applications/components.yml#/components/schemas/ApplicationSummaryResponse"
     ApplicationSummary:

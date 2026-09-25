@@ -30,10 +30,17 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationD
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityData;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataId;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataRepository;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.config.interceptor.RequestMetadataDispatchInterceptor;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
+import uk.gov.justice.laa.dstew.access.controller.application.GetApplicationHistoryResponseMapper;
 
 @ExtendWith(MockitoExtension.class)
 class ApplicationHistoryProjectionTest {
@@ -43,6 +50,8 @@ class ApplicationHistoryProjectionTest {
   @Mock private ApplicationHistoryReadRepository repository;
 
   @Mock private PriorAuthorityHistoryReadRepository paRepository;
+
+  @Mock private PriorAuthorityDataRepository priorAuthorityDataRepository;
 
   @InjectMocks private ApplicationHistoryProjection projection;
 
@@ -56,7 +65,7 @@ class ApplicationHistoryProjectionTest {
             objectMapper,
             applicationDataStore,
             paRepository,
-            new PriorAuthorityHistoryAssembler());
+            new PriorAuthorityHistoryAssembler(priorAuthorityDataRepository));
   }
 
   @Test
@@ -97,9 +106,11 @@ class ApplicationHistoryProjectionTest {
   void givenMemberAddedEvent_whenHandled_thenStoresJoinedHistoryWithSyntheticPayload()
       throws Exception {
     UUID groupId = UUID.randomUUID();
+    UUID leadId = UUID.randomUUID();
     UUID memberId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-07-15T08:00:00Z");
-    MemberAddedToGroupEvent event = new MemberAddedToGroupEvent(groupId, memberId, occurredAt);
+    MemberAddedToGroupEvent event =
+        new MemberAddedToGroupEvent(groupId, leadId, memberId, occurredAt);
 
     projection.on(event, message(event, "member-event-id"));
 
@@ -112,6 +123,7 @@ class ApplicationHistoryProjectionTest {
     assertThat(history.getEventType()).isEqualTo("APPLICATION_GROUP_JOINED");
     var payload = objectMapper.readTree(history.getRequestPayload());
     assertThat(payload.get("groupId").asString()).isEqualTo(groupId.toString());
+    assertThat(payload.get("leadApplicationId").asString()).isEqualTo(leadId.toString());
     assertThat(payload.get("memberId").asString()).isEqualTo(memberId.toString());
     assertThat(payload.get("occurredAt")).isNotNull();
   }
@@ -326,6 +338,58 @@ class ApplicationHistoryProjectionTest {
   }
 
   @Test
+  void
+      givenPriorAuthorityDecisionHistory_whenQueriedAndMapped_thenResponseContainsDecisionDetails() {
+    UUID applicationId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-08-05T10:00:00Z");
+    var priorAuthorityEvent =
+        PriorAuthorityHistoryReadModel.builder()
+            .eventId(UUID.randomUUID().toString())
+            .applicationId(applicationId)
+            .priorAuthorityId(priorAuthorityId)
+            .priorAuthorityType("EXPERT")
+            .eventType("PRIOR_AUTHORITY_MAKE_DECISION_GRANTED")
+            .itemVersion(3L)
+            .serviceName("CIVIL_APPLY")
+            .occurredAt(occurredAt)
+            .build();
+    when(repository.findAllByApplicationIdOrderByOccurredAtAsc(applicationId))
+        .thenReturn(List.of());
+    when(paRepository.findAllByApplicationIdOrderByOccurredAtAsc(applicationId))
+        .thenReturn(List.of(priorAuthorityEvent));
+    when(priorAuthorityDataRepository.findById(new PriorAuthorityDataId(priorAuthorityId, 3L)))
+        .thenReturn(
+            java.util.Optional.of(
+                priorAuthorityData(
+                    priorAuthorityId, applicationId, "GRANTED", "Reasoned decision")));
+
+    var result =
+        projection.handle(
+            new FindApplicationHistoryQuery(applicationId, List.of("APPLICATION_CREATED")));
+    var response = new GetApplicationHistoryResponseMapper(objectMapper).toResponse(result);
+
+    assertThat(response.getPriorAuthorities())
+        .singleElement()
+        .satisfies(
+            group -> {
+              assertThat(group.getPriorAuthorityId()).isEqualTo(priorAuthorityId);
+              assertThat(group.getPriorAuthorityType())
+                  .isEqualTo(uk.gov.justice.laa.dstew.access.model.PriorAuthorityType.EXPERT);
+              assertThat(group.getEvents())
+                  .singleElement()
+                  .satisfies(
+                      event -> {
+                        assertThat(event.getEventType())
+                            .isEqualTo("PRIOR_AUTHORITY_MAKE_DECISION_GRANTED");
+                        assertThat(event.getEventDescription())
+                            .isEqualTo(
+                                "Outcome: Granted, Decision at: 2026-08-05T10:00:00Z, Justification: Reasoned decision");
+                      });
+            });
+  }
+
+  @Test
   void givenReset_whenHandled_thenDeletesBothHistoryTables() {
     projection.reset();
     verify(repository).deleteAllInBatch();
@@ -363,6 +427,28 @@ class ApplicationHistoryProjectionTest {
         .eventType(eventType)
         .requestPayload("{}")
         .occurredAt(occurredAt)
+        .build();
+  }
+
+  private PriorAuthorityData priorAuthorityData(
+      UUID priorAuthorityId, UUID applicationId, String decision, String decisionJustification) {
+    PriorAuthorityContent content =
+        new PriorAuthorityContent(PriorAuthorityType.EXPERT, null, null, null, null);
+    PriorAuthorityDataPayload payload =
+        new PriorAuthorityDataPayload(
+            priorAuthorityId,
+            applicationId,
+            content,
+            null,
+            Instant.parse("2026-08-05T09:30:00Z"),
+            new PriorAuthorityDataPayload.DecisionDetails(
+                decision, decisionJustification, null, null, null, null, null, null));
+    return PriorAuthorityData.builder()
+        .id(new PriorAuthorityDataId(priorAuthorityId, 3L))
+        .applicationId(applicationId)
+        .payload(payload)
+        .payloadHash("hash")
+        .createdAt(Instant.parse("2026-08-05T09:30:00Z"))
         .build();
   }
 }

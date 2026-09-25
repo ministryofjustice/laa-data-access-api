@@ -61,7 +61,7 @@ public class UploadPriorAuthorityDocumentUseCase {
     UUID documentId = UUID.randomUUID();
     Instant uploadedAt = Instant.now();
     DocumentUploadResponse sdsResponse =
-        sdsService.savePriorAuthorityFile(priorAuthorityId, documentId, file);
+        sdsService.saveEvidenceFile(priorAuthorityId, documentId, file);
     String checksum = sdsResponse == null ? null : sdsResponse.getChecksum();
     String serialisedRequest =
         RequestSerialiser.serialise(

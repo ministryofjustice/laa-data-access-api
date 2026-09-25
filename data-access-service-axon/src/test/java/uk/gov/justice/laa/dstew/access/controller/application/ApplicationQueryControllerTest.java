@@ -16,13 +16,11 @@ import org.mockito.ArgumentCaptor;
 import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationOrderBy;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSortBy;
-import uk.gov.justice.laa.dstew.access.model.DocumentDownloadResponse;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryResult;
-import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
 import uk.gov.justice.laa.dstew.access.usecase.application.ApplicationQueryUseCase;
 
 /** Verifies the branch logic in ApplicationQueryController that integration tests do not reach. */
@@ -30,14 +28,12 @@ class ApplicationQueryControllerTest {
 
   private ApplicationQueryUseCase applicationQueryUseCase;
   private GetApplicationHistoryResponseMapper historyResponseMapper;
-  private SdsService sdsService;
   private ApplicationQueryController controller;
 
   @BeforeEach
   void setUp() {
     applicationQueryUseCase = mock(ApplicationQueryUseCase.class);
     historyResponseMapper = mock(GetApplicationHistoryResponseMapper.class);
-    sdsService = mock(SdsService.class);
     controller =
         new ApplicationQueryController(
             applicationQueryUseCase,
@@ -45,22 +41,7 @@ class ApplicationQueryControllerTest {
             mock(GetAllApplicationsResponseMapper.class),
             historyResponseMapper,
             mock(GetAllNotesForApplicationResponseMapper.class),
-            mock(SubscriptionProjectionGateway.class),
-            sdsService);
-  }
-
-  @Test
-  void givenDocumentExists_whenDownloadDocument_thenReturnDownloadedDocument() {
-    UUID applicationId = UUID.randomUUID();
-    String documentId = "document-id";
-    DocumentDownloadResponse expectedResponse = mock(DocumentDownloadResponse.class);
-    when(sdsService.getFile(applicationId, documentId)).thenReturn(expectedResponse);
-
-    var response = controller.downloadDocument(ServiceName.CIVIL_APPLY, applicationId, documentId);
-
-    assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
-    assertThat(response.getBody()).isSameAs(expectedResponse);
-    verify(sdsService).getFile(applicationId, documentId);
+            mock(SubscriptionProjectionGateway.class));
   }
 
   @Test

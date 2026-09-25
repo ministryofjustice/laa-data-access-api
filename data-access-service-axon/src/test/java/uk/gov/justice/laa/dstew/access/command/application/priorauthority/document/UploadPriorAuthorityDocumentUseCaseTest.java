@@ -62,7 +62,7 @@ class UploadPriorAuthorityDocumentUseCaseTest {
                     "{}",
                     java.time.Instant.now())));
     doNothing().when(dispatcher).dispatch(new ValidateApplicationGrantedCommand(applicationId));
-    when(sdsService.savePriorAuthorityFile(
+    when(sdsService.saveEvidenceFile(
             org.mockito.ArgumentMatchers.eq(priorAuthorityId),
             org.mockito.ArgumentMatchers.any(UUID.class),
             org.mockito.ArgumentMatchers.eq(file)))
@@ -80,7 +80,7 @@ class UploadPriorAuthorityDocumentUseCaseTest {
     assertThat(response.checksum()).isEqualTo("abc123");
     verify(dispatcher).dispatch(new ValidateApplicationGrantedCommand(applicationId));
     verify(sdsService)
-        .savePriorAuthorityFile(
+        .saveEvidenceFile(
             org.mockito.ArgumentMatchers.eq(priorAuthorityId),
             org.mockito.ArgumentMatchers.eq(response.documentId()),
             org.mockito.ArgumentMatchers.eq(file));
@@ -167,7 +167,7 @@ class UploadPriorAuthorityDocumentUseCaseTest {
                     "{}",
                     java.time.Instant.now())));
     doNothing().when(dispatcher).dispatch(new ValidateApplicationGrantedCommand(applicationId));
-    when(sdsService.savePriorAuthorityFile(
+    when(sdsService.saveEvidenceFile(
             org.mockito.ArgumentMatchers.eq(priorAuthorityId),
             org.mockito.ArgumentMatchers.any(UUID.class),
             org.mockito.ArgumentMatchers.eq(file)))
