@@ -230,7 +230,8 @@ class ApplicationGroupRouteProjectionTest {
         "fingerprint",
         "APPLICATION_SUBMITTED",
         1,
-        occurredAt);
+        occurredAt,
+        null);
   }
 
   private static LinkedApplicationGroupCreatedEvent groupCreatedEvent(
