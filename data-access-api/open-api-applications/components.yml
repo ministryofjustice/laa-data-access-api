@@ -96,7 +96,7 @@ components:
       type: object
       description: Reference to a potential duplicate application
       required:
-        - applicationId
+        - laaReference
       properties:
         applicationId:
           type: string
