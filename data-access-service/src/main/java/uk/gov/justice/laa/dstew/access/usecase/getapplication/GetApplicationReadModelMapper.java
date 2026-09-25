@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.mapper.MapperUtil;
+import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 import uk.gov.justice.laa.dstew.access.usecase.getapplication.dto.ApplicationDbProjection;
 import uk.gov.justice.laa.dstew.access.usecase.getapplication.dto.ProceedingDbProjection;
 import uk.gov.justice.laa.dstew.access.usecase.getapplication.model.ApplicationProceedingReadModel;
@@ -136,7 +137,7 @@ public class GetApplicationReadModelMapper {
     return ProviderReadModel.builder().officeCode(officeCode).contactEmail(submitterEmail).build();
   }
 
-  private List<Map<String, Object>> deserializeFromJson(String potentialDuplicatesJson) {
+  private List<PotentialDuplicate> deserializeFromJson(String potentialDuplicatesJson) {
     if (potentialDuplicatesJson == null || potentialDuplicatesJson.isBlank()) {
       return null;
     }
@@ -144,7 +145,7 @@ public class GetApplicationReadModelMapper {
       ObjectMapper mapper = MapperUtil.getObjectMapper();
       return mapper.readValue(
           potentialDuplicatesJson,
-          mapper.getTypeFactory().constructCollectionType(List.class, Map.class));
+          mapper.getTypeFactory().constructCollectionType(List.class, PotentialDuplicate.class));
     } catch (Exception e) {
       return null;
     }

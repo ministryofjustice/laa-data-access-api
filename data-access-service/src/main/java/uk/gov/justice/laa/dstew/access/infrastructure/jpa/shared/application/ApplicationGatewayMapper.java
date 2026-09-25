@@ -24,6 +24,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
+import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 
 /** Converts between domain records and JPA entities for the createApplication use case. */
 public class ApplicationGatewayMapper {
@@ -206,7 +207,7 @@ public class ApplicationGatewayMapper {
         .build();
   }
 
-  private String serializeToJson(List<Map<String, Object>> potentialDuplicates) {
+  private String serializeToJson(List<PotentialDuplicate> potentialDuplicates) {
     try {
       return MapperUtil.getObjectMapper().writeValueAsString(potentialDuplicates);
     } catch (Exception e) {
@@ -214,7 +215,7 @@ public class ApplicationGatewayMapper {
     }
   }
 
-  private List<Map<String, Object>> deserializeFromJson(String potentialDuplicatesJson) {
+  private List<PotentialDuplicate> deserializeFromJson(String potentialDuplicatesJson) {
     if (potentialDuplicatesJson == null || potentialDuplicatesJson.isBlank()) {
       return null;
     }
@@ -222,7 +223,7 @@ public class ApplicationGatewayMapper {
       ObjectMapper mapper = MapperUtil.getObjectMapper();
       return mapper.readValue(
           potentialDuplicatesJson,
-          mapper.getTypeFactory().constructCollectionType(List.class, Map.class));
+          mapper.getTypeFactory().constructCollectionType(List.class, PotentialDuplicate.class));
     } catch (Exception e) {
       return null;
     }

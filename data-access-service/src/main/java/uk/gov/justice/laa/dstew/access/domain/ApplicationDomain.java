@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import lombok.Builder;
+import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 
 /** Domain record representing a legal aid application. Pure Java — no JPA, no Spring imports. */
 @Builder(toBuilder = true)
@@ -29,4 +30,4 @@ public record ApplicationDomain(
     Set<ProceedingDomain> proceedings,
     UUID caseworkerId,
     DecisionDomain decision,
-    List<Map<String, Object>> potentialDuplicates) {}
+    List<PotentialDuplicate> potentialDuplicates) {}

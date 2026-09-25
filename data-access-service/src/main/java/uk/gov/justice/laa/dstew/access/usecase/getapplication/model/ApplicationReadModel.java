@@ -2,9 +2,9 @@ package uk.gov.justice.laa.dstew.access.usecase.getapplication.model;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import lombok.Builder;
+import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 
 /** Domain read model returned by the get-application use case. */
 @Builder(toBuilder = true)
@@ -23,4 +23,4 @@ public record ApplicationReadModel(
     List<OpponentReadModel> opponents,
     ProviderReadModel provider,
     List<ApplicationProceedingReadModel> proceedings,
-    List<Map<String, Object>> potentialDuplicates) {}
+    List<PotentialDuplicate> potentialDuplicates) {}

@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.Builder;
+import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 
 /** Command record carrying all fields required to create an application. */
 @Builder(toBuilder = true)
@@ -14,4 +15,4 @@ public record CreateApplicationCommand(
     Map<String, Object> applicationContent,
     String serialisedRequest,
     int schemaVersion,
-    List<Map<String, Object>> potentialDuplicates) {}
+    List<PotentialDuplicate> potentialDuplicates) {}
