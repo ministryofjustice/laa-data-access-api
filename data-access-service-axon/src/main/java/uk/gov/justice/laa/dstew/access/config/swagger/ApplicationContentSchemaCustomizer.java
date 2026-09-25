@@ -136,6 +136,10 @@ public class ApplicationContentSchemaCustomizer implements OpenApiCustomizer {
       schema.setDescription(node.get("description").asText());
     }
 
+    if (node.has("example")) {
+      schema.setExample(node.get("example").asText());
+    }
+
     if (node.has("title")) {
       schema.setTitle(node.get("title").asText());
     }
