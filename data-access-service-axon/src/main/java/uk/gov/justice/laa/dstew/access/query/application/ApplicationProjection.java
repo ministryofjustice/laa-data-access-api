@@ -28,7 +28,6 @@ import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationNote;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
@@ -83,13 +82,12 @@ public class ApplicationProjection {
     this.priorAuthorityReadRepository = priorAuthorityReadRepository;
   }
 
-  /**
-   * Returns the related group and prior authorities, or {@code null} if the application is absent.
-   */
+  /** Returns the hydrated Application and its related data, or {@code null} if absent. */
   @QueryHandler
-  public ApplicationAssociationsResult handle(FindApplicationAssociationsQuery query) {
+  public @Nullable ApplicationDetailResult handle(FindApplicationDetailQuery query) {
     return applicationReadRepository
         .findById(query.applicationId())
+        .flatMap(this::hydrate)
         .map(
             application -> {
               UUID leadId = resolveLeadApplicationIdForGroupLookup(application);
@@ -98,7 +96,7 @@ public class ApplicationProjection {
               List<PriorAuthorityReadModel> priorAuthorities =
                   priorAuthorityReadRepository.findAllByApplicationIdIn(
                       List.of(query.applicationId()));
-              return new ApplicationAssociationsResult(linkedGroup, priorAuthorities);
+              return new ApplicationDetailResult(application, linkedGroup, priorAuthorities);
             })
         .orElse(null);
   }
@@ -125,8 +123,7 @@ public class ApplicationProjection {
               ApplicationDataPayload data =
                   applicationDataStore.get(
                       application.getApplicationId(), application.getApplicationDataVersion());
-              return new ApplicationNotesResult(
-                  data == null ? List.<ApplicationNote>of() : data.notes());
+              return new ApplicationNotesResult(data == null ? List.of() : data.notes());
             })
         .orElse(null);
   }

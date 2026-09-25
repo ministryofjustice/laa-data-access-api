@@ -7,13 +7,13 @@ import java.util.concurrent.CompletionException;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
-import uk.gov.justice.laa.dstew.access.query.application.ApplicationAssociationsResult;
+import uk.gov.justice.laa.dstew.access.query.application.ApplicationDetailResult;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationNotesResult;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsQuery;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsResult;
-import uk.gov.justice.laa.dstew.access.query.application.FindApplicationAssociationsQuery;
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
+import uk.gov.justice.laa.dstew.access.query.application.FindApplicationDetailQuery;
 import uk.gov.justice.laa.dstew.access.query.application.FindNotesForApplicationQuery;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryIntegrityException;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryResult;
@@ -47,19 +47,17 @@ public class ApplicationQueryUseCase {
     return application;
   }
 
-  /** Returns the linked group and prior authorities for an application. */
+  /** Returns the requested application and its related detail, or throws when absent. */
   @AllowApiCaseworker
-  public ApplicationAssociationsResult getApplicationAssociations(UUID applicationId) {
-    ApplicationAssociationsResult associations =
+  public ApplicationDetailResult getApplicationDetail(UUID id) {
+    ApplicationDetailResult detail =
         queryGateway
-            .query(
-                new FindApplicationAssociationsQuery(applicationId),
-                ApplicationAssociationsResult.class)
+            .query(new FindApplicationDetailQuery(id), ApplicationDetailResult.class)
             .join();
-    if (associations == null) {
-      throw new ResourceNotFoundException("No application found with ID: " + applicationId);
+    if (detail == null) {
+      throw new ResourceNotFoundException("No application found with ID: " + id);
     }
-    return associations;
+    return detail;
   }
 
   /** Returns the stored certificate for an application. */

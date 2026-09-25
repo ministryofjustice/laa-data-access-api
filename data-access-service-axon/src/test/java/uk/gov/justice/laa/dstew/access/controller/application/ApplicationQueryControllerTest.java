@@ -3,7 +3,6 @@ package uk.gov.justice.laa.dstew.access.controller.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -12,48 +11,75 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationOrderBy;
+import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSortBy;
 import uk.gov.justice.laa.dstew.access.model.DocumentDownloadResponse;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
-import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
+import uk.gov.justice.laa.dstew.access.query.application.ApplicationDetailResult;
+import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryResult;
+import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
+import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
 import uk.gov.justice.laa.dstew.access.usecase.application.ApplicationQueryUseCase;
 
 /** Verifies the branch logic in ApplicationQueryController that integration tests do not reach. */
+@ExtendWith(MockitoExtension.class)
 class ApplicationQueryControllerTest {
 
-  private ApplicationQueryUseCase applicationQueryUseCase;
-  private GetApplicationHistoryResponseMapper historyResponseMapper;
-  private SdsService sdsService;
+  @Mock private ApplicationQueryUseCase applicationQueryUseCase;
+  @Mock private GetApplicationResponseMapper responseMapper;
+  @Mock private GetAllApplicationsResponseMapper getAllResponseMapper;
+  @Mock private GetApplicationHistoryResponseMapper historyResponseMapper;
+  @Mock private GetAllNotesForApplicationResponseMapper notesResponseMapper;
+  @Mock private SdsService sdsService;
   private ApplicationQueryController controller;
 
   @BeforeEach
   void setUp() {
-    applicationQueryUseCase = mock(ApplicationQueryUseCase.class);
-    historyResponseMapper = mock(GetApplicationHistoryResponseMapper.class);
-    sdsService = mock(SdsService.class);
     controller =
         new ApplicationQueryController(
             applicationQueryUseCase,
-            mock(GetApplicationResponseMapper.class),
-            mock(GetAllApplicationsResponseMapper.class),
+            responseMapper,
+            getAllResponseMapper,
             historyResponseMapper,
-            mock(GetAllNotesForApplicationResponseMapper.class),
-            mock(SubscriptionProjectionGateway.class),
+            notesResponseMapper,
             sdsService);
+  }
+
+  @Test
+  void givenApplicationDetail_whenGetApplicationById_thenMapsCombinedResult() {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationReadModel application = new ApplicationReadModel();
+    LinkedApplicationGroupReadModel linkedGroup = new LinkedApplicationGroupReadModel();
+    List<PriorAuthorityReadModel> priorAuthorities = List.of(new PriorAuthorityReadModel());
+    ApplicationDetailResult detail =
+        new ApplicationDetailResult(application, linkedGroup, priorAuthorities);
+    ApplicationResponse expectedResponse = new ApplicationResponse();
+    when(applicationQueryUseCase.getApplicationDetail(applicationId)).thenReturn(detail);
+    when(responseMapper.toResponse(application, linkedGroup, priorAuthorities))
+        .thenReturn(expectedResponse);
+
+    var response = controller.getApplicationById(ServiceName.CIVIL_APPLY, applicationId);
+
+    assertThat(response.getBody()).isSameAs(expectedResponse);
+    verify(applicationQueryUseCase).getApplicationDetail(applicationId);
+    verify(responseMapper).toResponse(application, linkedGroup, priorAuthorities);
   }
 
   @Test
   void givenDocumentExists_whenDownloadDocument_thenReturnDownloadedDocument() {
     UUID applicationId = UUID.randomUUID();
     String documentId = "document-id";
-    DocumentDownloadResponse expectedResponse = mock(DocumentDownloadResponse.class);
+    DocumentDownloadResponse expectedResponse = new DocumentDownloadResponse();
     when(sdsService.getFile(applicationId, documentId)).thenReturn(expectedResponse);
 
     var response = controller.downloadDocument(ServiceName.CIVIL_APPLY, applicationId, documentId);
