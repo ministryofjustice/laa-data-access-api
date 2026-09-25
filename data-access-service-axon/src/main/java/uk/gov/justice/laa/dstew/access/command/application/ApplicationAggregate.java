@@ -346,6 +346,10 @@ public class ApplicationAggregate {
     }
   }
 
+  public boolean isGranted() {
+    return "GRANTED".equals(state.overallDecision);
+  }
+
   @EventSourcingHandler
   void on(ApplicationCreatedEvent event) {
     ApplicationEvolve.apply(state, event);

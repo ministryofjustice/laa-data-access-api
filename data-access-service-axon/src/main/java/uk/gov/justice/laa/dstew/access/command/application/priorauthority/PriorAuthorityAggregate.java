@@ -26,7 +26,6 @@ import uk.gov.justice.laa.dstew.access.command.worklist.unassign.DirectPriorAuth
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityDocument;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
-import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityDocumentType;
 import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
@@ -44,45 +43,45 @@ public class PriorAuthorityAggregate {
   private UUID priorAuthorityId;
   private final PriorAuthorityState state = new PriorAuthorityState();
 
-  @CommandHandler
-  void handle(
-      CreatePriorAuthorityDraftCommand command,
-      PriorAuthorityDraftStore draftStore,
-      EventAppender eventAppender) {
-    if (state.priorAuthorityId != null) {
-      throw new PriorAuthorityCreationConflictException(command.priorAuthorityId());
-    }
-    PriorAuthorityDataPayload payload =
-        new PriorAuthorityDataPayload(
-            command.priorAuthorityId(),
-            command.applicationId(),
-            command.content(),
-            command.serialisedRequest(),
-            command.occurredAt());
-    draftStore.upsert(
-        command.priorAuthorityId(),
-        command.applicationId(),
-        payload,
-        command.serialisedRequest(),
-        command.occurredAt());
-    eventAppender.append(PriorAuthorityDecider.decideStartDraft(command));
-  }
+  //  @CommandHandler
+  //  void handle(
+  //      CreatePriorAuthorityDraftCommand command,
+  //      PriorAuthorityDraftStore draftStore,
+  //      EventAppender eventAppender) {
+  //    if (state.priorAuthorityId != null) {
+  //      throw new PriorAuthorityCreationConflictException(command.priorAuthorityId());
+  //    }
+  //    PriorAuthorityDataPayload payload =
+  //        new PriorAuthorityDataPayload(
+  //            command.priorAuthorityId(),
+  //            command.applicationId(),
+  //            command.content(),
+  //            command.serialisedRequest(),
+  //            command.occurredAt());
+  //    draftStore.upsert(
+  //        command.priorAuthorityId(),
+  //        command.applicationId(),
+  //        payload,
+  //        command.serialisedRequest(),
+  //        command.occurredAt());
+  //    eventAppender.append(PriorAuthorityDecider.decideStartDraft(command));
+  //  }
 
-  @CommandHandler
-  void handle(
-      UpdatePriorAuthorityDraftCommand command,
-      PriorAuthorityDraftStore draftStore,
-      EventAppender eventAppender) {
-    PriorAuthorityDataPayload existingDraft = requireDraft(command.priorAuthorityId(), draftStore);
-    PriorAuthorityDataPayload payload = buildUpdatedDraftPayload(command, existingDraft);
-    draftStore.upsert(
-        command.priorAuthorityId(),
-        state.applicationId,
-        payload,
-        command.serialisedRequest(),
-        command.occurredAt());
-    eventAppender.append(PriorAuthorityDecider.decideDraftUpdated(command, state.applicationId));
-  }
+//  @CommandHandler
+//  void handle(
+//      UpdatePriorAuthorityDraftCommand command,
+//      PriorAuthorityDraftStore draftStore,
+//      EventAppender eventAppender) {
+//    PriorAuthorityDataPayload existingDraft = requireDraft(command.priorAuthorityId(), draftStore);
+//    PriorAuthorityDataPayload payload = buildUpdatedDraftPayload(command, existingDraft);
+//    draftStore.upsert(
+//        command.priorAuthorityId(),
+//        state.applicationId,
+//        payload,
+//        command.serialisedRequest(),
+//        command.occurredAt());
+//    eventAppender.append(PriorAuthorityDecider.decideDraftUpdated(command, state.applicationId));
+//  }
 
   @CommandHandler
   UUID handle(
@@ -322,6 +321,14 @@ public class PriorAuthorityAggregate {
     return draft.content().uploadedDocuments() == null
         ? new ArrayList<>()
         : new ArrayList<>(draft.content().uploadedDocuments());
+  }
+
+  public UUID getApplicationId() {
+    return state.applicationId;
+  }
+
+  public String getPriorAuthorityType() {
+    return state.priorAuthorityType;
   }
 
   @EventSourcingHandler
