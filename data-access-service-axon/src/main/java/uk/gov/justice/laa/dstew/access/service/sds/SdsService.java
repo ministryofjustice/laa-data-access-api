@@ -113,7 +113,9 @@ public class SdsService {
             documentId.toString());
     MultipartBodyBuilder builder =
         buildMultipartBody(
-            file, bodyMap, documentId + getFileExtension(Objects.requireNonNull(file.getOriginalFilename())));
+            file,
+            bodyMap,
+            documentId + getFileExtension(Objects.requireNonNull(file.getOriginalFilename())));
 
     return sdsUploadResponseHandler
         .handle(
