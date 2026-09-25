@@ -33,6 +33,7 @@ public class CreateApplicationCommandMapper {
         .status(req.getStatus() != null ? req.getStatus().name() : null)
         .laaReference(req.getLaaReference())
         .applicationContent(req.getApplicationContent())
+        .potentialDuplicates(req.getPotentialDuplicates())
         .serialisedRequest(serialise(req))
         .schemaVersion(schemaVersion)
         .build();

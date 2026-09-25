@@ -166,7 +166,9 @@ public class ApplicationRepositoryImpl implements ApplicationSummaryRepositoryCu
     /** Individual date of birth — see {@link IndividualEntity#getDateOfBirth()}. */
     INDIVIDUAL_DATE_OF_BIRTH,
     /** Individual type (e.g. CLIENT) — see {@link IndividualEntity#getType()}. */
-    INDIVIDUAL_TYPE;
+    INDIVIDUAL_TYPE,
+    /** Potential duplicates JSON — see {@link ApplicationEntity#getPotentialDuplicates()}. */
+    POTENTIAL_DUPLICATES;
 
     /** Returns {@link #ordinal()} for use as an {@code Object[]} array index. */
     int idx() {
@@ -213,7 +215,8 @@ public class ApplicationRepositoryImpl implements ApplicationSummaryRepositoryCu
             /* Col.INDIVIDUAL_FIRST_NAME    */ individualJoin.get(IndividualEntity_.firstName),
             /* Col.INDIVIDUAL_LAST_NAME     */ individualJoin.get(IndividualEntity_.lastName),
             /* Col.INDIVIDUAL_DATE_OF_BIRTH */ individualJoin.get(IndividualEntity_.dateOfBirth),
-            /* Col.INDIVIDUAL_TYPE          */ individualJoin.get(IndividualEntity_.type)));
+            /* Col.INDIVIDUAL_TYPE          */ individualJoin.get(IndividualEntity_.type),
+            /* Col.POTENTIAL_DUPLICATES     */ root.get(ApplicationEntity_.potentialDuplicates)));
 
     // Apply ID filter and individual predicates to the existing individual join
     Predicate idPredicate = root.get(ApplicationEntity_.id).in(ids);
@@ -268,6 +271,7 @@ public class ApplicationRepositoryImpl implements ApplicationSummaryRepositoryCu
                 Boolean isLead = row.get(Col.IS_LEAD.idx(), Boolean.class);
                 d.setLead(isLead != null && isLead);
                 d.setIndividuals(new ArrayList<>());
+                d.setPotentialDuplicates(row.get(Col.POTENTIAL_DUPLICATES.idx(), String.class));
                 return d;
               });
 

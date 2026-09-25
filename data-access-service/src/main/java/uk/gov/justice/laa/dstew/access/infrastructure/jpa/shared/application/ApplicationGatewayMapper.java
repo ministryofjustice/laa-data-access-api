@@ -1,9 +1,12 @@
 package uk.gov.justice.laa.dstew.access.infrastructure.jpa.shared.application;
 
 import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.domain.ApplicationDomain;
 import uk.gov.justice.laa.dstew.access.domain.DecisionDomain;
 import uk.gov.justice.laa.dstew.access.domain.IndividualDomain;
@@ -16,6 +19,7 @@ import uk.gov.justice.laa.dstew.access.entity.DecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.IndividualEntity;
 import uk.gov.justice.laa.dstew.access.entity.MeritsDecisionEntity;
 import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
+import uk.gov.justice.laa.dstew.access.mapper.MapperUtil;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.IndividualType;
@@ -49,6 +53,10 @@ public class ApplicationGatewayMapper {
     entity.setMatterType(
         application.matterType() != null ? MatterType.valueOf(application.matterType()) : null);
     entity.setIsAutoGranted(application.isAutoGranted());
+    entity.setPotentialDuplicates(
+        application.potentialDuplicates() != null
+            ? serializeToJson(application.potentialDuplicates())
+            : null);
 
     if (application.individuals() != null) {
       entity.setIndividuals(
@@ -107,6 +115,7 @@ public class ApplicationGatewayMapper {
         .caseworkerId(
             application.getCaseworker() != null ? application.getCaseworker().getId() : null)
         .decision(toDecisionDomain(application.getDecision()))
+        .potentialDuplicates(deserializeFromJson(application.getPotentialDuplicates()))
         .build();
   }
 
@@ -195,5 +204,27 @@ public class ApplicationGatewayMapper {
         .updatedBy(proceeding.getUpdatedBy())
         .meritsDecision(toMeritsDecisionDomain(proceeding.getMeritsDecision()))
         .build();
+  }
+
+  private String serializeToJson(List<Map<String, Object>> potentialDuplicates) {
+    try {
+      return MapperUtil.getObjectMapper().writeValueAsString(potentialDuplicates);
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
+  private List<Map<String, Object>> deserializeFromJson(String potentialDuplicatesJson) {
+    if (potentialDuplicatesJson == null || potentialDuplicatesJson.isBlank()) {
+      return null;
+    }
+    try {
+      ObjectMapper mapper = MapperUtil.getObjectMapper();
+      return mapper.readValue(
+          potentialDuplicatesJson,
+          mapper.getTypeFactory().constructCollectionType(List.class, Map.class));
+    } catch (Exception e) {
+      return null;
+    }
   }
 }

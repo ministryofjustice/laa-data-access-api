@@ -23,4 +23,5 @@ public record ApplicationDbProjection(
     String officeCode,
     String submitterEmail,
     List<OpponentDetails> opponents,
-    List<ProceedingDbProjection> proceedings) {}
+    List<ProceedingDbProjection> proceedings,
+    String potentialDuplicates) {}

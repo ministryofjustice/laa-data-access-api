@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.usecase.createapplication;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.Builder;
@@ -12,4 +13,5 @@ public record CreateApplicationCommand(
     String laaReference,
     Map<String, Object> applicationContent,
     String serialisedRequest,
-    int schemaVersion) {}
+    int schemaVersion,
+    List<Map<String, Object>> potentialDuplicates) {}

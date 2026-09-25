@@ -30,6 +30,7 @@ public class ApplicationSummaryDto {
   private Boolean isAutoGranted;
   private UUID caseworkerId;
   private boolean isLead;
+  private String potentialDuplicates;
 
   @Builder.Default private List<IndividualSummaryDto> individuals = new ArrayList<>();
 }

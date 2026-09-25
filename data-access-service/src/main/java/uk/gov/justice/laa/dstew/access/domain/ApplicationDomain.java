@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.domain;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -27,4 +28,5 @@ public record ApplicationDomain(
     Boolean isAutoGranted,
     Set<ProceedingDomain> proceedings,
     UUID caseworkerId,
-    DecisionDomain decision) {}
+    DecisionDomain decision,
+    List<Map<String, Object>> potentialDuplicates) {}

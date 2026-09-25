@@ -42,6 +42,7 @@ public class CreateApplicationDomainMapper {
         .submittedAt(parsedDetails.submittedAt())
         .officeCode(parsedDetails.officeCode())
         .proceedings(toProceedingDomains(parsedDetails.proceedings()))
+        .potentialDuplicates(command.potentialDuplicates())
         .build();
   }
 

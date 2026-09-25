@@ -60,6 +60,7 @@ public class GetApplicationResponseMapper {
     applicationResponse.setProceedings(
         toApplicationProceedingResponses(applicationReadModel.proceedings()));
     applicationResponse.setVersion(applicationReadModel.version());
+    applicationResponse.setPotentialDuplicates(applicationReadModel.potentialDuplicates());
     return ResponseEntity.ok(applicationResponse);
   }
 
@@ -159,4 +160,3 @@ public class GetApplicationResponseMapper {
                     .build())
         .toList();
   }
-}

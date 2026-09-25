@@ -78,6 +78,10 @@ public class ApplicationEntity implements AuditableEntity {
   @Column(columnDefinition = "json")
   private Map<String, Object> applicationContent;
 
+  @JdbcTypeCode(SqlTypes.JSON)
+  @Column(name = "potential_duplicates", columnDefinition = "json")
+  private String potentialDuplicates;
+
   @ManyToMany(cascade = CascadeType.PERSIST)
   @JoinTable(
       name = "linked_individuals",
