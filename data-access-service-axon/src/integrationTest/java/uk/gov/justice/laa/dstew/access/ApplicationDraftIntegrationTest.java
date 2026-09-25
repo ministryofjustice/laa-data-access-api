@@ -28,7 +28,9 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.ObjectMapper;
+import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.model.CreateApplicationDraftRequest;
 import uk.gov.justice.laa.dstew.access.model.SaveApplicationDraftRequest;
 import uk.gov.justice.laa.dstew.access.model.SaveApplicationDraftResponse;
 import uk.gov.justice.laa.dstew.access.model.SubmitApplicationDraftResponse;
@@ -67,8 +69,10 @@ class ApplicationDraftIntegrationTest {
 
   @Test
   void givenValidContent_whenSaveApplicationDraft_thenPersistsDraftAndReturnsCreated() {
-    SaveApplicationDraftRequest request =
-        SaveApplicationDraftRequest.builder()
+    UUID applicationId = UUID.randomUUID();
+    CreateApplicationDraftRequest request =
+        CreateApplicationDraftRequest.builder()
+            .id(applicationId)
             .status(ApplicationStatus.APPLICATION_SUBMITTED)
             .laaReference("LAA-123")
             .applicationContent(Map.of())
@@ -81,8 +85,7 @@ class ApplicationDraftIntegrationTest {
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
     SaveApplicationDraftResponse body =
         objectMapper.readValue(response.getBody(), SaveApplicationDraftResponse.class);
-    UUID applicationId = body.getApplicationId();
-    assertThat(applicationId).isNotNull();
+    assertThat(body.getApplicationId()).isEqualTo(applicationId);
     assertThat(body.getSavedAt()).isNotNull();
 
     assertThat(
@@ -99,6 +102,40 @@ class ApplicationDraftIntegrationTest {
             new HttpEntity<>(headers()),
             String.class);
     assertThat(getResponse.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+  }
+
+  @Test
+  void givenDuplicateId_whenSaveApplicationDraft_thenReturnsConflict() {
+    UUID applicationId = saveDraftPendingId();
+    CreateApplicationDraftRequest request =
+        CreateApplicationDraftRequest.builder()
+            .id(applicationId)
+            .status(ApplicationStatus.APPLICATION_SUBMITTED)
+            .laaReference("LAA-999")
+            .applicationContent(Map.of())
+            .build();
+
+    ResponseEntity<String> response =
+        restTemplate.postForEntity(
+            saveDraftUrl(), new HttpEntity<>(request, headers()), String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+  }
+
+  @Test
+  void givenMissingId_whenSaveApplicationDraft_thenReturnsBadRequest() {
+    SaveApplicationDraftRequest request =
+        SaveApplicationDraftRequest.builder()
+            .status(ApplicationStatus.APPLICATION_SUBMITTED)
+            .laaReference("LAA-123")
+            .applicationContent(Map.of())
+            .build();
+
+    ResponseEntity<String> response =
+        restTemplate.postForEntity(
+            saveDraftUrl(), new HttpEntity<>(request, headers()), String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
   }
 
   @Test
@@ -190,6 +227,19 @@ class ApplicationDraftIntegrationTest {
     var application = projectionAwaiter.awaitApplication(applicationId);
     assertThat(application.getStatus()).isEqualTo("APPLICATION_SUBMITTED");
     assertThat(application.getLaaReference()).isEqualTo("LAA-123");
+
+    ResponseEntity<String> getResponse =
+        restTemplate.exchange(
+            applicationUrl(applicationId),
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            String.class);
+    assertThat(getResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+    ApplicationResponse projectedApplication =
+        objectMapper.readValue(getResponse.getBody(), ApplicationResponse.class);
+    assertThat(projectedApplication.getApplicationId()).isEqualTo(applicationId);
+    assertThat(projectedApplication.getStatus()).isEqualTo(ApplicationStatus.APPLICATION_SUBMITTED);
+    assertThat(projectedApplication.getLaaReference()).isEqualTo("LAA-123");
   }
 
   @Test
@@ -235,9 +285,83 @@ class ApplicationDraftIntegrationTest {
         .isEqualTo(1);
   }
 
+  @Test
+  void givenNullStatus_whenSubmitApplicationDraft_thenReturnsBadRequestAndDraftPersists() {
+    UUID applicationId = UUID.randomUUID();
+    CreateApplicationDraftRequest request =
+        CreateApplicationDraftRequest.builder()
+            .id(applicationId)
+            .laaReference("LAA-123")
+            .applicationContent(Map.of("key", "value"))
+            .build();
+    ResponseEntity<String> saveResponse =
+        restTemplate.postForEntity(
+            saveDraftUrl(), new HttpEntity<>(request, headers()), String.class);
+    assertThat(saveResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+
+    ResponseEntity<String> response =
+        restTemplate.postForEntity(
+            submitUrl(applicationId), new HttpEntity<>(null, headers()), String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM axon.application_draft WHERE application_id = ?",
+                Integer.class,
+                applicationId))
+        .isEqualTo(1);
+  }
+
+  @Test
+  void givenBlankLaaReference_whenSubmitApplicationDraft_thenReturnsBadRequestAndDraftPersists() {
+    UUID applicationId = UUID.randomUUID();
+    CreateApplicationDraftRequest request =
+        CreateApplicationDraftRequest.builder()
+            .id(applicationId)
+            .status(ApplicationStatus.APPLICATION_SUBMITTED)
+            .laaReference("   ")
+            .applicationContent(Map.of("key", "value"))
+            .build();
+    ResponseEntity<String> saveResponse =
+        restTemplate.postForEntity(
+            saveDraftUrl(), new HttpEntity<>(request, headers()), String.class);
+    assertThat(saveResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+
+    ResponseEntity<String> response =
+        restTemplate.postForEntity(
+            submitUrl(applicationId), new HttpEntity<>(null, headers()), String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM axon.application_draft WHERE application_id = ?",
+                Integer.class,
+                applicationId))
+        .isEqualTo(1);
+  }
+
+  @Test
+  void
+      givenEmptyApplicationContent_whenSubmitApplicationDraft_thenReturnsBadRequestAndDraftPersists() {
+    UUID applicationId = saveDraftPendingId();
+
+    ResponseEntity<String> response =
+        restTemplate.postForEntity(
+            submitUrl(applicationId), new HttpEntity<>(null, headers()), String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM axon.application_draft WHERE application_id = ?",
+                Integer.class,
+                applicationId))
+        .isEqualTo(1);
+  }
+
   private UUID saveDraft(String laaReference, Map<String, Object> content) {
-    SaveApplicationDraftRequest request =
-        SaveApplicationDraftRequest.builder()
+    CreateApplicationDraftRequest request =
+        CreateApplicationDraftRequest.builder()
+            .id(UUID.randomUUID())
             .status(ApplicationStatus.APPLICATION_SUBMITTED)
             .laaReference(laaReference)
             .applicationContent(content)
