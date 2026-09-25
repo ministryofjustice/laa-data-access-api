@@ -176,7 +176,8 @@ class ApplicationCommandControllerSecurityTest {
         validRequest().getApplicationContent(),
         "{}",
         1,
-        "BaseCivilApplication.json");
+        "BaseCivilApplication.json",
+        null);
   }
 
   private uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest validRequest() {

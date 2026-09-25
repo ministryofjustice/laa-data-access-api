@@ -106,7 +106,8 @@ class ApplicationDeciderTest {
             "requestFingerprint",
             "status",
             "schemaVersion",
-            "occurredAt");
+            "occurredAt",
+            "potentialDuplicates");
   }
 
   // ── decideDecision ─────────────────────────────────────────────────────────────
@@ -370,7 +371,8 @@ class ApplicationDeciderTest {
         null,
         List.of(),
         "{}",
-        Instant.parse("2026-07-15T08:00:00Z"));
+        Instant.parse("2026-07-15T08:00:00Z"),
+        List.of());
   }
 
   private static ApplicationDataPayload payloadWithProceeding(
@@ -397,7 +399,8 @@ class ApplicationDeciderTest {
                     .code("SE003")
                     .build()),
             "{}",
-            Instant.parse("2026-07-15T08:00:00Z"));
+            Instant.parse("2026-07-15T08:00:00Z"),
+            List.of());
     return ApplicationDataPayload.from(details);
   }
 }

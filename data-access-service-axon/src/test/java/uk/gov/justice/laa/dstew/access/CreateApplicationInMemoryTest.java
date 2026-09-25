@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
+import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validApplicationContent;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -45,6 +46,7 @@ import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.IndividualsResponse;
 import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
+import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 import uk.gov.justice.laa.dstew.access.model.WorkListResponse;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadRepository;
@@ -298,6 +300,7 @@ class CreateApplicationInMemoryTest {
     assertThat(projected.getLaaReference()).isEqualTo("LAA-123");
     assertThat(projected.getOfficeCode()).isEqualTo("1A001B");
     assertThat(projected.getSchemaVersion()).isEqualTo(1);
+    assertThat(projected.getPotentialDuplicates()).isEmpty();
     assertThat(projected.getProceedings())
         .singleElement()
         .satisfies(
@@ -715,6 +718,69 @@ class CreateApplicationInMemoryTest {
               assertThat(summary.getClientFirstName()).isEqualTo("Ada");
               assertThat(summary.getClientLastName()).isEqualTo("Lovelace");
             });
+  }
+
+  @Test
+  void
+      givenApplicationWithPopulatedPotentialDuplicates_whenCreatedAndRetrieved_thenPotentialDuplicatesArePersisted() {
+    UUID applicationId = UUID.randomUUID();
+    UUID applyProceedingId = UUID.randomUUID();
+    UUID duplicateId1 = UUID.randomUUID();
+    UUID duplicateId2 = UUID.randomUUID();
+    List<PotentialDuplicate> potentialDuplicates =
+        List.of(
+            PotentialDuplicate.builder()
+                .applicationId(duplicateId1)
+                .laaReference("LAA-00001")
+                .legacyReference("LEGACY-001")
+                .build(),
+            PotentialDuplicate.builder()
+                .applicationId(duplicateId2)
+                .laaReference("LAA-00002")
+                .legacyReference(null)
+                .build());
+    ApplicationCreateRequest request =
+        ApplicationCreateRequest.builder()
+            .id(applicationId)
+            .status(ApplicationStatus.APPLICATION_SUBMITTED)
+            .applicationContent(validApplicationContent(applicationId, applyProceedingId))
+            .laaReference("LAA-123")
+            .potentialDuplicates(potentialDuplicates)
+            .build();
+
+    ResponseEntity<Void> response =
+        restTemplate.postForEntity(
+            "/api/v0/applications", new HttpEntity<>(request, headers()), Void.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    ApplicationReadModel projected = awaitProjection(applicationId);
+
+    assertThat(projected.getApplicationId()).isEqualTo(applicationId);
+    assertThat(projected.getPotentialDuplicates()).hasSize(2);
+    assertThat(projected.getPotentialDuplicates().get(0).getApplicationId())
+        .isEqualTo(duplicateId1);
+    assertThat(projected.getPotentialDuplicates().get(0).getLaaReference()).isEqualTo("LAA-00001");
+    assertThat(projected.getPotentialDuplicates().get(0).getLegacyReference())
+        .isEqualTo("LEGACY-001");
+    assertThat(projected.getPotentialDuplicates().get(1).getApplicationId())
+        .isEqualTo(duplicateId2);
+    assertThat(projected.getPotentialDuplicates().get(1).getLaaReference()).isEqualTo("LAA-00002");
+    assertThat(projected.getPotentialDuplicates().get(1).getLegacyReference()).isNull();
+
+    ResponseEntity<ApplicationResponse> getResponse =
+        restTemplate.exchange(
+            "/api/v0/applications/" + applicationId,
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            ApplicationResponse.class);
+
+    assertThat(getResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(getResponse.getBody()).isNotNull();
+    assertThat(getResponse.getBody().getPotentialDuplicates()).hasSize(2);
+    assertThat(getResponse.getBody().getPotentialDuplicates().get(0).getApplicationId())
+        .isEqualTo(duplicateId1);
+    assertThat(getResponse.getBody().getPotentialDuplicates().get(0).getLaaReference())
+        .isEqualTo("LAA-00001");
   }
 
   private HttpHeaders headers() {

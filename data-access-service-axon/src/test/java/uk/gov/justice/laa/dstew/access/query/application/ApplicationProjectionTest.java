@@ -40,6 +40,7 @@ import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationRead
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
+import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadRepository;
@@ -122,6 +123,55 @@ class ApplicationProjectionTest {
     projection.reset();
 
     verify(applicationReadRepository).deleteAllInBatch();
+  }
+
+  @Test
+  void
+      givenCreatedEventWithPotentialDuplicates_whenHandled_thenSavesPotentialDuplicatesToReadModel() {
+    UUID applicationId = UUID.randomUUID();
+    List<PotentialDuplicate> duplicates =
+        List.of(
+            new PotentialDuplicate("LAA-456").applicationId(UUID.randomUUID()),
+            new PotentialDuplicate("LAA-789").legacyReference("LEGACY-001"));
+    ApplicationCreatedEvent eventWithDuplicates =
+        new ApplicationCreatedEvent(
+            applicationId,
+            0L,
+            ApplicationDataStore.fingerprint("{}"),
+            "APPLICATION_SUBMITTED",
+            1,
+            Instant.parse("2026-07-15T08:00:00Z"),
+            duplicates);
+    ApplicationReadModel[] savedCapture = new ApplicationReadModel[1];
+    when(applicationReadRepository.save(any()))
+        .thenAnswer(
+            invocation -> {
+              savedCapture[0] = invocation.getArgument(0);
+              return savedCapture[0];
+            });
+
+    projection.on(eventWithDuplicates, queryUpdateEmitter);
+
+    assertThat(savedCapture[0].getPotentialDuplicates()).isEqualTo(duplicates);
+  }
+
+  @Test
+  void
+      givenCreatedEventWithNoPotentialDuplicates_whenHandled_thenSavesNormalizedEmptyListToReadModel() {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationCreatedEvent event = applicationCreatedEvent(applicationId);
+    ApplicationReadModel[] savedCapture = new ApplicationReadModel[1];
+    when(applicationReadRepository.save(any()))
+        .thenAnswer(
+            invocation -> {
+              savedCapture[0] = invocation.getArgument(0);
+              return savedCapture[0];
+            });
+
+    projection.on(event, queryUpdateEmitter);
+
+    // ApplicationCreationDetails normalizes null to empty list, so projection saves empty list
+    assertThat(savedCapture[0].getPotentialDuplicates()).isEmpty();
   }
 
   @Test

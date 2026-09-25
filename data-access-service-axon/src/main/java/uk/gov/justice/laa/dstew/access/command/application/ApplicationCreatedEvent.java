@@ -1,9 +1,11 @@
 package uk.gov.justice.laa.dstew.access.command.application;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import org.axonframework.eventsourcing.annotation.EventTag;
 import org.axonframework.messaging.eventhandling.annotation.Event;
+import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 
 /** Thin event establishing the non-sensitive initial state of an Application aggregate. */
 @Event
@@ -13,4 +15,5 @@ public record ApplicationCreatedEvent(
     String requestFingerprint,
     String status,
     int schemaVersion,
-    Instant occurredAt) {}
+    Instant occurredAt,
+    List<PotentialDuplicate> potentialDuplicates) {}

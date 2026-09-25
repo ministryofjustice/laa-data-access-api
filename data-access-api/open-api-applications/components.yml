@@ -78,6 +78,11 @@ components:
         version:
           type: integer
           format: int64
+        potentialDuplicates:
+          type: array
+          description: List of potential duplicate applications
+          items:
+            $ref: "#/components/schemas/PotentialDuplicate"
 
     ProviderResponse:
       type: object
@@ -86,6 +91,23 @@ components:
           type: string
         contactEmail:
           type: string
+
+    PotentialDuplicate:
+      type: object
+      description: Reference to a potential duplicate application
+      required:
+        - laaReference
+      properties:
+        applicationId:
+          type: string
+          format: uuid
+          description: The application ID of the potential duplicate
+        laaReference:
+          type: string
+          description: The LAA reference of the potential duplicate application
+        legacyReference:
+          type: string
+          description: The legacy reference of the potential duplicate application
 
     ApplicationCreateRequest:
       type: object
@@ -109,6 +131,11 @@ components:
         laaReference:
           type: string
           minLength: 1
+        potentialDuplicates:
+          type: array
+          description: List of potential duplicate applications
+          items:
+            $ref: "#/components/schemas/PotentialDuplicate"
 
     ApplicationUpdateRequest:
       type: object
