@@ -18,6 +18,7 @@ public final class PriorAuthorityEvolve {
     state.schemaVersion = event.schemaVersion();
     state.submitted = false;
     state.decided = false;
+    state.draftOpen = true;
   }
 
   /** Applies a {@link PriorAuthoritySubmittedEvent} to the given state. */
@@ -29,6 +30,7 @@ public final class PriorAuthorityEvolve {
     state.dataVersion = event.dataVersion();
     state.submitted = true;
     state.decided = false;
+    state.draftOpen = false;
   }
 
   /** Applies a {@link PriorAuthorityDecisionMadeEvent} to the given state. */
@@ -55,11 +57,48 @@ public final class PriorAuthorityEvolve {
 
   /** Applies a {@link PriorAuthorityDocumentUploadedEvent} to the given state. */
   public static void apply(PriorAuthorityState state, PriorAuthorityDocumentUploadedEvent event) {
-    state.uploadedDocumentIds.add(event.documentId());
+    state.uploadedDocuments.add(
+        new UploadedDocumentData(
+            event.documentId(),
+            event.size(),
+            event.fileType(),
+            event.contentType(),
+            event.sourceService(),
+            event.documentType(),
+            event.uploadedAt(),
+            null));
   }
 
   /** Applies a {@link PriorAuthorityDocumentDeletedEvent} to the given state. */
   public static void apply(PriorAuthorityState state, PriorAuthorityDocumentDeletedEvent event) {
-    state.uploadedDocumentIds.remove(event.documentId());
+    state.uploadedDocuments.stream()
+        .filter(document -> document.documentId().equals(event.documentId()))
+        .findFirst()
+        .ifPresent(
+            document ->
+                state.uploadedDocuments.set(
+                    state.uploadedDocuments.indexOf(document),
+                    new UploadedDocumentData(
+                        document.documentId(),
+                        document.size(),
+                        document.fileType(),
+                        document.contentType(),
+                        document.sourceService(),
+                        document.documentType(),
+                        document.uploadedAt(),
+                        event.deletedAt())));
+  }
+
+  /** Applies a {@link PriorAuthorityDocumentTypeUpdatedEvent} to the given state. */
+  public static void apply(
+      PriorAuthorityState state, PriorAuthorityDocumentTypeUpdatedEvent event) {
+    state.uploadedDocuments.stream()
+        .filter(document -> document.documentId().equals(event.documentId()))
+        .findFirst()
+        .ifPresent(
+            document ->
+                state.uploadedDocuments.set(
+                    state.uploadedDocuments.indexOf(document),
+                    document.withDocumentType(event.documentType())));
   }
 }

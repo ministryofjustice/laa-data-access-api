@@ -35,10 +35,10 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.ApportionmentInformation;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.MakePriorAuthorityDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.document.UploadedDocumentStore;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityDocument;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityStatusConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
@@ -54,6 +54,7 @@ class PriorAuthorityAggregateTest {
   private AxonTestFixture fixture;
   @Mock private PriorAuthorityDataStore dataStore;
   @Mock private PriorAuthorityDraftStore draftStore;
+  @Mock private UploadedDocumentStore uploadedDocumentStore;
   @Mock private ApplicationDataStore applicationDataStore;
   @Mock private JsonSchemaValidator jsonSchemaValidator;
   @Mock private EventAppender eventAppender;
@@ -73,6 +74,8 @@ class PriorAuthorityAggregateTest {
                                 PriorAuthorityDataStore.class, configuration -> dataStore)
                             .registerComponent(
                                 PriorAuthorityDraftStore.class, configuration -> draftStore)
+                            .registerComponent(
+                                UploadedDocumentStore.class, configuration -> uploadedDocumentStore)
                             .registerComponent(
                                 ApplicationDataStore.class, configuration -> applicationDataStore)
                             .registerComponent(
@@ -750,29 +753,17 @@ class PriorAuthorityAggregateTest {
                     "{}",
                     occurredAt)));
 
-    UUID returnedDocumentId = aggregate.handle(command, draftStore, eventAppender);
+    UUID returnedDocumentId =
+        aggregate.handle(command, draftStore, uploadedDocumentStore, eventAppender);
 
     assertThat(returnedDocumentId).isEqualTo(documentId);
-    ArgumentCaptor<PriorAuthorityDataPayload> payloadCaptor =
-        ArgumentCaptor.forClass(PriorAuthorityDataPayload.class);
-    verify(draftStore)
-        .upsert(
-            eq(priorAuthorityId),
-            eq(applicationId),
-            payloadCaptor.capture(),
-            eq(serialisedRequest),
-            eq(occurredAt));
-    assertThat(payloadCaptor.getValue().serialisedRequest()).isEqualTo(serialisedRequest);
-    assertThat(payloadCaptor.getValue().content().uploadedDocuments()).hasSize(1);
-    assertThat(payloadCaptor.getValue().content().uploadedDocuments().getFirst().documentType())
-        .isNull();
-    assertThat(payloadCaptor.getValue().content().uploadedDocuments().getFirst().checksum())
-        .isEqualTo("sum");
+    verify(uploadedDocumentStore).save(priorAuthorityId, documentId, "evidence.pdf");
+    verify(draftStore, never()).upsert(any(), any(), any(), any(), any());
     verify(eventAppender).append(any(PriorAuthorityDocumentUploadedEvent.class));
   }
 
   @Test
-  void givenDraftWithExistingDocument_whenUpload_thenAppendsToDocumentList() {
+  void givenDraft_whenUpload_thenPersistsOnlyFilenameMapping() {
     PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
@@ -790,23 +781,7 @@ class PriorAuthorityAggregateTest {
                 new PriorAuthorityDataPayload(
                     priorAuthorityId,
                     applicationId,
-                    new PriorAuthorityContent(
-                        EXPERT,
-                        "why",
-                        null,
-                        null,
-                        null,
-                        List.of(
-                            new PriorAuthorityDocument(
-                                UUID.randomUUID(),
-                                "gateway_evidence",
-                                "first.pdf",
-                                "PDF",
-                                "application/pdf",
-                                1L,
-                                occurredAt,
-                                "CIVIL_APPLY",
-                                "first-checksum"))),
+                    new PriorAuthorityContent(EXPERT, "why", null, null, null),
                     "{}",
                     occurredAt)));
 
@@ -823,18 +798,11 @@ class PriorAuthorityAggregateTest {
             "PDF",
             "application/pdf");
 
-    aggregate.handle(priorAuthorityDocumentUploadCommand, draftStore, eventAppender);
+    aggregate.handle(
+        priorAuthorityDocumentUploadCommand, draftStore, uploadedDocumentStore, eventAppender);
 
-    ArgumentCaptor<PriorAuthorityDataPayload> payloadCaptor =
-        ArgumentCaptor.forClass(PriorAuthorityDataPayload.class);
-    verify(draftStore)
-        .upsert(
-            eq(priorAuthorityId),
-            eq(applicationId),
-            payloadCaptor.capture(),
-            eq("{}"),
-            eq(occurredAt));
-    assertThat(payloadCaptor.getValue().content().uploadedDocuments()).hasSize(2);
+    verify(uploadedDocumentStore).save(priorAuthorityId, documentId, "second.pdf");
+    verify(draftStore, never()).upsert(any(), any(), any(), any(), any());
   }
 
   @Test
@@ -867,17 +835,20 @@ class PriorAuthorityAggregateTest {
                       file.getSize(),
                       "PDF",
                       "application/pdf");
-              aggregate.handle(priorAuthorityDocumentUploadCommand, draftStore, eventAppender);
+              aggregate.handle(
+                  priorAuthorityDocumentUploadCommand,
+                  draftStore,
+                  uploadedDocumentStore,
+                  eventAppender);
             });
   }
 
   @Test
-  void givenDraftWithDocument_whenUpdateDocumentType_thenPersistsUpdatedDocumentAndEmitsEvent() {
+  void givenDraft_whenUpdateDocumentType_thenEmitsEvent() {
     PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
-    UUID documentTwoId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-09-08T12:00:00Z");
     String serialisedRequest = "{\"documentType\":\"GATEWAY_EVIDENCE\"}";
     PriorAuthorityDocumentTypeUpdateCommand command =
@@ -892,51 +863,14 @@ class PriorAuthorityAggregateTest {
                 new PriorAuthorityDataPayload(
                     priorAuthorityId,
                     applicationId,
-                    new PriorAuthorityContent(
-                        EXPERT,
-                        "why",
-                        null,
-                        null,
-                        null,
-                        List.of(
-                            new PriorAuthorityDocument(
-                                documentId,
-                                null,
-                                "evidence.pdf",
-                                "PDF",
-                                "application/pdf",
-                                1L,
-                                occurredAt,
-                                "CIVIL_APPLY",
-                                "checksum"),
-                            new PriorAuthorityDocument(
-                                documentTwoId,
-                                null,
-                                "other_evidence.pdf",
-                                "PDF",
-                                "application/pdf",
-                                1L,
-                                occurredAt,
-                                "CIVIL_APPLY",
-                                "checksum"))),
+                    new PriorAuthorityContent(EXPERT, "why", null, null, null),
                     "{}",
                     occurredAt)));
 
-    assertThat(aggregate.handle(command, draftStore, eventAppender)).isEqualTo(documentId);
+    assertThat(aggregate.handle(command, draftStore, uploadedDocumentStore, eventAppender))
+        .isEqualTo(documentId);
 
-    ArgumentCaptor<PriorAuthorityDataPayload> payloadCaptor =
-        ArgumentCaptor.forClass(PriorAuthorityDataPayload.class);
-    verify(draftStore)
-        .upsert(
-            eq(priorAuthorityId),
-            eq(applicationId),
-            payloadCaptor.capture(),
-            eq(serialisedRequest),
-            eq(occurredAt));
-    assertThat(payloadCaptor.getValue().content().uploadedDocuments().getFirst().documentType())
-        .isEqualTo("GATEWAY_EVIDENCE");
-    assertThat(payloadCaptor.getValue().content().uploadedDocuments().get(1).documentType())
-        .isNull();
+    verify(draftStore, never()).upsert(any(), any(), any(), any(), any());
     verify(eventAppender)
         .append(
             new PriorAuthorityDocumentTypeUpdatedEvent(
@@ -944,12 +878,11 @@ class PriorAuthorityAggregateTest {
   }
 
   @Test
-  void givenDraftWithMultipleTypedDocuments_whenChangeDocumentType_thenOnlyUpdatesTargetDocument() {
+  void givenReplayedDocument_whenChangeDocumentType_thenRebuildsDocumentType() {
     PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
-    UUID documentTwoId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-09-08T12:00:00Z");
     PriorAuthorityDocumentTypeUpdateCommand command =
         new PriorAuthorityDocumentTypeUpdateCommand(
@@ -957,56 +890,21 @@ class PriorAuthorityAggregateTest {
     aggregate.on(
         new PriorAuthorityDraftStartedEvent(
             priorAuthorityId, applicationId, "EXPERT", 1, occurredAt));
-    when(draftStore.find(priorAuthorityId))
-        .thenReturn(
-            Optional.of(
-                new PriorAuthorityDataPayload(
-                    priorAuthorityId,
-                    applicationId,
-                    new PriorAuthorityContent(
-                        EXPERT,
-                        "why",
-                        null,
-                        null,
-                        null,
-                        List.of(
-                            new PriorAuthorityDocument(
-                                documentId,
-                                "INVOICE",
-                                "invoice.pdf",
-                                "PDF",
-                                "application/pdf",
-                                1L,
-                                occurredAt,
-                                "CIVIL_APPLY",
-                                "checksum"),
-                            new PriorAuthorityDocument(
-                                documentTwoId,
-                                "EXPERT_REPORT",
-                                "report.pdf",
-                                "PDF",
-                                "application/pdf",
-                                1L,
-                                occurredAt,
-                                "CIVIL_APPLY",
-                                "checksum"))),
-                    "{}",
-                    occurredAt)));
-
-    aggregate.handle(command, draftStore, eventAppender);
-
-    ArgumentCaptor<PriorAuthorityDataPayload> payloadCaptor =
-        ArgumentCaptor.forClass(PriorAuthorityDataPayload.class);
-    verify(draftStore)
-        .upsert(
-            eq(priorAuthorityId),
-            eq(applicationId),
-            payloadCaptor.capture(),
-            eq("{}"),
-            eq(occurredAt));
-    assertThat(payloadCaptor.getValue().content().uploadedDocuments())
-        .extracting(PriorAuthorityDocument::documentType)
-        .containsExactly("GATEWAY_EVIDENCE", "EXPERT_REPORT");
+    aggregate.on(
+        new PriorAuthorityDocumentUploadedEvent(
+            priorAuthorityId,
+            documentId,
+            occurredAt,
+            1L,
+            "application/pdf",
+            "checksum",
+            "PDF",
+            "CIVIL_APPLY",
+            "INVOICE",
+            applicationId));
+    aggregate.on(
+        new PriorAuthorityDocumentTypeUpdatedEvent(
+            priorAuthorityId, documentId, "GATEWAY_EVIDENCE", occurredAt));
   }
 
   @Test
@@ -1017,7 +915,8 @@ class PriorAuthorityAggregateTest {
             UUID.randomUUID(), UUID.randomUUID(), "INVALID", "{}", Instant.now());
 
     assertThatIllegalArgumentException()
-        .isThrownBy(() -> aggregate.handle(command, draftStore, eventAppender));
+        .isThrownBy(
+            () -> aggregate.handle(command, draftStore, uploadedDocumentStore, eventAppender));
 
     verify(draftStore, never()).find(any());
     verify(eventAppender, never()).append(any(PriorAuthorityDocumentTypeUpdatedEvent.class));
@@ -1059,7 +958,8 @@ class PriorAuthorityAggregateTest {
             "PDF",
             "application/pdf");
 
-    aggregate.handle(priorAuthorityDocumentUploadCommand, draftStore, eventAppender);
+    aggregate.handle(
+        priorAuthorityDocumentUploadCommand, draftStore, uploadedDocumentStore, eventAppender);
 
     ArgumentCaptor<PriorAuthorityDocumentUploadedEvent> eventCaptor =
         ArgumentCaptor.forClass(PriorAuthorityDocumentUploadedEvent.class);
@@ -1068,77 +968,7 @@ class PriorAuthorityAggregateTest {
   }
 
   @Test
-  void givenDraftWithDocument_whenDelete_thenRemovesItAndEmitsDeletedEvent() {
-    PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
-    UUID priorAuthorityId = UUID.randomUUID();
-    UUID applicationId = UUID.randomUUID();
-    UUID documentId = UUID.randomUUID();
-    UUID remainingDocumentId = UUID.randomUUID();
-    Instant occurredAt = Instant.parse("2026-09-08T12:00:00Z");
-    PriorAuthorityDocumentDeleteCommand command =
-        new PriorAuthorityDocumentDeleteCommand(priorAuthorityId, documentId, "{}", occurredAt);
-
-    aggregate.on(
-        new PriorAuthorityDraftStartedEvent(
-            priorAuthorityId, applicationId, "EXPERT", 1, occurredAt));
-    when(draftStore.find(priorAuthorityId))
-        .thenReturn(
-            Optional.of(
-                new PriorAuthorityDataPayload(
-                    priorAuthorityId,
-                    applicationId,
-                    new PriorAuthorityContent(
-                        EXPERT,
-                        "why",
-                        null,
-                        null,
-                        null,
-                        List.of(
-                            new PriorAuthorityDocument(
-                                documentId,
-                                null,
-                                "delete.pdf",
-                                "PDF",
-                                "application/pdf",
-                                1L,
-                                occurredAt,
-                                "CIVIL_APPLY",
-                                "delete-checksum"),
-                            new PriorAuthorityDocument(
-                                remainingDocumentId,
-                                null,
-                                "keep.pdf",
-                                "PDF",
-                                "application/pdf",
-                                1L,
-                                occurredAt,
-                                "CIVIL_APPLY",
-                                "keep-checksum"))),
-                    "{}",
-                    occurredAt)));
-
-    assertThat(aggregate.handle(command, draftStore, eventAppender)).isEqualTo(documentId);
-
-    ArgumentCaptor<PriorAuthorityDataPayload> payloadCaptor =
-        ArgumentCaptor.forClass(PriorAuthorityDataPayload.class);
-    verify(draftStore)
-        .upsert(
-            eq(priorAuthorityId),
-            eq(applicationId),
-            payloadCaptor.capture(),
-            eq("{}"),
-            eq(occurredAt));
-    assertThat(payloadCaptor.getValue().content().uploadedDocuments())
-        .extracting(PriorAuthorityDocument::documentId)
-        .containsExactly(remainingDocumentId);
-    verify(eventAppender)
-        .append(
-            new PriorAuthorityDocumentDeletedEvent(
-                priorAuthorityId, documentId, occurredAt, applicationId));
-  }
-
-  @Test
-  void givenDraftWithoutDocuments_whenDelete_thenThrowsNotFoundWithoutPersistingChanges() {
+  void givenDraft_whenDelete_thenEmitsDeletedEventWithoutMutatingFilenameMapping() {
     PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
@@ -1160,10 +990,43 @@ class PriorAuthorityAggregateTest {
                     "{}",
                     occurredAt)));
 
-    org.assertj.core.api.Assertions.assertThatExceptionOfType(ResourceNotFoundException.class)
-        .isThrownBy(() -> aggregate.handle(command, draftStore, eventAppender));
+    assertThat(aggregate.handle(command, draftStore, uploadedDocumentStore, eventAppender))
+        .isEqualTo(documentId);
 
     verify(draftStore, never()).upsert(any(), any(), any(), any(), any());
-    verify(eventAppender, never()).append(any(PriorAuthorityDocumentDeletedEvent.class));
+    verify(eventAppender)
+        .append(
+            new PriorAuthorityDocumentDeletedEvent(
+                priorAuthorityId, documentId, occurredAt, applicationId));
+  }
+
+  @Test
+  void givenDraft_whenDelete_thenDoesNotRequireFilenameMapping() {
+    PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-09-08T12:00:00Z");
+    PriorAuthorityDocumentDeleteCommand command =
+        new PriorAuthorityDocumentDeleteCommand(priorAuthorityId, documentId, "{}", occurredAt);
+
+    aggregate.on(
+        new PriorAuthorityDraftStartedEvent(
+            priorAuthorityId, applicationId, "EXPERT", 1, occurredAt));
+    when(draftStore.find(priorAuthorityId))
+        .thenReturn(
+            Optional.of(
+                new PriorAuthorityDataPayload(
+                    priorAuthorityId,
+                    applicationId,
+                    new PriorAuthorityContent(EXPERT, "why", null, null, null),
+                    "{}",
+                    occurredAt)));
+
+    assertThat(aggregate.handle(command, draftStore, uploadedDocumentStore, eventAppender))
+        .isEqualTo(documentId);
+
+    verify(draftStore, never()).upsert(any(), any(), any(), any(), any());
+    verify(eventAppender).append(any(PriorAuthorityDocumentDeletedEvent.class));
   }
 }

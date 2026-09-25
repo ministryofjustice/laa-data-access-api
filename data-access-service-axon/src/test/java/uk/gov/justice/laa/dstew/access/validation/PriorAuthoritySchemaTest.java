@@ -4,11 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.json.JsonMapper;
@@ -20,7 +17,6 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.DisbursementDetail
 import uk.gov.justice.laa.dstew.access.content.priorauthority.ExpertCosts;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.ExpertDetails;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityDocument;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.TimeRequested;
 
@@ -78,25 +74,14 @@ class PriorAuthoritySchemaTest {
   }
 
   @Test
-  void givenPayloadWithUploadedDocument_whenValidate_thenAccepts() {
+  void givenPayloadWithoutUploadedDocument_whenValidate_thenAccepts() {
     validator.validate(
         new PriorAuthorityContent(
             PriorAuthorityType.DISBURSEMENT,
             "Need interpreter costs",
             null,
             null,
-            new DisbursementDetails("Interpreter", BigDecimal.valueOf(150.25)),
-            List.of(
-                new PriorAuthorityDocument(
-                    UUID.randomUUID(),
-                    "GATEWAY_EVIDENCE",
-                    "evidence.pdf",
-                    "PDF",
-                    "application/pdf",
-                    12L,
-                    Instant.parse("2026-09-16T10:20:05Z"),
-                    "CIVIL_APPLY",
-                    "checksum"))),
+            new DisbursementDetails("Interpreter", BigDecimal.valueOf(150.25))),
         "PriorAuthority.json",
         1);
   }

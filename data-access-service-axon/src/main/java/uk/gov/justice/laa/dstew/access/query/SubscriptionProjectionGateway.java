@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.query;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Predicate;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -62,9 +63,14 @@ public class SubscriptionProjectionGateway {
    * readiness. This lets an existence query be opened before its creating command is dispatched.
    */
   public boolean awaitProjection(Object query, Runnable action) {
+    return awaitProjection(query, Boolean.TRUE::equals, action);
+  }
+
+  /** Opens a Boolean subscription and waits until an emitted value satisfies {@code readiness}. */
+  public boolean awaitProjection(Object query, Predicate<Boolean> readiness, Runnable action) {
     CompletableFuture<Boolean> firstTrueResult =
         Flux.from(queryGateway.subscriptionQuery(query, Boolean.class))
-            .filter(Boolean.TRUE::equals)
+            .filter(readiness)
             .next()
             .toFuture();
     try {

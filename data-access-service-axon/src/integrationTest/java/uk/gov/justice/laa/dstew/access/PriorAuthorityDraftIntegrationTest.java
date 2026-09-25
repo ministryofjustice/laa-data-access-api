@@ -304,6 +304,19 @@ class PriorAuthorityDraftIntegrationTest {
         objectMapper
             .readValue(uploadResponse.getBody(), UploadPriorAuthorityDocumentResponse.class)
             .getDocumentId();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT original_filename FROM axon.uploaded_documents WHERE document_id = ?",
+                String.class,
+                documentId))
+        .isEqualTo("evidence.pdf");
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT payload -> 'content' -> 'uploadedDocuments'"
+                    + " FROM axon.prior_authority_draft WHERE prior_authority_id = ?",
+                String.class,
+                priorAuthorityId))
+        .isNull();
 
     ResponseEntity<Void> updateDocumentTypeResponse =
         restTemplate.exchange(
@@ -335,7 +348,12 @@ class PriorAuthorityDraftIntegrationTest {
     assertThat(priorAuthority.getStatus()).isEqualTo(PriorAuthorityResponse.StatusEnum.SUBMITTED);
     assertThat(priorAuthority.getUploadedDocuments())
         .singleElement()
-        .satisfies(document -> assertThat(document.getFileName()).isEqualTo("evidence.pdf"));
+        .satisfies(
+            document -> {
+              assertThat(document.getFileName()).isEqualTo("evidence.pdf");
+              assertThat(document.getDocumentType())
+                  .isEqualTo(PriorAuthorityDocumentType.GATEWAY_EVIDENCE);
+            });
   }
 
   @Test
@@ -391,6 +409,17 @@ class PriorAuthorityDraftIntegrationTest {
         .thenReturn(new DocumentUploadResponse().checksum("checksum"));
     UUID documentId = uploadDocument(priorAuthorityId, "evidence.pdf");
 
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM axon.domain_event_entry"
+                    + " WHERE aggregate_identifier = ?"
+                    + " AND payload_type = ?",
+                Integer.class,
+                priorAuthorityId.toString(),
+                "uk.gov.justice.laa.dstew.access.command.application.priorauthority"
+                    + ".PriorAuthorityDocumentUploadedEvent"))
+        .isEqualTo(1);
+
     ResponseEntity<Void> deleteResponse =
         restTemplate.exchange(
             deleteDocumentUrl(priorAuthorityId, documentId),
@@ -401,16 +430,22 @@ class PriorAuthorityDraftIntegrationTest {
     assertThat(deleteResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
     verify(sdsService).deleteFiles(priorAuthorityId, List.of(documentId.toString() + ".pdf"));
 
-    ResponseEntity<String> draftResponse =
-        restTemplate.exchange(
-            priorAuthorityUrl(priorAuthorityId),
-            HttpMethod.GET,
-            new HttpEntity<>(headers()),
-            String.class);
-    assertThat(draftResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-    PriorAuthorityResponse draft =
-        objectMapper.readValue(draftResponse.getBody(), PriorAuthorityResponse.class);
-    assertThat(draft.getUploadedDocuments()).isEmpty();
+    await()
+        .atMost(15, TimeUnit.SECONDS)
+        .pollInterval(100, TimeUnit.MILLISECONDS)
+        .untilAsserted(
+            () -> {
+              ResponseEntity<String> draftResponse =
+                  restTemplate.exchange(
+                      priorAuthorityUrl(priorAuthorityId),
+                      HttpMethod.GET,
+                      new HttpEntity<>(headers()),
+                      String.class);
+              assertThat(draftResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+              PriorAuthorityResponse draft =
+                  objectMapper.readValue(draftResponse.getBody(), PriorAuthorityResponse.class);
+              assertThat(draft.getUploadedDocuments()).isEmpty();
+            });
   }
 
   @Test

@@ -6,6 +6,8 @@ import static org.mockito.Mockito.when;
 
 import java.time.Instant;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -13,7 +15,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.document.DeletePriorAuthorityDocumentUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.document.UpdatePriorAuthorityDocumentTypeResult;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.document.UpdatePriorAuthorityDocumentTypeUseCase;
@@ -32,6 +37,17 @@ class PriorAuthorityDocumentCommandControllerTest {
   @Mock private DeletePriorAuthorityDocumentUseCase deleteUseCase;
 
   @InjectMocks private PriorAuthorityDocumentCommandController controller;
+
+  @BeforeEach
+  void setUpRequestContext() {
+    RequestContextHolder.setRequestAttributes(
+        new ServletRequestAttributes(new MockHttpServletRequest()));
+  }
+
+  @AfterEach
+  void clearRequestContext() {
+    RequestContextHolder.resetRequestAttributes();
+  }
 
   @Test
   void givenRequest_whenUploadPriorAuthorityDocument_thenReturnsCreatedAndBody() {
@@ -91,6 +107,7 @@ class PriorAuthorityDocumentCommandControllerTest {
   void givenRequest_whenDeletePriorAuthorityDocument_thenReturnsNoContent() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
+    when(deleteUseCase.execute(priorAuthorityId, documentId)).thenReturn(true);
 
     ResponseEntity<Void> response =
         controller.deletePriorAuthorityDocument(
@@ -99,6 +116,24 @@ class PriorAuthorityDocumentCommandControllerTest {
             documentId);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    verify(deleteUseCase).execute(priorAuthorityId, documentId);
+  }
+
+  @Test
+  void givenProjectionPending_whenDeletePriorAuthorityDocument_thenReturnsAccepted() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    when(deleteUseCase.execute(priorAuthorityId, documentId)).thenReturn(false);
+
+    ResponseEntity<Void> response =
+        controller.deletePriorAuthorityDocument(
+            uk.gov.justice.laa.dstew.access.model.ServiceName.CIVIL_APPLY,
+            priorAuthorityId,
+            documentId);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+    assertThat(response.getHeaders().getLocation())
+        .hasPath("/api/v0/prior-authorities/" + priorAuthorityId);
     verify(deleteUseCase).execute(priorAuthorityId, documentId);
   }
 }

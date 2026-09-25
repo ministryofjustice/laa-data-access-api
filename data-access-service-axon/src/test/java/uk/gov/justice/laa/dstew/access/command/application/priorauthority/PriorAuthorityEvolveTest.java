@@ -31,6 +31,7 @@ class PriorAuthorityEvolveTest {
     assertThat(state.getSchemaVersion()).isEqualTo(3);
     assertThat(state.isSubmitted()).isFalse();
     assertThat(state.isDecided()).isFalse();
+    assertThat(state.isDraftOpen()).isTrue();
   }
 
   @Test
@@ -52,6 +53,7 @@ class PriorAuthorityEvolveTest {
     assertThat(state.getDataVersion()).isEqualTo(0L);
     assertThat(state.isSubmitted()).isTrue();
     assertThat(state.isDecided()).isFalse();
+    assertThat(state.isDraftOpen()).isFalse();
   }
 
   @Test
@@ -106,35 +108,84 @@ class PriorAuthorityEvolveTest {
   }
 
   @Test
-  void givenDocumentUploadedEvent_whenApply_thenTracksDocumentId() {
+  void givenDocumentUploadedEvent_whenApply_thenTracksDocumentFacts() {
     PriorAuthorityState state = new PriorAuthorityState();
     UUID documentId = UUID.randomUUID();
+    Instant uploadedAt = Instant.parse("2026-09-08T12:00:00Z");
 
     PriorAuthorityEvolve.apply(
         state,
         new PriorAuthorityDocumentUploadedEvent(
             UUID.randomUUID(),
             documentId,
-            Instant.now(),
+            uploadedAt,
             10L,
             "application/pdf",
             "sum",
+            "PDF",
+            "CIVIL_APPLY",
+            "INVOICE",
             UUID.randomUUID()));
 
-    assertThat(state.getUploadedDocumentIds()).contains(documentId);
+    assertThat(state.getUploadedDocuments())
+        .singleElement()
+        .satisfies(
+            data -> {
+              assertThat(data.documentId()).isEqualTo(documentId);
+              assertThat(data.fileType()).isEqualTo("PDF");
+              assertThat(data.contentType()).isEqualTo("application/pdf");
+              assertThat(data.sourceService()).isEqualTo("CIVIL_APPLY");
+              assertThat(data.documentType()).isEqualTo("INVOICE");
+              assertThat(data.uploadedAt()).isEqualTo(uploadedAt);
+              assertThat(data.deletedAt()).isNull();
+            });
   }
 
   @Test
-  void givenDocumentDeletedEvent_whenApply_thenRemovesDocumentId() {
+  void givenDocumentDeletedEvent_whenApply_thenMarksDocumentDeleted() {
     PriorAuthorityState state = new PriorAuthorityState();
     UUID documentId = UUID.randomUUID();
-    state.uploadedDocumentIds.add(documentId);
+    Instant uploadedAt = Instant.parse("2026-09-08T12:00:00Z");
+    state
+        .getUploadedDocuments()
+        .add(
+            new UploadedDocumentData(
+                documentId, 10L, "PDF", "application/pdf", "CIVIL_APPLY", null, uploadedAt, null));
 
     PriorAuthorityEvolve.apply(
         state,
         new PriorAuthorityDocumentDeletedEvent(
             UUID.randomUUID(), documentId, Instant.now(), UUID.randomUUID()));
 
-    assertThat(state.getUploadedDocumentIds()).doesNotContain(documentId);
+    assertThat(state.getUploadedDocuments())
+        .singleElement()
+        .satisfies(data -> assertThat(data.deletedAt()).isNotNull());
+  }
+
+  @Test
+  void givenDocumentTypeUpdatedEvent_whenApply_thenUpdatesDocumentType() {
+    PriorAuthorityState state = new PriorAuthorityState();
+    UUID documentId = UUID.randomUUID();
+    state
+        .getUploadedDocuments()
+        .add(
+            new UploadedDocumentData(
+                documentId,
+                10L,
+                "PDF",
+                "application/pdf",
+                "CIVIL_APPLY",
+                "INVOICE",
+                Instant.now(),
+                null));
+
+    PriorAuthorityEvolve.apply(
+        state,
+        new PriorAuthorityDocumentTypeUpdatedEvent(
+            UUID.randomUUID(), documentId, "GATEWAY_EVIDENCE", Instant.now()));
+
+    assertThat(state.getUploadedDocuments())
+        .singleElement()
+        .satisfies(data -> assertThat(data.documentType()).isEqualTo("GATEWAY_EVIDENCE"));
   }
 }
