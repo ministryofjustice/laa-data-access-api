@@ -80,7 +80,6 @@ import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetailsRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.OpponentResponse;
-import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityHistoryGroup;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.model.ProviderResponse;
@@ -843,7 +842,8 @@ class PostgresAxonIntegrationTest {
   }
 
   @Test
-  void givenApplicationWithPotentialDuplicates_whenPostedAndRetrieved_thenReturnsPotentialDuplicates() {
+  void
+      givenApplicationWithPotentialDuplicates_whenPostedAndRetrieved_thenReturnsPotentialDuplicates() {
     UUID applicationId = UUID.randomUUID();
     UUID applyProceedingId = UUID.randomUUID();
     UUID dupApplicationId1 = UUID.randomUUID();
