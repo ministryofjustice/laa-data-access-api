@@ -84,6 +84,19 @@ class DownloadPriorAuthorityDocumentUseCaseTest {
             "No document found with ID: %s for prior authority: %s", documentId, priorAuthorityId);
   }
 
+  @Test
+  void givenNoUploadedDocuments_whenDownloaded_thenThrowsNotFound() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    when(getPriorAuthorityUseCase.getPriorAuthority(priorAuthorityId))
+        .thenReturn(PriorAuthorityResult.builder().uploadedDocuments(null).build());
+
+    assertThatExceptionOfType(ResourceNotFoundException.class)
+        .isThrownBy(() -> useCase.downloadDocument(priorAuthorityId, documentId))
+        .withMessage(
+            "No document found with ID: %s for prior authority: %s", documentId, priorAuthorityId);
+  }
+
   private PriorAuthorityDocument document(UUID documentId) {
     return new PriorAuthorityDocument(
         documentId,

@@ -1,6 +1,9 @@
 package uk.gov.justice.laa.dstew.access;
 
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -11,6 +14,7 @@ import jakarta.annotation.PostConstruct;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.junit.jupiter.api.Test;
@@ -37,6 +41,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.ObjectMapper;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantedOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityDraftRequest;
@@ -50,6 +55,9 @@ import uk.gov.justice.laa.dstew.access.model.SavePriorAuthorityDraftResponse;
 import uk.gov.justice.laa.dstew.access.model.SubmitPriorAuthorityDraftResponse;
 import uk.gov.justice.laa.dstew.access.model.UpdatePriorAuthorityDocumentTypeRequest;
 import uk.gov.justice.laa.dstew.access.model.UploadPriorAuthorityDocumentResponse;
+import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
+import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
+import uk.gov.justice.laa.dstew.access.query.application.priorauthority.FindPriorAuthorityByPriorAuthorityIdQuery;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 import util.ProjectionAwaiter;
@@ -431,8 +439,8 @@ class PriorAuthorityDraftIntegrationTest {
     verify(sdsService).deleteFiles(priorAuthorityId, List.of(documentId.toString() + ".pdf"));
 
     await()
-        .atMost(15, TimeUnit.SECONDS)
-        .pollInterval(100, TimeUnit.MILLISECONDS)
+        .atMost(15, SECONDS)
+        .pollInterval(100, MILLISECONDS)
         .untilAsserted(
             () -> {
               ResponseEntity<String> draftResponse =
@@ -665,6 +673,47 @@ class PriorAuthorityDraftIntegrationTest {
                 headers()),
             Void.class);
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+  }
+
+  private ApplicationReadModel awaitApplicationProjection(UUID applicationId) {
+    return await()
+        .alias("application projection to be populated for " + applicationId)
+        .atMost(15, SECONDS)
+        .pollInterval(100, MILLISECONDS)
+        .until(
+            () ->
+                queryGateway
+                    .query(new FindApplicationByIdQuery(applicationId), ApplicationReadModel.class)
+                    .join(),
+            Objects::nonNull);
+  }
+
+  private ApplicationReadModel awaitApplicationProjectionVersion(UUID applicationId, long version) {
+    return await()
+        .alias("application projection to reach version " + version + " for " + applicationId)
+        .atMost(15, SECONDS)
+        .pollInterval(100, MILLISECONDS)
+        .until(
+            () ->
+                queryGateway
+                    .query(new FindApplicationByIdQuery(applicationId), ApplicationReadModel.class)
+                    .join(),
+            projected -> projected != null && projected.getApplicationDataVersion() == version);
+  }
+
+  private PriorAuthorityResult awaitPriorAuthorityProjection(UUID priorAuthorityId) {
+    return await()
+        .alias("prior authority projection to be populated for " + priorAuthorityId)
+        .atMost(15, SECONDS)
+        .pollInterval(100, MILLISECONDS)
+        .until(
+            () ->
+                queryGateway
+                    .query(
+                        new FindPriorAuthorityByPriorAuthorityIdQuery(priorAuthorityId),
+                        PriorAuthorityResult.class)
+                    .join(),
+            Objects::nonNull);
   }
 
   private String saveDraftUrl() {
