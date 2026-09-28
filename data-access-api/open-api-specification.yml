@@ -29,8 +29,6 @@ paths:
     $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1{id}~1notes"
   /api/v0/applications/{id}/upload-document:
     $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1{id}~1upload-document"
-  /api/v0/applications/{id}/download-document/{documentId}:
-    $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1{id}~1download-document~1{documentId}"
   /api/v0/applications/{id}/update-document:
     $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1{id}~1update-document"
   /api/v0/applications/{id}/delete-document:
@@ -47,6 +45,8 @@ paths:
     $ref: "./open-api-prior-authority/resources.yml#/paths/~1api~1v0~1prior-authorities~1{priorAuthorityId}~1documents"
   /api/v0/prior-authorities/{priorAuthorityId}/documents/{documentId}:
     $ref: "./open-api-prior-authority/resources.yml#/paths/~1api~1v0~1prior-authorities~1{priorAuthorityId}~1documents~1{documentId}"
+  /api/v0/prior-authorities/{priorAuthorityId}/documents/{documentId}/content:
+    $ref: "./open-api-prior-authority/resources.yml#/paths/~1api~1v0~1prior-authorities~1{priorAuthorityId}~1documents~1{documentId}~1content"
   /api/v0/work-list:
     $ref: "./open-api-work-list/resources.yml#/paths/~1api~1v0~1work-list"
   /api/v0/work-list/{itemId}/assign:

@@ -13,13 +13,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationOrderBy;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSortBy;
-import uk.gov.justice.laa.dstew.access.model.DocumentDownloadResponse;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
@@ -28,32 +28,29 @@ import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryResult;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
-import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
 import uk.gov.justice.laa.dstew.access.usecase.application.ApplicationQueryUseCase;
 
 /** Verifies the branch logic in ApplicationQueryController that integration tests do not reach. */
 @ExtendWith(MockitoExtension.class)
 class ApplicationQueryControllerTest {
 
-  @Mock private ApplicationQueryUseCase applicationQueryUseCase;
-  @Mock private GetApplicationResponseMapper responseMapper;
-  @Mock private GetAllApplicationsResponseMapper getAllResponseMapper;
-  @Mock private GetApplicationHistoryResponseMapper historyResponseMapper;
-  @Mock private GetAllNotesForApplicationResponseMapper notesResponseMapper;
-  @Mock private SdsService sdsService;
-  private ApplicationQueryController controller;
+  @Mock
+  private ApplicationQueryUseCase applicationQueryUseCase;
 
-  @BeforeEach
-  void setUp() {
-    controller =
-        new ApplicationQueryController(
-            applicationQueryUseCase,
-            responseMapper,
-            getAllResponseMapper,
-            historyResponseMapper,
-            notesResponseMapper,
-            sdsService);
-  }
+  @Mock
+  private GetApplicationResponseMapper responseMapper;
+
+  @Mock
+  private GetAllApplicationsResponseMapper getAllResponseMapper;
+
+  @Mock
+  private GetApplicationHistoryResponseMapper historyResponseMapper;
+
+  @Mock
+  private GetAllNotesForApplicationResponseMapper notesResponseMapper;
+
+  @InjectMocks
+  private ApplicationQueryController controller;
 
   @Test
   void givenApplicationDetail_whenGetApplicationById_thenMapsCombinedResult() {
@@ -73,20 +70,6 @@ class ApplicationQueryControllerTest {
     assertThat(response.getBody()).isSameAs(expectedResponse);
     verify(applicationQueryUseCase).getApplicationDetail(applicationId);
     verify(responseMapper).toResponse(application, linkedGroup, priorAuthorities);
-  }
-
-  @Test
-  void givenDocumentExists_whenDownloadDocument_thenReturnDownloadedDocument() {
-    UUID applicationId = UUID.randomUUID();
-    String documentId = "document-id";
-    DocumentDownloadResponse expectedResponse = new DocumentDownloadResponse();
-    when(sdsService.getFile(applicationId, documentId)).thenReturn(expectedResponse);
-
-    var response = controller.downloadDocument(ServiceName.CIVIL_APPLY, applicationId, documentId);
-
-    assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
-    assertThat(response.getBody()).isSameAs(expectedResponse);
-    verify(sdsService).getFile(applicationId, documentId);
   }
 
   @Test
