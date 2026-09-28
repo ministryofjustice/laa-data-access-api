@@ -5,6 +5,10 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.springframework.core.io.Resource;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import uk.gov.justice.laa.dstew.access.api.ApplicationQueryApi;
@@ -21,7 +25,9 @@ import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationDetailResult;
+import uk.gov.justice.laa.dstew.access.query.application.ApplicationDocumentDownload;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
+import uk.gov.justice.laa.dstew.access.query.application.DownloadApplicationDocumentUseCase;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsQuery;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsResult;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryResult;
@@ -38,6 +44,7 @@ public class ApplicationQueryController implements ApplicationQueryApi {
   private final GetAllApplicationsResponseMapper getAllResponseMapper;
   private final GetApplicationHistoryResponseMapper historyResponseMapper;
   private final GetAllNotesForApplicationResponseMapper notesResponseMapper;
+  private final DownloadApplicationDocumentUseCase downloadApplicationDocumentUseCase;
 
   /**
    * Constructs the controller with its query gateway and response mappers.
@@ -54,12 +61,28 @@ public class ApplicationQueryController implements ApplicationQueryApi {
       GetApplicationResponseMapper responseMapper,
       GetAllApplicationsResponseMapper getAllResponseMapper,
       GetApplicationHistoryResponseMapper historyResponseMapper,
-      GetAllNotesForApplicationResponseMapper notesResponseMapper) {
+      GetAllNotesForApplicationResponseMapper notesResponseMapper,
+      DownloadApplicationDocumentUseCase downloadApplicationDocumentUseCase) {
     this.applicationQueryUseCase = applicationQueryUseCase;
     this.responseMapper = responseMapper;
     this.getAllResponseMapper = getAllResponseMapper;
     this.historyResponseMapper = historyResponseMapper;
     this.notesResponseMapper = notesResponseMapper;
+    this.downloadApplicationDocumentUseCase = downloadApplicationDocumentUseCase;
+  }
+
+  /** Streams a document stored against an Application. */
+  @Override
+  public ResponseEntity<Resource> downloadApplicationDocument(
+      ServiceName serviceName, UUID id, UUID documentId) {
+    ApplicationDocumentDownload download =
+        downloadApplicationDocumentUseCase.downloadDocument(id, documentId);
+    return ResponseEntity.ok()
+        .contentType(mediaType(download.mediaType()))
+        .header(
+            HttpHeaders.CONTENT_DISPOSITION,
+            ContentDisposition.attachment().filename(download.fileName()).build().toString())
+        .body(download.resource());
   }
 
   /**
@@ -148,5 +171,15 @@ public class ApplicationQueryController implements ApplicationQueryApi {
     ApplicationNotesResponse response =
         notesResponseMapper.toResponse(applicationQueryUseCase.getNotesForApplication(id).notes());
     return ResponseEntity.ok(response);
+  }
+
+  private MediaType mediaType(String mediaType) {
+    try {
+      return mediaType == null
+          ? MediaType.APPLICATION_OCTET_STREAM
+          : MediaType.parseMediaType(mediaType);
+    } catch (IllegalArgumentException exception) {
+      return MediaType.APPLICATION_OCTET_STREAM;
+    }
   }
 }
