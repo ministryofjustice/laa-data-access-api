@@ -318,6 +318,23 @@ public class ApplicationAggregate {
     eventAppender.append(event);
   }
 
+  /** Records metadata for an application document that SDS has already accepted. */
+  @CommandHandler
+  UUID handle(ApplicationDocumentUploadCommand command, EventAppender eventAppender) {
+    requireApplicationExists(command.applicationId());
+    eventAppender.append(
+        new ApplicationDocumentUploadedEvent(
+            command.applicationId(),
+            command.documentId(),
+            command.documentType(),
+            command.uploadedAt(),
+            command.size(),
+            command.contentType(),
+            command.checksum(),
+            command.sourceService()));
+    return command.documentId();
+  }
+
   private void validateManualDecision(MakeApplicationDecisionCommand command) {
     ApplicationDecider.validateManualDecisionAssignment(state, command);
   }
@@ -492,6 +509,11 @@ public class ApplicationAggregate {
 
   @EventSourcingHandler
   void on(ApplicationUpdatedEvent event) {
+    ApplicationEvolve.apply(state, event);
+  }
+
+  @EventSourcingHandler
+  void on(ApplicationDocumentUploadedEvent event) {
     ApplicationEvolve.apply(state, event);
   }
 

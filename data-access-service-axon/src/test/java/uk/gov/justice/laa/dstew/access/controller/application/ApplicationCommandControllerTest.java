@@ -208,6 +208,27 @@ class ApplicationCommandControllerTest {
     assertThat(response.getBody()).isEqualTo(expected);
   }
 
+  @Test
+  void givenDocumentType_whenUploadApplicationDocument_thenDelegatesToUseCaseAndReturns201() {
+    UUID id = UUID.randomUUID();
+    MockMultipartFile file =
+        new MockMultipartFile("file", "test.pdf", "application/pdf", "content".getBytes());
+    DocumentUploadResponse expected = mock(DocumentUploadResponse.class);
+    when(uploadDocumentUseCase.execute(id, file, "GATEWAY_EVIDENCE", "CIVIL_APPLY"))
+        .thenReturn(expected);
+
+    ResponseEntity<DocumentUploadResponse> response =
+        controller.uploadApplicationDocument(
+            uk.gov.justice.laa.dstew.access.model.ServiceName.CIVIL_APPLY,
+            id,
+            file,
+            "GATEWAY_EVIDENCE");
+
+    verify(uploadDocumentUseCase).execute(id, file, "GATEWAY_EVIDENCE", "CIVIL_APPLY");
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    assertThat(response.getBody()).isEqualTo(expected);
+  }
+
   private CreateApplicationCommand stubCreateCommand() {
     UUID id = UUID.randomUUID();
     return new CreateApplicationCommand(

@@ -67,4 +67,40 @@ class ApplicationEvolveTest {
 
     assertThat(state.status).isEqualTo(ApplicationStatus.APPLICATION_SUBMITTED.getValue());
   }
+
+  @Test
+  void givenDocumentUploadEvents_whenApplied_thenAppendsMetadataInUploadOrder() {
+    ApplicationState state = new ApplicationState();
+    UUID applicationId = UUID.randomUUID();
+    UUID firstDocumentId = UUID.randomUUID();
+    UUID secondDocumentId = UUID.randomUUID();
+
+    ApplicationEvolve.apply(
+        state,
+        new ApplicationDocumentUploadedEvent(
+            applicationId,
+            firstDocumentId,
+            "GATEWAY_EVIDENCE",
+            Instant.parse("2026-09-28T10:00:00Z"),
+            12L,
+            "application/pdf",
+            "first-checksum",
+            "CIVIL_APPLY"));
+    ApplicationEvolve.apply(
+        state,
+        new ApplicationDocumentUploadedEvent(
+            applicationId,
+            secondDocumentId,
+            "INVOICE",
+            Instant.parse("2026-09-28T10:01:00Z"),
+            13L,
+            "application/pdf",
+            "second-checksum",
+            "CIVIL_APPLY"));
+
+    assertThat(state.uploadedDocuments)
+        .extracting(UploadDocument::documentId)
+        .containsExactly(firstDocumentId, secondDocumentId);
+    assertThat(state.uploadedDocuments.getFirst().documentType()).isEqualTo("GATEWAY_EVIDENCE");
+  }
 }
