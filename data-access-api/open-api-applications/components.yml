@@ -645,6 +645,39 @@ components:
         checksum:
           type: string
 
+    UploadApplicationDocumentResponse:
+      type: object
+      required:
+        - documentId
+        - fileName
+        - fileType
+        - contentType
+        - size
+        - uploadedAt
+        - sourceService
+      properties:
+        documentId:
+          type: string
+          format: uuid
+        fileName:
+          type: string
+        fileType:
+          type: string
+          example: PDF
+        contentType:
+          type: string
+          example: application/pdf
+        size:
+          type: integer
+          format: int64
+        uploadedAt:
+          type: string
+          format: date-time
+        sourceService:
+          type: string
+        checksum:
+          type: string
+
     DocumentDownloadResponse:
       type: object
       properties:

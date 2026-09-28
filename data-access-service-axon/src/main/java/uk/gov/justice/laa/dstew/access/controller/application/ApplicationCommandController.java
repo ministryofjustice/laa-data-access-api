@@ -15,6 +15,7 @@ import uk.gov.justice.laa.dstew.access.api.ApplicationDocumentCommandApi;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionUseCase;
+import uk.gov.justice.laa.dstew.access.command.application.document.UploadApplicationDocumentResult;
 import uk.gov.justice.laa.dstew.access.command.application.document.UploadDocumentUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteUseCase;
@@ -34,6 +35,7 @@ import uk.gov.justice.laa.dstew.access.model.DocumentUpdateResponse;
 import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
+import uk.gov.justice.laa.dstew.access.model.UploadApplicationDocumentResponse;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedUserId;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
@@ -189,10 +191,20 @@ public class ApplicationCommandController
   @Override
   @LogMethodArguments
   @LogMethodResponse
-  public ResponseEntity<DocumentUploadResponse> uploadApplicationDocument(
+  public ResponseEntity<UploadApplicationDocumentResponse> uploadApplicationDocument(
       ServiceName serviceName, UUID id, MultipartFile file, ApplicationDocumentType documentType) {
-    DocumentUploadResponse response =
+    UploadApplicationDocumentResult result =
         uploadDocumentUseCase.execute(id, file, documentType.getValue(), serviceName.getValue());
+    UploadApplicationDocumentResponse response =
+        new UploadApplicationDocumentResponse()
+            .documentId(result.documentId())
+            .fileName(result.fileName())
+            .fileType(result.fileType())
+            .contentType(result.contentType())
+            .size(result.size())
+            .uploadedAt(result.uploadedAt().atOffset(java.time.ZoneOffset.UTC))
+            .sourceService(result.sourceService())
+            .checksum(result.checksum());
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 

@@ -53,6 +53,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.ObjectMapper;
+import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadCommand;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
@@ -158,6 +159,46 @@ class PostgresAxonIntegrationTest {
         .isFalse();
     assertThat(eventStorageEngine).isInstanceOf(AggregateBasedJpaEventStorageEngine.class);
     assertThat(axonTables).containsExactly("domain_event_entry", "token_entry");
+  }
+
+  @Test
+  void
+      givenExistingApplication_whenDocumentUploadCommandDispatched_thenStoresSequencedDomainEvent() {
+    UUID applicationId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    Instant uploadedAt = Instant.parse("2026-09-28T15:10:27.430Z");
+    applicationId(post(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()));
+
+    commandGateway.sendAndWait(
+        new ApplicationDocumentUploadCommand(
+            applicationId,
+            documentId,
+            "GATEWAY_EVIDENCE",
+            uploadedAt,
+            12L,
+            "application/pdf",
+            "checksum",
+            "CIVIL_APPLY"));
+
+    List<Map<String, Object>> events =
+        jdbcTemplate.queryForList(
+            "SELECT aggregate_identifier, payload_type, sequence_number "
+                + "FROM axon.domain_event_entry "
+                + "WHERE aggregate_identifier = ? ORDER BY sequence_number",
+            applicationId.toString());
+
+    assertThat(events)
+        .hasSize(2)
+        .element(1)
+        .satisfies(
+            event -> {
+              assertThat(event.get("aggregate_identifier")).isEqualTo(applicationId.toString());
+              assertThat(event.get("payload_type"))
+                  .isEqualTo(
+                      "uk.gov.justice.laa.dstew.access.command.application"
+                          + ".ApplicationDocumentUploadedEvent");
+              assertThat(event.get("sequence_number")).isEqualTo(1L);
+            });
   }
 
   @Test
