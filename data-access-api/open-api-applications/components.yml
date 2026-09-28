@@ -42,6 +42,8 @@ components:
         - proceedings
         - applicationVersion
         - autoGranted
+        - priorAuthorities
+        - linkedApplications
       properties:
         applicationId:
           type: string
@@ -75,6 +77,14 @@ components:
           $ref: "#/components/schemas/ApplicationProceedingsResponse"
         provider:
           $ref: "#/components/schemas/ProviderResponse"
+        priorAuthorities:
+          type: array
+          items:
+            $ref: "#/components/schemas/PriorAuthoritySummary"
+        linkedApplications:
+          type: array
+          items:
+            $ref: "#/components/schemas/LinkedApplicationSummaryResponse"
         version:
           type: integer
           format: int64
@@ -147,6 +157,7 @@ components:
       description: (APPLICATION LIST PAGE / VIEW - OPEN APPLICATIONS ONLY BY DEFAULT)
       required:
         - autoGranted
+        - priorAuthorities
       properties:
         applicationId:
           type: string
@@ -188,6 +199,10 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/LinkedApplicationSummaryResponse"
+        priorAuthorities:
+          type: array
+          items:
+            $ref: "#/components/schemas/PriorAuthoritySummary"
 
     ApplicationSummaryResponse:
       type: object
@@ -209,6 +224,31 @@ components:
           type: string
         isLead:
           type: boolean
+
+    PriorAuthoritySummary:
+      type: object
+      required:
+        - priorAuthorityId
+        - status
+        - createdAt
+      properties:
+        priorAuthorityId:
+          type: string
+          format: uuid
+        priorAuthorityType:
+          type: string
+          nullable: true
+          enum: [EXPERT, DISBURSEMENT, COUNSEL]
+        status:
+          type: string
+          enum: [DRAFT, SUBMITTED, DECIDED]
+        decision:
+          type: string
+          nullable: true
+          enum: [GRANTED, REFUSED]
+        createdAt:
+          type: string
+          format: date-time
 
     ApplicationHistoryResponse:
       type: object

@@ -7,11 +7,13 @@ import java.util.concurrent.CompletionException;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.query.application.ApplicationDetailResult;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationNotesResult;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsQuery;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsResult;
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
+import uk.gov.justice.laa.dstew.access.query.application.FindApplicationDetailQuery;
 import uk.gov.justice.laa.dstew.access.query.application.FindNotesForApplicationQuery;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryIntegrityException;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryResult;
@@ -43,6 +45,19 @@ public class ApplicationQueryUseCase {
       throw new ResourceNotFoundException("No application found with ID: " + id);
     }
     return application;
+  }
+
+  /** Returns the requested application and its related detail, or throws when absent. */
+  @AllowApiCaseworker
+  public ApplicationDetailResult getApplicationDetail(UUID id) {
+    ApplicationDetailResult detail =
+        queryGateway
+            .query(new FindApplicationDetailQuery(id), ApplicationDetailResult.class)
+            .join();
+    if (detail == null) {
+      throw new ResourceNotFoundException("No application found with ID: " + id);
+    }
+    return detail;
   }
 
   /** Returns the stored certificate for an application. */

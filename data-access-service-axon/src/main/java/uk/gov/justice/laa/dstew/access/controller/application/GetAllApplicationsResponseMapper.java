@@ -11,6 +11,7 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
+import uk.gov.justice.laa.dstew.access.model.AutoGranted;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
@@ -18,6 +19,7 @@ import uk.gov.justice.laa.dstew.access.model.PagingResponse;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsResult;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
+import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
 
 /** Maps a {@link FindAllApplicationsResult} to an {@link ApplicationSummaryResponse}. */
 @Component
@@ -26,7 +28,12 @@ public class GetAllApplicationsResponseMapper {
   /** Builds the paginated response from the query result. */
   public ResponseEntity<ApplicationSummaryResponse> toResponse(FindAllApplicationsResult result) {
     List<ApplicationSummary> summaries =
-        result.applications().stream().map(app -> toSummary(app, result.groupsByLeadId())).toList();
+        result.applications().stream()
+            .map(
+                app ->
+                    toSummary(
+                        app, result.groupsByLeadId(), result.priorAuthoritiesByApplicationId()))
+            .toList();
 
     PagingResponse paging = new PagingResponse();
     paging.setPage(result.requestedPage());
@@ -42,7 +49,9 @@ public class GetAllApplicationsResponseMapper {
   }
 
   private ApplicationSummary toSummary(
-      ApplicationReadModel app, Map<UUID, LinkedApplicationGroupReadModel> groupsByLeadId) {
+      ApplicationReadModel app,
+      Map<UUID, LinkedApplicationGroupReadModel> groupsByLeadId,
+      Map<UUID, List<PriorAuthorityReadModel>> priorAuthoritiesByApplicationId) {
     ApplicationSummary summary = new ApplicationSummary();
     summary.setApplicationId(app.getApplicationId());
     summary.setStatus(app.getStatus() != null ? ApplicationStatus.valueOf(app.getStatus()) : null);
@@ -56,12 +65,14 @@ public class GetAllApplicationsResponseMapper {
     summary.setLastUpdated(app.getModifiedAt().atOffset(ZoneOffset.UTC));
     summary.setIsLead(isLead(app, groupsByLeadId));
     summary.setAssignedTo(app.getCaseworkerId());
-    summary.setAutoGranted(
-        uk.gov.justice.laa.dstew.access.model.AutoGranted.valueOf(app.getAutoGranted().name()));
+    summary.setAutoGranted(AutoGranted.valueOf(app.getAutoGranted().name()));
 
     populateClientDetails(summary, app);
 
     summary.setLinkedApplications(toLinkedSummaries(app, groupsByLeadId));
+    summary.setPriorAuthorities(
+        PriorAuthoritySummaryMapper.toSummaries(
+            priorAuthoritiesByApplicationId.getOrDefault(app.getApplicationId(), List.of())));
     return summary;
   }
 

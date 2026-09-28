@@ -4,7 +4,6 @@ import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
@@ -17,14 +16,14 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSortBy;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
+import uk.gov.justice.laa.dstew.access.model.AutoGranted;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
-import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
+import uk.gov.justice.laa.dstew.access.query.application.ApplicationDetailResult;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsQuery;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsResult;
-import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryResult;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
@@ -39,7 +38,6 @@ public class ApplicationQueryController implements ApplicationQueryApi {
   private final GetAllApplicationsResponseMapper getAllResponseMapper;
   private final GetApplicationHistoryResponseMapper historyResponseMapper;
   private final GetAllNotesForApplicationResponseMapper notesResponseMapper;
-  private final SubscriptionProjectionGateway projectionGateway;
 
   /**
    * Constructs the controller with its query gateway and response mappers.
@@ -56,14 +54,12 @@ public class ApplicationQueryController implements ApplicationQueryApi {
       GetApplicationResponseMapper responseMapper,
       GetAllApplicationsResponseMapper getAllResponseMapper,
       GetApplicationHistoryResponseMapper historyResponseMapper,
-      GetAllNotesForApplicationResponseMapper notesResponseMapper,
-      SubscriptionProjectionGateway projectionGateway) {
+      GetAllNotesForApplicationResponseMapper notesResponseMapper) {
     this.applicationQueryUseCase = applicationQueryUseCase;
     this.responseMapper = responseMapper;
     this.getAllResponseMapper = getAllResponseMapper;
     this.historyResponseMapper = historyResponseMapper;
     this.notesResponseMapper = notesResponseMapper;
-    this.projectionGateway = projectionGateway;
   }
 
   /**
@@ -86,7 +82,7 @@ public class ApplicationQueryController implements ApplicationQueryApi {
       String clientLastName,
       LocalDate clientDateOfBirth,
       UUID userId,
-      uk.gov.justice.laa.dstew.access.model.AutoGranted autoGranted,
+      AutoGranted autoGranted,
       MatterType matterType,
       ApplicationSortBy sortBy,
       ApplicationOrderBy orderBy,
@@ -114,10 +110,10 @@ public class ApplicationQueryController implements ApplicationQueryApi {
   @LogMethodArguments
   @LogMethodResponse
   public ResponseEntity<ApplicationResponse> getApplicationById(ServiceName serviceName, UUID id) {
-    ApplicationReadModel application =
-        findApplicationAwaitingProjection(id)
-            .orElseGet(() -> applicationQueryUseCase.getApplicationById(id));
-    return ResponseEntity.ok(responseMapper.toResponse(application));
+    ApplicationDetailResult detail = applicationQueryUseCase.getApplicationDetail(id);
+    return ResponseEntity.ok(
+        responseMapper.toResponse(
+            detail.application(), detail.linkedGroup(), detail.priorAuthorities()));
   }
 
   /** Returns the certificate stored in the Application's current immutable data version. */
@@ -152,10 +148,5 @@ public class ApplicationQueryController implements ApplicationQueryApi {
     ApplicationNotesResponse response =
         notesResponseMapper.toResponse(applicationQueryUseCase.getNotesForApplication(id).notes());
     return ResponseEntity.ok(response);
-  }
-
-  private Optional<ApplicationReadModel> findApplicationAwaitingProjection(UUID applicationId) {
-    return projectionGateway.findProjection(
-        new FindApplicationByIdQuery(applicationId), ApplicationReadModel.class);
   }
 }

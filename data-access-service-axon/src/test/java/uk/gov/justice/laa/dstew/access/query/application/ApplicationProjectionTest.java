@@ -1,8 +1,8 @@
 package uk.gov.justice.laa.dstew.access.query.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
@@ -13,16 +13,21 @@ import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventF
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import org.axonframework.messaging.queryhandling.QueryUpdateEmitter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -40,36 +45,33 @@ import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationRead
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
+import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadRepository;
+import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
+import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadRepository;
 
+@ExtendWith(MockitoExtension.class)
 class ApplicationProjectionTest {
 
-  private ApplicationReadRepository applicationReadRepository;
-  private LinkedApplicationGroupReadRepository groupReadRepository;
-  private QueryUpdateEmitter queryUpdateEmitter;
-  private ApplicationDataStore applicationDataStore;
-  private ApplicationListIndexReadRepository listIndexRepository;
+  @Mock private ApplicationReadRepository applicationReadRepository;
+  @Mock private LinkedApplicationGroupReadRepository groupReadRepository;
+  @Mock private QueryUpdateEmitter queryUpdateEmitter;
+  @Mock private ApplicationDataStore applicationDataStore;
+  @Mock private ApplicationListIndexReadRepository listIndexRepository;
+  @Mock private PriorAuthorityReadRepository priorAuthorityReadRepository;
   private ApplicationProjection projection;
 
   @BeforeEach
   void setUp() {
-    applicationReadRepository = mock(ApplicationReadRepository.class);
-    groupReadRepository = mock(LinkedApplicationGroupReadRepository.class);
-    queryUpdateEmitter = mock(QueryUpdateEmitter.class);
-    applicationDataStore = mock(ApplicationDataStore.class);
-    listIndexRepository = mock(ApplicationListIndexReadRepository.class);
-    when(applicationDataStore.get(any(), anyLong()))
-        .thenAnswer(
-            invocation ->
-                ApplicationDataPayload.from(applicationCreationDetails(invocation.getArgument(0))));
     projection =
         new ApplicationProjection(
             applicationReadRepository,
             groupReadRepository,
             applicationDataStore,
-            listIndexRepository);
+            listIndexRepository,
+            priorAuthorityReadRepository);
   }
 
   @Test
@@ -389,6 +391,16 @@ class ApplicationProjectionTest {
 
     when(groupReadRepository.findAllByLeadApplicationIdIn(any())).thenReturn(List.of());
 
+    PriorAuthorityReadModel priorAuthority =
+        PriorAuthorityReadModel.builder()
+            .priorAuthorityId(UUID.randomUUID())
+            .applicationId(appId)
+            .status("DRAFT")
+            .createdAt(Instant.parse("2026-09-11T10:00:00Z"))
+            .build();
+    when(priorAuthorityReadRepository.findAllByApplicationIdIn(List.of(appId)))
+        .thenReturn(List.of(priorAuthority));
+
     FindAllApplicationsResult result =
         projection.handle(
             new FindAllApplicationsQuery(null, null, null, null, null, null, null, null, 1, 20));
@@ -396,10 +408,13 @@ class ApplicationProjectionTest {
     assertThat(result.applications()).hasSize(1);
     assertThat(result.applications().getFirst().getApplicationId()).isEqualTo(appId);
     assertThat(result.totalElements()).isEqualTo(1L);
+    assertThat(result.priorAuthoritiesByApplicationId())
+        .containsEntry(appId, List.of(priorAuthority));
 
     // Verify batch loads — not per-row findById calls
     verify(applicationReadRepository).findAllById(List.of(appId));
     verify(applicationDataStore).getAll(List.of(dataId));
+    verify(priorAuthorityReadRepository).findAllByApplicationIdIn(List.of(appId));
   }
 
   @Test
@@ -408,6 +423,7 @@ class ApplicationProjectionTest {
     when(listIndexRepository.findAll(any(Specification.class), any(Pageable.class)))
         .thenReturn(new PageImpl<>(List.of()));
     when(groupReadRepository.findAllByLeadApplicationIdIn(any())).thenReturn(List.of());
+    when(priorAuthorityReadRepository.findAllByApplicationIdIn(List.of())).thenReturn(List.of());
 
     FindAllApplicationsResult result =
         projection.handle(
@@ -415,6 +431,73 @@ class ApplicationProjectionTest {
 
     assertThat(result.applications()).isEmpty();
     assertThat(result.totalElements()).isZero();
+    assertThat(result.priorAuthoritiesByApplicationId()).isEmpty();
+    verify(priorAuthorityReadRepository).findAllByApplicationIdIn(List.of());
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void givenTwoApplicationsOnPage_whenFindAllApplicationsQuery_thenPriorAuthoritiesStayIsolated() {
+    UUID applicationIdWithPriorAuthority = UUID.randomUUID();
+    UUID applicationIdWithout = UUID.randomUUID();
+
+    when(listIndexRepository.findAll(any(Specification.class), any(Pageable.class)))
+        .thenReturn(
+            new PageImpl<>(
+                List.of(
+                    ApplicationListIndexReadModel.builder()
+                        .applicationId(applicationIdWithPriorAuthority)
+                        .build(),
+                    ApplicationListIndexReadModel.builder()
+                        .applicationId(applicationIdWithout)
+                        .build())));
+
+    List<UUID> pageIds = List.of(applicationIdWithPriorAuthority, applicationIdWithout);
+    when(applicationReadRepository.findAllById(pageIds))
+        .thenReturn(pageIds.stream().map(ApplicationProjectionTest::pageState).toList());
+
+    when(applicationDataStore.getAll(any()))
+        .thenReturn(
+            pageIds.stream()
+                .collect(
+                    Collectors.toMap(
+                        id -> new ApplicationDataId(id, 0L),
+                        id -> ApplicationDataPayload.from(applicationCreationDetails(id)))));
+
+    when(groupReadRepository.findAllByLeadApplicationIdIn(any())).thenReturn(List.of());
+
+    PriorAuthorityReadModel priorAuthority =
+        PriorAuthorityReadModel.builder()
+            .priorAuthorityId(UUID.randomUUID())
+            .applicationId(applicationIdWithPriorAuthority)
+            .status("DRAFT")
+            .createdAt(Instant.parse("2026-09-11T10:00:00Z"))
+            .build();
+    when(priorAuthorityReadRepository.findAllByApplicationIdIn(pageIds))
+        .thenReturn(List.of(priorAuthority));
+
+    FindAllApplicationsResult result =
+        projection.handle(
+            new FindAllApplicationsQuery(null, null, null, null, null, null, null, null, 1, 20));
+
+    assertThat(result.applications()).hasSize(2);
+    assertThat(result.priorAuthoritiesByApplicationId())
+        .containsExactly(entry(applicationIdWithPriorAuthority, List.of(priorAuthority)));
+    assertThat(result.priorAuthoritiesByApplicationId()).doesNotContainKey(applicationIdWithout);
+
+    // Both page IDs must reach the repository in a single batch call, not one call per application
+    ArgumentCaptor<Collection<UUID>> captor = ArgumentCaptor.forClass(Collection.class);
+    verify(priorAuthorityReadRepository).findAllByApplicationIdIn(captor.capture());
+    assertThat(captor.getValue())
+        .containsExactlyInAnyOrder(applicationIdWithPriorAuthority, applicationIdWithout);
+  }
+
+  private static ApplicationReadModel pageState(UUID applicationId) {
+    return ApplicationReadModel.builder()
+        .applicationId(applicationId)
+        .applicationDataVersion(0L)
+        .modifiedAt(Instant.EPOCH)
+        .build();
   }
 
   private ApplicationReadModel reconciliationReadModel(UUID applicationId) {
@@ -559,6 +642,113 @@ class ApplicationProjectionTest {
     when(applicationDataStore.getAll(any())).thenReturn(Map.of());
 
     ApplicationReadModel result = projection.handle(new FindApplicationByIdQuery(applicationId));
+
+    assertThat(result).isNull();
+  }
+
+  @Test
+  void givenLeadApplication_whenFindingDetail_thenReturnsHydratedApplicationAndRelatedData() {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationReadModel application =
+        ApplicationReadModel.builder()
+            .applicationId(applicationId)
+            .applicationDataVersion(1L)
+            .build();
+    ApplicationDataId dataId = new ApplicationDataId(applicationId, 1L);
+    ApplicationDataPayload applicationData =
+        ApplicationDataPayload.from(applicationCreationDetails(applicationId));
+    LinkedApplicationGroupReadModel group =
+        LinkedApplicationGroupReadModel.builder()
+            .leadApplicationId(applicationId)
+            .memberIds(List.of(applicationId, UUID.randomUUID()))
+            .build();
+    PriorAuthorityReadModel priorAuthority =
+        PriorAuthorityReadModel.builder()
+            .priorAuthorityId(UUID.randomUUID())
+            .applicationId(applicationId)
+            .status("DRAFT")
+            .createdAt(Instant.parse("2026-09-01T10:00:00Z"))
+            .build();
+    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(application));
+    when(applicationDataStore.getAll(List.of(dataId))).thenReturn(Map.of(dataId, applicationData));
+    when(groupReadRepository.findByLeadApplicationId(applicationId)).thenReturn(Optional.of(group));
+    when(priorAuthorityReadRepository.findAllByApplicationIdIn(List.of(applicationId)))
+        .thenReturn(List.of(priorAuthority));
+
+    ApplicationDetailResult result =
+        projection.handle(new FindApplicationDetailQuery(applicationId));
+
+    assertThat(result.application().getLaaReference()).isEqualTo("LAA-123");
+    assertThat(result.linkedGroup()).isSameAs(group);
+    assertThat(result.priorAuthorities()).containsExactly(priorAuthority);
+    verify(applicationReadRepository).findById(applicationId);
+  }
+
+  @Test
+  void givenMemberApplication_whenFindingDetail_thenReturnsLeadGroup() {
+    UUID applicationId = UUID.randomUUID();
+    UUID leadApplicationId = UUID.randomUUID();
+    ApplicationReadModel application =
+        ApplicationReadModel.builder()
+            .applicationId(applicationId)
+            .applicationDataVersion(1L)
+            .leadApplicationId(leadApplicationId)
+            .build();
+    ApplicationDataId dataId = new ApplicationDataId(applicationId, 1L);
+    ApplicationDataPayload applicationData =
+        ApplicationDataPayload.from(applicationCreationDetails(applicationId));
+    LinkedApplicationGroupReadModel group =
+        LinkedApplicationGroupReadModel.builder()
+            .leadApplicationId(leadApplicationId)
+            .memberIds(List.of(leadApplicationId, applicationId))
+            .build();
+    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(application));
+    when(applicationDataStore.getAll(List.of(dataId))).thenReturn(Map.of(dataId, applicationData));
+    when(groupReadRepository.findByLeadApplicationId(leadApplicationId))
+        .thenReturn(Optional.of(group));
+    when(priorAuthorityReadRepository.findAllByApplicationIdIn(List.of(applicationId)))
+        .thenReturn(List.of());
+
+    ApplicationDetailResult result =
+        projection.handle(new FindApplicationDetailQuery(applicationId));
+
+    assertThat(result.application().getApplicationId()).isEqualTo(applicationId);
+    assertThat(result.linkedGroup()).isSameAs(group);
+    assertThat(result.priorAuthorities()).isEmpty();
+  }
+
+  @Test
+  void givenStandaloneApplication_whenFindingDetail_thenReturnsWithoutRelatedData() {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationReadModel application =
+        ApplicationReadModel.builder()
+            .applicationId(applicationId)
+            .applicationDataVersion(1L)
+            .build();
+    ApplicationDataId dataId = new ApplicationDataId(applicationId, 1L);
+    ApplicationDataPayload applicationData =
+        ApplicationDataPayload.from(applicationCreationDetails(applicationId));
+    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(application));
+    when(applicationDataStore.getAll(List.of(dataId))).thenReturn(Map.of(dataId, applicationData));
+    when(groupReadRepository.findByLeadApplicationId(applicationId)).thenReturn(Optional.empty());
+    when(priorAuthorityReadRepository.findAllByApplicationIdIn(List.of(applicationId)))
+        .thenReturn(List.of());
+
+    ApplicationDetailResult result =
+        projection.handle(new FindApplicationDetailQuery(applicationId));
+
+    assertThat(result.application().getApplicationId()).isEqualTo(applicationId);
+    assertThat(result.linkedGroup()).isNull();
+    assertThat(result.priorAuthorities()).isEmpty();
+  }
+
+  @Test
+  void givenMissingApplication_whenFindingDetail_thenReturnsNull() {
+    UUID applicationId = UUID.randomUUID();
+    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.empty());
+
+    ApplicationDetailResult result =
+        projection.handle(new FindApplicationDetailQuery(applicationId));
 
     assertThat(result).isNull();
   }
