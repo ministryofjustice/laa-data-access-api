@@ -9,7 +9,6 @@ import static org.mockito.Mockito.when;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -34,23 +33,17 @@ import uk.gov.justice.laa.dstew.access.usecase.application.ApplicationQueryUseCa
 @ExtendWith(MockitoExtension.class)
 class ApplicationQueryControllerTest {
 
-  @Mock
-  private ApplicationQueryUseCase applicationQueryUseCase;
+  @Mock private ApplicationQueryUseCase applicationQueryUseCase;
 
-  @Mock
-  private GetApplicationResponseMapper responseMapper;
+  @Mock private GetApplicationResponseMapper responseMapper;
 
-  @Mock
-  private GetAllApplicationsResponseMapper getAllResponseMapper;
+  @Mock private GetAllApplicationsResponseMapper getAllResponseMapper;
 
-  @Mock
-  private GetApplicationHistoryResponseMapper historyResponseMapper;
+  @Mock private GetApplicationHistoryResponseMapper historyResponseMapper;
 
-  @Mock
-  private GetAllNotesForApplicationResponseMapper notesResponseMapper;
+  @Mock private GetAllNotesForApplicationResponseMapper notesResponseMapper;
 
-  @InjectMocks
-  private ApplicationQueryController controller;
+  @InjectMocks private ApplicationQueryController controller;
 
   @Test
   void givenApplicationDetail_whenGetApplicationById_thenMapsCombinedResult() {
