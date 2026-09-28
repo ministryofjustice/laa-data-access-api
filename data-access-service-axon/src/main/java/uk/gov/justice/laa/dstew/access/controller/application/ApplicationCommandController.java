@@ -11,6 +11,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import uk.gov.justice.laa.dstew.access.api.ApplicationAutoGrantOutcomeCommandApi;
 import uk.gov.justice.laa.dstew.access.api.ApplicationCommandApi;
+import uk.gov.justice.laa.dstew.access.api.ApplicationDocumentCommandApi;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionUseCase;
@@ -39,7 +40,9 @@ import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
 /** HTTP command adapter for Application writes. */
 @RestController
 public class ApplicationCommandController
-    implements ApplicationCommandApi, ApplicationAutoGrantOutcomeCommandApi {
+    implements ApplicationCommandApi,
+        ApplicationAutoGrantOutcomeCommandApi,
+        ApplicationDocumentCommandApi {
 
   private final CreateApplicationUseCase createApplicationUseCase;
   private final MakeApplicationDecisionUseCase makeDecisionUseCase;
@@ -179,6 +182,16 @@ public class ApplicationCommandController
   public ResponseEntity<DocumentUploadResponse> uploadDocument(
       ServiceName serviceName, UUID applicationId, MultipartFile file) {
     DocumentUploadResponse response = uploadDocumentUseCase.execute(applicationId, file);
+    return ResponseEntity.status(HttpStatus.CREATED).body(response);
+  }
+
+  @Override
+  @LogMethodArguments
+  @LogMethodResponse
+  public ResponseEntity<DocumentUploadResponse> uploadApplicationDocument(
+      ServiceName serviceName, UUID id, MultipartFile file, String documentType) {
+    DocumentUploadResponse response =
+        uploadDocumentUseCase.execute(id, file, documentType, serviceName.getValue());
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 

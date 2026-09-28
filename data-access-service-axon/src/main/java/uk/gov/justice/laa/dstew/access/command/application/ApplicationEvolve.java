@@ -80,4 +80,17 @@ public final class ApplicationEvolve {
     state.applicationDataVersion = event.applicationDataVersion();
     // applicationVersion intentionally not updated — notes are decoupled from optimistic locking
   }
+
+  /** Applies an {@link ApplicationDocumentUploadedEvent} to the given state. */
+  public static void apply(ApplicationState state, ApplicationDocumentUploadedEvent event) {
+    state.uploadedDocuments.add(
+        new UploadDocument(
+            event.documentId(),
+            event.documentType(),
+            event.uploadedAt(),
+            event.size(),
+            event.contentType(),
+            event.checksum(),
+            event.sourceService()));
+  }
 }
