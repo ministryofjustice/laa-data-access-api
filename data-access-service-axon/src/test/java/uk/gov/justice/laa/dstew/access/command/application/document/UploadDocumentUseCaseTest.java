@@ -13,6 +13,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.web.multipart.MultipartFile;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadCommand;
 import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
@@ -54,7 +55,8 @@ class UploadDocumentUseCaseTest {
             org.mockito.ArgumentMatchers.eq(file)))
         .thenReturn(response);
 
-    uploadDocumentUseCase.execute(applicationId, file, "GATEWAY_EVIDENCE", "CIVIL_APPLY");
+    UploadApplicationDocumentResult result =
+        uploadDocumentUseCase.execute(applicationId, file, "GATEWAY_EVIDENCE", "CIVIL_APPLY");
 
     ArgumentCaptor<ApplicationDocumentUploadCommand> commandCaptor =
         ArgumentCaptor.forClass(ApplicationDocumentUploadCommand.class);
@@ -71,5 +73,58 @@ class UploadDocumentUseCaseTest {
             applicationId, "GATEWAY_EVIDENCE", 12L, "application/pdf", "checksum", "CIVIL_APPLY");
     assertThat(commandCaptor.getValue().documentId()).isNotNull();
     verify(sdsService).saveEvidenceFile(applicationId, commandCaptor.getValue().documentId(), file);
+    assertThat(result)
+        .extracting(
+            UploadApplicationDocumentResult::documentId,
+            UploadApplicationDocumentResult::fileName,
+            UploadApplicationDocumentResult::fileType,
+            UploadApplicationDocumentResult::contentType,
+            UploadApplicationDocumentResult::size,
+            UploadApplicationDocumentResult::sourceService,
+            UploadApplicationDocumentResult::checksum)
+        .containsExactly(
+            commandCaptor.getValue().documentId(),
+            "test-file.pdf",
+            "PDF",
+            "application/pdf",
+            12L,
+            "CIVIL_APPLY",
+            "checksum");
+  }
+
+  @Test
+  void givenMissingOrSlashlessContentType_whenExecute_thenDerivesExpectedFileType() {
+    UUID applicationId = UUID.randomUUID();
+    MultipartFile noContentType = multipartFile(null);
+    MultipartFile blankContentType = multipartFile(" ");
+    MultipartFile slashlessContentType = multipartFile("pdf");
+    DocumentUploadResponse response = new DocumentUploadResponse().checksum("checksum");
+    when(sdsService.saveEvidenceFile(
+            org.mockito.ArgumentMatchers.eq(applicationId),
+            org.mockito.ArgumentMatchers.any(UUID.class),
+            org.mockito.ArgumentMatchers.any(MultipartFile.class)))
+        .thenReturn(response);
+
+    UploadApplicationDocumentResult noContentTypeResult =
+        uploadDocumentUseCase.execute(
+            applicationId, noContentType, "GATEWAY_EVIDENCE", "CIVIL_APPLY");
+    UploadApplicationDocumentResult blankContentTypeResult =
+        uploadDocumentUseCase.execute(
+            applicationId, blankContentType, "GATEWAY_EVIDENCE", "CIVIL_APPLY");
+    UploadApplicationDocumentResult slashlessContentTypeResult =
+        uploadDocumentUseCase.execute(
+            applicationId, slashlessContentType, "GATEWAY_EVIDENCE", "CIVIL_APPLY");
+
+    assertThat(noContentTypeResult.fileType()).isNull();
+    assertThat(blankContentTypeResult.fileType()).isNull();
+    assertThat(slashlessContentTypeResult.fileType()).isEqualTo("PDF");
+  }
+
+  private MultipartFile multipartFile(String contentType) {
+    MultipartFile file = mock(MultipartFile.class);
+    when(file.getOriginalFilename()).thenReturn("test-file");
+    when(file.getContentType()).thenReturn(contentType);
+    when(file.getSize()).thenReturn(12L);
+    return file;
   }
 }

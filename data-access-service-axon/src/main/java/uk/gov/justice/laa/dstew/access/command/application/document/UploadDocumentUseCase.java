@@ -36,20 +36,39 @@ public class UploadDocumentUseCase {
 
   /** Uploads a file to SDS and records its non-filename metadata against the Application. */
   @AllowApiCaseworker
-  public DocumentUploadResponse execute(
+  public UploadApplicationDocumentResult execute(
       UUID applicationId, MultipartFile file, String documentType, String sourceService) {
     UUID documentId = UUID.randomUUID();
+    Instant uploadedAt = Instant.now();
     DocumentUploadResponse response = sdsService.saveEvidenceFile(applicationId, documentId, file);
     dispatcher.dispatch(
         new ApplicationDocumentUploadCommand(
             applicationId,
             documentId,
             documentType,
-            Instant.now(),
+            uploadedAt,
             file.getSize(),
             file.getContentType(),
             response.getChecksum(),
             sourceService));
-    return response;
+    return new UploadApplicationDocumentResult(
+        documentId,
+        file.getOriginalFilename(),
+        fileType(file.getContentType()),
+        file.getContentType(),
+        file.getSize(),
+        uploadedAt,
+        sourceService,
+        response.getChecksum());
+  }
+
+  private String fileType(String contentType) {
+    if (contentType == null || contentType.isBlank()) {
+      return null;
+    }
+    int separator = contentType.indexOf('/');
+    return separator < 0
+        ? contentType.toUpperCase()
+        : contentType.substring(separator + 1).toUpperCase();
   }
 }

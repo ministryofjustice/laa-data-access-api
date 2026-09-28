@@ -511,6 +511,41 @@ class ApplicationAggregateTest {
   }
 
   @Test
+  void givenExistingApplication_whenDocumentUploaded_thenAppendsEventToApplicationStream() {
+    UUID applicationId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    Instant uploadedAt = Instant.parse("2026-09-28T15:10:27.430Z");
+    ApplicationDocumentUploadCommand command =
+        new ApplicationDocumentUploadCommand(
+            applicationId,
+            documentId,
+            "GATEWAY_EVIDENCE",
+            uploadedAt,
+            12L,
+            "application/pdf",
+            "checksum",
+            "CIVIL_APPLY");
+
+    fixture
+        .given()
+        .events(applicationCreatedEvent(applicationId))
+        .when()
+        .command(command)
+        .then()
+        .resultMessagePayload(documentId)
+        .events(
+            new ApplicationDocumentUploadedEvent(
+                applicationId,
+                documentId,
+                "GATEWAY_EVIDENCE",
+                uploadedAt,
+                12L,
+                "application/pdf",
+                "checksum",
+                "CIVIL_APPLY"));
+  }
+
+  @Test
   void givenGrantedApplication_whenValidateApplicationGranted_thenSucceedsWithNoEvents() {
     UUID applicationId = UUID.randomUUID();
 
