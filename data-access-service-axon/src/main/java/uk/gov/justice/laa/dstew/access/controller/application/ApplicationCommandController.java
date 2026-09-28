@@ -23,6 +23,7 @@ import uk.gov.justice.laa.dstew.access.command.application.ready.ReadyApplicatio
 import uk.gov.justice.laa.dstew.access.command.application.ready.RecordAutoGrantOutcomeUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationDocumentType;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcomeRequest;
@@ -189,9 +190,9 @@ public class ApplicationCommandController
   @LogMethodArguments
   @LogMethodResponse
   public ResponseEntity<DocumentUploadResponse> uploadApplicationDocument(
-      ServiceName serviceName, UUID id, MultipartFile file, String documentType) {
+      ServiceName serviceName, UUID id, MultipartFile file, ApplicationDocumentType documentType) {
     DocumentUploadResponse response =
-        uploadDocumentUseCase.execute(id, file, documentType, serviceName.getValue());
+        uploadDocumentUseCase.execute(id, file, documentType.getValue(), serviceName.getValue());
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
