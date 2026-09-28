@@ -222,7 +222,7 @@ class ApplicationCommandControllerTest {
             uk.gov.justice.laa.dstew.access.model.ServiceName.CIVIL_APPLY,
             id,
             file,
-            "GATEWAY_EVIDENCE");
+            uk.gov.justice.laa.dstew.access.model.ApplicationDocumentType.GATEWAY_EVIDENCE);
 
     verify(uploadDocumentUseCase).execute(id, file, "GATEWAY_EVIDENCE", "CIVIL_APPLY");
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
