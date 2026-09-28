@@ -653,7 +653,7 @@ class PriorAuthorityDraftIntegrationTest {
   }
 
   private String documentContentUrl(UUID priorAuthorityId, UUID documentId) {
-    return documentUrl(priorAuthorityId, documentId) + "/content";
+    return documentUrl(priorAuthorityId, documentId);
   }
 
   private String deleteDocumentUrl(UUID priorAuthorityId, UUID documentId) {
