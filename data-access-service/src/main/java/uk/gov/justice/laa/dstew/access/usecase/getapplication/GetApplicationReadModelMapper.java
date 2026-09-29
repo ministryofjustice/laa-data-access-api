@@ -40,6 +40,7 @@ public class GetApplicationReadModelMapper {
         .opponents(toOpponentReadModels(projection.opponents()))
         .provider(toProviderReadModel(projection.officeCode(), projection.submitterEmail()))
         .proceedings(toProceedingReadModels(projection.proceedings()))
+        .potentialDuplicates(Collections.emptyList())
         .build();
   }
 
