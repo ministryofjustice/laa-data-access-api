@@ -1,7 +1,6 @@
 package uk.gov.justice.laa.dstew.access.command.application.priorauthority.document;
 
 import java.time.Instant;
-import java.util.Objects;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
@@ -46,9 +45,7 @@ public class UploadPriorAuthorityDocumentUseCase {
   public UploadPriorAuthorityDocumentResult execute(
       UUID priorAuthorityId, MultipartFile file, String sourceService) {
     PriorAuthorityDocumentFormat format = PriorAuthorityDocumentFormat.validate(file);
-    String originalFilename =
-        Objects.requireNonNull(file.getOriginalFilename(), "originalFilename must not be null");
-    requireFilenameExtension(originalFilename);
+    String originalFilename = OriginalFilenameValidator.validate(file.getOriginalFilename());
     var draft =
         draftStore
             .find(priorAuthorityId)
@@ -100,12 +97,5 @@ public class UploadPriorAuthorityDocumentUseCase {
         uploadedAt,
         sourceService,
         checksum);
-  }
-
-  private static void requireFilenameExtension(String filename) {
-    int extensionIndex = filename.lastIndexOf('.');
-    if (extensionIndex <= 0 || extensionIndex == filename.length() - 1) {
-      throw new IllegalArgumentException("originalFilename must include a file extension");
-    }
   }
 }

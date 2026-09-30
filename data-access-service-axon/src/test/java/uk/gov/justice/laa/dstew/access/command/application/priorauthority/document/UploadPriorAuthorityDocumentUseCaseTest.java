@@ -148,6 +148,40 @@ class UploadPriorAuthorityDocumentUseCaseTest {
   }
 
   @Test
+  void givenFilenameWithPathSeparator_whenExecute_thenRejectsBeforeUploadingToSds() {
+    UploadPriorAuthorityDocumentUseCase useCase =
+        new UploadPriorAuthorityDocumentUseCase(
+            draftStore, dispatcher, sdsService, objectMapper, projectionGateway);
+    UUID priorAuthorityId = UUID.randomUUID();
+    MockMultipartFile file =
+        new MockMultipartFile(
+            "file", "evidence/unsafe.pdf", "application/pdf", "%PDF-content".getBytes());
+
+    assertThatExceptionOfType(IllegalArgumentException.class)
+        .isThrownBy(() -> useCase.execute(priorAuthorityId, file, "CIVIL_APPLY"))
+        .withMessage("originalFilename must not contain path separators");
+
+    verifyNoInteractions(draftStore, dispatcher, sdsService);
+  }
+
+  @Test
+  void givenFilenameWithControlCharacter_whenExecute_thenRejectsBeforeUploadingToSds() {
+    UploadPriorAuthorityDocumentUseCase useCase =
+        new UploadPriorAuthorityDocumentUseCase(
+            draftStore, dispatcher, sdsService, objectMapper, projectionGateway);
+    UUID priorAuthorityId = UUID.randomUUID();
+    MockMultipartFile file =
+        new MockMultipartFile(
+            "file", "evidence\r\n.pdf", "application/pdf", "%PDF-content".getBytes());
+
+    assertThatExceptionOfType(IllegalArgumentException.class)
+        .isThrownBy(() -> useCase.execute(priorAuthorityId, file, "CIVIL_APPLY"))
+        .withMessage("originalFilename must not contain control characters");
+
+    verifyNoInteractions(draftStore, dispatcher, sdsService);
+  }
+
+  @Test
   void givenSdsReturnsNull_whenExecute_thenDispatchesCommandWithNullChecksum() {
     UploadPriorAuthorityDocumentUseCase useCase =
         new UploadPriorAuthorityDocumentUseCase(
