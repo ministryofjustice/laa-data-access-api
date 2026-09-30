@@ -1,9 +1,9 @@
 package uk.gov.justice.laa.dstew.access.command.application.priorauthority.document;
 
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import org.springframework.web.multipart.MultipartFile;
+import uk.gov.justice.laa.dstew.access.validation.DocumentFileValidator;
 
 /** Accepted file formats for prior-authority document uploads. */
 enum PriorAuthorityDocumentFormat {
@@ -42,24 +42,13 @@ enum PriorAuthorityDocumentFormat {
   }
 
   static PriorAuthorityDocumentFormat validate(MultipartFile file) {
+    DocumentFileValidator.validateFileName(file);
     PriorAuthorityDocumentFormat format =
         Arrays.stream(values())
             .filter(candidate -> candidate.contentType.equalsIgnoreCase(file.getContentType()))
             .findFirst()
             .orElseThrow(() -> new IllegalArgumentException("Unsupported document content type"));
-    format.validateSignature(file);
+    DocumentFileValidator.validateSignature(file, format.signature, format.fileType);
     return format;
-  }
-
-  private void validateSignature(MultipartFile file) {
-    try (var inputStream = file.getInputStream()) {
-      byte[] header = inputStream.readNBytes(signature.length);
-      if (!Arrays.equals(header, signature)) {
-        throw new IllegalArgumentException(
-            "Uploaded file is not a valid %s document".formatted(fileType));
-      }
-    } catch (IOException exception) {
-      throw new IllegalArgumentException("Unable to validate uploaded document", exception);
-    }
   }
 }
