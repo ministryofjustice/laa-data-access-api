@@ -25,7 +25,7 @@ import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
-import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityPendingByPriorAuthorityIdQuery;
+import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthoritySubmittedByPriorAuthorityIdQuery;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 @ExtendWith(MockitoExtension.class)
@@ -66,7 +66,7 @@ class SubmitPriorAuthorityDraftUseCaseTest {
 
     verify(projectionGateway)
         .awaitProjection(
-            eq(new PriorAuthorityPendingByPriorAuthorityIdQuery(command.priorAuthorityId())),
+            eq(new PriorAuthoritySubmittedByPriorAuthorityIdQuery(command.priorAuthorityId())),
             any());
   }
 
