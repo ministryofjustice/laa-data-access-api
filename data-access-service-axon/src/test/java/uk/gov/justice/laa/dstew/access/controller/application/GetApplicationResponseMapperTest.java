@@ -126,6 +126,7 @@ class GetApplicationResponseMapperTest {
         LinkedApplicationGroupReadModel.builder()
             .leadApplicationId(applicationId)
             .memberIds(List.of(applicationId, linkedApplicationId))
+            .version(4L)
             .build();
     PriorAuthorityReadModel priorAuthority =
         PriorAuthorityReadModel.builder()
@@ -140,6 +141,7 @@ class GetApplicationResponseMapperTest {
     var response = mapper.toResponse(readModel, group, List.of(priorAuthority));
 
     assertThat(response.getIsLead()).isTrue();
+    assertThat(response.getLinkedGroupVersion()).isEqualTo(4L);
     assertThat(response.getLinkedApplications())
         .singleElement()
         .satisfies(
@@ -178,6 +180,7 @@ class GetApplicationResponseMapperTest {
     var response = mapper.toResponse(readModel, group, List.of());
 
     assertThat(response.getIsLead()).isFalse();
+    assertThat(response.getLinkedGroupVersion()).isZero();
     assertThat(response.getLinkedApplications())
         .singleElement()
         .satisfies(
@@ -192,6 +195,7 @@ class GetApplicationResponseMapperTest {
     var response = mapper.toResponse(baseReadModel().build(), null, List.of());
 
     assertThat(response.getIsLead()).isFalse();
+    assertThat(response.getLinkedGroupVersion()).isNull();
     assertThat(response.getLinkedApplications()).isEmpty();
     assertThat(response.getPriorAuthorities()).isEmpty();
   }

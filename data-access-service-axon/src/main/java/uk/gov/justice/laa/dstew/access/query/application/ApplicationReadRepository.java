@@ -11,4 +11,6 @@ public interface ApplicationReadRepository
         JpaSpecificationExecutor<ApplicationReadModel> {
 
   List<ApplicationReadModel> findAllByStatus(String status);
+
+  List<ApplicationReadModel> findAllByLinkedGroupId(UUID linkedGroupId);
 }

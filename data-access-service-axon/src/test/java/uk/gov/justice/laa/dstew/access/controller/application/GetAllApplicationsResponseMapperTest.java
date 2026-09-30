@@ -193,20 +193,23 @@ class GetAllApplicationsResponseMapperTest {
   void givenLeadApplicationWithGroup_whenToResponse_thenLinkedApplicationsExcludeSelf() {
     UUID leadId = UUID.randomUUID();
     UUID memberId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
 
     ApplicationReadModel leadApp =
         ApplicationReadModel.builder()
             .autoGranted(AutoGrantedState.PENDING)
             .applicationId(leadId)
+            .linkedGroupId(groupId)
             .modifiedAt(Instant.now())
             .leadApplicationId(null)
             .build();
 
     LinkedApplicationGroupReadModel group =
         LinkedApplicationGroupReadModel.builder()
-            .groupId(UUID.randomUUID())
+            .groupId(groupId)
             .leadApplicationId(leadId)
             .memberIds(new ArrayList<>(List.of(leadId, memberId)))
+            .version(3L)
             .createdAt(Instant.now())
             .modifiedAt(Instant.now())
             .build();
@@ -215,12 +218,13 @@ class GetAllApplicationsResponseMapperTest {
         mapper
             .toResponse(
                 new FindAllApplicationsResult(
-                    List.of(leadApp), Map.of(leadId, group), Map.of(), 1L, 1, 20))
+                    List.of(leadApp), Map.of(groupId, group), Map.of(), 1L, 1, 20))
             .getBody()
             .getApplications()
             .get(0);
 
     assertThat(summary.getIsLead()).isTrue();
+    assertThat(summary.getLinkedGroupVersion()).isEqualTo(3L);
     assertThat(summary.getLinkedApplications()).hasSize(1);
     assertThat(summary.getLinkedApplications().get(0).getApplicationId()).isEqualTo(memberId);
     assertThat(summary.getLinkedApplications().get(0).getIsLead()).isFalse();
@@ -230,16 +234,18 @@ class GetAllApplicationsResponseMapperTest {
   void givenMemberApplicationWithGroup_whenToResponse_thenIsLeadFalse() {
     UUID leadId = UUID.randomUUID();
     UUID memberId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
     ApplicationReadModel memberApp =
         ApplicationReadModel.builder()
             .autoGranted(AutoGrantedState.PENDING)
             .applicationId(memberId)
+            .linkedGroupId(groupId)
             .modifiedAt(Instant.now())
             .leadApplicationId(leadId)
             .build();
     LinkedApplicationGroupReadModel group =
         LinkedApplicationGroupReadModel.builder()
-            .groupId(UUID.randomUUID())
+            .groupId(groupId)
             .leadApplicationId(leadId)
             .memberIds(new ArrayList<>(List.of(leadId, memberId)))
             .createdAt(Instant.now())
@@ -250,7 +256,7 @@ class GetAllApplicationsResponseMapperTest {
         mapper
             .toResponse(
                 new FindAllApplicationsResult(
-                    List.of(memberApp), Map.of(leadId, group), Map.of(), 1L, 1, 20))
+                    List.of(memberApp), Map.of(groupId, group), Map.of(), 1L, 1, 20))
             .getBody()
             .getApplications()
             .get(0);
@@ -275,6 +281,7 @@ class GetAllApplicationsResponseMapperTest {
             .get(0);
 
     assertThat(summary.getLinkedApplications()).isEmpty();
+    assertThat(summary.getLinkedGroupVersion()).isNull();
   }
 
   @Test

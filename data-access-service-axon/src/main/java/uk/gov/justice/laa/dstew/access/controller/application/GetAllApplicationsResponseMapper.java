@@ -32,7 +32,7 @@ public class GetAllApplicationsResponseMapper {
             .map(
                 app ->
                     toSummary(
-                        app, result.groupsByLeadId(), result.priorAuthoritiesByApplicationId()))
+                        app, result.groupsByGroupId(), result.priorAuthoritiesByApplicationId()))
             .toList();
 
     PagingResponse paging = new PagingResponse();
@@ -50,8 +50,9 @@ public class GetAllApplicationsResponseMapper {
 
   private ApplicationSummary toSummary(
       ApplicationReadModel app,
-      Map<UUID, LinkedApplicationGroupReadModel> groupsByLeadId,
+      Map<UUID, LinkedApplicationGroupReadModel> groupsByGroupId,
       Map<UUID, List<PriorAuthorityReadModel>> priorAuthoritiesByApplicationId) {
+    var group = app.getLinkedGroupId() == null ? null : groupsByGroupId.get(app.getLinkedGroupId());
     ApplicationSummary summary = new ApplicationSummary();
     summary.setApplicationId(app.getApplicationId());
     summary.setStatus(app.getStatus() != null ? ApplicationStatus.valueOf(app.getStatus()) : null);
@@ -63,25 +64,18 @@ public class GetAllApplicationsResponseMapper {
     summary.setSubmittedAt(
         app.getSubmittedAt() != null ? app.getSubmittedAt().atOffset(ZoneOffset.UTC) : null);
     summary.setLastUpdated(app.getModifiedAt().atOffset(ZoneOffset.UTC));
-    summary.setIsLead(isLead(app, groupsByLeadId));
+    summary.setIsLead(group != null && app.getApplicationId().equals(group.getLeadApplicationId()));
+    summary.setLinkedGroupVersion(group == null ? null : group.getVersion());
     summary.setAssignedTo(app.getCaseworkerId());
     summary.setAutoGranted(AutoGranted.valueOf(app.getAutoGranted().name()));
 
     populateClientDetails(summary, app);
 
-    summary.setLinkedApplications(toLinkedSummaries(app, groupsByLeadId));
+    summary.setLinkedApplications(toLinkedSummaries(app, group));
     summary.setPriorAuthorities(
         PriorAuthoritySummaryMapper.toSummaries(
             priorAuthoritiesByApplicationId.getOrDefault(app.getApplicationId(), List.of())));
     return summary;
-  }
-
-  private boolean isLead(
-      ApplicationReadModel app, Map<UUID, LinkedApplicationGroupReadModel> groupsByLeadId) {
-    UUID effectiveLeadId =
-        app.getLeadApplicationId() != null ? app.getLeadApplicationId() : app.getApplicationId();
-    LinkedApplicationGroupReadModel group = groupsByLeadId.get(effectiveLeadId);
-    return group != null && app.getApplicationId().equals(group.getLeadApplicationId());
   }
 
   private CategoryOfLaw toCategoryOfLaw(String categoryOfLaw) {
@@ -118,10 +112,7 @@ public class GetAllApplicationsResponseMapper {
   }
 
   private List<LinkedApplicationSummaryResponse> toLinkedSummaries(
-      ApplicationReadModel app, Map<UUID, LinkedApplicationGroupReadModel> groupsByLeadId) {
-    UUID effectiveLeadId =
-        app.getLeadApplicationId() != null ? app.getLeadApplicationId() : app.getApplicationId();
-    LinkedApplicationGroupReadModel group = groupsByLeadId.get(effectiveLeadId);
+      ApplicationReadModel app, LinkedApplicationGroupReadModel group) {
     if (group == null) {
       return Collections.emptyList();
     }

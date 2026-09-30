@@ -57,6 +57,9 @@ public class ApplicationReadModel {
   @Column(name = "lead_application_id")
   private UUID leadApplicationId;
 
+  @Column(name = "linked_group_id")
+  private UUID linkedGroupId;
+
   @Column(name = "caseworker_id")
   private UUID caseworkerId;
 

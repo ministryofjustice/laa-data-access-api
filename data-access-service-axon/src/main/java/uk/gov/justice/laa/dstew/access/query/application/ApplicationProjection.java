@@ -30,7 +30,10 @@ import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataP
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupDissolvedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupLeadChangedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberRemovedFromGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
@@ -90,9 +93,10 @@ public class ApplicationProjection {
         .flatMap(this::hydrate)
         .map(
             application -> {
-              UUID leadId = resolveLeadApplicationIdForGroupLookup(application);
               LinkedApplicationGroupReadModel linkedGroup =
-                  groupReadRepository.findByLeadApplicationId(leadId).orElse(null);
+                  application.getLinkedGroupId() == null
+                      ? null
+                      : groupReadRepository.findById(application.getLinkedGroupId()).orElse(null);
               List<PriorAuthorityReadModel> priorAuthorities =
                   priorAuthorityReadRepository.findAllByApplicationIdIn(
                       List.of(query.applicationId()));
@@ -179,7 +183,7 @@ public class ApplicationProjection {
             .filter(Objects::nonNull)
             .toList();
 
-    Map<UUID, LinkedApplicationGroupReadModel> groupsByLeadId = fetchGroups(content);
+    Map<UUID, LinkedApplicationGroupReadModel> groupsByGroupId = fetchGroups(content);
 
     // Derived from the hydrated content rather than pageIds: applications dropped because their
     // data payload was missing are absent from the response, so must not be batch-loaded for.
@@ -191,7 +195,7 @@ public class ApplicationProjection {
 
     return new FindAllApplicationsResult(
         content,
-        groupsByLeadId,
+        groupsByGroupId,
         priorAuthoritiesByApplicationId,
         indexPage.getTotalElements(),
         query.page(),
@@ -229,6 +233,7 @@ public class ApplicationProjection {
                 .createdAt(event.occurredAt())
                 .modifiedAt(event.occurredAt())
                 .leadApplicationId(null)
+                .linkedGroupId(null)
                 .build());
     queryUpdateEmitter.emit(
         FindApplicationByIdQuery.class,
@@ -243,8 +248,9 @@ public class ApplicationProjection {
         .memberApplicationIds()
         .forEach(
             memberApplicationId ->
-                updateLeadApplicationId(
+                updateGroupMembership(
                     memberApplicationId,
+                    event.groupId(),
                     memberApplicationId.equals(event.leadApplicationId())
                         ? null
                         : event.leadApplicationId(),
@@ -254,7 +260,38 @@ public class ApplicationProjection {
   /** Updates the added member row when it joins an existing linked group explicitly. */
   @EventHandler
   public void on(MemberAddedToGroupEvent event) {
-    updateLeadApplicationId(event.memberId(), event.leadApplicationId(), event.occurredAt());
+    updateGroupMembership(
+        event.memberId(), event.groupId(), event.leadApplicationId(), event.occurredAt());
+  }
+
+  /** Updates the lead reference for every application in the changed group. */
+  @EventHandler
+  public void on(LinkedApplicationGroupLeadChangedEvent event) {
+    List<ApplicationReadModel> members =
+        applicationReadRepository.findAllByLinkedGroupId(event.groupId());
+    members.forEach(
+        application -> {
+          application.setLeadApplicationId(
+              application.getApplicationId().equals(event.newLeadApplicationId())
+                  ? null
+                  : event.newLeadApplicationId());
+          application.setModifiedAt(event.occurredAt());
+        });
+    applicationReadRepository.saveAll(members);
+  }
+
+  /** Clears group membership from an application that leaves a group. */
+  @EventHandler
+  public void on(MemberRemovedFromGroupEvent event) {
+    updateGroupMembership(event.memberId(), null, null, event.occurredAt());
+  }
+
+  /** Clears group membership from every application when its group is dissolved. */
+  @EventHandler
+  public void on(LinkedApplicationGroupDissolvedEvent event) {
+    event
+        .memberApplicationIds()
+        .forEach(memberId -> updateGroupMembership(memberId, null, null, event.occurredAt()));
   }
 
   /** Advances the current-state row to the immutable data version containing the decision. */
@@ -345,12 +382,13 @@ public class ApplicationProjection {
             });
   }
 
-  private void updateLeadApplicationId(
-      UUID applicationId, UUID leadApplicationId, Instant occurredAt) {
+  private void updateGroupMembership(
+      UUID applicationId, UUID groupId, UUID leadApplicationId, Instant occurredAt) {
     applicationReadRepository
         .findById(applicationId)
         .ifPresent(
             application -> {
+              application.setLinkedGroupId(groupId);
               application.setLeadApplicationId(leadApplicationId);
               application.setModifiedAt(occurredAt);
               applicationReadRepository.save(application);
@@ -468,24 +506,17 @@ public class ApplicationProjection {
     return application;
   }
 
-  /**
-   * Batch-fetches group read models for the result page. For each application, the effective lead
-   * ID is either its own ID (if it is a lead — {@code leadApplicationId} is null) or its {@code
-   * leadApplicationId}. Groups are keyed by lead application ID for O(1) lookup in the mapper.
-   */
+  /** Batch-fetches linked group read models for the result page, keyed by linked group ID. */
   private Map<UUID, LinkedApplicationGroupReadModel> fetchGroups(
       List<ApplicationReadModel> applications) {
-    List<UUID> leadIds =
-        applications.stream().map(this::resolveLeadApplicationIdForGroupLookup).distinct().toList();
-    return groupReadRepository.findAllByLeadApplicationIdIn(leadIds).stream()
+    List<UUID> groupIds =
+        applications.stream()
+            .map(ApplicationReadModel::getLinkedGroupId)
+            .filter(Objects::nonNull)
+            .distinct()
+            .toList();
+    return groupReadRepository.findAllById(groupIds).stream()
         .collect(
-            Collectors.toMap(
-                LinkedApplicationGroupReadModel::getLeadApplicationId, g -> g, (a, ignored) -> a));
-  }
-
-  private UUID resolveLeadApplicationIdForGroupLookup(ApplicationReadModel application) {
-    return application.getLeadApplicationId() != null
-        ? application.getLeadApplicationId()
-        : application.getApplicationId();
+            Collectors.toMap(LinkedApplicationGroupReadModel::getGroupId, Function.identity()));
   }
 }

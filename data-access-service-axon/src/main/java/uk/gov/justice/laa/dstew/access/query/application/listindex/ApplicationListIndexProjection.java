@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.query.application.listindex;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.UUID;
 import org.axonframework.messaging.core.annotation.Namespace;
 import org.axonframework.messaging.eventhandling.EventMessage;
@@ -15,7 +16,10 @@ import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataP
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupDissolvedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupLeadChangedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberRemovedFromGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
@@ -105,6 +109,39 @@ public class ApplicationListIndexProjection {
   public void on(MemberAddedToGroupEvent event, EventMessage message) {
     updateLeadApplicationId(
         event.memberId(), event.leadApplicationId(), event.occurredAt(), message);
+  }
+
+  /** Updates every list-index row affected by a linked-group lead change. */
+  @EventHandler
+  public void on(LinkedApplicationGroupLeadChangedEvent event, EventMessage message) {
+    var members =
+        new ArrayList<>(
+            listIndexRepository.findAllByLeadApplicationId(event.previousLeadApplicationId()));
+    listIndexRepository.findById(event.previousLeadApplicationId()).ifPresent(members::add);
+    members.forEach(
+        row -> {
+          row.setLeadApplicationId(
+              row.getApplicationId().equals(event.newLeadApplicationId())
+                  ? null
+                  : event.newLeadApplicationId());
+          row.setModifiedAt(event.occurredAt());
+          row.setProjectionPosition(message.identifier().hashCode());
+          listIndexRepository.save(row);
+        });
+  }
+
+  /** Clears the list-index lead reference when a member leaves a group. */
+  @EventHandler
+  public void on(MemberRemovedFromGroupEvent event, EventMessage message) {
+    updateLeadApplicationId(event.memberId(), null, event.occurredAt(), message);
+  }
+
+  /** Clears list-index lead references when a group is dissolved. */
+  @EventHandler
+  public void on(LinkedApplicationGroupDissolvedEvent event, EventMessage message) {
+    event
+        .memberApplicationIds()
+        .forEach(memberId -> updateLeadApplicationId(memberId, null, event.occurredAt(), message));
   }
 
   /**

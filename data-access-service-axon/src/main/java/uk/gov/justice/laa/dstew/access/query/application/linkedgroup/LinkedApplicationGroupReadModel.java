@@ -36,6 +36,9 @@ public class LinkedApplicationGroupReadModel {
   @Column(name = "member_ids")
   private List<UUID> memberIds;
 
+  @Column(name = "version", nullable = false)
+  private long version;
+
   @Column(name = "created_at")
   private Instant createdAt;
 

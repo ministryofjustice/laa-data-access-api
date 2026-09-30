@@ -63,6 +63,7 @@ public class GetApplicationResponseMapper {
             ? null
             : DecisionStatus.valueOf(application.getDecisionStatus()));
     response.setVersion(application.getApplicationVersion());
+    response.setLinkedGroupVersion(linkedGroup == null ? null : linkedGroup.getVersion());
     response.setProvider(toProvider(application));
     response.setOpponents(toOpponents(application.getOpponents()));
     response.setProceedings(
