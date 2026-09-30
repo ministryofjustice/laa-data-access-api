@@ -14,19 +14,15 @@ import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationMerit
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
-import uk.gov.justice.laa.dstew.access.model.AutoGranted;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.InvolvedChildResponse;
-import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.OpponentResponse;
 import uk.gov.justice.laa.dstew.access.model.ProviderResponse;
 import uk.gov.justice.laa.dstew.access.model.ScopeLimitationResponse;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
-import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
-import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
 
 /** Maps the typed current-state projection to the public application response. */
 @Component
@@ -34,51 +30,32 @@ public class GetApplicationResponseMapper {
 
   /** Builds a response without reparsing content from JSON. */
   public ApplicationResponse toResponse(ApplicationReadModel application) {
-    return toResponse(application, null, List.of());
-  }
-
-  /** Builds a response from the application and its related projection rows. */
-  public ApplicationResponse toResponse(
-          ApplicationReadModel application,
-          LinkedApplicationGroupReadModel linkedGroup,
-          List<PriorAuthorityReadModel> priorAuthorities) {
     ApplicationResponse response = new ApplicationResponse();
     response.setApplicationId(application.getApplicationId());
     response.setStatus(ApplicationStatus.valueOf(application.getStatus()));
     response.setLaaReference(application.getLaaReference());
     response.setLastUpdated(application.getModifiedAt().atOffset(ZoneOffset.UTC));
     response.setSubmittedAt(
-            application.getSubmittedAt() == null
-                    ? null
-                    : application.getSubmittedAt().atOffset(ZoneOffset.UTC));
-    response.setIsLead(
-            linkedGroup != null
-                    && application.getApplicationId().equals(linkedGroup.getLeadApplicationId()));
-    response.setLinkedApplications(toLinkedSummaries(application, linkedGroup));
+        application.getSubmittedAt() == null
+            ? null
+            : application.getSubmittedAt().atOffset(ZoneOffset.UTC));
+    // Linked groups are not yet exposed; always false until the grouping endpoint is available.
+    response.setIsLead(false);
     response.setAssignedTo(application.getCaseworkerId());
     response.setUsedDelegatedFunctions(application.getUsedDelegatedFunctions());
-    response.setAutoGranted(AutoGranted.valueOf(application.getAutoGranted().name()));
+    response.setAutoGranted(
+        uk.gov.justice.laa.dstew.access.model.AutoGranted.valueOf(
+            application.getAutoGranted().name()));
     response.setDecisionStatus(
-            application.getDecisionStatus() == null
-                    ? null
-                    : DecisionStatus.valueOf(application.getDecisionStatus()));
+        application.getDecisionStatus() == null
+            ? null
+            : DecisionStatus.valueOf(application.getDecisionStatus()));
     response.setVersion(application.getApplicationVersion());
     response.setProvider(toProvider(application));
     response.setOpponents(toOpponents(application.getOpponents()));
     response.setProceedings(
-            toProceedings(application.getProceedings(), application.getMeritsDecisions()));
-    response.setPriorAuthorities(PriorAuthoritySummaryMapper.toSummaries(priorAuthorities));
+        toProceedings(application.getProceedings(), application.getMeritsDecisions()));
     return response;
-  }
-
-  /** Builds a response using prior authorities indexed by application ID. */
-  public ApplicationResponse toResponse(
-          ApplicationReadModel application,
-          Map<UUID, List<PriorAuthorityReadModel>> priorAuthoritiesByApplicationId) {
-    return toResponse(
-            application,
-            null,
-            priorAuthoritiesByApplicationId.getOrDefault(application.getApplicationId(), List.of()));
   }
 
   private ProviderResponse toProvider(ApplicationReadModel application) {
@@ -100,46 +77,46 @@ public class GetApplicationResponseMapper {
 
   private OpponentResponse toOpponent(Opponent opponent) {
     return OpponentResponse.builder()
-            .opponentType(opponent.getOpponentType())
-            .firstName(opponent.getFirstName())
-            .lastName(opponent.getLastName())
-            .organisationName(opponent.getOrganisationName())
-            .build();
+        .opponentType(opponent.getOpponentType())
+        .firstName(opponent.getFirstName())
+        .lastName(opponent.getLastName())
+        .organisationName(opponent.getOrganisationName())
+        .build();
   }
 
   private List<ApplicationProceedingResponse> toProceedings(
-          List<Proceeding> proceedings, Map<UUID, ApplicationMeritsDecision> meritsDecisions) {
+      List<Proceeding> proceedings, Map<UUID, ApplicationMeritsDecision> meritsDecisions) {
     if (proceedings == null) {
       return Collections.emptyList();
     }
     return proceedings.stream()
-            .map(proceeding -> toProceeding(proceeding, meritsDecisions))
-            .toList();
+        .map(proceeding -> toProceeding(proceeding, meritsDecisions))
+        .toList();
   }
 
   private ApplicationProceedingResponse toProceeding(
-          Proceeding proceeding, Map<UUID, ApplicationMeritsDecision> meritsDecisions) {
+      Proceeding proceeding, Map<UUID, ApplicationMeritsDecision> meritsDecisions) {
     ApplicationMeritsDecision meritsDecision =
-            meritsDecisions == null ? null : meritsDecisions.get(proceeding.getId());
+        meritsDecisions == null ? null : meritsDecisions.get(proceeding.getId());
     return ApplicationProceedingResponse.builder()
-            .proceedingId(proceeding.getId())
-            .proceedingDescription(proceeding.getDescription())
-            .proceedingType(proceeding.getMeaning())
-            .delegatedFunctionsDate(proceeding.getDelegatedFunctionsDate())
-            .categoryOfLaw(toCategoryOfLaw(proceeding.getCategoryOfLaw()))
-            .matterType(toMatterType(proceeding.getMatterType()))
-            .levelOfService(proceeding.getSubstantiveLevelOfServiceName())
-            .substantiveCostLimitation(
-                    proceeding.getSubstantiveCostLimitation() == null
-                            ? null
-                            : proceeding.getSubstantiveCostLimitation().doubleValue())
-            .meritsDecision(
-                    meritsDecision == null || meritsDecision.decision() == null
-                            ? null
-                            : MeritsDecisionStatus.valueOf(meritsDecision.decision()))
-            .scopeLimitations(toScopeLimitations(proceeding.getScopeLimitations()))
-            .involvedChildren(toInvolvedChildren(proceeding))
-            .build();
+        .proceedingId(proceeding.getId())
+        .proceedingDescription(proceeding.getDescription())
+        .proceedingType(proceeding.getMeaning())
+        .delegatedFunctionsDate(proceeding.getDelegatedFunctionsDate())
+        .categoryOfLaw(toCategoryOfLaw(proceeding.getCategoryOfLaw()))
+        .matterType(toMatterType(proceeding.getMatterType()))
+        .levelOfService(proceeding.getSubstantiveLevelOfServiceName())
+        .substantiveCostLimitation(
+            proceeding.getSubstantiveCostLimitation() == null
+                ? null
+                : proceeding.getSubstantiveCostLimitation().doubleValue())
+        .meritsDecision(
+            meritsDecision == null || meritsDecision.decision() == null
+                ? null
+                : MeritsDecisionStatus.valueOf(meritsDecision.decision()))
+        .scopeLimitations(toScopeLimitations(proceeding.getScopeLimitations()))
+        .involvedChildren(toInvolvedChildren(proceeding))
+        .build();
   }
 
   private CategoryOfLaw toCategoryOfLaw(String categoryOfLaw) {
@@ -169,13 +146,13 @@ public class GetApplicationResponseMapper {
       return Collections.emptyList();
     }
     return scopeLimitations.stream()
-            .map(
-                    scopeLimitation ->
-                            ScopeLimitationResponse.builder()
-                                    .scopeLimitation(scopeLimitation.getMeaning())
-                                    .scopeDescription(scopeLimitation.getDescription())
-                                    .build())
-            .toList();
+        .map(
+            scopeLimitation ->
+                ScopeLimitationResponse.builder()
+                    .scopeLimitation(scopeLimitation.getMeaning())
+                    .scopeDescription(scopeLimitation.getDescription())
+                    .build())
+        .toList();
   }
 
   private List<InvolvedChildResponse> toInvolvedChildren(Proceeding proceeding) {
@@ -183,28 +160,11 @@ public class GetApplicationResponseMapper {
       return Collections.emptyList();
     }
     return proceeding.getInvolvedChildren().stream()
-            .map(
-                    child ->
-                            new InvolvedChildResponse()
-                                    .fullName(child.getFullName())
-                                    .dateOfBirth(child.getDateOfBirth()))
-            .toList();
-  }
-
-  private List<LinkedApplicationSummaryResponse> toLinkedSummaries(
-          ApplicationReadModel application, LinkedApplicationGroupReadModel linkedGroup) {
-    if (linkedGroup == null) {
-      return Collections.emptyList();
-    }
-    return linkedGroup.getMemberIds().stream()
-            .filter(memberId -> !memberId.equals(application.getApplicationId()))
-            .map(
-                    memberId -> {
-                      LinkedApplicationSummaryResponse linked = new LinkedApplicationSummaryResponse();
-                      linked.setApplicationId(memberId);
-                      linked.setIsLead(memberId.equals(linkedGroup.getLeadApplicationId()));
-                      return linked;
-                    })
-            .toList();
+        .map(
+            child ->
+                new InvolvedChildResponse()
+                    .fullName(child.getFullName())
+                    .dateOfBirth(child.getDateOfBirth()))
+        .toList();
   }
 }
