@@ -73,3 +73,22 @@ The resulting behaviour is:
 When changing linking, update the command handler, route resolver/projection, aggregate, and
 projection tests. Application creation tests should continue to prove create alone leaves a
 standalone route and creates no linked group.
+
+## Application projection sequencing
+
+A bare class-level `@SequencingPolicy` on `ApplicationProjection` uses Axon's default
+`SequentialPolicy` to place all event handlers in one lane. Keep the `application-projection`
+processor pooled and streaming, and keep the policy at class level so creation, membership, notes,
+and other full-row writers share the lane. This sequencing prevents a group event from preceding
+application creation in this projection, a stale non-group full-row save from overwriting newer
+membership, and membership events moving G1 to G2 from being applied out of order.
+
+This orders handlers only within `application-projection`. The group, history, and list-index
+projections are independent, so their query models may lag one another. This sequencing policy does
+not cover `ApplicationListIndexProjection`.
+
+A query-owned per-application membership model is an alternative: store a nullable group ID, a
+removal tombstone, and event ordering, then hydrate group details from the group read model. It can
+reject stale membership updates without serializing all application-row writes, but remains
+eventually consistent. This model is distinct from `application_group_route`, the durable write-side
+routing table for link commands; GET/list membership comes from query-side data.

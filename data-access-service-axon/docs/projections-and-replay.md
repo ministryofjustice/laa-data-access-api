@@ -38,6 +38,22 @@ For a single application, a missing referenced payload means no hydrated applica
 For list queries, payloads are batch-loaded to avoid one lookup per row. Linked-group rows are also
 batch-loaded for the result page.
 
+### Application projection sequencing
+
+Use a bare class-level `@SequencingPolicy` on `ApplicationProjection` with Axon's default
+`SequentialPolicy`, while keeping the `application-projection` processor pooled and streaming. A
+shared lane prevents a membership event from preceding application creation, a stale non-group
+full-row save from overwriting membership, and G1-to-G2 membership events from being applied out of
+order.
+
+This policy orders handlers only within `application-projection`; group, history, and list-index
+processors remain independent and their query models may lag. The policy does not cover
+`ApplicationListIndexProjection`.
+
+A query-owned membership model can store a nullable group ID, removal tombstone, and event ordering,
+then hydrate group details from the group read model. It remains eventually consistent and is
+separate from `application_group_route`, the write-side routing table for link commands.
+
 ## History projection
 
 `ApplicationHistoryProjection` stores one public audit row per relevant event. Group events can
