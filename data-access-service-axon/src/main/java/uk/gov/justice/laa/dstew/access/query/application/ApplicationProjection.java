@@ -11,6 +11,7 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.axonframework.messaging.core.annotation.Namespace;
+import org.axonframework.messaging.core.annotation.SequencingPolicy;
 import org.axonframework.messaging.eventhandling.annotation.EventHandler;
 import org.axonframework.messaging.eventhandling.replay.annotation.ResetHandler;
 import org.axonframework.messaging.queryhandling.QueryUpdateEmitter;
@@ -50,6 +51,7 @@ import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAut
 
 /** Independently replayable projection of the current state of each Application. */
 @Component
+@SequencingPolicy
 @Namespace("application-projection")
 public class ApplicationProjection {
 

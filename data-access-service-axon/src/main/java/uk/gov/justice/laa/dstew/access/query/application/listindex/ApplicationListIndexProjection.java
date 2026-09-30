@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.UUID;
 import org.axonframework.messaging.core.annotation.Namespace;
+import org.axonframework.messaging.core.annotation.SequencingPolicy;
 import org.axonframework.messaging.eventhandling.EventMessage;
 import org.axonframework.messaging.eventhandling.annotation.EventHandler;
 import org.axonframework.messaging.eventhandling.replay.annotation.ResetHandler;
@@ -42,6 +43,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
  * candidate row.
  */
 @Component
+@SequencingPolicy
 @Namespace("application-list-index-projection")
 public class ApplicationListIndexProjection {
 
