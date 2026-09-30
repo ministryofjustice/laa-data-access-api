@@ -325,7 +325,48 @@ class LinkedApplicationGroupAggregateTest {
   }
 
   @Test
+  void givenNonMember_whenChangeLead_thenRejected() {
+    UUID groupId = UUID.randomUUID();
+    UUID leadId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-15T08:00:00Z");
+
+    fixture
+        .given()
+        .events(
+            new LinkedApplicationGroupCreatedEvent(
+                groupId, leadId, List.of(leadId, UUID.randomUUID()), occurredAt))
+        .when()
+        .command(new ChangeLinkedGroupLeadCommand(groupId, UUID.randomUUID(), 0, occurredAt))
+        .then()
+        .exception(ApplicationLinkConflictException.class)
+        .noEvents();
+  }
+
+  @Test
   void givenLeadChanged_whenRemovePreviousLead_thenEmitsMemberRemoved() {
+    UUID groupId = UUID.randomUUID();
+    UUID previousLeadId = UUID.randomUUID();
+    UUID newLeadId = UUID.randomUUID();
+    UUID associateId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-15T08:00:00Z");
+
+    fixture
+        .given()
+        .events(
+            new LinkedApplicationGroupCreatedEvent(
+                groupId, previousLeadId, List.of(previousLeadId, newLeadId), occurredAt),
+            new MemberAddedToGroupEvent(groupId, previousLeadId, associateId, occurredAt),
+            new LinkedApplicationGroupLeadChangedEvent(
+                groupId, previousLeadId, newLeadId, 2, occurredAt))
+        .when()
+        .command(
+            new RemoveApplicationFromLinkedGroupCommand(groupId, previousLeadId, 2, occurredAt))
+        .then()
+        .events(new MemberRemovedFromGroupEvent(groupId, newLeadId, previousLeadId, 3, occurredAt));
+  }
+
+  @Test
+  void givenTwoMembersAfterLeadChanged_whenRemovePreviousLead_thenEmitsGroupDissolved() {
     UUID groupId = UUID.randomUUID();
     UUID previousLeadId = UUID.randomUUID();
     UUID newLeadId = UUID.randomUUID();
