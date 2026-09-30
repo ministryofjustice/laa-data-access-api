@@ -20,12 +20,9 @@ import uk.gov.justice.laa.dstew.access.model.InvolvedChildResponse;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.OpponentResponse;
-import uk.gov.justice.laa.dstew.access.model.PriorAuthoritySummary;
 import uk.gov.justice.laa.dstew.access.model.ProviderResponse;
 import uk.gov.justice.laa.dstew.access.model.ScopeLimitationResponse;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
-import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
-import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
 
 /** Maps the typed current-state projection to the public application response. */
 @Component
@@ -33,14 +30,6 @@ public class GetApplicationResponseMapper {
 
   /** Builds a response without reparsing content from JSON. */
   public ApplicationResponse toResponse(ApplicationReadModel application) {
-    return toResponse(application, null, List.of());
-  }
-
-  /** Builds a response from the application and its related projection rows. */
-  public ApplicationResponse toResponse(
-      ApplicationReadModel application,
-      LinkedApplicationGroupReadModel linkedGroup,
-      List<PriorAuthorityReadModel> priorAuthorities) {
     ApplicationResponse response = new ApplicationResponse();
     response.setApplicationId(application.getApplicationId());
     response.setStatus(ApplicationStatus.valueOf(application.getStatus()));
@@ -50,9 +39,8 @@ public class GetApplicationResponseMapper {
         application.getSubmittedAt() == null
             ? null
             : application.getSubmittedAt().atOffset(ZoneOffset.UTC));
-    response.setIsLead(
-        linkedGroup != null
-            && application.getApplicationId().equals(linkedGroup.getLeadApplicationId()));
+    // Linked groups are not yet exposed; always false until the grouping endpoint is available.
+    response.setIsLead(false);
     response.setAssignedTo(application.getCaseworkerId());
     response.setUsedDelegatedFunctions(application.getUsedDelegatedFunctions());
     response.setAutoGranted(
@@ -67,8 +55,6 @@ public class GetApplicationResponseMapper {
     response.setOpponents(toOpponents(application.getOpponents()));
     response.setProceedings(
         toProceedings(application.getProceedings(), application.getMeritsDecisions()));
-    response.setPotentialDuplicates(application.getPotentialDuplicates());
-    response.setPriorAuthorities(toPriorAuthoritySummaries(priorAuthorities));
     return response;
   }
 
@@ -179,27 +165,6 @@ public class GetApplicationResponseMapper {
                 new InvolvedChildResponse()
                     .fullName(child.getFullName())
                     .dateOfBirth(child.getDateOfBirth()))
-        .toList();
-  }
-
-  private List<PriorAuthoritySummary> toPriorAuthoritySummaries(
-      List<PriorAuthorityReadModel> priorAuthorities) {
-    if (priorAuthorities == null || priorAuthorities.isEmpty()) {
-      return Collections.emptyList();
-    }
-    return priorAuthorities.stream()
-        .map(
-            priorAuthority ->
-                PriorAuthoritySummary.builder()
-                    .priorAuthorityId(priorAuthority.getPriorAuthorityId())
-                    .status(PriorAuthoritySummary.StatusEnum.fromValue(priorAuthority.getStatus()))
-                    .priorAuthorityType(
-                        PriorAuthoritySummary.PriorAuthorityTypeEnum.fromValue(
-                            priorAuthority.getPriorAuthorityType()))
-                    .decision(
-                        PriorAuthoritySummary.DecisionEnum.fromValue(priorAuthority.getDecision()))
-                    .createdAt(priorAuthority.getCreatedAt().atOffset(ZoneOffset.UTC))
-                    .build())
         .toList();
   }
 }
