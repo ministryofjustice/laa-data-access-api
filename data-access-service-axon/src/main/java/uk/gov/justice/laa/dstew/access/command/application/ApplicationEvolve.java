@@ -31,6 +31,7 @@ public final class ApplicationEvolve {
   public static void apply(ApplicationState state, ApplicationDraftStartedEvent event) {
     state.applicationId = event.applicationId();
     state.schemaVersion = event.schemaVersion();
+    state.requestFingerprint = event.requestFingerprint();
   }
 
   /** Applies an {@link ApplicationUpdatedEvent} to the given state. */

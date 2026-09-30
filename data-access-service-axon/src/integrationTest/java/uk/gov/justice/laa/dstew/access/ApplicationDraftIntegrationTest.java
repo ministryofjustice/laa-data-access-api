@@ -124,6 +124,39 @@ class ApplicationDraftIntegrationTest {
   }
 
   @Test
+  void givenIdenticalRetry_whenSaveApplicationDraft_thenSucceedsIdempotently() {
+    UUID applicationId = UUID.randomUUID();
+    CreateApplicationDraftRequest request =
+        CreateApplicationDraftRequest.builder()
+            .id(applicationId)
+            .status(ApplicationStatus.APPLICATION_SUBMITTED)
+            .laaReference("LAA-123")
+            .applicationContent(validApplicationContent(applicationId, UUID.randomUUID()))
+            .build();
+
+    ResponseEntity<String> first =
+        restTemplate.postForEntity(
+            saveDraftUrl(), new HttpEntity<>(request, headers()), String.class);
+    assertThat(first.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+
+    ResponseEntity<String> retry =
+        restTemplate.postForEntity(
+            saveDraftUrl(), new HttpEntity<>(request, headers()), String.class);
+
+    assertThat(retry.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    SaveApplicationDraftResponse body =
+        objectMapper.readValue(retry.getBody(), SaveApplicationDraftResponse.class);
+    assertThat(body.getApplicationId()).isEqualTo(applicationId);
+
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM axon.application_draft WHERE application_id = ?",
+                Integer.class,
+                applicationId))
+        .isEqualTo(1);
+  }
+
+  @Test
   void givenMissingId_whenSaveApplicationDraft_thenReturnsBadRequest() {
     SaveApplicationDraftRequest request =
         SaveApplicationDraftRequest.builder()

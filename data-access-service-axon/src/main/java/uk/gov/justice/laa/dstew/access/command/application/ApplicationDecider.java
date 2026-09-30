@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.command.application;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -17,7 +18,6 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationD
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeDecisionProceeding;
 import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftStartedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.draft.CreateApplicationDraftCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand;
@@ -63,11 +63,33 @@ public final class ApplicationDecider {
         buildApplicationCreatedEvent(applicationId, applicationDataVersion, fingerprint, details));
   }
 
-  /** Returns an {@link ApplicationDraftStartedEvent} for the first save of a new draft. */
-  public static ApplicationDraftStartedEvent decideStartDraft(
-      CreateApplicationDraftCommand command) {
-    return new ApplicationDraftStartedEvent(
-        command.applicationId(), command.schemaVersion(), command.occurredAt());
+  /**
+   * Decides whether to start an Application draft or treat the command as an idempotent retry.
+   *
+   * <p>Returns an {@link ApplicationDraftStartedEvent} for a new draft, an empty list for an
+   * identical retry while the Application remains in draft, or throws {@link
+   * ApplicationCreationConflictException} for a conflicting retry or when the Application has
+   * already been fully created.
+   */
+  public static List<Object> decideStartDraft(
+      ApplicationState state,
+      UUID applicationId,
+      int schemaVersion,
+      String fingerprint,
+      Instant occurredAt) {
+
+    if (state.applicationId != null) {
+      boolean stillDraft = state.status == null;
+      if (stillDraft
+          && Objects.equals(state.requestFingerprint, fingerprint)
+          && state.schemaVersion == schemaVersion) {
+        return Collections.emptyList();
+      }
+      throw new ApplicationCreationConflictException(state.applicationId);
+    }
+
+    return List.of(
+        new ApplicationDraftStartedEvent(applicationId, schemaVersion, fingerprint, occurredAt));
   }
 
   /**

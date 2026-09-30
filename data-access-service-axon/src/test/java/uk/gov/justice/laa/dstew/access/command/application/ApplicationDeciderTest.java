@@ -8,7 +8,6 @@ import java.lang.reflect.RecordComponent;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
@@ -17,7 +16,6 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationD
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeDecisionProceeding;
 import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftStartedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.draft.CreateApplicationDraftCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
@@ -117,24 +115,74 @@ class ApplicationDeciderTest {
   // ── decideStartDraft / decideSubmitDraft ─────────────────────
 
   @Test
-  void givenCommand_whenDecideStartDraft_thenReturnsEventWithExpectedFields() {
+  void givenEmptyState_whenDecideStartDraft_thenReturnsDraftStartedEvent() {
+    ApplicationState state = new ApplicationState();
     UUID applicationId = UUID.randomUUID();
-    CreateApplicationDraftCommand command =
-        new CreateApplicationDraftCommand(
-            applicationId,
-            "APPLICATION_SUBMITTED",
-            "LAA-123",
-            Map.of(),
-            "{}",
-            1,
-            "BaseCivilApplication.json",
-            TIMESTAMP);
+    String fingerprint = ApplicationDataStore.fingerprint("{}");
 
-    ApplicationDraftStartedEvent event = ApplicationDecider.decideStartDraft(command);
+    List<Object> events =
+        ApplicationDecider.decideStartDraft(state, applicationId, 1, fingerprint, TIMESTAMP);
 
+    assertThat(events).hasSize(1);
+    assertThat(events.getFirst()).isInstanceOf(ApplicationDraftStartedEvent.class);
+    ApplicationDraftStartedEvent event = (ApplicationDraftStartedEvent) events.getFirst();
     assertThat(event.applicationId()).isEqualTo(applicationId);
     assertThat(event.schemaVersion()).isEqualTo(1);
+    assertThat(event.requestFingerprint()).isEqualTo(fingerprint);
     assertThat(event.occurredAt()).isEqualTo(TIMESTAMP);
+  }
+
+  @Test
+  void givenDraftStateWithMatchingFingerprint_whenDecideStartDraft_thenReturnsEmptyList() {
+    UUID applicationId = UUID.randomUUID();
+    String fingerprint = ApplicationDataStore.fingerprint("{}");
+    ApplicationState state = stateAfterStartDraft(applicationId, fingerprint, 1);
+
+    List<Object> events =
+        ApplicationDecider.decideStartDraft(state, applicationId, 1, fingerprint, TIMESTAMP);
+
+    assertThat(events).isEmpty();
+  }
+
+  @Test
+  void givenDraftStateWithDifferentFingerprint_whenDecideStartDraft_thenThrowsConflict() {
+    UUID applicationId = UUID.randomUUID();
+    String originalFingerprint = ApplicationDataStore.fingerprint("{}");
+    ApplicationState state = stateAfterStartDraft(applicationId, originalFingerprint, 1);
+    String differentFingerprint = ApplicationDataStore.fingerprint("{\"different\":true}");
+
+    assertThatThrownBy(
+            () ->
+                ApplicationDecider.decideStartDraft(
+                    state, applicationId, 1, differentFingerprint, TIMESTAMP))
+        .isInstanceOf(ApplicationCreationConflictException.class);
+  }
+
+  @Test
+  void givenDraftStateWithDifferentSchemaVersion_whenDecideStartDraft_thenThrowsConflict() {
+    UUID applicationId = UUID.randomUUID();
+    String fingerprint = ApplicationDataStore.fingerprint("{}");
+    ApplicationState state = stateAfterStartDraft(applicationId, fingerprint, 1);
+
+    assertThatThrownBy(
+            () ->
+                ApplicationDecider.decideStartDraft(
+                    state, applicationId, 2, fingerprint, TIMESTAMP))
+        .isInstanceOf(ApplicationCreationConflictException.class);
+  }
+
+  @Test
+  void givenFullyCreatedState_whenDecideStartDraft_thenThrowsConflictEvenWithMatchingFingerprint() {
+    UUID applicationId = UUID.randomUUID();
+    String fingerprint = ApplicationDataStore.fingerprint("{}");
+    ApplicationState state = stateAfterCreate(applicationId, fingerprint, 1);
+    state.status = "APPLICATION_SUBMITTED";
+
+    assertThatThrownBy(
+            () ->
+                ApplicationDecider.decideStartDraft(
+                    state, applicationId, 1, fingerprint, TIMESTAMP))
+        .isInstanceOf(ApplicationCreationConflictException.class);
   }
 
   @Test
@@ -396,6 +444,15 @@ class ApplicationDeciderTest {
     state.schemaVersion = schemaVersion;
     state.applicationVersion = 0L;
     state.applicationDataVersion = 0L;
+    return state;
+  }
+
+  private static ApplicationState stateAfterStartDraft(
+      UUID applicationId, String fingerprint, int schemaVersion) {
+    ApplicationState state = new ApplicationState();
+    state.applicationId = applicationId;
+    state.requestFingerprint = fingerprint;
+    state.schemaVersion = schemaVersion;
     return state;
   }
 

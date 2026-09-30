@@ -102,7 +102,7 @@ class ApplicationAggregateDraftTest {
         .command(command)
         .then()
         .resultMessagePayload(applicationId)
-        .events(new ApplicationDraftStartedEvent(applicationId, 1, occurredAt));
+        .events(new ApplicationDraftStartedEvent(applicationId, 1, fingerprint, occurredAt));
 
     ArgumentCaptor<ApplicationDraftPayload> payloadCaptor =
         ArgumentCaptor.forClass(ApplicationDraftPayload.class);
@@ -113,11 +113,13 @@ class ApplicationAggregateDraftTest {
   }
 
   @Test
-  void givenDraftInProgress_whenCreateDraftAgain_thenThrowsConflictAndPersistsNothing() {
+  void
+      givenDraftInProgress_whenCreateDraftAgainWithDifferentContent_thenThrowsConflictAndPersistsNothing() {
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
     ApplicationDraftStartedEvent existingEvent =
-        new ApplicationDraftStartedEvent(applicationId, 1, occurredAt);
+        new ApplicationDraftStartedEvent(
+            applicationId, 1, PayloadFingerprint.compute("{\"original\":true}"), occurredAt);
 
     CreateApplicationDraftCommand duplicateCommand =
         new CreateApplicationDraftCommand(
@@ -137,6 +139,38 @@ class ApplicationAggregateDraftTest {
         .command(duplicateCommand)
         .then()
         .exception(ApplicationCreationConflictException.class)
+        .noEvents();
+
+    verify(draftStore, never()).upsert(any(), any(), any(), any());
+  }
+
+  @Test
+  void givenDraftInProgress_whenIdenticalRetry_thenSucceedsIdempotently() {
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
+    String serialisedRequest = "{}";
+    String fingerprint = PayloadFingerprint.compute(serialisedRequest);
+    ApplicationDraftStartedEvent existingEvent =
+        new ApplicationDraftStartedEvent(applicationId, 1, fingerprint, occurredAt);
+
+    CreateApplicationDraftCommand retryCommand =
+        new CreateApplicationDraftCommand(
+            applicationId,
+            null,
+            null,
+            Map.of(),
+            serialisedRequest,
+            1,
+            "BaseCivilApplication.json",
+            occurredAt.plusSeconds(60));
+
+    fixture
+        .given()
+        .events(existingEvent)
+        .when()
+        .command(retryCommand)
+        .then()
+        .resultMessagePayload(applicationId)
         .noEvents();
 
     verify(draftStore, never()).upsert(any(), any(), any(), any());
@@ -183,7 +217,8 @@ class ApplicationAggregateDraftTest {
         new ApplicationDraftPayload(
             "APPLICATION_SUBMITTED", "LAA-123", applicationContent, serialisedRequest);
     ApplicationDraftStartedEvent existingEvent =
-        new ApplicationDraftStartedEvent(applicationId, 1, startedAt);
+        new ApplicationDraftStartedEvent(
+            applicationId, 1, PayloadFingerprint.compute(serialisedRequest), startedAt);
     ApplicationCreationDetails details = applicationCreationDetails(applicationId);
     String fingerprint = PayloadFingerprint.compute(details.serialisedRequest());
 
