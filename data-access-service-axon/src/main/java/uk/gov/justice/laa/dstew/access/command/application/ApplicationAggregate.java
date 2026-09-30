@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.command.application;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import org.axonframework.eventsourcing.annotation.EventSourcingHandler;
@@ -116,7 +117,8 @@ public class ApplicationAggregate {
               command.applicationContent(),
               command.serialisedRequest(),
               command.schemaVersion(),
-              command.schemaName()));
+              command.schemaName(),
+              List.of()));
       ApplicationDraftPayload payload =
           new ApplicationDraftPayload(
               command.status(),
@@ -160,16 +162,13 @@ public class ApplicationAggregate {
       EventAppender eventAppender) {
     ApplicationDraftPayload draft = requireDraft(command.applicationId(), draftStore);
 
-    CreateApplicationCommand reconstructed =
-        new CreateApplicationCommand(
-            command.applicationId(),
+    ApplicationCreationDetails details =
+        detailsFactory.prepare(
             draft.status(),
             draft.laaReference(),
             draft.applicationContent(),
             draft.serialisedRequest(),
-            state.schemaVersion,
-            "BaseCivilApplication.json");
-    ApplicationCreationDetails details = detailsFactory.prepare(reconstructed);
+            state.schemaVersion);
     long applicationDataVersion = 0L;
     String fingerprint =
         applicationDataStore.append(command.applicationId(), applicationDataVersion, details);

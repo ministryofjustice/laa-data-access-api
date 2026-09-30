@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.command.application.draft;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -28,7 +29,6 @@ import uk.gov.justice.laa.dstew.access.command.application.ApplicationAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreationDetails;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreationDetailsFactory;
-import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftStore;
@@ -223,7 +223,7 @@ class ApplicationAggregateDraftTest {
     String fingerprint = PayloadFingerprint.compute(details.serialisedRequest());
 
     when(draftStore.find(applicationId)).thenReturn(Optional.of(draftPayload));
-    when(creationDetailsFactory.prepare(any(CreateApplicationCommand.class))).thenReturn(details);
+    when(creationDetailsFactory.prepare(any(), any(), any(), any(), anyInt())).thenReturn(details);
     when(applicationDataStore.append(eq(applicationId), eq(0L), eq(details)))
         .thenReturn(fingerprint);
 
@@ -244,7 +244,8 @@ class ApplicationAggregateDraftTest {
                 fingerprint,
                 details.status(),
                 details.schemaVersion(),
-                details.occurredAt()));
+                details.occurredAt(),
+                details.potentialDuplicates()));
 
     verify(applicationDataStore).append(applicationId, 0L, details);
     verify(draftStore).delete(applicationId);
