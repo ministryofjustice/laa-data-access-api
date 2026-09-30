@@ -165,7 +165,7 @@ class LinkedApplicationGroupDeciderTest {
 
     MemberAddedToGroupEvent event =
         LinkedApplicationGroupDecider.decideAddApplication(
-                state, new AddApplicationToLinkedGroupCommand(groupId, newMemberId, OCCURRED_AT))
+                state, new AddApplicationToLinkedGroupCommand(groupId, newMemberId, 0, OCCURRED_AT))
             .orElseThrow();
 
     assertThat(event.groupId()).isEqualTo(groupId);
@@ -175,7 +175,7 @@ class LinkedApplicationGroupDeciderTest {
   }
 
   @Test
-  void givenExistingGroup_whenApplicationAlreadyAMember_thenAddReturnsEmptyOptional() {
+  void givenExistingMemberAndStaleVersion_whenApplicationAdded_thenReturnsEmptyOptional() {
     UUID groupId = UUID.randomUUID();
     UUID leadId = UUID.randomUUID();
     UUID existingMemberId = UUID.randomUUID();
@@ -184,9 +184,27 @@ class LinkedApplicationGroupDeciderTest {
 
     var decision =
         LinkedApplicationGroupDecider.decideAddApplication(
-            state, new AddApplicationToLinkedGroupCommand(groupId, existingMemberId, OCCURRED_AT));
+            state,
+            new AddApplicationToLinkedGroupCommand(groupId, existingMemberId, 1, OCCURRED_AT));
 
     assertThat(decision).isEmpty();
+  }
+
+  @Test
+  void givenStaleVersion_whenDecideAddApplication_thenThrowsVersionConflict() {
+    UUID groupId = UUID.randomUUID();
+    UUID leadId = UUID.randomUUID();
+    UUID newMemberId = UUID.randomUUID();
+    LinkedApplicationGroupState state =
+        stateAfterCreate(groupId, leadId, List.of(leadId, UUID.randomUUID()));
+
+    assertThatThrownBy(
+            () ->
+                LinkedApplicationGroupDecider.decideAddApplication(
+                    state,
+                    new AddApplicationToLinkedGroupCommand(groupId, newMemberId, 1, OCCURRED_AT)))
+        .isInstanceOf(LinkedApplicationGroupVersionConflictException.class)
+        .hasMessage("Linked group of application " + newMemberId + " has changed since version 1");
   }
 
   @Test
@@ -198,7 +216,7 @@ class LinkedApplicationGroupDeciderTest {
                 LinkedApplicationGroupDecider.decideAddApplication(
                     state,
                     new AddApplicationToLinkedGroupCommand(
-                        UUID.randomUUID(), UUID.randomUUID(), OCCURRED_AT)))
+                        UUID.randomUUID(), UUID.randomUUID(), 0, OCCURRED_AT)))
         .isInstanceOf(IllegalStateException.class);
   }
 
@@ -457,7 +475,7 @@ class LinkedApplicationGroupDeciderTest {
                 LinkedApplicationGroupDecider.decideAddApplication(
                     state,
                     new AddApplicationToLinkedGroupCommand(
-                        groupId, UUID.randomUUID(), OCCURRED_AT)))
+                        groupId, UUID.randomUUID(), 0, OCCURRED_AT)))
         .isInstanceOf(ApplicationLinkConflictException.class)
         .hasMessage("Linked application group " + groupId + " has been dissolved");
   }

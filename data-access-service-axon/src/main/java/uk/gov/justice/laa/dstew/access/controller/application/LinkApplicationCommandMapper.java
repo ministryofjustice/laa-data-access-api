@@ -33,6 +33,7 @@ public class LinkApplicationCommandMapper {
         sourceApplicationId,
         request.getApplicationId(),
         toDomain(request.getLinkType()),
+        request.getLinkedGroupVersion(),
         Instant.now(clock));
   }
 

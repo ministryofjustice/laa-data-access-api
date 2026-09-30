@@ -13,6 +13,10 @@ paths:
     $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1{id}"
   /api/v0/applications/{id}/link:
     $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1{id}~1link"
+  /api/v0/applications/{id}/unlink:
+    $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1{id}~1unlink"
+  /api/v0/applications/{id}/make-lead:
+    $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1{id}~1make-lead"
   /api/v0/applications/{id}/unassign:
     $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1{id}~1unassign"
   /api/v0/applications/{id}/history-search:
@@ -73,6 +77,8 @@ components:
       $ref: "./open-api-applications/components.yml#/components/schemas/ApplicationLinkType"
     ApplicationLinkRequest:
       $ref: "./open-api-applications/components.yml#/components/schemas/ApplicationLinkRequest"
+    LinkedGroupChangeRequest:
+      $ref: "./open-api-applications/components.yml#/components/schemas/LinkedGroupChangeRequest"
     ApplicationSummaryResponse:
       $ref: "./open-api-applications/components.yml#/components/schemas/ApplicationSummaryResponse"
     ApplicationSummary:

@@ -243,7 +243,7 @@ public class ApplicationLinkingIntegrationTest {
     long memberAddedEventCount =
         countDomainEvents(groupId, MemberAddedToGroupEvent.class.getName());
 
-    ResponseEntity<Void> response = linkApplication(sourceApplicationId, targetApplicationId);
+    ResponseEntity<Void> response = linkApplication(sourceApplicationId, targetApplicationId, 0L);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
     assertThat(countDomainEvents(groupId, MemberAddedToGroupEvent.class.getName()))
@@ -305,7 +305,7 @@ public class ApplicationLinkingIntegrationTest {
         targetGroupId, targetLeadApplicationId, targetLeadApplicationId, targetApplicationId);
     long groupEventCount = countGroupEvents();
 
-    ResponseEntity<Void> response = linkApplication(sourceApplicationId, targetApplicationId);
+    ResponseEntity<Void> response = linkApplication(sourceApplicationId, targetApplicationId, 0L);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
     assertThat(countGroupEvents()).isEqualTo(groupEventCount);
@@ -350,7 +350,8 @@ public class ApplicationLinkingIntegrationTest {
     long memberAddedEventCount =
         countDomainEvents(groupId, MemberAddedToGroupEvent.class.getName());
 
-    ResponseEntity<Void> secondResponse = linkApplication(sourceApplicationId, targetApplicationId);
+    ResponseEntity<Void> secondResponse =
+        linkApplication(sourceApplicationId, targetApplicationId, 0L);
 
     assertThat(secondResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
     assertThat(countDomainEvents(groupId, LinkedApplicationGroupCreatedEvent.class.getName()))
@@ -422,6 +423,69 @@ public class ApplicationLinkingIntegrationTest {
   }
 
   @Test
+  void givenStaleVersion_whenJoiningGroup_thenConflict() {
+    UUID sourceApplicationId = UUID.randomUUID();
+    UUID targetApplicationId = UUID.randomUUID();
+    UUID firstAssociateId = UUID.randomUUID();
+    UUID secondAssociateId = UUID.randomUUID();
+    String clientLastName = uniqueClientLastName();
+    createApplication(sourceApplicationId, clientLastName);
+    createApplication(targetApplicationId, clientLastName);
+    createApplication(firstAssociateId, clientLastName);
+    createApplication(secondAssociateId, clientLastName);
+    assertThat(linkApplication(firstAssociateId, targetApplicationId).getStatusCode())
+        .isEqualTo(HttpStatus.NO_CONTENT);
+    var targetRoute = awaitRoute(targetApplicationId, ApplicationGroupRouteKind.LINKED_GROUP);
+    assertThat(linkApplication(secondAssociateId, targetApplicationId, 0L).getStatusCode())
+        .isEqualTo(HttpStatus.NO_CONTENT);
+    var groupId = targetRoute.getGroupId();
+    long membersBefore = countDomainEvents(groupId, MemberAddedToGroupEvent.class.getName());
+
+    ResponseEntity<Void> response = linkApplication(sourceApplicationId, targetApplicationId, 0L);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+    assertThat(countDomainEvents(groupId, MemberAddedToGroupEvent.class.getName()))
+        .isEqualTo(membersBefore);
+    assertStandaloneRoute(sourceApplicationId);
+  }
+
+  @Test
+  void givenMissingVersion_whenJoiningGroup_thenConflict() {
+    UUID sourceApplicationId = UUID.randomUUID();
+    UUID targetApplicationId = UUID.randomUUID();
+    UUID associateId = UUID.randomUUID();
+    String clientLastName = uniqueClientLastName();
+    createApplication(sourceApplicationId, clientLastName);
+    createApplication(targetApplicationId, clientLastName);
+    createApplication(associateId, clientLastName);
+    assertThat(linkApplication(associateId, targetApplicationId).getStatusCode())
+        .isEqualTo(HttpStatus.NO_CONTENT);
+    awaitRoute(targetApplicationId, ApplicationGroupRouteKind.LINKED_GROUP);
+
+    ResponseEntity<Void> response = linkApplication(sourceApplicationId, targetApplicationId);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+    assertStandaloneRoute(sourceApplicationId);
+  }
+
+  @Test
+  void givenVersionForStandaloneTarget_whenLinked_thenConflict() {
+    UUID sourceApplicationId = UUID.randomUUID();
+    UUID targetApplicationId = UUID.randomUUID();
+    String clientLastName = uniqueClientLastName();
+    createApplication(sourceApplicationId, clientLastName);
+    createApplication(targetApplicationId, clientLastName);
+    long eventsBefore = countGroupEvents();
+
+    ResponseEntity<Void> response = linkApplication(sourceApplicationId, targetApplicationId, 0L);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+    assertThat(countGroupEvents()).isEqualTo(eventsBefore);
+    assertStandaloneRoute(sourceApplicationId);
+    assertStandaloneRoute(targetApplicationId);
+  }
+
+  @Test
   void
       givenConcurrentRequestsLinkingOneSourceToDifferentTargetGroups_whenApplicationsAreLinked_thenOneSucceedsAndOneConflicts()
           throws Exception {
@@ -470,9 +534,9 @@ public class ApplicationLinkingIntegrationTest {
     ExecutorService executor = Executors.newFixedThreadPool(2);
     try {
       CompletableFuture<ResponseEntity<Void>> first =
-          concurrentLink(executor, barrier, sourceApplicationId, firstTargetApplicationId);
+          concurrentLink(executor, barrier, sourceApplicationId, firstTargetApplicationId, 0L);
       CompletableFuture<ResponseEntity<Void>> second =
-          concurrentLink(executor, barrier, sourceApplicationId, secondTargetApplicationId);
+          concurrentLink(executor, barrier, sourceApplicationId, secondTargetApplicationId, 0L);
 
       assertThat(List.of(first.get(20, TimeUnit.SECONDS), second.get(20, TimeUnit.SECONDS)))
           .extracting(ResponseEntity::getStatusCode)
@@ -660,8 +724,13 @@ public class ApplicationLinkingIntegrationTest {
   }
 
   private ResponseEntity<Void> linkApplication(UUID sourceId, UUID targetId) {
+    return linkApplication(sourceId, targetId, null);
+  }
+
+  private ResponseEntity<Void> linkApplication(UUID sourceId, UUID targetId, Long version) {
     ApplicationLinkRequest request =
         new ApplicationLinkRequest(targetId, ApplicationLinkType.FAMILY);
+    request.setLinkedGroupVersion(version);
     return restTemplate.exchange(
         "/api/v0/applications/" + sourceId + "/link",
         HttpMethod.POST,
@@ -688,12 +757,12 @@ public class ApplicationLinkingIntegrationTest {
   }
 
   private CompletableFuture<ResponseEntity<Void>> concurrentLink(
-      ExecutorService executor, CyclicBarrier barrier, UUID sourceId, UUID targetId) {
+      ExecutorService executor, CyclicBarrier barrier, UUID sourceId, UUID targetId, Long version) {
     return CompletableFuture.supplyAsync(
         () -> {
           try {
             barrier.await(10, TimeUnit.SECONDS);
-            return linkApplication(sourceId, targetId);
+            return linkApplication(sourceId, targetId, version);
           } catch (Exception exception) {
             throw new RuntimeException(exception);
           }

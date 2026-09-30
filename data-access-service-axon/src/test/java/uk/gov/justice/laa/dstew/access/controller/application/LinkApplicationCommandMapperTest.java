@@ -1,12 +1,14 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkType;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkType;
@@ -46,5 +48,25 @@ class LinkApplicationCommandMapperTest {
     var command = mapper.toCommand(UUID.randomUUID(), request);
 
     assertThat(command.occurredAt()).isEqualTo(OCCURRED_AT);
+  }
+
+  @Test
+  void givenLinkedGroupVersion_whenMapped_thenPreservesVersion() {
+    var request = new ApplicationLinkRequest(UUID.randomUUID(), ApplicationLinkType.FAMILY);
+    request.setLinkedGroupVersion(7L);
+
+    var command = mapper.toCommand(UUID.randomUUID(), request);
+
+    assertThat(command.expectedGroupVersion()).isEqualTo(7L);
+  }
+
+  @Test
+  void givenNegativeLinkedGroupVersion_whenCommandCreated_thenRejectsVersion() {
+    assertThatThrownBy(
+            () ->
+                new LinkApplicationCommand(
+                    UUID.randomUUID(), UUID.randomUUID(), LinkType.FAMILY, -1L, OCCURRED_AT))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("expectedGroupVersion must not be negative");
   }
 }

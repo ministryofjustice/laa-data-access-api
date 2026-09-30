@@ -177,7 +177,7 @@ class LinkedApplicationGroupAggregateTest {
             new LinkedApplicationGroupCreatedEvent(
                 groupId, leadId, List.of(leadId, existingMemberId), occurredAt))
         .when()
-        .command(new AddApplicationToLinkedGroupCommand(groupId, newMemberId, occurredAt))
+        .command(new AddApplicationToLinkedGroupCommand(groupId, newMemberId, 0, occurredAt))
         .then()
         .events(new MemberAddedToGroupEvent(groupId, leadId, newMemberId, occurredAt));
   }
@@ -195,7 +195,7 @@ class LinkedApplicationGroupAggregateTest {
             new LinkedApplicationGroupCreatedEvent(
                 groupId, leadId, List.of(leadId, existingMemberId), occurredAt))
         .when()
-        .command(new AddApplicationToLinkedGroupCommand(groupId, existingMemberId, occurredAt))
+        .command(new AddApplicationToLinkedGroupCommand(groupId, existingMemberId, 1, occurredAt))
         .then()
         .noEvents();
   }
@@ -208,9 +208,27 @@ class LinkedApplicationGroupAggregateTest {
         .when()
         .command(
             new AddApplicationToLinkedGroupCommand(
-                UUID.randomUUID(), UUID.randomUUID(), Instant.parse("2026-07-15T08:00:00Z")))
+                UUID.randomUUID(), UUID.randomUUID(), 0, Instant.parse("2026-07-15T08:00:00Z")))
         .then()
         .exception(IllegalStateException.class)
+        .noEvents();
+  }
+
+  @Test
+  void givenStaleVersion_whenAddApplication_thenVersionConflict() {
+    UUID groupId = UUID.randomUUID();
+    UUID leadId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-15T08:00:00Z");
+
+    fixture
+        .given()
+        .events(
+            new LinkedApplicationGroupCreatedEvent(
+                groupId, leadId, List.of(leadId, UUID.randomUUID()), occurredAt))
+        .when()
+        .command(new AddApplicationToLinkedGroupCommand(groupId, UUID.randomUUID(), 1, occurredAt))
+        .then()
+        .exception(LinkedApplicationGroupVersionConflictException.class)
         .noEvents();
   }
 
@@ -344,7 +362,7 @@ class LinkedApplicationGroupAggregateTest {
             new LinkedApplicationGroupDissolvedEvent(
                 groupId, leadId, removedId, members, 1, occurredAt))
         .when()
-        .command(new AddApplicationToLinkedGroupCommand(groupId, UUID.randomUUID(), occurredAt))
+        .command(new AddApplicationToLinkedGroupCommand(groupId, UUID.randomUUID(), 0, occurredAt))
         .then()
         .exception(ApplicationLinkConflictException.class)
         .noEvents();

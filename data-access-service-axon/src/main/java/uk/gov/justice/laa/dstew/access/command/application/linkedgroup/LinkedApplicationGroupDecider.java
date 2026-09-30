@@ -67,6 +67,10 @@ public final class LinkedApplicationGroupDecider {
     if (state.memberApplicationIds.contains(command.applicationId())) {
       return Optional.empty();
     }
+    if (command.expectedGroupVersion() != state.groupVersion) {
+      throw new LinkedApplicationGroupVersionConflictException(
+          command.applicationId(), command.expectedGroupVersion());
+    }
 
     return Optional.of(
         new MemberAddedToGroupEvent(

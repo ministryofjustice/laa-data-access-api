@@ -19,6 +19,7 @@ import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictExcep
 import uk.gov.justice.laa.dstew.access.exception.FileConflictException;
 import uk.gov.justice.laa.dstew.access.exception.FileLengthRequiredException;
 import uk.gov.justice.laa.dstew.access.exception.InvalidApplicationStateException;
+import uk.gov.justice.laa.dstew.access.exception.LinkedApplicationGroupVersionConflictException;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityStatusConflictException;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityVersionConflictException;
@@ -123,6 +124,14 @@ public class ApplicationExceptionHandler {
   @ExceptionHandler(ApplicationVersionConflictException.class)
   ResponseEntity<ProblemDetail> handleApplicationVersionConflictException(
       ApplicationVersionConflictException exception) {
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage()));
+  }
+
+  /** Returns a conflict when a linked-group change was based on a stale group version. */
+  @ExceptionHandler(LinkedApplicationGroupVersionConflictException.class)
+  ResponseEntity<ProblemDetail> handleLinkedApplicationGroupVersionConflictException(
+      LinkedApplicationGroupVersionConflictException exception) {
     return ResponseEntity.status(HttpStatus.CONFLICT)
         .body(ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage()));
   }

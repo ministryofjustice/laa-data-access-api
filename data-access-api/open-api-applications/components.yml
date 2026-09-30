@@ -85,6 +85,10 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/LinkedApplicationSummaryResponse"
+        linkedGroupVersion:
+          type: integer
+          format: int64
+          description: Version of the linked group; absent when the application is not linked
         version:
           type: integer
           format: int64
@@ -151,6 +155,22 @@ components:
           description: Target Application whose group the source Application should join
         linkType:
           $ref: "#/components/schemas/ApplicationLinkType"
+        linkedGroupVersion:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Version of the target Application's linked group as last read; omit when the target is not linked
+
+    LinkedGroupChangeRequest:
+      type: object
+      additionalProperties: false
+      required: [linkedGroupVersion]
+      properties:
+        linkedGroupVersion:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Version of the application's linked group the change is based on, used for concurrency control
 
     ApplicationSummary:
       type: object
@@ -199,6 +219,10 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/LinkedApplicationSummaryResponse"
+        linkedGroupVersion:
+          type: integer
+          format: int64
+          description: Version of the linked group; absent when the application is not linked
         priorAuthorities:
           type: array
           items:
