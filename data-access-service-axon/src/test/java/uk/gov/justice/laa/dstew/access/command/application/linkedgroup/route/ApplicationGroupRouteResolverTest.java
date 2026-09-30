@@ -7,8 +7,10 @@ import static org.mockito.Mockito.when;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Stream;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -109,6 +111,60 @@ class ApplicationGroupRouteResolverTest {
         .isInstanceOf(ResourceNotFoundException.class)
         .hasMessage(
             "No application group route found for target application " + targetApplicationId);
+  }
+
+  @Test
+  void givenMissingMembership_whenResolveGroupForMutation_thenThrowsNotFound() {
+    UUID applicationId = UUID.randomUUID();
+    when(routes.findMembershipByApplicationId(applicationId)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> resolver.resolveGroupForMutation(applicationId))
+        .isInstanceOf(ResourceNotFoundException.class)
+        .hasMessage("No application group route found for application " + applicationId);
+  }
+
+  @Test
+  void givenStandaloneMembership_whenResolveGroupForMutation_thenThrowsConflict() {
+    UUID applicationId = UUID.randomUUID();
+    when(routes.findMembershipByApplicationId(applicationId))
+        .thenReturn(Optional.of(new RouteMembership(ApplicationGroupRouteKind.STANDALONE, null)));
+
+    assertThatThrownBy(() -> resolver.resolveGroupForMutation(applicationId))
+        .isInstanceOf(ApplicationLinkConflictException.class)
+        .hasMessage("Application " + applicationId + " is not in a linked group");
+  }
+
+  @Test
+  void givenGroupMember_whenResolveGroupForMutation_thenLocksRoutesAndReturnsGroupId() {
+    UUID applicationId = UUID.randomUUID();
+    UUID otherMemberId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    var firstRoute = route(applicationId, ApplicationGroupRouteKind.LINKED_GROUP, groupId);
+    var secondRoute = route(otherMemberId, ApplicationGroupRouteKind.LINKED_GROUP, groupId);
+    when(routes.findMembershipByApplicationId(applicationId))
+        .thenReturn(
+            Optional.of(new RouteMembership(ApplicationGroupRouteKind.LINKED_GROUP, groupId)));
+    when(routes.findAllByGroupIdForUpdate(groupId)).thenReturn(List.of(firstRoute, secondRoute));
+
+    assertThat(resolver.resolveGroupForMutation(applicationId)).isEqualTo(groupId);
+
+    verify(routes).findAllByGroupIdForUpdate(groupId);
+  }
+
+  @Test
+  void givenApplicationMissingFromLockedGroup_whenResolveGroupForMutation_thenThrowsConflict() {
+    UUID applicationId = UUID.randomUUID();
+    UUID otherMemberId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    when(routes.findMembershipByApplicationId(applicationId))
+        .thenReturn(
+            Optional.of(new RouteMembership(ApplicationGroupRouteKind.LINKED_GROUP, groupId)));
+    when(routes.findAllByGroupIdForUpdate(groupId))
+        .thenReturn(List.of(route(otherMemberId, ApplicationGroupRouteKind.LINKED_GROUP, groupId)));
+
+    assertThatThrownBy(() -> resolver.resolveGroupForMutation(applicationId))
+        .isInstanceOf(ApplicationLinkConflictException.class)
+        .hasMessage("Application " + applicationId + " is not in a linked group");
   }
 
   @Test
@@ -294,5 +350,18 @@ class ApplicationGroupRouteResolverTest {
   private static ApplicationGroupRoute route(
       UUID applicationId, ApplicationGroupRouteKind routeKind, UUID groupId, String officeCode) {
     return new ApplicationGroupRoute(applicationId, routeKind, groupId, officeCode, CREATED_AT);
+  }
+
+  private record RouteMembership(ApplicationGroupRouteKind routeKind, @Nullable UUID groupId)
+      implements ApplicationGroupRouteMembership {
+    @Override
+    public ApplicationGroupRouteKind getRouteKind() {
+      return routeKind;
+    }
+
+    @Override
+    public @Nullable UUID getGroupId() {
+      return groupId;
+    }
   }
 }

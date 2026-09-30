@@ -56,6 +56,29 @@ public class ApplicationGroupRouteResolver {
             + " already belongs to a different linked group");
   }
 
+  /** Locks every route in the application's linked group and returns the group identifier. */
+  @Transactional
+  public UUID resolveGroupForMutation(UUID applicationId) {
+    var membership =
+        routes
+            .findMembershipByApplicationId(applicationId)
+            .orElseThrow(
+                () ->
+                    new ResourceNotFoundException(
+                        "No application group route found for application " + applicationId));
+    if (membership.getRouteKind() == ApplicationGroupRouteKind.STANDALONE) {
+      throw notInGroup(applicationId);
+    }
+    var groupId = membership.getGroupId();
+    var lockedRoutes = routes.findAllByGroupIdForUpdate(groupId);
+    var stillMember =
+        lockedRoutes.stream().anyMatch(route -> route.getApplicationId().equals(applicationId));
+    if (!stillMember) {
+      throw notInGroup(applicationId);
+    }
+    return groupId;
+  }
+
   private ApplicationGroupRoute requiredRoute(
       Map<UUID, ApplicationGroupRoute> routesByApplicationId,
       UUID applicationId,
@@ -66,6 +89,11 @@ public class ApplicationGroupRouteResolver {
     }
     throw new ResourceNotFoundException(
         "No application group route found for " + routeRole + " application " + applicationId);
+  }
+
+  private ApplicationLinkConflictException notInGroup(UUID applicationId) {
+    return new ApplicationLinkConflictException(
+        "Application " + applicationId + " is not in a linked group");
   }
 
   private boolean isSameLinkedGroup(
