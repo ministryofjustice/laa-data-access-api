@@ -4,11 +4,10 @@ import java.util.Map;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
 /**
- * Mutable, unvalidated draft content for an Application that has not yet been submitted.
+ * Contains the content of an Application that has not yet been submitted.
  *
- * <p>Unlike {@link ApplicationDataPayload}, the {@code applicationContent} here is stored as a raw
- * map rather than parsed into typed fields: schema validation and content parsing are deferred to
- * submit time, mirroring how Prior Authority defers its own draft-content validation.
+ * <p>The application content is stored as a raw map and parsed into typed fields when the draft is
+ * submitted.
  */
 @ExcludeFromGeneratedCodeCoverage
 public record ApplicationDraftPayload(
