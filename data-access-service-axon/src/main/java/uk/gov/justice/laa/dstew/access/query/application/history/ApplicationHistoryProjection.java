@@ -18,7 +18,10 @@ import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEve
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupDissolvedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupLeadChangedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberRemovedFromGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
@@ -120,6 +123,62 @@ public class ApplicationHistoryProjection {
         serialise(event),
         event.occurredAt(),
         groupHistoryId(message, event.memberId()));
+  }
+
+  /** Appends a history entry for both applications affected by a linked-group lead change. */
+  @EventHandler
+  public void on(LinkedApplicationGroupLeadChangedEvent event, EventMessage message) {
+    String requestPayload = serialise(event);
+    append(
+        message,
+        event.newLeadApplicationId(),
+        "APPLICATION_GROUP_LEAD_CHANGED",
+        requestPayload,
+        event.occurredAt(),
+        groupHistoryId(message, event.newLeadApplicationId()));
+    append(
+        message,
+        event.previousLeadApplicationId(),
+        "APPLICATION_GROUP_LEAD_CHANGED",
+        requestPayload,
+        event.occurredAt(),
+        groupHistoryId(message, event.previousLeadApplicationId()));
+  }
+
+  /** Appends a history entry when a non-lead application leaves its linked group. */
+  @EventHandler
+  public void on(MemberRemovedFromGroupEvent event, EventMessage message) {
+    append(
+        message,
+        event.memberId(),
+        "APPLICATION_GROUP_LEFT",
+        serialise(event),
+        event.occurredAt(),
+        groupHistoryId(message, event.memberId()));
+  }
+
+  /** Appends history entries for the member leaving and the dissolution of its former group. */
+  @EventHandler
+  public void on(LinkedApplicationGroupDissolvedEvent event, EventMessage message) {
+    String requestPayload = serialise(event);
+    append(
+        message,
+        event.removedApplicationId(),
+        "APPLICATION_GROUP_LEFT",
+        requestPayload,
+        event.occurredAt(),
+        groupHistoryId(message, event.removedApplicationId()));
+    event.memberApplicationIds().stream()
+        .filter(id -> !id.equals(event.removedApplicationId()))
+        .forEach(
+            applicationId ->
+                append(
+                    message,
+                    applicationId,
+                    "APPLICATION_GROUP_DISSOLVED",
+                    requestPayload,
+                    event.occurredAt(),
+                    groupHistoryId(message, applicationId)));
   }
 
   /** Appends a thin audit entry for an Application decision. */

@@ -28,7 +28,10 @@ import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataP
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupDissolvedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupLeadChangedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberRemovedFromGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityData;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataId;
@@ -126,6 +129,123 @@ class ApplicationHistoryProjectionTest {
     assertThat(payload.get("leadApplicationId").asString()).isEqualTo(leadId.toString());
     assertThat(payload.get("memberId").asString()).isEqualTo(memberId.toString());
     assertThat(payload.get("occurredAt")).isNotNull();
+  }
+
+  @Test
+  void givenLeadChangedEvent_whenHandled_thenStoresHistoryForBothLeads() {
+    UUID groupId = UUID.randomUUID();
+    UUID previousLeadId = UUID.randomUUID();
+    UUID newLeadId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-15T08:00:00Z");
+    LinkedApplicationGroupLeadChangedEvent event =
+        new LinkedApplicationGroupLeadChangedEvent(
+            groupId, previousLeadId, newLeadId, 1L, occurredAt);
+    EventMessage message = message(event, "lead-changed-event-id");
+
+    projection.on(event, message);
+
+    ArgumentCaptor<ApplicationHistoryReadModel> captor =
+        ArgumentCaptor.forClass(ApplicationHistoryReadModel.class);
+    verify(repository, times(2)).save(captor.capture());
+    assertThat(captor.getAllValues())
+        .extracting(
+            ApplicationHistoryReadModel::getEventId,
+            ApplicationHistoryReadModel::getApplicationId,
+            ApplicationHistoryReadModel::getEventType)
+        .containsExactlyInAnyOrder(
+            Tuple.tuple(
+                "lead-changed-event-id:" + newLeadId, newLeadId, "APPLICATION_GROUP_LEAD_CHANGED"),
+            Tuple.tuple(
+                "lead-changed-event-id:" + previousLeadId,
+                previousLeadId,
+                "APPLICATION_GROUP_LEAD_CHANGED"));
+    assertThat(
+            objectMapper.readTree(captor.getValue().getRequestPayload()).get("groupId").asString())
+        .isEqualTo(groupId.toString());
+  }
+
+  @Test
+  void givenMemberRemovedEvent_whenHandled_thenStoresLeftHistoryForMember() {
+    UUID groupId = UUID.randomUUID();
+    UUID leadId = UUID.randomUUID();
+    UUID memberId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-15T08:00:00Z");
+    MemberRemovedFromGroupEvent event =
+        new MemberRemovedFromGroupEvent(groupId, leadId, memberId, 1L, occurredAt);
+
+    projection.on(event, message(event, "member-removed-event-id"));
+
+    ArgumentCaptor<ApplicationHistoryReadModel> captor =
+        ArgumentCaptor.forClass(ApplicationHistoryReadModel.class);
+    verify(repository).save(captor.capture());
+    assertThat(captor.getValue().getEventId()).isEqualTo("member-removed-event-id:" + memberId);
+    assertThat(captor.getValue().getApplicationId()).isEqualTo(memberId);
+    assertThat(captor.getValue().getEventType()).isEqualTo("APPLICATION_GROUP_LEFT");
+  }
+
+  @Test
+  void givenDissolvedEvent_whenHandled_thenStoresLeftAndDissolvedHistory() {
+    UUID groupId = UUID.randomUUID();
+    UUID formerLeadId = UUID.randomUUID();
+    UUID removedApplicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-15T08:00:00Z");
+    LinkedApplicationGroupDissolvedEvent event =
+        new LinkedApplicationGroupDissolvedEvent(
+            groupId,
+            formerLeadId,
+            removedApplicationId,
+            List.of(formerLeadId, removedApplicationId),
+            1L,
+            occurredAt);
+    EventMessage message = message(event, "group-dissolved-event-id");
+
+    projection.on(event, message);
+
+    ArgumentCaptor<ApplicationHistoryReadModel> captor =
+        ArgumentCaptor.forClass(ApplicationHistoryReadModel.class);
+    verify(repository, times(2)).save(captor.capture());
+    assertThat(captor.getAllValues())
+        .extracting(
+            ApplicationHistoryReadModel::getEventId,
+            ApplicationHistoryReadModel::getApplicationId,
+            ApplicationHistoryReadModel::getEventType)
+        .containsExactlyInAnyOrder(
+            Tuple.tuple(
+                "group-dissolved-event-id:" + removedApplicationId,
+                removedApplicationId,
+                "APPLICATION_GROUP_LEFT"),
+            Tuple.tuple(
+                "group-dissolved-event-id:" + formerLeadId,
+                formerLeadId,
+                "APPLICATION_GROUP_DISSOLVED"));
+  }
+
+  @Test
+  void givenLinkedGroupHistoryTypes_whenQueried_thenReturnsRequestedEvents() {
+    UUID applicationId = UUID.randomUUID();
+    var leadChanged =
+        history(
+            applicationId, "APPLICATION_GROUP_LEAD_CHANGED", Instant.parse("2026-07-19T10:00:00Z"));
+    var left =
+        history(applicationId, "APPLICATION_GROUP_LEFT", Instant.parse("2026-07-19T10:01:00Z"));
+    var dissolved =
+        history(
+            applicationId, "APPLICATION_GROUP_DISSOLVED", Instant.parse("2026-07-19T10:02:00Z"));
+    when(repository.findAllByApplicationIdOrderByOccurredAtAsc(applicationId))
+        .thenReturn(List.of(leadChanged, left, dissolved));
+    when(paRepository.findAllByApplicationIdOrderByOccurredAtAsc(applicationId))
+        .thenReturn(List.of());
+
+    var result =
+        projection.handle(
+            new FindApplicationHistoryQuery(
+                applicationId,
+                List.of(
+                    "APPLICATION_GROUP_LEAD_CHANGED",
+                    "APPLICATION_GROUP_LEFT",
+                    "APPLICATION_GROUP_DISSOLVED")));
+
+    assertThat(result.applicationHistoryEvents()).containsExactly(leadChanged, left, dissolved);
   }
 
   @Test
