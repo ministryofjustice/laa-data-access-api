@@ -26,14 +26,15 @@ experience should follow the learning path below before using the documents as a
 | [Event evolution](event-evolution.md) | How to change persisted event contracts without breaking replay |
 | [Onboarding exercise](onboarding-exercise.md) | A practical application, event, data-version, and projection walkthrough |
 | [Architecture overview](architecture.md) | The main components, command/query paths, consistency boundaries, and version numbers |
-| [Linked applications](linked-applications.md) | How synchronous validation and post-commit group initialisation work |
+| [Linked applications](linked-applications.md) | Linking, lead changes, removal, group versions, and projection consistency |
+| [Endpoint errors](endpoint-errors.md) | Public linked-application command conflict and validation responses |
 | [Events and sensitive data](events-and-sensitive-data.md) | Why events are thin, how `application_data` versions are connected to events, and what retention means |
 | [Projections and replay](projections-and-replay.md) | Which read models exist, how they are hydrated, and how reset/replay behaves |
 | [Storage model](storage-model.md) | Which tables are authoritative or disposable and how their identifiers and versions relate |
 | [Failure behaviour](failure-behaviour.md) | Expected API, transaction, projection, and recovery outcomes for common failures |
 | [Running and operating](running-and-operating.md) | Local startup, tests, store inspection, processor recovery, and retention operations |
 | [Glossary](glossary.md) | Axon and module-specific terminology used throughout these guides |
-| [Sequence diagrams](sequence-diagrams/README.md) | Step-by-step application creation and projection flows |
+| [Sequence diagrams](sequence-diagrams/README.md) | Step-by-step application creation, linked-group changes, and projection flows |
 | [Architecture decisions](adr/README.md) | Why significant design choices were made and when they should be revisited |
 | [Example payloads](example-payloads.md) | Worked request/response examples for every endpoint |
 | [ApplicationSubmitted integration event](application-submitted-integration-event.md) | Producer trigger, v1 SNS contract, delivery guarantee, and operations |
