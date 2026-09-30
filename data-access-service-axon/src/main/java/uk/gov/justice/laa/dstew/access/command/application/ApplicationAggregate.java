@@ -40,6 +40,7 @@ import uk.gov.justice.laa.dstew.access.command.worklist.unassign.DirectWorkItemU
 import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /** Event-sourced consistency boundary for an Application and its owned child state. */
 @EventSourced(tagKey = "ApplicationAggregate", idType = UUID.class)
@@ -88,18 +89,29 @@ public class ApplicationAggregate {
   }
 
   /**
-   * Creates and persists an Application draft.
+   * Validates and persists an Application draft.
    *
    * @throws ApplicationCreationConflictException if an Application already exists for this ID
+   * @throws ValidationException if the content fails semantic validation
    */
   @CommandHandler
   UUID handle(
       CreateApplicationDraftCommand command,
+      ApplicationCreationDetailsFactory factory,
       ApplicationDraftStore draftStore,
       EventAppender eventAppender) {
     if (applicationId != null) {
       throw new ApplicationCreationConflictException(command.applicationId());
     }
+    factory.prepare(
+        new CreateApplicationCommand(
+            command.applicationId(),
+            command.status(),
+            command.laaReference(),
+            command.applicationContent(),
+            command.serialisedRequest(),
+            command.schemaVersion(),
+            command.schemaName()));
     ApplicationDraftPayload payload =
         new ApplicationDraftPayload(
             command.status(),
