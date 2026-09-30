@@ -17,9 +17,7 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationD
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeDecisionProceeding;
 import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftStartedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftUpdatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.draft.CreateApplicationDraftCommand;
-import uk.gov.justice.laa.dstew.access.command.application.draft.UpdateApplicationDraftCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
@@ -116,32 +114,26 @@ class ApplicationDeciderTest {
             "potentialDuplicates");
   }
 
-  // ── decideStartDraft / decideDraftUpdated / decideSubmitDraft ─────────────────────
+  // ── decideStartDraft / decideSubmitDraft ─────────────────────
 
   @Test
   void givenCommand_whenDecideStartDraft_thenReturnsEventWithExpectedFields() {
     UUID applicationId = UUID.randomUUID();
     CreateApplicationDraftCommand command =
         new CreateApplicationDraftCommand(
-            applicationId, "APPLICATION_SUBMITTED", "LAA-123", Map.of(), "{}", 1, TIMESTAMP);
+            applicationId,
+            "APPLICATION_SUBMITTED",
+            "LAA-123",
+            Map.of(),
+            "{}",
+            1,
+            "BaseCivilApplication.json",
+            TIMESTAMP);
 
     ApplicationDraftStartedEvent event = ApplicationDecider.decideStartDraft(command);
 
     assertThat(event.applicationId()).isEqualTo(applicationId);
     assertThat(event.schemaVersion()).isEqualTo(1);
-    assertThat(event.occurredAt()).isEqualTo(TIMESTAMP);
-  }
-
-  @Test
-  void givenUpdateCommand_whenDecideDraftUpdated_thenMapsPointerFields() {
-    UUID applicationId = UUID.randomUUID();
-    UpdateApplicationDraftCommand command =
-        new UpdateApplicationDraftCommand(
-            applicationId, "APPLICATION_SUBMITTED", "LAA-999", Map.of(), "{}", TIMESTAMP);
-
-    ApplicationDraftUpdatedEvent event = ApplicationDecider.decideDraftUpdated(command);
-
-    assertThat(event.applicationId()).isEqualTo(applicationId);
     assertThat(event.occurredAt()).isEqualTo(TIMESTAMP);
   }
 

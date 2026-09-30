@@ -401,43 +401,14 @@ paths:
         '403': { description: Forbidden }
         '500': { description: Internal server error }
 
-  /api/v0/application-drafts/{applicationId}:
-    put:
-      tags:
-        - application-drafts
-      summary: Update an existing Application draft
-      operationId: updateApplicationDraft
-      parameters:
-        - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
-        - name: applicationId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "./components.yml#/components/schemas/SaveApplicationDraftRequest"
-      responses:
-        '204':
-          description: Application draft updated
-        '400': { description: Bad request }
-        '401': { description: Unauthorized }
-        '403': { description: Forbidden }
-        '404': { description: Application draft not found }
-        '500': { description: Internal server error }
-
   /api/v0/application-drafts/{applicationId}/submit:
     post:
       tags:
         - application-drafts
       summary: Submit an in-progress Application draft, sealing its content
       description: |
-        This command endpoint does not accept a request body. The content already accumulated via
-        the create/update draft endpoints is validated in full and promoted to the immutable
+        This command endpoint does not accept a request body. The draft's content, already
+        validated in full when it was created, is promoted directly to the immutable
         Application record.
       operationId: submitApplicationDraft
       parameters:

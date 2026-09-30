@@ -16,6 +16,7 @@ import org.axonframework.messaging.core.MessageStream;
 import org.axonframework.messaging.core.MessageType;
 import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationCommand;
+import uk.gov.justice.laa.dstew.access.command.application.draft.CreateApplicationDraftCommand;
 import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
 
 class ContentSchemaValidationDispatchInterceptorTest {
@@ -34,6 +35,32 @@ class ContentSchemaValidationDispatchInterceptorTest {
     interceptor.interceptOnDispatch(commandMessage, null, chain);
 
     verify(validator).validate(command.applicationContent(), "CssApplication.json", 1);
+    verify(chain).proceed(commandMessage, null);
+  }
+
+  @Test
+  void givenCreateDraftCommand_whenDispatched_thenValidatesWithBaseCivilApplicationSchema() {
+    JsonSchemaValidator validator = mock(JsonSchemaValidator.class);
+    ContentSchemaValidationDispatchInterceptor interceptor =
+        new ContentSchemaValidationDispatchInterceptor(validator);
+    UUID id = UUID.randomUUID();
+    CreateApplicationDraftCommand command =
+        new CreateApplicationDraftCommand(
+            id,
+            "APPLICATION_SUBMITTED",
+            "LAA-123",
+            validApplicationContent(id, UUID.randomUUID()),
+            "{}",
+            1,
+            "BaseCivilApplication.json",
+            java.time.Instant.now());
+    var commandMessage =
+        new GenericCommandMessage(new MessageType(CreateApplicationDraftCommand.class), command);
+    MessageDispatchInterceptorChain<CommandMessage> chain = chain();
+
+    interceptor.interceptOnDispatch(commandMessage, null, chain);
+
+    verify(validator).validate(command.applicationContent(), "BaseCivilApplication.json", 1);
     verify(chain).proceed(commandMessage, null);
   }
 

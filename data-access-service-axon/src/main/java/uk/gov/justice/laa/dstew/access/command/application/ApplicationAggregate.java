@@ -2,7 +2,6 @@ package uk.gov.justice.laa.dstew.access.command.application;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import org.axonframework.eventsourcing.annotation.EventSourcingHandler;
@@ -23,7 +22,6 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.RecordAutoGr
 import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftStartedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.draft.CreateApplicationDraftCommand;
 import uk.gov.justice.laa.dstew.access.command.application.draft.SubmitApplicationDraftCommand;
-import uk.gov.justice.laa.dstew.access.command.application.draft.UpdateApplicationDraftCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.ValidateApplicationGrantedCommand;
@@ -42,8 +40,6 @@ import uk.gov.justice.laa.dstew.access.command.worklist.unassign.DirectWorkItemU
 import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
-import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
-import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /** Event-sourced consistency boundary for an Application and its owned child state. */
 @EventSourced(tagKey = "ApplicationAggregate", idType = UUID.class)
@@ -92,11 +88,9 @@ public class ApplicationAggregate {
   }
 
   /**
-   * Starts (or first saves) an Application draft. Draft content is written directly to the mutable
-   * draft store and is not schema-validated until submit.
+   * Creates and persists an Application draft.
    *
-   * @throws ApplicationCreationConflictException if a draft or a fully created Application already
-   *     exists for this ID
+   * @throws ApplicationCreationConflictException if an Application already exists for this ID
    */
   @CommandHandler
   UUID handle(
@@ -119,31 +113,7 @@ public class ApplicationAggregate {
   }
 
   /**
-   * Replaces the content of an in-progress Application draft.
-   *
-   * @throws ResourceNotFoundException if no draft exists for this ID
-   */
-  @CommandHandler
-  void handle(
-      UpdateApplicationDraftCommand command,
-      ApplicationDraftStore draftStore,
-      EventAppender eventAppender) {
-    requireDraft(command.applicationId(), draftStore);
-    ApplicationDraftPayload payload =
-        new ApplicationDraftPayload(
-            command.status(),
-            command.laaReference(),
-            command.applicationContent(),
-            command.serialisedRequest());
-    draftStore.upsert(
-        command.applicationId(), payload, command.serialisedRequest(), command.occurredAt());
-    eventAppender.append(ApplicationDecider.decideDraftUpdated(command));
-  }
-
-  /**
-   * Validates the accumulated draft content in full and promotes it to an Application, emitting the
-   * same {@link ApplicationCreatedEvent} a direct create would, so the projection requires no
-   * changes.
+   * Completes an existing Application draft and emits an {@link ApplicationCreatedEvent}.
    *
    * @throws ResourceNotFoundException if no draft exists for this ID
    * @throws ApplicationCreationConflictException if this ID has already been created or submitted
@@ -154,25 +124,8 @@ public class ApplicationAggregate {
       ApplicationDraftStore draftStore,
       ApplicationCreationDetailsFactory detailsFactory,
       ApplicationDataStore applicationDataStore,
-      JsonSchemaValidator jsonSchemaValidator,
       EventAppender eventAppender) {
     ApplicationDraftPayload draft = requireDraft(command.applicationId(), draftStore);
-    if (draft.status() == null) {
-      throw new ValidationException(
-          "Application draft cannot be submitted without a status", List.of("status is required"));
-    }
-    if (draft.laaReference() == null || draft.laaReference().isBlank()) {
-      throw new ValidationException(
-          "Application draft cannot be submitted without a laaReference",
-          List.of("laaReference must not be blank"));
-    }
-    if (draft.applicationContent() == null || draft.applicationContent().isEmpty()) {
-      throw new ValidationException(
-          "Application draft cannot be submitted without application content",
-          List.of("applicationContent must not be empty"));
-    }
-    jsonSchemaValidator.validate(
-        draft.applicationContent(), "BaseCivilApplication.json", state.schemaVersion);
 
     CreateApplicationCommand reconstructed =
         new CreateApplicationCommand(

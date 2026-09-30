@@ -13,10 +13,8 @@ import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
 import uk.gov.justice.laa.dstew.access.command.application.draft.CreateApplicationDraftCommand;
-import uk.gov.justice.laa.dstew.access.command.application.draft.UpdateApplicationDraftCommand;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.CreateApplicationDraftRequest;
-import uk.gov.justice.laa.dstew.access.model.SaveApplicationDraftRequest;
 
 class SaveApplicationDraftCommandMapperTest {
 
@@ -74,18 +72,6 @@ class SaveApplicationDraftCommandMapperTest {
   }
 
   @Test
-  void givenApplicationId_whenUpdateMapped_thenApplicationIdMatches() {
-    UUID applicationId = UUID.randomUUID();
-    SaveApplicationDraftRequest request =
-        SaveApplicationDraftRequest.builder().laaReference("LAA-999").build();
-
-    UpdateApplicationDraftCommand command = mapper.toUpdateCommand(applicationId, request);
-
-    assertThat(command.applicationId()).isEqualTo(applicationId);
-    assertThat(command.laaReference()).isEqualTo("LAA-999");
-  }
-
-  @Test
   void givenSerialisationFailure_whenCreateMapped_thenWrapsInIllegalStateException() {
     ObjectMapper objectMapper = mock(ObjectMapper.class);
     CreateApplicationDraftRequest request =
@@ -98,22 +84,6 @@ class SaveApplicationDraftCommandMapperTest {
     assertThatThrownBy(() -> failingMapper.toCreateCommand(request, 1))
         .isInstanceOf(IllegalStateException.class)
         .hasMessage("Unable to serialise CreateApplicationDraftRequest")
-        .hasCauseInstanceOf(JacksonException.class);
-  }
-
-  @Test
-  void givenSerialisationFailure_whenUpdateMapped_thenWrapsInIllegalStateException() {
-    ObjectMapper objectMapper = mock(ObjectMapper.class);
-    UUID applicationId = UUID.randomUUID();
-    SaveApplicationDraftRequest request = SaveApplicationDraftRequest.builder().build();
-    SaveApplicationDraftCommandMapper failingMapper =
-        new SaveApplicationDraftCommandMapper(objectMapper);
-
-    when(objectMapper.writeValueAsString(request)).thenThrow(new JacksonException("boom") {});
-
-    assertThatThrownBy(() -> failingMapper.toUpdateCommand(applicationId, request))
-        .isInstanceOf(IllegalStateException.class)
-        .hasMessage("Unable to serialise SaveApplicationDraftRequest")
         .hasCauseInstanceOf(JacksonException.class);
   }
 }

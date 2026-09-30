@@ -24,10 +24,8 @@ import uk.gov.justice.laa.dstew.access.command.application.draft.CreateApplicati
 import uk.gov.justice.laa.dstew.access.command.application.draft.CreateApplicationDraftUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.draft.SubmitApplicationDraftCommand;
 import uk.gov.justice.laa.dstew.access.command.application.draft.SubmitApplicationDraftUseCase;
-import uk.gov.justice.laa.dstew.access.command.application.draft.UpdateApplicationDraftCommand;
-import uk.gov.justice.laa.dstew.access.command.application.draft.UpdateApplicationDraftUseCase;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.CreateApplicationDraftRequest;
-import uk.gov.justice.laa.dstew.access.model.SaveApplicationDraftRequest;
 import uk.gov.justice.laa.dstew.access.model.SaveApplicationDraftResponse;
 import uk.gov.justice.laa.dstew.access.model.SubmitApplicationDraftResponse;
 
@@ -36,7 +34,6 @@ import uk.gov.justice.laa.dstew.access.model.SubmitApplicationDraftResponse;
 class ApplicationDraftCommandControllerTest {
 
   @Mock private CreateApplicationDraftUseCase createUseCase;
-  @Mock private UpdateApplicationDraftUseCase updateUseCase;
   @Mock private SubmitApplicationDraftUseCase submitUseCase;
   @Mock private SaveApplicationDraftCommandMapper saveCommandMapper;
   @Mock private SubmitApplicationDraftCommandMapper submitCommandMapper;
@@ -58,10 +55,21 @@ class ApplicationDraftCommandControllerTest {
   void givenProjectedResult_whenSaveApplicationDraft_thenReturnsCreatedResponse() {
     UUID applicationId = UUID.randomUUID();
     CreateApplicationDraftRequest request =
-        new CreateApplicationDraftRequest(applicationId).applicationContent(Map.of());
+        new CreateApplicationDraftRequest(
+            ApplicationStatus.APPLICATION_SUBMITTED,
+            Map.of("key", "value"),
+            "LAA-123",
+            applicationId);
     CreateApplicationDraftCommand command =
         new CreateApplicationDraftCommand(
-            applicationId, null, null, Map.of(), "{}", 1, Instant.now());
+            applicationId,
+            null,
+            null,
+            Map.of(),
+            "{}",
+            1,
+            "BaseCivilApplication.json",
+            Instant.now());
     when(saveCommandMapper.toCreateCommand(request, 1)).thenReturn(command);
     when(createUseCase.execute(command)).thenReturn(true);
 
@@ -82,10 +90,21 @@ class ApplicationDraftCommandControllerTest {
   void givenTimeoutResult_whenSaveApplicationDraft_thenReturnsAcceptedResponse() {
     UUID applicationId = UUID.randomUUID();
     CreateApplicationDraftRequest request =
-        new CreateApplicationDraftRequest(applicationId).applicationContent(Map.of());
+        new CreateApplicationDraftRequest(
+            ApplicationStatus.APPLICATION_SUBMITTED,
+            Map.of("key", "value"),
+            "LAA-123",
+            applicationId);
     CreateApplicationDraftCommand command =
         new CreateApplicationDraftCommand(
-            applicationId, null, null, Map.of(), "{}", 1, Instant.now());
+            applicationId,
+            null,
+            null,
+            Map.of(),
+            "{}",
+            1,
+            "BaseCivilApplication.json",
+            Instant.now());
     when(saveCommandMapper.toCreateCommand(request, 1)).thenReturn(command);
     when(createUseCase.execute(command)).thenReturn(false);
 
@@ -95,20 +114,6 @@ class ApplicationDraftCommandControllerTest {
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
     assertThat(response.getHeaders().getLocation()).isNotNull();
     verify(createUseCase).execute(command);
-  }
-
-  @Test
-  void givenRequest_whenUpdateApplicationDraft_thenDelegatesToUseCaseAndReturnsNoContent() {
-    UUID applicationId = UUID.randomUUID();
-    SaveApplicationDraftRequest request = new SaveApplicationDraftRequest();
-    UpdateApplicationDraftCommand command =
-        new UpdateApplicationDraftCommand(applicationId, null, null, Map.of(), "{}", Instant.now());
-    when(saveCommandMapper.toUpdateCommand(applicationId, request)).thenReturn(command);
-
-    ResponseEntity<Void> response = controller.updateApplicationDraft(null, applicationId, request);
-
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-    verify(updateUseCase).execute(command);
   }
 
   @Test

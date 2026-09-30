@@ -162,6 +162,10 @@ components:
 
     SaveApplicationDraftRequest:
       type: object
+      required:
+        - status
+        - applicationContent
+        - laaReference
       properties:
         status:
           $ref: "../open-api-common/components.yml#/components/schemas/ApplicationStatus"
@@ -169,8 +173,10 @@ components:
           type: object
           description: Application data accumulated so far on the draft
           additionalProperties: true
+          minProperties: 1
         laaReference:
           type: string
+          minLength: 1
 
     CreateApplicationDraftRequest:
       allOf:

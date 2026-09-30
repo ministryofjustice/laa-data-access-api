@@ -2,9 +2,7 @@ package uk.gov.justice.laa.dstew.access.command.application.draft;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -37,8 +35,6 @@ import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraft
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
-import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
-import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /**
  * Integration tests for the Application draft commands on {@link ApplicationAggregate}, using the
@@ -51,7 +47,6 @@ class ApplicationAggregateDraftTest {
   @Mock private ApplicationDraftStore draftStore;
   @Mock private ApplicationDataStore applicationDataStore;
   @Mock private ApplicationCreationDetailsFactory creationDetailsFactory;
-  @Mock private JsonSchemaValidator jsonSchemaValidator;
 
   @BeforeEach
   void setUp() {
@@ -69,9 +64,7 @@ class ApplicationAggregateDraftTest {
                                 ApplicationDataStore.class, configuration -> applicationDataStore)
                             .registerComponent(
                                 ApplicationCreationDetailsFactory.class,
-                                configuration -> creationDetailsFactory)
-                            .registerComponent(
-                                JsonSchemaValidator.class, configuration -> jsonSchemaValidator)));
+                                configuration -> creationDetailsFactory)));
   }
 
   @AfterEach
@@ -85,6 +78,8 @@ class ApplicationAggregateDraftTest {
     Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
     String serialisedRequest = "{}";
     String fingerprint = PayloadFingerprint.compute(serialisedRequest);
+    Map<String, Object> applicationContent =
+        validApplicationContent(applicationId, UUID.randomUUID());
 
     when(draftStore.upsert(eq(applicationId), any(), eq(serialisedRequest), eq(occurredAt)))
         .thenReturn(fingerprint);
@@ -94,9 +89,10 @@ class ApplicationAggregateDraftTest {
             applicationId,
             "APPLICATION_SUBMITTED",
             "LAA-123",
-            Map.of(),
+            applicationContent,
             serialisedRequest,
             1,
+            "BaseCivilApplication.json",
             occurredAt);
 
     fixture
@@ -125,7 +121,14 @@ class ApplicationAggregateDraftTest {
 
     CreateApplicationDraftCommand duplicateCommand =
         new CreateApplicationDraftCommand(
-            applicationId, null, null, Map.of(), "{}", 1, occurredAt.plusSeconds(60));
+            applicationId,
+            null,
+            null,
+            Map.of(),
+            "{}",
+            1,
+            "BaseCivilApplication.json",
+            occurredAt.plusSeconds(60));
 
     fixture
         .given()
@@ -146,7 +149,14 @@ class ApplicationAggregateDraftTest {
 
     CreateApplicationDraftCommand command =
         new CreateApplicationDraftCommand(
-            applicationId, null, null, Map.of(), "{}", 1, Instant.now());
+            applicationId,
+            null,
+            null,
+            Map.of(),
+            "{}",
+            1,
+            "BaseCivilApplication.json",
+            Instant.now());
 
     fixture
         .given()
@@ -158,59 +168,6 @@ class ApplicationAggregateDraftTest {
         .noEvents();
 
     verify(draftStore, never()).upsert(any(), any(), any(), any());
-  }
-
-  @Test
-  void givenDraftInProgress_whenUpdateDraft_thenPersistsDraftAndEmitsDraftUpdatedEvent() {
-    UUID applicationId = UUID.randomUUID();
-    Instant startedAt = Instant.parse("2026-08-01T10:00:00Z");
-    Instant occurredAt = Instant.parse("2026-08-02T10:00:00Z");
-    ApplicationDraftStartedEvent existingEvent =
-        new ApplicationDraftStartedEvent(applicationId, 1, startedAt);
-
-    when(draftStore.find(applicationId))
-        .thenReturn(Optional.of(new ApplicationDraftPayload(null, null, Map.of(), "{}")));
-
-    UpdateApplicationDraftCommand command =
-        new UpdateApplicationDraftCommand(
-            applicationId,
-            "APPLICATION_SUBMITTED",
-            "LAA-999",
-            Map.of("key", "value"),
-            "{\"key\":\"value\"}",
-            occurredAt);
-
-    fixture
-        .given()
-        .events(existingEvent)
-        .when()
-        .command(command)
-        .then()
-        .events(new ApplicationDraftUpdatedEvent(applicationId, occurredAt));
-
-    ArgumentCaptor<ApplicationDraftPayload> payloadCaptor =
-        ArgumentCaptor.forClass(ApplicationDraftPayload.class);
-    verify(draftStore)
-        .upsert(
-            eq(applicationId), payloadCaptor.capture(), eq("{\"key\":\"value\"}"), eq(occurredAt));
-    assertThat(payloadCaptor.getValue().laaReference()).isEqualTo("LAA-999");
-  }
-
-  @Test
-  void givenNoDraft_whenUpdateDraft_thenThrowsResourceNotFoundException() {
-    UUID applicationId = UUID.randomUUID();
-
-    UpdateApplicationDraftCommand command =
-        new UpdateApplicationDraftCommand(applicationId, null, null, Map.of(), "{}", Instant.now());
-
-    fixture
-        .given()
-        .noPriorActivity()
-        .when()
-        .command(command)
-        .then()
-        .exception(ResourceNotFoundException.class)
-        .noEvents();
   }
 
   @Test
@@ -254,42 +211,8 @@ class ApplicationAggregateDraftTest {
                 details.schemaVersion(),
                 details.occurredAt()));
 
-    verify(jsonSchemaValidator).validate(applicationContent, "BaseCivilApplication.json", 1);
     verify(applicationDataStore).append(applicationId, 0L, details);
     verify(draftStore).delete(applicationId);
-  }
-
-  @Test
-  void
-      givenSchemaInvalidDraft_whenSubmit_thenThrowsValidationExceptionAndNeitherAppendsNorDeletesDraft() {
-    UUID applicationId = UUID.randomUUID();
-    Instant startedAt = Instant.parse("2026-08-01T10:00:00Z");
-    Instant submittedAt = Instant.parse("2026-08-02T10:00:00Z");
-    Map<String, Object> applicationContent = Map.of("foo", "bar");
-    ApplicationDraftPayload draftPayload =
-        new ApplicationDraftPayload("APPLICATION_SUBMITTED", "LAA-123", applicationContent, "{}");
-    ApplicationDraftStartedEvent existingEvent =
-        new ApplicationDraftStartedEvent(applicationId, 1, startedAt);
-
-    when(draftStore.find(applicationId)).thenReturn(Optional.of(draftPayload));
-    doThrow(new ValidationException(java.util.List.of("invalid")))
-        .when(jsonSchemaValidator)
-        .validate(applicationContent, "BaseCivilApplication.json", 1);
-
-    SubmitApplicationDraftCommand command =
-        new SubmitApplicationDraftCommand(applicationId, submittedAt);
-
-    fixture
-        .given()
-        .events(existingEvent)
-        .when()
-        .command(command)
-        .then()
-        .exception(ValidationException.class)
-        .noEvents();
-
-    verify(applicationDataStore, never()).append(any(), anyLong(), any());
-    verify(draftStore, never()).delete(any());
   }
 
   @Test
@@ -326,87 +249,6 @@ class ApplicationAggregateDraftTest {
         .exception(ResourceNotFoundException.class)
         .noEvents();
 
-    verify(draftStore, never()).delete(any());
-  }
-
-  @Test
-  void givenNullStatus_whenSubmit_thenThrowsValidationException() {
-    UUID applicationId = UUID.randomUUID();
-    Instant startedAt = Instant.parse("2026-08-01T10:00:00Z");
-    ApplicationDraftPayload draftPayload =
-        new ApplicationDraftPayload(null, "LAA-123", Map.of("key", "value"), "{}");
-    ApplicationDraftStartedEvent existingEvent =
-        new ApplicationDraftStartedEvent(applicationId, 1, startedAt);
-
-    when(draftStore.find(applicationId)).thenReturn(Optional.of(draftPayload));
-
-    SubmitApplicationDraftCommand command =
-        new SubmitApplicationDraftCommand(applicationId, Instant.now());
-
-    fixture
-        .given()
-        .events(existingEvent)
-        .when()
-        .command(command)
-        .then()
-        .exception(ValidationException.class)
-        .noEvents();
-
-    verify(applicationDataStore, never()).append(any(), anyLong(), any());
-    verify(draftStore, never()).delete(any());
-  }
-
-  @Test
-  void givenBlankLaaReference_whenSubmit_thenThrowsValidationException() {
-    UUID applicationId = UUID.randomUUID();
-    Instant startedAt = Instant.parse("2026-08-01T10:00:00Z");
-    ApplicationDraftPayload draftPayload =
-        new ApplicationDraftPayload("APPLICATION_SUBMITTED", "   ", Map.of("key", "value"), "{}");
-    ApplicationDraftStartedEvent existingEvent =
-        new ApplicationDraftStartedEvent(applicationId, 1, startedAt);
-
-    when(draftStore.find(applicationId)).thenReturn(Optional.of(draftPayload));
-
-    SubmitApplicationDraftCommand command =
-        new SubmitApplicationDraftCommand(applicationId, Instant.now());
-
-    fixture
-        .given()
-        .events(existingEvent)
-        .when()
-        .command(command)
-        .then()
-        .exception(ValidationException.class)
-        .noEvents();
-
-    verify(applicationDataStore, never()).append(any(), anyLong(), any());
-    verify(draftStore, never()).delete(any());
-  }
-
-  @Test
-  void givenEmptyApplicationContent_whenSubmit_thenThrowsValidationException() {
-    UUID applicationId = UUID.randomUUID();
-    Instant startedAt = Instant.parse("2026-08-01T10:00:00Z");
-    ApplicationDraftPayload draftPayload =
-        new ApplicationDraftPayload("APPLICATION_SUBMITTED", "LAA-123", Map.of(), "{}");
-    ApplicationDraftStartedEvent existingEvent =
-        new ApplicationDraftStartedEvent(applicationId, 1, startedAt);
-
-    when(draftStore.find(applicationId)).thenReturn(Optional.of(draftPayload));
-
-    SubmitApplicationDraftCommand command =
-        new SubmitApplicationDraftCommand(applicationId, Instant.now());
-
-    fixture
-        .given()
-        .events(existingEvent)
-        .when()
-        .command(command)
-        .then()
-        .exception(ValidationException.class)
-        .noEvents();
-
-    verify(applicationDataStore, never()).append(any(), anyLong(), any());
     verify(draftStore, never()).delete(any());
   }
 }

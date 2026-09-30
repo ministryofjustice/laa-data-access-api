@@ -18,4 +18,5 @@ public record CreateApplicationDraftCommand(
     Map<String, Object> applicationContent,
     String serialisedRequest,
     int schemaVersion,
+    String schemaName,
     Instant occurredAt) {}

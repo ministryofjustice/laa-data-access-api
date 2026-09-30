@@ -17,9 +17,7 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationD
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeDecisionProceeding;
 import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftStartedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftUpdatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.draft.CreateApplicationDraftCommand;
-import uk.gov.justice.laa.dstew.access.command.application.draft.UpdateApplicationDraftCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand;
@@ -70,15 +68,6 @@ public final class ApplicationDecider {
       CreateApplicationDraftCommand command) {
     return new ApplicationDraftStartedEvent(
         command.applicationId(), command.schemaVersion(), command.occurredAt());
-  }
-
-  /**
-   * Returns an {@link ApplicationDraftUpdatedEvent} — a thin, PII-free pointer with no draft
-   * content — for a draft-body update.
-   */
-  public static ApplicationDraftUpdatedEvent decideDraftUpdated(
-      UpdateApplicationDraftCommand command) {
-    return new ApplicationDraftUpdatedEvent(command.applicationId(), command.occurredAt());
   }
 
   /**

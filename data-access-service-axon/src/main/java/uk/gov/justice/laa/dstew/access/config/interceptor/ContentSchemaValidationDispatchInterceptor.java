@@ -7,6 +7,7 @@ import org.axonframework.messaging.core.MessageStream;
 import org.axonframework.messaging.core.unitofwork.ProcessingContext;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationCommand;
+import uk.gov.justice.laa.dstew.access.command.application.draft.CreateApplicationDraftCommand;
 import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
 
 /** Validates command content against its schema before Axon resolves a command handler. */
@@ -27,6 +28,9 @@ public class ContentSchemaValidationDispatchInterceptor
       MessageDispatchInterceptorChain<CommandMessage> chain) {
 
     if (message.payload() instanceof CreateApplicationCommand command) {
+      jsonSchemaValidator.validate(
+          command.applicationContent(), command.schemaName(), command.schemaVersion());
+    } else if (message.payload() instanceof CreateApplicationDraftCommand command) {
       jsonSchemaValidator.validate(
           command.applicationContent(), command.schemaName(), command.schemaVersion());
     }

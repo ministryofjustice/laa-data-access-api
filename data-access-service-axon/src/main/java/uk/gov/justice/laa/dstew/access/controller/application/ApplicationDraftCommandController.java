@@ -12,10 +12,7 @@ import uk.gov.justice.laa.dstew.access.command.application.draft.CreateApplicati
 import uk.gov.justice.laa.dstew.access.command.application.draft.CreateApplicationDraftUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.draft.SubmitApplicationDraftCommand;
 import uk.gov.justice.laa.dstew.access.command.application.draft.SubmitApplicationDraftUseCase;
-import uk.gov.justice.laa.dstew.access.command.application.draft.UpdateApplicationDraftCommand;
-import uk.gov.justice.laa.dstew.access.command.application.draft.UpdateApplicationDraftUseCase;
 import uk.gov.justice.laa.dstew.access.model.CreateApplicationDraftRequest;
-import uk.gov.justice.laa.dstew.access.model.SaveApplicationDraftRequest;
 import uk.gov.justice.laa.dstew.access.model.SaveApplicationDraftResponse;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.model.SubmitApplicationDraftResponse;
@@ -27,7 +24,6 @@ import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
 public class ApplicationDraftCommandController implements ApplicationDraftsApi {
 
   private final CreateApplicationDraftUseCase createUseCase;
-  private final UpdateApplicationDraftUseCase updateUseCase;
   private final SubmitApplicationDraftUseCase submitUseCase;
   private final SaveApplicationDraftCommandMapper saveCommandMapper;
   private final SubmitApplicationDraftCommandMapper submitCommandMapper;
@@ -35,12 +31,10 @@ public class ApplicationDraftCommandController implements ApplicationDraftsApi {
   /** Creates the command adapter. */
   public ApplicationDraftCommandController(
       CreateApplicationDraftUseCase createUseCase,
-      UpdateApplicationDraftUseCase updateUseCase,
       SubmitApplicationDraftUseCase submitUseCase,
       SaveApplicationDraftCommandMapper saveCommandMapper,
       SubmitApplicationDraftCommandMapper submitCommandMapper) {
     this.createUseCase = createUseCase;
-    this.updateUseCase = updateUseCase;
     this.submitUseCase = submitUseCase;
     this.saveCommandMapper = saveCommandMapper;
     this.submitCommandMapper = submitCommandMapper;
@@ -68,20 +62,6 @@ public class ApplicationDraftCommandController implements ApplicationDraftsApi {
     return projected
         ? ResponseEntity.created(location).body(response)
         : ResponseEntity.accepted().location(location).body(response);
-  }
-
-  /** Updates an existing Application draft and returns 204. */
-  @Override
-  @LogMethodArguments
-  @LogMethodResponse
-  public ResponseEntity<Void> updateApplicationDraft(
-      ServiceName serviceName,
-      UUID applicationId,
-      SaveApplicationDraftRequest saveApplicationDraftRequest) {
-    UpdateApplicationDraftCommand command =
-        saveCommandMapper.toUpdateCommand(applicationId, saveApplicationDraftRequest);
-    updateUseCase.execute(command);
-    return ResponseEntity.noContent().build();
   }
 
   /** Submits an in-progress Application draft, promoting it to a fully created Application. */
