@@ -14,14 +14,13 @@ import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationMerit
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
-import uk.gov.justice.laa.dstew.access.model.AutoGranted;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.InvolvedChildResponse;
-import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.OpponentResponse;
+import uk.gov.justice.laa.dstew.access.model.PriorAuthoritySummary;
 import uk.gov.justice.laa.dstew.access.model.ProviderResponse;
 import uk.gov.justice.laa.dstew.access.model.ScopeLimitationResponse;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
@@ -54,10 +53,11 @@ public class GetApplicationResponseMapper {
     response.setIsLead(
         linkedGroup != null
             && application.getApplicationId().equals(linkedGroup.getLeadApplicationId()));
-    response.setLinkedApplications(toLinkedSummaries(application, linkedGroup));
     response.setAssignedTo(application.getCaseworkerId());
     response.setUsedDelegatedFunctions(application.getUsedDelegatedFunctions());
-    response.setAutoGranted(AutoGranted.valueOf(application.getAutoGranted().name()));
+    response.setAutoGranted(
+        uk.gov.justice.laa.dstew.access.model.AutoGranted.valueOf(
+            application.getAutoGranted().name()));
     response.setDecisionStatus(
         application.getDecisionStatus() == null
             ? null
@@ -68,17 +68,8 @@ public class GetApplicationResponseMapper {
     response.setProceedings(
         toProceedings(application.getProceedings(), application.getMeritsDecisions()));
     response.setPotentialDuplicates(application.getPotentialDuplicates());
+    response.setPriorAuthorities(toPriorAuthoritySummaries(priorAuthorities));
     return response;
-  }
-
-  /** Builds a response using prior authorities indexed by application ID. */
-  public ApplicationResponse toResponse(
-      ApplicationReadModel application,
-      Map<UUID, List<PriorAuthorityReadModel>> priorAuthoritiesByApplicationId) {
-    return toResponse(
-        application,
-        null,
-        priorAuthoritiesByApplicationId.getOrDefault(application.getApplicationId(), List.of()));
   }
 
   private ProviderResponse toProvider(ApplicationReadModel application) {
@@ -191,20 +182,24 @@ public class GetApplicationResponseMapper {
         .toList();
   }
 
-  private List<LinkedApplicationSummaryResponse> toLinkedSummaries(
-      ApplicationReadModel application, LinkedApplicationGroupReadModel linkedGroup) {
-    if (linkedGroup == null) {
+  private List<PriorAuthoritySummary> toPriorAuthoritySummaries(
+      List<PriorAuthorityReadModel> priorAuthorities) {
+    if (priorAuthorities == null || priorAuthorities.isEmpty()) {
       return Collections.emptyList();
     }
-    return linkedGroup.getMemberIds().stream()
-        .filter(memberId -> !memberId.equals(application.getApplicationId()))
+    return priorAuthorities.stream()
         .map(
-            memberId -> {
-              LinkedApplicationSummaryResponse linked = new LinkedApplicationSummaryResponse();
-              linked.setApplicationId(memberId);
-              linked.setIsLead(memberId.equals(linkedGroup.getLeadApplicationId()));
-              return linked;
-            })
+            priorAuthority ->
+                PriorAuthoritySummary.builder()
+                    .priorAuthorityId(priorAuthority.getPriorAuthorityId())
+                    .status(PriorAuthoritySummary.StatusEnum.fromValue(priorAuthority.getStatus()))
+                    .priorAuthorityType(
+                        PriorAuthoritySummary.PriorAuthorityTypeEnum.fromValue(
+                            priorAuthority.getPriorAuthorityType()))
+                    .decision(
+                        PriorAuthoritySummary.DecisionEnum.fromValue(priorAuthority.getDecision()))
+                    .createdAt(priorAuthority.getCreatedAt().atOffset(ZoneOffset.UTC))
+                    .build())
         .toList();
   }
 }
