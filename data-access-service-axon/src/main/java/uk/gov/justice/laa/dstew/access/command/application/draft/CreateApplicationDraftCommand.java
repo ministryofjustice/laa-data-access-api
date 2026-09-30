@@ -7,8 +7,9 @@ import org.axonframework.messaging.commandhandling.annotation.Command;
 import org.axonframework.modelling.annotation.TargetEntityId;
 
 /**
- * Command that starts (or, on a fresh aggregate, first saves) an Application draft. The draft
- * content is written directly to the mutable draft store and is not schema-validated until submit.
+ * Command that starts (or, on a fresh aggregate, first saves) an Application draft. The content is
+ * schema-validated eagerly, before this command reaches the aggregate, then written directly to the
+ * mutable draft store.
  */
 @Command(routingKey = "applicationId")
 public record CreateApplicationDraftCommand(
