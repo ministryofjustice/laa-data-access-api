@@ -13,6 +13,7 @@ data-access-service/bin/
 data-access-service-axon/bin/
 data-access-shared/bin/
 data-access-mass-generator/bin/
+data-access-tools/bin/
 
 ### IntelliJ IDEA ###
 .idea
