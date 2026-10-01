@@ -2,7 +2,6 @@ package uk.gov.justice.laa.dstew.access.command.application;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import org.axonframework.eventsourcing.annotation.EventSourcingHandler;
@@ -116,16 +115,7 @@ public class ApplicationAggregate {
     jsonSchemaValidator.validate(
         command.applicationContent(), command.schemaName(), command.schemaVersion());
     if (applicationId == null) {
-      factory.prepare(
-          new CreateApplicationCommand(
-              command.applicationId(),
-              command.status(),
-              command.laaReference(),
-              command.applicationContent(),
-              command.serialisedRequest(),
-              command.schemaVersion(),
-              command.schemaName(),
-              List.of()));
+      factory.validate(command.applicationContent());
       ApplicationDraftPayload payload =
           new ApplicationDraftPayload(
               command.status(),

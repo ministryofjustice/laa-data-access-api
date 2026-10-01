@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationContentParser;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ParsedAppContentDetails;
 import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
+import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /**
  * Parses an incoming create command into {@link ApplicationCreationDetails}. This class is
@@ -74,6 +75,17 @@ public class ApplicationCreationDetailsFactory {
     ParsedAppContentDetails parsed = applicationContentParser.parse(applicationContent);
     return toCreationDetails(
         status, laaReference, serialisedRequest, schemaVersion, parsed, potentialDuplicates);
+  }
+
+  /**
+   * Validates that the supplied application content can be parsed, without returning or otherwise
+   * using the parsed result. Intended for call sites (e.g. draft creation) that only need to fail
+   * fast on invalid content ahead of time, rather than consume the parsed details immediately.
+   *
+   * @throws ValidationException if the content fails semantic validation
+   */
+  public void validate(Map<String, Object> applicationContent) {
+    applicationContentParser.parse(applicationContent);
   }
 
   private ApplicationCreationDetails toCreationDetails(
