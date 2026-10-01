@@ -42,6 +42,7 @@ import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConf
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
+import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /** Event-sourced consistency boundary for an Application and its owned child state. */
@@ -68,7 +69,10 @@ public class ApplicationAggregate {
       CreateApplicationCommand command,
       ApplicationCreationDetailsFactory factory,
       ApplicationDataStore applicationDataStore,
+      JsonSchemaValidator jsonSchemaValidator,
       EventAppender eventAppender) {
+    jsonSchemaValidator.validate(
+        command.applicationContent(), command.schemaName(), command.schemaVersion());
     if (applicationId == null) {
       ApplicationCreationDetails details = factory.prepare(command);
       long applicationDataVersion = 0L;
@@ -107,7 +111,10 @@ public class ApplicationAggregate {
       CreateApplicationDraftCommand command,
       ApplicationCreationDetailsFactory factory,
       ApplicationDraftStore draftStore,
+      JsonSchemaValidator jsonSchemaValidator,
       EventAppender eventAppender) {
+    jsonSchemaValidator.validate(
+        command.applicationContent(), command.schemaName(), command.schemaVersion());
     if (applicationId == null) {
       factory.prepare(
           new CreateApplicationCommand(

@@ -35,6 +35,7 @@ import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraft
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
+import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
 
 /**
  * Integration tests for the Application draft commands on {@link ApplicationAggregate}, using the
@@ -47,6 +48,7 @@ class ApplicationAggregateDraftTest {
   @Mock private ApplicationDraftStore draftStore;
   @Mock private ApplicationDataStore applicationDataStore;
   @Mock private ApplicationCreationDetailsFactory creationDetailsFactory;
+  @Mock private JsonSchemaValidator jsonSchemaValidator;
 
   @BeforeEach
   void setUp() {
@@ -64,7 +66,9 @@ class ApplicationAggregateDraftTest {
                                 ApplicationDataStore.class, configuration -> applicationDataStore)
                             .registerComponent(
                                 ApplicationCreationDetailsFactory.class,
-                                configuration -> creationDetailsFactory)));
+                                configuration -> creationDetailsFactory)
+                            .registerComponent(
+                                JsonSchemaValidator.class, configuration -> jsonSchemaValidator)));
   }
 
   @AfterEach
