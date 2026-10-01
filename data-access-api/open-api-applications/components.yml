@@ -111,7 +111,7 @@ components:
         applicationId:
           type: string
           format: uuid
-          description: The application ID of the potential duplicate
+          description: The application ID of the potential duplicate application
         laaReference:
           type: string
           description: The LAA reference of the potential duplicate application

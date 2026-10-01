@@ -369,13 +369,19 @@ class GetApplicationResponseMapperTest {
                 .applicationId(duplicateId2)
                 .laaReference("LAA-00002")
                 .legacyReference(null)
-                .build());
+                .build(),
+                PotentialDuplicate.builder()
+                        .applicationId(null)
+                        .laaReference("LAA-00003")
+                        .legacyReference(null)
+                        .build()
+                );
     ApplicationReadModel readModel =
         baseReadModel().potentialDuplicates(potentialDuplicates).build();
 
     var response = mapper.toResponse(readModel, null, List.of());
 
-    assertThat(response.getPotentialDuplicates()).hasSize(2);
+    assertThat(response.getPotentialDuplicates()).hasSize(3);
     assertThat(response.getPotentialDuplicates().get(0).getApplicationId()).isEqualTo(duplicateId1);
     assertThat(response.getPotentialDuplicates().get(0).getLaaReference()).isEqualTo("LAA-00001");
     assertThat(response.getPotentialDuplicates().get(0).getLegacyReference())
@@ -383,6 +389,9 @@ class GetApplicationResponseMapperTest {
     assertThat(response.getPotentialDuplicates().get(1).getApplicationId()).isEqualTo(duplicateId2);
     assertThat(response.getPotentialDuplicates().get(1).getLaaReference()).isEqualTo("LAA-00002");
     assertThat(response.getPotentialDuplicates().get(1).getLegacyReference()).isNull();
+    assertThat(response.getPotentialDuplicates().get(2).getApplicationId()).isNull();
+    assertThat(response.getPotentialDuplicates().get(2).getLaaReference()).isEqualTo("LAA-00003");
+    assertThat(response.getPotentialDuplicates().get(2).getLegacyReference()).isNull();
   }
 
   @Test
