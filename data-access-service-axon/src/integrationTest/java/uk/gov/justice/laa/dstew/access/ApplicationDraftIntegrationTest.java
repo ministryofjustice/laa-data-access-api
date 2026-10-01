@@ -37,6 +37,7 @@ import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.CreateApplicationDraftRequest;
+import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 import uk.gov.justice.laa.dstew.access.model.SaveApplicationDraftRequest;
 import uk.gov.justice.laa.dstew.access.model.SaveApplicationDraftResponse;
 import uk.gov.justice.laa.dstew.access.model.SubmitApplicationDraftResponse;
@@ -482,6 +483,71 @@ class ApplicationDraftIntegrationTest {
             submitUrl(applicationId), new HttpEntity<>(null, headers()), String.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+  }
+
+  @Test
+  void
+      givenDraftWithPotentialDuplicates_whenSubmitApplicationDraft_thenPotentialDuplicatesArePersistedAndProjected() {
+    UUID applicationId = UUID.randomUUID();
+    UUID duplicateId1 = UUID.randomUUID();
+    UUID duplicateId2 = UUID.randomUUID();
+    Map<String, Object> content = validApplicationContent(applicationId, UUID.randomUUID());
+    List<PotentialDuplicate> potentialDuplicates =
+        List.of(
+            PotentialDuplicate.builder()
+                .applicationId(duplicateId1)
+                .laaReference("LAA-00001")
+                .legacyReference("LEGACY-001")
+                .build(),
+            PotentialDuplicate.builder()
+                .applicationId(duplicateId2)
+                .laaReference("LAA-00002")
+                .legacyReference(null)
+                .build());
+    CreateApplicationDraftRequest request =
+        CreateApplicationDraftRequest.builder()
+            .id(applicationId)
+            .status(ApplicationStatus.APPLICATION_SUBMITTED)
+            .laaReference("LAA-123")
+            .applicationContent(content)
+            .potentialDuplicates(potentialDuplicates)
+            .build();
+    ResponseEntity<String> saveResponse =
+        restTemplate.postForEntity(
+            saveDraftUrl(), new HttpEntity<>(request, headers()), String.class);
+    assertThat(saveResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+
+    ResponseEntity<String> submitResponse =
+        restTemplate.postForEntity(
+            submitUrl(applicationId), new HttpEntity<>(null, headers()), String.class);
+    assertThat(submitResponse.getStatusCode()).isIn(HttpStatus.OK, HttpStatus.ACCEPTED);
+
+    var projected = projectionAwaiter.awaitApplication(applicationId);
+    assertThat(projected.getPotentialDuplicates()).hasSize(2);
+    assertThat(projected.getPotentialDuplicates().get(0).getApplicationId())
+        .isEqualTo(duplicateId1);
+    assertThat(projected.getPotentialDuplicates().get(0).getLaaReference()).isEqualTo("LAA-00001");
+    assertThat(projected.getPotentialDuplicates().get(0).getLegacyReference())
+        .isEqualTo("LEGACY-001");
+    assertThat(projected.getPotentialDuplicates().get(1).getApplicationId())
+        .isEqualTo(duplicateId2);
+    assertThat(projected.getPotentialDuplicates().get(1).getLaaReference()).isEqualTo("LAA-00002");
+    assertThat(projected.getPotentialDuplicates().get(1).getLegacyReference()).isNull();
+
+    ResponseEntity<String> getResponse =
+        restTemplate.exchange(
+            applicationUrl(applicationId),
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            String.class);
+    assertThat(getResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+    ApplicationResponse projectedApplication =
+        objectMapper.readValue(getResponse.getBody(), ApplicationResponse.class);
+    assertThat(projectedApplication.getPotentialDuplicates()).hasSize(2);
+    assertThat(projectedApplication.getPotentialDuplicates().get(0).getApplicationId())
+        .isEqualTo(duplicateId1);
+    assertThat(projectedApplication.getPotentialDuplicates().get(0).getLaaReference())
+        .isEqualTo("LAA-00001");
   }
 
   private UUID saveDraft(UUID applicationId, String laaReference, Map<String, Object> content) {

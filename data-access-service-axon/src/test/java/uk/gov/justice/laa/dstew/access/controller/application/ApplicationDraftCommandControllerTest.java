@@ -6,6 +6,7 @@ import static org.mockito.Mockito.when;
 
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -69,7 +70,8 @@ class ApplicationDraftCommandControllerTest {
             "{}",
             1,
             "BaseCivilApplication.json",
-            Instant.now());
+            Instant.now(),
+            List.of());
     when(saveCommandMapper.toCreateCommand(request, 1)).thenReturn(command);
     when(createUseCase.execute(command)).thenReturn(true);
 
@@ -104,7 +106,8 @@ class ApplicationDraftCommandControllerTest {
             "{}",
             1,
             "BaseCivilApplication.json",
-            Instant.now());
+            Instant.now(),
+            List.of());
     when(saveCommandMapper.toCreateCommand(request, 1)).thenReturn(command);
     when(createUseCase.execute(command)).thenReturn(false);
 

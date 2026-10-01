@@ -1,7 +1,9 @@
 package uk.gov.justice.laa.dstew.access.command.application.data;
 
+import java.util.List;
 import java.util.Map;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
+import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 
 /**
  * Contains the content of an Application that has not yet been submitted.
@@ -14,4 +16,5 @@ public record ApplicationDraftPayload(
     String status,
     String laaReference,
     Map<String, Object> applicationContent,
-    String serialisedRequest) {}
+    String serialisedRequest,
+    List<PotentialDuplicate> potentialDuplicates) {}

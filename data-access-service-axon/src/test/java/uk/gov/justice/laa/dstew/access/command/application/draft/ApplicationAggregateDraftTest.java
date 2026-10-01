@@ -12,6 +12,7 @@ import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventF
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationCreationDetails;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -97,7 +98,8 @@ class ApplicationAggregateDraftTest {
             serialisedRequest,
             1,
             "BaseCivilApplication.json",
-            occurredAt);
+            occurredAt,
+            List.of());
 
     fixture
         .given()
@@ -134,7 +136,8 @@ class ApplicationAggregateDraftTest {
             "{}",
             1,
             "BaseCivilApplication.json",
-            occurredAt.plusSeconds(60));
+            occurredAt.plusSeconds(60),
+            List.of());
 
     fixture
         .given()
@@ -167,7 +170,8 @@ class ApplicationAggregateDraftTest {
             serialisedRequest,
             2,
             "BaseCivilApplication.json",
-            occurredAt.plusSeconds(60));
+            occurredAt.plusSeconds(60),
+            List.of());
 
     fixture
         .given()
@@ -199,7 +203,8 @@ class ApplicationAggregateDraftTest {
             serialisedRequest,
             1,
             "BaseCivilApplication.json",
-            occurredAt.plusSeconds(60));
+            occurredAt.plusSeconds(60),
+            List.of());
 
     fixture
         .given()
@@ -227,7 +232,8 @@ class ApplicationAggregateDraftTest {
             "{}",
             1,
             "BaseCivilApplication.json",
-            Instant.now());
+            Instant.now(),
+            List.of());
 
     fixture
         .given()
@@ -252,7 +258,7 @@ class ApplicationAggregateDraftTest {
         validApplicationContent(applicationId, UUID.randomUUID());
     ApplicationDraftPayload draftPayload =
         new ApplicationDraftPayload(
-            "APPLICATION_SUBMITTED", "LAA-123", applicationContent, serialisedRequest);
+            "APPLICATION_SUBMITTED", "LAA-123", applicationContent, serialisedRequest, List.of());
     ApplicationDraftStartedEvent existingEvent =
         new ApplicationDraftStartedEvent(
             applicationId, 1, PayloadFingerprint.compute(serialisedRequest), startedAt);
@@ -260,7 +266,8 @@ class ApplicationAggregateDraftTest {
     String fingerprint = PayloadFingerprint.compute(details.serialisedRequest());
 
     when(draftStore.find(applicationId)).thenReturn(Optional.of(draftPayload));
-    when(creationDetailsFactory.prepare(any(), any(), any(), any(), anyInt())).thenReturn(details);
+    when(creationDetailsFactory.prepare(any(), any(), any(), any(), anyInt(), any()))
+        .thenReturn(details);
     when(applicationDataStore.append(eq(applicationId), eq(0L), eq(details)))
         .thenReturn(fingerprint);
 

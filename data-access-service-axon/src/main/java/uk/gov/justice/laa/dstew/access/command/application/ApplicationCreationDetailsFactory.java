@@ -55,10 +55,16 @@ public class ApplicationCreationDetailsFactory {
       Map<String, Object> applicationContent,
       String serialisedRequest,
       int schemaVersion) {
-    return prepare(status, laaReference, applicationContent, serialisedRequest, schemaVersion, List.of());
+    return prepare(
+        status, laaReference, applicationContent, serialisedRequest, schemaVersion, List.of());
   }
 
-  private ApplicationCreationDetails prepare(
+  /**
+   * Parses draft content into creation details, carrying forward the potential-duplicate references
+   * recorded when the draft was created. Unlike {@link #prepare(CreateApplicationCommand)}, this
+   * does not require a schema name, since the caller (e.g. draft submission) has none to supply.
+   */
+  public ApplicationCreationDetails prepare(
       String status,
       String laaReference,
       Map<String, Object> applicationContent,
@@ -94,4 +100,3 @@ public class ApplicationCreationDetailsFactory {
         potentialDuplicates);
   }
 }
-

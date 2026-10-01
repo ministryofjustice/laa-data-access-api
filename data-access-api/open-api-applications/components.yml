@@ -177,6 +177,11 @@ components:
         laaReference:
           type: string
           minLength: 1
+        potentialDuplicates:
+          type: array
+          description: List of potential duplicate applications
+          items:
+            $ref: "#/components/schemas/PotentialDuplicate"
 
     CreateApplicationDraftRequest:
       allOf:

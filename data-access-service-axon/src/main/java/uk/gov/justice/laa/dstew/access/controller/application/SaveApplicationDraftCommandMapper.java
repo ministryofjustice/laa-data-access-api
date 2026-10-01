@@ -28,7 +28,8 @@ public class SaveApplicationDraftCommandMapper {
         serialise(request),
         schemaVersion,
         "BaseCivilApplication.json",
-        Instant.now());
+        Instant.now(),
+        request.getPotentialDuplicates());
   }
 
   private String serialise(CreateApplicationDraftRequest request) {

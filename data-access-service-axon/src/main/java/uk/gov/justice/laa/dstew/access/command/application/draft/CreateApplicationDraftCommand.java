@@ -1,10 +1,12 @@
 package uk.gov.justice.laa.dstew.access.command.application.draft;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.axonframework.messaging.commandhandling.annotation.Command;
 import org.axonframework.modelling.annotation.TargetEntityId;
+import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 
 /**
  * Command that starts (or, on a fresh aggregate, first saves) an Application draft. The content is
@@ -20,4 +22,5 @@ public record CreateApplicationDraftCommand(
     String serialisedRequest,
     int schemaVersion,
     String schemaName,
-    Instant occurredAt) {}
+    Instant occurredAt,
+    List<PotentialDuplicate> potentialDuplicates) {}

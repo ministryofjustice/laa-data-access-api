@@ -131,7 +131,8 @@ public class ApplicationAggregate {
               command.status(),
               command.laaReference(),
               command.applicationContent(),
-              command.serialisedRequest());
+              command.serialisedRequest(),
+              command.potentialDuplicates());
       String fingerprint =
           draftStore.upsert(
               command.applicationId(), payload, command.serialisedRequest(), command.occurredAt());
@@ -175,7 +176,8 @@ public class ApplicationAggregate {
             draft.laaReference(),
             draft.applicationContent(),
             draft.serialisedRequest(),
-            state.schemaVersion);
+            state.schemaVersion,
+            draft.potentialDuplicates());
     long applicationDataVersion = 0L;
     String fingerprint =
         applicationDataStore.append(command.applicationId(), applicationDataVersion, details);
