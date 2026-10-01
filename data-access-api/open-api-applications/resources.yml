@@ -438,37 +438,6 @@ paths:
         '409': { description: Conflict - file with same name already exists }
         '500': { description: Internal server error }
 
-  /api/v0/applications/{id}/download-document/{documentId}:
-    get:
-      tags:
-        - application-query
-      summary: Get a download URL for a document in document storage
-      operationId: downloadDocument
-      parameters:
-        - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-        - name: documentId
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "./components.yml#/components/schemas/DocumentDownloadResponse"
-        '401': { description: Unauthorized }
-        '403': { description: Forbidden }
-        '404': { description: File not found }
-        '503': { description: Internal server error }
-
   /api/v0/applications/{id}/update-document:
     put:
       tags:

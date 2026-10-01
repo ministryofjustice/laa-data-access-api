@@ -57,6 +57,7 @@ import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkType;
+import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryResponse;
@@ -136,6 +137,29 @@ public class ApplicationLinkingIntegrationTest {
     var applicationSummaries =
         awaitApplicationSummaryGroup(clientLastName, targetApplicationId, sourceApplicationId);
     assertApplicationSummaryGroup(applicationSummaries, targetApplicationId, sourceApplicationId);
+
+    ResponseEntity<ApplicationResponse> targetResponse =
+        getApplicationResponse(targetApplicationId);
+    ResponseEntity<ApplicationResponse> sourceResponse =
+        getApplicationResponse(sourceApplicationId);
+    assertThat(targetResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(targetResponse.getBody().getIsLead()).isTrue();
+    assertThat(targetResponse.getBody().getLinkedApplications())
+        .singleElement()
+        .satisfies(
+            linkedApplication -> {
+              assertThat(linkedApplication.getApplicationId()).isEqualTo(sourceApplicationId);
+              assertThat(linkedApplication.getIsLead()).isFalse();
+            });
+    assertThat(sourceResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(sourceResponse.getBody().getIsLead()).isFalse();
+    assertThat(sourceResponse.getBody().getLinkedApplications())
+        .singleElement()
+        .satisfies(
+            linkedApplication -> {
+              assertThat(linkedApplication.getApplicationId()).isEqualTo(targetApplicationId);
+              assertThat(linkedApplication.getIsLead()).isTrue();
+            });
   }
 
   @Test
@@ -643,6 +667,14 @@ public class ApplicationLinkingIntegrationTest {
         HttpMethod.POST,
         new HttpEntity<>(request, headers()),
         Void.class);
+  }
+
+  private ResponseEntity<ApplicationResponse> getApplicationResponse(UUID applicationId) {
+    return restTemplate.exchange(
+        "/api/v0/applications/" + applicationId,
+        HttpMethod.GET,
+        new HttpEntity<>(headers()),
+        ApplicationResponse.class);
   }
 
   private ResponseEntity<String> linkApplicationWithRawJson(UUID sourceId, String requestBody) {

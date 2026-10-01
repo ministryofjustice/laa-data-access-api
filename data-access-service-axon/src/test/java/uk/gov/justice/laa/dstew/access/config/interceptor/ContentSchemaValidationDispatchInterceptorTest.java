@@ -68,6 +68,7 @@ class ContentSchemaValidationDispatchInterceptorTest {
         validApplicationContent(id, UUID.randomUUID()),
         "{}",
         1,
-        schemaName);
+        schemaName,
+        null);
   }
 }

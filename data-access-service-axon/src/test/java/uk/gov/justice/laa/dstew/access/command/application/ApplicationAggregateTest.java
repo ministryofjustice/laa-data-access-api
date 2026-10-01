@@ -400,7 +400,8 @@ class ApplicationAggregateTest {
             "fingerprint",
             "APPLICATION_IN_PROGRESS",
             1,
-            Instant.parse("2026-07-21T09:00:00Z"));
+            Instant.parse("2026-07-21T09:00:00Z"),
+            null);
 
     fixture
         .given()
@@ -631,7 +632,8 @@ class ApplicationAggregateTest {
                 .code("SE003")
                 .build()),
         original.serialisedRequest(),
-        original.occurredAt());
+        original.occurredAt(),
+        List.of());
   }
 
   private CreateApplicationCommand createCommandWithSchema(
@@ -643,7 +645,8 @@ class ApplicationAggregateTest {
         validApplicationContent(applicationId, proceedingIdFor(applicationId)),
         serialisedRequest,
         schemaVersion,
-        "BaseCivilApplication.json");
+        "BaseCivilApplication.json",
+        null);
   }
 
   private UUID proceedingIdFor(UUID applicationId) {

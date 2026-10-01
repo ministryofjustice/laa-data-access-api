@@ -4,15 +4,19 @@ import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.http.MediaType.APPLICATION_OCTET_STREAM;
 import static org.springframework.http.MediaType.MULTIPART_FORM_DATA;
 
+import java.net.MalformedURLException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.client.MultipartBodyBuilder;
 import org.springframework.stereotype.Service;
@@ -90,26 +94,28 @@ public class SdsService {
   }
 
   /**
-   * Save a prior-authority document in SDS using a UUID document key.
+   * Save a evidence document in SDS using a UUID document key.
    *
-   * @param priorAuthorityId the prior-authority ID used as folder name
+   * @param folderId the unique ID used as folder name
    * @param documentId the generated document ID used as file key
    * @param file the file to upload
    * @return the file URL response from SDS
    */
-  public DocumentUploadResponse savePriorAuthorityFile(
-      UUID priorAuthorityId, UUID documentId, MultipartFile file) {
+  public DocumentUploadResponse saveEvidenceFile(
+      UUID folderId, UUID documentId, MultipartFile file) {
     Map<String, String> bodyMap =
         Map.of(
             BUCKET_NAME_FIELD,
             bucketName,
             FOLDER_FIELD,
-            priorAuthorityId.toString(),
+            folderId.toString(),
             "key",
             documentId.toString());
     MultipartBodyBuilder builder =
         buildMultipartBody(
-            file, bodyMap, documentId + getFileExtension(file.getOriginalFilename()));
+            file,
+            bodyMap,
+            documentId + getFileExtension(Objects.requireNonNull(file.getOriginalFilename())));
 
     return sdsUploadResponseHandler
         .handle(
@@ -169,10 +175,30 @@ public class SdsService {
         .retrieve()
         .onStatus(
             status -> status.value() == HttpStatus.NOT_FOUND.value(),
-            (request, response) -> {
+            (request, _) -> {
               throw new ResourceNotFoundException("File not found");
             })
         .body(DocumentDownloadResponse.class);
+  }
+
+  /**
+   * Gets a resource backed by the SDS signed URL for a evidence document.
+   *
+   * <p>The resource opens the signed URL only when Spring writes it to the HTTP response, avoiding
+   * buffering the document in this service.
+   */
+  public Resource getEvidenceFile(UUID folderId, UUID documentId, String originalFileName) {
+    DocumentDownloadResponse response =
+        getFile(folderId, documentId + getFileExtension(originalFileName));
+    String fileUrl = response == null ? null : response.getFileURL();
+    if (fileUrl == null || fileUrl.isBlank()) {
+      throw new ResourceNotFoundException("File not found");
+    }
+    try {
+      return new UrlResource(fileUrl);
+    } catch (MalformedURLException exception) {
+      throw new IllegalStateException("SDS returned an invalid document URL", exception);
+    }
   }
 
   /**
@@ -196,7 +222,7 @@ public class SdsService {
                   return deleteFilesUri.build();
                 })
             .retrieve()
-            .body(new ParameterizedTypeReference<Map<String, Integer>>() {});
+            .body(new ParameterizedTypeReference<>() {});
 
     List<DocumentDeleteResult> results =
         sdsResults == null

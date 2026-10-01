@@ -25,7 +25,8 @@ public class CreateApplicationCommandMapper {
         request.getApplicationContent(),
         serialise(request),
         schemaVersion,
-        "BaseCivilApplication.json");
+        "BaseCivilApplication.json",
+        request.getPotentialDuplicates());
   }
 
   private String serialise(ApplicationCreateRequest request) {

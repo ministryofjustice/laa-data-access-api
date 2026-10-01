@@ -223,6 +223,7 @@ public final class ApplicationDecider {
         fingerprint,
         details.status(),
         details.schemaVersion(),
-        details.occurredAt());
+        details.occurredAt(),
+        details.potentialDuplicates());
   }
 }

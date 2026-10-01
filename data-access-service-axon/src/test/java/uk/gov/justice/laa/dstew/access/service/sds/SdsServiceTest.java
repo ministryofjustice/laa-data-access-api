@@ -112,7 +112,7 @@ class SdsServiceTest {
 
   @SuppressWarnings({"unchecked", "rawtypes"})
   @Test
-  void givenValidPriorAuthorityUpload_whenSavePriorAuthorityFile_thenReturnsResponse() {
+  void givenValidPriorAuthorityUpload_whenSaveEvidenceFile_thenReturnsResponse() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
     MockMultipartFile file =
@@ -134,12 +134,12 @@ class SdsServiceTest {
     when(responseSpec.body(DocumentUploadResponse.class)).thenReturn(expectedResponse);
 
     DocumentUploadResponse actualResponse =
-        sdsService.savePriorAuthorityFile(priorAuthorityId, documentId, file);
+        sdsService.saveEvidenceFile(priorAuthorityId, documentId, file);
     MockMultipartFile fileWithoutExtension =
         new MockMultipartFile(
             "file", "test-file", "application/octet-stream", "test content".getBytes());
     DocumentUploadResponse responseWithoutExtension =
-        sdsService.savePriorAuthorityFile(priorAuthorityId, documentId, fileWithoutExtension);
+        sdsService.saveEvidenceFile(priorAuthorityId, documentId, fileWithoutExtension);
 
     assertThat(actualResponse).isEqualTo(expectedResponse);
     assertThat(responseWithoutExtension).isEqualTo(expectedResponse);
@@ -186,7 +186,7 @@ class SdsServiceTest {
     when(responseSpec.body(DocumentUploadResponse.class))
         .thenReturn(mock(DocumentUploadResponse.class));
 
-    sdsService.savePriorAuthorityFile(priorAuthorityId, documentId, file);
+    sdsService.saveEvidenceFile(priorAuthorityId, documentId, file);
 
     Predicate<HttpStatusCode> conflictPredicate = predicateCaptor.getValue();
     assertThat(conflictPredicate.test(HttpStatus.CONFLICT)).isTrue();
@@ -273,6 +273,80 @@ class SdsServiceTest {
     assertThatExceptionOfType(ResourceNotFoundException.class)
         .isThrownBy(() -> sdsService.getFile(applicationId, documentId))
         .withMessage("File not found");
+  }
+
+  @Test
+  void givenPriorAuthorityDocument_whenGetFile_thenReturnsResourceBackedBySignedUrl()
+      throws Exception {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    DocumentDownloadResponse sdsResponse =
+        new DocumentDownloadResponse().fileURL("https://signed.example/evidence.pdf");
+    RestClient.RequestHeadersUriSpec requestHeadersUriSpec =
+        mock(RestClient.RequestHeadersUriSpec.class);
+    RestClient.RequestHeadersSpec requestHeadersSpec = mock(RestClient.RequestHeadersSpec.class);
+    RestClient.ResponseSpec responseSpec = mock(RestClient.ResponseSpec.class);
+    when(sdsRestClient.get()).thenReturn(requestHeadersUriSpec);
+    when(requestHeadersUriSpec.uri(any(Function.class))).thenReturn(requestHeadersSpec);
+    when(requestHeadersSpec.accept(MediaType.APPLICATION_JSON)).thenReturn(requestHeadersSpec);
+    when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
+    when(responseSpec.onStatus(
+            any(Predicate.class), any(RestClient.ResponseSpec.ErrorHandler.class)))
+        .thenReturn(responseSpec);
+    when(responseSpec.body(DocumentDownloadResponse.class)).thenReturn(sdsResponse);
+
+    var resource =
+        sdsService.getEvidenceFile(priorAuthorityId, documentId, "original evidence.pdf");
+
+    assertThat(resource.getURL().toString()).isEqualTo("https://signed.example/evidence.pdf");
+  }
+
+  @Test
+  void givenNoSdsDownloadResponse_whenGetEvidenceFile_thenThrowsNotFound() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    stubSdsDownloadResponse(null);
+
+    assertThatExceptionOfType(ResourceNotFoundException.class)
+        .isThrownBy(() -> sdsService.getEvidenceFile(priorAuthorityId, documentId, "evidence.pdf"))
+        .withMessage("File not found");
+  }
+
+  @Test
+  void givenBlankSdsDownloadUrl_whenGetEvidenceFile_thenThrowsNotFound() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    stubSdsDownloadResponse(new DocumentDownloadResponse().fileURL(" "));
+
+    assertThatExceptionOfType(ResourceNotFoundException.class)
+        .isThrownBy(() -> sdsService.getEvidenceFile(priorAuthorityId, documentId, "evidence.pdf"))
+        .withMessage("File not found");
+  }
+
+  @Test
+  void givenInvalidSdsDownloadUrl_whenGetEvidenceFile_thenThrowsIllegalStateException() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    stubSdsDownloadResponse(new DocumentDownloadResponse().fileURL("not a URL"));
+
+    assertThatExceptionOfType(IllegalStateException.class)
+        .isThrownBy(() -> sdsService.getEvidenceFile(priorAuthorityId, documentId, "evidence.pdf"))
+        .withMessage("SDS returned an invalid document URL");
+  }
+
+  private void stubSdsDownloadResponse(DocumentDownloadResponse response) {
+    RestClient.RequestHeadersUriSpec requestHeadersUriSpec =
+        mock(RestClient.RequestHeadersUriSpec.class);
+    RestClient.RequestHeadersSpec requestHeadersSpec = mock(RestClient.RequestHeadersSpec.class);
+    RestClient.ResponseSpec responseSpec = mock(RestClient.ResponseSpec.class);
+    when(sdsRestClient.get()).thenReturn(requestHeadersUriSpec);
+    when(requestHeadersUriSpec.uri(any(Function.class))).thenReturn(requestHeadersSpec);
+    when(requestHeadersSpec.accept(MediaType.APPLICATION_JSON)).thenReturn(requestHeadersSpec);
+    when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
+    when(responseSpec.onStatus(
+            any(Predicate.class), any(RestClient.ResponseSpec.ErrorHandler.class)))
+        .thenReturn(responseSpec);
+    when(responseSpec.body(DocumentDownloadResponse.class)).thenReturn(response);
   }
 
   @Test

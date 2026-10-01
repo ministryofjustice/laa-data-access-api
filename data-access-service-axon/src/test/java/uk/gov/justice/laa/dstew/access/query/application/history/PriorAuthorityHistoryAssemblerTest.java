@@ -2,17 +2,36 @@ package uk.gov.justice.laa.dstew.access.query.application.history;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.when;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityData;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataId;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataRepository;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 
+@ExtendWith(MockitoExtension.class)
 class PriorAuthorityHistoryAssemblerTest {
 
-  private final PriorAuthorityHistoryAssembler assembler = new PriorAuthorityHistoryAssembler();
+  @Mock private PriorAuthorityDataRepository priorAuthorityDataRepository;
+
+  private PriorAuthorityHistoryAssembler assembler;
+
+  @BeforeEach
+  void setUp() {
+    assembler = new PriorAuthorityHistoryAssembler(priorAuthorityDataRepository);
+  }
 
   // --- grouping and ordering ---
 
@@ -178,6 +197,108 @@ class PriorAuthorityHistoryAssemblerTest {
   }
 
   @Test
+  void
+      givenDecisionRowWithStoredDecisionData_whenAssembled_thenEventDescriptionContainsOutcomeAndJustification() {
+    UUID applicationId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
+    var historyRow =
+        PriorAuthorityHistoryReadModel.builder()
+            .eventId("e1")
+            .applicationId(applicationId)
+            .priorAuthorityId(priorAuthorityId)
+            .priorAuthorityType("EXPERT")
+            .eventType("PRIOR_AUTHORITY_MAKE_DECISION_GRANTED")
+            .itemVersion(3L)
+            .occurredAt(Instant.parse("2026-08-01T10:00:00Z"))
+            .build();
+
+    when(priorAuthorityDataRepository.findById(new PriorAuthorityDataId(priorAuthorityId, 3L)))
+        .thenReturn(
+            java.util.Optional.of(
+                paData(
+                    priorAuthorityId, applicationId, "GRANTED", "Sufficient evidence provided")));
+
+    var groups = assembler.assemble(List.of(historyRow));
+
+    assertThat(groups.getFirst().events().getFirst().eventDescription())
+        .isEqualTo(
+            "Outcome: Granted, Decision at: 2026-08-01T10:00:00Z, Justification: Sufficient evidence provided");
+  }
+
+  @Test
+  void
+      givenDecisionRowWithoutStoredDecisionData_whenAssembled_thenEventDescriptionFallsBackToEventType() {
+    UUID applicationId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
+    var historyRow =
+        PriorAuthorityHistoryReadModel.builder()
+            .eventId("e1")
+            .applicationId(applicationId)
+            .priorAuthorityId(priorAuthorityId)
+            .priorAuthorityType("EXPERT")
+            .eventType("PRIOR_AUTHORITY_MAKE_DECISION_REFUSED")
+            .itemVersion(3L)
+            .occurredAt(Instant.parse("2026-08-01T10:00:00Z"))
+            .build();
+
+    when(priorAuthorityDataRepository.findById(new PriorAuthorityDataId(priorAuthorityId, 3L)))
+        .thenReturn(java.util.Optional.empty());
+
+    var groups = assembler.assemble(List.of(historyRow));
+
+    assertThat(groups.getFirst().events().getFirst().eventDescription())
+        .isEqualTo("Outcome: Refused, Decision at: 2026-08-01T10:00:00Z");
+  }
+
+  @Test
+  void givenDecisionRowWithNullStoredDecision_whenAssembled_thenFallsBackToEventTypeDecision() {
+    UUID applicationId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
+    var historyRow =
+        PriorAuthorityHistoryReadModel.builder()
+            .eventId("e1")
+            .applicationId(applicationId)
+            .priorAuthorityId(priorAuthorityId)
+            .priorAuthorityType("EXPERT")
+            .eventType("PRIOR_AUTHORITY_MAKE_DECISION_GRANTED")
+            .itemVersion(3L)
+            .occurredAt(Instant.parse("2026-08-01T10:00:00Z"))
+            .build();
+
+    when(priorAuthorityDataRepository.findById(new PriorAuthorityDataId(priorAuthorityId, 3L)))
+        .thenReturn(java.util.Optional.of(paData(priorAuthorityId, applicationId, null, null)));
+
+    var groups = assembler.assemble(List.of(historyRow));
+
+    assertThat(groups.getFirst().events().getFirst().eventDescription())
+        .isEqualTo("Outcome: Granted, Decision at: 2026-08-01T10:00:00Z");
+  }
+
+  @Test
+  void givenDecisionRowWithBlankStoredDecision_whenAssembled_thenFallsBackToEventTypeDecision() {
+    UUID applicationId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
+    var historyRow =
+        PriorAuthorityHistoryReadModel.builder()
+            .eventId("e1")
+            .applicationId(applicationId)
+            .priorAuthorityId(priorAuthorityId)
+            .priorAuthorityType("EXPERT")
+            .eventType("PRIOR_AUTHORITY_MAKE_DECISION_REFUSED")
+            .itemVersion(3L)
+            .occurredAt(Instant.parse("2026-08-01T10:00:00Z"))
+            .build();
+
+    when(priorAuthorityDataRepository.findById(new PriorAuthorityDataId(priorAuthorityId, 3L)))
+        .thenReturn(java.util.Optional.of(paData(priorAuthorityId, applicationId, "   ", null)));
+
+    var groups = assembler.assemble(List.of(historyRow));
+
+    assertThat(groups.getFirst().events().getFirst().eventDescription())
+        .isEqualTo("Outcome: Refused, Decision at: 2026-08-01T10:00:00Z");
+  }
+
+  @Test
   void givenRowWithNullServiceName_whenAssembled_thenServiceNameIsPreservedAsNull() {
     UUID applicationId = UUID.randomUUID();
     UUID priorAuthorityId = UUID.randomUUID();
@@ -275,6 +396,28 @@ class PriorAuthorityHistoryAssemblerTest {
         .itemVersion(2L)
         .serviceName(serviceName)
         .occurredAt(occurredAt)
+        .build();
+  }
+
+  private PriorAuthorityData paData(
+      UUID priorAuthorityId, UUID applicationId, String decision, String decisionJustification) {
+    PriorAuthorityContent content =
+        new PriorAuthorityContent(PriorAuthorityType.EXPERT, null, null, null, null);
+    PriorAuthorityDataPayload payload =
+        new PriorAuthorityDataPayload(
+            priorAuthorityId,
+            applicationId,
+            content,
+            null,
+            Instant.parse("2026-08-01T09:30:00Z"),
+            new PriorAuthorityDataPayload.DecisionDetails(
+                decision, decisionJustification, null, null, null, null, null, null));
+    return PriorAuthorityData.builder()
+        .id(new PriorAuthorityDataId(priorAuthorityId, 3L))
+        .applicationId(applicationId)
+        .payload(payload)
+        .payloadHash("hash")
+        .createdAt(Instant.parse("2026-08-01T09:30:00Z"))
         .build();
   }
 }

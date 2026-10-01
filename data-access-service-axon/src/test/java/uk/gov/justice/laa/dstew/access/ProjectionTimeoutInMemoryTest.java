@@ -8,8 +8,6 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 import org.axonframework.common.configuration.AxonConfiguration;
 import org.axonframework.messaging.eventhandling.processing.streaming.StreamingEventProcessor;
 import org.junit.jupiter.api.Test;
@@ -108,21 +106,27 @@ class ProjectionTimeoutInMemoryTest {
     // The test must complete well below the full 5-second default timeout.
     assertThat(elapsedMs).isLessThan(3_000L);
 
-    CompletableFuture<Void> restart =
-        CompletableFuture.runAsync(
-            () -> processor.start().join(),
-            CompletableFuture.delayedExecutor(50, TimeUnit.MILLISECONDS));
-    ResponseEntity<ApplicationResponse> directRead =
+    ResponseEntity<String> readBeforeProjection =
+        restTemplate.exchange(
+            "/api/v0/applications/" + applicationId,
+            HttpMethod.GET,
+            new HttpEntity<>(headers),
+            String.class);
+
+    assertThat(readBeforeProjection.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+
+    processor.start().join();
+    awaitApplicationProjection(applicationId, headers);
+    ResponseEntity<ApplicationResponse> readAfterProjection =
         restTemplate.exchange(
             "/api/v0/applications/" + applicationId,
             HttpMethod.GET,
             new HttpEntity<>(headers),
             ApplicationResponse.class);
 
-    restart.join();
-    assertThat(directRead.getStatusCode()).isEqualTo(HttpStatus.OK);
-    assertThat(directRead.getBody()).isNotNull();
-    assertThat(directRead.getBody().getApplicationId()).isEqualTo(applicationId);
+    assertThat(readAfterProjection.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(readAfterProjection.getBody()).isNotNull();
+    assertThat(readAfterProjection.getBody().getApplicationId()).isEqualTo(applicationId);
   }
 
   @Test
