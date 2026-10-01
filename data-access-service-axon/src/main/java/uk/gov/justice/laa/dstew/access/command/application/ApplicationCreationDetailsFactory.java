@@ -51,6 +51,7 @@ public class ApplicationCreationDetailsFactory {
         parsed.matterType(),
         parsed.proceedings(),
         command.serialisedRequest(),
-        Instant.now(clock));
+        Instant.now(clock),
+        command.potentialDuplicates());
   }
 }

@@ -172,7 +172,7 @@ class ApplicationSubmittedEventRouterTest {
   private ApplicationCreatedEvent createdEvent(String status) {
     UUID id = UUID.fromString("8c9e6c2e-4f1a-4e3a-9c2b-1a2b3c4d5e6f");
     return new ApplicationCreatedEvent(
-        id, 0L, "fingerprint", status, 1, COMMITTED_AT.minusSeconds(1));
+        id, 0L, "fingerprint", status, 1, COMMITTED_AT.minusSeconds(1), null);
   }
 
   private EventMessage eventMessage(Map<String, String> metadata) {

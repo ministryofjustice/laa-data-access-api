@@ -67,6 +67,7 @@ public class GetApplicationResponseMapper {
     response.setOpponents(toOpponents(application.getOpponents()));
     response.setProceedings(
         toProceedings(application.getProceedings(), application.getMeritsDecisions()));
+    response.setPotentialDuplicates(application.getPotentialDuplicates());
     response.setPriorAuthorities(PriorAuthoritySummaryMapper.toSummaries(priorAuthorities));
     return response;
   }

@@ -229,6 +229,7 @@ public class ApplicationProjection {
                 .createdAt(event.occurredAt())
                 .modifiedAt(event.occurredAt())
                 .leadApplicationId(null)
+                .potentialDuplicates(event.potentialDuplicates())
                 .build());
     queryUpdateEmitter.emit(
         FindApplicationByIdQuery.class,

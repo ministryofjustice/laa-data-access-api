@@ -15,6 +15,8 @@ public class ApplicationReadModelGenerator
       new ApplicationProceedingReadModelGenerator();
   private final OpponentReadModelGenerator opponentReadModelGenerator =
       new OpponentReadModelGenerator();
+  private final PotentialDuplicateReadModelGenerator potentialDuplicateReadModelGenerator =
+      new PotentialDuplicateReadModelGenerator();
 
   /** Constructs the generator. */
   public ApplicationReadModelGenerator() {
@@ -42,6 +44,7 @@ public class ApplicationReadModelGenerator
                 .contactEmail("test@example.com")
                 .build())
         .proceedings(List.of(applicationProceedingReadModelGenerator.createDefault()))
+        .potentialDuplicates(List.of(potentialDuplicateReadModelGenerator.createDefault()))
         .build();
   }
 }
