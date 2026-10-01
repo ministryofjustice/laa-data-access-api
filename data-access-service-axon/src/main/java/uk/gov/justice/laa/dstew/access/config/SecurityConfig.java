@@ -23,6 +23,7 @@ import org.springframework.security.authentication.AuthenticationManagerResolver
 import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.core.annotation.AnnotationTemplateExpressionDefaults;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.configurers.oauth2.server.resource.OAuth2ResourceServerConfigurer;
@@ -203,6 +204,12 @@ public class SecurityConfig {
   @Bean("entra")
   public EffectiveAuthorizationProvider authProvider() {
     return new SecurityContextEffectiveAuthorizationProvider();
+  }
+
+  /** Enables {value}-style placeholder resolution in custom @PreAuthorize meta-annotations. */
+  @Bean
+  public AnnotationTemplateExpressionDefaults annotationTemplateExpressionDefaults() {
+    return new AnnotationTemplateExpressionDefaults();
   }
 
   private AuthenticationManager jwtAuthenticationManager(JwtDecoder jwtDecoder) {

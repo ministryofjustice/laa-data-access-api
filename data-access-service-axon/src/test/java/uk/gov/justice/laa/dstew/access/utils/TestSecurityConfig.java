@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.annotation.AnnotationTemplateExpressionDefaults;
 import org.springframework.security.core.context.SecurityContextHolder;
 import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationProvider;
 
@@ -18,6 +19,12 @@ public class TestSecurityConfig {
 
   private static final String ROLE_AUTHORITY_PREFIX = "ROLE_";
   private static final String APP_ROLE_AUTHORITY_PREFIX = "APPROLE_";
+
+  /** Enables {value}-style placeholder resolution in custom @PreAuthorize meta-annotations. */
+  @Bean
+  AnnotationTemplateExpressionDefaults annotationTemplateExpressionDefaults() {
+    return new AnnotationTemplateExpressionDefaults();
+  }
 
   @Bean("entra")
   EffectiveAuthorizationProvider authProvider() {
