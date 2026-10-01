@@ -370,12 +370,11 @@ class GetApplicationResponseMapperTest {
                 .laaReference("LAA-00002")
                 .legacyReference(null)
                 .build(),
-                PotentialDuplicate.builder()
-                        .applicationId(null)
-                        .laaReference("LAA-00003")
-                        .legacyReference(null)
-                        .build()
-                );
+            PotentialDuplicate.builder()
+                .applicationId(null)
+                .laaReference("LAA-00003")
+                .legacyReference(null)
+                .build());
     ApplicationReadModel readModel =
         baseReadModel().potentialDuplicates(potentialDuplicates).build();
 
