@@ -2,13 +2,18 @@ package uk.gov.justice.laa.dstew.dataaccesstools.cli.applications;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import net.datafaker.Faker;
 
 public final class ApplicationRequestFactory {
+
+  private static final String REFERENCE_PATTERN =
+      "L-[0-9ABCDEFHJKLMNPRTUVWXY]{3}-[0-9ABCDEFHJKLMNPRTUVWXY]{3}";
 
   // matterType/categoryOfLaw have only one valid domain value today, so they stay fixed.
   private static final List<ClientInvolvement> CLIENT_INVOLVEMENTS =
@@ -29,6 +34,7 @@ public final class ApplicationRequestFactory {
           new ScopeLimitation("Emergency hearing", "Limited to the emergency hearing only"));
 
   private final Faker faker;
+  private final Set<String> generatedReferences = new HashSet<>();
 
   public ApplicationRequestFactory() {
     this(ThreadLocalRandom.current().nextLong());
@@ -41,7 +47,7 @@ public final class ApplicationRequestFactory {
   public ApplicationData create() {
     UUID applicationId = UUID.randomUUID();
     UUID proceedingId = UUID.randomUUID();
-    String reference = "LAA-CLI-" + applicationId.toString().substring(0, 8).toUpperCase();
+    String reference = generateReference();
     String timestamp = Instant.now().toString();
     ClientInvolvement clientInvolvement = faker.options().nextElement(CLIENT_INVOLVEMENTS);
     LevelOfService levelOfService = faker.options().nextElement(LEVELS_OF_SERVICE);
@@ -83,6 +89,14 @@ public final class ApplicationRequestFactory {
                 scopeLimitation.meaning(),
                 scopeLimitation.description());
     return new ApplicationData(applicationId, proceedingId, reference, request);
+  }
+
+  private String generateReference() {
+    String reference;
+    do {
+      reference = faker.regexify(REFERENCE_PATTERN);
+    } while (!generatedReferences.add(reference));
+    return reference;
   }
 
   private String randomOfficeCode() {
