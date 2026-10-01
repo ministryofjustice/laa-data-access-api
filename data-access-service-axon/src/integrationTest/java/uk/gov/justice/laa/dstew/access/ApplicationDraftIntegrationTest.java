@@ -5,8 +5,14 @@ import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequest
 
 import jakarta.annotation.PostConstruct;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -273,6 +279,155 @@ class ApplicationDraftIntegrationTest {
   }
 
   @Test
+  void givenContentWithoutLeadProceeding_whenSaveApplicationDraft_thenReturnsBadRequest() {
+    UUID applicationId = UUID.randomUUID();
+    Map<String, Object> content =
+        new HashMap<>(validApplicationContent(applicationId, UUID.randomUUID()));
+    Map<String, Object> proceeding = firstProceeding(content);
+    proceeding.put("leadProceeding", false);
+    content.put("proceedings", List.of(proceeding));
+    CreateApplicationDraftRequest request =
+        CreateApplicationDraftRequest.builder()
+            .id(applicationId)
+            .status(ApplicationStatus.APPLICATION_SUBMITTED)
+            .laaReference("LAA-123")
+            .applicationContent(content)
+            .build();
+
+    ResponseEntity<String> response =
+        restTemplate.postForEntity(
+            saveDraftUrl(), new HttpEntity<>(request, headers()), String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(response.getBody()).contains("No lead proceeding found in application content");
+  }
+
+  @Test
+  void givenUnparseableSubmissionTimestamp_whenSaveApplicationDraft_thenReturnsBadRequest() {
+    UUID applicationId = UUID.randomUUID();
+    Map<String, Object> content =
+        new HashMap<>(validApplicationContent(applicationId, UUID.randomUUID()));
+    content.put("submittedAt", "not-an-instant");
+    CreateApplicationDraftRequest request =
+        CreateApplicationDraftRequest.builder()
+            .id(applicationId)
+            .status(ApplicationStatus.APPLICATION_SUBMITTED)
+            .laaReference("LAA-123")
+            .applicationContent(content)
+            .build();
+
+    ResponseEntity<String> response =
+        restTemplate.postForEntity(
+            saveDraftUrl(), new HttpEntity<>(request, headers()), String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(response.getBody())
+        .contains("submittedAt")
+        .contains("must be a valid RFC 3339 date-time");
+  }
+
+  @Test
+  void givenInvalidNumericFormat_whenSaveApplicationDraft_thenReturnsBadRequest() {
+    UUID applicationId = UUID.randomUUID();
+    Map<String, Object> content =
+        new HashMap<>(validApplicationContent(applicationId, UUID.randomUUID()));
+    Map<String, Object> proceeding = firstProceeding(content);
+    proceeding.put("substantiveCostLimitation", "not-a-number");
+    content.put("proceedings", List.of(proceeding));
+    CreateApplicationDraftRequest request =
+        CreateApplicationDraftRequest.builder()
+            .id(applicationId)
+            .status(ApplicationStatus.APPLICATION_SUBMITTED)
+            .laaReference("LAA-123")
+            .applicationContent(content)
+            .build();
+
+    ResponseEntity<String> response =
+        restTemplate.postForEntity(
+            saveDraftUrl(), new HttpEntity<>(request, headers()), String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(response.getBody()).contains("substantiveCostLimitation");
+  }
+
+  @Test
+  void givenNullLaaReference_whenSaveApplicationDraft_thenReturnsBadRequest() {
+    UUID applicationId = UUID.randomUUID();
+    CreateApplicationDraftRequest request =
+        CreateApplicationDraftRequest.builder()
+            .id(applicationId)
+            .status(ApplicationStatus.APPLICATION_SUBMITTED)
+            .applicationContent(validApplicationContent(applicationId, UUID.randomUUID()))
+            .build();
+
+    ResponseEntity<String> response =
+        restTemplate.postForEntity(
+            saveDraftUrl(), new HttpEntity<>(request, headers()), String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+  }
+
+  @Test
+  void
+      givenConcurrentIdenticalRequests_whenSaveApplicationDraftPosted_thenBothSucceedWithOnePersistedDraft()
+          throws Exception {
+    UUID applicationId = UUID.randomUUID();
+    Map<String, Object> content = validApplicationContent(applicationId, UUID.randomUUID());
+    CreateApplicationDraftRequest request =
+        CreateApplicationDraftRequest.builder()
+            .id(applicationId)
+            .status(ApplicationStatus.APPLICATION_SUBMITTED)
+            .laaReference("LAA-123")
+            .applicationContent(content)
+            .build();
+    HttpEntity<CreateApplicationDraftRequest> entity = new HttpEntity<>(request, headers());
+
+    CyclicBarrier barrier = new CyclicBarrier(2);
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+    try {
+      CompletableFuture<ResponseEntity<String>> f1 =
+          CompletableFuture.supplyAsync(
+              () -> {
+                try {
+                  barrier.await(10, TimeUnit.SECONDS);
+                  return restTemplate.postForEntity(saveDraftUrl(), entity, String.class);
+                } catch (Exception e) {
+                  throw new RuntimeException(e);
+                }
+              },
+              executor);
+      CompletableFuture<ResponseEntity<String>> f2 =
+          CompletableFuture.supplyAsync(
+              () -> {
+                try {
+                  barrier.await(10, TimeUnit.SECONDS);
+                  return restTemplate.postForEntity(saveDraftUrl(), entity, String.class);
+                } catch (Exception e) {
+                  throw new RuntimeException(e);
+                }
+              },
+              executor);
+
+      ResponseEntity<String> r1 = f1.get(20, TimeUnit.SECONDS);
+      ResponseEntity<String> r2 = f2.get(20, TimeUnit.SECONDS);
+
+      // Both requests must resolve successfully regardless of which wins the concurrency race.
+      assertThat(r1.getStatusCode().is2xxSuccessful()).isTrue();
+      assertThat(r2.getStatusCode().is2xxSuccessful()).isTrue();
+    } finally {
+      executor.shutdown();
+    }
+
+    // The draft store must contain exactly one row for this application ID.
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM axon.application_draft WHERE application_id = ?",
+                Integer.class,
+                applicationId))
+        .isEqualTo(1);
+  }
+
+  @Test
   void givenValidDraft_whenSubmitApplicationDraft_thenCreatesApplicationAndDeletesDraft() {
     UUID applicationId = saveValidDraft();
 
@@ -374,5 +529,12 @@ class ApplicationDraftIntegrationTest {
     headers.setContentType(MediaType.APPLICATION_JSON);
     headers.setBearerAuth(TestJwtDecoderConfig.BEARER_TOKEN);
     return headers;
+  }
+
+  private Map<String, Object> firstProceeding(Map<String, Object> applicationContent) {
+    Map<?, ?> source = (Map<?, ?>) ((List<?>) applicationContent.get("proceedings")).getFirst();
+    Map<String, Object> proceeding = new HashMap<>();
+    source.forEach((key, value) -> proceeding.put(key.toString(), value));
+    return proceeding;
   }
 }

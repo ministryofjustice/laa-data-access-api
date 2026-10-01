@@ -145,6 +145,39 @@ class ApplicationAggregateDraftTest {
   }
 
   @Test
+  void
+      givenDraftInProgress_whenCreateDraftAgainWithDifferentSchemaVersion_thenThrowsConflictAndPersistsNothing() {
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
+    String serialisedRequest = "{}";
+    String fingerprint = PayloadFingerprint.compute(serialisedRequest);
+    ApplicationDraftStartedEvent existingEvent =
+        new ApplicationDraftStartedEvent(applicationId, 1, fingerprint, occurredAt);
+
+    CreateApplicationDraftCommand retryWithDifferentSchemaVersion =
+        new CreateApplicationDraftCommand(
+            applicationId,
+            null,
+            null,
+            Map.of(),
+            serialisedRequest,
+            2,
+            "BaseCivilApplication.json",
+            occurredAt.plusSeconds(60));
+
+    fixture
+        .given()
+        .events(existingEvent)
+        .when()
+        .command(retryWithDifferentSchemaVersion)
+        .then()
+        .exception(ApplicationCreationConflictException.class)
+        .noEvents();
+
+    verify(draftStore, never()).upsert(any(), any(), any(), any());
+  }
+
+  @Test
   void givenDraftInProgress_whenIdenticalRetry_thenSucceedsIdempotently() {
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
