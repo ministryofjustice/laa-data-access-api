@@ -10,6 +10,9 @@ import net.datafaker.Faker;
 
 public final class ApplicationRequestFactory {
 
+  private static final String PREFIX = "L";
+  private static final String DISALLOWED_CHARACTERS = "GIOQUSZ";
+
   // matterType/categoryOfLaw have only one valid domain value today, so they stay fixed.
   private static final List<ClientInvolvement> CLIENT_INVOLVEMENTS =
       List.of(
@@ -41,7 +44,7 @@ public final class ApplicationRequestFactory {
   public ApplicationData create() {
     UUID applicationId = UUID.randomUUID();
     UUID proceedingId = UUID.randomUUID();
-    String reference = "LAA-CLI-" + applicationId.toString().substring(0, 8).toUpperCase();
+    String reference = generateReference();
     String timestamp = Instant.now().toString();
     ClientInvolvement clientInvolvement = faker.options().nextElement(CLIENT_INVOLVEMENTS);
     LevelOfService levelOfService = faker.options().nextElement(LEVELS_OF_SERVICE);
@@ -83,6 +86,22 @@ public final class ApplicationRequestFactory {
                 scopeLimitation.meaning(),
                 scopeLimitation.description());
     return new ApplicationData(applicationId, proceedingId, reference, request);
+  }
+
+  private String generateReference() {
+    String uuidString = UUID.randomUUID().toString().toUpperCase();
+    String filtered = filterDisallowedCharacters(uuidString);
+    return PREFIX + "-" + filtered;
+  }
+
+  private String filterDisallowedCharacters(String input) {
+    StringBuilder result = new StringBuilder();
+    for (char c : input.toCharArray()) {
+      if (DISALLOWED_CHARACTERS.indexOf(c) == -1) {
+        result.append(c);
+      }
+    }
+    return result.toString();
   }
 
   private String randomOfficeCode() {

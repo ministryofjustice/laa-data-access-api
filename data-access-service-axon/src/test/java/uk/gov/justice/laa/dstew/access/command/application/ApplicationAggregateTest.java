@@ -80,7 +80,6 @@ class ApplicationAggregateTest {
         .when()
         .command(createCommand(applicationId, "{}"))
         .then()
-        .resultMessagePayload(applicationId)
         .events(expected);
   }
 

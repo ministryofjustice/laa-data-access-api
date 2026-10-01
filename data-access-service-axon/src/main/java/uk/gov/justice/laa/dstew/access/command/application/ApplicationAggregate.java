@@ -54,6 +54,18 @@ public class ApplicationAggregate {
    *
    * <p>Application linking is handled explicitly by the application-link endpoint after creation.
    */
+  @EntityCreator
+  @CommandHandler
+  static ApplicationAggregate create(
+      CreateApplicationCommand command,
+      ApplicationCreationDetailsFactory factory,
+      ApplicationDataStore applicationDataStore,
+      EventAppender eventAppender) {
+    ApplicationAggregate aggregate = new ApplicationAggregate();
+    aggregate.applyCreation(command, factory, applicationDataStore, eventAppender);
+    return aggregate;
+  }
+
   @CommandHandler
   UUID handle(
       CreateApplicationCommand command,
@@ -61,24 +73,32 @@ public class ApplicationAggregate {
       ApplicationDataStore applicationDataStore,
       EventAppender eventAppender) {
     if (applicationId == null) {
-      ApplicationCreationDetails details = factory.prepare(command);
-      long applicationDataVersion = 0L;
-      String fingerprint =
-          applicationDataStore.append(command.applicationId(), applicationDataVersion, details);
-      ApplicationDecider.decideCreate(
-              state,
-              command.applicationId(),
-              command.schemaVersion(),
-              fingerprint,
-              details,
-              applicationDataVersion)
-          .forEach(eventAppender::append);
+      applyCreation(command, factory, applicationDataStore, eventAppender);
     } else {
       String fingerprint = ApplicationDataStore.fingerprint(command.serialisedRequest());
       ApplicationDecider.decideCreate(
           state, command.applicationId(), command.schemaVersion(), fingerprint, null, 0L);
     }
     return applicationId;
+  }
+
+  private void applyCreation(
+      CreateApplicationCommand command,
+      ApplicationCreationDetailsFactory factory,
+      ApplicationDataStore applicationDataStore,
+      EventAppender eventAppender) {
+    ApplicationCreationDetails details = factory.prepare(command);
+    long applicationDataVersion = 0L;
+    String fingerprint =
+        applicationDataStore.append(command.applicationId(), applicationDataVersion, details);
+    ApplicationDecider.decideCreate(
+            state,
+            command.applicationId(),
+            command.schemaVersion(),
+            fingerprint,
+            details,
+            applicationDataVersion)
+        .forEach(eventAppender::append);
   }
 
   /** Validates that the targeted application has an overall decision of {@code GRANTED}. */
