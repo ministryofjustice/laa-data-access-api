@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
 import java.time.Duration;
 import java.util.List;
@@ -59,6 +61,8 @@ import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @Import(TestJwtDecoderConfig.class)
 class ApplicationSubmittedLocalStackIntegrationTest {
+
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   private static final GenericContainer<?> LOCALSTACK =
       new GenericContainer<>(DockerImageName.parse("localstack/localstack:4.14.0"))
@@ -319,13 +323,25 @@ class ApplicationSubmittedLocalStackIntegrationTest {
 
   private void assertThinEvent(
       String body, UUID applicationId, long applicationVersion, String correlationId) {
-    assertThat(body)
+    // Assert only against the inner SNS "Message" payload: the envelope carries fields such as
+    // the base64 "Signature", which is non-deterministic and can coincidentally contain banned
+    // substrings, causing flaky failures unrelated to the actual event content.
+    String message = extractSnsMessage(body);
+    assertThat(message)
         .contains(
             "ApplicationSubmitted",
             applicationId.toString(),
-            "\\\"applicationVersion\\\":" + applicationVersion,
+            "\"applicationVersion\":" + applicationVersion,
             correlationId)
         .doesNotContain(
             "applicationContent", "proceedings", "individuals", "Ada", "Lovelace", "LAA-123");
+  }
+
+  private String extractSnsMessage(String envelopeJson) {
+    try {
+      return OBJECT_MAPPER.readTree(envelopeJson).get("Message").asText();
+    } catch (JsonProcessingException e) {
+      throw new IllegalStateException("Failed to parse SNS envelope: " + envelopeJson, e);
+    }
   }
 }
