@@ -181,6 +181,20 @@ paths:
           application/json:
             schema:
               $ref: "./components.yml#/components/schemas/ApplicationLinkRequest"
+            examples:
+              firstTimeLink:
+                summary: Target is standalone (first-time link)
+                description: Omit linkedGroupVersion entirely; the target is not yet in a group.
+                value:
+                  applicationId: 3fa85f64-5717-4562-b3fc-2c963f66afa7
+                  linkType: FAMILY
+              targetAlreadyLinked:
+                summary: Target already belongs to a group
+                description: Supply the target group's linkedGroupVersion exactly as last read.
+                value:
+                  applicationId: 3fa85f64-5717-4562-b3fc-2c963f66afa7
+                  linkType: FAMILY
+                  linkedGroupVersion: 2
       responses:
         "204": { description: "Application linked, or already linked to the target group" }
         "400": { description: "Invalid request, self-link, unsupported link type, or linkedGroupVersion is negative" }
