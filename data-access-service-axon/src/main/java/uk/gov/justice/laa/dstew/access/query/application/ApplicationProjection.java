@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.query.application;
 import static uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationStatus.APPLICATION_SUBMITTED;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -24,7 +25,9 @@ import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
+import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
@@ -346,6 +349,37 @@ public class ApplicationProjection {
             });
   }
 
+  /** Projects filename-free document metadata and its sensitive-data version together. */
+  @EventHandler
+  public void on(ApplicationDocumentUploadedEvent event) {
+    applicationReadRepository
+        .findById(event.applicationId())
+        .ifPresent(
+            application -> {
+              List<UploadDocument> documents = new ArrayList<>(application.getUploadedDocuments());
+              if (documents.stream()
+                  .anyMatch(document -> document.documentId().equals(event.documentId()))) {
+                return;
+              }
+              documents.add(
+                  new UploadDocument(
+                      event.documentId(),
+                      event.documentType(),
+                      event.uploadedAt(),
+                      event.size(),
+                      event.contentType(),
+                      event.checksum(),
+                      event.sourceService(),
+                      false));
+              application.setUploadedDocuments(List.copyOf(documents));
+              if (event.applicationDataVersion() != null) {
+                application.setApplicationDataVersion(event.applicationDataVersion());
+              }
+              application.setModifiedAt(event.uploadedAt());
+              applicationReadRepository.save(application);
+            });
+  }
+
   private void updateLeadApplicationId(
       UUID applicationId, UUID leadApplicationId, Instant occurredAt) {
     applicationReadRepository
@@ -466,6 +500,7 @@ public class ApplicationProjection {
     application.setAutoGranted(data.autoGranted());
     application.setMeritsDecisions(data.meritsDecisions());
     application.setCertificate(data.certificate());
+    application.setDocumentFilenames(data.documentFilenames());
     return application;
   }
 

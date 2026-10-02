@@ -3,9 +3,11 @@ package uk.gov.justice.laa.dstew.access;
 import static org.assertj.core.api.Assertions.assertThat;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.axonframework.messaging.commandhandling.gateway.CommandGateway;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
@@ -25,8 +27,11 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadCommand;
+import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationEvolve;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationState;
+import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
@@ -53,6 +58,49 @@ class RawReplayContractTest {
   @Autowired private ObjectMapper objectMapper;
 
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private CommandGateway commandGateway;
+
+  @Test
+  void givenUploadedDocument_whenReplayedFromPostgres_thenRestoresMetadataAndDataVersion()
+      throws Exception {
+    UUID applicationId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    ResponseEntity<Void> response =
+        restTemplate.postForEntity(
+            "http://localhost:" + port + "/api/v0/applications",
+            new HttpEntity<>(
+                validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()),
+            Void.class);
+    assertThat(response.getStatusCode()).isIn(HttpStatus.CREATED, HttpStatus.ACCEPTED);
+    commandGateway.sendAndWait(
+        new ApplicationDocumentUploadCommand(
+            applicationId,
+            documentId,
+            "GATEWAY_EVIDENCE",
+            Instant.parse("2026-09-28T10:00:00Z"),
+            12L,
+            "application/pdf",
+            "checksum",
+            "CIVIL_APPLY",
+            "client-report.pdf"));
+    List<Map<String, Object>> rows =
+        jdbcTemplate.queryForList(
+            "SELECT payload, payload_type FROM axon.domain_event_entry "
+                + "WHERE aggregate_identifier = ? ORDER BY sequence_number",
+            applicationId.toString());
+
+    ApplicationState state = replayWithoutAxon(rows);
+
+    assertThat(state.getApplicationDataVersion()).isEqualTo(1L);
+    assertThat(state.getApplicationVersion()).isZero();
+    assertThat(state.getUploadedDocuments())
+        .extracting(UploadDocument::documentId)
+        .containsExactly(documentId);
+    assertThat(
+            new String(
+                (byte[]) rows.getLast().get("payload"), java.nio.charset.StandardCharsets.UTF_8))
+        .doesNotContain("client-report.pdf");
+  }
 
   @Test
   void givenCreatedApplication_whenEventsReplayedFromJdbcWithoutAxon_thenStateMatchesOriginal()
@@ -112,6 +160,9 @@ class RawReplayContractTest {
               state, objectMapper.readValue(payload, ApplicationDecisionMadeEvent.class));
       case "uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent" ->
           ApplicationEvolve.apply(state, objectMapper.readValue(payload, NoteCreatedEvent.class));
+      case "uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadedEvent" ->
+          ApplicationEvolve.apply(
+              state, objectMapper.readValue(payload, ApplicationDocumentUploadedEvent.class));
       default -> throw new IllegalArgumentException("Unknown event type: " + payloadType);
     }
   }

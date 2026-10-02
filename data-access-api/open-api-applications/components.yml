@@ -105,6 +105,10 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/PriorAuthoritySummary"
+        uploadedDocuments:
+          type: array
+          items:
+            $ref: "#/components/schemas/ApplicationDocumentResponse"
         linkedApplications:
           type: array
           items:
@@ -676,6 +680,34 @@ components:
         sourceService:
           type: string
         checksum:
+          type: string
+
+    ApplicationDocumentResponse:
+      type: object
+      required:
+        - documentId
+        - documentType
+        - uploadedAt
+      properties:
+        documentId:
+          type: string
+          format: uuid
+        documentType:
+          type: string
+        fileName:
+          type: string
+          description: Original filename, absent for legacy uploads where it was not recorded
+        uploadedAt:
+          type: string
+          format: date-time
+        size:
+          type: integer
+          format: int64
+        contentType:
+          type: string
+        checksum:
+          type: string
+        sourceService:
           type: string
 
     DocumentDownloadResponse:

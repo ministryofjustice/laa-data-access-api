@@ -183,7 +183,7 @@ class PostgresAxonIntegrationTest {
 
     List<Map<String, Object>> events =
         jdbcTemplate.queryForList(
-            "SELECT aggregate_identifier, payload_type, sequence_number "
+            "SELECT aggregate_identifier, payload_type, sequence_number, convert_from(payload, 'UTF8') AS payload "
                 + "FROM axon.domain_event_entry "
                 + "WHERE aggregate_identifier = ? ORDER BY sequence_number",
             applicationId.toString());
@@ -199,7 +199,110 @@ class PostgresAxonIntegrationTest {
                       "uk.gov.justice.laa.dstew.access.command.application"
                           + ".ApplicationDocumentUploadedEvent");
               assertThat(event.get("sequence_number")).isEqualTo(1L);
+              assertThat(event.get("payload").toString())
+                  .contains("applicationDataVersion")
+                  .doesNotContain("originalFilename.pdf", "originalFilename", "fileName");
             });
+
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT payload -> 'documentFilenames' ->> ? FROM axon.application_data "
+                    + "WHERE application_id = ? AND version = 1",
+                String.class,
+                documentId.toString(),
+                applicationId))
+        .isEqualTo("originalFilename.pdf");
+    await()
+        .atMost(10, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              ApplicationResponse application = awaitGetApplication(applicationId).getBody();
+              assertThat(application.getUploadedDocuments())
+                  .singleElement()
+                  .satisfies(
+                      document -> {
+                        assertThat(document.getDocumentId()).isEqualTo(documentId);
+                        assertThat(document.getFileName()).isEqualTo("originalFilename.pdf");
+                        assertThat(document.getDocumentType()).isEqualTo("GATEWAY_EVIDENCE");
+                        assertThat(document.getChecksum()).isEqualTo("checksum");
+                      });
+              assertThat(application.getVersion()).isZero();
+            });
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT uploaded_documents::text FROM axon.application_current_state WHERE application_id = ?",
+                String.class,
+                applicationId))
+        .contains(documentId.toString())
+        .doesNotContain("originalFilename.pdf", "fileName");
+  }
+
+  @Test
+  void givenDocumentEventAppendFails_whenUploaded_thenFilenameVersionRollsBack() {
+    UUID applicationId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    applicationId(post(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()));
+    ApplicationDocumentUploadCommand command =
+        new ApplicationDocumentUploadCommand(
+            applicationId,
+            documentId,
+            "GATEWAY_EVIDENCE",
+            Instant.now(),
+            12L,
+            "application/pdf",
+            "checksum",
+            "CIVIL_APPLY",
+            "client-report.pdf");
+    jdbcTemplate.execute(
+        """
+                CREATE OR REPLACE FUNCTION axon.reject_test_document_upload()
+                RETURNS trigger AS $$
+                BEGIN
+                    IF NEW.aggregate_identifier = '%s' AND NEW.sequence_number = 1 THEN
+                        RAISE EXCEPTION 'forced document event append failure';
+                    END IF;
+                    RETURN NEW;
+                END;
+                $$ LANGUAGE plpgsql
+                """
+            .formatted(applicationId));
+    jdbcTemplate.execute(
+        """
+                CREATE TRIGGER reject_test_document_upload
+                BEFORE INSERT ON axon.domain_event_entry
+                FOR EACH ROW EXECUTE FUNCTION axon.reject_test_document_upload()
+                """);
+    try {
+      assertThatThrownBy(() -> commandGateway.sendAndWait(command))
+          .hasStackTraceContaining("forced document event append failure");
+    } finally {
+      jdbcTemplate.execute(
+          "DROP TRIGGER IF EXISTS reject_test_document_upload ON axon.domain_event_entry");
+      jdbcTemplate.execute("DROP FUNCTION IF EXISTS axon.reject_test_document_upload()");
+    }
+
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM axon.application_data WHERE application_id = ?",
+                Integer.class,
+                applicationId))
+        .isEqualTo(1);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM axon.domain_event_entry WHERE aggregate_identifier = ?",
+                Integer.class,
+                applicationId.toString()))
+        .isEqualTo(1);
+
+    commandGateway.sendAndWait(command);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT payload -> 'documentFilenames' ->> ? FROM axon.application_data "
+                    + "WHERE application_id = ? AND version = 1",
+                String.class,
+                documentId.toString(),
+                applicationId))
+        .isEqualTo("client-report.pdf");
   }
 
   @Test

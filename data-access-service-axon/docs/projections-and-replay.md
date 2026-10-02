@@ -38,6 +38,25 @@ For a single application, a missing referenced payload means no hydrated applica
 For list queries, payloads are batch-loaded to avoid one lookup per row. Linked-group rows are also
 batch-loaded for the result page.
 
+Document upload events populate the `uploaded_documents` JSONB column in `application_current_state`.
+This list contains filename-free metadata and a deletion flag, not the assembled API response.
+The same handler advances the data-version pointer when present, keeping metadata and filename
+content aligned within the existing `application-projection` processor. Duplicate document IDs
+are not appended again. The list index also records the upload timestamp for last-updated sorting.
+
+Query hydration loads the filename map from the payload referenced by the current-state row.
+Application detail mapping joins by document ID, excludes deleted documents, and orders active
+documents by upload time then document ID. It does not read aggregate state or call SDS for each
+document. Unknown legacy filenames remain absent rather than causing documents to disappear.
+The application document deletion endpoint is not implemented yet; uploads start with `deleted=false`.
+
+Migration V21 initializes the metadata column to an empty list. For an existing database whose
+processor has already passed historical document uploads, reset and replay `application-projection`
+to populate those documents. Replay `application-list-index-projection` as well to include their
+upload timestamps in sorting. Preserve the event store and `application_data` during either reset.
+New uploads become visible once the asynchronous projection catches up; the upload response does
+not add a read-your-write guarantee.
+
 ## History projection
 
 `ApplicationHistoryProjection` stores one public audit row per relevant event. Group events can

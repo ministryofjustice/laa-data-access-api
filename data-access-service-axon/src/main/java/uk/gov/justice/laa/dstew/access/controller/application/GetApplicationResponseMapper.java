@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.controller.application;
 
 import java.time.ZoneOffset;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -10,7 +11,9 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationProvider;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Opponent;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ScopeLimitation;
+import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationMeritsDecision;
+import uk.gov.justice.laa.dstew.access.model.ApplicationDocumentResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
@@ -69,6 +72,7 @@ public class GetApplicationResponseMapper {
         toProceedings(application.getProceedings(), application.getMeritsDecisions()));
     response.setPotentialDuplicates(application.getPotentialDuplicates());
     response.setPriorAuthorities(PriorAuthoritySummaryMapper.toSummaries(priorAuthorities));
+    response.setUploadedDocuments(toUploadedDocuments(application));
     return response;
   }
 
@@ -80,6 +84,31 @@ public class GetApplicationResponseMapper {
         application,
         null,
         priorAuthoritiesByApplicationId.getOrDefault(application.getApplicationId(), List.of()));
+  }
+
+  private List<ApplicationDocumentResponse> toUploadedDocuments(ApplicationReadModel application) {
+    if (application.getUploadedDocuments() == null) {
+      return List.of();
+    }
+    Map<UUID, String> filenames =
+        application.getDocumentFilenames() == null ? Map.of() : application.getDocumentFilenames();
+    return application.getUploadedDocuments().stream()
+        .filter(document -> !document.deleted())
+        .sorted(
+            Comparator.comparing(UploadDocument::uploadedAt)
+                .thenComparing(UploadDocument::documentId))
+        .map(
+            document ->
+                new ApplicationDocumentResponse()
+                    .documentId(document.documentId())
+                    .documentType(document.documentType())
+                    .fileName(filenames.get(document.documentId()))
+                    .uploadedAt(document.uploadedAt().atOffset(ZoneOffset.UTC))
+                    .size(document.size())
+                    .contentType(document.contentType())
+                    .checksum(document.checksum())
+                    .sourceService(document.sourceService()))
+        .toList();
   }
 
   private ProviderResponse toProvider(ApplicationReadModel application) {

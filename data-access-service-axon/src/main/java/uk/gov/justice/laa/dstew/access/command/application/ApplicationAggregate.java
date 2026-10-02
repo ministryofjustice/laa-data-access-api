@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.command.application;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import org.axonframework.eventsourcing.annotation.EventSourcingHandler;
@@ -320,10 +321,46 @@ public class ApplicationAggregate {
 
   /** Records metadata for an application document that SDS has already accepted. */
   @CommandHandler
-  UUID handle(ApplicationDocumentUploadCommand command, EventAppender eventAppender) {
+  UUID handle(
+      ApplicationDocumentUploadCommand command,
+      ApplicationDataStore applicationDataStore,
+      EventAppender eventAppender) {
     requireApplicationExists(command.applicationId());
-    //    String originalFilename = command.originalFilename();
-    //    TODO decide persistence of original filename
+    if (command.originalFilename() == null || command.originalFilename().isBlank()) {
+      throw new ValidationException(List.of("Original filename is required"));
+    }
+    var current = applicationDataStore.get(applicationId, state.applicationDataVersion);
+    var metadata =
+        new UploadDocument(
+            command.documentId(),
+            command.documentType(),
+            command.uploadedAt(),
+            command.size(),
+            command.contentType(),
+            command.checksum(),
+            command.sourceService(),
+            false);
+    var existing =
+        state.uploadedDocuments.stream()
+            .filter(document -> document.documentId().equals(command.documentId()))
+            .findFirst();
+    if (existing.isPresent()) {
+      if (!existing.get().equals(metadata)
+          || (current.documentFilenames().containsKey(command.documentId())
+              && !Objects.equals(
+                  current.documentFilenames().get(command.documentId()),
+                  command.originalFilename()))) {
+        throw new ValidationException(List.of("Document ID already records a different upload"));
+      }
+      return command.documentId();
+    }
+    long nextDataVersion = state.applicationDataVersion + 1;
+    applicationDataStore.append(
+        applicationId,
+        nextDataVersion,
+        current.withDocumentFilename(command.documentId(), command.originalFilename()),
+        command.documentId().toString(),
+        command.uploadedAt());
     eventAppender.append(
         new ApplicationDocumentUploadedEvent(
             command.applicationId(),
@@ -333,7 +370,8 @@ public class ApplicationAggregate {
             command.size(),
             command.contentType(),
             command.checksum(),
-            command.sourceService()));
+            command.sourceService(),
+            nextDataVersion));
     return command.documentId();
   }
 

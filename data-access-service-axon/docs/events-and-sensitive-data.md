@@ -41,6 +41,24 @@ For example, a decision command:
 Creation, decisions, assignments, unassignments, and notes follow the same append-and-reference
 pattern when their detailed payload changes.
 
+Application document uploads also append a complete immutable payload. The only document-specific
+sensitive value in that payload is `documentFilenames`, a map from document ID to original filename.
+The upload event carries filename-free metadata and an `applicationDataVersion` pointer; neither
+aggregate state nor the persisted document metadata projection contains the filename. The payload
+hash for an upload uses the document ID as its request identifier.
+
+All subsequent content updates preserve the filename map. Uploads advance `applicationDataVersion`
+but not the public optimistic-lock `applicationVersion`. Repeating an identical upload command for
+the same document ID emits no new event; conflicting metadata or a changed recorded filename is
+rejected. The filename is written before the event in the shared database transaction. SDS upload
+happens earlier and remains outside that transaction.
+
+Older upload events have no data-version pointer: they retain the preceding version during replay.
+Older payloads without `documentFilenames` normalize to an empty map. Those documents remain visible
+in application details without an original filename; the event stream cannot recover names that
+were never persisted. Removing a document from the current response does not erase filenames from
+historical sensitive-data versions. Application-level retention removes those versions together.
+
 ## What is stored where
 
 | Store | Typical contents | Purpose |

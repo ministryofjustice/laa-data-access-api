@@ -15,4 +15,28 @@ public record ApplicationDocumentUploadedEvent(
     Long size,
     String contentType,
     String checksum,
-    String sourceService) {}
+    String sourceService,
+    Long applicationDataVersion) {
+
+  /** Creates the legacy event shape without a sensitive-data version pointer. */
+  public ApplicationDocumentUploadedEvent(
+      UUID applicationId,
+      UUID documentId,
+      String documentType,
+      Instant uploadedAt,
+      Long size,
+      String contentType,
+      String checksum,
+      String sourceService) {
+    this(
+        applicationId,
+        documentId,
+        documentType,
+        uploadedAt,
+        size,
+        contentType,
+        checksum,
+        sourceService,
+        null);
+  }
+}
