@@ -9,6 +9,8 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.oauth2.client.ClientAuthorizationException;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationLinkConflictException;
@@ -51,6 +53,19 @@ public class ApplicationExceptionHandler {
   @ExceptionHandler(IllegalArgumentException.class)
   ResponseEntity<ProblemDetail> handleIllegalArgumentException(IllegalArgumentException exception) {
     return validationError(List.of(exception.getMessage()));
+  }
+
+  /** Returns field-level errors when a {@code @Valid} request body fails bean validation. */
+  @ExceptionHandler(MethodArgumentNotValidException.class)
+  ResponseEntity<ProblemDetail> handleMethodArgumentNotValidException(
+      MethodArgumentNotValidException exception) {
+    List<String> errors =
+        exception.getBindingResult().getFieldErrors().stream()
+            .map(
+                (FieldError error) ->
+                    "%s: %s".formatted(error.getField(), error.getDefaultMessage()))
+            .toList();
+    return validationError(errors);
   }
 
   /** Returns a conflict when linked-application membership is incompatible with current state. */

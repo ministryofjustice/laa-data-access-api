@@ -66,7 +66,13 @@ class GetApplicationResponseMapperTest {
         .isEqualTo(MatterType.SPECIAL_CHILDREN_ACT);
     assertThat(response.getProceedings().getFirst().getMeritsDecision())
         .isEqualTo(MeritsDecisionStatus.REFUSED);
-  }
+    assertThat(response.getPotentialDuplicates()).hasSize(1);
+    assertThat(response.getPotentialDuplicates().getFirst().getApplicationId())
+        .isEqualTo(readModel.potentialDuplicates().getFirst().applicationId());
+    assertThat(response.getPotentialDuplicates().getFirst().getLaaReference())
+        .isEqualTo(readModel.potentialDuplicates().getFirst().laaReference());
+    assertThat(response.getPotentialDuplicates().getFirst().getLegacyReference())
+        .isEqualTo(readModel.potentialDuplicates().getFirst().legacyReference());
 
   @Test
   void givenNullCaseworkerId_whenMapped_thenAssignedToIsNull() {
@@ -267,5 +273,29 @@ class GetApplicationResponseMapperTest {
     assertThat(response.getProceedings()).hasSize(1);
     assertThat(response.getProceedings().getFirst().getInvolvedChildren()).isEmpty();
     assertThat(response.getProceedings().getFirst().getScopeLimitations()).isEmpty();
+  }
+
+  @Test
+  void givenNullPotentialDuplicates_whenMapped_thenPotentialDuplicatesIsEmpty() {
+    ApplicationReadModel readModel =
+        DataGenerator.createDefault(
+            ApplicationReadModelGenerator.class, builder -> builder.potentialDuplicates(null));
+
+    ApplicationResponse response = responseMapper.toGetApplicationResponse(readModel).getBody();
+
+    assertThat(response).isNotNull();
+    assertThat(response.getPotentialDuplicates()).isEmpty();
+  }
+
+  @Test
+  void givenEmptyPotentialDuplicates_whenMapped_thenPotentialDuplicatesIsEmpty() {
+    ApplicationReadModel readModel =
+        DataGenerator.createDefault(
+            ApplicationReadModelGenerator.class, builder -> builder.potentialDuplicates(List.of()));
+
+    ApplicationResponse response = responseMapper.toGetApplicationResponse(readModel).getBody();
+
+    assertThat(response).isNotNull();
+    assertThat(response.getPotentialDuplicates()).isEmpty();
   }
 }
