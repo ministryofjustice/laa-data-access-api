@@ -10,9 +10,11 @@ import org.axonframework.messaging.eventhandling.annotation.EventHandler;
 import org.axonframework.messaging.eventhandling.replay.annotation.ResetHandler;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Component;
+import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataId;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataRepository;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
@@ -38,6 +40,19 @@ public class PriorAuthorityHistoryProjection {
         event.priorAuthorityId(),
         event.priorAuthorityType(),
         "PRIOR_AUTHORITY_SUBMITTED",
+        event.dataVersion(),
+        event.occurredAt());
+  }
+
+  /** Records a Prior Authority decision in the parent application's history. */
+  @EventHandler
+  public void on(PriorAuthorityDecisionMadeEvent event, EventMessage message) {
+    append(
+        message,
+        event.applicationId(),
+        event.priorAuthorityId(),
+        event.priorAuthorityType(),
+        mapDecisionEventType(event),
         event.dataVersion(),
         event.occurredAt());
   }
@@ -92,6 +107,19 @@ public class PriorAuthorityHistoryProjection {
         "UNASSIGN_APPLICATION_TO_CASEWORKER",
         event.itemVersion(),
         event.occurredAt());
+  }
+
+  private static String mapDecisionEventType(PriorAuthorityDecisionMadeEvent event) {
+    if (DecisionValue.GRANTED.name().equals(event.overallDecision())) {
+      return "PRIOR_AUTHORITY_MAKE_DECISION_GRANTED";
+    }
+    if (DecisionValue.REFUSED.name().equals(event.overallDecision())) {
+      return "PRIOR_AUTHORITY_MAKE_DECISION_REFUSED";
+    }
+    throw new ApplicationHistoryIntegrityException(
+        event.applicationId(),
+        event.priorAuthorityId(),
+        "unsupported prior-authority decision value: " + event.overallDecision());
   }
 
   private PriorAuthorityRef lookupPriorAuthorityRef(UUID priorAuthorityId, long dataVersion) {

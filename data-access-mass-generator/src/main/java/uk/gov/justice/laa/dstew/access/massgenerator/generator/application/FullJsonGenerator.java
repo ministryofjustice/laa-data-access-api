@@ -2,8 +2,10 @@ package uk.gov.justice.laa.dstew.access.massgenerator.generator.application;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ApplicationContent;
 import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
@@ -11,6 +13,9 @@ import uk.gov.justice.laa.dstew.access.utils.generator.BaseGenerator;
 public class FullJsonGenerator
     extends BaseGenerator<ApplicationContent, ApplicationContent.ApplicationContentBuilder> {
 
+    private static final String REFERENCE_PATTERN =
+            "L-[0-9ABCDEFHJKLMNPRTUVWXY]{3}-[0-9ABCDEFHJKLMNPRTUVWXY]{3}";
+    private final Set<String> generatedReferences = new HashSet<>();
   private final FullOfficeGenerator officeGenerator = new FullOfficeGenerator();
   private final FullProviderGenerator providerGenerator = new FullProviderGenerator();
   private final FullApplicantGenerator applicantGenerator = new FullApplicantGenerator();
@@ -34,12 +39,21 @@ public class FullJsonGenerator
     return Instant.now().minus(faker.number().numberBetween(0, 365), ChronoUnit.DAYS).toString();
   }
 
+    private String generateReference() {
+        String reference;
+        do {
+            reference = faker.regexify(REFERENCE_PATTERN);
+        } while (!generatedReferences.add(reference));
+        return reference;
+    }
+
   @Override
   public ApplicationContent createDefault() {
+        String reference = generateReference();
     return ApplicationContent.builder()
         .submittedAt(randomInstant())
         .status(faker.options().option("generating_reports", "submitted", "draft"))
-        .laaReference(faker.regexify("L-[A-Z]{3}-[A-Z][0-9]{2}-[0-9]"))
+        .laaReference(reference)
         .lastNameAtBirth(faker.name().lastName())
         .previousApplicationId(faker.regexify("[A-Z]{2}[0-9]{3}[A-Z]"))
         .correspondenceAddressType(faker.options().option("Home", "office"))
@@ -52,8 +66,7 @@ public class FullJsonGenerator
                 proceedingGenerator.createDefault(b -> b.leadProceeding(false))))
         .submitterEmail(faker.internet().emailAddress())
         .build()
-        .putAdditionalApplicationContent(
-            "applicationRef", faker.regexify("L-[A-Z]{3}-[A-Z][0-9]{2}-[0-9]"))
+        .putAdditionalApplicationContent("applicationRef", reference)
         .putAdditionalApplicationContent("createdAt", randomInstant())
         .putAdditionalApplicationContent("updatedAt", randomInstant())
         .putAdditionalApplicationContent("applicantId", UUID.randomUUID().toString())

@@ -11,7 +11,6 @@ import static org.springframework.http.HttpStatus.CONFLICT;
 import static org.springframework.http.HttpStatus.CREATED;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
 import static org.springframework.http.HttpStatus.LENGTH_REQUIRED;
-import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertNotFound;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertOK;
 import static uk.gov.justice.laa.dstew.access.utils.asserters.ResponseAsserts.assertSecurityHeaders;
 
@@ -28,7 +27,6 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 import uk.gov.justice.laa.dstew.access.config.SdsWireMockStubs;
 import uk.gov.justice.laa.dstew.access.entity.ApplicationEntity;
 import uk.gov.justice.laa.dstew.access.model.DocumentDeleteResponse;
-import uk.gov.justice.laa.dstew.access.model.DocumentDownloadResponse;
 import uk.gov.justice.laa.dstew.access.model.DocumentUpdateResponse;
 import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
 import uk.gov.justice.laa.dstew.access.utils.generator.application.ApplicationEntityGenerator;
@@ -89,52 +87,6 @@ public class DocumentStorageTest extends BaseHarnessTest {
   }
 
   @Test
-  public void givenUploadedDocument_whenDownloadDocument_thenReturnFileURL() throws Exception {
-    // given
-    ApplicationEntity application =
-        persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
-    MockMultipartFile file = createTestFile("download-test.pdf", "download content");
-
-    HarnessResult uploadResult = uploadDocument(application.getId(), file, DefaultHttpHeaders());
-    DocumentUploadResponse uploadResponse = deserialise(uploadResult, DocumentUploadResponse.class);
-    String documentId = extractDocumentIdFromResponse(uploadResponse);
-
-    // when
-    HarnessResult result = downloadDocument(application.getId(), documentId, DefaultHttpHeaders());
-
-    // then
-    assertSecurityHeaders(result);
-    assertOK(result);
-    assertEquals("application/json", result.getResponse().getHeader("Content-Type"));
-
-    DocumentDownloadResponse response = deserialise(result, DocumentDownloadResponse.class);
-    assertNotNull(response);
-    assertNotNull(response.getFileURL());
-    assertFalse(response.getFileURL().isEmpty());
-  }
-
-  @Test
-  public void givenNonExistentDocument_whenDownloadDocument_thenReturnNotFound() throws Exception {
-    // given
-    sdsStubs.stubFileNotFoundOnDownload();
-    ApplicationEntity application =
-        persistedDataGenerator.createAndPersist(ApplicationEntityGenerator.class);
-    String nonExistentDocumentId = "non-existent-doc.pdf";
-
-    // when
-    HarnessResult result =
-        downloadDocument(application.getId(), nonExistentDocumentId, DefaultHttpHeaders());
-
-    // then
-    assertSecurityHeaders(result);
-    assertNotFound(result);
-    assertEquals("application/problem+json", result.getResponse().getHeader("Content-Type"));
-
-    ProblemDetail problemDetail = deserialise(result, ProblemDetail.class);
-    assertEquals("File not found", problemDetail.getDetail());
-  }
-
-  @Test
   public void givenExistingDocument_whenUpdateDocument_thenReturnSuccessWithChecksum()
       throws Exception {
     // given
@@ -192,16 +144,6 @@ public class DocumentStorageTest extends BaseHarnessTest {
     assertNotNull(response.getResults());
     assertThat(response.getResults()).allMatch(r -> r.getStatus() == 204);
 
-    // Verify files are no longer accessible after deletion
-    sdsStubs.stubFileNotFoundOnDownload();
-
-    HarnessResult downloadResult1 =
-        downloadDocument(application.getId(), docId1, DefaultHttpHeaders());
-    assertNotFound(downloadResult1);
-
-    HarnessResult downloadResult2 =
-        downloadDocument(application.getId(), docId2, DefaultHttpHeaders());
-    assertNotFound(downloadResult2);
   }
 
   @Test
@@ -249,18 +191,6 @@ public class DocumentStorageTest extends BaseHarnessTest {
     assertEquals(CREATED.value(), result2.getResponse().getStatus());
     assertEquals(CREATED.value(), result3.getResponse().getStatus());
 
-    // Verify all can be downloaded
-    DocumentUploadResponse response1 = deserialise(result1, DocumentUploadResponse.class);
-    DocumentUploadResponse response2 = deserialise(result2, DocumentUploadResponse.class);
-    DocumentUploadResponse response3 = deserialise(result3, DocumentUploadResponse.class);
-
-    String docId1 = extractDocumentIdFromResponse(response1);
-    String docId2 = extractDocumentIdFromResponse(response2);
-    String docId3 = extractDocumentIdFromResponse(response3);
-
-    assertOK(downloadDocument(application.getId(), docId1, DefaultHttpHeaders()));
-    assertOK(downloadDocument(application.getId(), docId2, DefaultHttpHeaders()));
-    assertOK(downloadDocument(application.getId(), docId3, DefaultHttpHeaders()));
   }
 
   @Test
@@ -349,13 +279,6 @@ public class DocumentStorageTest extends BaseHarnessTest {
       UUID applicationId, MockMultipartFile file, HttpHeaders headers) throws Exception {
     String uri = String.format("/api/v0/applications/%s/upload-document", applicationId);
     return postMultipartUri(uri, file, headers);
-  }
-
-  private HarnessResult downloadDocument(UUID applicationId, String documentId, HttpHeaders headers)
-      throws Exception {
-    String uri =
-        String.format("/api/v0/applications/%s/download-document/%s", applicationId, documentId);
-    return getUri(uri, headers);
   }
 
   private HarnessResult updateDocument(

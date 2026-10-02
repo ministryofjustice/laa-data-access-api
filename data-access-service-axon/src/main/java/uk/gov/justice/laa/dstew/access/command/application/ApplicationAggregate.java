@@ -12,11 +12,16 @@ import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftPayload;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftStore;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationMeritsDecision;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeDecisionProceeding;
 import uk.gov.justice.laa.dstew.access.command.application.decision.RecordAutoGrantedOutcomeCommand;
+import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftStartedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.draft.CreateApplicationDraftCommand;
+import uk.gov.justice.laa.dstew.access.command.application.draft.SubmitApplicationDraftCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.ValidateApplicationGrantedCommand;
@@ -33,7 +38,11 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.assign.DirectWorkItemAssignmentCommand;
 import uk.gov.justice.laa.dstew.access.command.worklist.unassign.DirectWorkItemUnassignmentCommand;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConflictException;
+import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
+import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
+import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /** Event-sourced consistency boundary for an Application and its owned child state. */
 @EventSourced(tagKey = "ApplicationAggregate", idType = UUID.class)
@@ -59,7 +68,10 @@ public class ApplicationAggregate {
       CreateApplicationCommand command,
       ApplicationCreationDetailsFactory factory,
       ApplicationDataStore applicationDataStore,
+      JsonSchemaValidator jsonSchemaValidator,
       EventAppender eventAppender) {
+    jsonSchemaValidator.validate(
+        command.applicationContent(), command.schemaName(), command.schemaVersion());
     if (applicationId == null) {
       ApplicationCreationDetails details = factory.prepare(command);
       long applicationDataVersion = 0L;
@@ -79,6 +91,91 @@ public class ApplicationAggregate {
           state, command.applicationId(), command.schemaVersion(), fingerprint, null, 0L);
     }
     return applicationId;
+  }
+
+  /**
+   * Creates an Application draft or handles an idempotent retry.
+   *
+   * <p>On the first command for this aggregate ID, validates the content and emits an {@link
+   * ApplicationDraftStartedEvent}. An identical retry returns the existing ID without emitting an
+   * event. A retry with a different payload or schema version throws {@link
+   * ApplicationCreationConflictException}.
+   *
+   * @throws ApplicationCreationConflictException if a retry has a different payload or schema
+   *     version
+   * @throws ValidationException if the content fails semantic validation
+   */
+  @CommandHandler
+  UUID handle(
+      CreateApplicationDraftCommand command,
+      ApplicationCreationDetailsFactory factory,
+      ApplicationDraftStore draftStore,
+      JsonSchemaValidator jsonSchemaValidator,
+      EventAppender eventAppender) {
+    jsonSchemaValidator.validate(
+        command.applicationContent(), command.schemaName(), command.schemaVersion());
+    if (applicationId == null) {
+      factory.validate(command.applicationContent());
+      ApplicationDraftPayload payload =
+          new ApplicationDraftPayload(
+              command.status(),
+              command.laaReference(),
+              command.applicationContent(),
+              command.serialisedRequest(),
+              command.potentialDuplicates());
+      String fingerprint =
+          draftStore.upsert(
+              command.applicationId(), payload, command.serialisedRequest(), command.occurredAt());
+      ApplicationDecider.decideStartDraft(
+              state,
+              command.applicationId(),
+              command.schemaVersion(),
+              fingerprint,
+              command.occurredAt())
+          .forEach(eventAppender::append);
+    } else {
+      String fingerprint = PayloadFingerprint.compute(command.serialisedRequest());
+      ApplicationDecider.decideStartDraft(
+          state,
+          command.applicationId(),
+          command.schemaVersion(),
+          fingerprint,
+          command.occurredAt());
+    }
+    return command.applicationId();
+  }
+
+  /**
+   * Completes an existing Application draft and emits an {@link ApplicationCreatedEvent}.
+   *
+   * @throws ResourceNotFoundException if no draft exists for this ID
+   * @throws ApplicationCreationConflictException if this ID has already been created or submitted
+   */
+  @CommandHandler
+  UUID handle(
+      SubmitApplicationDraftCommand command,
+      ApplicationDraftStore draftStore,
+      ApplicationCreationDetailsFactory detailsFactory,
+      ApplicationDataStore applicationDataStore,
+      EventAppender eventAppender) {
+    ApplicationDraftPayload draft = requireDraft(command.applicationId(), draftStore);
+
+    ApplicationCreationDetails details =
+        detailsFactory.prepare(
+            draft.status(),
+            draft.laaReference(),
+            draft.applicationContent(),
+            draft.serialisedRequest(),
+            state.schemaVersion,
+            draft.potentialDuplicates());
+    long applicationDataVersion = 0L;
+    String fingerprint =
+        applicationDataStore.append(command.applicationId(), applicationDataVersion, details);
+    eventAppender.append(
+        ApplicationDecider.decideSubmitDraft(
+            command.applicationId(), applicationDataVersion, fingerprint, details));
+    draftStore.delete(command.applicationId());
+    return command.applicationId();
   }
 
   /** Validates that the targeted application has an overall decision of {@code GRANTED}. */
@@ -334,6 +431,16 @@ public class ApplicationAggregate {
     }
   }
 
+  private static ApplicationDraftPayload requireDraft(
+      UUID requestedApplicationId, ApplicationDraftStore draftStore) {
+    return draftStore
+        .find(requestedApplicationId)
+        .orElseThrow(
+            () ->
+                new ResourceNotFoundException(
+                    "No application draft found with Application ID: " + requestedApplicationId));
+  }
+
   private void validateDirectWorkItem(UUID workItemId, long expectedAssignmentVersion) {
     if (!applicationId.equals(workItemId)) {
       throw new ResourceNotFoundException("No application work item found with id: " + workItemId);
@@ -352,6 +459,12 @@ public class ApplicationAggregate {
 
   @EventSourcingHandler
   void on(ApplicationCreatedEvent event) {
+    ApplicationEvolve.apply(state, event);
+    this.applicationId = state.applicationId;
+  }
+
+  @EventSourcingHandler
+  void on(ApplicationDraftStartedEvent event) {
     ApplicationEvolve.apply(state, event);
     this.applicationId = state.applicationId;
   }

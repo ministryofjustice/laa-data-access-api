@@ -24,7 +24,7 @@ public final class CreateAutograntedApplicationsCommand implements Callable<Inte
     var workflow =
         new ApplicationCreationWorkflow(
             applications.root().client(),
-            new ApplicationRequestFactory(),
+            new ApplicationRequestFactory(applications.root().seed()),
             new DecisionRequestFactory());
     return applications.root().print(workflow.createAutogranted(count));
   }

@@ -1,9 +1,11 @@
 package uk.gov.justice.laa.dstew.access.command.application;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.axonframework.messaging.commandhandling.annotation.Command;
 import org.axonframework.modelling.annotation.TargetEntityId;
+import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 
 /**
  * Command that creates or idempotently re-identifies an Application aggregate. The mapper currently
@@ -18,4 +20,5 @@ public record CreateApplicationCommand(
     Map<String, Object> applicationContent,
     String serialisedRequest,
     int schemaVersion,
-    String schemaName) {}
+    String schemaName,
+    List<PotentialDuplicate> potentialDuplicates) {}

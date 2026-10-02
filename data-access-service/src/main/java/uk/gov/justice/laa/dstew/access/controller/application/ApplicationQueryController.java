@@ -1,6 +1,5 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
-import io.swagger.v3.oas.annotations.Hidden;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import java.time.LocalDate;
@@ -19,11 +18,9 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSortBy;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
-import uk.gov.justice.laa.dstew.access.model.DocumentDownloadResponse;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
-import uk.gov.justice.laa.dstew.access.service.applications.SdsService;
 import uk.gov.justice.laa.dstew.access.service.domainevents.GetDomainEventService;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
@@ -43,7 +40,6 @@ public class ApplicationQueryController implements ApplicationQueryApi {
   private final GetAllNotesForApplicationUseCase getAllNotesForApplicationUseCase;
   private final GetAllNotesForApplicationResponseMapper getAllNotesForApplicationResponseMapper;
   private final GetDomainEventService getDomainEventsService;
-  private final SdsService sdsService;
   private final GetAllApplicationsQueryMapper getAllApplicationsQueryMapper;
   private final GetAllApplicationsResponseMapper getAllApplicationsResponseMapper;
   private final GetAllApplicationsUseCase getAllApplicationsUseCase;
@@ -120,12 +116,4 @@ public class ApplicationQueryController implements ApplicationQueryApi {
     return ResponseEntity.ok(getCertificateUseCase.execute(applicationId).certificateContent());
   }
 
-  @Hidden
-  @LogMethodArguments
-  @LogMethodResponse
-  @Override
-  public ResponseEntity<DocumentDownloadResponse> downloadDocument(
-      @NotNull ServiceName serviceName, UUID id, String documentId) {
-    return ResponseEntity.ok(sdsService.getFile(id, documentId));
-  }
 }

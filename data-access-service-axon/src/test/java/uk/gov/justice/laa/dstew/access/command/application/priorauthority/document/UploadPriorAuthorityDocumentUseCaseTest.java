@@ -59,7 +59,7 @@ class UploadPriorAuthorityDocumentUseCaseTest {
                     "{}",
                     java.time.Instant.now())));
     doNothing().when(dispatcher).dispatch(new ValidateApplicationGrantedCommand(applicationId));
-    when(sdsService.savePriorAuthorityFile(
+    when(sdsService.saveEvidenceFile(
             org.mockito.ArgumentMatchers.eq(priorAuthorityId),
             org.mockito.ArgumentMatchers.any(UUID.class),
             org.mockito.ArgumentMatchers.eq(file)))
@@ -77,7 +77,7 @@ class UploadPriorAuthorityDocumentUseCaseTest {
     assertThat(response.checksum()).isEqualTo("abc123");
     verify(dispatcher).dispatch(new ValidateApplicationGrantedCommand(applicationId));
     verify(sdsService)
-        .savePriorAuthorityFile(
+        .saveEvidenceFile(
             org.mockito.ArgumentMatchers.eq(priorAuthorityId),
             org.mockito.ArgumentMatchers.eq(response.documentId()),
             org.mockito.ArgumentMatchers.eq(file));
@@ -130,7 +130,7 @@ class UploadPriorAuthorityDocumentUseCaseTest {
                     "{}",
                     java.time.Instant.now())));
     doNothing().when(dispatcher).dispatch(new ValidateApplicationGrantedCommand(applicationId));
-    when(sdsService.savePriorAuthorityFile(
+    when(sdsService.saveEvidenceFile(
             org.mockito.ArgumentMatchers.eq(priorAuthorityId),
             org.mockito.ArgumentMatchers.any(UUID.class),
             org.mockito.ArgumentMatchers.eq(file)))
@@ -209,6 +209,7 @@ class UploadPriorAuthorityDocumentUseCaseTest {
     UploadPriorAuthorityDocumentUseCase useCase =
         new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService, objectMapper);
     MultipartFile file = mock(MultipartFile.class);
+    when(file.getOriginalFilename()).thenReturn("evidence.pdf");
     when(file.getContentType()).thenReturn("application/pdf");
     when(file.getInputStream()).thenThrow(new IOException("Unable to read file"));
 

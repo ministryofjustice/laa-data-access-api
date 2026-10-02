@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.query.application.history;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -24,6 +25,7 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataId;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataRepository;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
@@ -87,6 +89,85 @@ class PriorAuthorityHistoryProjectionTest {
     var captor = ArgumentCaptor.forClass(PriorAuthorityHistoryReadModel.class);
     verify(paRepository).save(captor.capture());
     assertThat(captor.getValue().getServiceName()).isNull();
+  }
+
+  @Test
+  void givenPriorAuthorityDecisionMadeEvent_whenHandled_thenStoresDecisionEventInPaHistoryTable() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-08-05T10:30:00Z");
+    var event =
+        new PriorAuthorityDecisionMadeEvent(
+            priorAuthorityId,
+            applicationId,
+            "EXPERT",
+            3L,
+            "GRANTED",
+            "Reasoned decision",
+            null,
+            null,
+            occurredAt);
+
+    projection.on(event, message(event, "pa-decision-event-id"));
+
+    var captor = ArgumentCaptor.forClass(PriorAuthorityHistoryReadModel.class);
+    verify(paRepository).save(captor.capture());
+    var saved = captor.getValue();
+    assertThat(saved.getEventId()).isEqualTo("pa-decision-event-id");
+    assertThat(saved.getApplicationId()).isEqualTo(applicationId);
+    assertThat(saved.getPriorAuthorityId()).isEqualTo(priorAuthorityId);
+    assertThat(saved.getPriorAuthorityType()).isEqualTo("EXPERT");
+    assertThat(saved.getEventType()).isEqualTo("PRIOR_AUTHORITY_MAKE_DECISION_GRANTED");
+    assertThat(saved.getServiceName()).isEqualTo("CIVIL_APPLY");
+    assertThat(saved.getOccurredAt()).isEqualTo(occurredAt);
+    assertThat(saved.getCaseworkerId()).isEqualTo(ACTOR_CASEWORKER_ID);
+    assertThat(saved.getItemVersion()).isEqualTo(3L);
+  }
+
+  @Test
+  void givenPriorAuthorityRefusedDecisionEvent_whenHandled_thenStoresRefusedDecisionEventType() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-08-05T10:30:00Z");
+    var event =
+        new PriorAuthorityDecisionMadeEvent(
+            priorAuthorityId,
+            applicationId,
+            "EXPERT",
+            3L,
+            "REFUSED",
+            "Insufficient evidence",
+            null,
+            null,
+            occurredAt);
+
+    projection.on(event, message(event, "pa-refused-decision-event-id"));
+
+    var captor = ArgumentCaptor.forClass(PriorAuthorityHistoryReadModel.class);
+    verify(paRepository).save(captor.capture());
+    assertThat(captor.getValue().getEventType()).isEqualTo("PRIOR_AUTHORITY_MAKE_DECISION_REFUSED");
+  }
+
+  @Test
+  void givenPriorAuthorityUnknownDecisionEvent_whenHandled_thenThrowsIntegrityException() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-08-05T10:30:00Z");
+    var event =
+        new PriorAuthorityDecisionMadeEvent(
+            priorAuthorityId,
+            applicationId,
+            "EXPERT",
+            3L,
+            "PART_GRANTED",
+            "Unexpected decision",
+            null,
+            null,
+            occurredAt);
+
+    assertThatThrownBy(() -> projection.on(event, message(event, "pa-unknown-decision-event-id")))
+        .isInstanceOf(ApplicationHistoryIntegrityException.class)
+        .hasMessageContaining("unsupported prior-authority decision value");
   }
 
   @Test
