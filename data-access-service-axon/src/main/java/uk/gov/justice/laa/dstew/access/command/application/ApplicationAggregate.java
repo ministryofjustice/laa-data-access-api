@@ -170,8 +170,17 @@ public class ApplicationAggregate {
             state.schemaVersion,
             draft.potentialDuplicates());
     long applicationDataVersion = 0L;
+    ApplicationDataPayload payload = ApplicationDataPayload.from(details);
+    for (var filename : draft.documentFilenames().entrySet()) {
+      payload = payload.withDocumentFilename(filename.getKey(), filename.getValue());
+    }
     String fingerprint =
-        applicationDataStore.append(command.applicationId(), applicationDataVersion, details);
+        applicationDataStore.append(
+            command.applicationId(),
+            applicationDataVersion,
+            payload,
+            details.serialisedRequest(),
+            details.occurredAt());
     eventAppender.append(
         ApplicationDecider.decideSubmitDraft(
             command.applicationId(), applicationDataVersion, fingerprint, details));
@@ -323,43 +332,25 @@ public class ApplicationAggregate {
   @CommandHandler
   UUID handle(
       ApplicationDocumentUploadCommand command,
-      ApplicationDataStore applicationDataStore,
+      ApplicationDraftStore draftStore,
       EventAppender eventAppender) {
-    requireApplicationExists(command.applicationId());
+    requireApplicationDraft(command.applicationId());
     if (command.originalFilename() == null || command.originalFilename().isBlank()) {
       throw new ValidationException(List.of("Original filename is required"));
     }
-    var current = applicationDataStore.get(applicationId, state.applicationDataVersion);
-    var metadata =
-        new UploadDocument(
-            command.documentId(),
-            command.documentType(),
-            command.uploadedAt(),
-            command.size(),
-            command.contentType(),
-            command.checksum(),
-            command.sourceService(),
-            false);
+    var current = requireDraft(command.applicationId(), draftStore);
     var existing =
         state.uploadedDocuments.stream()
-            .filter(document -> document.documentId().equals(command.documentId()))
-            .findFirst();
-    if (existing.isPresent()) {
-      if (!existing.get().equals(metadata)
-          || (current.documentFilenames().containsKey(command.documentId())
-              && !Objects.equals(
-                  current.documentFilenames().get(command.documentId()),
-                  command.originalFilename()))) {
-        throw new ValidationException(List.of("Document ID already records a different upload"));
-      }
-      return command.documentId();
+            .map(UploadDocument::documentId)
+            .anyMatch(id -> id.equals(command.documentId()));
+    if (existing) {
+      throw new ValidationException(List.of("Document ID already records a different upload"));
     }
-    long nextDataVersion = state.applicationDataVersion + 1;
-    applicationDataStore.append(
+
+    draftStore.upsert(
         applicationId,
-        nextDataVersion,
         current.withDocumentFilename(command.documentId(), command.originalFilename()),
-        command.documentId().toString(),
+        current.serialisedRequest(),
         command.uploadedAt());
     eventAppender.append(
         new ApplicationDocumentUploadedEvent(
@@ -370,9 +361,16 @@ public class ApplicationAggregate {
             command.size(),
             command.contentType(),
             command.checksum(),
-            command.sourceService(),
-            nextDataVersion));
+            command.sourceService()));
     return command.documentId();
+  }
+
+  private void requireApplicationDraft(UUID requestedApplicationId) {
+    requireApplicationExists(requestedApplicationId);
+    if (state.status != null) {
+      throw new ValidationException(
+          List.of("Documents can only be uploaded to an application draft"));
+    }
   }
 
   private void validateManualDecision(MakeApplicationDecisionCommand command) {

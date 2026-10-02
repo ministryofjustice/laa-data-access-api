@@ -33,7 +33,10 @@ import uk.gov.justice.laa.dstew.access.command.application.ApplicationEvolve;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationState;
 import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
+import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftStartedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.draft.SubmitApplicationDraftCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
+import uk.gov.justice.laa.dstew.access.model.CreateApplicationDraftRequest;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 
 /**
@@ -65,11 +68,17 @@ class RawReplayContractTest {
       throws Exception {
     UUID applicationId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
+    var request = validCreateApplicationRequest(applicationId, UUID.randomUUID());
+    var draft =
+        new CreateApplicationDraftRequest()
+            .id(applicationId)
+            .status(request.getStatus())
+            .laaReference(request.getLaaReference())
+            .applicationContent(request.getApplicationContent());
     ResponseEntity<Void> response =
         restTemplate.postForEntity(
-            "http://localhost:" + port + "/api/v0/applications",
-            new HttpEntity<>(
-                validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()),
+            "http://localhost:" + port + "/api/v0/application-drafts",
+            new HttpEntity<>(draft, headers()),
             Void.class);
     assertThat(response.getStatusCode()).isIn(HttpStatus.CREATED, HttpStatus.ACCEPTED);
     commandGateway.sendAndWait(
@@ -83,6 +92,7 @@ class RawReplayContractTest {
             "checksum",
             "CIVIL_APPLY",
             "client-report.pdf"));
+    commandGateway.sendAndWait(new SubmitApplicationDraftCommand(applicationId, Instant.now()));
     List<Map<String, Object>> rows =
         jdbcTemplate.queryForList(
             "SELECT payload, payload_type FROM axon.domain_event_entry "
@@ -91,7 +101,7 @@ class RawReplayContractTest {
 
     ApplicationState state = replayWithoutAxon(rows);
 
-    assertThat(state.getApplicationDataVersion()).isEqualTo(1L);
+    assertThat(state.getApplicationDataVersion()).isZero();
     assertThat(state.getApplicationVersion()).isZero();
     assertThat(state.getUploadedDocuments())
         .extracting(UploadDocument::documentId)
@@ -152,6 +162,9 @@ class RawReplayContractTest {
   private void dispatchEvent(ApplicationState state, String payloadType, byte[] payload)
       throws Exception {
     switch (payloadType) {
+      case "uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftStartedEvent" ->
+          ApplicationEvolve.apply(
+              state, objectMapper.readValue(payload, ApplicationDraftStartedEvent.class));
       case "uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent" ->
           ApplicationEvolve.apply(
               state, objectMapper.readValue(payload, ApplicationCreatedEvent.class));

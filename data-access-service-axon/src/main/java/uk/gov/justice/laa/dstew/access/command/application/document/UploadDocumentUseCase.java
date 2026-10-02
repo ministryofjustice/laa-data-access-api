@@ -6,6 +6,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadCommand;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftStore;
+import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
@@ -16,10 +18,16 @@ public class UploadDocumentUseCase {
 
   private final SdsService sdsService;
   private final RetryingCommandDispatcher dispatcher;
+  private final ApplicationDraftStore draftStore;
 
-  public UploadDocumentUseCase(SdsService sdsService, RetryingCommandDispatcher dispatcher) {
+  /** Constructs the upload use case with direct draft lookup and command dispatch. */
+  public UploadDocumentUseCase(
+      SdsService sdsService,
+      RetryingCommandDispatcher dispatcher,
+      ApplicationDraftStore draftStore) {
     this.sdsService = sdsService;
     this.dispatcher = dispatcher;
+    this.draftStore = draftStore;
   }
 
   /**
@@ -31,6 +39,12 @@ public class UploadDocumentUseCase {
    */
   @AllowApiCaseworker
   public DocumentUploadResponse execute(UUID applicationId, MultipartFile file) {
+    draftStore
+        .find(applicationId)
+        .orElseThrow(
+            () ->
+                new ResourceNotFoundException(
+                    "No application draft found with Application ID: " + applicationId));
     return sdsService.saveFile(applicationId, file);
   }
 
@@ -38,6 +52,12 @@ public class UploadDocumentUseCase {
   @AllowApiCaseworker
   public UploadApplicationDocumentResult execute(
       UUID applicationId, MultipartFile file, String documentType, String sourceService) {
+    draftStore
+        .find(applicationId)
+        .orElseThrow(
+            () ->
+                new ResourceNotFoundException(
+                    "No application draft found with Application ID: " + applicationId));
     UUID documentId = UUID.randomUUID();
     Instant uploadedAt = Instant.now();
     DocumentUploadResponse response = sdsService.saveEvidenceFile(applicationId, documentId, file);
