@@ -1,13 +1,21 @@
 package uk.gov.justice.laa.dstew.access.command.application.document;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.mockito.InjectMocks;
@@ -17,6 +25,9 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadCommand;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftPayload;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftStore;
+import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
 
@@ -25,8 +36,31 @@ class UploadDocumentUseCaseTest {
 
   @Mock private SdsService sdsService;
   @Mock private RetryingCommandDispatcher dispatcher;
+  @Mock private ApplicationDraftStore draftStore;
 
   @InjectMocks private UploadDocumentUseCase uploadDocumentUseCase;
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void givenNonDraft_whenUploading_thenRejectsBeforeSds(boolean metadataUpload) {
+    UUID applicationId = UUID.randomUUID();
+    MockMultipartFile file =
+        new MockMultipartFile("file", "report.pdf", "application/pdf", new byte[12]);
+    when(draftStore.find(applicationId)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(
+            () -> {
+              if (metadataUpload) {
+                uploadDocumentUseCase.execute(
+                    applicationId, file, "GATEWAY_EVIDENCE", "CIVIL_APPLY");
+              } else {
+                uploadDocumentUseCase.execute(applicationId, file);
+              }
+            })
+        .isInstanceOf(ResourceNotFoundException.class)
+        .hasMessageContaining(applicationId.toString());
+    verifyNoInteractions(sdsService, dispatcher);
+  }
 
   @Test
   void givenValidFileAndApplicationId_whenExecute_thenDelegatesToSdsServiceAndReturnsResponse() {
@@ -35,12 +69,17 @@ class UploadDocumentUseCaseTest {
         new MockMultipartFile(
             "file", "test-file.pdf", "application/pdf", "test content".getBytes());
     DocumentUploadResponse expectedResponse = mock(DocumentUploadResponse.class);
+    when(draftStore.find(applicationId)).thenReturn(Optional.of(draftPayload()));
     when(sdsService.saveFile(applicationId, file)).thenReturn(expectedResponse);
 
     DocumentUploadResponse actualResponse = uploadDocumentUseCase.execute(applicationId, file);
 
     assertThat(actualResponse).isEqualTo(expectedResponse);
     verify(sdsService).saveFile(applicationId, file);
+    var order = inOrder(draftStore, sdsService);
+    order.verify(draftStore).find(applicationId);
+    order.verify(sdsService).saveFile(applicationId, file);
+    verifyNoInteractions(dispatcher);
   }
 
   @Test
@@ -50,6 +89,7 @@ class UploadDocumentUseCaseTest {
         new MockMultipartFile(
             "file", "test-file.pdf", "application/pdf", "test content".getBytes());
     DocumentUploadResponse response = new DocumentUploadResponse().checksum("checksum");
+    when(draftStore.find(applicationId)).thenReturn(Optional.of(draftPayload()));
     when(sdsService.saveEvidenceFile(
             ArgumentMatchers.eq(applicationId),
             ArgumentMatchers.any(UUID.class),
@@ -62,6 +102,10 @@ class UploadDocumentUseCaseTest {
     ArgumentCaptor<ApplicationDocumentUploadCommand> commandCaptor =
         ArgumentCaptor.forClass(ApplicationDocumentUploadCommand.class);
     verify(dispatcher).dispatch(commandCaptor.capture());
+    var order = inOrder(draftStore, dispatcher, sdsService);
+    order.verify(draftStore).find(applicationId);
+    order.verify(sdsService).saveEvidenceFile(applicationId, result.documentId(), file);
+    order.verify(dispatcher).dispatch(commandCaptor.getValue());
     assertThat(commandCaptor.getValue())
         .extracting(
             ApplicationDocumentUploadCommand::applicationId,
@@ -107,6 +151,7 @@ class UploadDocumentUseCaseTest {
     MultipartFile blankContentType = multipartFile(" ");
     MultipartFile slashlessContentType = multipartFile("pdf");
     DocumentUploadResponse response = new DocumentUploadResponse().checksum("checksum");
+    when(draftStore.find(applicationId)).thenReturn(Optional.of(draftPayload()));
     when(sdsService.saveEvidenceFile(
             org.mockito.ArgumentMatchers.eq(applicationId),
             org.mockito.ArgumentMatchers.any(UUID.class),
@@ -134,5 +179,10 @@ class UploadDocumentUseCaseTest {
     when(file.getContentType()).thenReturn(contentType);
     when(file.getSize()).thenReturn(12L);
     return file;
+  }
+
+  private ApplicationDraftPayload draftPayload() {
+    return new ApplicationDraftPayload(
+        "APPLICATION_SUBMITTED", "LAA-123", Map.of(), "{}", List.of());
   }
 }

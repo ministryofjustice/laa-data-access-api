@@ -55,6 +55,8 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadCommand;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
+import uk.gov.justice.laa.dstew.access.command.application.draft.CreateApplicationDraftCommand;
+import uk.gov.justice.laa.dstew.access.command.application.draft.SubmitApplicationDraftCommand;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
@@ -92,6 +94,7 @@ import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHist
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.history.PriorAuthorityHistoryReadRepository;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
+import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 import util.ProjectionAwaiter;
 
 @Testcontainers
@@ -163,11 +166,11 @@ class PostgresAxonIntegrationTest {
 
   @Test
   void
-      givenExistingApplication_whenDocumentUploadCommandDispatched_thenStoresSequencedDomainEvent() {
+      givenApplicationDraft_whenDocumentUploadedAndSubmitted_thenPreservesDocumentAndRejectsFurtherUploads() {
     UUID applicationId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
     Instant uploadedAt = Instant.parse("2026-09-28T15:10:27.430Z");
-    applicationId(post(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()));
+    createDocumentDraft(applicationId);
 
     commandGateway.sendAndWait(
         new ApplicationDocumentUploadCommand(
@@ -200,14 +203,27 @@ class PostgresAxonIntegrationTest {
                           + ".ApplicationDocumentUploadedEvent");
               assertThat(event.get("sequence_number")).isEqualTo(1L);
               assertThat(event.get("payload").toString())
-                  .contains("applicationDataVersion")
                   .doesNotContain("originalFilename.pdf", "originalFilename", "fileName");
             });
 
     assertThat(
             jdbcTemplate.queryForObject(
+                "SELECT payload -> 'documentFilenames' ->> ? FROM axon.application_draft WHERE application_id = ?",
+                String.class,
+                documentId.toString(),
+                applicationId))
+        .isEqualTo("originalFilename.pdf");
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM axon.application_data WHERE application_id = ?",
+                Integer.class,
+                applicationId))
+        .isZero();
+    commandGateway.sendAndWait(new SubmitApplicationDraftCommand(applicationId, Instant.now()));
+    assertThat(
+            jdbcTemplate.queryForObject(
                 "SELECT payload -> 'documentFilenames' ->> ? FROM axon.application_data "
-                    + "WHERE application_id = ? AND version = 1",
+                    + "WHERE application_id = ? AND version = 0",
                 String.class,
                 documentId.toString(),
                 applicationId))
@@ -235,13 +251,37 @@ class PostgresAxonIntegrationTest {
                 applicationId))
         .contains(documentId.toString())
         .doesNotContain("originalFilename.pdf", "fileName");
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM axon.application_draft WHERE application_id = ?",
+                Integer.class,
+                applicationId))
+        .isZero();
+    assertThatThrownBy(
+            () ->
+                commandGateway.sendAndWait(
+                    new ApplicationDocumentUploadCommand(
+                        applicationId,
+                        UUID.randomUUID(),
+                        "GATEWAY_EVIDENCE",
+                        Instant.now(),
+                        12L,
+                        "application/pdf",
+                        "checksum",
+                        "CIVIL_APPLY",
+                        "another.pdf")))
+        .isInstanceOfSatisfying(
+            ValidationException.class,
+            failure ->
+                assertThat(failure.errors())
+                    .contains("Documents can only be uploaded to an application draft"));
   }
 
   @Test
-  void givenDocumentEventAppendFails_whenUploaded_thenFilenameVersionRollsBack() {
+  void givenDocumentEventAppendFails_whenUploaded_thenDraftFilenameRollsBack() {
     UUID applicationId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
-    applicationId(post(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()));
+    createDocumentDraft(applicationId);
     ApplicationDocumentUploadCommand command =
         new ApplicationDocumentUploadCommand(
             applicationId,
@@ -286,7 +326,14 @@ class PostgresAxonIntegrationTest {
                 "SELECT COUNT(*) FROM axon.application_data WHERE application_id = ?",
                 Integer.class,
                 applicationId))
-        .isEqualTo(1);
+        .isZero();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT payload -> 'documentFilenames' ->> ? FROM axon.application_draft WHERE application_id = ?",
+                String.class,
+                documentId.toString(),
+                applicationId))
+        .isNull();
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM axon.domain_event_entry WHERE aggregate_identifier = ?",
@@ -297,12 +344,28 @@ class PostgresAxonIntegrationTest {
     commandGateway.sendAndWait(command);
     assertThat(
             jdbcTemplate.queryForObject(
-                "SELECT payload -> 'documentFilenames' ->> ? FROM axon.application_data "
-                    + "WHERE application_id = ? AND version = 1",
+                "SELECT payload -> 'documentFilenames' ->> ? FROM axon.application_draft "
+                    + "WHERE application_id = ?",
                 String.class,
                 documentId.toString(),
                 applicationId))
         .isEqualTo("client-report.pdf");
+  }
+
+  private void createDocumentDraft(UUID applicationId) {
+    ApplicationCreateRequest request =
+        validCreateApplicationRequest(applicationId, UUID.randomUUID());
+    commandGateway.sendAndWait(
+        new CreateApplicationDraftCommand(
+            applicationId,
+            "APPLICATION_SUBMITTED",
+            request.getLaaReference(),
+            request.getApplicationContent(),
+            objectMapper.writeValueAsString(request),
+            1,
+            "BaseCivilApplication.json",
+            Instant.now(),
+            request.getPotentialDuplicates()));
   }
 
   @Test

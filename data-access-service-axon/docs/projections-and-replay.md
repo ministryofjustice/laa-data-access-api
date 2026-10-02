@@ -44,6 +44,13 @@ The same handler advances the data-version pointer when present, keeping metadat
 content aligned within the existing `application-projection` processor. Duplicate document IDs
 are not appended again. The list index also records the upload timestamp for last-updated sorting.
 
+New uploads occur before `ApplicationCreatedEvent`. Their handler seeds a thin current-state row to
+retain document metadata, but no immutable application-data payload exists yet, so the ordinary
+Application GET still returns not found while the Application is in draft. Creation preserves the
+projected document list and references the submission payload containing the filenames. This ordering
+is maintained by the same processor and survives reset/replay. The pre-submission metadata row must
+not be used as the authoritative draft lifecycle check.
+
 Query hydration loads the filename map from the payload referenced by the current-state row.
 Application detail mapping joins by document ID, excludes deleted documents, and orders active
 documents by upload time then document ID. It does not read aggregate state or call SDS for each
@@ -54,8 +61,8 @@ Migration V21 initializes the metadata column to an empty list. For an existing 
 processor has already passed historical document uploads, reset and replay `application-projection`
 to populate those documents. Replay `application-list-index-projection` as well to include their
 upload timestamps in sorting. Preserve the event store and `application_data` during either reset.
-New uploads become visible once the asynchronous projection catches up; the upload response does
-not add a read-your-write guarantee.
+New draft uploads become visible in Application details after submission and once the asynchronous
+projection catches up; the upload response does not add a read-your-write guarantee.
 
 ## History projection
 
