@@ -41,6 +41,36 @@ For example, a decision command:
 Creation, decisions, assignments, unassignments, and notes follow the same append-and-reference
 pattern when their detailed payload changes.
 
+Application document uploads are allowed only in the separate draft lifecycle, before
+`ApplicationCreatedEvent`. A fully created Application cannot accept uploads, even when its business
+status is `APPLICATION_IN_PROGRESS`. The draft payload's intended submission status is not the
+lifecycle guard: the aggregate tracks the draft lifecycle with `state.status == null`.
+
+The only document-specific sensitive value in draft content is `documentFilenames`, a map from
+document ID to original filename. Uploads update that map in `application_draft` and emit filename-free
+metadata events without a data-version pointer. Neither aggregate state nor the persisted document
+metadata projection contains the filename. Submission copies the map into version 0 of immutable
+`application_data` before emitting `ApplicationCreatedEvent` and deleting the draft row. Subsequent
+immutable content updates preserve the filename map.
+
+Both upload entry points look up the draft directly in `ApplicationDraftStore` before SDS is called.
+An absent draft returns a not-found error without calling SDS or dispatching an upload command.
+This is an existence check against authoritative draft storage, not a projection lookup or a guarantee
+that the draft remains open throughout the external call. The upload command checks the aggregate
+lifecycle before recording metadata, so submitting during an external upload
+cannot attach a new document to the created Application. Any upload command whose document ID is
+already recorded is rejected, including an identical retry, without writing draft content or emitting
+an event. Draft content is written before the event in the shared database transaction. SDS remains
+outside that transaction;
+a race or command failure after SDS acceptance can still leave an external file needing cleanup.
+
+Historical upload events with a data-version pointer still advance that version during replay.
+Events without a pointer retain the preceding version, including all new draft uploads.
+Older payloads without `documentFilenames` normalize to an empty map. Those documents remain visible
+in application details without an original filename; the event stream cannot recover names that
+were never persisted. Removing a document from the current response does not erase filenames from
+historical sensitive-data versions. Application-level retention removes those versions together.
+
 ## What is stored where
 
 | Store | Typical contents | Purpose |

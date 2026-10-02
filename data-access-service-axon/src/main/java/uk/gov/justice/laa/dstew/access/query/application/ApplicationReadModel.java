@@ -21,6 +21,7 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationProvider;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Opponent;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
+import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationMeritsDecision;
 import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 
@@ -80,6 +81,13 @@ public class ApplicationReadModel {
   @Transient private Map<UUID, ApplicationMeritsDecision> meritsDecisions;
 
   @Transient private Map<String, Object> certificate;
+
+  @Builder.Default
+  @Column(name = "uploaded_documents", nullable = false)
+  @JdbcTypeCode(SqlTypes.JSON)
+  private List<UploadDocument> uploadedDocuments = List.of();
+
+  @Transient private Map<UUID, String> documentFilenames;
 
   @Column(name = "potential_duplicates")
   @JdbcTypeCode(SqlTypes.JSON)
