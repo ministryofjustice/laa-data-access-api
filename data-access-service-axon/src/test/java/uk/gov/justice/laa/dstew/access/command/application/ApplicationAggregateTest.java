@@ -524,7 +524,8 @@ class ApplicationAggregateTest {
             12L,
             "application/pdf",
             "checksum",
-            "CIVIL_APPLY");
+            "CIVIL_APPLY",
+            "originalFilename.pdf");
 
     fixture
         .given()

@@ -178,7 +178,8 @@ class PostgresAxonIntegrationTest {
             12L,
             "application/pdf",
             "checksum",
-            "CIVIL_APPLY"));
+            "CIVIL_APPLY",
+            "originalFilename.pdf"));
 
     List<Map<String, Object>> events =
         jdbcTemplate.queryForList(

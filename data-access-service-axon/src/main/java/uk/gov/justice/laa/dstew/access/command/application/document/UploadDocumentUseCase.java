@@ -50,7 +50,8 @@ public class UploadDocumentUseCase {
             file.getSize(),
             file.getContentType(),
             response.getChecksum(),
-            sourceService));
+            sourceService,
+            file.getOriginalFilename()));
     return new UploadApplicationDocumentResult(
         documentId,
         file.getOriginalFilename(),

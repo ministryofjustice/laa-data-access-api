@@ -15,4 +15,5 @@ public record ApplicationDocumentUploadCommand(
     Long size,
     String contentType,
     String checksum,
-    String sourceService) {}
+    String sourceService,
+    String originalFilename) {}
