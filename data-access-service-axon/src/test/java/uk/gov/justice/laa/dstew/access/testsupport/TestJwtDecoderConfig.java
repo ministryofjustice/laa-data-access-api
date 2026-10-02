@@ -21,6 +21,9 @@ public class TestJwtDecoderConfig {
 
   public static final String BEARER_TOKEN = "test-caseworker-token";
   public static final String OTHER_BEARER_TOKEN = "other-test-caseworker-token";
+  public static final String OFFICE_A_BEARER_TOKEN = "office-a-caseworker-token";
+  public static final String OFFICE_A_AND_B_BEARER_TOKEN = "office-a-and-b-caseworker-token";
+  public static final String NO_ACCOUNTS_BEARER_TOKEN = "no-accounts-caseworker-token";
   public static final UUID CASEWORKER_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
   public static final UUID OTHER_CASEWORKER_ID =
       UUID.fromString("22222222-2222-2222-2222-222222222222");
@@ -48,6 +51,22 @@ public class TestJwtDecoderConfig {
                 "aud",
                 List.of(AUDIENCE),
                 "oid",
-                OTHER_CASEWORKER_ID.toString())));
+                OTHER_CASEWORKER_ID.toString())),
+        caseworkerToken(OFFICE_A_BEARER_TOKEN, List.of("1A001B")),
+        caseworkerToken(OFFICE_A_AND_B_BEARER_TOKEN, List.of("1A001B", "2B002C")),
+        caseworkerToken(NO_ACCOUNTS_BEARER_TOKEN, List.of()));
+  }
+
+  private static StubJwtToken caseworkerToken(String token, List<String> accounts) {
+    return new StubJwtToken(
+        token,
+        "accounts-caseworker@example.com",
+        new String[] {"LAA_CASEWORKER"},
+        null,
+        Map.of(
+            "iss", ISSUER_URI,
+            "aud", List.of(AUDIENCE),
+            "oid", CASEWORKER_ID.toString(),
+            "LAA_ACCOUNTS", accounts));
   }
 }

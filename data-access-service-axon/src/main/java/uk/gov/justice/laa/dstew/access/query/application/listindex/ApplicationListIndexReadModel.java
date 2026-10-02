@@ -21,8 +21,9 @@ import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
  * the {@code GET /applications} endpoint.
  *
  * <p>All columns are persisted — there are no {@code @Transient} fields. The minimum PII needed for
- * client-name and date-of-birth filters ({@code client_first_name}, {@code client_last_name},
- * {@code client_date_of_birth}) is stored here so filters can be pushed entirely to the database.
+ * client-name, date-of-birth, and office-code access filters ({@code client_first_name}, {@code
+ * client_last_name}, {@code client_date_of_birth}, {@code office_code}) is stored here so filters
+ * can be pushed entirely to the database.
  * Rich response-only fields (proceedings, certificate, application content, etc.) are not
  * duplicated into this table; they are bulk-loaded from {@code application_data} for the result
  * page only, after paging has been applied.
@@ -73,6 +74,9 @@ public class ApplicationListIndexReadModel {
 
   @Column(name = "client_date_of_birth")
   private LocalDate clientDateOfBirth;
+
+  @Column(name = "office_code")
+  private String officeCode;
 
   /**
    * The application-domain version at the time this row was last written. Used as an optimistic

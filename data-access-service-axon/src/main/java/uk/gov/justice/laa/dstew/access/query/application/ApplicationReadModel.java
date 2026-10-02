@@ -52,6 +52,9 @@ public class ApplicationReadModel {
 
   @Transient private ApplicationProvider provider;
 
+  @Column(name = "office_code")
+  private String officeCode;
+
   @Transient private List<Opponent> opponents;
 
   @Column(name = "schema_version")
@@ -91,8 +94,9 @@ public class ApplicationReadModel {
   @Column(name = "modified_at")
   private Instant modifiedAt;
 
-  /** Derives office code from provider for backward compatibility. */
+  /** Returns the persisted access key, falling back to hydrated provider content for responses. */
   public String getOfficeCode() {
-    return provider != null ? provider.getOfficeCode() : null;
+    return officeCode != null ? officeCode : provider == null ? null : provider.getOfficeCode();
   }
+
 }

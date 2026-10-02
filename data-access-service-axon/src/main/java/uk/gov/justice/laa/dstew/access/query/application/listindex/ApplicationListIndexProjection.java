@@ -79,6 +79,7 @@ public class ApplicationListIndexProjection {
             .clientFirstName(client != null ? client.getFirstName() : null)
             .clientLastName(client != null ? client.getLastName() : null)
             .clientDateOfBirth(client != null ? client.getDateOfBirth() : null)
+            .officeCode(officeCode(data))
             .streamVersion(0L)
             .projectionPosition(message.identifier().hashCode())
             .build());
@@ -169,6 +170,7 @@ public class ApplicationListIndexProjection {
               row.setClientFirstName(client != null ? client.getFirstName() : null);
               row.setClientLastName(client != null ? client.getLastName() : null);
               row.setClientDateOfBirth(client != null ? client.getDateOfBirth() : null);
+              row.setOfficeCode(officeCode(data));
               row.setStreamVersion(event.applicationVersion());
               row.setModifiedAt(event.occurredAt());
               row.setProjectionPosition(message.identifier().hashCode());
@@ -251,5 +253,9 @@ public class ApplicationListIndexProjection {
   @ResetHandler
   public void reset() {
     listIndexRepository.deleteAllInBatch();
+  }
+
+  private static String officeCode(ApplicationDataPayload data) {
+    return data == null || data.provider() == null ? null : data.provider().getOfficeCode();
   }
 }
