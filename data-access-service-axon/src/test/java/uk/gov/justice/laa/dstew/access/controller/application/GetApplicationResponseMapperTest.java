@@ -16,6 +16,7 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.Opponent;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ScopeLimitation;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
+import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationMeritsDecision;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
@@ -30,6 +31,66 @@ import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAut
 class GetApplicationResponseMapperTest {
 
   private final GetApplicationResponseMapper mapper = new GetApplicationResponseMapper();
+
+  @Test
+  void givenActiveDeletedAndLegacyDocuments_whenMapped_thenReturnsOrderedActiveDocuments() {
+    UUID activeId = UUID.randomUUID();
+    UUID legacyId = UUID.randomUUID();
+    Instant uploadedAt = Instant.parse("2026-09-28T10:00:00Z");
+    ApplicationReadModel application =
+        baseReadModel()
+            .uploadedDocuments(
+                List.of(
+                    new UploadDocument(
+                        activeId,
+                        "GATEWAY_EVIDENCE",
+                        uploadedAt.plusSeconds(1),
+                        12L,
+                        "application/pdf",
+                        "checksum",
+                        "CIVIL_APPLY",
+                        false),
+                    new UploadDocument(
+                        UUID.randomUUID(),
+                        "GATEWAY_EVIDENCE",
+                        uploadedAt,
+                        13L,
+                        "application/pdf",
+                        "deleted-checksum",
+                        "CIVIL_APPLY",
+                        true),
+                    new UploadDocument(
+                        legacyId,
+                        "EXPERT_REPORT",
+                        uploadedAt,
+                        14L,
+                        "application/pdf",
+                        "legacy-checksum",
+                        "CIVIL_APPLY",
+                        false)))
+            .documentFilenames(Map.of(activeId, "client-report.pdf"))
+            .build();
+
+    var documents = mapper.toResponse(application).getUploadedDocuments();
+
+    assertThat(documents)
+        .extracting(document -> document.getDocumentId())
+        .containsExactly(legacyId, activeId);
+    assertThat(documents.getFirst().getFileName()).isNull();
+    assertThat(documents.getLast().getFileName()).isEqualTo("client-report.pdf");
+    assertThat(documents.getLast().getDocumentType()).isEqualTo("GATEWAY_EVIDENCE");
+    assertThat(documents.getLast().getSize()).isEqualTo(12L);
+    assertThat(documents.getLast().getContentType()).isEqualTo("application/pdf");
+    assertThat(documents.getLast().getChecksum()).isEqualTo("checksum");
+    assertThat(documents.getLast().getSourceService()).isEqualTo("CIVIL_APPLY");
+    assertThat(documents.getLast().getUploadedAt())
+        .isEqualTo(uploadedAt.plusSeconds(1).atOffset(ZoneOffset.UTC));
+  }
+
+  @Test
+  void givenNoDocuments_whenMapped_thenReturnsEmptyArray() {
+    assertThat(mapper.toResponse(baseReadModel().build()).getUploadedDocuments()).isEmpty();
+  }
 
   private ApplicationReadModel.ApplicationReadModelBuilder baseReadModel() {
     return ApplicationReadModel.builder()

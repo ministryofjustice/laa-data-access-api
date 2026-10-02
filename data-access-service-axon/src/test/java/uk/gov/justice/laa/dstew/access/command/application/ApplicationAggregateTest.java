@@ -1,9 +1,13 @@
 package uk.gov.justice.laa.dstew.access.command.application;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validApplicationContent;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationCreatedEvent;
@@ -20,6 +24,10 @@ import org.axonframework.test.fixture.AxonTestFixture;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
@@ -526,6 +534,8 @@ class ApplicationAggregateTest {
             "checksum",
             "CIVIL_APPLY",
             "originalFilename.pdf");
+    when(applicationDataStore.get(applicationId, 0L))
+        .thenReturn(ApplicationDataPayload.from(applicationCreationDetails(applicationId)));
 
     fixture
         .given()
@@ -543,7 +553,215 @@ class ApplicationAggregateTest {
                 12L,
                 "application/pdf",
                 "checksum",
-                "CIVIL_APPLY"));
+                "CIVIL_APPLY",
+                1L));
+
+    ArgumentCaptor<ApplicationDataPayload> payload =
+        ArgumentCaptor.forClass(ApplicationDataPayload.class);
+    verify(applicationDataStore)
+        .append(
+            eq(applicationId),
+            eq(1L),
+            payload.capture(),
+            eq(documentId.toString()),
+            eq(uploadedAt));
+    assertThat(payload.getValue().documentFilenames())
+        .containsEntry(documentId, "originalFilename.pdf");
+  }
+
+  @Test
+  void givenRecordedDocument_whenIdenticalUploadRetried_thenDoesNotAppendAgain() {
+    UUID applicationId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    Instant uploadedAt = Instant.parse("2026-09-28T15:10:27.430Z");
+    when(applicationDataStore.get(applicationId, 1L))
+        .thenReturn(
+            ApplicationDataPayload.from(applicationCreationDetails(applicationId))
+                .withDocumentFilename(documentId, "original.pdf"));
+
+    fixture
+        .given()
+        .events(
+            applicationCreatedEvent(applicationId),
+            new ApplicationDocumentUploadedEvent(
+                applicationId,
+                documentId,
+                "GATEWAY_EVIDENCE",
+                uploadedAt,
+                12L,
+                "application/pdf",
+                "checksum",
+                "CIVIL_APPLY",
+                1L))
+        .when()
+        .command(
+            new ApplicationDocumentUploadCommand(
+                applicationId,
+                documentId,
+                "GATEWAY_EVIDENCE",
+                uploadedAt,
+                12L,
+                "application/pdf",
+                "checksum",
+                "CIVIL_APPLY",
+                "original.pdf"))
+        .then()
+        .resultMessagePayload(documentId)
+        .noEvents();
+
+    verify(applicationDataStore, never()).append(any(), anyLong(), any(), any(), any());
+  }
+
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(longs = 1L)
+  void givenLegacyOrVersionedDocument_whenAnotherUploaded_thenUsesRestoredDataVersion(
+      Long version) {
+    UUID applicationId = UUID.randomUUID();
+    UUID previousDocumentId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    Instant uploadedAt = Instant.parse("2026-09-28T15:10:27.430Z");
+    long currentVersion = version == null ? 0L : version;
+    when(applicationDataStore.get(applicationId, currentVersion))
+        .thenReturn(ApplicationDataPayload.from(applicationCreationDetails(applicationId)));
+
+    fixture
+        .given()
+        .events(
+            applicationCreatedEvent(applicationId),
+            new ApplicationDocumentUploadedEvent(
+                applicationId,
+                previousDocumentId,
+                "GATEWAY_EVIDENCE",
+                uploadedAt,
+                12L,
+                "application/pdf",
+                "previous-checksum",
+                "CIVIL_APPLY",
+                version))
+        .when()
+        .command(
+            new ApplicationDocumentUploadCommand(
+                applicationId,
+                documentId,
+                "GATEWAY_EVIDENCE",
+                uploadedAt.plusSeconds(1),
+                13L,
+                "application/pdf",
+                "checksum",
+                "CIVIL_APPLY",
+                "original.pdf"))
+        .then()
+        .events(
+            new ApplicationDocumentUploadedEvent(
+                applicationId,
+                documentId,
+                "GATEWAY_EVIDENCE",
+                uploadedAt.plusSeconds(1),
+                13L,
+                "application/pdf",
+                "checksum",
+                "CIVIL_APPLY",
+                currentVersion + 1));
+  }
+
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(strings = {"", " "})
+  void givenMissingFilename_whenUploaded_thenRejectsBeforeReadingContent(String filename) {
+    UUID applicationId = UUID.randomUUID();
+    fixture
+        .given()
+        .events(applicationCreatedEvent(applicationId))
+        .when()
+        .command(
+            new ApplicationDocumentUploadCommand(
+                applicationId,
+                UUID.randomUUID(),
+                "GATEWAY_EVIDENCE",
+                Instant.now(),
+                12L,
+                "application/pdf",
+                "checksum",
+                "CIVIL_APPLY",
+                filename))
+        .then()
+        .exception(ValidationException.class)
+        .noEvents();
+
+    verify(applicationDataStore, never()).get(any(), anyLong());
+    verify(applicationDataStore, never()).append(any(), anyLong(), any(), any(), any());
+  }
+
+  @Test
+  void givenRecordedDocument_whenFilenameDiffers_thenRejectsWithoutAppending() {
+    UUID applicationId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    Instant uploadedAt = Instant.parse("2026-09-28T15:10:27.430Z");
+    when(applicationDataStore.get(applicationId, 1L))
+        .thenReturn(
+            ApplicationDataPayload.from(applicationCreationDetails(applicationId))
+                .withDocumentFilename(documentId, "original.pdf"));
+
+    fixture
+        .given()
+        .events(
+            applicationCreatedEvent(applicationId),
+            new ApplicationDocumentUploadedEvent(
+                applicationId,
+                documentId,
+                "GATEWAY_EVIDENCE",
+                uploadedAt,
+                12L,
+                "application/pdf",
+                "checksum",
+                "CIVIL_APPLY",
+                1L))
+        .when()
+        .command(
+            new ApplicationDocumentUploadCommand(
+                applicationId,
+                documentId,
+                "GATEWAY_EVIDENCE",
+                uploadedAt,
+                12L,
+                "application/pdf",
+                "checksum",
+                "CIVIL_APPLY",
+                "changed.pdf"))
+        .then()
+        .exception(ValidationException.class)
+        .noEvents();
+
+    verify(applicationDataStore, never()).append(any(), anyLong(), any(), any(), any());
+  }
+
+  @Test
+  void givenDataAppendFailure_whenDocumentUploaded_thenDoesNotEmitEvent() {
+    UUID applicationId = UUID.randomUUID();
+    when(applicationDataStore.get(applicationId, 0L))
+        .thenReturn(ApplicationDataPayload.from(applicationCreationDetails(applicationId)));
+    when(applicationDataStore.append(any(), anyLong(), any(), any(), any()))
+        .thenThrow(new IllegalStateException("storage failure"));
+
+    fixture
+        .given()
+        .events(applicationCreatedEvent(applicationId))
+        .when()
+        .command(
+            new ApplicationDocumentUploadCommand(
+                applicationId,
+                UUID.randomUUID(),
+                "GATEWAY_EVIDENCE",
+                Instant.now(),
+                12L,
+                "application/pdf",
+                "checksum",
+                "CIVIL_APPLY",
+                "original.pdf"))
+        .then()
+        .exception(IllegalStateException.class)
+        .noEvents();
   }
 
   @Test

@@ -11,4 +11,5 @@ public record UploadDocument(
     Long size,
     String contentType,
     String checksum,
-    String sourceService) {}
+    String sourceService,
+    boolean deleted) {}

@@ -91,6 +91,10 @@ public final class ApplicationEvolve {
             event.size(),
             event.contentType(),
             event.checksum(),
-            event.sourceService()));
+            event.sourceService(),
+            false));
+    if (event.applicationDataVersion() != null) {
+      state.applicationDataVersion = event.applicationDataVersion();
+    }
   }
 }
