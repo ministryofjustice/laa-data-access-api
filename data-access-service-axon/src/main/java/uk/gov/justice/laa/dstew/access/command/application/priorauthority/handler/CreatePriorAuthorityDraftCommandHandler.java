@@ -12,9 +12,11 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
+/** Handles creation of prior-authority drafts. */
 @Component
 public class CreatePriorAuthorityDraftCommandHandler {
 
+  /** Creates a new prior-authority draft and emits the corresponding event. */
   @CommandHandler
   public void handle(
       CreatePriorAuthorityDraftCommand command,

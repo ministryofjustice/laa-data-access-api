@@ -3,13 +3,13 @@ package uk.gov.justice.laa.dstew.access.query.application.history;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.axonframework.messaging.core.annotation.Namespace;
 import org.axonframework.messaging.eventhandling.EventMessage;
 import org.axonframework.messaging.eventhandling.annotation.EventHandler;
 import org.axonframework.messaging.eventhandling.replay.annotation.ResetHandler;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Component;
-import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataId;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataRepository;
@@ -23,9 +23,9 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType
 @Component
 @RequiredArgsConstructor
 @Namespace("prior-authority-history-projection")
+@Slf4j
 public class PriorAuthorityHistoryProjection {
 
-  private final ObjectMapper objectMapper;
   private final PriorAuthorityDataRepository priorAuthorityDataRepository;
   private final PriorAuthorityHistoryReadRepository priorAuthorityHistoryReadRepository;
 
@@ -49,8 +49,12 @@ public class PriorAuthorityHistoryProjection {
       return;
     }
 
-    PriorAuthorityRef ref = lookupPriorAuthorityRef(event.workItemId());
+    PriorAuthorityRef ref = lookupPriorAuthorityRef(event.workItemId(), event.itemVersion());
     if (ref == null) {
+      log.warn(
+          "Prior authority data not found for PA assignment event: priorAuthorityId={}, version={}",
+          event.workItemId(),
+          event.itemVersion());
       return;
     }
 
@@ -71,8 +75,12 @@ public class PriorAuthorityHistoryProjection {
       return;
     }
 
-    PriorAuthorityRef ref = lookupPriorAuthorityRef(event.workItemId());
+    PriorAuthorityRef ref = lookupPriorAuthorityRef(event.workItemId(), event.itemVersion());
     if (ref == null) {
+      log.warn(
+          "Prior authority data not found for PA unassignment event: priorAuthorityId={}, version={}",
+          event.workItemId(),
+          event.itemVersion());
       return;
     }
 
@@ -86,9 +94,9 @@ public class PriorAuthorityHistoryProjection {
         event.occurredAt());
   }
 
-  private PriorAuthorityRef lookupPriorAuthorityRef(UUID priorAuthorityId) {
+  private PriorAuthorityRef lookupPriorAuthorityRef(UUID priorAuthorityId, long dataVersion) {
     return priorAuthorityDataRepository
-        .findById(new PriorAuthorityDataId(priorAuthorityId, 0L))
+        .findById(new PriorAuthorityDataId(priorAuthorityId, dataVersion))
         .map(
             pa -> {
               PriorAuthorityType type = pa.getPayload().content().priorAuthorityType();
@@ -131,7 +139,15 @@ public class PriorAuthorityHistoryProjection {
   private static @Nullable UUID getAuthenticatedUserId(EventMessage message) {
     Object authenticatedUserId =
         message.metadata().get(RequestMetadataDispatchInterceptor.AUTHENTICATED_USER_ID_KEY);
-    return authenticatedUserId == null ? null : UUID.fromString(authenticatedUserId.toString());
+    if (authenticatedUserId == null) {
+      return null;
+    }
+    try {
+      return UUID.fromString(authenticatedUserId.toString());
+    } catch (IllegalArgumentException e) {
+      log.warn("Invalid UUID in authenticated user metadata: {}", authenticatedUserId, e);
+      return null;
+    }
   }
 
   @ResetHandler

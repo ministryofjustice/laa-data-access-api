@@ -19,8 +19,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import tools.jackson.databind.ObjectMapper;
-import tools.jackson.databind.json.JsonMapper;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityData;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataId;
@@ -40,14 +38,13 @@ class PriorAuthorityHistoryProjectionTest {
   @Mock private PriorAuthorityHistoryReadRepository paRepository;
 
   private PriorAuthorityHistoryProjection projection;
-  private final ObjectMapper objectMapper = JsonMapper.builder().build();
 
   private static final UUID ACTOR_CASEWORKER_ID =
       UUID.nameUUIDFromBytes("entra-object-id".getBytes());
 
   @BeforeEach
   void setUp() {
-    projection = new PriorAuthorityHistoryProjection(objectMapper, paDataRepository, paRepository);
+    projection = new PriorAuthorityHistoryProjection(paDataRepository, paRepository);
   }
 
   @Test
@@ -107,7 +104,7 @@ class PriorAuthorityHistoryProjectionTest {
             assigneeCaseworkerId,
             occurredAt);
 
-    when(paDataRepository.findById(new PriorAuthorityDataId(priorAuthorityId, 0L)))
+    when(paDataRepository.findById(new PriorAuthorityDataId(priorAuthorityId, 2L)))
         .thenReturn(
             Optional.of(paData(priorAuthorityId, applicationId, PriorAuthorityType.EXPERT)));
 
@@ -139,7 +136,7 @@ class PriorAuthorityHistoryProjectionTest {
             1L,
             UUID.randomUUID(),
             Instant.parse("2026-08-05T11:00:00Z"));
-    when(paDataRepository.findById(new PriorAuthorityDataId(priorAuthorityId, 0L)))
+    when(paDataRepository.findById(new PriorAuthorityDataId(priorAuthorityId, 1L)))
         .thenReturn(Optional.of(paData(priorAuthorityId, applicationId, null)));
 
     projection.on(event, message(event, "pa-assign-event-id"));
@@ -162,7 +159,7 @@ class PriorAuthorityHistoryProjectionTest {
             1L,
             UUID.randomUUID(),
             Instant.parse("2026-08-05T11:00:00Z"));
-    when(paDataRepository.findById(new PriorAuthorityDataId(priorAuthorityId, 0L)))
+    when(paDataRepository.findById(new PriorAuthorityDataId(priorAuthorityId, 1L)))
         .thenReturn(
             Optional.of(paData(priorAuthorityId, applicationId, PriorAuthorityType.EXPERT)));
 
@@ -186,7 +183,7 @@ class PriorAuthorityHistoryProjectionTest {
             1L,
             UUID.randomUUID(),
             Instant.parse("2026-08-05T11:00:00Z"));
-    when(paDataRepository.findById(new PriorAuthorityDataId(priorAuthorityId, 0L)))
+    when(paDataRepository.findById(new PriorAuthorityDataId(priorAuthorityId, 1L)))
         .thenReturn(
             Optional.of(paData(priorAuthorityId, applicationId, PriorAuthorityType.EXPERT)));
 
@@ -223,7 +220,7 @@ class PriorAuthorityHistoryProjectionTest {
             1L,
             ACTOR_CASEWORKER_ID,
             occurredAt);
-    when(paDataRepository.findById(new PriorAuthorityDataId(priorAuthorityId, 0L)))
+    when(paDataRepository.findById(new PriorAuthorityDataId(priorAuthorityId, 1L)))
         .thenReturn(Optional.empty());
 
     projection.on(event, message(event, "pa-assign-event-id"));
@@ -238,7 +235,7 @@ class PriorAuthorityHistoryProjectionTest {
     Instant occurredAt = Instant.parse("2026-08-05T12:00:00Z");
     WorkItemUnassigned event =
         new WorkItemUnassigned(priorAuthorityId, WorkItemType.PRIOR_AUTHORITY, 2L, 2L, occurredAt);
-    when(paDataRepository.findById(new PriorAuthorityDataId(priorAuthorityId, 0L)))
+    when(paDataRepository.findById(new PriorAuthorityDataId(priorAuthorityId, 2L)))
         .thenReturn(
             Optional.of(paData(priorAuthorityId, applicationId, PriorAuthorityType.EXPERT)));
 
@@ -276,7 +273,7 @@ class PriorAuthorityHistoryProjectionTest {
     Instant occurredAt = Instant.parse("2026-08-05T12:00:00Z");
     WorkItemUnassigned event =
         new WorkItemUnassigned(priorAuthorityId, WorkItemType.PRIOR_AUTHORITY, 1L, 2L, occurredAt);
-    when(paDataRepository.findById(new PriorAuthorityDataId(priorAuthorityId, 0L)))
+    when(paDataRepository.findById(new PriorAuthorityDataId(priorAuthorityId, 1L)))
         .thenReturn(Optional.empty());
 
     projection.on(event, message(event, "pa-unassign-event-id"));

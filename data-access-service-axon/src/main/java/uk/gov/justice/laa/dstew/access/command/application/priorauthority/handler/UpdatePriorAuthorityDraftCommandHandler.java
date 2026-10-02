@@ -15,9 +15,11 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityCont
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 
+/** Handles updates to prior-authority drafts. */
 @Component
 public class UpdatePriorAuthorityDraftCommandHandler {
 
+  /** Updates the prior-authority draft and emits the corresponding event. */
   @CommandHandler
   void handle(
       UpdatePriorAuthorityDraftCommand command,
