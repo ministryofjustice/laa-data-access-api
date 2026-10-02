@@ -392,6 +392,41 @@ class ApplicationProjectionTest {
   }
 
   @Test
+  void givenDraftDocument_thenApplicationCreated_thenPreservesProjectedMetadata() {
+    UUID applicationId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.empty());
+    when(applicationReadRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+    projection.on(
+        new ApplicationDocumentUploadedEvent(
+            applicationId,
+            documentId,
+            "GATEWAY_EVIDENCE",
+            Instant.now(),
+            12L,
+            "application/pdf",
+            "checksum",
+            "CIVIL_APPLY"));
+    ArgumentCaptor<ApplicationReadModel> draft =
+        ArgumentCaptor.forClass(ApplicationReadModel.class);
+    verify(applicationReadRepository).save(draft.capture());
+    when(applicationReadRepository.findById(applicationId))
+        .thenReturn(Optional.of(draft.getValue()));
+
+    projection.on(applicationCreatedEvent(applicationId), queryUpdateEmitter);
+
+    ArgumentCaptor<ApplicationReadModel> created =
+        ArgumentCaptor.forClass(ApplicationReadModel.class);
+    verify(applicationReadRepository, org.mockito.Mockito.times(2)).save(created.capture());
+    assertThat(created.getValue().getUploadedDocuments())
+        .singleElement()
+        .satisfies(document -> assertThat(document.documentId()).isEqualTo(documentId));
+    assertThat(created.getValue().getApplicationDataVersion()).isZero();
+    assertThat(created.getValue().getSchemaVersion()).isEqualTo(1);
+  }
+
+  @Test
   void givenLegacyDocumentUpload_whenProjected_thenRetainsDataVersionAndUnknownFilename() {
     UUID applicationId = UUID.randomUUID();
     ApplicationReadModel application =
