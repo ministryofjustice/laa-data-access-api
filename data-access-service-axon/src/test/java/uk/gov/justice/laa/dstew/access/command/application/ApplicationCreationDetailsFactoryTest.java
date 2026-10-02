@@ -78,6 +78,67 @@ class ApplicationCreationDetailsFactoryTest {
   }
 
   @Test
+  void givenFields_whenPrepared_thenMapsAllParsedFields() {
+    UUID applicationId = UUID.randomUUID();
+    CreateApplicationCommand command = command(applicationId);
+    ParsedAppContentDetails parsed = parsedDetails();
+    when(applicationContentParser.parse(command.applicationContent())).thenReturn(parsed);
+
+    ApplicationCreationDetails details =
+        factory.prepare(
+            command.status(),
+            command.laaReference(),
+            command.applicationContent(),
+            command.serialisedRequest(),
+            command.schemaVersion());
+
+    assertThat(details.status()).isEqualTo("APPLICATION_SUBMITTED");
+    assertThat(details.laaReference()).isEqualTo("LAA-123");
+    assertThat(details.schemaVersion()).isEqualTo(1);
+    assertThat(details.occurredAt()).isEqualTo(FIXED_NOW);
+  }
+
+  @Test
+  void givenFields_whenPrepared_thenOpponentsArePassedThrough() {
+    UUID applicationId = UUID.randomUUID();
+    CreateApplicationCommand command = command(applicationId);
+    when(applicationContentParser.parse(command.applicationContent())).thenReturn(parsedDetails());
+
+    ApplicationCreationDetails details =
+        factory.prepare(
+            command.status(),
+            command.laaReference(),
+            command.applicationContent(),
+            command.serialisedRequest(),
+            command.schemaVersion());
+
+    assertThat(details.opponents()).isEmpty();
+  }
+
+  @Test
+  void givenProceedings_whenPreparedViaFields_thenGeneratesProceedingIds() {
+    UUID applicationId = UUID.randomUUID();
+    UUID applyProceedingId = UUID.randomUUID();
+    CreateApplicationCommand command = command(applicationId);
+    when(applicationContentParser.parse(command.applicationContent()))
+        .thenReturn(parsedDetailsWithProceedings(applyProceedingId));
+
+    ApplicationCreationDetails details =
+        factory.prepare(
+            command.status(),
+            command.laaReference(),
+            command.applicationContent(),
+            command.serialisedRequest(),
+            command.schemaVersion());
+
+    assertThat(details.proceedings()).hasSize(1);
+    Proceeding proceeding = details.proceedings().getFirst();
+    assertThat(proceeding.getId()).isEqualTo(applyProceedingId);
+    assertThat(proceeding.getDescription()).isEqualTo("Care order");
+    assertThat(proceeding.getLeadProceeding()).isTrue();
+  }
+
+  @Test
   void givenCreationDetailsRecord_whenInspected_thenContainsOnlyCreationFields() {
     List<String> componentNames =
         Arrays.stream(ApplicationCreationDetails.class.getRecordComponents())
