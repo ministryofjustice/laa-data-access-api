@@ -445,6 +445,37 @@ public class ApplicationProjection {
         true);
   }
 
+  /** Projects filename-free document metadata and its sensitive-data version together. */
+  @EventHandler
+  public void on(ApplicationDocumentUploadedEvent event) {
+    applicationReadRepository
+        .findById(event.applicationId())
+        .ifPresent(
+            application -> {
+              List<UploadDocument> documents = new ArrayList<>(application.getUploadedDocuments());
+              if (documents.stream()
+                  .anyMatch(document -> document.documentId().equals(event.documentId()))) {
+                return;
+              }
+              documents.add(
+                  new UploadDocument(
+                      event.documentId(),
+                      event.documentType(),
+                      event.uploadedAt(),
+                      event.size(),
+                      event.contentType(),
+                      event.checksum(),
+                      event.sourceService(),
+                      false));
+              application.setUploadedDocuments(List.copyOf(documents));
+              if (event.applicationDataVersion() != null) {
+                application.setApplicationDataVersion(event.applicationDataVersion());
+              }
+              application.setModifiedAt(event.uploadedAt());
+              applicationReadRepository.save(application);
+            });
+  }
+
   private void updateLeadApplicationId(
       UUID applicationId, UUID leadApplicationId, Instant occurredAt) {
     applicationReadRepository
