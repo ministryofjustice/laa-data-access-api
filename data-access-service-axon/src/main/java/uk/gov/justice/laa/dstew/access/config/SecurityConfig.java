@@ -67,12 +67,17 @@ public class SecurityConfig {
   private static final String AUTHORITY_PREFIX = "APPROLE_";
   private static final List<String> DEV_TOKEN_ACCOUNTS = List.of("0Z1234AB", "1A9876XY");
   private static final String DEV_TOKEN_ENTRA_OID = "00000000-0000-0000-0000-000000000001";
-  private static final Map<String, List<String>> DEV_TOKENS =
+  private static final String SECOND_DEV_TOKEN_ENTRA_OID = "00000000-0000-0000-0000-000000000002";
+  private static final List<String> CASEWORKER_ROLES =
+      List.of("APPROLE_LAA_CASEWORKER", "ROLE_LAA_CASEWORKER");
+  private static final Map<String, DevToken> DEV_TOKENS =
       Map.of(
           "swagger-caseworker-token",
-          List.of("APPROLE_LAA_CASEWORKER", "ROLE_LAA_CASEWORKER"),
+          new DevToken(CASEWORKER_ROLES, DEV_TOKEN_ENTRA_OID),
+          "swagger-caseworker-token-2",
+          new DevToken(CASEWORKER_ROLES, SECOND_DEV_TOKEN_ENTRA_OID),
           "unknown-token",
-          List.of("APPROLE_UNKNOWN"));
+          new DevToken(List.of("APPROLE_UNKNOWN"), DEV_TOKEN_ENTRA_OID));
 
   @Value("${feature.enable-dev-token:false}")
   private boolean enableDevToken;
@@ -236,8 +241,8 @@ public class SecurityConfig {
       return authentication;
     }
 
-    List<String> roles = DEV_TOKENS.get(bearerTokenAuthentication.getToken());
-    if (roles == null) {
+    DevToken devToken = DEV_TOKENS.get(bearerTokenAuthentication.getToken());
+    if (devToken == null) {
       throw new InvalidBearerTokenException("Invalid bearer token");
     }
 
@@ -247,12 +252,12 @@ public class SecurityConfig {
             .header("alg", "none")
             .subject("dev-user")
             .claim("LAA_ACCOUNTS", DEV_TOKEN_ACCOUNTS)
-            .claim("oid", DEV_TOKEN_ENTRA_OID)
+            .claim("oid", devToken.entraOid())
             .issuedAt(issuedAt)
             .expiresAt(issuedAt.plusSeconds(300))
             .build();
     return new JwtAuthenticationToken(
-        jwt, roles.stream().map(SimpleGrantedAuthority::new).toList());
+        jwt, devToken.roles().stream().map(SimpleGrantedAuthority::new).toList());
   }
 
   private boolean isDevTokenRequest(HttpServletRequest request) {
@@ -268,6 +273,8 @@ public class SecurityConfig {
     String token = authHeader.substring(7);
     return DEV_TOKENS.containsKey(token);
   }
+
+  private record DevToken(List<String> roles, String entraOid) {}
 
   /** Gives methods to check the SecurityContext for roles and username. */
   @ExcludeFromGeneratedCodeCoverage
