@@ -16,7 +16,8 @@ public class AccessAwareQueryExecutor {
       JpaSpecificationExecutor<T> repository,
       Specification<T> functionalSpecification,
       Specification<T> accessSpecification) {
-    return repository.findOne(Specification.where(functionalSpecification).and(accessSpecification));
+    return repository.findOne(
+        Specification.where(functionalSpecification).and(accessSpecification));
   }
 
   public <T> Page<T> findAll(
@@ -32,8 +33,7 @@ public class AccessAwareQueryExecutor {
       JpaSpecificationExecutor<T> repository,
       Specification<T> functionalSpecification,
       Specification<T> accessSpecification) {
-    return repository.findAll(Specification.where(functionalSpecification).and(accessSpecification));
+    return repository.findAll(
+        Specification.where(functionalSpecification).and(accessSpecification));
   }
 }
-
-

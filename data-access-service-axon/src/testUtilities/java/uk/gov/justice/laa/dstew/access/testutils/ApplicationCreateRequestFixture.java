@@ -1,7 +1,7 @@
 package uk.gov.justice.laa.dstew.access.testutils;
 
-import java.util.List;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import net.datafaker.Faker;
@@ -92,7 +92,8 @@ public final class ApplicationCreateRequestFixture {
   /** Creates a valid request with an explicit provider office code and LAA reference. */
   public static ApplicationCreateRequest validCreateApplicationRequest(
       UUID applicationId, UUID applyProceedingId, String officeCode, String laaReference) {
-    Map<String, Object> content = new HashMap<>(validApplicationContent(applicationId, applyProceedingId));
+    Map<String, Object> content =
+        new HashMap<>(validApplicationContent(applicationId, applyProceedingId));
     content.put(
         "provider", Map.of("officeCode", officeCode, "contactEmail", "provider@example.com"));
     return ApplicationCreateRequest.builder()

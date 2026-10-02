@@ -32,7 +32,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
@@ -49,8 +48,8 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
-import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexAccessPolicy;
+import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadRepository;
@@ -381,7 +380,8 @@ class ApplicationProjectionTest {
             .applicationId(applicationId)
             .applicationDataVersion(1L)
             .build();
-    when(applicationReadQueryGateway.findApplication(any(), any())).thenReturn(Optional.of(existing));
+    when(applicationReadQueryGateway.findApplication(any(), any()))
+        .thenReturn(Optional.of(existing));
     ApplicationDataPayload payload =
         ApplicationDataPayload.from(applicationCreationDetails(applicationId))
             .withNote("Test note", createdAt);
@@ -413,7 +413,8 @@ class ApplicationProjectionTest {
             .applicationId(applicationId)
             .applicationDataVersion(0L)
             .build();
-    when(applicationReadQueryGateway.findApplication(any(), any())).thenReturn(Optional.of(existing));
+    when(applicationReadQueryGateway.findApplication(any(), any()))
+        .thenReturn(Optional.of(existing));
     ApplicationDataPayload payload =
         ApplicationDataPayload.from(applicationCreationDetails(applicationId));
     when(applicationDataStore.get(applicationId, 0L)).thenReturn(payload);
@@ -441,7 +442,8 @@ class ApplicationProjectionTest {
             .applicationDataVersion(0L)
             .modifiedAt(Instant.EPOCH)
             .build();
-    when(applicationReadQueryGateway.findApplications(eq(List.of(appId)), any())).thenReturn(List.of(state));
+    when(applicationReadQueryGateway.findApplications(eq(List.of(appId)), any()))
+        .thenReturn(List.of(state));
 
     ApplicationDataId dataId = new ApplicationDataId(appId, 0L);
     ApplicationDataPayload payload = ApplicationDataPayload.from(applicationCreationDetails(appId));
@@ -616,7 +618,8 @@ class ApplicationProjectionTest {
   @SuppressWarnings("unchecked")
   void givenLastUpdatedSortAndDescOrder_whenFindAllQuery_thenPagedWithCorrectSort() {
     ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
-    when(applicationReadQueryGateway.findApplicationIndexPage(any(), pageableCaptor.capture(), any()))
+    when(applicationReadQueryGateway.findApplicationIndexPage(
+            any(), pageableCaptor.capture(), any()))
         .thenReturn(new PageImpl<>(List.of()));
     when(groupReadRepository.findAllByLeadApplicationIdIn(any())).thenReturn(List.of());
 
@@ -646,7 +649,8 @@ class ApplicationProjectionTest {
             .leadApplicationId(leadId)
             .modifiedAt(Instant.EPOCH)
             .build();
-    when(applicationReadQueryGateway.findApplications(eq(List.of(appId)), any())).thenReturn(List.of(state));
+    when(applicationReadQueryGateway.findApplications(eq(List.of(appId)), any()))
+        .thenReturn(List.of(state));
 
     ApplicationDataId dataId = new ApplicationDataId(appId, 0L);
     ApplicationDataPayload payload = ApplicationDataPayload.from(applicationCreationDetails(appId));
@@ -677,7 +681,8 @@ class ApplicationProjectionTest {
             .applicationDataVersion(0L)
             .modifiedAt(Instant.EPOCH)
             .build();
-    when(applicationReadQueryGateway.findApplications(eq(List.of(appId)), any())).thenReturn(List.of(state));
+    when(applicationReadQueryGateway.findApplications(eq(List.of(appId)), any()))
+        .thenReturn(List.of(state));
     when(applicationDataStore.getAll(any())).thenReturn(Map.of());
     when(groupReadRepository.findAllByLeadApplicationIdIn(any())).thenReturn(List.of());
 
@@ -696,7 +701,8 @@ class ApplicationProjectionTest {
             .applicationId(applicationId)
             .applicationDataVersion(0L)
             .build();
-    when(applicationReadQueryGateway.findApplication(any(), any())).thenReturn(Optional.of(existing));
+    when(applicationReadQueryGateway.findApplication(any(), any()))
+        .thenReturn(Optional.of(existing));
     when(applicationDataStore.getAll(any())).thenReturn(Map.of());
 
     ApplicationReadModel result = projection.handle(new FindApplicationByIdQuery(applicationId));
@@ -727,7 +733,8 @@ class ApplicationProjectionTest {
             .status("DRAFT")
             .createdAt(Instant.parse("2026-09-01T10:00:00Z"))
             .build();
-    when(applicationReadQueryGateway.findApplication(any(), any())).thenReturn(Optional.of(application));
+    when(applicationReadQueryGateway.findApplication(any(), any()))
+        .thenReturn(Optional.of(application));
     when(applicationDataStore.getAll(List.of(dataId))).thenReturn(Map.of(dataId, applicationData));
     when(groupReadRepository.findByLeadApplicationId(applicationId)).thenReturn(Optional.of(group));
     when(priorAuthorityReadRepository.findAllByApplicationIdIn(List.of(applicationId)))
@@ -760,7 +767,8 @@ class ApplicationProjectionTest {
             .leadApplicationId(leadApplicationId)
             .memberIds(List.of(leadApplicationId, applicationId))
             .build();
-    when(applicationReadQueryGateway.findApplication(any(), any())).thenReturn(Optional.of(application));
+    when(applicationReadQueryGateway.findApplication(any(), any()))
+        .thenReturn(Optional.of(application));
     when(applicationDataStore.getAll(List.of(dataId))).thenReturn(Map.of(dataId, applicationData));
     when(groupReadRepository.findByLeadApplicationId(leadApplicationId))
         .thenReturn(Optional.of(group));
@@ -786,7 +794,8 @@ class ApplicationProjectionTest {
     ApplicationDataId dataId = new ApplicationDataId(applicationId, 1L);
     ApplicationDataPayload applicationData =
         ApplicationDataPayload.from(applicationCreationDetails(applicationId));
-    when(applicationReadQueryGateway.findApplication(any(), any())).thenReturn(Optional.of(application));
+    when(applicationReadQueryGateway.findApplication(any(), any()))
+        .thenReturn(Optional.of(application));
     when(applicationDataStore.getAll(List.of(dataId))).thenReturn(Map.of(dataId, applicationData));
     when(groupReadRepository.findByLeadApplicationId(applicationId)).thenReturn(Optional.empty());
     when(priorAuthorityReadRepository.findAllByApplicationIdIn(List.of(applicationId)))
@@ -819,7 +828,8 @@ class ApplicationProjectionTest {
             .applicationId(applicationId)
             .applicationDataVersion(1L)
             .build();
-    when(applicationReadQueryGateway.findApplication(any(), any())).thenReturn(Optional.of(existing));
+    when(applicationReadQueryGateway.findApplication(any(), any()))
+        .thenReturn(Optional.of(existing));
     ApplicationDataId dataId = new ApplicationDataId(applicationId, 1L);
     ApplicationDataPayload payload =
         ApplicationDataPayload.from(applicationCreationDetails(applicationId));
@@ -854,7 +864,8 @@ class ApplicationProjectionTest {
             .applicationId(applicationId)
             .applicationDataVersion(0L)
             .build();
-    when(applicationReadQueryGateway.findApplication(any(), any())).thenReturn(Optional.of(existing));
+    when(applicationReadQueryGateway.findApplication(any(), any()))
+        .thenReturn(Optional.of(existing));
     when(applicationDataStore.get(applicationId, 0L)).thenReturn(null);
 
     ApplicationNotesResult result =

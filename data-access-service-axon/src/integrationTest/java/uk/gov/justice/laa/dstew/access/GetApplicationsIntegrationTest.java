@@ -3,8 +3,8 @@ package uk.gov.justice.laa.dstew.access;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.awaitility.Awaitility.await;
-import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validApplicationContent;
+import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -89,6 +89,36 @@ class GetApplicationsIntegrationTest {
         .contains(applicationId);
     ApplicationSummary application = findApplication(response, applicationId);
     assertThat(application.getPriorAuthorities()).isEmpty();
+  }
+
+  @Test
+  void givenCallerWithoutApplicationScope_whenGetApplications_thenReturnsForbidden() {
+    HttpHeaders headers = headers();
+    headers.setBearerAuth(TestJwtDecoderConfig.UNSCOPED_BEARER_TOKEN);
+
+    ResponseEntity<String> response =
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/applications",
+            HttpMethod.GET,
+            new HttpEntity<>(headers),
+            String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+  }
+
+  @Test
+  void givenCallerWithoutApplicationScope_whenGetApplicationNotes_thenReturnsForbidden() {
+    HttpHeaders headers = headers();
+    headers.setBearerAuth(TestJwtDecoderConfig.UNSCOPED_BEARER_TOKEN);
+
+    ResponseEntity<String> response =
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/applications/" + UUID.randomUUID() + "/notes",
+            HttpMethod.GET,
+            new HttpEntity<>(headers),
+            String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
   }
 
   @Test
@@ -199,8 +229,7 @@ class GetApplicationsIntegrationTest {
         restTemplate.exchange(
             "http://localhost:" + port + "/api/v0/applications/" + applicationId,
             HttpMethod.GET,
-            new HttpEntity<>(
-                civilManageHeaders(TestJwtDecoderConfig.OFFICE_A_AND_B_BEARER_TOKEN)),
+            new HttpEntity<>(civilManageHeaders(TestJwtDecoderConfig.OFFICE_A_AND_B_BEARER_TOKEN)),
             ApplicationResponse.class);
 
     assertThat(noLongerVisible.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);

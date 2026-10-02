@@ -20,4 +20,3 @@ public class ApplicationCurrentStateAccessPolicy implements ReadAccessPolicy<App
     return (root, query, cb) -> root.get("officeCode").in(officeScope.permittedOfficeCodes());
   }
 }
-

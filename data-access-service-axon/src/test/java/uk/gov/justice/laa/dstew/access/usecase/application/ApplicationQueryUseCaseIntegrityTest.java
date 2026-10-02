@@ -17,6 +17,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadAccessPolicyProvider;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryIntegrityException;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryResult;
 
@@ -24,6 +25,7 @@ import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHist
 class ApplicationQueryUseCaseIntegrityTest {
 
   @Mock private QueryGateway queryGateway;
+  @Mock private ApplicationReadAccessPolicyProvider accessPolicyProvider;
 
   @InjectMocks private ApplicationQueryUseCase useCase;
 

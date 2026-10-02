@@ -7,6 +7,6 @@ import uk.gov.justice.laa.dstew.access.query.utils.security.UnrestrictedReadAcce
 /** Finds an Application's current-state projection by its internal identifier. */
 public record FindApplicationByIdQuery(UUID applicationId, ReadAccessScope accessScope) {
   public FindApplicationByIdQuery(UUID applicationId) {
-	this(applicationId, new UnrestrictedReadAccessScope());
+    this(applicationId, new UnrestrictedReadAccessScope());
   }
 }

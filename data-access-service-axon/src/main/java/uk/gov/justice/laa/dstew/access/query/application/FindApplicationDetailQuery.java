@@ -7,6 +7,6 @@ import uk.gov.justice.laa.dstew.access.query.utils.security.UnrestrictedReadAcce
 /** Finds an Application's hydrated detail and related read models by its internal identifier. */
 public record FindApplicationDetailQuery(UUID applicationId, ReadAccessScope accessScope) {
   public FindApplicationDetailQuery(UUID applicationId) {
-	this(applicationId, new UnrestrictedReadAccessScope());
+    this(applicationId, new UnrestrictedReadAccessScope());
   }
 }

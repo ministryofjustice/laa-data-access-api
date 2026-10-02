@@ -98,5 +98,4 @@ public class ApplicationReadModel {
   public String getOfficeCode() {
     return officeCode != null ? officeCode : provider == null ? null : provider.getOfficeCode();
   }
-
 }

@@ -6,5 +6,3 @@ import org.springframework.data.jpa.domain.Specification;
 public interface ReadAccessPolicy<T> {
   Specification<T> restrictionFor(ReadAccessScope scope);
 }
-
-

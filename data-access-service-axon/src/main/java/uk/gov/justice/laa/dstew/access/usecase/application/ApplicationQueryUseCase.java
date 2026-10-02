@@ -9,13 +9,13 @@ import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationDetailResult;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationNotesResult;
+import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadAccessPolicyProvider;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsQuery;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsResult;
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationDetailQuery;
 import uk.gov.justice.laa.dstew.access.query.application.FindNotesForApplicationQuery;
-import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadAccessPolicyProvider;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryIntegrityException;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryResult;
 import uk.gov.justice.laa.dstew.access.query.application.history.FindApplicationHistoryQuery;
@@ -98,6 +98,7 @@ public class ApplicationQueryUseCase {
   @AllowApiCaseworker
   public ApplicationHistoryResult getApplicationHistory(
       UUID applicationId, List<String> requestedTypes) {
+    accessPolicyProvider.resolve();
     try {
       return queryGateway
           .query(

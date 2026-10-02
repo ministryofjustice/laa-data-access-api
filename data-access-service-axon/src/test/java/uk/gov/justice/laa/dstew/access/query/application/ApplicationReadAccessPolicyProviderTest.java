@@ -1,20 +1,25 @@
 package uk.gov.justice.laa.dstew.access.query.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
-import uk.gov.justice.laa.dstew.access.config.ServiceNameContext;
-import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.query.utils.security.OfficeCodeReadAccessScope;
 import uk.gov.justice.laa.dstew.access.query.utils.security.UnrestrictedReadAccessScope;
+import uk.gov.justice.laa.dstew.access.security.SecurityHelper;
 
 class ApplicationReadAccessPolicyProviderTest {
 
@@ -24,51 +29,76 @@ class ApplicationReadAccessPolicyProviderTest {
   }
 
   @Test
-  void givenNonCivilManageService_whenResolved_thenAccessIsUnrestricted() {
-    ServiceNameContext context = context(ServiceName.CIVIL_APPLY);
+  void givenUserScope_whenResolved_thenAccessIsUnrestricted() {
+    authenticate("access_as_user", List.of());
 
-    assertThat(new ApplicationReadAccessPolicyProvider(context).resolve())
+    assertThat(new ApplicationReadAccessPolicyProvider().resolve())
         .isInstanceOf(UnrestrictedReadAccessScope.class);
   }
 
   @Test
-  void givenCivilManageAccounts_whenResolved_thenReturnsDistinctTrimmedOfficeCodes() {
-    ServiceNameContext context = context(ServiceName.CIVIL_MANAGE);
-    authenticate(List.of(" A ", "B", "A", " "));
+  void givenProviderScopeAndAccounts_whenResolved_thenReturnsDistinctTrimmedOfficeCodes() {
+    authenticate("access_as_provider", List.of(" A ", "B", "A", " "));
 
     OfficeCodeReadAccessScope scope =
-        (OfficeCodeReadAccessScope) new ApplicationReadAccessPolicyProvider(context).resolve();
+        (OfficeCodeReadAccessScope) new ApplicationReadAccessPolicyProvider().resolve();
 
     assertThat(scope.permittedOfficeCodes()).containsExactlyInAnyOrder("A", "B");
   }
 
   @Test
-  void givenCivilManageWithoutAccounts_whenResolved_thenReturnsEmptyOfficeScope() {
-    ServiceNameContext context = context(ServiceName.CIVIL_MANAGE);
+  void givenProviderScopeWithoutAccounts_whenResolved_thenReturnsEmptyOfficeScope() {
+    authenticate("access_as_provider", List.of());
 
     OfficeCodeReadAccessScope scope =
-        (OfficeCodeReadAccessScope) new ApplicationReadAccessPolicyProvider(context).resolve();
+        (OfficeCodeReadAccessScope) new ApplicationReadAccessPolicyProvider().resolve();
 
     assertThat(scope.permittedOfficeCodes()).isEmpty();
   }
 
-  private static ServiceNameContext context(ServiceName serviceName) {
-    ServiceNameContext context = new ServiceNameContext();
-    context.setServiceName(serviceName);
-    return context;
+  @Test
+  void givenProviderScopeWithNullAccount_whenResolved_thenNullAccountIsIgnored() {
+    try (MockedStatic<SecurityHelper> securityHelper = Mockito.mockStatic(SecurityHelper.class)) {
+      securityHelper.when(SecurityHelper::getScopes).thenReturn(Set.of("access_as_provider"));
+      securityHelper
+          .when(SecurityHelper::getLaaAccounts)
+          .thenReturn(Arrays.asList(null, " A ", " "));
+
+      OfficeCodeReadAccessScope scope =
+          (OfficeCodeReadAccessScope) new ApplicationReadAccessPolicyProvider().resolve();
+
+      assertThat(scope.permittedOfficeCodes()).containsExactly("A");
+    }
   }
 
-  private static void authenticate(List<String> accounts) {
+  @Test
+  void givenBothSupportedScopes_whenResolved_thenProviderScopeTakesPrecedence() {
+    authenticate("access_as_user access_as_provider", List.of("A"));
+
+    assertThat(new ApplicationReadAccessPolicyProvider().resolve())
+        .isEqualTo(new OfficeCodeReadAccessScope(java.util.Set.of("A")));
+  }
+
+  @Test
+  void givenNoSupportedScope_whenResolved_thenThrowsAccessDeniedException() {
+    authenticate("unrelated_scope", List.of());
+
+    assertThatExceptionOfType(AccessDeniedException.class)
+        .isThrownBy(() -> new ApplicationReadAccessPolicyProvider().resolve())
+        .withMessage("Token does not contain a supported application access scope");
+  }
+
+  private static void authenticate(String scopes, List<String> accounts) {
     Jwt jwt =
         new Jwt(
             "token",
             Instant.now(),
             Instant.now().plusSeconds(60),
             Map.of("alg", "none"),
-            Map.of("LAA_ACCOUNTS", accounts));
+            Map.of("LAA_ACCOUNTS", accounts, "scp", scopes));
     SecurityContextHolder.getContext()
         .setAuthentication(
-            new JwtAuthenticationToken(jwt, List.of(new SimpleGrantedAuthority("ROLE_CASEWORKER"))));
+            new JwtAuthenticationToken(
+                jwt, List.of(new SimpleGrantedAuthority("ROLE_CASEWORKER"))));
   }
 }
-

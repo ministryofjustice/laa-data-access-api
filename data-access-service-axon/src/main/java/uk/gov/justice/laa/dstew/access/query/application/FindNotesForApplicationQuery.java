@@ -7,6 +7,6 @@ import uk.gov.justice.laa.dstew.access.query.utils.security.UnrestrictedReadAcce
 /** Retrieves all notes for an Application by its internal identifier. */
 public record FindNotesForApplicationQuery(UUID applicationId, ReadAccessScope accessScope) {
   public FindNotesForApplicationQuery(UUID applicationId) {
-	this(applicationId, new UnrestrictedReadAccessScope());
+    this(applicationId, new UnrestrictedReadAccessScope());
   }
 }

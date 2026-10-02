@@ -21,4 +21,3 @@ public class ApplicationListIndexAccessPolicy
     return (root, query, cb) -> root.get("officeCode").in(officeScope.permittedOfficeCodes());
   }
 }
-

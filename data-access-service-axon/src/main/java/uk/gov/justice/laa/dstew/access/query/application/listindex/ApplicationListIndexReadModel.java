@@ -23,10 +23,9 @@ import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
  * <p>All columns are persisted — there are no {@code @Transient} fields. The minimum PII needed for
  * client-name, date-of-birth, and office-code access filters ({@code client_first_name}, {@code
  * client_last_name}, {@code client_date_of_birth}, {@code office_code}) is stored here so filters
- * can be pushed entirely to the database.
- * Rich response-only fields (proceedings, certificate, application content, etc.) are not
- * duplicated into this table; they are bulk-loaded from {@code application_data} for the result
- * page only, after paging has been applied.
+ * can be pushed entirely to the database. Rich response-only fields (proceedings, certificate,
+ * application content, etc.) are not duplicated into this table; they are bulk-loaded from {@code
+ * application_data} for the result page only, after paging has been applied.
  */
 @Entity
 @Table(name = "application_list_index")
