@@ -9,6 +9,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -50,9 +51,9 @@ class UploadDocumentUseCaseTest {
             "file", "test-file.pdf", "application/pdf", "test content".getBytes());
     DocumentUploadResponse response = new DocumentUploadResponse().checksum("checksum");
     when(sdsService.saveEvidenceFile(
-            org.mockito.ArgumentMatchers.eq(applicationId),
-            org.mockito.ArgumentMatchers.any(UUID.class),
-            org.mockito.ArgumentMatchers.eq(file)))
+            ArgumentMatchers.eq(applicationId),
+            ArgumentMatchers.any(UUID.class),
+            ArgumentMatchers.eq(file)))
         .thenReturn(response);
 
     UploadApplicationDocumentResult result =
@@ -68,9 +69,16 @@ class UploadDocumentUseCaseTest {
             ApplicationDocumentUploadCommand::size,
             ApplicationDocumentUploadCommand::contentType,
             ApplicationDocumentUploadCommand::checksum,
-            ApplicationDocumentUploadCommand::sourceService)
+            ApplicationDocumentUploadCommand::sourceService,
+            ApplicationDocumentUploadCommand::originalFilename)
         .containsExactly(
-            applicationId, "GATEWAY_EVIDENCE", 12L, "application/pdf", "checksum", "CIVIL_APPLY");
+            applicationId,
+            "GATEWAY_EVIDENCE",
+            12L,
+            "application/pdf",
+            "checksum",
+            "CIVIL_APPLY",
+            "test-file.pdf");
     assertThat(commandCaptor.getValue().documentId()).isNotNull();
     verify(sdsService).saveEvidenceFile(applicationId, commandCaptor.getValue().documentId(), file);
     assertThat(result)

@@ -322,6 +322,8 @@ public class ApplicationAggregate {
   @CommandHandler
   UUID handle(ApplicationDocumentUploadCommand command, EventAppender eventAppender) {
     requireApplicationExists(command.applicationId());
+    //    String originalFilename = command.originalFilename();
+    //    TODO decide persistence of original filename
     eventAppender.append(
         new ApplicationDocumentUploadedEvent(
             command.applicationId(),
