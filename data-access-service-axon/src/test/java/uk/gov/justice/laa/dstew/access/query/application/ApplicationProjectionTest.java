@@ -351,6 +351,98 @@ class ApplicationProjectionTest {
   }
 
   @Test
+  void givenDocumentUpload_whenReplayedTwice_thenMetadataAndVersionArePersistedOnce() {
+    UUID applicationId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    Instant uploadedAt = Instant.parse("2026-09-28T15:10:27.430Z");
+    ApplicationReadModel application =
+        ApplicationReadModel.builder()
+            .applicationId(applicationId)
+            .applicationDataVersion(0L)
+            .applicationVersion(7L)
+            .build();
+    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(application));
+    ApplicationDocumentUploadedEvent event =
+        new ApplicationDocumentUploadedEvent(
+            applicationId,
+            documentId,
+            "GATEWAY_EVIDENCE",
+            uploadedAt,
+            12L,
+            "application/pdf",
+            "checksum",
+            "CIVIL_APPLY",
+            1L);
+
+    projection.on(event);
+    projection.on(event);
+
+    verify(applicationReadRepository).save(application);
+    assertThat(application.getApplicationDataVersion()).isEqualTo(1L);
+    assertThat(application.getApplicationVersion()).isEqualTo(7L);
+    assertThat(application.getModifiedAt()).isEqualTo(uploadedAt);
+    assertThat(application.getUploadedDocuments())
+        .singleElement()
+        .satisfies(
+            document -> {
+              assertThat(document.documentId()).isEqualTo(documentId);
+              assertThat(document.deleted()).isFalse();
+            });
+    assertThat(application.getDocumentFilenames()).isNull();
+  }
+
+  @Test
+  void givenLegacyDocumentUpload_whenProjected_thenRetainsDataVersionAndUnknownFilename() {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationReadModel application =
+        ApplicationReadModel.builder()
+            .applicationId(applicationId)
+            .applicationDataVersion(4L)
+            .build();
+    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(application));
+
+    projection.on(
+        new ApplicationDocumentUploadedEvent(
+            applicationId,
+            UUID.randomUUID(),
+            "GATEWAY_EVIDENCE",
+            Instant.now(),
+            12L,
+            "application/pdf",
+            "checksum",
+            "CIVIL_APPLY"));
+
+    assertThat(application.getApplicationDataVersion()).isEqualTo(4L);
+    assertThat(application.getUploadedDocuments()).hasSize(1);
+  }
+
+  @Test
+  void givenDocumentFilenamePayload_whenDetailQueried_thenHydratesReferencedVersion() {
+    UUID applicationId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    ApplicationReadModel application =
+        ApplicationReadModel.builder()
+            .applicationId(applicationId)
+            .applicationDataVersion(2L)
+            .build();
+    ApplicationDataId dataId = new ApplicationDataId(applicationId, 2L);
+    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(application));
+    when(applicationDataStore.getAll(List.of(dataId)))
+        .thenReturn(
+            Map.of(
+                dataId,
+                ApplicationDataPayload.from(applicationCreationDetails(applicationId))
+                    .withDocumentFilename(documentId, "client-report.pdf")));
+
+    ApplicationDetailResult result =
+        projection.handle(new FindApplicationDetailQuery(applicationId));
+
+    assertThat(result.application().getDocumentFilenames())
+        .containsEntry(documentId, "client-report.pdf");
+    verify(applicationDataStore).getAll(List.of(dataId));
+  }
+
+  @Test
   void givenCreatedEvent_whenHandled_thenSavesBeforeEmitting() {
     UUID applicationId = UUID.randomUUID();
     ApplicationCreatedEvent event = applicationCreatedEvent(applicationId);
