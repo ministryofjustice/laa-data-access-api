@@ -68,7 +68,7 @@ featureFlags: {}
 
 aws:
   integrationEvents:
-    enabled: false
+    enabled: true
   topicArnSecret:
     name: data-access-events-sns-topic
     key: topic_arn
