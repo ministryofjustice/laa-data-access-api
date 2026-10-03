@@ -1,9 +1,6 @@
 package uk.gov.justice.laa.dstew.access.command.application.priorauthority.handler;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
-import java.util.stream.IntStream;
 import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import org.axonframework.modelling.annotation.InjectEntity;
@@ -14,10 +11,8 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorA
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentTypeUpdateCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.EvidenceDocument;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
-import uk.gov.justice.laa.dstew.access.model.PriorAuthorityDocumentType;
+import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /** Handles updates to document types in prior-authority drafts. */
 @Component
@@ -31,23 +26,11 @@ public class PriorAuthorityDocumentTypeUpdateCommandHandler {
       @InjectEntity(idProperty = "priorAuthorityId") PriorAuthorityAggregate priorAuthority,
       EventAppender eventAppender) {
 
-    PriorAuthorityDocumentType.fromValue(command.documentType());
-
-    PriorAuthorityDataPayload existingDraft =
-        draftStore
-            .find(command.priorAuthorityId())
-            .orElseThrow(
-                () ->
-                    new ResourceNotFoundException(
-                        "Prior Authority draft not found: " + command.priorAuthorityId()));
-
-    List<EvidenceDocument> updatedDocuments = getUpdatedDocuments(command, existingDraft);
-
-    PriorAuthorityContent updatedContent =
-        existingDraft.content().withUploadedDocuments(List.copyOf(updatedDocuments));
+    requireDraftLifecycle(priorAuthority);
+    requireActiveDocument(command, priorAuthority);
+    PriorAuthorityDataPayload existingDraft = requireDraft(command.priorAuthorityId(), draftStore);
     PriorAuthorityDataPayload updatedPayload =
         existingDraft
-            .withContent(updatedContent)
             .withSerialisedRequest(command.serialisedRequest())
             .withSubmittedAt(command.occurredAt());
     draftStore.upsert(
@@ -60,26 +43,33 @@ public class PriorAuthorityDocumentTypeUpdateCommandHandler {
     return command.documentId();
   }
 
-  private static @NonNull List<EvidenceDocument> getUpdatedDocuments(
-      PriorAuthorityDocumentTypeUpdateCommand command, PriorAuthorityDataPayload existingDraft) {
-    List<EvidenceDocument> updatedDocuments = copyUploadedDocuments(existingDraft);
-    int documentIndex =
-        IntStream.range(0, updatedDocuments.size())
-            .filter(index -> updatedDocuments.get(index).documentId().equals(command.documentId()))
-            .findFirst()
-            .orElseThrow(
-                () ->
-                    new ResourceNotFoundException(
-                        "Document %s not found for Prior Authority %s"
-                            .formatted(command.documentId(), command.priorAuthorityId())));
-    EvidenceDocument existingDocument = updatedDocuments.get(documentIndex);
-    updatedDocuments.set(documentIndex, existingDocument.withDocumentType(command.documentType()));
-    return updatedDocuments;
+    private static void requireDraftLifecycle(PriorAuthorityAggregate priorAuthority) {
+        if (priorAuthority.getState().isSubmitted()) {
+            throw new ValidationException(
+                    java.util.List.of("Documents can only be changed on a prior authority draft"));
+        }
   }
 
-  private static List<EvidenceDocument> copyUploadedDocuments(PriorAuthorityDataPayload draft) {
-    return draft.content().uploadedDocuments() == null
-        ? new ArrayList<>()
-        : new ArrayList<>(draft.content().uploadedDocuments());
+    private static void requireActiveDocument(
+            PriorAuthorityDocumentTypeUpdateCommand command, PriorAuthorityAggregate priorAuthority) {
+        priorAuthority.getState().getUploadedDocuments().stream()
+                .filter(document -> document.documentId().equals(command.documentId()))
+                .filter(document -> !document.deleted())
+                .findFirst()
+                .orElseThrow(
+                        () ->
+                                new ResourceNotFoundException(
+                                        "Document %s not found for Prior Authority %s"
+                                                .formatted(command.documentId(), command.priorAuthorityId())));
+    }
+
+    private static PriorAuthorityDataPayload requireDraft(
+            UUID priorAuthorityId, PriorAuthorityDraftStore draftStore) {
+        return draftStore
+                .find(priorAuthorityId)
+                .orElseThrow(
+                        () ->
+                                new ResourceNotFoundException(
+                                        "Prior Authority draft not found: " + priorAuthorityId));
   }
 }

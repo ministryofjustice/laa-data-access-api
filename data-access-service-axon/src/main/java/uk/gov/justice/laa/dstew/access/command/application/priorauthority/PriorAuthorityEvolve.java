@@ -1,7 +1,10 @@
 package uk.gov.justice.laa.dstew.access.command.application.priorauthority;
 
+import java.util.UUID;
+import java.util.function.UnaryOperator;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
@@ -56,11 +59,33 @@ public final class PriorAuthorityEvolve {
 
   /** Applies a {@link PriorAuthorityDocumentUploadedEvent} to the given state. */
   public static void apply(PriorAuthorityState state, PriorAuthorityDocumentUploadedEvent event) {
-    state.uploadedDocumentIds.add(event.documentId());
+    state.uploadedDocuments.add(
+        new UploadDocument(
+            event.documentId(),
+            null,
+            event.uploadedAt(),
+            event.size(),
+            event.contentType(),
+            event.checksum(),
+            event.sourceService(),
+            false));
   }
 
   /** Applies a {@link PriorAuthorityDocumentDeletedEvent} to the given state. */
   public static void apply(PriorAuthorityState state, PriorAuthorityDocumentDeletedEvent event) {
-    state.uploadedDocumentIds.remove(event.documentId());
+    replaceDocument(state, event.documentId(), document -> document.withDeleted(true));
+  }
+
+  /** Applies a {@link PriorAuthorityDocumentTypeUpdatedEvent} to the given state. */
+  public static void apply(
+      PriorAuthorityState state, PriorAuthorityDocumentTypeUpdatedEvent event) {
+    replaceDocument(
+        state, event.documentId(), document -> document.withDocumentType(event.documentType()));
+  }
+
+  private static void replaceDocument(
+      PriorAuthorityState state, UUID documentId, UnaryOperator<UploadDocument> update) {
+    state.uploadedDocuments.replaceAll(
+        document -> document.documentId().equals(documentId) ? update.apply(document) : document);
   }
 }

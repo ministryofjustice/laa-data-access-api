@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
@@ -18,11 +19,13 @@ import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityAggregate;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDraftStartedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityEvolve;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityState;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentUploadCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentUploadedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.EvidenceDocument;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
@@ -44,7 +47,7 @@ class PriorAuthorityDocumentUploadCommandHandlerTest {
     UUID applicationId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
     PriorAuthorityContent existingContent =
-        new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Existing", null, null, null, null);
+        new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Existing", null, null, null);
     PriorAuthorityDataPayload existingDraft =
         new PriorAuthorityDataPayload(
             priorAuthorityId, applicationId, existingContent, "old", OCCURRED_AT);
@@ -54,15 +57,14 @@ class PriorAuthorityDocumentUploadCommandHandlerTest {
             documentId,
             "service",
             "checksum",
-            "new",
             OCCURRED_AT,
             "file.pdf",
             1024L,
-            "pdf",
             "application/pdf");
 
     when(draftStore.find(priorAuthorityId)).thenReturn(Optional.of(existingDraft));
     when(priorAuthority.getApplicationId()).thenReturn(applicationId);
+            when(priorAuthority.getState()).thenReturn(draftState(priorAuthorityId, applicationId));
 
     UUID returnedDocumentId =
         new PriorAuthorityDocumentUploadCommandHandler()
@@ -74,11 +76,9 @@ class PriorAuthorityDocumentUploadCommandHandlerTest {
             eq(priorAuthorityId),
             eq(applicationId),
             payloadCaptor.capture(),
-            eq("new"),
+                eq("old"),
             eq(OCCURRED_AT));
-    assertThat(payloadCaptor.getValue().content().uploadedDocuments())
-        .extracting(EvidenceDocument::documentId)
-        .containsExactly(documentId);
+            assertThat(payloadCaptor.getValue().documentFilenames()).containsEntry(documentId, "file.pdf");
     verify(eventAppender)
         .append(
             new PriorAuthorityDocumentUploadedEvent(
@@ -88,52 +88,42 @@ class PriorAuthorityDocumentUploadCommandHandlerTest {
                 1024L,
                 "application/pdf",
                 "checksum",
-                applicationId));
+                applicationId,
+                "service"));
   }
 
   @Test
-  void givenDraftWithExistingDocuments_whenHandle_thenPreservesExistingDocumentsAndAppendsNewOne() {
+    void givenDraftWithExistingFilenames_whenHandle_thenPreservesThemAndAddsNewFilename() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     UUID existingDocumentId = UUID.randomUUID();
     UUID newDocumentId = UUID.randomUUID();
-    EvidenceDocument existingDocument =
-        new EvidenceDocument(
-            existingDocumentId,
-            "REPORT",
-            "existing.pdf",
-            "pdf",
-            "application/pdf",
-            512L,
-            OCCURRED_AT.minusSeconds(60),
-            "service",
-            "existing-checksum");
     PriorAuthorityContent existingContent =
-        new PriorAuthorityContent(
-            PriorAuthorityType.EXPERT,
-            "Existing",
-            null,
-            null,
-            null,
-            java.util.List.of(existingDocument));
+        new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Existing", null, null, null);
     PriorAuthorityDataPayload existingDraft =
         new PriorAuthorityDataPayload(
-            priorAuthorityId, applicationId, existingContent, "old", OCCURRED_AT);
+            priorAuthorityId,
+            applicationId,
+            existingContent,
+            "old",
+            OCCURRED_AT,
+            null,
+            "1A001B",
+            Map.of(existingDocumentId, "existing.pdf"));
     PriorAuthorityDocumentUploadCommand command =
         new PriorAuthorityDocumentUploadCommand(
             priorAuthorityId,
             newDocumentId,
             "service",
             "checksum",
-            "new",
             OCCURRED_AT,
             "file.pdf",
             1024L,
-            "pdf",
             "application/pdf");
 
     when(draftStore.find(priorAuthorityId)).thenReturn(Optional.of(existingDraft));
     when(priorAuthority.getApplicationId()).thenReturn(applicationId);
+            when(priorAuthority.getState()).thenReturn(draftState(priorAuthorityId, applicationId));
 
     new PriorAuthorityDocumentUploadCommandHandler()
         .handle(command, draftStore, priorAuthority, eventAppender);
@@ -143,11 +133,11 @@ class PriorAuthorityDocumentUploadCommandHandlerTest {
             eq(priorAuthorityId),
             eq(applicationId),
             payloadCaptor.capture(),
-            eq("new"),
+            eq("old"),
             eq(OCCURRED_AT));
-    assertThat(payloadCaptor.getValue().content().uploadedDocuments())
-        .extracting(EvidenceDocument::documentId)
-        .containsExactly(existingDocumentId, newDocumentId);
+    assertThat(payloadCaptor.getValue().documentFilenames())
+        .containsEntry(existingDocumentId, "existing.pdf")
+        .containsEntry(newDocumentId, "file.pdf");
   }
 
   @Test
@@ -159,14 +149,13 @@ class PriorAuthorityDocumentUploadCommandHandlerTest {
             UUID.randomUUID(),
             "service",
             "checksum",
-            "new",
             OCCURRED_AT,
             "file.pdf",
             1024L,
-            "pdf",
             "application/pdf");
 
     when(draftStore.find(priorAuthorityId)).thenReturn(Optional.empty());
+            when(priorAuthority.getState()).thenReturn(draftState(priorAuthorityId, UUID.randomUUID()));
 
     assertThatThrownBy(
             () ->
@@ -176,6 +165,14 @@ class PriorAuthorityDocumentUploadCommandHandlerTest {
         .hasMessage("Prior Authority draft not found: " + priorAuthorityId);
 
     verify(draftStore).find(priorAuthorityId);
-    verifyNoInteractions(priorAuthority, eventAppender);
+        verifyNoInteractions(eventAppender);
+    }
+
+    private static PriorAuthorityState draftState(UUID priorAuthorityId, UUID applicationId) {
+        PriorAuthorityState state = new PriorAuthorityState();
+        PriorAuthorityEvolve.apply(
+                state,
+                new PriorAuthorityDraftStartedEvent(priorAuthorityId, applicationId, "EXPERT", 1, OCCURRED_AT));
+        return state;
   }
 }

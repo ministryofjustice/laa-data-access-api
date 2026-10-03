@@ -7,6 +7,7 @@ import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
@@ -24,15 +25,12 @@ class PriorAuthorityAggregateTest {
   private static final Instant NOW = Instant.now();
 
   @Test
-  @DisplayName(
-      "on PriorAuthorityDraftStartedEvent delegates to PriorAuthorityEvolve and sets priorAuthorityId")
-  void testOnDraftStartedEvent() {
+  @DisplayName("draft-start event restores identity, office code, and type")
+  void draftStartedEventRestoresState() {
     PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
-    PriorAuthorityDraftStartedEvent event =
+    aggregate.on(
         new PriorAuthorityDraftStartedEvent(
-            PA_ID, APP_ID, PA_TYPE, SCHEMA_VERSION, NOW, OFFICE_CODE);
-
-    aggregate.on(event);
+            PA_ID, APP_ID, PA_TYPE, SCHEMA_VERSION, NOW, OFFICE_CODE));
 
     assertThat(aggregate.getPriorAuthorityId()).isEqualTo(PA_ID);
     assertThat(aggregate.getApplicationId()).isEqualTo(APP_ID);
@@ -41,179 +39,136 @@ class PriorAuthorityAggregateTest {
   }
 
   @Test
-  @DisplayName(
-      "on PriorAuthoritySubmittedEvent delegates to PriorAuthorityEvolve and sets priorAuthorityId")
-  void testOnSubmittedEvent() {
+  @DisplayName("submission event restores the data version")
+  void submittedEventRestoresDataVersion() {
     PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
-    PriorAuthoritySubmittedEvent event =
-        new PriorAuthoritySubmittedEvent(PA_ID, APP_ID, PA_TYPE, SCHEMA_VERSION, 1L, null, NOW);
-
-    aggregate.on(event);
+    aggregate.on(
+        new PriorAuthoritySubmittedEvent(
+            PA_ID, APP_ID, PA_TYPE, SCHEMA_VERSION, 1L, null, NOW));
 
     assertThat(aggregate.getPriorAuthorityId()).isEqualTo(PA_ID);
     assertThat(aggregate.getDataVersion()).isEqualTo(1L);
+    assertThat(aggregate.getState().isSubmitted()).isTrue();
   }
 
   @Test
-  @DisplayName(
-      "on PriorAuthorityDecisionMadeEvent delegates to PriorAuthorityEvolve and sets priorAuthorityId")
-  void testOnDecisionMadeEvent() {
+  @DisplayName("decision event restores the data version and decided lifecycle")
+  void decisionEventRestoresDataVersion() {
     PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
-    PriorAuthorityDecisionMadeEvent event =
+    aggregate.on(
         new PriorAuthorityDecisionMadeEvent(
-            PA_ID, APP_ID, PA_TYPE, 2L, "APPROVED", "test justification", BigDecimal.TEN, NOW, NOW);
-
-    aggregate.on(event);
+            PA_ID,
+            APP_ID,
+            PA_TYPE,
+            2L,
+            "APPROVED",
+            "test justification",
+            BigDecimal.TEN,
+            NOW,
+            NOW));
 
     assertThat(aggregate.getPriorAuthorityId()).isEqualTo(PA_ID);
     assertThat(aggregate.getDataVersion()).isEqualTo(2L);
+    assertThat(aggregate.getState().isDecided()).isTrue();
   }
 
   @Test
-  @DisplayName("on PriorAuthorityDocumentUploadedEvent delegates to PriorAuthorityEvolve")
-  void testOnDocumentUploadedEvent() {
+  @DisplayName("upload event restores filename-free document metadata")
+  void documentUploadedEventRestoresMetadata() {
     PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
-    aggregate.on(new PriorAuthorityDraftStartedEvent(PA_ID, APP_ID, PA_TYPE, SCHEMA_VERSION, NOW));
-
-    UUID docId = UUID.randomUUID();
-    PriorAuthorityDocumentUploadedEvent event =
-        new PriorAuthorityDocumentUploadedEvent(
-            PA_ID, docId, NOW, 1024L, "application/pdf", "checksum123", APP_ID);
-
-    aggregate.on(event);
-
-    assertThat(aggregate.getState().uploadedDocumentIds).contains(docId);
-  }
-
-  @Test
-  @DisplayName("on PriorAuthorityDocumentDeletedEvent delegates to PriorAuthorityEvolve")
-  void testOnDocumentDeletedEvent() {
-    PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
-    aggregate.on(new PriorAuthorityDraftStartedEvent(PA_ID, APP_ID, PA_TYPE, SCHEMA_VERSION, NOW));
-    UUID docId = UUID.randomUUID();
+    aggregate.on(
+        new PriorAuthorityDraftStartedEvent(PA_ID, APP_ID, PA_TYPE, SCHEMA_VERSION, NOW));
+    UUID documentId = UUID.randomUUID();
     aggregate.on(
         new PriorAuthorityDocumentUploadedEvent(
-            PA_ID, docId, NOW, 1024L, "application/pdf", "checksum123", APP_ID));
+            PA_ID,
+            documentId,
+            NOW,
+            1024L,
+            "application/pdf",
+            "checksum123",
+            APP_ID,
+            "service"));
 
-    aggregate.on(new PriorAuthorityDocumentDeletedEvent(PA_ID, docId, NOW, APP_ID));
-
-    assertThat(aggregate.getState().uploadedDocumentIds).doesNotContain(docId);
+    assertThat(aggregate.getState().getUploadedDocuments())
+        .contains(
+            new UploadDocument(
+                documentId, null, NOW, 1024L, "application/pdf", "checksum123", "service", false));
   }
 
   @Test
-  @DisplayName("on PriorAuthorityDocumentTypeUpdatedEvent sets priorAuthorityId from event")
-  void testOnDocumentTypeUpdatedEvent() {
+  @DisplayName("delete event marks document metadata deleted")
+  void documentDeletedEventMarksMetadataDeleted() {
     PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
-    UUID docId = UUID.randomUUID();
-    PriorAuthorityDocumentTypeUpdatedEvent event =
-        new PriorAuthorityDocumentTypeUpdatedEvent(PA_ID, docId, "new-type", NOW);
+    aggregate.on(
+        new PriorAuthorityDraftStartedEvent(PA_ID, APP_ID, PA_TYPE, SCHEMA_VERSION, NOW));
+    UUID documentId = UUID.randomUUID();
+    aggregate.on(
+        new PriorAuthorityDocumentUploadedEvent(
+            PA_ID,
+            documentId,
+            NOW,
+            1024L,
+            "application/pdf",
+            "checksum123",
+            APP_ID,
+            "service"));
 
-    aggregate.on(event);
+    aggregate.on(new PriorAuthorityDocumentDeletedEvent(PA_ID, documentId, NOW, APP_ID));
+
+    assertThat(aggregate.getState().getUploadedDocuments())
+        .contains(
+            new UploadDocument(
+                documentId, null, NOW, 1024L, "application/pdf", "checksum123", "service", true));
+  }
+
+  @Test
+  @DisplayName("document-type event updates metadata")
+  void documentTypeUpdatedEventUpdatesMetadata() {
+    PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
+    aggregate.on(
+        new PriorAuthorityDraftStartedEvent(PA_ID, APP_ID, PA_TYPE, SCHEMA_VERSION, NOW));
+    UUID documentId = UUID.randomUUID();
+    aggregate.on(
+        new PriorAuthorityDocumentUploadedEvent(
+            PA_ID,
+            documentId,
+            NOW,
+            1024L,
+            "application/pdf",
+            "checksum123",
+            APP_ID,
+            "service"));
+
+    aggregate.on(new PriorAuthorityDocumentTypeUpdatedEvent(PA_ID, documentId, "INVOICE", NOW));
 
     assertThat(aggregate.getPriorAuthorityId()).isEqualTo(PA_ID);
+    assertThat(aggregate.getState().getUploadedDocuments())
+        .contains(
+            new UploadDocument(
+                documentId,
+                "INVOICE",
+                NOW,
+                1024L,
+                "application/pdf",
+                "checksum123",
+                "service",
+                false));
   }
 
   @Test
-  @DisplayName("on WorkItemAssigned delegates to PriorAuthorityEvolve")
-  void testOnWorkItemAssigned() {
+  @DisplayName("assignment and unassignment events restore assignment state")
+  void assignmentEventsRestoreState() {
     PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
-    UUID workItemId = UUID.randomUUID();
-    WorkItemAssigned event =
-        new WorkItemAssigned(workItemId, WorkItemType.PRIOR_AUTHORITY, 1L, 1L, CASEWORKER_ID, NOW);
-
-    aggregate.on(event);
+    aggregate.on(
+        new WorkItemAssigned(PA_ID, WorkItemType.PRIOR_AUTHORITY, 1L, 1L, CASEWORKER_ID, NOW));
 
     assertThat(aggregate.getCaseworkerId()).isEqualTo(CASEWORKER_ID);
     assertThat(aggregate.getAssignmentVersion()).isEqualTo(1L);
-  }
 
-  @Test
-  @DisplayName("on WorkItemUnassigned delegates to PriorAuthorityEvolve")
-  void testOnWorkItemUnassigned() {
-    PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
-    UUID workItemId = UUID.randomUUID();
-    aggregate.on(
-        new WorkItemAssigned(workItemId, WorkItemType.PRIOR_AUTHORITY, 1L, 1L, CASEWORKER_ID, NOW));
-
-    aggregate.on(new WorkItemUnassigned(workItemId, WorkItemType.PRIOR_AUTHORITY, 1L, 2L, NOW));
+    aggregate.on(new WorkItemUnassigned(PA_ID, WorkItemType.PRIOR_AUTHORITY, 1L, 2L, NOW));
 
     assertThat(aggregate.getCaseworkerId()).isNull();
     assertThat(aggregate.getAssignmentVersion()).isEqualTo(2L);
-  }
-
-  @Test
-  @DisplayName("getApplicationId returns state applicationId")
-  void testGetApplicationId() {
-    PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
-    aggregate.on(new PriorAuthorityDraftStartedEvent(PA_ID, APP_ID, PA_TYPE, SCHEMA_VERSION, NOW));
-
-    assertThat(aggregate.getApplicationId()).isEqualTo(APP_ID);
-  }
-
-  @Test
-  @DisplayName("getPriorAuthorityType returns state priorAuthorityType")
-  void testGetPriorAuthorityType() {
-    PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
-    aggregate.on(new PriorAuthorityDraftStartedEvent(PA_ID, APP_ID, PA_TYPE, SCHEMA_VERSION, NOW));
-
-    assertThat(aggregate.getPriorAuthorityType()).isEqualTo(PA_TYPE);
-  }
-
-  @Test
-  @DisplayName("getPriorAuthorityId returns aggregate priorAuthorityId")
-  void testGetPriorAuthorityId() {
-    PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
-    aggregate.on(new PriorAuthorityDraftStartedEvent(PA_ID, APP_ID, PA_TYPE, SCHEMA_VERSION, NOW));
-
-    assertThat(aggregate.getPriorAuthorityId()).isEqualTo(PA_ID);
-  }
-
-  @Test
-  @DisplayName("getDataVersion returns state dataVersion")
-  void testGetDataVersion() {
-    PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
-    aggregate.on(new PriorAuthorityDraftStartedEvent(PA_ID, APP_ID, PA_TYPE, SCHEMA_VERSION, NOW));
-    aggregate.on(
-        new PriorAuthoritySubmittedEvent(PA_ID, APP_ID, PA_TYPE, SCHEMA_VERSION, 1L, null, NOW));
-
-    assertThat(aggregate.getDataVersion()).isEqualTo(1L);
-  }
-
-  @Test
-  @DisplayName("getAssignmentVersion returns state assignmentVersion")
-  void testGetAssignmentVersion() {
-    PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
-    UUID workItemId = UUID.randomUUID();
-    aggregate.on(
-        new WorkItemAssigned(workItemId, WorkItemType.PRIOR_AUTHORITY, 1L, 1L, CASEWORKER_ID, NOW));
-
-    assertThat(aggregate.getAssignmentVersion()).isEqualTo(1L);
-  }
-
-  @Test
-  @DisplayName("getCaseworkerId returns state caseworkerId")
-  void testGetCaseworkerId() {
-    PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
-    UUID workItemId = UUID.randomUUID();
-    aggregate.on(
-        new WorkItemAssigned(workItemId, WorkItemType.PRIOR_AUTHORITY, 1L, 1L, CASEWORKER_ID, NOW));
-
-    assertThat(aggregate.getCaseworkerId()).isEqualTo(CASEWORKER_ID);
-  }
-
-  @Test
-  @DisplayName("getState returns internal PriorAuthorityState instance")
-  void testGetState() {
-    PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
-    aggregate.on(
-        new PriorAuthorityDraftStartedEvent(
-            PA_ID, APP_ID, PA_TYPE, SCHEMA_VERSION, NOW, OFFICE_CODE));
-
-    PriorAuthorityState state = aggregate.getState();
-
-    assertThat(state.priorAuthorityId).isEqualTo(PA_ID);
-    assertThat(state.applicationId).isEqualTo(APP_ID);
-    assertThat(state.officeCode).isEqualTo(OFFICE_CODE);
-    assertThat(state.priorAuthorityType).isEqualTo(PA_TYPE);
   }
 }

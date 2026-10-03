@@ -147,7 +147,8 @@ public final class PriorAuthorityDecider {
         command.fileSize(),
         command.contentType(),
         command.checksum(),
-        applicationId);
+        applicationId,
+        command.sourceService());
   }
 
   /** Returns the persisted event for removing a prior-authority document. */

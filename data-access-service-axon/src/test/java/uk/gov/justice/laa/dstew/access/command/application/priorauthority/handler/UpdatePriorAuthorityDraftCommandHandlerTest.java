@@ -8,7 +8,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
-import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
@@ -23,7 +23,6 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorA
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.UpdatePriorAuthorityDraftCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.EvidenceDocument;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
@@ -44,23 +43,18 @@ class UpdatePriorAuthorityDraftCommandHandlerTest {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
-    EvidenceDocument document =
-        new EvidenceDocument(
-            documentId,
-            null,
-            "file.pdf",
-            "pdf",
-            "application/pdf",
-            1024L,
-            OCCURRED_AT,
-            "service",
-            "checksum");
     PriorAuthorityContent existingContent =
-        new PriorAuthorityContent(
-            PriorAuthorityType.COUNSEL, "Existing", null, null, null, List.of(document));
+        new PriorAuthorityContent(PriorAuthorityType.COUNSEL, "Existing", null, null, null);
     PriorAuthorityDataPayload existingDraft =
         new PriorAuthorityDataPayload(
-            priorAuthorityId, applicationId, existingContent, "old", OCCURRED_AT);
+            priorAuthorityId,
+            applicationId,
+            existingContent,
+            "old",
+            OCCURRED_AT,
+            null,
+            "1A001B",
+            Map.of(documentId, "file.pdf"));
     PriorAuthorityContent updatedContent =
         new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Updated", null, null, null);
     UpdatePriorAuthorityDraftCommand command =
@@ -83,7 +77,7 @@ class UpdatePriorAuthorityDraftCommandHandlerTest {
             eq(OCCURRED_AT));
     assertThat(payloadCaptor.getValue().content().priorAuthorityType())
         .isEqualTo(PriorAuthorityType.EXPERT);
-    assertThat(payloadCaptor.getValue().content().uploadedDocuments()).containsExactly(document);
+    assertThat(payloadCaptor.getValue().documentFilenames()).containsEntry(documentId, "file.pdf");
     assertThat(payloadCaptor.getValue().serialisedRequest()).isEqualTo("new");
     assertThat(payloadCaptor.getValue().submittedAt()).isEqualTo(OCCURRED_AT);
     verify(eventAppender)

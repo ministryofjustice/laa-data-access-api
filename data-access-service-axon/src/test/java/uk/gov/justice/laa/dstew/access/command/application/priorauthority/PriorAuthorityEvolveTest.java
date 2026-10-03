@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
@@ -107,35 +108,50 @@ class PriorAuthorityEvolveTest {
   }
 
   @Test
-  void givenDocumentUploadedEvent_whenApply_thenTracksDocumentId() {
+  void givenDocumentEvents_whenApplied_thenKeepsOrderedMetadataWithDeletedFlagAndType() {
     PriorAuthorityState state = new PriorAuthorityState();
-    UUID documentId = UUID.randomUUID();
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID firstId = UUID.randomUUID();
+    UUID secondId = UUID.randomUUID();
+    Instant uploadedAt = Instant.parse("2026-08-01T10:00:00Z");
 
+    PriorAuthorityEvolve.apply(state, uploaded(priorAuthorityId, firstId, uploadedAt));
+    PriorAuthorityEvolve.apply(
+        state, uploaded(priorAuthorityId, secondId, uploadedAt.plusSeconds(1)));
     PriorAuthorityEvolve.apply(
         state,
-        new PriorAuthorityDocumentUploadedEvent(
-            UUID.randomUUID(),
-            documentId,
-            Instant.now(),
-            10L,
-            "application/pdf",
-            "sum",
-            UUID.randomUUID()));
-
-    assertThat(state.getUploadedDocumentIds()).contains(documentId);
-  }
-
-  @Test
-  void givenDocumentDeletedEvent_whenApply_thenRemovesDocumentId() {
-    PriorAuthorityState state = new PriorAuthorityState();
-    UUID documentId = UUID.randomUUID();
-    state.uploadedDocumentIds.add(documentId);
-
+        new PriorAuthorityDocumentTypeUpdatedEvent(
+            priorAuthorityId, secondId, "EXPERT_REPORT", uploadedAt.plusSeconds(2)));
     PriorAuthorityEvolve.apply(
         state,
         new PriorAuthorityDocumentDeletedEvent(
-            UUID.randomUUID(), documentId, Instant.now(), UUID.randomUUID()));
+            priorAuthorityId, firstId, uploadedAt.plusSeconds(3), UUID.randomUUID()));
 
-    assertThat(state.getUploadedDocumentIds()).doesNotContain(documentId);
+    assertThat(state.getUploadedDocuments())
+        .containsExactly(
+            new UploadDocument(
+                firstId, null, uploadedAt, 10L, "application/pdf", "sum", "CIVIL_APPLY", true),
+            new UploadDocument(
+                secondId,
+                "EXPERT_REPORT",
+                uploadedAt.plusSeconds(1),
+                10L,
+                "application/pdf",
+                "sum",
+                "CIVIL_APPLY",
+                false));
+  }
+
+  private PriorAuthorityDocumentUploadedEvent uploaded(
+      UUID priorAuthorityId, UUID documentId, Instant uploadedAt) {
+    return new PriorAuthorityDocumentUploadedEvent(
+        priorAuthorityId,
+        documentId,
+        uploadedAt,
+        10L,
+        "application/pdf",
+        "sum",
+        UUID.randomUUID(),
+        "CIVIL_APPLY");
   }
 }

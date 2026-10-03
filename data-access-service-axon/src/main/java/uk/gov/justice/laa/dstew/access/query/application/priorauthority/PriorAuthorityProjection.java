@@ -1,8 +1,12 @@
 package uk.gov.justice.laa.dstew.access.query.application.priorauthority;
 
 import jakarta.annotation.Nullable;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.UnaryOperator;
 import org.axonframework.messaging.core.annotation.Namespace;
 import org.axonframework.messaging.eventhandling.annotation.EventHandler;
 import org.axonframework.messaging.eventhandling.replay.annotation.ResetHandler;
@@ -10,6 +14,10 @@ import org.axonframework.messaging.queryhandling.QueryUpdateEmitter;
 import org.axonframework.messaging.queryhandling.annotation.QueryHandler;
 import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Component;
+import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentDeletedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentTypeUpdatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentUploadedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDraftStartedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
@@ -64,12 +72,13 @@ public class PriorAuthorityProjection {
   private Optional<@NonNull PriorAuthorityResult> hydrate(
       PriorAuthorityReadModel priorAuthority, UUID priorAuthorityId) {
     if (PriorAuthorityStatus.DRAFT.name().equals(priorAuthority.getStatus())) {
-      return priorAuthorityDraftStore.find(priorAuthorityId).map(PriorAuthorityResult::fromDraft);
+      return priorAuthorityDraftStore
+          .find(priorAuthorityId)
+          .map(draft -> PriorAuthorityResult.from(priorAuthority, draft));
     }
     PriorAuthorityDataPayload payload =
         priorAuthorityDataStore.get(priorAuthorityId, priorAuthority.getDataVersion());
-    return Optional.of(
-        PriorAuthorityResult.from(priorAuthority, payload, priorAuthority.getStatus()));
+    return Optional.of(PriorAuthorityResult.from(priorAuthority, payload));
   }
 
   /** Creates the current-state row when a prior-authority draft is started. */
@@ -126,8 +135,78 @@ public class PriorAuthorityProjection {
             });
   }
 
+  /** Appends filename-free document metadata once per document ID. */
+  @EventHandler
+  public void on(PriorAuthorityDocumentUploadedEvent event) {
+    repository
+        .findById(event.priorAuthorityId())
+        .ifPresent(
+            current -> {
+              if (current.getUploadedDocuments().stream()
+                  .anyMatch(document -> document.documentId().equals(event.documentId()))) {
+                return;
+              }
+              List<UploadDocument> documents = new ArrayList<>(current.getUploadedDocuments());
+              documents.add(
+                  new UploadDocument(
+                      event.documentId(),
+                      null,
+                      event.uploadedAt(),
+                      event.size(),
+                      event.contentType(),
+                      event.checksum(),
+                      event.sourceService(),
+                      false));
+              current.setUploadedDocuments(List.copyOf(documents));
+              current.setModifiedAt(event.uploadedAt());
+              repository.save(current);
+            });
+  }
+
+  /** Marks projected document metadata deleted. */
+  @EventHandler
+  public void on(PriorAuthorityDocumentDeletedEvent event) {
+    updateDocument(
+        event.priorAuthorityId(),
+        event.documentId(),
+        event.deletedAt(),
+        document -> document.withDeleted(true));
+  }
+
+  /** Records the latest document type in projected document metadata. */
+  @EventHandler
+  public void on(PriorAuthorityDocumentTypeUpdatedEvent event) {
+    updateDocument(
+        event.priorAuthorityId(),
+        event.documentId(),
+        event.occurredAt(),
+        document -> document.withDocumentType(event.documentType()));
+  }
+
   private boolean isPending(PriorAuthorityReadModel priorAuthority) {
     return PriorAuthorityStatus.SUBMITTED.name().equals(priorAuthority.getStatus());
+  }
+
+  private void updateDocument(
+      UUID priorAuthorityId,
+      UUID documentId,
+      Instant occurredAt,
+      UnaryOperator<UploadDocument> update) {
+    repository
+        .findById(priorAuthorityId)
+        .ifPresent(
+            current -> {
+              current.setUploadedDocuments(
+                  current.getUploadedDocuments().stream()
+                      .map(
+                          document ->
+                              document.documentId().equals(documentId)
+                                  ? update.apply(document)
+                                  : document)
+                      .toList());
+              current.setModifiedAt(occurredAt);
+              repository.save(current);
+            });
   }
 
   /** Clears the disposable current-state table before replay. */

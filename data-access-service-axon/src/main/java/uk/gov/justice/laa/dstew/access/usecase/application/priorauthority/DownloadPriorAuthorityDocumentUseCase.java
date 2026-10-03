@@ -1,9 +1,11 @@
 package uk.gov.justice.laa.dstew.access.usecase.application.priorauthority;
 
-import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.document.PriorAuthorityDocumentFormat;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.EvidenceDocument;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.EvidenceDocumentDownload;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
@@ -34,14 +36,29 @@ public class DownloadPriorAuthorityDocumentUseCase {
   }
 
   private EvidenceDocument getDocument(UUID priorAuthorityId, UUID documentId) {
-    List<EvidenceDocument> documents =
-        getPriorAuthorityUseCase.getPriorAuthority(priorAuthorityId).uploadedDocuments();
-    if (documents == null) {
+    PriorAuthorityResult result = getPriorAuthorityUseCase.getPriorAuthority(priorAuthorityId);
+    if (result.uploadedDocuments() == null) {
       throw documentNotFound(priorAuthorityId, documentId);
     }
-    return documents.stream()
-        .filter(document -> documentId.equals(document.documentId()))
+    Map<UUID, String> filenames =
+        result.documentFilenames() == null ? Map.of() : result.documentFilenames();
+    return result.uploadedDocuments().stream()
+        .filter(document -> !document.deleted() && documentId.equals(document.documentId()))
         .findFirst()
+        .map(
+            document ->
+            new EvidenceDocument(
+                    document.documentId(),
+                    document.documentType(),
+                    filenames.get(documentId),
+                    PriorAuthorityDocumentFormat.fromContentType(document.contentType())
+                        .map(PriorAuthorityDocumentFormat::fileType)
+                        .orElse(null),
+                    document.contentType(),
+                    document.size(),
+                    document.uploadedAt(),
+                    document.sourceService(),
+                    document.checksum()))
         .orElseThrow(() -> documentNotFound(priorAuthorityId, documentId));
   }
 
