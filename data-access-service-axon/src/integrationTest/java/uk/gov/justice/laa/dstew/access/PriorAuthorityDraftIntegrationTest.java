@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -9,6 +10,7 @@ import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequest
 
 import jakarta.annotation.PostConstruct;
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -345,6 +347,23 @@ class PriorAuthorityDraftIntegrationTest {
     when(sdsService.saveEvidenceFile(any(), any(), any()))
         .thenReturn(new DocumentUploadResponse().checksum("checksum"));
     UUID documentId = uploadDocument(priorAuthorityId, "evidence.pdf");
+    await()
+        .atMost(Duration.ofSeconds(15))
+        .untilAsserted(
+            () -> {
+              ResponseEntity<String> priorAuthorityResponse =
+                  restTemplate.exchange(
+                      priorAuthorityUrl(priorAuthorityId),
+                      HttpMethod.GET,
+                      new HttpEntity<>(headers()),
+                      String.class);
+              PriorAuthorityResponse projected =
+                  objectMapper.readValue(
+                      priorAuthorityResponse.getBody(), PriorAuthorityResponse.class);
+              assertThat(projected.getUploadedDocuments())
+                  .anySatisfy(
+                      document -> assertThat(document.getDocumentId()).isEqualTo(documentId));
+            });
     byte[] content = "%PDF-1.4\ncontent".getBytes();
     when(sdsService.getEvidenceFile(priorAuthorityId, documentId, "evidence.pdf"))
         .thenReturn(new ByteArrayResource(content));
@@ -401,16 +420,21 @@ class PriorAuthorityDraftIntegrationTest {
     assertThat(deleteResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
     verify(sdsService).deleteFiles(priorAuthorityId, List.of(documentId.toString() + ".pdf"));
 
-    ResponseEntity<String> draftResponse =
-        restTemplate.exchange(
-            priorAuthorityUrl(priorAuthorityId),
-            HttpMethod.GET,
-            new HttpEntity<>(headers()),
-            String.class);
-    assertThat(draftResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-    PriorAuthorityResponse draft =
-        objectMapper.readValue(draftResponse.getBody(), PriorAuthorityResponse.class);
-    assertThat(draft.getUploadedDocuments()).isEmpty();
+    await()
+        .atMost(Duration.ofSeconds(15))
+        .untilAsserted(
+            () -> {
+              ResponseEntity<String> draftResponse =
+                  restTemplate.exchange(
+                      priorAuthorityUrl(priorAuthorityId),
+                      HttpMethod.GET,
+                      new HttpEntity<>(headers()),
+                      String.class);
+              assertThat(draftResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+              PriorAuthorityResponse draft =
+                  objectMapper.readValue(draftResponse.getBody(), PriorAuthorityResponse.class);
+              assertThat(draft.getUploadedDocuments()).isEmpty();
+            });
   }
 
   @Test

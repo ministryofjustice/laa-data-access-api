@@ -2,6 +2,8 @@ package uk.gov.justice.laa.dstew.access.command.application.priorauthority.data;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 import lombok.With;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.DisbursementInformation;
@@ -17,7 +19,13 @@ public record PriorAuthorityDataPayload(
     PriorAuthorityContent content,
     String serialisedRequest,
     Instant submittedAt,
-    DecisionDetails decisionDetails) {
+    DecisionDetails decisionDetails,
+    Map<UUID, String> documentFilenames) {
+
+  /** Normalises a missing filename map to an immutable empty map. */
+  public PriorAuthorityDataPayload {
+    documentFilenames = documentFilenames == null ? Map.of() : Map.copyOf(documentFilenames);
+  }
 
   /** Decision data recorded once a prior-authority request has been decided. */
   public record DecisionDetails(
@@ -37,13 +45,44 @@ public record PriorAuthorityDataPayload(
       PriorAuthorityContent content,
       String serialisedRequest,
       Instant submittedAt) {
-    this(priorAuthorityId, applicationId, content, serialisedRequest, submittedAt, null);
+    this(priorAuthorityId, applicationId, content, serialisedRequest, submittedAt, null, null);
+  }
+
+  /** Creates a payload without any recorded document filenames. */
+  public PriorAuthorityDataPayload(
+      UUID priorAuthorityId,
+      UUID applicationId,
+      PriorAuthorityContent content,
+      String serialisedRequest,
+      Instant submittedAt,
+      DecisionDetails decisionDetails) {
+    this(
+        priorAuthorityId,
+        applicationId,
+        content,
+        serialisedRequest,
+        submittedAt,
+        decisionDetails,
+        null);
   }
 
   /** Returns a complete new data version containing the supplied decision details. */
   public PriorAuthorityDataPayload withDecision(DecisionDetails newDecision) {
-    return new PriorAuthorityDataPayload(
-        priorAuthorityId, applicationId, content, serialisedRequest, submittedAt, newDecision);
+    return withDecisionDetails(newDecision);
+  }
+
+  /** Returns the payload with the original filename recorded by document ID. */
+  public PriorAuthorityDataPayload withDocumentFilename(UUID documentId, String originalFilename) {
+    Map<UUID, String> updated = new HashMap<>(documentFilenames);
+    updated.put(documentId, originalFilename);
+    return withDocumentFilenames(updated);
+  }
+
+  /** Returns the payload without the filename recorded for the document ID. */
+  public PriorAuthorityDataPayload withoutDocumentFilename(UUID documentId) {
+    Map<UUID, String> updated = new HashMap<>(documentFilenames);
+    updated.remove(documentId);
+    return withDocumentFilenames(updated);
   }
 
   /** Returns the recorded decision value, or {@code null} if the request has not been decided. */

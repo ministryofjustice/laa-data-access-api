@@ -1,7 +1,10 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import org.springframework.stereotype.Component;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.document.PriorAuthorityDocumentFormat;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
 import uk.gov.justice.laa.dstew.access.model.Apportionment;
 import uk.gov.justice.laa.dstew.access.model.BillingType;
@@ -47,11 +50,15 @@ public class GetPriorAuthorityResponseMapper {
     return response;
   }
 
+  // Never-uploaded maps to null and all-deleted to empty, matching the former content list.
   private List<UploadedDocument> toUploadedDocuments(PriorAuthorityResult result) {
-    if (result.uploadedDocuments() == null) {
+    if (result.uploadedDocuments() == null || result.uploadedDocuments().isEmpty()) {
       return null;
     }
+    Map<UUID, String> filenames =
+        result.documentFilenames() == null ? Map.of() : result.documentFilenames();
     return result.uploadedDocuments().stream()
+        .filter(document -> !document.deleted())
         .map(
             document ->
                 new UploadedDocument()
@@ -60,9 +67,12 @@ public class GetPriorAuthorityResponseMapper {
                         document.documentType() == null
                             ? null
                             : PriorAuthorityDocumentType.fromValue(document.documentType()))
-                    .fileName(document.fileName())
-                    .fileType(document.fileType())
-                    .mediaType(document.mediaType())
+                    .fileName(filenames.get(document.documentId()))
+                    .fileType(
+                        PriorAuthorityDocumentFormat.fromContentType(document.contentType())
+                            .map(PriorAuthorityDocumentFormat::fileType)
+                            .orElse(null))
+                    .mediaType(document.contentType())
                     .size(document.size())
                     .uploadedAt(
                         document.uploadedAt() == null

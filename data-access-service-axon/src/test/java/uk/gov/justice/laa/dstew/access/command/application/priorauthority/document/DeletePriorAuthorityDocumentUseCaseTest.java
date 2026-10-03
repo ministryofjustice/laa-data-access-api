@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.command.application.priorauthority.docum
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verify;
@@ -19,13 +20,12 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
+import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentDeleteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityDocument;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
 
@@ -39,67 +39,48 @@ class DeletePriorAuthorityDocumentUseCaseTest {
   @Test
   void givenDraftExists_whenExecute_thenDispatchesBeforeDeletingTheSdsFile() {
     DeletePriorAuthorityDocumentUseCase useCase =
-        new DeletePriorAuthorityDocumentUseCase(
-            draftStore, dispatcher, sdsService, new ObjectMapper());
+        new DeletePriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService);
     UUID priorAuthorityId = UUID.randomUUID();
-    UUID applicationId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
-    when(draftStore.find(priorAuthorityId))
-        .thenReturn(
-            Optional.of(
-                new PriorAuthorityDataPayload(
-                    priorAuthorityId,
-                    applicationId,
-                    contentWithPdfDocument(documentId),
-                    "{}",
-                    Instant.now())));
+    when(draftStore.find(priorAuthorityId)).thenReturn(Optional.of(draft(priorAuthorityId)));
+    when(dispatcher.dispatch(
+            any(PriorAuthorityDocumentDeleteCommand.class), eq(UploadDocument.class)))
+        .thenReturn(pdfDocument(documentId));
 
     useCase.execute(priorAuthorityId, documentId);
 
     ArgumentCaptor<PriorAuthorityDocumentDeleteCommand> commandCaptor =
         ArgumentCaptor.forClass(PriorAuthorityDocumentDeleteCommand.class);
-    verify(dispatcher).dispatch(commandCaptor.capture());
+    InOrder calls = inOrder(dispatcher, sdsService);
+    calls.verify(dispatcher).dispatch(commandCaptor.capture(), eq(UploadDocument.class));
+    calls.verify(sdsService).deleteFiles(priorAuthorityId, List.of(documentId.toString() + ".pdf"));
     assertThat(commandCaptor.getValue().priorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(commandCaptor.getValue().documentId()).isEqualTo(documentId);
-    assertThat(commandCaptor.getValue().serialisedRequest())
-        .contains("\"documentId\":\"%s\"".formatted(documentId));
-    InOrder calls = inOrder(dispatcher, sdsService);
-    calls.verify(dispatcher).dispatch(any(PriorAuthorityDocumentDeleteCommand.class));
-    calls.verify(sdsService).deleteFiles(priorAuthorityId, List.of(documentId.toString() + ".pdf"));
   }
 
   @Test
   void givenSdsDeletionFails_whenExecute_thenDoesNotPropagateTheFailure() {
     DeletePriorAuthorityDocumentUseCase useCase =
-        new DeletePriorAuthorityDocumentUseCase(
-            draftStore, dispatcher, sdsService, new ObjectMapper());
+        new DeletePriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService);
     UUID priorAuthorityId = UUID.randomUUID();
-    UUID applicationId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
-    when(draftStore.find(priorAuthorityId))
-        .thenReturn(
-            Optional.of(
-                new PriorAuthorityDataPayload(
-                    priorAuthorityId,
-                    applicationId,
-                    contentWithPdfDocument(documentId),
-                    "{}",
-                    Instant.now())));
+    when(draftStore.find(priorAuthorityId)).thenReturn(Optional.of(draft(priorAuthorityId)));
+    when(dispatcher.dispatch(
+            any(PriorAuthorityDocumentDeleteCommand.class), eq(UploadDocument.class)))
+        .thenReturn(pdfDocument(documentId));
     doThrow(new IllegalStateException("SDS unavailable"))
         .when(sdsService)
         .deleteFiles(priorAuthorityId, List.of(documentId.toString() + ".pdf"));
 
     useCase.execute(priorAuthorityId, documentId);
 
-    verify(dispatcher).dispatch(any(PriorAuthorityDocumentDeleteCommand.class));
     verify(sdsService).deleteFiles(priorAuthorityId, List.of(documentId.toString() + ".pdf"));
   }
 
   @Test
   void givenDraftMissing_whenExecute_thenThrowsNotFoundWithoutDeletingFromSds() {
     DeletePriorAuthorityDocumentUseCase useCase =
-        new DeletePriorAuthorityDocumentUseCase(
-            draftStore, dispatcher, sdsService, new ObjectMapper());
+        new DeletePriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService);
     UUID priorAuthorityId = UUID.randomUUID();
     when(draftStore.find(priorAuthorityId)).thenReturn(Optional.empty());
 
@@ -109,23 +90,17 @@ class DeletePriorAuthorityDocumentUseCaseTest {
     verifyNoInteractions(dispatcher, sdsService);
   }
 
-  private PriorAuthorityContent contentWithPdfDocument(UUID documentId) {
-    return new PriorAuthorityContent(
-        null,
-        null,
-        null,
-        null,
-        null,
-        List.of(
-            new PriorAuthorityDocument(
-                documentId,
-                null,
-                "evidence.pdf",
-                "PDF",
-                "application/pdf",
-                1L,
-                Instant.now(),
-                "test",
-                null)));
+  private PriorAuthorityDataPayload draft(UUID priorAuthorityId) {
+    return new PriorAuthorityDataPayload(
+        priorAuthorityId,
+        UUID.randomUUID(),
+        new PriorAuthorityContent(null, null, null, null, null),
+        "{}",
+        Instant.now());
+  }
+
+  private UploadDocument pdfDocument(UUID documentId) {
+    return new UploadDocument(
+        documentId, null, Instant.now(), 1L, "application/pdf", null, "test", false);
   }
 }
