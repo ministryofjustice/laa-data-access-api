@@ -343,11 +343,9 @@ class PriorAuthorityDeciderTest {
             documentId,
             "CIVIL_APPLY",
             "abc123",
-            "{}",
             OCCURRED_AT,
             "evidence.pdf",
             7L,
-            "PDF",
             "application/pdf");
     UUID applicationId = UUID.randomUUID();
     PriorAuthorityDocumentUploadedEvent event =
@@ -360,6 +358,8 @@ class PriorAuthorityDeciderTest {
     assertThat(event.contentType()).isEqualTo("application/pdf");
     assertThat(event.checksum()).isEqualTo("abc123");
     assertThat(event.parentApplicationId()).isEqualTo(applicationId);
+    assertThat(event.sourceService()).isEqualTo("CIVIL_APPLY");
+    assertThat(event.toString()).doesNotContain("evidence.pdf");
   }
 
   @Test
@@ -367,7 +367,7 @@ class PriorAuthorityDeciderTest {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
     PriorAuthorityDocumentDeleteCommand command =
-        new PriorAuthorityDocumentDeleteCommand(priorAuthorityId, documentId, "{}", OCCURRED_AT);
+        new PriorAuthorityDocumentDeleteCommand(priorAuthorityId, documentId, OCCURRED_AT);
     UUID applicationId = UUID.randomUUID();
 
     PriorAuthorityDocumentDeletedEvent event =

@@ -9,6 +9,7 @@ import static uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthor
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.axonframework.messaging.queryhandling.QueryUpdateEmitter;
@@ -16,10 +17,15 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.DisbursementInformation;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentDeletedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentTypeUpdatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentUploadedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDraftStartedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
@@ -46,6 +52,121 @@ class PriorAuthorityProjectionTest {
   @Mock private PriorAuthorityDraftStore draftStore;
   @Mock private QueryUpdateEmitter queryUpdateEmitter;
   @InjectMocks private PriorAuthorityProjection projection;
+
+  @Test
+  void givenDocumentEvents_whenReplayedTwice_thenProjectsMetadataOnceWithTypeAndDeletedFlag() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID keptId = UUID.randomUUID();
+    UUID deletedId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant uploadedAt = Instant.parse("2026-09-10T09:00:00Z");
+    PriorAuthorityReadModel model =
+        PriorAuthorityReadModel.builder()
+            .priorAuthorityId(priorAuthorityId)
+            .applicationId(applicationId)
+            .status("DRAFT")
+            .build();
+    when(repository.findById(priorAuthorityId)).thenReturn(Optional.of(model));
+    var keptUpload = uploaded(priorAuthorityId, keptId, applicationId, uploadedAt);
+    var deletedUpload =
+        uploaded(priorAuthorityId, deletedId, applicationId, uploadedAt.plusSeconds(1));
+    var typeUpdate =
+        new PriorAuthorityDocumentTypeUpdatedEvent(
+            priorAuthorityId, keptId, "EXPERT_REPORT", uploadedAt.plusSeconds(2));
+    var deletion =
+        new PriorAuthorityDocumentDeletedEvent(
+            priorAuthorityId, deletedId, uploadedAt.plusSeconds(3), applicationId);
+
+    for (int replay = 0; replay < 2; replay++) {
+      projection.on(keptUpload);
+      projection.on(deletedUpload);
+      projection.on(typeUpdate);
+      projection.on(deletion);
+    }
+
+    assertThat(model.getUploadedDocuments())
+        .containsExactly(
+            new UploadDocument(
+                keptId,
+                "EXPERT_REPORT",
+                uploadedAt,
+                12L,
+                "application/pdf",
+                "checksum",
+                "CIVIL_APPLY",
+                false),
+            new UploadDocument(
+                deletedId,
+                null,
+                uploadedAt.plusSeconds(1),
+                12L,
+                "application/pdf",
+                "checksum",
+                "CIVIL_APPLY",
+                true));
+    assertThat(model.getModifiedAt()).isEqualTo(uploadedAt.plusSeconds(3));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"DRAFT", "SUBMITTED"})
+  void givenProjectedDocuments_whenQueryHandled_thenCombinesMetadataWithPayloadFilenames(
+      String status) {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    UploadDocument document =
+        new UploadDocument(
+            documentId,
+            null,
+            Instant.now(),
+            12L,
+            "application/pdf",
+            "checksum",
+            "CIVIL_APPLY",
+            false);
+    PriorAuthorityReadModel model =
+        PriorAuthorityReadModel.builder()
+            .priorAuthorityId(priorAuthorityId)
+            .applicationId(applicationId)
+            .dataVersion(0L)
+            .status(status)
+            .uploadedDocuments(java.util.List.of(document))
+            .build();
+    PriorAuthorityDataPayload payload =
+        new PriorAuthorityDataPayload(
+                priorAuthorityId,
+                applicationId,
+                new PriorAuthorityContent(EXPERT, "Expert required", null, null, null),
+                "{}",
+                Instant.now())
+            .withDocumentFilename(documentId, "evidence.pdf");
+    when(repository.findById(priorAuthorityId)).thenReturn(Optional.of(model));
+    if ("DRAFT".equals(status)) {
+      when(draftStore.find(priorAuthorityId)).thenReturn(Optional.of(payload));
+    } else {
+      when(dataStore.get(priorAuthorityId, 0L)).thenReturn(payload);
+    }
+
+    PriorAuthorityResult result =
+        projection.handle(new FindPriorAuthorityByPriorAuthorityIdQuery(priorAuthorityId));
+
+    assertThat(result.uploadedDocuments()).containsExactly(document);
+    assertThat(result.documentFilenames())
+        .containsExactlyEntriesOf(Map.of(documentId, "evidence.pdf"));
+  }
+
+  private static PriorAuthorityDocumentUploadedEvent uploaded(
+      UUID priorAuthorityId, UUID documentId, UUID applicationId, Instant uploadedAt) {
+    return new PriorAuthorityDocumentUploadedEvent(
+        priorAuthorityId,
+        documentId,
+        uploadedAt,
+        12L,
+        "application/pdf",
+        "checksum",
+        applicationId,
+        "CIVIL_APPLY");
+  }
 
   @Test
   void givenExistingDraft_whenSubmitted_thenPreservesCreatedAtAndUpdatesCurrentState() {

@@ -1,16 +1,16 @@
 package uk.gov.justice.laa.dstew.access.command.application.priorauthority;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.IntStream;
 import org.axonframework.eventsourcing.annotation.EventSourcingHandler;
 import org.axonframework.eventsourcing.annotation.reflection.EntityCreator;
 import org.axonframework.extension.spring.stereotype.EventSourced;
 import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import org.jspecify.annotations.NonNull;
+import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
@@ -24,12 +24,12 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.assign.DirectPriorAuthorityWorkItemAssignmentCommand;
 import uk.gov.justice.laa.dstew.access.command.worklist.unassign.DirectPriorAuthorityWorkItemUnassignmentCommand;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityDocument;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityDocumentType;
 import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
+import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /**
  * Event-sourced consistency boundary for a PriorAuthority submission.
@@ -84,96 +84,56 @@ public class PriorAuthorityAggregate {
     eventAppender.append(PriorAuthorityDecider.decideDraftUpdated(command, state.applicationId));
   }
 
+  /** Records metadata for a draft document that SDS has already accepted. */
   @CommandHandler
   UUID handle(
       PriorAuthorityDocumentUploadCommand command,
       PriorAuthorityDraftStore draftStore,
       EventAppender eventAppender) {
+    requirePriorAuthorityDraft(command.priorAuthorityId());
+    if (command.originalFilename() == null || command.originalFilename().isBlank()) {
+      throw new ValidationException(List.of("Original filename is required"));
+    }
+    if (findDocument(command.documentId()).isPresent()) {
+      throw new ValidationException(List.of("Document ID already records an upload"));
+    }
     PriorAuthorityDataPayload existingDraft = requireDraft(command.priorAuthorityId(), draftStore);
-    List<PriorAuthorityDocument> existingDocuments = copyUploadedDocuments(existingDraft);
-    existingDocuments.add(
-        new PriorAuthorityDocument(
-            command.documentId(),
-            null,
-            command.originalFilename(),
-            command.fileType(),
-            command.contentType(),
-            command.fileSize(),
-            command.occurredAt(),
-            command.sourceService(),
-            command.checksum()));
-
-    PriorAuthorityContent updatedContent =
-        existingDraft.content().withUploadedDocuments(List.copyOf(existingDocuments));
-
-    PriorAuthorityDataPayload updatedPayload =
-        existingDraft
-            .withContent(updatedContent)
-            .withSerialisedRequest(command.serialisedRequest());
     draftStore.upsert(
         command.priorAuthorityId(),
         existingDraft.applicationId(),
-        updatedPayload,
-        command.serialisedRequest(),
+        existingDraft.withDocumentFilename(command.documentId(), command.originalFilename()),
+        existingDraft.serialisedRequest(),
         command.occurredAt());
     eventAppender.append(
         PriorAuthorityDecider.decideDocumentUploaded(command, state.applicationId));
     return command.documentId();
   }
 
+  /** Marks a draft document deleted and returns its metadata for external file cleanup. */
   @CommandHandler
-  UUID handle(
+  UploadDocument handle(
       PriorAuthorityDocumentDeleteCommand command,
       PriorAuthorityDraftStore draftStore,
       EventAppender eventAppender) {
+    requirePriorAuthorityDraft(command.priorAuthorityId());
+    UploadDocument document =
+        requireActiveDocument(command.priorAuthorityId(), command.documentId());
     PriorAuthorityDataPayload existingDraft = requireDraft(command.priorAuthorityId(), draftStore);
-    List<PriorAuthorityDocument> updatedDocuments = copyUploadedDocuments(existingDraft);
-    boolean removed =
-        updatedDocuments.removeIf(document -> document.documentId().equals(command.documentId()));
-    if (!removed) {
-      throw new ResourceNotFoundException(
-          "Document %s not found for Prior Authority %s"
-              .formatted(command.documentId(), command.priorAuthorityId()));
-    }
-
-    PriorAuthorityContent updatedContent =
-        existingDraft.content().withUploadedDocuments(List.copyOf(updatedDocuments));
-    PriorAuthorityDataPayload updatedPayload =
-        existingDraft
-            .withContent(updatedContent)
-            .withSerialisedRequest(command.serialisedRequest());
     draftStore.upsert(
         command.priorAuthorityId(),
         existingDraft.applicationId(),
-        updatedPayload,
-        command.serialisedRequest(),
+        existingDraft.withoutDocumentFilename(command.documentId()),
+        existingDraft.serialisedRequest(),
         command.occurredAt());
     eventAppender.append(PriorAuthorityDecider.decideDocumentDeleted(command, state.applicationId));
-    return command.documentId();
+    return document;
   }
 
   @CommandHandler
-  UUID handle(
-      PriorAuthorityDocumentTypeUpdateCommand command,
-      PriorAuthorityDraftStore draftStore,
-      EventAppender eventAppender) {
+  UUID handle(PriorAuthorityDocumentTypeUpdateCommand command, EventAppender eventAppender) {
     PriorAuthorityDocumentType.fromValue(command.documentType());
-    PriorAuthorityDataPayload existingDraft = requireDraft(command.priorAuthorityId(), draftStore);
-    List<PriorAuthorityDocument> updatedDocuments = getUpdatedDocuments(command, existingDraft);
-
-    PriorAuthorityContent updatedContent =
-        existingDraft.content().withUploadedDocuments(List.copyOf(updatedDocuments));
-    PriorAuthorityDataPayload updatedPayload =
-        existingDraft
-            .withContent(updatedContent)
-            .withSerialisedRequest(command.serialisedRequest())
-            .withSubmittedAt(command.occurredAt());
-    draftStore.upsert(
-        command.priorAuthorityId(),
-        existingDraft.applicationId(),
-        updatedPayload,
-        command.serialisedRequest(),
-        command.occurredAt());
+    requirePriorAuthorityDraft(command.priorAuthorityId());
+    requireActiveDocument(command.priorAuthorityId(), command.documentId());
     eventAppender.append(PriorAuthorityDecider.decideDocumentTypeUpdated(command));
     return command.documentId();
   }
@@ -267,21 +227,28 @@ public class PriorAuthorityAggregate {
             command.occurredAt()));
   }
 
-  private static @NonNull List<PriorAuthorityDocument> getUpdatedDocuments(
-      PriorAuthorityDocumentTypeUpdateCommand command, PriorAuthorityDataPayload existingDraft) {
-    List<PriorAuthorityDocument> updatedDocuments = copyUploadedDocuments(existingDraft);
-    int documentIndex =
-        IntStream.range(0, updatedDocuments.size())
-            .filter(index -> updatedDocuments.get(index).documentId().equals(command.documentId()))
-            .findFirst()
-            .orElseThrow(
-                () ->
-                    new ResourceNotFoundException(
-                        "Document %s not found for Prior Authority %s"
-                            .formatted(command.documentId(), command.priorAuthorityId())));
-    PriorAuthorityDocument existingDocument = updatedDocuments.get(documentIndex);
-    updatedDocuments.set(documentIndex, existingDocument.withDocumentType(command.documentType()));
-    return updatedDocuments;
+  private void requirePriorAuthorityDraft(UUID requestedPriorAuthorityId) {
+    requirePriorAuthorityExists(requestedPriorAuthorityId);
+    if (state.submitted) {
+      throw new ValidationException(
+          List.of("Documents can only be changed on a prior authority draft"));
+    }
+  }
+
+  private Optional<UploadDocument> findDocument(UUID documentId) {
+    return state.uploadedDocuments.stream()
+        .filter(document -> document.documentId().equals(documentId))
+        .findFirst();
+  }
+
+  private UploadDocument requireActiveDocument(UUID requestedPriorAuthorityId, UUID documentId) {
+    return findDocument(documentId)
+        .filter(document -> !document.deleted())
+        .orElseThrow(
+            () ->
+                new ResourceNotFoundException(
+                    "Document %s not found for Prior Authority %s"
+                        .formatted(documentId, requestedPriorAuthorityId)));
   }
 
   private void validateWorkItem(UUID workItemId, long expectedAssignmentVersion) {
@@ -309,19 +276,11 @@ public class PriorAuthorityAggregate {
     PriorAuthorityContent updatedContent =
         command
             .content()
-            .withPriorAuthorityType(PriorAuthorityType.valueOf(state.priorAuthorityType))
-            .withUploadedDocuments(existingDraft.content().uploadedDocuments());
+            .withPriorAuthorityType(PriorAuthorityType.valueOf(state.priorAuthorityType));
     return existingDraft
         .withContent(updatedContent)
         .withSerialisedRequest(command.serialisedRequest())
         .withSubmittedAt(command.occurredAt());
-  }
-
-  private static List<PriorAuthorityDocument> copyUploadedDocuments(
-      PriorAuthorityDataPayload draft) {
-    return draft.content().uploadedDocuments() == null
-        ? new ArrayList<>()
-        : new ArrayList<>(draft.content().uploadedDocuments());
   }
 
   @EventSourcingHandler
@@ -356,7 +315,7 @@ public class PriorAuthorityAggregate {
 
   @EventSourcingHandler
   void on(PriorAuthorityDocumentTypeUpdatedEvent event) {
-    this.priorAuthorityId = event.priorAuthorityId();
+    PriorAuthorityEvolve.apply(state, event);
   }
 
   @EventSourcingHandler

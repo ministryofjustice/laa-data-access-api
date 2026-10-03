@@ -6,8 +6,12 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.DisbursementInformation;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.ExpertFeeInformation;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
@@ -19,7 +23,6 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.CounselType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.DisbursementDetails;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.ExpertCosts;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.ExpertDetails;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityDocument;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.TimeRequested;
@@ -157,6 +160,7 @@ class GetPriorAuthorityResponseMapperTest {
   @Test
   void givenDecisionDetailsAndDocumentsWithNullType_whenMapped_thenMapsNestedFields() {
     Instant decisionDate = Instant.parse("2026-09-08T12:00:00Z");
+    UUID documentId = UUID.randomUUID();
     PriorAuthorityResult result =
         PriorAuthorityResult.builder()
             .priorAuthorityId(UUID.randomUUID())
@@ -180,16 +184,16 @@ class GetPriorAuthorityResponseMapperTest {
                     "{}"))
             .uploadedDocuments(
                 List.of(
-                    new PriorAuthorityDocument(
-                        UUID.randomUUID(),
+                    new UploadDocument(
+                        documentId,
                         null,
-                        "evidence.pdf",
-                        "PDF",
-                        "application/pdf",
+                        null,
                         42L,
-                        null,
+                        "application/pdf",
+                        "checksum",
                         "CIVIL_APPLY",
-                        "checksum")))
+                        false)))
+            .documentFilenames(Map.of(documentId, "evidence.pdf"))
             .build();
 
     var response = mapper.toResponse(result);
@@ -225,26 +229,26 @@ class GetPriorAuthorityResponseMapperTest {
         PriorAuthorityResult.builder()
             .uploadedDocuments(
                 List.of(
-                    new PriorAuthorityDocument(
+                    new UploadDocument(
                         firstDocumentId,
                         "GATEWAY_EVIDENCE",
-                        "evidence.pdf",
-                        "PDF",
-                        "application/pdf",
-                        42L,
                         firstUploadedAt,
+                        42L,
+                        "application/pdf",
+                        "first-checksum",
                         "CIVIL_APPLY",
-                        "first-checksum"),
-                    new PriorAuthorityDocument(
+                        false),
+                    new UploadDocument(
                         secondDocumentId,
                         "GATEWAY_EVIDENCE",
-                        "evidence.pdf",
-                        "PDF",
-                        "application/pdf",
-                        84L,
                         secondUploadedAt,
+                        84L,
+                        "application/pdf",
+                        "second-checksum",
                         "CIVIL_APPLY",
-                        "second-checksum")))
+                        false)))
+            .documentFilenames(
+                Map.of(firstDocumentId, "evidence.pdf", secondDocumentId, "evidence.pdf"))
             .build();
 
     var response = mapper.toResponse(result);
@@ -368,6 +372,8 @@ class GetPriorAuthorityResponseMapperTest {
   @Test
   void givenUploadedDocuments_whenMapped_thenMapsDocumentFieldsAndUtcTimestamps() {
     Instant uploadedAt = Instant.parse("2026-09-08T12:30:00Z");
+    UUID firstId = UUID.randomUUID();
+    UUID secondId = UUID.randomUUID();
     PriorAuthorityResult result =
         PriorAuthorityResult.builder()
             .priorAuthorityId(UUID.randomUUID())
@@ -377,26 +383,25 @@ class GetPriorAuthorityResponseMapperTest {
             .priorAuthorityType(PriorAuthorityType.EXPERT)
             .uploadedDocuments(
                 List.of(
-                    new PriorAuthorityDocument(
-                        UUID.randomUUID(),
+                    new UploadDocument(
+                        firstId,
                         "GATEWAY_EVIDENCE",
-                        "a.pdf",
-                        "PDF",
-                        "application/pdf",
-                        12L,
                         uploadedAt,
-                        "CIVIL_APPLY",
-                        "checksum-one"),
-                    new PriorAuthorityDocument(
-                        UUID.randomUUID(),
-                        "MERITS_REPORT",
-                        "b.pdf",
-                        "PDF",
+                        12L,
                         "application/pdf",
-                        8L,
+                        "checksum-one",
+                        "CIVIL_APPLY",
+                        false),
+                    new UploadDocument(
+                        secondId,
+                        "MERITS_REPORT",
                         null,
+                        8L,
+                        "application/pdf",
+                        "checksum-two",
                         "CIVIL_DECIDE",
-                        "checksum-two")))
+                        false)))
+            .documentFilenames(Map.of(firstId, "a.pdf", secondId, "b.pdf"))
             .build();
 
     var response = mapper.toResponse(result);
@@ -414,5 +419,60 @@ class GetPriorAuthorityResponseMapperTest {
     assertThat(response.getUploadedDocuments().get(0).getUploadedAt())
         .isEqualTo(uploadedAt.atOffset(ZoneOffset.UTC));
     assertThat(response.getUploadedDocuments().get(1).getUploadedAt()).isNull();
+  }
+
+  @Test
+  void givenDeletedDocument_whenMapped_thenOmitsItAndKeepsUploadOrder() {
+    UUID firstId = UUID.randomUUID();
+    UUID deletedId = UUID.randomUUID();
+    UUID lastId = UUID.randomUUID();
+    Instant uploadedAt = Instant.parse("2026-09-08T12:30:00Z");
+    PriorAuthorityResult result =
+        PriorAuthorityResult.builder()
+            .uploadedDocuments(
+                List.of(
+                    document(firstId, uploadedAt.plusSeconds(10), false),
+                    document(deletedId, uploadedAt, true),
+                    document(lastId, uploadedAt, false)))
+            .documentFilenames(Map.of(firstId, "first.pdf", lastId, "last.pdf"))
+            .build();
+
+    var response = mapper.toResponse(result);
+
+    assertThat(response.getUploadedDocuments())
+        .extracting("documentId", "fileName")
+        .containsExactly(
+            org.assertj.core.groups.Tuple.tuple(firstId, "first.pdf"),
+            org.assertj.core.groups.Tuple.tuple(lastId, "last.pdf"));
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void givenNoActiveDocuments_whenMapped_thenPreservesNullOrEmptyContract(boolean anyUploaded) {
+    PriorAuthorityResult result =
+        PriorAuthorityResult.builder()
+            .uploadedDocuments(
+                anyUploaded ? List.of(document(UUID.randomUUID(), Instant.now(), true)) : List.of())
+            .build();
+
+    var documents = mapper.toResponse(result).getUploadedDocuments();
+
+    if (anyUploaded) {
+      assertThat(documents).isEmpty();
+    } else {
+      assertThat(documents).isNull();
+    }
+  }
+
+  private UploadDocument document(UUID documentId, Instant uploadedAt, boolean deleted) {
+    return new UploadDocument(
+        documentId,
+        "GATEWAY_EVIDENCE",
+        uploadedAt,
+        12L,
+        "application/pdf",
+        "checksum",
+        "CIVIL_APPLY",
+        deleted);
   }
 }
