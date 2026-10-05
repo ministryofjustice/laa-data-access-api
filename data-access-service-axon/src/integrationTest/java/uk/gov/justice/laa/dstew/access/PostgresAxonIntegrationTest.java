@@ -196,6 +196,7 @@ class PostgresAxonIntegrationTest {
         .containsExactly(
             "application_current_state",
             "application_data",
+            "application_draft",
             "application_group_route",
             "application_history",
             "application_list_index",

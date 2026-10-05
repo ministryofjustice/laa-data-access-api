@@ -69,15 +69,21 @@ public class SecurityConfig {
   private static final String AUTHORITY_PREFIX = "APPROLE_";
   private static final List<String> DEV_TOKEN_ACCOUNTS = List.of("0Z123A", "1A987X");
   private static final String DEV_TOKEN_ENTRA_OID = "00000000-0000-0000-0000-000000000001";
+  private static final String SECOND_DEV_TOKEN_ENTRA_OID = "00000000-0000-0000-0000-000000000002";
+  private static final String PROVIDER_DEV_TOKEN_ENTRA_OID = "00000000-0000-0000-0000-000000000003";
+  private static final List<String> CASEWORKER_ROLES =
+      List.of("APPROLE_LAA_CASEWORKER", "ROLE_LAA_CASEWORKER");
   private static final Map<String, DevToken> DEV_TOKENS =
       Map.of(
           "swagger-caseworker-token",
-          new DevToken(List.of("APPROLE_LAA_CASEWORKER", "ROLE_LAA_CASEWORKER"), "access_as_user"),
+          new DevToken(List.of("APPROLE_LAA_CASEWORKER", "ROLE_LAA_CASEWORKER"), "access_as_user", DEV_TOKEN_ENTRA_OID),
           "swagger-provider-token",
           new DevToken(
-              List.of("APPROLE_LAA_CASEWORKER", "ROLE_LAA_CASEWORKER"), "access_as_provider"),
+              List.of("APPROLE_LAA_CASEWORKER", "ROLE_LAA_CASEWORKER"), "access_as_provider", PROVIDER_DEV_TOKEN_ENTRA_OID),
+          "swagger-caseworker-token-2",
+          new DevToken(CASEWORKER_ROLES, "access_as_user", SECOND_DEV_TOKEN_ENTRA_OID),
           "unknown-token",
-          new DevToken(List.of("APPROLE_UNKNOWN"), ""));
+          new DevToken(List.of("APPROLE_UNKNOWN"), "", ""));
 
   @Value("${feature.enable-dev-token:false}")
   private boolean enableDevToken;
@@ -261,8 +267,8 @@ public class SecurityConfig {
             .header("alg", "none")
             .subject("dev-user")
             .claim("LAA_ACCOUNTS", DEV_TOKEN_ACCOUNTS)
-            .claim("oid", DEV_TOKEN_ENTRA_OID)
             .claim("scp", devToken.scope())
+            .claim("oid", devToken.entraOid())
             .issuedAt(issuedAt)
             .expiresAt(issuedAt.plusSeconds(300))
             .build();
@@ -284,7 +290,7 @@ public class SecurityConfig {
     return DEV_TOKENS.containsKey(token);
   }
 
-  private record DevToken(List<String> authorities, String scope) {}
+  private record DevToken(List<String> authorities, String scope, String entraOid) {}
 
   /** Gives methods to check the SecurityContext for roles and username. */
   @ExcludeFromGeneratedCodeCoverage

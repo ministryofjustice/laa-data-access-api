@@ -9,12 +9,32 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
+import java.util.HashSet;
+import java.util.Set;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 class ApplicationRequestFactoryTest {
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
+
+  @ParameterizedTest
+  @ValueSource(longs = {1L, 42L, 123456789L})
+  void generatesValidUniqueReferences(long seed) throws IOException {
+    var factory = new ApplicationRequestFactory(seed);
+    Set<String> references = new HashSet<>();
+    Set<Character> characters = new HashSet<>();
+    for (int index = 0; index < 100; index++) {
+      var application = factory.create();
+      String reference = application.laaReference();
+      assertTrue(reference.matches("L-[0-9ABCDEFHJKLMNPRTUVWXY]{3}-[0-9ABCDEFHJKLMNPRTUVWXY]{3}"));
+      assertTrue(references.add(reference));
+      assertEquals(reference, MAPPER.readTree(application.request()).get("laaReference").asText());
+      reference.substring(2).chars().forEach(character -> characters.add((char) character));
+    }
+    assertTrue(characters.contains('U'));
+    assertTrue(characters.contains('0'));
+  }
 
   @ParameterizedTest
   @ValueSource(longs = {1L, 42L, 123456789L})
