@@ -8,12 +8,11 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationDomainEventResponse;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityEventResponse;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityType;
-import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadModel;
+import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryEventResult;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryResult;
 import uk.gov.justice.laa.dstew.access.query.application.history.PriorAuthorityHistoryEventResult;
 import uk.gov.justice.laa.dstew.access.query.application.history.PriorAuthorityHistoryGroupResult;
@@ -21,83 +20,73 @@ import uk.gov.justice.laa.dstew.access.query.application.history.PriorAuthorityH
 class GetApplicationHistoryResponseMapperTest {
 
   private final GetApplicationHistoryResponseMapper mapper =
-      new GetApplicationHistoryResponseMapper(new ObjectMapper());
+      new GetApplicationHistoryResponseMapper();
 
   @Test
   void givenHistoryRows_whenMapped_thenReturnsSharedApplicationHistoryContract() {
     UUID applicationId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-07-19T10:15:30Z");
-    ApplicationHistoryReadModel history =
-        ApplicationHistoryReadModel.builder()
-            .eventId("event-id")
-            .applicationId(applicationId)
-            .eventType("APPLICATION_CREATED")
-            .requestPayload("{\"eventDescription\":\"Application received\"}")
-            .serviceName("CIVIL_APPLY")
-            .occurredAt(occurredAt)
-            .build();
+    var event =
+        new ApplicationHistoryEventResult(
+            applicationId,
+            "APPLICATION_NOTE_CREATED",
+            occurredAt,
+            "CIVIL_APPLY",
+            "My note text",
+            caseworkerId);
 
-    var response = mapper.toResponse(new ApplicationHistoryResult(List.of(history), List.of()));
+    var response = mapper.toResponse(new ApplicationHistoryResult(List.of(event), List.of()));
 
     assertThat(response.getEvents())
         .singleElement()
         .satisfies(
-            event -> {
-              assertThat(event.getApplicationId()).isEqualTo(applicationId);
-              assertThat(event.getDomainEventType()).isEqualTo(DomainEventType.APPLICATION_CREATED);
-              assertThat(event.getCreatedAt())
+            mappedEvent -> {
+              assertThat(mappedEvent.getApplicationId()).isEqualTo(applicationId);
+              assertThat(mappedEvent.getDomainEventType())
+                  .isEqualTo(DomainEventType.APPLICATION_NOTE_CREATED);
+              assertThat(mappedEvent.getCreatedAt())
                   .isEqualTo(OffsetDateTime.ofInstant(occurredAt, ZoneOffset.UTC));
-              assertThat(event.getCreatedBy()).isEqualTo("CIVIL_APPLY");
-              assertThat(event.getEventDescription()).isEqualTo("Application received");
-              assertThat(event.getCaseworkerId()).isNull();
+              assertThat(mappedEvent.getCreatedBy()).isEqualTo("CIVIL_APPLY");
+              assertThat(mappedEvent.getEventDescription()).isEqualTo("My note text");
+              assertThat(mappedEvent.getCaseworkerId()).isEqualTo(caseworkerId);
             });
     assertThat(response.getPriorAuthorities()).isEmpty();
   }
 
   @Test
-  void givenMissingMetadataAndInvalidPayload_whenMapped_thenUsesSafeFallbacks() {
-    ApplicationHistoryReadModel history =
-        ApplicationHistoryReadModel.builder()
-            .eventId("event-id")
-            .applicationId(UUID.randomUUID())
-            .eventType("APPLICATION_CREATED")
-            .requestPayload("not-json")
-            .occurredAt(Instant.parse("2026-07-19T10:15:30Z"))
-            .build();
+  void givenNullServiceNameAndDescription_whenMapped_thenUsesSafeFallbacks() {
+    var event =
+        new ApplicationHistoryEventResult(
+            UUID.randomUUID(),
+            "APPLICATION_CREATED",
+            Instant.parse("2026-07-19T10:15:30Z"),
+            null,
+            null,
+            null);
 
-    var response = mapper.toResponse(new ApplicationHistoryResult(List.of(history), List.of()));
+    var response = mapper.toResponse(new ApplicationHistoryResult(List.of(event), List.of()));
 
     assertThat(response.getEvents())
         .singleElement()
         .satisfies(
-            event -> {
-              assertThat(event.getCreatedBy()).isEqualTo("UNKNOWN");
-              assertThat(event.getEventDescription()).isNull();
+            mappedEvent -> {
+              assertThat(mappedEvent.getCreatedBy()).isEqualTo("UNKNOWN");
+              assertThat(mappedEvent.getEventDescription()).isNull();
+              assertThat(mappedEvent.getCaseworkerId()).isNull();
             });
-    assertThat(response.getPriorAuthorities()).isEmpty();
   }
 
   @Test
   void givenGroupHistoryRows_whenMapped_thenReturnsGroupDomainEventTypes() {
     UUID applicationId = UUID.randomUUID();
-    ApplicationHistoryReadModel created =
-        ApplicationHistoryReadModel.builder()
-            .eventId("group-created")
-            .applicationId(applicationId)
-            .eventType("APPLICATION_GROUP_CREATED")
-            .requestPayload("{}")
-            .serviceName("CIVIL_APPLY")
-            .occurredAt(Instant.parse("2026-07-19T10:15:30Z"))
-            .build();
-    ApplicationHistoryReadModel joined =
-        ApplicationHistoryReadModel.builder()
-            .eventId("group-joined")
-            .applicationId(applicationId)
-            .eventType("APPLICATION_GROUP_JOINED")
-            .requestPayload("{}")
-            .serviceName("CIVIL_APPLY")
-            .occurredAt(Instant.parse("2026-07-19T10:16:30Z"))
-            .build();
+    Instant occurredAt = Instant.parse("2026-07-19T10:15:30Z");
+    var created =
+        new ApplicationHistoryEventResult(
+            applicationId, "APPLICATION_GROUP_CREATED", occurredAt, "CIVIL_APPLY", null, null);
+    var joined =
+        new ApplicationHistoryEventResult(
+            applicationId, "APPLICATION_GROUP_JOINED", occurredAt, "CIVIL_APPLY", null, null);
 
     var response =
         mapper.toResponse(new ApplicationHistoryResult(List.of(created, joined), List.of()));
@@ -175,7 +164,7 @@ class GetApplicationHistoryResponseMapperTest {
   }
 
   @Test
-  void givenNullServiceName_whenMapped_thenCreatedByIsUnknown() {
+  void givenNullPriorAuthorityServiceName_whenMapped_thenCreatedByIsUnknown() {
     UUID priorAuthorityId = UUID.randomUUID();
     var priorAuthorityGroup =
         group(
@@ -194,8 +183,8 @@ class GetApplicationHistoryResponseMapperTest {
     assertThat(response.getPriorAuthorities())
         .singleElement()
         .satisfies(
-            group ->
-                assertThat(group.getEvents())
+            mappedGroup ->
+                assertThat(mappedGroup.getEvents())
                     .extracting(PriorAuthorityEventResponse::getCreatedBy)
                     .containsExactly("UNKNOWN"));
   }
@@ -211,94 +200,5 @@ class GetApplicationHistoryResponseMapperTest {
   private PriorAuthorityHistoryEventResult event(
       String eventType, Instant occurredAt, String serviceName) {
     return new PriorAuthorityHistoryEventResult(eventType, occurredAt, serviceName, null, null);
-  }
-
-  @Test
-  void givenNullPayload_whenMapped_thenEventDescriptionAndCaseworkerIdAreNull() {
-    ApplicationHistoryReadModel history =
-        ApplicationHistoryReadModel.builder()
-            .eventId("event-id")
-            .applicationId(UUID.randomUUID())
-            .eventType("APPLICATION_CREATED")
-            .requestPayload(null)
-            .serviceName("CIVIL_APPLY")
-            .occurredAt(Instant.parse("2026-07-19T10:15:30Z"))
-            .build();
-
-    var response = mapper.toResponse(new ApplicationHistoryResult(List.of(history), List.of()));
-
-    assertThat(response.getEvents())
-        .singleElement()
-        .satisfies(
-            event -> {
-              assertThat(event.getEventDescription()).isNull();
-              assertThat(event.getCaseworkerId()).isNull();
-            });
-  }
-
-  @Test
-  void givenBlankPayload_whenMapped_thenEventDescriptionAndCaseworkerIdAreNull() {
-    ApplicationHistoryReadModel history =
-        ApplicationHistoryReadModel.builder()
-            .eventId("event-id")
-            .applicationId(UUID.randomUUID())
-            .eventType("APPLICATION_CREATED")
-            .requestPayload("   ")
-            .serviceName("CIVIL_APPLY")
-            .occurredAt(Instant.parse("2026-07-19T10:15:30Z"))
-            .build();
-
-    var response = mapper.toResponse(new ApplicationHistoryResult(List.of(history), List.of()));
-
-    assertThat(response.getEvents())
-        .singleElement()
-        .satisfies(
-            event -> {
-              assertThat(event.getEventDescription()).isNull();
-              assertThat(event.getCaseworkerId()).isNull();
-            });
-  }
-
-  @Test
-  void givenPayloadWithJsonNullFields_whenMapped_thenEventDescriptionAndCaseworkerIdAreNull() {
-    ApplicationHistoryReadModel history =
-        ApplicationHistoryReadModel.builder()
-            .eventId("event-id")
-            .applicationId(UUID.randomUUID())
-            .eventType("APPLICATION_CREATED")
-            .requestPayload("{\"eventDescription\":null,\"caseworkerId\":null}")
-            .serviceName("CIVIL_APPLY")
-            .occurredAt(Instant.parse("2026-07-19T10:15:30Z"))
-            .build();
-
-    var response = mapper.toResponse(new ApplicationHistoryResult(List.of(history), List.of()));
-
-    assertThat(response.getEvents())
-        .singleElement()
-        .satisfies(
-            event -> {
-              assertThat(event.getEventDescription()).isNull();
-              assertThat(event.getCaseworkerId()).isNull();
-            });
-  }
-
-  @Test
-  void givenPayloadWithValidCaseworkerId_whenMapped_thenCaseworkerIdIsMapped() {
-    UUID caseworkerId = UUID.randomUUID();
-    ApplicationHistoryReadModel history =
-        ApplicationHistoryReadModel.builder()
-            .eventId("event-id")
-            .applicationId(UUID.randomUUID())
-            .eventType("APPLICATION_CREATED")
-            .requestPayload("{\"caseworkerId\":\"" + caseworkerId + "\"}")
-            .serviceName("CIVIL_APPLY")
-            .occurredAt(Instant.parse("2026-07-19T10:15:30Z"))
-            .build();
-
-    var response = mapper.toResponse(new ApplicationHistoryResult(List.of(history), List.of()));
-
-    assertThat(response.getEvents())
-        .singleElement()
-        .satisfies(event -> assertThat(event.getCaseworkerId()).isEqualTo(caseworkerId));
   }
 }

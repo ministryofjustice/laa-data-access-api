@@ -38,8 +38,10 @@ For example, a decision command:
    control fields;
 5. advances the aggregate and current-state projection to that version.
 
-Creation, decisions, assignments, unassignments, and notes follow the same append-and-reference
-pattern when their detailed payload changes.
+Application creation, decisions, and notes append application-data versions and carry the relevant
+version pointer in the event/history row. Decision and note descriptions are hydrated when history
+is queried. Assignment and unassignment history records do not point to application data; their
+acting caseworker is recorded from event metadata when available.
 
 ## What is stored where
 
@@ -48,7 +50,7 @@ pattern when their detailed payload changes.
 | Axon event store | IDs, timestamps, status/type, version pointers, decision outcome, group membership | Durable business timeline and aggregate control state |
 | `application_data` | Application content, individuals, proceedings, certificates, notes, request JSON, free-text descriptions | Immutable versioned sensitive payloads |
 | `application_current_state` | IDs, status, timestamps, versions, caseworker ID and other thin query state | Disposable current-state projection |
-| `application_history` | Event type, service metadata, timestamp, thin event payload | Disposable audit projection, hydrated when queried |
+| `application_history` | Event type, service/caseworker metadata, timestamp, nullable application-data version | Disposable audit projection; descriptions are hydrated when queried |
 
 “Thin” means data minimisation, not a guarantee that an event contains no personal data. Stable
 identifiers, including application and caseworker IDs, may still be personal data depending on how
@@ -72,7 +74,11 @@ Deleting sensitive rows leaves the thin event history in place, but has conseque
 - the aggregate's control state can still replay from events;
 - queries cannot hydrate fields whose referenced data has been deleted;
 - future commands that require the current detailed payload cannot proceed normally;
-- history hydration falls back to its thin stored event payload when detailed data is unavailable.
+- history rows remain available, but descriptions that require a deleted application-data version
+  are returned as `null`.
+
+An absent referenced version is an expected consequence of retention. Other data-store failures are
+not treated as missing data and continue to fail the query.
 
 Retention therefore needs an application-level policy for what behaviour is expected after
 deletion. It is not equivalent to resetting a projection. The proposed lifecycle and unresolved
