@@ -1,9 +1,11 @@
 package uk.gov.justice.laa.dstew.access.command.application;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -15,6 +17,7 @@ import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataP
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeDecisionProceeding;
+import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftStartedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand;
@@ -49,7 +52,8 @@ public final class ApplicationDecider {
       long applicationDataVersion) {
 
     if (state.applicationId != null) {
-      if (state.requestFingerprint.equals(fingerprint) && state.schemaVersion == schemaVersion) {
+      if (Objects.equals(state.requestFingerprint, fingerprint)
+          && state.schemaVersion == schemaVersion) {
         return Collections.emptyList();
       }
       throw new ApplicationCreationConflictException(state.applicationId);
@@ -57,6 +61,48 @@ public final class ApplicationDecider {
 
     return List.of(
         buildApplicationCreatedEvent(applicationId, applicationDataVersion, fingerprint, details));
+  }
+
+  /**
+   * Decides whether to start an Application draft or treat the command as an idempotent retry.
+   *
+   * <p>Returns an {@link ApplicationDraftStartedEvent} for a new draft, an empty list for an
+   * identical retry while the Application remains in draft, or throws {@link
+   * ApplicationCreationConflictException} for a conflicting retry or when the Application has
+   * already been fully created.
+   */
+  public static List<Object> decideStartDraft(
+      ApplicationState state,
+      UUID applicationId,
+      int schemaVersion,
+      String fingerprint,
+      Instant occurredAt) {
+
+    if (state.applicationId != null) {
+      boolean stillDraft = state.status == null;
+      if (stillDraft
+          && Objects.equals(state.requestFingerprint, fingerprint)
+          && state.schemaVersion == schemaVersion) {
+        return Collections.emptyList();
+      }
+      throw new ApplicationCreationConflictException(state.applicationId);
+    }
+
+    return List.of(
+        new ApplicationDraftStartedEvent(applicationId, schemaVersion, fingerprint, occurredAt));
+  }
+
+  /**
+   * Returns the {@link ApplicationCreatedEvent} for a draft being submitted — the same event type
+   * emitted by a direct {@link CreateApplicationCommand}, so the projection requires no changes.
+   */
+  public static ApplicationCreatedEvent decideSubmitDraft(
+      UUID applicationId,
+      long applicationDataVersion,
+      String fingerprint,
+      ApplicationCreationDetails details) {
+    return buildApplicationCreatedEvent(
+        applicationId, applicationDataVersion, fingerprint, details);
   }
 
   /**

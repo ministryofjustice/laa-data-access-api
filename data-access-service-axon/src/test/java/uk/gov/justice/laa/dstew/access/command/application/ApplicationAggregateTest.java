@@ -41,6 +41,7 @@ import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictExce
 import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException;
 import uk.gov.justice.laa.dstew.access.exception.InvalidApplicationStateException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 class ApplicationAggregateTest {
@@ -585,7 +586,10 @@ class ApplicationAggregateTest {
                             ApplicationDataStore.class, configuration -> applicationDataStore)
                         .registerComponent(
                             ApplicationUpdateDetailsFactory.class,
-                            configuration -> updateDetailsFactory)));
+                            configuration -> updateDetailsFactory)
+                        .registerComponent(
+                            JsonSchemaValidator.class,
+                            configuration -> mock(JsonSchemaValidator.class))));
   }
 
   private CreateApplicationCommand createCommand(UUID applicationId, String serialisedRequest) {
