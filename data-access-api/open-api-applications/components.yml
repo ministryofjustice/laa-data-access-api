@@ -667,9 +667,11 @@ components:
           type: string
         fileType:
           type: string
+          nullable: true
           example: PDF
         contentType:
           type: string
+          nullable: true
           example: application/pdf
         size:
           type: integer
