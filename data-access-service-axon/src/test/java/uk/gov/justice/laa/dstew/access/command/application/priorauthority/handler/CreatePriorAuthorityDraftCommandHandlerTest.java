@@ -23,9 +23,11 @@ import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataS
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.CreatePriorAuthorityDraftCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDraftStartedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
+import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 @ExtendWith(MockitoExtension.class)
@@ -34,6 +36,7 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
   private static final Instant OCCURRED_AT = Instant.parse("2026-09-01T10:00:00Z");
 
   @Mock private PriorAuthorityDraftStore draftStore;
+  @Mock private PriorAuthorityDataStore dataStore;
   @Mock private ApplicationAggregate application;
   @Mock private ApplicationDataStore applicationDataStore;
   @Mock private EventAppender eventAppender;
@@ -72,11 +75,13 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
             null);
 
     when(application.isGranted()).thenReturn(true);
+    when(draftStore.exists(priorAuthorityId)).thenReturn(false);
+    when(dataStore.exists(priorAuthorityId)).thenReturn(false);
     when(applicationDataStore.latestVersion(applicationId)).thenReturn(3L);
     when(applicationDataStore.get(applicationId, 3L)).thenReturn(applicationData);
 
     new CreatePriorAuthorityDraftCommandHandler()
-        .handle(command, draftStore, application, applicationDataStore, eventAppender);
+        .handle(command, draftStore, dataStore, application, applicationDataStore, eventAppender);
 
     verify(draftStore)
         .upsert(
@@ -109,11 +114,19 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
             priorAuthorityId, applicationId, content, "{}", 1, "PriorAuthority.json", OCCURRED_AT);
 
     when(application.isGranted()).thenReturn(false);
+    when(draftStore.exists(priorAuthorityId)).thenReturn(false);
+    when(dataStore.exists(priorAuthorityId)).thenReturn(false);
 
     assertThatThrownBy(
             () ->
                 new CreatePriorAuthorityDraftCommandHandler()
-                    .handle(command, draftStore, application, applicationDataStore, eventAppender))
+                    .handle(
+                        command,
+                        draftStore,
+                        dataStore,
+                        application,
+                        applicationDataStore,
+                        eventAppender))
         .isInstanceOf(ValidationException.class)
         .isInstanceOfSatisfying(
             ValidationException.class,
@@ -123,7 +136,7 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
                         "Prior authority requires the application to have an overall decision of GRANTED"));
 
     verify(application).isGranted();
-    verifyNoInteractions(draftStore, eventAppender);
+    verifyNoInteractions(eventAppender);
   }
 
   @Test
@@ -158,11 +171,13 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
             null);
 
     when(application.isGranted()).thenReturn(true);
+    when(draftStore.exists(priorAuthorityId)).thenReturn(false);
+    when(dataStore.exists(priorAuthorityId)).thenReturn(false);
     when(applicationDataStore.latestVersion(applicationId)).thenReturn(7L);
     when(applicationDataStore.get(applicationId, 7L)).thenReturn(applicationData);
 
     new CreatePriorAuthorityDraftCommandHandler()
-        .handle(command, draftStore, application, applicationDataStore, eventAppender);
+        .handle(command, draftStore, dataStore, application, applicationDataStore, eventAppender);
 
     verify(draftStore)
         .upsert(
@@ -172,5 +187,73 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
             eq("{}"),
             eq(OCCURRED_AT));
     assertThat(payloadCaptor.getValue().officeCode()).isNull();
+  }
+
+  @Test
+  void givenExistingDraft_whenHandle_thenThrowsPriorAuthorityCreationConflictException() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    CreatePriorAuthorityDraftCommand command =
+        new CreatePriorAuthorityDraftCommand(
+            priorAuthorityId,
+            applicationId,
+            new PriorAuthorityContent(
+                PriorAuthorityType.EXPERT, "Need urgent review", null, null, null),
+            "{}",
+            1,
+            "PriorAuthority.json",
+            OCCURRED_AT);
+
+    when(draftStore.exists(priorAuthorityId)).thenReturn(true);
+
+    assertThatThrownBy(
+            () ->
+                new CreatePriorAuthorityDraftCommandHandler()
+                    .handle(
+                        command,
+                        draftStore,
+                        dataStore,
+                        application,
+                        applicationDataStore,
+                        eventAppender))
+        .isInstanceOf(PriorAuthorityCreationConflictException.class)
+        .hasMessage("Prior authority already exists for submission: " + priorAuthorityId);
+
+    verifyNoInteractions(dataStore, application, applicationDataStore, eventAppender);
+  }
+
+  @Test
+  void
+      givenExistingSubmittedPriorAuthority_whenHandle_thenThrowsPriorAuthorityCreationConflictException() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    CreatePriorAuthorityDraftCommand command =
+        new CreatePriorAuthorityDraftCommand(
+            priorAuthorityId,
+            applicationId,
+            new PriorAuthorityContent(
+                PriorAuthorityType.EXPERT, "Need urgent review", null, null, null),
+            "{}",
+            1,
+            "PriorAuthority.json",
+            OCCURRED_AT);
+
+    when(draftStore.exists(priorAuthorityId)).thenReturn(false);
+    when(dataStore.exists(priorAuthorityId)).thenReturn(true);
+
+    assertThatThrownBy(
+            () ->
+                new CreatePriorAuthorityDraftCommandHandler()
+                    .handle(
+                        command,
+                        draftStore,
+                        dataStore,
+                        application,
+                        applicationDataStore,
+                        eventAppender))
+        .isInstanceOf(PriorAuthorityCreationConflictException.class)
+        .hasMessage("Prior authority already exists for submission: " + priorAuthorityId);
+
+    verifyNoInteractions(application, applicationDataStore, eventAppender);
   }
 }

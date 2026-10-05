@@ -19,6 +19,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityAggregate;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDraftStartedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityEvolve;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityState;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.SubmitPriorAuthorityDraftCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
@@ -54,9 +57,12 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
         new PriorAuthorityDataPayload(priorAuthorityId, applicationId, content, "{}", OCCURRED_AT);
     SubmitPriorAuthorityDraftCommand command =
         new SubmitPriorAuthorityDraftCommand(priorAuthorityId, OCCURRED_AT);
+    PriorAuthorityState state =
+        startedState(priorAuthorityId, applicationId, PriorAuthorityType.EXPERT, 1);
 
     when(draftStore.find(priorAuthorityId)).thenReturn(Optional.of(payload));
     when(priorAuthority.getApplicationId()).thenReturn(applicationId);
+    when(priorAuthority.getState()).thenReturn(state);
     when(applicationDataStore.latestVersion(applicationId)).thenReturn(3L);
 
     new SubmitPriorAuthorityDraftCommandHandler()
@@ -128,9 +134,12 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
         new PriorAuthorityDataPayload(priorAuthorityId, applicationId, content, "{}", OCCURRED_AT);
     SubmitPriorAuthorityDraftCommand command =
         new SubmitPriorAuthorityDraftCommand(priorAuthorityId, OCCURRED_AT);
+    PriorAuthorityState state =
+        startedState(priorAuthorityId, applicationId, PriorAuthorityType.EXPERT, 4);
 
     when(draftStore.find(priorAuthorityId)).thenReturn(Optional.of(payload));
     when(priorAuthority.getApplicationId()).thenReturn(applicationId);
+    when(priorAuthority.getState()).thenReturn(state);
     when(applicationDataStore.latestVersion(applicationId)).thenReturn(4L);
 
     new SubmitPriorAuthorityDraftCommandHandler()
@@ -146,6 +155,30 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
     verify(eventAppender)
         .append(
             new PriorAuthoritySubmittedEvent(
-                priorAuthorityId, applicationId, null, 1, 0L, 4L, OCCURRED_AT));
+                priorAuthorityId,
+                applicationId,
+                PriorAuthorityType.EXPERT.name(),
+                4,
+                0L,
+                4L,
+                OCCURRED_AT));
+    verify(jsonSchemaValidator).validate(content, "PriorAuthority.json", 4);
+  }
+
+  private static PriorAuthorityState startedState(
+      UUID priorAuthorityId,
+      UUID applicationId,
+      PriorAuthorityType priorAuthorityType,
+      int schemaVersion) {
+    PriorAuthorityState state = new PriorAuthorityState();
+    PriorAuthorityEvolve.apply(
+        state,
+        new PriorAuthorityDraftStartedEvent(
+            priorAuthorityId,
+            applicationId,
+            priorAuthorityType == null ? null : priorAuthorityType.name(),
+            schemaVersion,
+            OCCURRED_AT));
+    return state;
   }
 }

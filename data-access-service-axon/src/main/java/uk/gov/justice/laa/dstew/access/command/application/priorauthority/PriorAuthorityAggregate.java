@@ -1,22 +1,14 @@
 package uk.gov.justice.laa.dstew.access.command.application.priorauthority;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
-import java.util.stream.IntStream;
 import org.axonframework.eventsourcing.annotation.EventSourcingHandler;
 import org.axonframework.eventsourcing.annotation.reflection.EntityCreator;
 import org.axonframework.extension.spring.stereotype.EventSourced;
-import org.jspecify.annotations.NonNull;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityDocument;
-import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 
 /**
  * Event-sourced consistency boundary for a PriorAuthority submission.
@@ -34,40 +26,6 @@ public class PriorAuthorityAggregate {
 
   private UUID priorAuthorityId;
   private final PriorAuthorityState state = new PriorAuthorityState();
-
-  private static @NonNull List<PriorAuthorityDocument> getUpdatedDocuments(
-      PriorAuthorityDocumentTypeUpdateCommand command, PriorAuthorityDataPayload existingDraft) {
-    List<PriorAuthorityDocument> updatedDocuments = copyUploadedDocuments(existingDraft);
-    int documentIndex =
-        IntStream.range(0, updatedDocuments.size())
-            .filter(index -> updatedDocuments.get(index).documentId().equals(command.documentId()))
-            .findFirst()
-            .orElseThrow(
-                () ->
-                    new ResourceNotFoundException(
-                        "Document %s not found for Prior Authority %s"
-                            .formatted(command.documentId(), command.priorAuthorityId())));
-    PriorAuthorityDocument existingDocument = updatedDocuments.get(documentIndex);
-    updatedDocuments.set(documentIndex, existingDocument.withDocumentType(command.documentType()));
-    return updatedDocuments;
-  }
-
-  private static @NonNull PriorAuthorityDataPayload requireDraft(
-      UUID priorAuthorityId, PriorAuthorityDraftStore draftStore) {
-    return draftStore
-        .find(priorAuthorityId)
-        .orElseThrow(
-            () ->
-                new ResourceNotFoundException(
-                    "Prior Authority %s not found".formatted(priorAuthorityId)));
-  }
-
-  private static List<PriorAuthorityDocument> copyUploadedDocuments(
-      PriorAuthorityDataPayload draft) {
-    return draft.content().uploadedDocuments() == null
-        ? new ArrayList<>()
-        : new ArrayList<>(draft.content().uploadedDocuments());
-  }
 
   public UUID getApplicationId() {
     return state.applicationId;
@@ -128,7 +86,9 @@ public class PriorAuthorityAggregate {
   }
 
   @EventSourcingHandler
-  void on(PriorAuthorityDocumentTypeUpdatedEvent event) {}
+  void on(PriorAuthorityDocumentTypeUpdatedEvent event) {
+    this.priorAuthorityId = event.priorAuthorityId();
+  }
 
   @EventSourcingHandler
   void on(WorkItemAssigned event) {

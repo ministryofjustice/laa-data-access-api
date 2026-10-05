@@ -6,7 +6,7 @@ import org.axonframework.modelling.annotation.InjectEntity;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityAggregate;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDecider;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.SubmitPriorAuthorityDraftCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
@@ -37,7 +37,9 @@ public class SubmitPriorAuthorityDraftCommandHandler {
                     new ResourceNotFoundException(
                         "Prior Authority draft not found: " + command.priorAuthorityId()));
 
-    jsonSchemaValidator.validate(payload.content(), "PriorAuthority.json", 1);
+    int schemaVersion = priorAuthority.getState().getSchemaVersion();
+
+    jsonSchemaValidator.validate(payload.content(), "PriorAuthority.json", schemaVersion);
 
     dataStore.append(
         command.priorAuthorityId(),
@@ -50,18 +52,9 @@ public class SubmitPriorAuthorityDraftCommandHandler {
     long applicationDataVersion =
         applicationDataStore.latestVersion(priorAuthority.getApplicationId());
 
-    // Emit submitted event with the application version reference
     eventAppender.append(
-        new PriorAuthoritySubmittedEvent(
-            command.priorAuthorityId(),
-            priorAuthority.getApplicationId(),
-            payload.content().priorAuthorityType() != null
-                ? payload.content().priorAuthorityType().name()
-                : null,
-            1,
-            0L,
-            applicationDataVersion,
-            command.occurredAt()));
+        PriorAuthorityDecider.decideSubmit(
+            command, priorAuthority.getState(), applicationDataVersion));
 
     draftStore.delete(command.priorAuthorityId());
   }

@@ -13,7 +13,9 @@ import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataS
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.CreatePriorAuthorityDraftCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDecider;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
+import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /** Handles creation of prior-authority drafts. */
@@ -25,9 +27,15 @@ public class CreatePriorAuthorityDraftCommandHandler {
   public void handle(
       CreatePriorAuthorityDraftCommand command,
       PriorAuthorityDraftStore draftStore,
+      PriorAuthorityDataStore dataStore,
       @InjectEntity(idProperty = "applicationId") ApplicationAggregate application,
       ApplicationDataStore applicationDataStore,
       EventAppender eventAppender) {
+
+    if (draftStore.exists(command.priorAuthorityId())
+        || dataStore.exists(command.priorAuthorityId())) {
+      throw new PriorAuthorityCreationConflictException(command.priorAuthorityId());
+    }
 
     if (!application.isGranted()) {
       throw new ValidationException(
