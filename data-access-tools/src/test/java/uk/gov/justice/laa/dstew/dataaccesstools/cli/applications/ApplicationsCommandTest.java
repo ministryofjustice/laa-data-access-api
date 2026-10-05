@@ -51,7 +51,7 @@ class ApplicationsCommandTest {
 
   @Test
   void createsCompleteDraftsWithoutSubmitting() {
-    assertEquals(0, execute("create-draft", "--count", "2"));
+    assertEquals(0, execute("create-draft", "--count", "2", "--office-code", "1A234B"));
     assertEquals(2, requests.size());
     requests.forEach(request -> assertEquals("/api/v0/application-drafts", request.path()));
     drafts.forEach(
@@ -60,6 +60,7 @@ class ApplicationsCommandTest {
           assertEquals("APPLICATION_SUBMITTED", draft.required("status").asText());
           JsonNode content = draft.required("applicationContent");
           assertTrue(content.required("provider").has("officeCode"));
+          assertEquals("1A234B", content.required("provider").required("officeCode").asText());
           assertTrue(content.required("client").required("addresses").size() > 0);
           assertTrue(content.required("proceedings").get(0).required("leadProceeding").asBoolean());
         });
@@ -78,7 +79,7 @@ class ApplicationsCommandTest {
 
   @ParameterizedTest
   @EnumSource(ApplicationCreationWorkflow.Outcome.class)
-  void acceptsAllLowercaseOutcomes(ApplicationCreationWorkflow.Outcome outcome) {
+  void acceptsAllLowercaseOutcomes(ApplicationCreationWorkflow.Outcome outcome) throws IOException {
     assertEquals(
         0,
         execute(
@@ -86,7 +87,9 @@ class ApplicationsCommandTest {
             "--count",
             "1",
             "--outcome",
-            outcome.name().toLowerCase(java.util.Locale.ROOT)));
+            outcome.name().toLowerCase(java.util.Locale.ROOT),
+            "--office-code",
+            "1A234B"));
     List<String> methods = requests.stream().map(Request::method).toList();
     List<String> expected =
         switch (outcome) {
@@ -95,6 +98,14 @@ class ApplicationsCommandTest {
           case GRANTED, REFUSED -> List.of("POST", "POST", "GET", "PATCH", "POST", "PATCH");
         };
     assertEquals(expected, methods);
+    assertEquals(
+        "1A234B",
+        MAPPER
+            .readTree(requests.getFirst().body())
+            .required("applicationContent")
+            .required("provider")
+            .required("officeCode")
+            .asText());
     if (outcome == ApplicationCreationWorkflow.Outcome.GRANTED
         || outcome == ApplicationCreationWorkflow.Outcome.REFUSED) {
       assertTrue(requests.getLast().body().contains("\"overallDecision\":\"" + outcome + "\""));
@@ -161,9 +172,11 @@ class ApplicationsCommandTest {
             new String[] {"create", "--count", "-1"},
             new String[] {"create"},
             new String[] {"create", "--count", "1", "--outcome", "unknown"},
+            new String[] {"create", "--count", "1", "--office-code", "invalid"},
             new String[] {"create-draft", "--count", "0"},
             new String[] {"create-draft", "--count", "-1"},
             new String[] {"create-draft"},
+            new String[] {"create-draft", "--count", "1", "--office-code", "invalid"},
             new String[] {"submit-draft"},
             new String[] {"submit-draft", "--application-id", "not-a-uuid"})
         .map(arguments -> Arguments.of((Object) arguments));

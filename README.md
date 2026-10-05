@@ -231,6 +231,32 @@ Now you can execute endpoints directly from Swagger UI.
 
 This section explains how to get JWT tokens for testing the API in different environments using mock-oauth2-server.
 
+### Access-aware Application read policies
+
+Application read endpoints apply row-level visibility using the caller's delegated JWT scope and `LAA_ACCOUNTS` claim:
+
+| Token scope | Visibility |
+| --- | --- |
+| `access_as_provider` | Only Applications whose persisted provider `office_code` is in the caller's `LAA_ACCOUNTS` values. Missing or empty accounts return no Application rows. |
+| `access_as_user` | Unrestricted by the provider office-code policy. |
+
+When using `swagger-provider-token` for testing, the `LAA_ACCOUNTS` claim is set to `["0Z123A", "1A987X"]`. Use these values in your test data to ensure the provider-scoped queries return results.
+
+#### Adding a new read endpoint or query
+
+Any request-facing endpoint that requires an Application access policy must use the access-aware query pipeline:
+
+1. Resolve `ApplicationReadAccessPolicyProvider` in that use case while the authenticated request is active.
+2. Carry the resulting immutable `ReadAccessScope` in the Axon query message; do not read `SecurityContextHolder` in the query handler.
+3. In the query handler, build the functional Spring Data `Specification` and obtain the access `Specification` from the declared `ReadAccessPolicy` for the protected read model.
+4. Execute the read through `ApplicationReadQueryGateway`, which delegates to `AccessAwareQueryExecutor` to combine the functional and access predicates in SQL before counting, sorting, and paging.
+
+Do not inject or call `ApplicationReadRepository` or `ApplicationListIndexReadRepository` directly from request-facing query handlers. Projection `@EventHandler` methods remain raw-repository writers: they must not resolve an access scope or apply access filtering, so replay and recovery can process every Application.
+
+See `ApplicationProjection:handle(FindAllApplicationsQuery query)` for an example of how to combine the functional and access predicates. 
+
+Building an endpoint for information not related to Applications will require a new PolicyProvider and associated ReadAccessScope implementation, see the confluence documentation on `Access-aware application filtering` for a deeper explanation on the pattern used.
+
 ### Local Development
 
 **Setup:**

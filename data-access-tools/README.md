@@ -22,11 +22,11 @@ All requests send the development token `Bearer swagger-caseworker-token` and th
 
 Applications are created sequentially through the draft API, not the deprecated direct application POST. Each application uses randomly generated applicant, address, provider, and proceeding data (via [datafaker](https://www.datafaker.net/)); pass the root `--seed <long>` option to make the generated random fields reproducible, otherwise a random seed is used each run. IDs and timestamps are generated independently. API-backed commands require the root `--api-url` option.
 
-`applications create-draft --count N` creates complete, validated drafts without submitting them. Each result prints the `applicationId`, LAA reference, and `APPLICATION_DRAFT` lifecycle state. No additional application content is required before submission. The payload retains the intended final business status `APPLICATION_SUBMITTED`; draft lifecycle is separate from that status, and the API preserves it when submitting.
+`applications create-draft --count N [--office-code 1A234B]` creates complete, validated drafts without submitting them. Each result prints the `applicationId`, LAA reference, and `APPLICATION_DRAFT` lifecycle state. No additional application content is required before submission. The payload retains the intended final business status `APPLICATION_SUBMITTED`; draft lifecycle is separate from that status, and the API preserves it when submitting.
 
 `applications submit-draft --application-id UUID` submits an existing draft without replacing its content. Upload evidence through `POST /api/v0/applications/{id}/documents` before submitting, using multipart `file` and `documentType` fields. Submission seals the content and preserves uploaded evidence metadata. Uploads after submission are rejected. These tools do not provide an evidence-upload command.
 
-`applications create --count N [--outcome submitted|manual|autogranted|granted|refused]` creates and submits complete drafts, then applies the selected outcome. The default `submitted` stops after submission. `manual` records a `MANUAL` auto-grant outcome without assignment or decision; `autogranted` records an `AUTOGRANTED` outcome with a certificate. `granted` and `refused` record `MANUAL`, assign the application, and make the corresponding decision. Outcome values are case-insensitive.
+`applications create --count N [--office-code 1A234B] [--outcome submitted|manual|autogranted|granted|refused]` creates and submits complete drafts, then applies the selected outcome. The default `submitted` stops after submission. `manual` records a `MANUAL` auto-grant outcome without assignment or decision; `autogranted` records an `AUTOGRANTED` outcome with a certificate. `granted` and `refused` record `MANUAL`, assign the application, and make the corresponding decision. Outcome values are case-insensitive. When supplied, `--office-code` is used as the provider office code for every application in the batch; otherwise one is generated for each application.
 
 Draft creation accepts HTTP `201` or `202`; submission accepts `200` or `202`. A successful submission can precede read-model availability, so `GET /api/v0/applications/{id}` may briefly return `404`. Outcome workflows wait up to 30 seconds for that read model, retrying only `404` responses before continuing. A batch continues after a failed application and exits non-zero if any item failed. Failures include the application ID, failed stage, and last confirmed lifecycle state. A confirmed draft whose submission fails can be submitted later with `submit-draft`; do not recreate it. If a write times out, verify its result before retrying.
 
@@ -66,6 +66,11 @@ data-access-tools/build/install/data-access-tools/bin/data-access-tools \
 data-access-tools/build/install/data-access-tools/bin/data-access-tools \
   --api-url http://localhost:8082 \
   applications create --count 10
+
+# Create drafts for a specific provider office
+data-access-tools/build/install/data-access-tools/bin/data-access-tools \
+  --api-url http://localhost:8082 \
+  applications create-draft --count 10 --office-code 1A234B
 
 # Create granted applications (submitted, assigned, decided GRANTED)
 data-access-tools/build/install/data-access-tools/bin/data-access-tools \

@@ -43,6 +43,7 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
+import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexAccessPolicy;
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexSpecification;
@@ -59,6 +60,9 @@ public class ApplicationProjection {
   private final ApplicationDataStore applicationDataStore;
   private final ApplicationListIndexReadRepository listIndexRepository;
   private final PriorAuthorityReadRepository priorAuthorityReadRepository;
+  private final ApplicationReadQueryGateway applicationReadQueryGateway;
+  private final ApplicationCurrentStateAccessPolicy currentStateAccessPolicy;
+  private final ApplicationListIndexAccessPolicy listIndexAccessPolicy;
 
   /**
    * Constructs the projection with its read repositories and application data store.
@@ -78,19 +82,27 @@ public class ApplicationProjection {
       LinkedApplicationGroupReadRepository groupReadRepository,
       ApplicationDataStore applicationDataStore,
       ApplicationListIndexReadRepository listIndexRepository,
-      PriorAuthorityReadRepository priorAuthorityReadRepository) {
+      PriorAuthorityReadRepository priorAuthorityReadRepository,
+      ApplicationReadQueryGateway applicationReadQueryGateway,
+      ApplicationCurrentStateAccessPolicy currentStateAccessPolicy,
+      ApplicationListIndexAccessPolicy listIndexAccessPolicy) {
     this.applicationReadRepository = applicationReadRepository;
     this.groupReadRepository = groupReadRepository;
     this.applicationDataStore = applicationDataStore;
     this.listIndexRepository = listIndexRepository;
     this.priorAuthorityReadRepository = priorAuthorityReadRepository;
+    this.applicationReadQueryGateway = applicationReadQueryGateway;
+    this.currentStateAccessPolicy = currentStateAccessPolicy;
+    this.listIndexAccessPolicy = listIndexAccessPolicy;
   }
 
   /** Returns the hydrated Application and its related data, or {@code null} if absent. */
   @QueryHandler
   public @Nullable ApplicationDetailResult handle(FindApplicationDetailQuery query) {
-    return applicationReadRepository
-        .findById(query.applicationId())
+    return applicationReadQueryGateway
+        .findApplication(
+            (root, criteriaQuery, cb) -> cb.equal(root.get("applicationId"), query.applicationId()),
+            currentStateAccessPolicy.restrictionFor(query.accessScope()))
         .flatMap(this::hydrate)
         .map(
             application -> {
@@ -114,8 +126,10 @@ public class ApplicationProjection {
   /** Returns the current-state projection for the requested Application. */
   @QueryHandler
   public @Nullable ApplicationReadModel handle(FindApplicationByIdQuery query) {
-    return applicationReadRepository
-        .findById(query.applicationId())
+    return applicationReadQueryGateway
+        .findApplication(
+            (root, criteriaQuery, cb) -> cb.equal(root.get("applicationId"), query.applicationId()),
+            currentStateAccessPolicy.restrictionFor(query.accessScope()))
         .flatMap(this::hydrate)
         .orElse(null);
   }
@@ -126,8 +140,10 @@ public class ApplicationProjection {
    */
   @QueryHandler
   public @Nullable ApplicationNotesResult handle(FindNotesForApplicationQuery query) {
-    return applicationReadRepository
-        .findById(query.applicationId())
+    return applicationReadQueryGateway
+        .findApplication(
+            (root, criteriaQuery, cb) -> cb.equal(root.get("applicationId"), query.applicationId()),
+            currentStateAccessPolicy.restrictionFor(query.accessScope()))
         .map(
             application -> {
               ApplicationDataPayload data =
@@ -154,7 +170,10 @@ public class ApplicationProjection {
     Pageable pageable = PageRequest.of(Math.max(0, query.page() - 1), query.pageSize(), sort);
 
     Page<ApplicationListIndexReadModel> indexPage =
-        listIndexRepository.findAll(ApplicationListIndexSpecification.from(query), pageable);
+        applicationReadQueryGateway.findApplicationIndexPage(
+            ApplicationListIndexSpecification.from(query),
+            pageable,
+            listIndexAccessPolicy.restrictionFor(query.accessScope()));
 
     List<UUID> pageIds =
         indexPage.getContent().stream()
@@ -163,7 +182,9 @@ public class ApplicationProjection {
 
     // Single batch load of current-state rows for the page
     Map<UUID, ApplicationReadModel> stateById =
-        applicationReadRepository.findAllById(pageIds).stream()
+        applicationReadQueryGateway
+            .findApplications(pageIds, currentStateAccessPolicy.restrictionFor(query.accessScope()))
+            .stream()
             .collect(Collectors.toMap(ApplicationReadModel::getApplicationId, Function.identity()));
 
     // Single batch load of application_data payloads for the page
@@ -228,6 +249,8 @@ public class ApplicationProjection {
   /** Creates the current-state row from an Application's creation event. */
   @EventHandler
   public void on(ApplicationCreatedEvent event, QueryUpdateEmitter queryUpdateEmitter) {
+    ApplicationDataPayload data =
+        applicationDataStore.get(event.applicationId(), event.applicationDataVersion());
     ApplicationReadModel saved =
         applicationReadRepository.save(
             ApplicationReadModel.builder()
@@ -240,6 +263,7 @@ public class ApplicationProjection {
                 .modifiedAt(event.occurredAt())
                 .leadApplicationId(null)
                 .potentialDuplicates(event.potentialDuplicates())
+                .officeCode(officeCode(data))
                 .uploadedDocuments(
                     applicationReadRepository
                         .findById(event.applicationId())
@@ -308,6 +332,10 @@ public class ApplicationProjection {
               application.setApplicationVersion(event.applicationVersion());
               application.setApplicationDataVersion(event.applicationDataVersion());
               application.setModifiedAt(event.occurredAt());
+              application.setOfficeCode(
+                  officeCode(
+                      applicationDataStore.get(
+                          event.applicationId(), event.applicationDataVersion())));
               ApplicationReadModel saved = applicationReadRepository.save(application);
               queryUpdateEmitter.emit(
                   FindApplicationByIdQuery.class,
@@ -442,6 +470,8 @@ public class ApplicationProjection {
               application.setApplicationDataVersion(applicationDataVersion);
               application.setApplicationVersion(applicationVersion);
               application.setModifiedAt(occurredAt);
+              application.setOfficeCode(
+                  officeCode(applicationDataStore.get(applicationId, applicationDataVersion)));
               ApplicationReadModel saved = applicationReadRepository.save(application);
               queryUpdateEmitter.emit(
                   FindApplicationByIdQuery.class,
@@ -470,6 +500,8 @@ public class ApplicationProjection {
               application.setApplicationDataVersion(applicationDataVersion);
               application.setApplicationVersion(applicationVersion);
               application.setModifiedAt(occurredAt);
+              application.setOfficeCode(
+                  officeCode(applicationDataStore.get(applicationId, applicationDataVersion)));
               application.setStatus(applicationStatus.getValue());
               ApplicationReadModel saved = applicationReadRepository.save(application);
               queryUpdateEmitter.emit(
@@ -527,6 +559,7 @@ public class ApplicationProjection {
     application.setLaaReference(data.laaReference());
     application.setClient(data.client());
     application.setProvider(data.provider());
+    application.setOfficeCode(officeCode(data));
     application.setOpponents(data.opponents());
     application.setSubmittedAt(data.submittedAt());
     application.setUsedDelegatedFunctions(data.usedDelegatedFunctions());
@@ -560,5 +593,9 @@ public class ApplicationProjection {
     return application.getLeadApplicationId() != null
         ? application.getLeadApplicationId()
         : application.getApplicationId();
+  }
+
+  private static String officeCode(ApplicationDataPayload data) {
+    return data == null || data.provider() == null ? null : data.provider().getOfficeCode();
   }
 }

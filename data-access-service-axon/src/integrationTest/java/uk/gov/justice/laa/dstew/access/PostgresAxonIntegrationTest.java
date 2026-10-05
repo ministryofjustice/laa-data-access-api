@@ -491,12 +491,7 @@ class PostgresAxonIntegrationTest {
     assertThat(currentStateColumns)
         .contains("application_data_version")
         .doesNotContain(
-            "laa_reference",
-            "application_content",
-            "individuals",
-            "submitted_at",
-            "office_code",
-            "proceedings");
+            "laa_reference", "application_content", "individuals", "submitted_at", "proceedings");
   }
 
   @Test
