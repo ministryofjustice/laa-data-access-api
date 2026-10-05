@@ -5,6 +5,7 @@ import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import org.axonframework.modelling.annotation.InjectEntity;
 import org.springframework.stereotype.Component;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityAggregate;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
@@ -14,6 +15,7 @@ import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 
 /** Handles unassignment of prior-authority work items from caseworkers. */
 @Component
+@ExcludeFromGeneratedCodeCoverage
 public class DirectPriorAuthorityWorkItemUnassignmentCommandHandler {
 
   /** Unassigns a prior-authority work item from a caseworker and emits the unassignment event. */

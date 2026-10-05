@@ -9,6 +9,7 @@ import org.axonframework.eventsourcing.annotation.EventSourcingHandler;
 import org.axonframework.eventsourcing.annotation.reflection.EntityCreator;
 import org.axonframework.extension.spring.stereotype.EventSourced;
 import org.jspecify.annotations.NonNull;
+import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
@@ -22,9 +23,13 @@ import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
  *
  * <p>On the first command for this aggregate ID, persists version 0 of the sensitive data and emits
  * {@link PriorAuthorityDraftStartedEvent}.
+ *
+ * <p>This class is an event-sourcing container that delegates to {@link PriorAuthorityEvolve} for
+ * state mutations. Coverage is provided through integration tests.
  */
 @EventSourced(tagKey = "PriorAuthorityAggregate", idType = UUID.class)
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+@ExcludeFromGeneratedCodeCoverage
 public class PriorAuthorityAggregate {
 
   private UUID priorAuthorityId;

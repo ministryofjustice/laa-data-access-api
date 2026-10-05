@@ -8,7 +8,6 @@ import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.MakePriorAuthorityDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
@@ -290,6 +289,57 @@ class PriorAuthorityDeciderTest {
         .isInstanceOf(PriorAuthorityStatusConflictException.class);
   }
 
+  @Test
+  void givenSubmittedStateWithoutAssignment_whenDecideDecision_thenThrowsConflict() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    PriorAuthorityState state = submittedState(priorAuthorityId, applicationId, 1L);
+    state.caseworkerId = null;
+    MakePriorAuthorityDecisionCommand command =
+        new MakePriorAuthorityDecisionCommand(
+            priorAuthorityId,
+            TestJwtDecoderConfig.CASEWORKER_ID,
+            1L,
+            "GRANTED",
+            "Recorded",
+            BigDecimal.valueOf(100.0),
+            null,
+            null,
+            null,
+            OCCURRED_AT,
+            "{\"decision\":\"GRANTED\"}",
+            OCCURRED_AT);
+
+    assertThatThrownBy(() -> PriorAuthorityDecider.decideDecision(state, command))
+        .isInstanceOf(PriorAuthorityStatusConflictException.class)
+        .hasMessageContaining("unassigned");
+  }
+
+  @Test
+  void givenSubmittedStateAssignedToDifferentCaseworker_whenDecideDecision_thenThrowsConflict() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    PriorAuthorityState state = submittedState(priorAuthorityId, applicationId, 1L);
+    MakePriorAuthorityDecisionCommand command =
+        new MakePriorAuthorityDecisionCommand(
+            priorAuthorityId,
+            UUID.randomUUID(),
+            1L,
+            "GRANTED",
+            "Recorded",
+            BigDecimal.valueOf(100.0),
+            null,
+            null,
+            null,
+            OCCURRED_AT,
+            "{\"decision\":\"GRANTED\"}",
+            OCCURRED_AT);
+
+    assertThatThrownBy(() -> PriorAuthorityDecider.decideDecision(state, command))
+        .isInstanceOf(PriorAuthorityStatusConflictException.class)
+        .hasMessageContaining("different caseworker");
+  }
+
   private static PriorAuthorityState submittedState(
       UUID priorAuthorityId, UUID applicationId, long dataVersion) {
     PriorAuthorityState state = new PriorAuthorityState();
@@ -313,24 +363,6 @@ class PriorAuthorityDeciderTest {
     state.caseworkerId = TestJwtDecoderConfig.CASEWORKER_ID;
     state.submitted = false;
     return state;
-  }
-
-  private static PriorAuthorityDataPayload payload(UUID priorAuthorityId, UUID applicationId) {
-    return new PriorAuthorityDataPayload(
-        priorAuthorityId,
-        applicationId,
-        new PriorAuthorityContent(PriorAuthorityType.EXPERT, null, null, null, null),
-        "{}",
-        OCCURRED_AT,
-        new PriorAuthorityDataPayload.DecisionDetails(
-            "GRANTED",
-            "Recorded",
-            BigDecimal.ZERO,
-            OCCURRED_AT,
-            null,
-            null,
-            null,
-            "{\"decision\":\"GRANTED\"}"));
   }
 
   @Test
