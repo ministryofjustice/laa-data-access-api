@@ -76,10 +76,15 @@ public class SecurityConfig {
   private static final Map<String, DevToken> DEV_TOKENS =
       Map.of(
           "swagger-caseworker-token",
-          new DevToken(List.of("APPROLE_LAA_CASEWORKER", "ROLE_LAA_CASEWORKER"), "access_as_user", DEV_TOKEN_ENTRA_OID),
+          new DevToken(
+              List.of("APPROLE_LAA_CASEWORKER", "ROLE_LAA_CASEWORKER"),
+              "access_as_user",
+              DEV_TOKEN_ENTRA_OID),
           "swagger-provider-token",
           new DevToken(
-              List.of("APPROLE_LAA_CASEWORKER", "ROLE_LAA_CASEWORKER"), "access_as_provider", PROVIDER_DEV_TOKEN_ENTRA_OID),
+              List.of("APPROLE_LAA_CASEWORKER", "ROLE_LAA_CASEWORKER"),
+              "access_as_provider",
+              PROVIDER_DEV_TOKEN_ENTRA_OID),
           "swagger-caseworker-token-2",
           new DevToken(CASEWORKER_ROLES, "access_as_user", SECOND_DEV_TOKEN_ENTRA_OID),
           "unknown-token",

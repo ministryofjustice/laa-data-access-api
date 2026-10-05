@@ -1,4 +1,3 @@
-            new ApplicationRequestFactory(applications.root().seed()),
 package uk.gov.justice.laa.dstew.dataaccesstools.cli.applications;
 
 import java.util.concurrent.Callable;

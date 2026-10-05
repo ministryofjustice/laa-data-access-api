@@ -1,5 +1,3 @@
-    this(ThreadLocalRandom.current().nextLong());
-                randomOfficeCode(),
 package uk.gov.justice.laa.dstew.dataaccesstools.cli.applications;
 
 import java.time.Instant;
