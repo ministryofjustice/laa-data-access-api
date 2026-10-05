@@ -207,7 +207,7 @@ public class DomainEventMapperTest extends BaseMapperTest {
     DomainEventEntity entity =
         DataGenerator.createDefault(
             DomainEventGenerator.class,
-            builder -> builder.data(notesPayload).type(DomainEventType.APPLICATION_NOTES));
+            builder -> builder.data(notesPayload).type(DomainEventType.APPLICATION_NOTE_CREATED));
 
     ApplicationDomainEventResponse result = mapper.toDomainEvent(entity);
 
@@ -233,7 +233,7 @@ public class DomainEventMapperTest extends BaseMapperTest {
     DomainEventEntity entity =
         DataGenerator.createDefault(
             DomainEventGenerator.class,
-            builder -> builder.data(data).type(DomainEventType.APPLICATION_NOTES));
+            builder -> builder.data(data).type(DomainEventType.APPLICATION_NOTE_CREATED));
 
     ApplicationDomainEventResponse result = mapper.toDomainEvent(entity);
 

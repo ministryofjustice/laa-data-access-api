@@ -282,10 +282,10 @@ class ApplicationHistoryProjectionTest {
 
     var result =
         projection.handle(
-            new FindApplicationHistoryQuery(applicationId, List.of("APPLICATION_NOTES")));
+            new FindApplicationHistoryQuery(applicationId, List.of("APPLICATION_NOTE_CREATED")));
 
     var history = result.applicationHistoryEvents().getFirst();
-    assertThat(history.getEventType()).isEqualTo("APPLICATION_NOTES");
+    assertThat(history.getEventType()).isEqualTo("APPLICATION_NOTE_CREATED");
     var payload = objectMapper.readTree(history.getRequestPayload());
     assertThat(payload.get("noteText").asString()).isEqualTo("My note text");
   }

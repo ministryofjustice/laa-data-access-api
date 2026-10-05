@@ -1397,14 +1397,14 @@ class PostgresAxonIntegrationTest {
                 + port
                 + "/api/v0/applications/"
                 + applicationId
-                + "/history-search?eventType=APPLICATION_NOTES",
+                + "/history-search?eventType=APPLICATION_NOTE_CREATED",
             HttpMethod.GET,
             new HttpEntity<>(headers()),
             ApplicationHistoryResponse.class);
     assertThat(historyResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(historyResponse.getBody().getEvents())
         .extracting(event -> event.getDomainEventType().getValue())
-        .containsExactly("APPLICATION_NOTES");
+        .containsExactly("APPLICATION_NOTE_CREATED");
   }
 
   @Test

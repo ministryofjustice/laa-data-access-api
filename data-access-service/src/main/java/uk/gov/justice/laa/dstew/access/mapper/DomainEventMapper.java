@@ -61,7 +61,7 @@ public interface DomainEventMapper {
           getEventDescription(data, UnassignApplicationDomainEventDetails.class);
       case APPLICATION_MAKE_DECISION_GRANTED, APPLICATION_MAKE_DECISION_REFUSED ->
           getEventDescription(data, MakeDecisionDomainEventDetails.class);
-      case APPLICATION_NOTES -> getNotesDescription(data);
+      case APPLICATION_NOTE_CREATED -> getNotesDescription(data);
       default -> null;
     };
   }
