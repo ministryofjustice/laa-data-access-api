@@ -78,4 +78,46 @@ class DirectPriorAuthorityWorkItemAssignmentCommandHandlerTest {
 
     verifyNoInteractions(eventAppender);
   }
+
+  @Test
+  void givenAlreadyAssignedPriorAuthority_whenHandle_thenThrowsConflict() {
+    UUID workItemId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+    DirectPriorAuthorityWorkItemAssignmentCommand command =
+        new DirectPriorAuthorityWorkItemAssignmentCommand(
+            workItemId, caseworkerId, 0L, "{}", "Assigned", OCCURRED_AT);
+
+    when(priorAuthority.getPriorAuthorityId()).thenReturn(workItemId);
+    when(priorAuthority.getAssignmentVersion()).thenReturn(0L);
+    when(priorAuthority.getCaseworkerId()).thenReturn(UUID.randomUUID());
+
+    assertThatThrownBy(
+            () ->
+                new DirectPriorAuthorityWorkItemAssignmentCommandHandler()
+                    .handle(command, priorAuthority, eventAppender))
+        .isInstanceOf(WorkItemAssignmentConflictException.class)
+        .hasMessage("Work item " + workItemId + " cannot be updated: it is already assigned");
+
+    verifyNoInteractions(eventAppender);
+  }
+
+  @Test
+  void givenDifferentPriorAuthorityId_whenHandle_thenThrowsResourceNotFound() {
+    UUID workItemId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+    DirectPriorAuthorityWorkItemAssignmentCommand command =
+        new DirectPriorAuthorityWorkItemAssignmentCommand(
+            workItemId, caseworkerId, 0L, "{}", "Assigned", OCCURRED_AT);
+
+    when(priorAuthority.getPriorAuthorityId()).thenReturn(UUID.randomUUID());
+
+    assertThatThrownBy(
+            () ->
+                new DirectPriorAuthorityWorkItemAssignmentCommandHandler()
+                    .handle(command, priorAuthority, eventAppender))
+        .isInstanceOf(ResourceNotFoundException.class)
+        .hasMessage("No prior-authority work item found with id: " + workItemId);
+
+    verifyNoInteractions(eventAppender);
+  }
 }

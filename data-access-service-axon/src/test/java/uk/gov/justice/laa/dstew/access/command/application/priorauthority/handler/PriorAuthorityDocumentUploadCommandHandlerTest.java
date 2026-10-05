@@ -92,6 +92,65 @@ class PriorAuthorityDocumentUploadCommandHandlerTest {
   }
 
   @Test
+  void givenDraftWithExistingDocuments_whenHandle_thenPreservesExistingDocumentsAndAppendsNewOne() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    UUID existingDocumentId = UUID.randomUUID();
+    UUID newDocumentId = UUID.randomUUID();
+    PriorAuthorityDocument existingDocument =
+        new PriorAuthorityDocument(
+            existingDocumentId,
+            "REPORT",
+            "existing.pdf",
+            "pdf",
+            "application/pdf",
+            512L,
+            OCCURRED_AT.minusSeconds(60),
+            "service",
+            "existing-checksum");
+    PriorAuthorityContent existingContent =
+        new PriorAuthorityContent(
+            PriorAuthorityType.EXPERT,
+            "Existing",
+            null,
+            null,
+            null,
+            java.util.List.of(existingDocument));
+    PriorAuthorityDataPayload existingDraft =
+        new PriorAuthorityDataPayload(
+            priorAuthorityId, applicationId, existingContent, "old", OCCURRED_AT);
+    PriorAuthorityDocumentUploadCommand command =
+        new PriorAuthorityDocumentUploadCommand(
+            priorAuthorityId,
+            newDocumentId,
+            "service",
+            "checksum",
+            "new",
+            OCCURRED_AT,
+            "file.pdf",
+            1024L,
+            "pdf",
+            "application/pdf");
+
+    when(draftStore.find(priorAuthorityId)).thenReturn(Optional.of(existingDraft));
+    when(priorAuthority.getApplicationId()).thenReturn(applicationId);
+
+    new PriorAuthorityDocumentUploadCommandHandler()
+        .handle(command, draftStore, priorAuthority, eventAppender);
+
+    verify(draftStore)
+        .upsert(
+            eq(priorAuthorityId),
+            eq(applicationId),
+            payloadCaptor.capture(),
+            eq("new"),
+            eq(OCCURRED_AT));
+    assertThat(payloadCaptor.getValue().content().uploadedDocuments())
+        .extracting(PriorAuthorityDocument::documentId)
+        .containsExactly(existingDocumentId, newDocumentId);
+  }
+
+  @Test
   void givenMissingDraft_whenHandle_thenThrowsResourceNotFoundException() {
     UUID priorAuthorityId = UUID.randomUUID();
     PriorAuthorityDocumentUploadCommand command =

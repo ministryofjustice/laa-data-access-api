@@ -75,4 +75,44 @@ class DirectPriorAuthorityWorkItemUnassignmentCommandHandlerTest {
 
     verifyNoInteractions(eventAppender);
   }
+
+  @Test
+  void givenStaleAssignmentVersion_whenHandle_thenThrowsConflict() {
+    UUID workItemId = UUID.randomUUID();
+    DirectPriorAuthorityWorkItemUnassignmentCommand command =
+        new DirectPriorAuthorityWorkItemUnassignmentCommand(
+            workItemId, 1L, "{}", "Unassigned", OCCURRED_AT);
+
+    when(priorAuthority.getPriorAuthorityId()).thenReturn(workItemId);
+    when(priorAuthority.getAssignmentVersion()).thenReturn(0L);
+
+    assertThatThrownBy(
+            () ->
+                new DirectPriorAuthorityWorkItemUnassignmentCommandHandler()
+                    .handle(command, priorAuthority, eventAppender))
+        .isInstanceOf(WorkItemAssignmentConflictException.class)
+        .hasMessage(
+            "Work item " + workItemId + " cannot be updated: the assignment version is stale");
+
+    verifyNoInteractions(eventAppender);
+  }
+
+  @Test
+  void givenDifferentPriorAuthorityId_whenHandle_thenThrowsResourceNotFound() {
+    UUID workItemId = UUID.randomUUID();
+    DirectPriorAuthorityWorkItemUnassignmentCommand command =
+        new DirectPriorAuthorityWorkItemUnassignmentCommand(
+            workItemId, 0L, "{}", "Unassigned", OCCURRED_AT);
+
+    when(priorAuthority.getPriorAuthorityId()).thenReturn(UUID.randomUUID());
+
+    assertThatThrownBy(
+            () ->
+                new DirectPriorAuthorityWorkItemUnassignmentCommandHandler()
+                    .handle(command, priorAuthority, eventAppender))
+        .isInstanceOf(ResourceNotFoundException.class)
+        .hasMessage("No prior-authority work item found with id: " + workItemId);
+
+    verifyNoInteractions(eventAppender);
+  }
 }

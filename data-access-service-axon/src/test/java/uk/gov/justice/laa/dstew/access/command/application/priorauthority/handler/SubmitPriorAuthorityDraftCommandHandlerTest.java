@@ -117,4 +117,35 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
     verify(draftStore).find(priorAuthorityId);
     verifyNoInteractions(dataStore, applicationDataStore, jsonSchemaValidator, eventAppender);
   }
+
+  @Test
+  void givenDraftWithoutPriorAuthorityType_whenHandle_thenEmitsSubmittedEventWithNullType() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    PriorAuthorityContent content =
+        new PriorAuthorityContent(null, "No type yet", null, null, null);
+    PriorAuthorityDataPayload payload =
+        new PriorAuthorityDataPayload(priorAuthorityId, applicationId, content, "{}", OCCURRED_AT);
+    SubmitPriorAuthorityDraftCommand command =
+        new SubmitPriorAuthorityDraftCommand(priorAuthorityId, OCCURRED_AT);
+
+    when(draftStore.find(priorAuthorityId)).thenReturn(Optional.of(payload));
+    when(priorAuthority.getApplicationId()).thenReturn(applicationId);
+    when(applicationDataStore.latestVersion(applicationId)).thenReturn(4L);
+
+    new SubmitPriorAuthorityDraftCommandHandler()
+        .handle(
+            command,
+            draftStore,
+            dataStore,
+            applicationDataStore,
+            jsonSchemaValidator,
+            priorAuthority,
+            eventAppender);
+
+    verify(eventAppender)
+        .append(
+            new PriorAuthoritySubmittedEvent(
+                priorAuthorityId, applicationId, null, 1, 0L, 4L, OCCURRED_AT));
+  }
 }

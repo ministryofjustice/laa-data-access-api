@@ -125,4 +125,52 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
     verify(application).isGranted();
     verifyNoInteractions(draftStore, eventAppender);
   }
+
+  @Test
+  void givenGrantedApplicationWithoutProvider_whenHandle_thenCreatesDraftWithNullOfficeCode() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    PriorAuthorityContent content =
+        new PriorAuthorityContent(
+            PriorAuthorityType.EXPERT, "Need urgent review", null, null, null);
+    CreatePriorAuthorityDraftCommand command =
+        new CreatePriorAuthorityDraftCommand(
+            priorAuthorityId, applicationId, content, "{}", 1, "PriorAuthority.json", OCCURRED_AT);
+    ApplicationDataPayload applicationData =
+        new ApplicationDataPayload(
+            null,
+            null,
+            null,
+            null,
+            OCCURRED_AT,
+            null,
+            null,
+            null,
+            null,
+            "{}",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null);
+
+    when(application.isGranted()).thenReturn(true);
+    when(applicationDataStore.latestVersion(applicationId)).thenReturn(7L);
+    when(applicationDataStore.get(applicationId, 7L)).thenReturn(applicationData);
+
+    new CreatePriorAuthorityDraftCommandHandler()
+        .handle(command, draftStore, application, applicationDataStore, eventAppender);
+
+    verify(draftStore)
+        .upsert(
+            eq(priorAuthorityId),
+            eq(applicationId),
+            payloadCaptor.capture(),
+            eq("{}"),
+            eq(OCCURRED_AT));
+    assertThat(payloadCaptor.getValue().officeCode()).isNull();
+  }
 }
