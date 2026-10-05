@@ -60,7 +60,13 @@ public final class PriorAuthorityCreationWorkflow {
     var application = applicationFactory.create();
     UUID priorAuthorityId = null;
     try {
-      client.createApplication(application.request());
+      UUID draftId = client.createApplicationDraft(application.request());
+      if (!application.applicationId().equals(draftId)) {
+        throw new IllegalStateException(
+            "Draft response returned a different application ID: " + draftId);
+      }
+      client.submitApplicationDraft(application.applicationId());
+      client.awaitApplicationReadable(application.applicationId());
       client.recordManualOutcome(application.applicationId());
       client.assignWorkListItem(
           application.applicationId(),
