@@ -11,9 +11,8 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityData;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataId;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataRepository;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 
 /**
  * Validates, sorts, groups, and hydrates prior-authority history rows into immutable query records.
@@ -26,7 +25,7 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 @RequiredArgsConstructor
 public class PriorAuthorityHistoryAssembler {
 
-  private final PriorAuthorityDataRepository priorAuthorityDataRepository;
+  private final PriorAuthorityDataStore priorAuthorityDataStore;
 
   /**
    * Assembles flat PA history rows into validated, immutable groups ordered by earliest event.
@@ -55,7 +54,7 @@ public class PriorAuthorityHistoryAssembler {
 
   private PriorAuthorityHistoryGroupResult toGroup(
       UUID priorAuthorityId, List<PriorAuthorityHistoryReadModel> rows) {
-    UUID applicationId = rows.get(0).getApplicationId();
+    UUID applicationId = rows.getFirst().getApplicationId();
 
     Set<String> distinctTypes =
         rows.stream()
@@ -89,22 +88,23 @@ public class PriorAuthorityHistoryAssembler {
       return null;
     }
 
-    PriorAuthorityDataId dataId =
-        new PriorAuthorityDataId(row.getPriorAuthorityId(), row.getItemVersion());
-    PriorAuthorityData data = priorAuthorityDataRepository.findById(dataId).orElse(null);
+    PriorAuthorityDataPayload data =
+        priorAuthorityDataStore
+            .findPayload(row.getPriorAuthorityId(), row.getItemVersion())
+            .orElse(null);
     String inferredDecision = inferDecisionFromEventType(row.getEventType());
     String decision =
-        data == null
-                || data.getPayload().decision() == null
-                || data.getPayload().decision().isBlank()
+        data == null || data.decision() == null || data.decision().isBlank()
             ? inferredDecision
-            : data.getPayload().decision();
-    String decisionJustification = data == null ? null : data.getPayload().decisionJustification();
+            : data.decision();
+    String decisionJustification = data == null ? null : data.decisionJustification();
 
-    String outcome =
-        DecisionValue.GRANTED.name().equals(decision)
-            ? "Granted"
-            : DecisionValue.REFUSED.name().equals(decision) ? "Refused" : decision;
+    String outcome = decision;
+    if (DecisionValue.GRANTED.name().equals(decision)) {
+      outcome = "Granted";
+    } else if (DecisionValue.REFUSED.name().equals(decision)) {
+      outcome = "Refused";
+    }
 
     String decisionAt = Objects.toString(row.getOccurredAt(), null);
     if (decisionJustification == null || decisionJustification.isBlank()) {

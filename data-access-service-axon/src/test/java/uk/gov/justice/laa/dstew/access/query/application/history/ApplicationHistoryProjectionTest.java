@@ -29,6 +29,7 @@ import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApp
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataRepository;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
@@ -54,7 +55,8 @@ class ApplicationHistoryProjectionTest {
             repository,
             new ApplicationHistoryAssembler(applicationDataStore),
             paRepository,
-            new PriorAuthorityHistoryAssembler(priorAuthorityDataRepository));
+            new PriorAuthorityHistoryAssembler(
+                new PriorAuthorityDataStore(priorAuthorityDataRepository)));
   }
 
   @Test
