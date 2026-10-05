@@ -7,7 +7,6 @@ import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import org.axonframework.modelling.annotation.InjectEntity;
 import org.springframework.stereotype.Component;
-import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDecider;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentUploadCommand;
@@ -19,7 +18,6 @@ import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 
 /** Handles uploads of documents to a prior-authority draft. */
 @Component
-@ExcludeFromGeneratedCodeCoverage
 public class PriorAuthorityDocumentUploadCommandHandler {
 
   /** Uploads a document to the prior-authority draft and emits the corresponding event. */

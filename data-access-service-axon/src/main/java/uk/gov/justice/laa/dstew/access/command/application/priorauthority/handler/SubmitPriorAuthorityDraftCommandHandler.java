@@ -4,7 +4,6 @@ import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import org.axonframework.modelling.annotation.InjectEntity;
 import org.springframework.stereotype.Component;
-import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
@@ -17,7 +16,6 @@ import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
 
 /** Handles submission of prior-authority drafts. */
 @Component
-@ExcludeFromGeneratedCodeCoverage
 public class SubmitPriorAuthorityDraftCommandHandler {
 
   /** Submits a prior-authority draft, validates its schema, and emits the submitted event. */

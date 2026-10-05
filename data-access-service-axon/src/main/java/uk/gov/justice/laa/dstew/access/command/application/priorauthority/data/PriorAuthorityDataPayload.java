@@ -41,6 +41,24 @@ public record PriorAuthorityDataPayload(
     this(priorAuthorityId, applicationId, content, serialisedRequest, submittedAt, null, null);
   }
 
+  /** Backward-compatible constructor for existing branches/tests using the older 6-arg shape. */
+  public PriorAuthorityDataPayload(
+      UUID priorAuthorityId,
+      UUID applicationId,
+      PriorAuthorityContent content,
+      String serialisedRequest,
+      Instant submittedAt,
+      DecisionDetails decisionDetails) {
+    this(
+        priorAuthorityId,
+        applicationId,
+        content,
+        serialisedRequest,
+        submittedAt,
+        decisionDetails,
+        null);
+  }
+
   /** Returns a complete new data version containing the supplied decision details. */
   public PriorAuthorityDataPayload withDecision(DecisionDetails newDecision) {
     return new PriorAuthorityDataPayload(

@@ -4,7 +4,6 @@ import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import org.axonframework.modelling.annotation.InjectEntity;
 import org.springframework.stereotype.Component;
-import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDecider;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
@@ -13,7 +12,6 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decisi
 
 /** Handles decisions on prior-authority requests. */
 @Component
-@ExcludeFromGeneratedCodeCoverage
 public class MakePriorAuthorityDecisionCommandHandler {
 
   /** Makes a decision on a prior-authority request and persists the decision. */
