@@ -13,6 +13,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.document.UploadDocumentUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteUseCase;
@@ -51,6 +52,7 @@ class ApplicationCommandUseCasesSecurityTest extends BaseSecuredUseCaseTest {
   @MockitoBean private QueryGateway queryGateway;
   @MockitoBean private SubscriptionProjectionGateway projectionGateway;
   @MockitoBean private SdsService sdsService;
+  @MockitoBean private ApplicationDraftStore draftStore;
 
   @Test
   void givenNoRole_whenExecuteSecuredCommandUseCases_thenThrowsAuthorizationDeniedException() {
@@ -64,8 +66,9 @@ class ApplicationCommandUseCasesSecurityTest extends BaseSecuredUseCaseTest {
     assertDenied(() -> recordAutoGrantOutcomeUseCase.recordReady(null));
     assertDenied(() -> recordAutoGrantOutcomeUseCase.record(new Object()));
     assertDenied(() -> uploadDocumentUseCase.execute(null, null));
+    assertDenied(() -> uploadDocumentUseCase.execute(null, null, null, null));
 
-    verifyNoInteractions(dispatcher, queryGateway, projectionGateway, sdsService);
+    verifyNoInteractions(dispatcher, queryGateway, projectionGateway, sdsService, draftStore);
   }
 
   @Test
@@ -81,8 +84,9 @@ class ApplicationCommandUseCasesSecurityTest extends BaseSecuredUseCaseTest {
     assertDenied(() -> recordAutoGrantOutcomeUseCase.recordReady(null));
     assertDenied(() -> recordAutoGrantOutcomeUseCase.record(new Object()));
     assertDenied(() -> uploadDocumentUseCase.execute(null, null));
+    assertDenied(() -> uploadDocumentUseCase.execute(null, null, null, null));
 
-    verifyNoInteractions(dispatcher, queryGateway, projectionGateway, sdsService);
+    verifyNoInteractions(dispatcher, queryGateway, projectionGateway, sdsService, draftStore);
   }
 
   private void assertDenied(ThrowingInvocation invocation) {

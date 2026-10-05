@@ -36,6 +36,38 @@ class SecurityHelperTest {
   }
 
   @Test
+  void givenJwtAuthenticationWithScopes_whenRequested_thenReturnsDistinctScopes() {
+    Jwt jwt = jwt().claim("scp", "access_as_user  access_as_provider access_as_user").build();
+    SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt));
+
+    assertThat(SecurityHelper.getScopes())
+        .containsExactlyInAnyOrder("access_as_user", "access_as_provider");
+  }
+
+  @Test
+  void givenJwtAuthenticationWithLeadingScopeWhitespace_whenRequested_thenExcludesBlankScope() {
+    Jwt jwt = jwt().claim("scp", " access_as_user").build();
+    SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt));
+
+    assertThat(SecurityHelper.getScopes()).containsExactly("access_as_user");
+  }
+
+  @Test
+  void givenJwtAuthenticationWithoutScopes_whenRequested_thenReturnsEmptySet() {
+    SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt().build()));
+
+    assertThat(SecurityHelper.getScopes()).isEmpty();
+  }
+
+  @Test
+  void givenNoJwtAuthentication_whenScopesRequested_thenReturnsEmptySet() {
+    SecurityContextHolder.getContext()
+        .setAuthentication(new TestingAuthenticationToken("user", "credentials"));
+
+    assertThat(SecurityHelper.getScopes()).isEmpty();
+  }
+
+  @Test
   void givenJwtAuthenticationWithOid_whenRequested_thenReturnsEntraOid() {
     Jwt jwt = jwt().claim("oid", "entra-object-id").build();
     SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt));

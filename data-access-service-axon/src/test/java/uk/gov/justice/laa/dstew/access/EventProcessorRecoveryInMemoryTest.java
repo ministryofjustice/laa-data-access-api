@@ -5,12 +5,14 @@ import static org.awaitility.Awaitility.await;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.axonframework.common.configuration.AxonConfiguration;
 import org.axonframework.eventsourcing.eventstore.EventStore;
 import org.axonframework.extension.spring.config.EventProcessorDefinition;
+import org.axonframework.messaging.commandhandling.gateway.CommandGateway;
 import org.axonframework.messaging.core.MessageType;
 import org.axonframework.messaging.core.annotation.Namespace;
 import org.axonframework.messaging.eventhandling.GenericEventMessage;
@@ -30,9 +32,12 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.annotation.DirtiesContext;
+import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadCommand;
+import uk.gov.justice.laa.dstew.access.command.application.draft.SubmitApplicationDraftCommand;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
+import uk.gov.justice.laa.dstew.access.model.CreateApplicationDraftRequest;
 import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadRepository;
@@ -58,6 +63,7 @@ class EventProcessorRecoveryInMemoryTest {
   @Autowired private TestRestTemplate restTemplate;
   @Autowired private AxonConfiguration axonConfiguration;
   @Autowired private EventStore eventStore;
+  @Autowired private CommandGateway commandGateway;
   @Autowired private ApplicationReadRepository applicationReadRepository;
   @Autowired private ApplicationHistoryReadRepository applicationHistoryReadRepository;
   @Autowired private LinkedApplicationGroupReadRepository groupReadRepository;
@@ -69,6 +75,12 @@ class EventProcessorRecoveryInMemoryTest {
     UUID applicationId = UUID.randomUUID();
     ApplicationCreateRequest request =
         validCreateApplicationRequest(applicationId, UUID.randomUUID());
+    var draft =
+        new CreateApplicationDraftRequest()
+            .id(applicationId)
+            .status(request.getStatus())
+            .laaReference(request.getLaaReference())
+            .applicationContent(request.getApplicationContent());
     HttpHeaders headers = new HttpHeaders();
     headers.set("X-Service-Name", "CIVIL_APPLY");
     headers.set("X-Schema-Version", "1");
@@ -76,9 +88,22 @@ class EventProcessorRecoveryInMemoryTest {
     assertThat(
             restTemplate
                 .postForEntity(
-                    "/api/v0/applications", new HttpEntity<>(request, headers), Void.class)
+                    "/api/v0/application-drafts", new HttpEntity<>(draft, headers), Void.class)
                 .getStatusCode())
         .isEqualTo(HttpStatus.CREATED);
+    UUID documentId = UUID.randomUUID();
+    commandGateway.sendAndWait(
+        new ApplicationDocumentUploadCommand(
+            applicationId,
+            documentId,
+            "GATEWAY_EVIDENCE",
+            Instant.now(),
+            12L,
+            "application/pdf",
+            "checksum",
+            "CIVIL_APPLY",
+            "client-report.pdf"));
+    commandGateway.sendAndWait(new SubmitApplicationDraftCommand(applicationId, Instant.now()));
     await()
         .atMost(Duration.ofSeconds(5))
         .until(
@@ -113,6 +138,26 @@ class EventProcessorRecoveryInMemoryTest {
                             .getBody()
                             .getAutoGranted())
                     .isEqualTo(uk.gov.justice.laa.dstew.access.model.AutoGranted.MANUAL));
+
+    await()
+        .atMost(Duration.ofSeconds(5))
+        .untilAsserted(
+            () ->
+                assertThat(
+                        restTemplate
+                            .exchange(
+                                "/api/v0/applications/" + applicationId,
+                                HttpMethod.GET,
+                                new HttpEntity<>(headers),
+                                ApplicationResponse.class)
+                            .getBody()
+                            .getUploadedDocuments())
+                    .singleElement()
+                    .satisfies(
+                        document -> {
+                          assertThat(document.getDocumentId()).isEqualTo(documentId);
+                          assertThat(document.getFileName()).isEqualTo("client-report.pdf");
+                        }));
 
     var processors =
         List.of(
@@ -150,6 +195,27 @@ class EventProcessorRecoveryInMemoryTest {
                 .getBody()
                 .getAutoGranted())
         .isEqualTo(uk.gov.justice.laa.dstew.access.model.AutoGranted.MANUAL);
+    await()
+        .atMost(Duration.ofSeconds(5))
+        .untilAsserted(
+            () -> {
+              ApplicationResponse replayed =
+                  restTemplate
+                      .exchange(
+                          "/api/v0/applications/" + applicationId,
+                          HttpMethod.GET,
+                          new HttpEntity<>(headers),
+                          ApplicationResponse.class)
+                      .getBody();
+              assertThat(replayed.getUploadedDocuments())
+                  .singleElement()
+                  .satisfies(
+                      document -> {
+                        assertThat(document.getDocumentId()).isEqualTo(documentId);
+                        assertThat(document.getFileName()).isEqualTo("client-report.pdf");
+                      });
+              assertThat(replayed.getVersion()).isEqualTo(1L);
+            });
     assertThat(processors)
         .allSatisfy(
             processor -> {

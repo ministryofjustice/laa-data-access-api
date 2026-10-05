@@ -1,7 +1,10 @@
 package uk.gov.justice.laa.dstew.access.security;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -12,6 +15,7 @@ public final class SecurityHelper {
 
   private static final String LAA_ACCOUNTS_CLAIM = "LAA_ACCOUNTS";
   private static final String ENTRA_OID_CLAIM = "oid";
+  private static final String ENTRA_SCOPES_CLAIM = "scp";
 
   private SecurityHelper() {}
 
@@ -27,6 +31,21 @@ public final class SecurityHelper {
             .map(jwt -> jwt.getClaimAsStringList(LAA_ACCOUNTS_CLAIM))
             .orElse(null);
     return accounts == null ? List.of() : List.copyOf(accounts);
+  }
+
+  /**
+   * Gets the validated Entra delegated application scopes from the current JWT authentication.
+   *
+   * @return an immutable set of scopes, or an empty set when unavailable
+   */
+  public static Set<String> getScopes() {
+    return getJwtAuthentication()
+        .map(JwtAuthenticationToken::getToken)
+        .map(jwt -> jwt.getClaimAsString(ENTRA_SCOPES_CLAIM))
+        .stream()
+        .flatMap(scopes -> Arrays.stream(scopes.split("\\s+")))
+        .filter(scope -> !scope.isBlank())
+        .collect(Collectors.toUnmodifiableSet());
   }
 
   /**
