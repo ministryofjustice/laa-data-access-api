@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -19,9 +20,6 @@ class PriorAuthorityCreationWorkflowTest {
     List<String> bodies = new ArrayList<>();
     DataAccessApiClient client =
         new DataAccessApiClient() {
-          @Override
-          public void createApplication(String requestBody) {}
-
           @Override
           public void recordManualOutcome(UUID applicationId) {}
 
@@ -67,8 +65,25 @@ class PriorAuthorityCreationWorkflowTest {
     DataAccessApiClient client =
         new DataAccessApiClient() {
           @Override
-          public void createApplication(String requestBody) {
-            operations.add("application");
+          public UUID createApplicationDraft(String requestBody) {
+            operations.add("application-draft");
+            try {
+              return UUID.fromString(
+                  new ObjectMapper().readTree(requestBody).required("id").asText());
+            } catch (java.io.IOException exception) {
+              throw new AssertionError(exception);
+            }
+          }
+
+          @Override
+          public UUID submitApplicationDraft(UUID applicationId) {
+            operations.add("application-submit");
+            return applicationId;
+          }
+
+          @Override
+          public void awaitApplicationReadable(UUID applicationId) {
+            operations.add("application-wait");
           }
 
           @Override
@@ -121,7 +136,9 @@ class PriorAuthorityCreationWorkflowTest {
     assertTrue(result.succeeded());
     assertEquals(
         List.of(
-            "application",
+            "application-draft",
+            "application-submit",
+            "application-wait",
             "manual-outcome",
             "assign",
             "granted-decision",

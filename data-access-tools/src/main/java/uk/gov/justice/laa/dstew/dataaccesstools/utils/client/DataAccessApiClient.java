@@ -3,7 +3,17 @@ package uk.gov.justice.laa.dstew.dataaccesstools.utils.client;
 import java.util.UUID;
 
 public interface DataAccessApiClient {
-  void createApplication(String requestBody);
+  default UUID createApplicationDraft(String requestBody) {
+    throw new UnsupportedOperationException();
+  }
+
+  default UUID submitApplicationDraft(UUID applicationId) {
+    throw new UnsupportedOperationException();
+  }
+
+  default void awaitApplicationReadable(UUID applicationId) {
+    throw new UnsupportedOperationException();
+  }
 
   default ApplicationDecisionData getApplicationDecisionData(UUID applicationId) {
     throw new UnsupportedOperationException();

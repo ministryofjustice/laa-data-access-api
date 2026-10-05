@@ -81,11 +81,13 @@
     },
     "delegatedFunctionsCostLimitation": {
       "type": ["string", "null"],
-      "description": "Delegated functions cost limitation"
+      "description": "Delegated functions cost limitation",
+      "example": "2250.0"
     },
     "substantiveCostLimitation": {
       "type": ["string", "null"],
-      "description": "Substantive cost limitation"
+      "description": "Substantive cost limitation",
+      "example": "2250.0"
     },
     "substantiveLevelOfService": {
       "type": "integer",
