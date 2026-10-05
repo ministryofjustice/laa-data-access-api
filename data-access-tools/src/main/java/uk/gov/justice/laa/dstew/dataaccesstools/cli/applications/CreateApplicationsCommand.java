@@ -36,7 +36,9 @@ public final class CreateApplicationsCommand implements Callable<Integer> {
     if (count < 1) {
       throw new CommandLine.ParameterException(new CommandLine(this), "--count must be positive");
     }
-    return applications.root().print(applications.creationWorkflow(officeCode).create(count, outcome));
+    return applications
+        .root()
+        .print(applications.creationWorkflow(officeCode).create(count, outcome));
   }
 
   static final class OutcomeConverter implements CommandLine.ITypeConverter<Outcome> {

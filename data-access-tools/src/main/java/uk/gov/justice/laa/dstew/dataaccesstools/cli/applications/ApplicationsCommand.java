@@ -27,6 +27,8 @@ public final class ApplicationsCommand {
 
   ApplicationCreationWorkflow creationWorkflow(String officeCode) {
     return new ApplicationCreationWorkflow(
-        root.client(), new ApplicationRequestFactory(root.seed(), officeCode), new DecisionRequestFactory());
+        root.client(),
+        new ApplicationRequestFactory(root.seed(), officeCode),
+        new DecisionRequestFactory());
   }
 }
