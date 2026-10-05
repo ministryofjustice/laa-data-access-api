@@ -11,10 +11,10 @@ import uk.gov.justice.laa.dstew.access.model.BillingType;
 import uk.gov.justice.laa.dstew.access.model.CounselDetails;
 import uk.gov.justice.laa.dstew.access.model.CounselType;
 import uk.gov.justice.laa.dstew.access.model.DisbursementDetails;
+import uk.gov.justice.laa.dstew.access.model.DocumentType;
 import uk.gov.justice.laa.dstew.access.model.ExpertCosts;
 import uk.gov.justice.laa.dstew.access.model.ExpertDetails;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityDecisionDetails;
-import uk.gov.justice.laa.dstew.access.model.PriorAuthorityDocumentType;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityResponse;
 import uk.gov.justice.laa.dstew.access.model.TimeRequested;
 import uk.gov.justice.laa.dstew.access.model.UploadedDocument;
@@ -66,7 +66,7 @@ public class GetPriorAuthorityResponseMapper {
                     .documentType(
                         document.documentType() == null
                             ? null
-                            : PriorAuthorityDocumentType.fromValue(document.documentType()))
+                            : DocumentType.fromValue(document.documentType()))
                     .fileName(filenames.get(document.documentId()))
                     .fileType(
                         PriorAuthorityDocumentFormat.fromContentType(document.contentType())

@@ -7,11 +7,11 @@ import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
+import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 
 @DisplayName("PriorAuthorityAggregate")
 class PriorAuthorityAggregateTest {
@@ -92,7 +92,7 @@ class PriorAuthorityAggregateTest {
 
     assertThat(aggregate.getState().getUploadedDocuments())
         .contains(
-            new UploadDocument(
+            new DocumentMetadata(
                 documentId, null, NOW, 1024L, "application/pdf", "checksum123", "service", false));
   }
 
@@ -118,7 +118,7 @@ class PriorAuthorityAggregateTest {
 
     assertThat(aggregate.getState().getUploadedDocuments())
         .contains(
-            new UploadDocument(
+            new DocumentMetadata(
                 documentId, null, NOW, 1024L, "application/pdf", "checksum123", "service", true));
   }
 
@@ -145,7 +145,7 @@ class PriorAuthorityAggregateTest {
     assertThat(aggregate.getPriorAuthorityId()).isEqualTo(PA_ID);
     assertThat(aggregate.getState().getUploadedDocuments())
         .contains(
-            new UploadDocument(
+            new DocumentMetadata(
                 documentId,
                 "INVOICE",
                 NOW,

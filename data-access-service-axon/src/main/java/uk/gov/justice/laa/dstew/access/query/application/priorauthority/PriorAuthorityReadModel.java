@@ -14,7 +14,7 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
-import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
+import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 
 /** Replayable current-state read model for a prior-authority submission. */
 @Entity
@@ -52,5 +52,5 @@ public class PriorAuthorityReadModel {
   @Builder.Default
   @Column(name = "uploaded_documents", nullable = false)
   @JdbcTypeCode(SqlTypes.JSON)
-  private List<UploadDocument> uploadedDocuments = List.of();
+  private List<DocumentMetadata> uploadedDocuments = List.of();
 }

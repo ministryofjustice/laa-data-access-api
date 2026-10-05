@@ -4,8 +4,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.Builder;
-import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
+import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
 
 /** Typed result of retrieving a prior-authority submission. */
@@ -19,7 +19,7 @@ public record PriorAuthorityResult(
     ExpertDetails expertDetails,
     CounselDetails counselDetails,
     DisbursementDetails disbursementDetails,
-    List<UploadDocument> uploadedDocuments,
+    List<DocumentMetadata> uploadedDocuments,
     Map<UUID, String> documentFilenames,
     PriorAuthorityDataPayload.DecisionDetails decisionDetails) {
 

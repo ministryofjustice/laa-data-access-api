@@ -28,8 +28,8 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.exception.InvalidApplicationStateException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
-import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
+import uk.gov.justice.laa.dstew.access.service.sds.SdsUploadResult;
 
 @ExtendWith(MockitoExtension.class)
 class UploadEvidenceDocumentUseCaseTest {
@@ -61,7 +61,7 @@ class UploadEvidenceDocumentUseCaseTest {
             org.mockito.ArgumentMatchers.eq(priorAuthorityId),
             org.mockito.ArgumentMatchers.any(UUID.class),
             org.mockito.ArgumentMatchers.eq(file)))
-        .thenReturn(new DocumentUploadResponse().checksum("abc123"));
+        .thenReturn(new SdsUploadResult(null, null, "abc123"));
     doNothing()
         .when(dispatcher)
         .dispatch(org.mockito.ArgumentMatchers.any(PriorAuthorityDocumentUploadCommand.class));

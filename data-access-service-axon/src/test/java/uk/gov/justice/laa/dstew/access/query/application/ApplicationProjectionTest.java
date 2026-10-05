@@ -39,7 +39,7 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
-import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
+import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
@@ -195,7 +195,7 @@ class ApplicationProjectionTest {
         .isNull();
   }
 
-  private ApplicationReadModel documentReadModel(UUID applicationId, UploadDocument document) {
+    private ApplicationReadModel documentReadModel(UUID applicationId, DocumentMetadata document) {
     return ApplicationReadModel.builder()
         .applicationId(applicationId)
         .applicationDataVersion(0L)
@@ -203,8 +203,8 @@ class ApplicationProjectionTest {
         .build();
   }
 
-  private UploadDocument uploadedDocument(UUID documentId, Instant uploadedAt, boolean deleted) {
-    return new UploadDocument(
+    private DocumentMetadata uploadedDocument(UUID documentId, Instant uploadedAt, boolean deleted) {
+        return new DocumentMetadata(
         documentId,
         "GATEWAY_EVIDENCE",
         uploadedAt,

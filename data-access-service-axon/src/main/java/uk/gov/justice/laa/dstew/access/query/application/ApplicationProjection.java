@@ -27,7 +27,6 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
-import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
@@ -44,6 +43,7 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.EvidenceDocument;
+import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexAccessPolicy;
@@ -424,12 +424,12 @@ public class ApplicationProjection {
                 () ->
                     new IllegalStateException(
                         "Application not found for document upload: " + event.applicationId()));
-    List<UploadDocument> documents = new ArrayList<>(application.getUploadedDocuments());
+    List<DocumentMetadata> documents = new ArrayList<>(application.getUploadedDocuments());
     if (documents.stream().anyMatch(document -> document.documentId().equals(event.documentId()))) {
       return;
     }
     documents.add(
-        new UploadDocument(
+        new DocumentMetadata(
             event.documentId(),
             event.documentType(),
             event.uploadedAt(),
@@ -565,7 +565,7 @@ public class ApplicationProjection {
     return Optional.ofNullable(filenames.get(documentId));
   }
 
-  private EvidenceDocument evidenceDocument(UploadDocument document, String fileName) {
+  private EvidenceDocument evidenceDocument(DocumentMetadata document, String fileName) {
     return new EvidenceDocument(
         document.documentId(),
         document.documentType(),

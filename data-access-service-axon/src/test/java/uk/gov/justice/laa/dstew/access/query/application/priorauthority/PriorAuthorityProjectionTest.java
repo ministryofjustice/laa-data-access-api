@@ -21,7 +21,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.DisbursementInformation;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentDeletedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentTypeUpdatedEvent;
@@ -43,6 +42,7 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityCont
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.TimeRequested;
+import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 
 @ExtendWith(MockitoExtension.class)
 class PriorAuthorityProjectionTest {
@@ -86,7 +86,7 @@ class PriorAuthorityProjectionTest {
 
     assertThat(model.getUploadedDocuments())
         .containsExactly(
-            new UploadDocument(
+            new DocumentMetadata(
                 keptId,
                 "EXPERT_REPORT",
                 uploadedAt,
@@ -95,7 +95,7 @@ class PriorAuthorityProjectionTest {
                 "checksum",
                 "CIVIL_APPLY",
                 false),
-            new UploadDocument(
+            new DocumentMetadata(
                 deletedId,
                 null,
                 uploadedAt.plusSeconds(1),
@@ -114,8 +114,8 @@ class PriorAuthorityProjectionTest {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
-    UploadDocument document =
-        new UploadDocument(
+    DocumentMetadata document =
+        new DocumentMetadata(
             documentId,
             null,
             Instant.now(),

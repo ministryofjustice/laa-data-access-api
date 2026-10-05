@@ -27,11 +27,6 @@ import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.exception.FileConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
-import uk.gov.justice.laa.dstew.access.model.DocumentDeleteResponse;
-import uk.gov.justice.laa.dstew.access.model.DocumentDeleteResult;
-import uk.gov.justice.laa.dstew.access.model.DocumentDownloadResponse;
-import uk.gov.justice.laa.dstew.access.model.DocumentUpdateResponse;
-import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
 import uk.gov.justice.laa.dstew.access.model.SdsHealthResponse;
 
 /** Service class for interacting with the Secure Document Storage (SDS) API. */
@@ -69,7 +64,7 @@ public class SdsService {
    * @param file the file to be saved
    * @return the file URL response from SDS
    */
-  public DocumentUploadResponse saveFile(UUID applicationId, MultipartFile file) {
+  public SdsUploadResult saveFile(UUID applicationId, MultipartFile file) {
     String folderName = applicationId.toString();
     Map<String, String> bodyMap = new HashMap<>();
     bodyMap.put(BUCKET_NAME_FIELD, bucketName);
@@ -90,7 +85,7 @@ public class SdsService {
                     (request, response) -> {
                       throw new FileConflictException("File already exists in SDS");
                     }))
-        .body(DocumentUploadResponse.class);
+        .body(SdsUploadResult.class);
   }
 
   /**
@@ -101,8 +96,7 @@ public class SdsService {
    * @param file the file to upload
    * @return the file URL response from SDS
    */
-  public DocumentUploadResponse saveEvidenceFile(
-      UUID folderId, UUID documentId, MultipartFile file) {
+  public SdsUploadResult saveEvidenceFile(UUID folderId, UUID documentId, MultipartFile file) {
     Map<String, String> bodyMap =
         Map.of(
             BUCKET_NAME_FIELD,
@@ -130,7 +124,7 @@ public class SdsService {
                     (request, response) -> {
                       throw new FileConflictException("File already exists in SDS");
                     }))
-        .body(DocumentUploadResponse.class);
+        .body(SdsUploadResult.class);
   }
 
   /**
@@ -140,7 +134,7 @@ public class SdsService {
    * @param file the file to be saved or updated
    * @return the file URL response from SDS
    */
-  public DocumentUpdateResponse saveOrUpdateFile(UUID applicationId, MultipartFile file) {
+  public SdsUpdateResult saveOrUpdateFile(UUID applicationId, MultipartFile file) {
     Map<String, String> bodyMap =
         Map.of(BUCKET_NAME_FIELD, bucketName, FOLDER_FIELD, applicationId.toString());
     MultipartBodyBuilder builder = buildMultipartBody(file, bodyMap);
@@ -153,7 +147,7 @@ public class SdsService {
                 .contentType(MULTIPART_FORM_DATA)
                 .body(builder.build())
                 .retrieve())
-        .body(DocumentUpdateResponse.class);
+        .body(SdsUpdateResult.class);
   }
 
   /**
@@ -163,7 +157,7 @@ public class SdsService {
    * @param documentId the document ID
    * @return the download URL response from SDS
    */
-  public DocumentDownloadResponse getFile(UUID applicationId, String documentId) {
+  public SdsDownloadResult getFile(UUID applicationId, String documentId) {
     String fileKey = buildFileKey(applicationId, documentId);
 
     return sdsRestClient
@@ -178,7 +172,7 @@ public class SdsService {
             (request, _) -> {
               throw new ResourceNotFoundException("File not found");
             })
-        .body(DocumentDownloadResponse.class);
+        .body(SdsDownloadResult.class);
   }
 
   /**
@@ -188,9 +182,8 @@ public class SdsService {
    * buffering the document in this service.
    */
   public Resource getEvidenceFile(UUID folderId, UUID documentId, String originalFileName) {
-    DocumentDownloadResponse response =
-        getFile(folderId, documentId + getFileExtension(originalFileName));
-    String fileUrl = response == null ? null : response.getFileURL();
+    SdsDownloadResult response = getFile(folderId, documentId + getFileExtension(originalFileName));
+    String fileUrl = response == null ? null : response.fileUrl();
     if (fileUrl == null || fileUrl.isBlank()) {
       throw new ResourceNotFoundException("File not found");
     }
@@ -208,7 +201,7 @@ public class SdsService {
    * @param fileIds the list of file IDs to be deleted
    * @return per-file deletion results
    */
-  public DocumentDeleteResponse deleteFiles(UUID applicationId, List<String> fileIds) {
+  public SdsDeleteResult deleteFiles(UUID applicationId, List<String> fileIds) {
     List<String> fileKeys =
         fileIds.stream().map(fileId -> buildFileKey(applicationId, fileId)).toList();
 
@@ -224,22 +217,17 @@ public class SdsService {
             .retrieve()
             .body(new ParameterizedTypeReference<>() {});
 
-    List<DocumentDeleteResult> results =
+    List<SdsDeleteResult.DocumentDeletion> results =
         sdsResults == null
             ? List.of()
             : fileIds.stream()
                 .map(
-                    fileId -> {
-                      var result = new DocumentDeleteResult();
-                      result.setDocumentId(fileId);
-                      result.setStatus(sdsResults.get(buildFileKey(applicationId, fileId)));
-                      return result;
-                    })
+                    fileId ->
+                        new SdsDeleteResult.DocumentDeletion(
+                            fileId, sdsResults.get(buildFileKey(applicationId, fileId))))
                 .toList();
 
-    var response = new DocumentDeleteResponse();
-    response.setResults(results);
-    return response;
+    return new SdsDeleteResult(results);
   }
 
   /**

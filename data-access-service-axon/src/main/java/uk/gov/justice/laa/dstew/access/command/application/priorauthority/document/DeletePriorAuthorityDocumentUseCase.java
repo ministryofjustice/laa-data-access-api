@@ -7,9 +7,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
-import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentDeleteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
+import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
@@ -43,10 +43,10 @@ public class DeletePriorAuthorityDocumentUseCase {
             () ->
                 new ResourceNotFoundException(
                     "Prior Authority %s not found".formatted(priorAuthorityId)));
-    UploadDocument document =
+    DocumentMetadata document =
         dispatcher.dispatch(
             new PriorAuthorityDocumentDeleteCommand(priorAuthorityId, documentId, Instant.now()),
-            UploadDocument.class);
+            DocumentMetadata.class);
 
     try {
       String fileName =

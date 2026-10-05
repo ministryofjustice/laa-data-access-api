@@ -5,11 +5,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
+import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 
 /** Unit tests for {@link PriorAuthorityEvolve}. */
 class PriorAuthorityEvolveTest {
@@ -129,9 +129,9 @@ class PriorAuthorityEvolveTest {
 
     assertThat(state.getUploadedDocuments())
         .containsExactly(
-            new UploadDocument(
+            new DocumentMetadata(
                 firstId, null, uploadedAt, 10L, "application/pdf", "sum", "CIVIL_APPLY", true),
-            new UploadDocument(
+            new DocumentMetadata(
                 secondId,
                 "EXPERT_REPORT",
                 uploadedAt.plusSeconds(1),

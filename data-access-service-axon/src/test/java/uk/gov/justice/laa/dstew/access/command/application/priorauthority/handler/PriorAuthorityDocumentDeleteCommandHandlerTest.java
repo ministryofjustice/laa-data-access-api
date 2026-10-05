@@ -18,7 +18,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentUploadedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentDeleteCommand;
@@ -28,6 +27,7 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorA
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityState;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
+import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
@@ -69,13 +69,13 @@ class PriorAuthorityDocumentDeleteCommandHandlerTest {
     when(priorAuthority.getState())
         .thenReturn(draftStateWithDocuments(priorAuthorityId, applicationId, documentId, remainingDocumentId));
 
-    UploadDocument returnedDocument =
+    DocumentMetadata returnedDocument =
         new PriorAuthorityDocumentDeleteCommandHandler()
             .handle(command, draftStore, priorAuthority, eventAppender);
 
     assertThat(returnedDocument)
         .isEqualTo(
-            new UploadDocument(
+            new DocumentMetadata(
                 documentId, null, OCCURRED_AT, 100L, "application/pdf", "checksum-1", "service", false));
     verify(draftStore)
         .upsert(

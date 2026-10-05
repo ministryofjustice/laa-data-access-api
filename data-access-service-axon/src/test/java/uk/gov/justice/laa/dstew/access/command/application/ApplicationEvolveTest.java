@@ -12,6 +12,7 @@ import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
+import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 
 /** Unit tests for {@link ApplicationEvolve} decision-fold behaviour. */
 class ApplicationEvolveTest {
@@ -63,6 +64,29 @@ class ApplicationEvolveTest {
     assertThat(event.applicationDataVersion()).isNull();
     assertThat(state.applicationDataVersion).isEqualTo(2L);
     assertThat(state.uploadedDocuments).hasSize(1);
+    assertThat(state.uploadedDocuments.getFirst().documentType()).isEqualTo("INVOICE");
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void givenHistoricalMetadataJson_whenReadAsSharedRecord_thenPreservesStoredShape(
+      boolean deleted) {
+    String json =
+        """
+        {"documentId":"00000000-0000-0000-0000-000000000002",
+         "documentType":"INVOICE","uploadedAt":"2026-09-28T10:00:00Z",
+         "size":12,"contentType":"application/pdf","checksum":"checksum",
+         "sourceService":"CIVIL_APPLY","deleted":%s}
+        """
+            .formatted(deleted);
+    var objectMapper = tools.jackson.databind.json.JsonMapper.builder().build();
+
+    DocumentMetadata document = objectMapper.readValue(json, DocumentMetadata.class);
+
+    assertThat(document.documentType()).isEqualTo("INVOICE");
+    assertThat(document.deleted()).isEqualTo(deleted);
+    assertThat(objectMapper.readTree(objectMapper.writeValueAsString(document)))
+        .isEqualTo(objectMapper.readTree(json));
   }
 
   @Test
@@ -151,7 +175,7 @@ class ApplicationEvolveTest {
             "CIVIL_APPLY"));
 
     assertThat(state.uploadedDocuments)
-        .extracting(UploadDocument::documentId)
+        .extracting(DocumentMetadata::documentId)
         .containsExactly(firstDocumentId, secondDocumentId);
     assertThat(state.uploadedDocuments.getFirst().documentType()).isEqualTo("GATEWAY_EVIDENCE");
   }

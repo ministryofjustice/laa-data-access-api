@@ -4,10 +4,10 @@ import java.util.UUID;
 import java.util.function.UnaryOperator;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
-import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
+import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 
 /** Event-fold functions for {@link PriorAuthorityState}. */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
@@ -60,7 +60,7 @@ public final class PriorAuthorityEvolve {
   /** Applies a {@link PriorAuthorityDocumentUploadedEvent} to the given state. */
   public static void apply(PriorAuthorityState state, PriorAuthorityDocumentUploadedEvent event) {
     state.uploadedDocuments.add(
-        new UploadDocument(
+        new DocumentMetadata(
             event.documentId(),
             null,
             event.uploadedAt(),
@@ -84,7 +84,7 @@ public final class PriorAuthorityEvolve {
   }
 
   private static void replaceDocument(
-      PriorAuthorityState state, UUID documentId, UnaryOperator<UploadDocument> update) {
+      PriorAuthorityState state, UUID documentId, UnaryOperator<DocumentMetadata> update) {
     state.uploadedDocuments.replaceAll(
         document -> document.documentId().equals(documentId) ? update.apply(document) : document);
   }

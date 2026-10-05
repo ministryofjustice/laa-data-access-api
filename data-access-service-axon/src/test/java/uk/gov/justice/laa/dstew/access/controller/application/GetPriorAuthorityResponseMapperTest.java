@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -10,8 +11,8 @@ import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.DisbursementInformation;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.ExpertFeeInformation;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
@@ -26,12 +27,46 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.ExpertDetails;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.TimeRequested;
-import uk.gov.justice.laa.dstew.access.model.PriorAuthorityDocumentType;
+import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
+import uk.gov.justice.laa.dstew.access.model.DocumentType;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityResponse;
 
 class GetPriorAuthorityResponseMapperTest {
 
   private final GetPriorAuthorityResponseMapper mapper = new GetPriorAuthorityResponseMapper();
+
+  @ParameterizedTest
+  @EnumSource(DocumentType.class)
+  void givenDocumentType_whenMapped_thenUsesSharedApiEnum(DocumentType documentType) {
+    var result = documentResult(documentType.getValue());
+
+    assertThat(mapper.toResponse(result).getUploadedDocuments())
+        .singleElement()
+        .satisfies(response -> assertThat(response.getDocumentType()).isEqualTo(documentType));
+  }
+
+  @Test
+  void givenUnknownHistoricalDocumentType_whenMapped_thenRejectsWithoutCoercion() {
+    assertThatThrownBy(() -> mapper.toResponse(documentResult("UNKNOWN_HISTORICAL_TYPE")))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("UNKNOWN_HISTORICAL_TYPE");
+  }
+
+  private PriorAuthorityResult documentResult(String documentType) {
+    return PriorAuthorityResult.builder()
+        .uploadedDocuments(
+            List.of(
+                new DocumentMetadata(
+                    UUID.randomUUID(),
+                    documentType,
+                    Instant.EPOCH,
+                    1L,
+                    "application/pdf",
+                    null,
+                    null,
+                    false)))
+        .build();
+  }
 
   @Test
   void givenExpertResult_whenMapped_thenConvertsUseCaseTypesToGeneratedApiTypes() {
@@ -184,7 +219,7 @@ class GetPriorAuthorityResponseMapperTest {
                     "{}"))
             .uploadedDocuments(
                 List.of(
-                    new UploadDocument(
+                    new DocumentMetadata(
                         documentId,
                         null,
                         null,
@@ -229,7 +264,7 @@ class GetPriorAuthorityResponseMapperTest {
         PriorAuthorityResult.builder()
             .uploadedDocuments(
                 List.of(
-                    new UploadDocument(
+                    new DocumentMetadata(
                         firstDocumentId,
                         "GATEWAY_EVIDENCE",
                         firstUploadedAt,
@@ -238,7 +273,7 @@ class GetPriorAuthorityResponseMapperTest {
                         "first-checksum",
                         "CIVIL_APPLY",
                         false),
-                    new UploadDocument(
+                    new DocumentMetadata(
                         secondDocumentId,
                         "GATEWAY_EVIDENCE",
                         secondUploadedAt,
@@ -267,14 +302,14 @@ class GetPriorAuthorityResponseMapperTest {
         .extracting("documentType", "fileType", "mediaType", "size", "sourceService", "checksum")
         .containsExactly(
             org.assertj.core.groups.Tuple.tuple(
-                PriorAuthorityDocumentType.GATEWAY_EVIDENCE,
+                DocumentType.GATEWAY_EVIDENCE,
                 "PDF",
                 "application/pdf",
                 42L,
                 "CIVIL_APPLY",
                 "first-checksum"),
             org.assertj.core.groups.Tuple.tuple(
-                PriorAuthorityDocumentType.GATEWAY_EVIDENCE,
+                DocumentType.GATEWAY_EVIDENCE,
                 "PDF",
                 "application/pdf",
                 84L,
@@ -383,7 +418,7 @@ class GetPriorAuthorityResponseMapperTest {
             .priorAuthorityType(PriorAuthorityType.EXPERT)
             .uploadedDocuments(
                 List.of(
-                    new UploadDocument(
+                    new DocumentMetadata(
                         firstId,
                         "GATEWAY_EVIDENCE",
                         uploadedAt,
@@ -392,7 +427,7 @@ class GetPriorAuthorityResponseMapperTest {
                         "checksum-one",
                         "CIVIL_APPLY",
                         false),
-                    new UploadDocument(
+                    new DocumentMetadata(
                         secondId,
                         "MERITS_REPORT",
                         null,
@@ -408,8 +443,7 @@ class GetPriorAuthorityResponseMapperTest {
 
     assertThat(response.getUploadedDocuments()).hasSize(2);
     assertThat(response.getUploadedDocuments().get(0).getDocumentType())
-        .isEqualTo(
-            uk.gov.justice.laa.dstew.access.model.PriorAuthorityDocumentType.GATEWAY_EVIDENCE);
+        .isEqualTo(uk.gov.justice.laa.dstew.access.model.DocumentType.GATEWAY_EVIDENCE);
     assertThat(response.getUploadedDocuments().get(0).getFileType()).isEqualTo("PDF");
     assertThat(response.getUploadedDocuments().get(0).getFileName()).isEqualTo("a.pdf");
     assertThat(response.getUploadedDocuments().get(0).getMediaType()).isEqualTo("application/pdf");
@@ -464,8 +498,8 @@ class GetPriorAuthorityResponseMapperTest {
     }
   }
 
-  private UploadDocument document(UUID documentId, Instant uploadedAt, boolean deleted) {
-    return new UploadDocument(
+  private DocumentMetadata document(UUID documentId, Instant uploadedAt, boolean deleted) {
+    return new DocumentMetadata(
         documentId,
         "GATEWAY_EVIDENCE",
         uploadedAt,

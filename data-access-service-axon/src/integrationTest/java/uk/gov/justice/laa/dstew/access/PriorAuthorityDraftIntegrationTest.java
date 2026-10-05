@@ -43,8 +43,7 @@ import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantedOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityDraftRequest;
 import uk.gov.justice.laa.dstew.access.model.DisbursementDetails;
-import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
-import uk.gov.justice.laa.dstew.access.model.PriorAuthorityDocumentType;
+import uk.gov.justice.laa.dstew.access.model.DocumentType;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityResponse;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.model.SavePriorAuthorityDraftRequest;
@@ -53,6 +52,7 @@ import uk.gov.justice.laa.dstew.access.model.SubmitPriorAuthorityDraftResponse;
 import uk.gov.justice.laa.dstew.access.model.UpdatePriorAuthorityDocumentTypeRequest;
 import uk.gov.justice.laa.dstew.access.model.UploadPriorAuthorityDocumentResponse;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
+import uk.gov.justice.laa.dstew.access.service.sds.SdsUploadResult;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 import util.ProjectionAwaiter;
 
@@ -296,7 +296,7 @@ class PriorAuthorityDraftIntegrationTest {
             "Interpreter costs for proceedings",
             validDisbursementRequest());
     when(sdsService.saveEvidenceFile(any(), any(), any()))
-        .thenReturn(new DocumentUploadResponse().checksum("checksum"));
+        .thenReturn(new SdsUploadResult(null, null, "checksum"));
 
     ResponseEntity<String> uploadResponse =
         restTemplate.postForEntity(
@@ -312,8 +312,7 @@ class PriorAuthorityDraftIntegrationTest {
             documentUrl(priorAuthorityId, documentId),
             HttpMethod.PATCH,
             new HttpEntity<>(
-                new UpdatePriorAuthorityDocumentTypeRequest(
-                    PriorAuthorityDocumentType.GATEWAY_EVIDENCE),
+                new UpdatePriorAuthorityDocumentTypeRequest(DocumentType.GATEWAY_EVIDENCE),
                 headers()),
             Void.class);
     assertThat(updateDocumentTypeResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -341,11 +340,32 @@ class PriorAuthorityDraftIntegrationTest {
   }
 
   @Test
+  void givenUnknownDocumentType_whenUpdatedOverHttp_thenRejectsWithoutAppendingEvent() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+
+    ResponseEntity<String> response =
+        restTemplate.exchange(
+            documentUrl(priorAuthorityId, documentId),
+            HttpMethod.PATCH,
+            new HttpEntity<>(Map.of("documentType", "UNKNOWN_TYPE"), headers()),
+            String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM axon.domain_event_entry WHERE aggregate_identifier = ?",
+                Integer.class,
+                priorAuthorityId.toString()))
+        .isZero();
+  }
+
+  @Test
   void givenUploadedDocument_whenDownloaded_thenStreamsContentWithOriginalFilename() {
     UUID applicationId = grantedApplication();
     UUID priorAuthorityId = saveDraft(applicationId, PriorAuthorityType.EXPERT, null, null);
     when(sdsService.saveEvidenceFile(any(), any(), any()))
-        .thenReturn(new DocumentUploadResponse().checksum("checksum"));
+        .thenReturn(new SdsUploadResult(null, null, "checksum"));
     UUID documentId = uploadDocument(priorAuthorityId, "evidence.pdf");
     await()
         .atMost(Duration.ofSeconds(15))
@@ -407,7 +427,7 @@ class PriorAuthorityDraftIntegrationTest {
     UUID applicationId = grantedApplication();
     UUID priorAuthorityId = saveDraft(applicationId, PriorAuthorityType.EXPERT, null, null);
     when(sdsService.saveEvidenceFile(any(), any(), any()))
-        .thenReturn(new DocumentUploadResponse().checksum("checksum"));
+        .thenReturn(new SdsUploadResult(null, null, "checksum"));
     UUID documentId = uploadDocument(priorAuthorityId, "evidence.pdf");
 
     ResponseEntity<Void> deleteResponse =
@@ -447,7 +467,7 @@ class PriorAuthorityDraftIntegrationTest {
             "Interpreter costs for proceedings",
             validDisbursementRequest());
     when(sdsService.saveEvidenceFile(any(), any(), any()))
-        .thenReturn(new DocumentUploadResponse().checksum("checksum"));
+        .thenReturn(new SdsUploadResult(null, null, "checksum"));
     UUID documentId = uploadDocument(priorAuthorityId, "evidence.pdf");
 
     ResponseEntity<Void> deleteResponse =
@@ -500,15 +520,14 @@ class PriorAuthorityDraftIntegrationTest {
             "Interpreter costs for proceedings",
             validDisbursementRequest());
     when(sdsService.saveEvidenceFile(any(), any(), any()))
-        .thenReturn(new DocumentUploadResponse().checksum("checksum"));
+        .thenReturn(new SdsUploadResult(null, null, "checksum"));
     UUID documentId = uploadDocument(priorAuthorityId, "evidence.pdf");
     ResponseEntity<Void> updateDocumentTypeResponse =
         restTemplate.exchange(
             documentUrl(priorAuthorityId, documentId),
             HttpMethod.PATCH,
             new HttpEntity<>(
-                new UpdatePriorAuthorityDocumentTypeRequest(
-                    PriorAuthorityDocumentType.GATEWAY_EVIDENCE),
+                new UpdatePriorAuthorityDocumentTypeRequest(DocumentType.GATEWAY_EVIDENCE),
                 headers()),
             Void.class);
     assertThat(updateDocumentTypeResponse.getStatusCode()).isEqualTo(HttpStatus.OK);

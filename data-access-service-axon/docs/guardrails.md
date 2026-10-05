@@ -111,6 +111,23 @@ on `CommandGateway`. Queries should not cause writes.
 Controllers accept generated OpenAPI types and map them to internal commands. Events and commands
 can evolve for domain reasons without directly changing the public schema.
 
+### Keep document API types at the HTTP adapter
+
+Application and Prior Authority evidence use the common OpenAPI `DocumentType` enum. Controllers
+convert it to a string before invoking document use cases; response mappers convert stored strings
+back to the enum. There is no separate internal enum or aggregate-level enum validation. Internal
+commands retain lifecycle and ownership checks, while REST binding rejects unknown document types.
+
+The `document` package owns shared `DocumentMetadata`, `DocumentDetails`, `DocumentDownload`, and
+`DocumentUploadResult` records. Persisted metadata remains filename-free; download use cases hydrate
+filenames from sensitive content storage. Application-specific queries and authorization stay in
+their owning use cases. SDS document responses use internal records rather than generated API DTOs.
+
+Regenerated clients use `DocumentType` instead of `ApplicationDocumentType` or
+`PriorAuthorityDocumentType`. Application document responses now also use this enum. Historical
+stored strings remain replayable, but values outside the public enum must be resolved before release;
+response mappers do not silently replace or omit them.
+
 ### Translate infrastructure language at the HTTP boundary
 
 Clients should receive application-oriented errors, not aggregate, stream, token, serializer, or

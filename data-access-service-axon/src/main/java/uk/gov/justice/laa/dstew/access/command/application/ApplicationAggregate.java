@@ -38,6 +38,7 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.assign.DirectWorkItemAssignmentCommand;
 import uk.gov.justice.laa.dstew.access.command.worklist.unassign.DirectWorkItemUnassignmentCommand;
+import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
@@ -341,7 +342,7 @@ public class ApplicationAggregate {
     var current = requireDraft(command.applicationId(), draftStore);
     var existing =
         state.uploadedDocuments.stream()
-            .map(UploadDocument::documentId)
+            .map(DocumentMetadata::documentId)
             .anyMatch(id -> id.equals(command.documentId()));
     if (existing) {
       throw new ValidationException(List.of("Document ID already records a different upload"));

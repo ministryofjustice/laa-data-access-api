@@ -5,12 +5,12 @@ import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import org.axonframework.modelling.annotation.InjectEntity;
 import org.springframework.stereotype.Component;
-import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDecider;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentDeleteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
+import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
@@ -20,14 +20,14 @@ public class PriorAuthorityDocumentDeleteCommandHandler {
 
   /** Deletes a document from the prior-authority draft and emits the corresponding event. */
   @CommandHandler
-    public UploadDocument handle(
+    public DocumentMetadata handle(
       PriorAuthorityDocumentDeleteCommand command,
       PriorAuthorityDraftStore draftStore,
       @InjectEntity(idProperty = "priorAuthorityId") PriorAuthorityAggregate priorAuthority,
       EventAppender eventAppender) {
 
     requireDraftLifecycle(priorAuthority);
-    UploadDocument document =
+    DocumentMetadata document =
         priorAuthority.getState().getUploadedDocuments().stream()
             .filter(uploaded -> uploaded.documentId().equals(command.documentId()))
             .filter(uploaded -> !uploaded.deleted())
