@@ -4,8 +4,9 @@ import java.util.Map;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.document.PriorAuthorityDocumentFormat;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityDocument;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
+import uk.gov.justice.laa.dstew.access.document.DocumentDetails;
+import uk.gov.justice.laa.dstew.access.document.DocumentDownload;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
@@ -28,13 +29,13 @@ public class DownloadPriorAuthorityDocumentUseCase {
    * Retrieves document metadata and streamable content when the document belongs to the request.
    */
   @AllowApiCaseworker
-  public PriorAuthorityDocumentDownload downloadDocument(UUID priorAuthorityId, UUID documentId) {
-    PriorAuthorityDocument document = getDocument(priorAuthorityId, documentId);
-    return new PriorAuthorityDocumentDownload(
+  public DocumentDownload downloadDocument(UUID priorAuthorityId, UUID documentId) {
+    DocumentDetails document = getDocument(priorAuthorityId, documentId);
+    return new DocumentDownload(
         document, sdsService.getEvidenceFile(priorAuthorityId, documentId, document.fileName()));
   }
 
-  private PriorAuthorityDocument getDocument(UUID priorAuthorityId, UUID documentId) {
+  private DocumentDetails getDocument(UUID priorAuthorityId, UUID documentId) {
     PriorAuthorityResult result = getPriorAuthorityUseCase.getPriorAuthority(priorAuthorityId);
     if (result.uploadedDocuments() == null) {
       throw documentNotFound(priorAuthorityId, documentId);
@@ -46,7 +47,7 @@ public class DownloadPriorAuthorityDocumentUseCase {
         .findFirst()
         .map(
             document ->
-                new PriorAuthorityDocument(
+                new DocumentDetails(
                     document.documentId(),
                     document.documentType(),
                     filenames.get(documentId),

@@ -10,16 +10,18 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockMultipartFile;
+import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.document.DeletePriorAuthorityDocumentUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.document.UpdatePriorAuthorityDocumentTypeResult;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.document.UpdatePriorAuthorityDocumentTypeUseCase;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.document.UploadPriorAuthorityDocumentResult;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.document.UploadPriorAuthorityDocumentUseCase;
-import uk.gov.justice.laa.dstew.access.model.PriorAuthorityDocumentType;
+import uk.gov.justice.laa.dstew.access.document.DocumentUploadResult;
+import uk.gov.justice.laa.dstew.access.model.DocumentType;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityDocumentTypeUpdateResponse;
 import uk.gov.justice.laa.dstew.access.model.UpdatePriorAuthorityDocumentTypeRequest;
 import uk.gov.justice.laa.dstew.access.model.UploadPriorAuthorityDocumentResponse;
@@ -30,6 +32,7 @@ class PriorAuthorityDocumentCommandControllerTest {
   @Mock private UploadPriorAuthorityDocumentUseCase uploadUseCase;
   @Mock private UpdatePriorAuthorityDocumentTypeUseCase updateTypeUseCase;
   @Mock private DeletePriorAuthorityDocumentUseCase deleteUseCase;
+  @Spy private ObjectMapper objectMapper = new ObjectMapper();
 
   @InjectMocks private PriorAuthorityDocumentCommandController controller;
 
@@ -40,8 +43,8 @@ class PriorAuthorityDocumentCommandControllerTest {
     MockMultipartFile file =
         new MockMultipartFile("file", "evidence.pdf", "application/pdf", "%PDF-content".getBytes());
     String sourceService = "CIVIL_APPLY";
-    UploadPriorAuthorityDocumentResult useCaseResponse =
-        new UploadPriorAuthorityDocumentResult(
+    DocumentUploadResult useCaseResponse =
+        new DocumentUploadResult(
             documentId,
             "evidence.pdf",
             "PDF",
@@ -68,8 +71,10 @@ class PriorAuthorityDocumentCommandControllerTest {
     UUID documentId = UUID.randomUUID();
     Instant updatedAt = Instant.parse("2026-09-10T12:30:00Z");
     UpdatePriorAuthorityDocumentTypeRequest request =
-        new UpdatePriorAuthorityDocumentTypeRequest(PriorAuthorityDocumentType.GATEWAY_EVIDENCE);
-    when(updateTypeUseCase.execute(priorAuthorityId, documentId, request))
+        new UpdatePriorAuthorityDocumentTypeRequest(DocumentType.GATEWAY_EVIDENCE);
+    String serialisedRequest = "{\"documentType\":\"GATEWAY_EVIDENCE\"}";
+    when(updateTypeUseCase.execute(
+            priorAuthorityId, documentId, "GATEWAY_EVIDENCE", serialisedRequest))
         .thenReturn(new UpdatePriorAuthorityDocumentTypeResult(documentId, updatedAt));
 
     ResponseEntity<PriorAuthorityDocumentTypeUpdateResponse> response =
@@ -84,7 +89,8 @@ class PriorAuthorityDocumentCommandControllerTest {
     assertThat(response.getBody().getDocumentId()).isEqualTo(documentId);
     assertThat(response.getBody().getUpdatedAt())
         .isEqualTo(updatedAt.atOffset(java.time.ZoneOffset.UTC));
-    verify(updateTypeUseCase).execute(priorAuthorityId, documentId, request);
+    verify(updateTypeUseCase)
+        .execute(priorAuthorityId, documentId, "GATEWAY_EVIDENCE", serialisedRequest);
   }
 
   @Test

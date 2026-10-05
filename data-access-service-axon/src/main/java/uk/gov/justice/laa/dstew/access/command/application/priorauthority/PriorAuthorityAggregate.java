@@ -10,7 +10,6 @@ import org.axonframework.extension.spring.stereotype.EventSourced;
 import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import org.jspecify.annotations.NonNull;
-import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
@@ -25,9 +24,9 @@ import uk.gov.justice.laa.dstew.access.command.worklist.assign.DirectPriorAuthor
 import uk.gov.justice.laa.dstew.access.command.worklist.unassign.DirectPriorAuthorityWorkItemUnassignmentCommand;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
+import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
-import uk.gov.justice.laa.dstew.access.model.PriorAuthorityDocumentType;
 import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
@@ -111,12 +110,12 @@ public class PriorAuthorityAggregate {
 
   /** Marks a draft document deleted and returns its metadata for external file cleanup. */
   @CommandHandler
-  UploadDocument handle(
+  DocumentMetadata handle(
       PriorAuthorityDocumentDeleteCommand command,
       PriorAuthorityDraftStore draftStore,
       EventAppender eventAppender) {
     requirePriorAuthorityDraft(command.priorAuthorityId());
-    UploadDocument document =
+    DocumentMetadata document =
         requireActiveDocument(command.priorAuthorityId(), command.documentId());
     PriorAuthorityDataPayload existingDraft = requireDraft(command.priorAuthorityId(), draftStore);
     draftStore.upsert(
@@ -131,7 +130,6 @@ public class PriorAuthorityAggregate {
 
   @CommandHandler
   UUID handle(PriorAuthorityDocumentTypeUpdateCommand command, EventAppender eventAppender) {
-    PriorAuthorityDocumentType.fromValue(command.documentType());
     requirePriorAuthorityDraft(command.priorAuthorityId());
     requireActiveDocument(command.priorAuthorityId(), command.documentId());
     eventAppender.append(PriorAuthorityDecider.decideDocumentTypeUpdated(command));
@@ -235,13 +233,13 @@ public class PriorAuthorityAggregate {
     }
   }
 
-  private Optional<UploadDocument> findDocument(UUID documentId) {
+  private Optional<DocumentMetadata> findDocument(UUID documentId) {
     return state.uploadedDocuments.stream()
         .filter(document -> document.documentId().equals(documentId))
         .findFirst();
   }
 
-  private UploadDocument requireActiveDocument(UUID requestedPriorAuthorityId, UUID documentId) {
+  private DocumentMetadata requireActiveDocument(UUID requestedPriorAuthorityId, UUID documentId) {
     return findDocument(documentId)
         .filter(document -> !document.deleted())
         .orElseThrow(

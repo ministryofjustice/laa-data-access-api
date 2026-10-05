@@ -27,9 +27,10 @@ import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadCommand;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftStore;
+import uk.gov.justice.laa.dstew.access.document.DocumentUploadResult;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
-import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
+import uk.gov.justice.laa.dstew.access.service.sds.SdsUploadResult;
 
 @ExtendWith(MockitoExtension.class)
 class UploadDocumentUseCaseTest {
@@ -68,11 +69,11 @@ class UploadDocumentUseCaseTest {
     MockMultipartFile file =
         new MockMultipartFile(
             "file", "test-file.pdf", "application/pdf", "test content".getBytes());
-    DocumentUploadResponse expectedResponse = mock(DocumentUploadResponse.class);
+    SdsUploadResult expectedResponse = mock(SdsUploadResult.class);
     when(draftStore.find(applicationId)).thenReturn(Optional.of(draftPayload()));
     when(sdsService.saveFile(applicationId, file)).thenReturn(expectedResponse);
 
-    DocumentUploadResponse actualResponse = uploadDocumentUseCase.execute(applicationId, file);
+    SdsUploadResult actualResponse = uploadDocumentUseCase.execute(applicationId, file);
 
     assertThat(actualResponse).isEqualTo(expectedResponse);
     verify(sdsService).saveFile(applicationId, file);
@@ -88,7 +89,7 @@ class UploadDocumentUseCaseTest {
     MockMultipartFile file =
         new MockMultipartFile(
             "file", "test-file.pdf", "application/pdf", "test content".getBytes());
-    DocumentUploadResponse response = new DocumentUploadResponse().checksum("checksum");
+    SdsUploadResult response = new SdsUploadResult(null, null, "checksum");
     when(draftStore.find(applicationId)).thenReturn(Optional.of(draftPayload()));
     when(sdsService.saveEvidenceFile(
             ArgumentMatchers.eq(applicationId),
@@ -96,7 +97,7 @@ class UploadDocumentUseCaseTest {
             ArgumentMatchers.eq(file)))
         .thenReturn(response);
 
-    UploadApplicationDocumentResult result =
+    DocumentUploadResult result =
         uploadDocumentUseCase.execute(applicationId, file, "GATEWAY_EVIDENCE", "CIVIL_APPLY");
 
     ArgumentCaptor<ApplicationDocumentUploadCommand> commandCaptor =
@@ -127,13 +128,13 @@ class UploadDocumentUseCaseTest {
     verify(sdsService).saveEvidenceFile(applicationId, commandCaptor.getValue().documentId(), file);
     assertThat(result)
         .extracting(
-            UploadApplicationDocumentResult::documentId,
-            UploadApplicationDocumentResult::fileName,
-            UploadApplicationDocumentResult::fileType,
-            UploadApplicationDocumentResult::contentType,
-            UploadApplicationDocumentResult::size,
-            UploadApplicationDocumentResult::sourceService,
-            UploadApplicationDocumentResult::checksum)
+            DocumentUploadResult::documentId,
+            DocumentUploadResult::fileName,
+            DocumentUploadResult::fileType,
+            DocumentUploadResult::contentType,
+            DocumentUploadResult::size,
+            DocumentUploadResult::sourceService,
+            DocumentUploadResult::checksum)
         .containsExactly(
             commandCaptor.getValue().documentId(),
             "test-file.pdf",
@@ -150,7 +151,7 @@ class UploadDocumentUseCaseTest {
     MultipartFile noContentType = multipartFile(null);
     MultipartFile blankContentType = multipartFile(" ");
     MultipartFile slashlessContentType = multipartFile("pdf");
-    DocumentUploadResponse response = new DocumentUploadResponse().checksum("checksum");
+    SdsUploadResult response = new SdsUploadResult(null, null, "checksum");
     when(draftStore.find(applicationId)).thenReturn(Optional.of(draftPayload()));
     when(sdsService.saveEvidenceFile(
             org.mockito.ArgumentMatchers.eq(applicationId),
@@ -158,13 +159,13 @@ class UploadDocumentUseCaseTest {
             org.mockito.ArgumentMatchers.any(MultipartFile.class)))
         .thenReturn(response);
 
-    UploadApplicationDocumentResult noContentTypeResult =
+    DocumentUploadResult noContentTypeResult =
         uploadDocumentUseCase.execute(
             applicationId, noContentType, "GATEWAY_EVIDENCE", "CIVIL_APPLY");
-    UploadApplicationDocumentResult blankContentTypeResult =
+    DocumentUploadResult blankContentTypeResult =
         uploadDocumentUseCase.execute(
             applicationId, blankContentType, "GATEWAY_EVIDENCE", "CIVIL_APPLY");
-    UploadApplicationDocumentResult slashlessContentTypeResult =
+    DocumentUploadResult slashlessContentTypeResult =
         uploadDocumentUseCase.execute(
             applicationId, slashlessContentType, "GATEWAY_EVIDENCE", "CIVIL_APPLY");
 

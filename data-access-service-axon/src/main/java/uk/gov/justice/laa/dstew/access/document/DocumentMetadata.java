@@ -1,12 +1,12 @@
-package uk.gov.justice.laa.dstew.access.command.application;
+package uk.gov.justice.laa.dstew.access.document;
 
 import java.time.Instant;
 import java.util.UUID;
 import lombok.With;
 
-/** Replayable metadata for a document uploaded to an application. */
+/** Filename-free, replayable document metadata shared by application types. */
 @With
-public record UploadDocument(
+public record DocumentMetadata(
     UUID documentId,
     String documentType,
     Instant uploadedAt,

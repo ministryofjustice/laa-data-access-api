@@ -15,9 +15,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityDocument;
+import uk.gov.justice.laa.dstew.access.document.DocumentDetails;
+import uk.gov.justice.laa.dstew.access.document.DocumentDownload;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.DownloadPriorAuthorityDocumentUseCase;
-import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityDocumentDownload;
 
 /** Verifies that the document controller delegates and maps download metadata. */
 @ExtendWith(MockitoExtension.class)
@@ -31,10 +31,10 @@ class PriorAuthorityDocumentQueryControllerTest {
   void givenOwnedDocument_whenDownloaded_thenUsesOriginalFilenameAndMetadata() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
-    PriorAuthorityDocument document = document(documentId, "application/pdf", 123L);
+    DocumentDetails document = document(documentId, "application/pdf", 123L);
     Resource resource = mock(Resource.class);
     when(downloadPriorAuthorityDocumentUseCase.downloadDocument(priorAuthorityId, documentId))
-        .thenReturn(new PriorAuthorityDocumentDownload(document, resource));
+        .thenReturn(new DocumentDownload(document, resource));
 
     ResponseEntity<Resource> response =
         controller.downloadPriorAuthorityDocument(null, priorAuthorityId, documentId);
@@ -55,8 +55,8 @@ class PriorAuthorityDocumentQueryControllerTest {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
     Instant uploadedAt = Instant.parse("2026-09-08T12:00:00Z");
-    PriorAuthorityDocument document =
-        new PriorAuthorityDocument(
+    DocumentDetails document =
+        new DocumentDetails(
             documentId,
             "GATEWAY_EVIDENCE",
             "evidence.pdf",
@@ -68,7 +68,7 @@ class PriorAuthorityDocumentQueryControllerTest {
             "checksum");
     Resource resource = mock(Resource.class);
     when(downloadPriorAuthorityDocumentUseCase.downloadDocument(priorAuthorityId, documentId))
-        .thenReturn(new PriorAuthorityDocumentDownload(document, resource));
+        .thenReturn(new DocumentDownload(document, resource));
 
     ResponseEntity<Resource> response =
         controller.downloadPriorAuthorityDocument(null, priorAuthorityId, documentId);
@@ -84,7 +84,7 @@ class PriorAuthorityDocumentQueryControllerTest {
     UUID documentId = UUID.randomUUID();
     Resource resource = mock(Resource.class);
     when(downloadPriorAuthorityDocumentUseCase.downloadDocument(priorAuthorityId, documentId))
-        .thenReturn(new PriorAuthorityDocumentDownload(document(documentId, null, null), resource));
+        .thenReturn(new DocumentDownload(document(documentId, null, null), resource));
 
     ResponseEntity<Resource> response =
         controller.downloadPriorAuthorityDocument(null, priorAuthorityId, documentId);
@@ -98,10 +98,10 @@ class PriorAuthorityDocumentQueryControllerTest {
   void givenDocumentWithInvalidMediaType_whenDownloaded_thenUsesDefaultMediaType() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
-    PriorAuthorityDocument document = document(documentId, "invalid media type", 123L);
+    DocumentDetails document = document(documentId, "invalid media type", 123L);
     Resource resource = mock(Resource.class);
     when(downloadPriorAuthorityDocumentUseCase.downloadDocument(priorAuthorityId, documentId))
-        .thenReturn(new PriorAuthorityDocumentDownload(document, resource));
+        .thenReturn(new DocumentDownload(document, resource));
 
     ResponseEntity<Resource> response =
         controller.downloadPriorAuthorityDocument(null, priorAuthorityId, documentId);
@@ -110,8 +110,8 @@ class PriorAuthorityDocumentQueryControllerTest {
         .isEqualTo(MediaType.APPLICATION_OCTET_STREAM);
   }
 
-  private PriorAuthorityDocument document(UUID documentId, String mediaType, Long size) {
-    return new PriorAuthorityDocument(
+  private DocumentDetails document(UUID documentId, String mediaType, Long size) {
+    return new DocumentDetails(
         documentId,
         null,
         "original evidence.pdf",

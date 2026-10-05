@@ -8,10 +8,11 @@ import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentUploadCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.ValidateApplicationGrantedCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
+import uk.gov.justice.laa.dstew.access.document.DocumentUploadResult;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
-import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
+import uk.gov.justice.laa.dstew.access.service.sds.SdsUploadResult;
 
 /** Uploads a prior-authority document to SDS and records its metadata against the draft. */
 @Component
@@ -32,7 +33,7 @@ public class UploadPriorAuthorityDocumentUseCase {
 
   /** Uploads a file and finalises it via a single aggregate command. */
   @AllowApiCaseworker
-  public UploadPriorAuthorityDocumentResult execute(
+  public DocumentUploadResult execute(
       UUID priorAuthorityId, MultipartFile file, String sourceService) {
     PriorAuthorityDocumentFormat format = PriorAuthorityDocumentFormat.validate(file);
     var draft =
@@ -46,9 +47,8 @@ public class UploadPriorAuthorityDocumentUseCase {
 
     UUID documentId = UUID.randomUUID();
     Instant uploadedAt = Instant.now();
-    DocumentUploadResponse sdsResponse =
-        sdsService.saveEvidenceFile(priorAuthorityId, documentId, file);
-    String checksum = sdsResponse == null ? null : sdsResponse.getChecksum();
+    SdsUploadResult sdsResponse = sdsService.saveEvidenceFile(priorAuthorityId, documentId, file);
+    String checksum = sdsResponse == null ? null : sdsResponse.checksum();
 
     dispatcher.dispatch(
         new PriorAuthorityDocumentUploadCommand(
@@ -61,7 +61,7 @@ public class UploadPriorAuthorityDocumentUseCase {
             file.getSize(),
             format.contentType()));
 
-    return new UploadPriorAuthorityDocumentResult(
+    return new DocumentUploadResult(
         documentId,
         file.getOriginalFilename(),
         format.fileType(),

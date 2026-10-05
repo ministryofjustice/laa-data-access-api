@@ -14,7 +14,6 @@ import org.axonframework.messaging.queryhandling.QueryUpdateEmitter;
 import org.axonframework.messaging.queryhandling.annotation.QueryHandler;
 import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Component;
-import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentDeletedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentTypeUpdatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentUploadedEvent;
@@ -26,6 +25,7 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
+import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 
 /** Independently replayable projection of the current state of each prior-authority submission. */
 @Component
@@ -146,9 +146,9 @@ public class PriorAuthorityProjection {
                   .anyMatch(document -> document.documentId().equals(event.documentId()))) {
                 return;
               }
-              List<UploadDocument> documents = new ArrayList<>(current.getUploadedDocuments());
+              List<DocumentMetadata> documents = new ArrayList<>(current.getUploadedDocuments());
               documents.add(
-                  new UploadDocument(
+                  new DocumentMetadata(
                       event.documentId(),
                       null,
                       event.uploadedAt(),
@@ -191,7 +191,7 @@ public class PriorAuthorityProjection {
       UUID priorAuthorityId,
       UUID documentId,
       Instant occurredAt,
-      UnaryOperator<UploadDocument> update) {
+      UnaryOperator<DocumentMetadata> update) {
     repository
         .findById(priorAuthorityId)
         .ifPresent(

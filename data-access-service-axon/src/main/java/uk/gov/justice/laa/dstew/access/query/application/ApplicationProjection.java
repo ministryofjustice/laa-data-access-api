@@ -27,7 +27,6 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
-import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
@@ -41,6 +40,7 @@ import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpd
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
+import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexAccessPolicy;
@@ -399,12 +399,12 @@ public class ApplicationProjection {
                 () ->
                     new IllegalStateException(
                         "Application not found for document upload: " + event.applicationId()));
-    List<UploadDocument> documents = new ArrayList<>(application.getUploadedDocuments());
+    List<DocumentMetadata> documents = new ArrayList<>(application.getUploadedDocuments());
     if (documents.stream().anyMatch(document -> document.documentId().equals(event.documentId()))) {
       return;
     }
     documents.add(
-        new UploadDocument(
+        new DocumentMetadata(
             event.documentId(),
             event.documentType(),
             event.uploadedAt(),
@@ -443,37 +443,6 @@ public class ApplicationProjection {
         ApplicationProjectionExistsQuery.class,
         query -> query.applicationId().equals(event.applicationId()),
         true);
-  }
-
-  /** Projects filename-free document metadata and its sensitive-data version together. */
-  @EventHandler
-  public void on(ApplicationDocumentUploadedEvent event) {
-    applicationReadRepository
-        .findById(event.applicationId())
-        .ifPresent(
-            application -> {
-              List<UploadDocument> documents = new ArrayList<>(application.getUploadedDocuments());
-              if (documents.stream()
-                  .anyMatch(document -> document.documentId().equals(event.documentId()))) {
-                return;
-              }
-              documents.add(
-                  new UploadDocument(
-                      event.documentId(),
-                      event.documentType(),
-                      event.uploadedAt(),
-                      event.size(),
-                      event.contentType(),
-                      event.checksum(),
-                      event.sourceService(),
-                      false));
-              application.setUploadedDocuments(List.copyOf(documents));
-              if (event.applicationDataVersion() != null) {
-                application.setApplicationDataVersion(event.applicationDataVersion());
-              }
-              application.setModifiedAt(event.uploadedAt());
-              applicationReadRepository.save(application);
-            });
   }
 
   private void updateLeadApplicationId(

@@ -239,7 +239,10 @@ class PostgresAxonIntegrationTest {
                       document -> {
                         assertThat(document.getDocumentId()).isEqualTo(documentId);
                         assertThat(document.getFileName()).isEqualTo("originalFilename.pdf");
-                        assertThat(document.getDocumentType()).isEqualTo("GATEWAY_EVIDENCE");
+                        assertThat(document.getDocumentType())
+                            .isEqualTo(
+                                uk.gov.justice.laa.dstew.access.model.DocumentType
+                                    .GATEWAY_EVIDENCE);
                         assertThat(document.getChecksum()).isEqualTo("checksum");
                       });
               assertThat(application.getVersion()).isZero();

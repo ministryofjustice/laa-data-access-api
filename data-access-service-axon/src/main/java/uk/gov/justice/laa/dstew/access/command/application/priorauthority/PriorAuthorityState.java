@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
+import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 
 /** State object reconstructed by folding a PriorAuthority aggregate's event stream. */
 @Getter
@@ -23,5 +23,5 @@ public class PriorAuthorityState {
   UUID caseworkerId;
   long assignmentVersion;
   String priorAuthorityType;
-  List<UploadDocument> uploadedDocuments = new ArrayList<>();
+  List<DocumentMetadata> uploadedDocuments = new ArrayList<>();
 }

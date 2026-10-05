@@ -18,9 +18,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.io.Resource;
-import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityDocument;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
+import uk.gov.justice.laa.dstew.access.document.DocumentDetails;
+import uk.gov.justice.laa.dstew.access.document.DocumentDownload;
+import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
 
@@ -47,12 +48,11 @@ class DownloadPriorAuthorityDocumentUseCaseTest {
     when(sdsService.getEvidenceFile(priorAuthorityId, documentId, "evidence.pdf"))
         .thenReturn(resource);
 
-    PriorAuthorityDocumentDownload download =
-        useCase.downloadDocument(priorAuthorityId, documentId);
+    DocumentDownload download = useCase.downloadDocument(priorAuthorityId, documentId);
 
     assertThat(download.document())
         .isEqualTo(
-            new PriorAuthorityDocument(
+            new DocumentDetails(
                 documentId,
                 "GATEWAY_EVIDENCE",
                 "evidence.pdf",
@@ -84,8 +84,7 @@ class DownloadPriorAuthorityDocumentUseCaseTest {
     when(sdsService.getEvidenceFile(priorAuthorityId, secondDocumentId, "evidence.pdf"))
         .thenReturn(resource);
 
-    PriorAuthorityDocumentDownload download =
-        useCase.downloadDocument(priorAuthorityId, secondDocumentId);
+    DocumentDownload download = useCase.downloadDocument(priorAuthorityId, secondDocumentId);
 
     assertThat(download.document().documentId()).isEqualTo(secondDocumentId);
     assertThat(download.resource()).isSameAs(resource);
@@ -127,8 +126,8 @@ class DownloadPriorAuthorityDocumentUseCaseTest {
   void givenActiveDocumentWithNoFilenameOrKnownContentType_whenDownloaded_thenReturnsNullFields() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
-    UploadDocument document =
-        new UploadDocument(
+    DocumentMetadata document =
+        new DocumentMetadata(
             documentId,
             null,
             Instant.now(),
@@ -143,8 +142,7 @@ class DownloadPriorAuthorityDocumentUseCaseTest {
     when(getPriorAuthorityUseCase.getPriorAuthority(priorAuthorityId)).thenReturn(result);
     when(sdsService.getEvidenceFile(priorAuthorityId, documentId, null)).thenReturn(resource);
 
-    PriorAuthorityDocumentDownload download =
-        useCase.downloadDocument(priorAuthorityId, documentId);
+    DocumentDownload download = useCase.downloadDocument(priorAuthorityId, documentId);
 
     assertThat(download.document().fileName()).isNull();
     assertThat(download.document().fileType()).isNull();
@@ -166,8 +164,8 @@ class DownloadPriorAuthorityDocumentUseCaseTest {
     verifyNoInteractions(sdsService);
   }
 
-  private UploadDocument document(UUID documentId, Instant uploadedAt, boolean deleted) {
-    return new UploadDocument(
+  private DocumentMetadata document(UUID documentId, Instant uploadedAt, boolean deleted) {
+    return new DocumentMetadata(
         documentId,
         "GATEWAY_EVIDENCE",
         uploadedAt,

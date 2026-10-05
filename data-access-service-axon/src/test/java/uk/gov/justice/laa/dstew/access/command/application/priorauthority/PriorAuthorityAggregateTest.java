@@ -1,7 +1,6 @@
 package uk.gov.justice.laa.dstew.access.command.application.priorauthority;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
@@ -34,7 +33,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
@@ -45,6 +43,7 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decisi
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
+import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityStatusConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
@@ -939,15 +938,24 @@ class PriorAuthorityAggregateTest {
   }
 
   @Test
-  void givenInvalidDocumentType_whenUpdateDocumentType_thenRejectsBeforeEmitting() {
+  void givenInternalStringDocumentType_whenUpdateDocumentType_thenDoesNotDependOnApiEnum() {
     PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    Instant occurredAt = Instant.now();
+    aggregate.on(draftStarted(priorAuthorityId, applicationId, occurredAt));
+    aggregate.on(uploadedEvent(priorAuthorityId, documentId, applicationId, occurredAt));
     PriorAuthorityDocumentTypeUpdateCommand command =
         new PriorAuthorityDocumentTypeUpdateCommand(
-            UUID.randomUUID(), UUID.randomUUID(), "INVALID", "{}", Instant.now());
+            priorAuthorityId, documentId, "INTERNAL_TYPE", "{}", occurredAt);
 
-    assertThatIllegalArgumentException().isThrownBy(() -> aggregate.handle(command, eventAppender));
+    assertThat(aggregate.handle(command, eventAppender)).isEqualTo(documentId);
 
-    verifyNoInteractions(eventAppender);
+    verify(eventAppender)
+        .append(
+            new PriorAuthorityDocumentTypeUpdatedEvent(
+                priorAuthorityId, documentId, "INTERNAL_TYPE", occurredAt));
   }
 
   @Test
@@ -998,7 +1006,7 @@ class PriorAuthorityAggregateTest {
                     .withDocumentFilename(documentId, "delete.pdf")
                     .withDocumentFilename(remainingId, "keep.pdf")));
 
-    UploadDocument deleted =
+    DocumentMetadata deleted =
         aggregate.handle(
             new PriorAuthorityDocumentDeleteCommand(priorAuthorityId, documentId, deletedAt),
             draftStore,
@@ -1006,7 +1014,7 @@ class PriorAuthorityAggregateTest {
 
     assertThat(deleted)
         .isEqualTo(
-            new UploadDocument(
+            new DocumentMetadata(
                 documentId, null, occurredAt, 7L, "application/pdf", "sum", "CIVIL_APPLY", false));
     ArgumentCaptor<PriorAuthorityDataPayload> payloadCaptor =
         ArgumentCaptor.forClass(PriorAuthorityDataPayload.class);
