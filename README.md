@@ -242,6 +242,8 @@ Application read endpoints apply row-level visibility using the caller's delegat
 
 The existing `@AllowApiCaseworker` check remains the endpoint-level authorisation gate. Access-aware filtering is an additional row-level restriction. Inaccessible Applications must be returned as the existing not-found result, not as an access-denied response.
 
+When using `swagger-provider-token` for testing, the `LAA_ACCOUNTS` claim is set to `["0Z123A", "1A987X"]`. Use these values in your test data to ensure the provider-scoped queries return results.
+
 #### Adding a new read endpoint or query
 
 Any request-facing endpoint that requires an access policy must use the access-aware query pipeline:
@@ -254,8 +256,6 @@ Any request-facing endpoint that requires an access policy must use the access-a
 Do not inject or call `ApplicationReadRepository` or `ApplicationListIndexReadRepository` directly from request-facing query handlers. Projection `@EventHandler` methods remain raw-repository writers: they must not resolve an access scope or apply access filtering, so replay and recovery can process every Application.
 
 See `ApplicationProjection:handle(FindAllApplicationsQuery query)` for an example of how to combine the functional and access predicates and the confluence documentation on `Access-aware application filtering` for a deeper explanation
-
-When using `swagger-provider-token` for testing, the `LAA_ACCOUNTS` claim is set to `["0Z123A", "1A987X"]`. Use these values in your test data to ensure the provider-scoped queries return results.
 
 ### Local Development
 
