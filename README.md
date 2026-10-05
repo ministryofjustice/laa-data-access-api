@@ -240,13 +240,11 @@ Application read endpoints apply row-level visibility using the caller's delegat
 | `access_as_provider` | Only Applications whose persisted provider `office_code` is in the caller's `LAA_ACCOUNTS` values. Missing or empty accounts return no Application rows. |
 | `access_as_user` | Unrestricted by the provider office-code policy. |
 
-The existing `@AllowApiCaseworker` check remains the endpoint-level authorisation gate. Access-aware filtering is an additional row-level restriction. Inaccessible Applications must be returned as the existing not-found result, not as an access-denied response.
-
 When using `swagger-provider-token` for testing, the `LAA_ACCOUNTS` claim is set to `["0Z123A", "1A987X"]`. Use these values in your test data to ensure the provider-scoped queries return results.
 
 #### Adding a new read endpoint or query
 
-Any request-facing endpoint that requires an access policy must use the access-aware query pipeline:
+Any request-facing endpoint that requires an Application access policy must use the access-aware query pipeline:
 
 1. Resolve `ApplicationReadAccessPolicyProvider` in that use case while the authenticated request is active.
 2. Carry the resulting immutable `ReadAccessScope` in the Axon query message; do not read `SecurityContextHolder` in the query handler.
@@ -255,7 +253,9 @@ Any request-facing endpoint that requires an access policy must use the access-a
 
 Do not inject or call `ApplicationReadRepository` or `ApplicationListIndexReadRepository` directly from request-facing query handlers. Projection `@EventHandler` methods remain raw-repository writers: they must not resolve an access scope or apply access filtering, so replay and recovery can process every Application.
 
-See `ApplicationProjection:handle(FindAllApplicationsQuery query)` for an example of how to combine the functional and access predicates and the confluence documentation on `Access-aware application filtering` for a deeper explanation
+See `ApplicationProjection:handle(FindAllApplicationsQuery query)` for an example of how to combine the functional and access predicates. 
+
+Building an endpoint for information not related to Applications will require a new PolicyProvider and associated ReadAccessScope implementation, see the confluence documentation on `Access-aware application filtering` for a deeper explanation on the pattern used.
 
 ### Local Development
 
