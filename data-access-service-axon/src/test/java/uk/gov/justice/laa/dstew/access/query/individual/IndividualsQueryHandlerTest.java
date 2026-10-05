@@ -159,6 +159,7 @@ class IndividualsQueryHandlerTest {
             base.matterType(),
             base.proceedings(),
             base.serialisedRequest(),
-            base.occurredAt()));
+            base.occurredAt(),
+            List.of()));
   }
 }

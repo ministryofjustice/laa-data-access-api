@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.command.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validApplicationContent;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationContentParser;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ParsedAppContentDetails;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
+import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 
 class ApplicationCreationDetailsFactoryTest {
 
@@ -76,6 +78,67 @@ class ApplicationCreationDetailsFactoryTest {
   }
 
   @Test
+  void givenFields_whenPrepared_thenMapsAllParsedFields() {
+    UUID applicationId = UUID.randomUUID();
+    CreateApplicationCommand command = command(applicationId);
+    ParsedAppContentDetails parsed = parsedDetails();
+    when(applicationContentParser.parse(command.applicationContent())).thenReturn(parsed);
+
+    ApplicationCreationDetails details =
+        factory.prepare(
+            command.status(),
+            command.laaReference(),
+            command.applicationContent(),
+            command.serialisedRequest(),
+            command.schemaVersion());
+
+    assertThat(details.status()).isEqualTo("APPLICATION_SUBMITTED");
+    assertThat(details.laaReference()).isEqualTo("LAA-123");
+    assertThat(details.schemaVersion()).isEqualTo(1);
+    assertThat(details.occurredAt()).isEqualTo(FIXED_NOW);
+  }
+
+  @Test
+  void givenFields_whenPrepared_thenOpponentsArePassedThrough() {
+    UUID applicationId = UUID.randomUUID();
+    CreateApplicationCommand command = command(applicationId);
+    when(applicationContentParser.parse(command.applicationContent())).thenReturn(parsedDetails());
+
+    ApplicationCreationDetails details =
+        factory.prepare(
+            command.status(),
+            command.laaReference(),
+            command.applicationContent(),
+            command.serialisedRequest(),
+            command.schemaVersion());
+
+    assertThat(details.opponents()).isEmpty();
+  }
+
+  @Test
+  void givenProceedings_whenPreparedViaFields_thenGeneratesProceedingIds() {
+    UUID applicationId = UUID.randomUUID();
+    UUID applyProceedingId = UUID.randomUUID();
+    CreateApplicationCommand command = command(applicationId);
+    when(applicationContentParser.parse(command.applicationContent()))
+        .thenReturn(parsedDetailsWithProceedings(applyProceedingId));
+
+    ApplicationCreationDetails details =
+        factory.prepare(
+            command.status(),
+            command.laaReference(),
+            command.applicationContent(),
+            command.serialisedRequest(),
+            command.schemaVersion());
+
+    assertThat(details.proceedings()).hasSize(1);
+    Proceeding proceeding = details.proceedings().getFirst();
+    assertThat(proceeding.getId()).isEqualTo(applyProceedingId);
+    assertThat(proceeding.getDescription()).isEqualTo("Care order");
+    assertThat(proceeding.getLeadProceeding()).isTrue();
+  }
+
+  @Test
   void givenCreationDetailsRecord_whenInspected_thenContainsOnlyCreationFields() {
     List<String> componentNames =
         Arrays.stream(ApplicationCreationDetails.class.getRecordComponents())
@@ -96,7 +159,46 @@ class ApplicationCreationDetailsFactoryTest {
             "matterType",
             "proceedings",
             "serialisedRequest",
-            "occurredAt");
+            "occurredAt",
+            "potentialDuplicates");
+  }
+
+  @Test
+  void givenCommandWithNullPotentialDuplicates_whenPrepared_thenNormalizesToEmptyList() {
+    UUID applicationId = UUID.randomUUID();
+    CreateApplicationCommand command = command(applicationId);
+    when(applicationContentParser.parse(command.applicationContent())).thenReturn(parsedDetails());
+
+    ApplicationCreationDetails details = factory.prepare(command);
+
+    assertThat(details.potentialDuplicates()).isEmpty();
+  }
+
+  @Test
+  void
+      givenCommandWithPopulatedPotentialDuplicates_whenPrepared_thenPassesThroughAndMakesImmutable() {
+    UUID applicationId = UUID.randomUUID();
+    List<PotentialDuplicate> duplicates =
+        List.of(new PotentialDuplicate("LAA-456"), new PotentialDuplicate("LAA-789"));
+    var mutableDuplicates = new java.util.ArrayList<>(duplicates);
+    CreateApplicationCommand commandWithDuplicates =
+        new CreateApplicationCommand(
+            applicationId,
+            "APPLICATION_SUBMITTED",
+            "LAA-123",
+            validApplicationContent(applicationId, proceedingIdFor(applicationId)),
+            "{}",
+            1,
+            "BaseCivilApplication.json",
+            mutableDuplicates);
+    when(applicationContentParser.parse(commandWithDuplicates.applicationContent()))
+        .thenReturn(parsedDetails());
+
+    ApplicationCreationDetails details = factory.prepare(commandWithDuplicates);
+
+    assertThat(details.potentialDuplicates()).isEqualTo(duplicates);
+    assertThatThrownBy(() -> details.potentialDuplicates().add(new PotentialDuplicate("BOOM")))
+        .isInstanceOf(UnsupportedOperationException.class);
   }
 
   private ParsedAppContentDetails parsedDetailsWithProceedings(UUID proceedingId) {
@@ -118,7 +220,8 @@ class ApplicationCreationDetailsFactoryTest {
         validApplicationContent(applicationId, proceedingIdFor(applicationId)),
         "{}",
         1,
-        "BaseCivilApplication.json");
+        "BaseCivilApplication.json",
+        null);
   }
 
   private ParsedAppContentDetails parsedDetails() {

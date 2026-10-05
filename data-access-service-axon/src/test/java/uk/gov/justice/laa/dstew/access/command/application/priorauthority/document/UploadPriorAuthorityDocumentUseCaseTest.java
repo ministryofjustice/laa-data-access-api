@@ -209,6 +209,7 @@ class UploadPriorAuthorityDocumentUseCaseTest {
     UploadPriorAuthorityDocumentUseCase useCase =
         new UploadPriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService, objectMapper);
     MultipartFile file = mock(MultipartFile.class);
+    when(file.getOriginalFilename()).thenReturn("evidence.pdf");
     when(file.getContentType()).thenReturn("application/pdf");
     when(file.getInputStream()).thenThrow(new IOException("Unable to read file"));
 

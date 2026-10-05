@@ -41,6 +41,7 @@ import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictExce
 import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException;
 import uk.gov.justice.laa.dstew.access.exception.InvalidApplicationStateException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 class ApplicationAggregateTest {
@@ -400,7 +401,8 @@ class ApplicationAggregateTest {
             "fingerprint",
             "APPLICATION_IN_PROGRESS",
             1,
-            Instant.parse("2026-07-21T09:00:00Z"));
+            Instant.parse("2026-07-21T09:00:00Z"),
+            null);
 
     fixture
         .given()
@@ -584,7 +586,10 @@ class ApplicationAggregateTest {
                             ApplicationDataStore.class, configuration -> applicationDataStore)
                         .registerComponent(
                             ApplicationUpdateDetailsFactory.class,
-                            configuration -> updateDetailsFactory)));
+                            configuration -> updateDetailsFactory)
+                        .registerComponent(
+                            JsonSchemaValidator.class,
+                            configuration -> mock(JsonSchemaValidator.class))));
   }
 
   private CreateApplicationCommand createCommand(UUID applicationId, String serialisedRequest) {
@@ -631,7 +636,8 @@ class ApplicationAggregateTest {
                 .code("SE003")
                 .build()),
         original.serialisedRequest(),
-        original.occurredAt());
+        original.occurredAt(),
+        List.of());
   }
 
   private CreateApplicationCommand createCommandWithSchema(
@@ -643,7 +649,8 @@ class ApplicationAggregateTest {
         validApplicationContent(applicationId, proceedingIdFor(applicationId)),
         serialisedRequest,
         schemaVersion,
-        "BaseCivilApplication.json");
+        "BaseCivilApplication.json",
+        null);
   }
 
   private UUID proceedingIdFor(UUID applicationId) {

@@ -6,6 +6,7 @@ import java.util.UUID;
 import net.datafaker.Faker;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 
 /** Builds valid API requests shared by fast and Postgres integration tests. */
 public final class ApplicationCreateRequestFixture {
@@ -95,6 +96,37 @@ public final class ApplicationCreateRequestFixture {
         .status(ApplicationStatus.APPLICATION_SUBMITTED)
         .applicationContent(validApplicationContentWithRandomData(applicationId, applyProceedingId))
         .laaReference("LAA-123")
+        .build();
+  }
+
+  /** Creates a valid request with potentialDuplicates using the supplied identifiers. */
+  public static ApplicationCreateRequest validCreateApplicationRequestWithPotentialDuplicates(
+      UUID applicationId, UUID applyProceedingId, List<PotentialDuplicate> potentialDuplicates) {
+    return ApplicationCreateRequest.builder()
+        .id(applicationId)
+        .status(ApplicationStatus.APPLICATION_SUBMITTED)
+        .applicationContent(validApplicationContent(applicationId, applyProceedingId))
+        .laaReference("LAA-123")
+        .potentialDuplicates(potentialDuplicates)
+        .build();
+  }
+
+  /** Creates a PotentialDuplicate for testing. */
+  public static PotentialDuplicate potentialDuplicateWithLaaReference(String laaReference) {
+    return PotentialDuplicate.builder()
+        .applicationId(UUID.randomUUID())
+        .laaReference(laaReference)
+        .legacyReference(null)
+        .build();
+  }
+
+  /** Creates a PotentialDuplicate with both laaReference and legacyReference. */
+  public static PotentialDuplicate potentialDuplicateWithBothReferences(
+      String laaReference, String legacyReference) {
+    return PotentialDuplicate.builder()
+        .applicationId(UUID.randomUUID())
+        .laaReference(laaReference)
+        .legacyReference(legacyReference)
         .build();
   }
 

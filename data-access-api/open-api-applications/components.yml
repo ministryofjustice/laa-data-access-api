@@ -88,6 +88,11 @@ components:
         version:
           type: integer
           format: int64
+        potentialDuplicates:
+          type: array
+          description: List of potential duplicate applications
+          items:
+            $ref: "#/components/schemas/PotentialDuplicate"
 
     ProviderResponse:
       type: object
@@ -96,6 +101,23 @@ components:
           type: string
         contactEmail:
           type: string
+
+    PotentialDuplicate:
+      type: object
+      description: Reference to a potential duplicate application
+      required:
+        - laaReference
+      properties:
+        applicationId:
+          type: string
+          format: uuid
+          description: The application ID of the potential duplicate application
+        laaReference:
+          type: string
+          description: The LAA reference of the potential duplicate application
+        legacyReference:
+          type: string
+          description: The legacy reference of the potential duplicate application
 
     ApplicationCreateRequest:
       type: object
@@ -119,6 +141,11 @@ components:
         laaReference:
           type: string
           minLength: 1
+        potentialDuplicates:
+          type: array
+          description: List of potential duplicate applications
+          items:
+            $ref: "#/components/schemas/PotentialDuplicate"
 
     ApplicationUpdateRequest:
       type: object
@@ -132,6 +159,67 @@ components:
           description: Application data to update
           additionalProperties: true
           minProperties: 1
+
+    SaveApplicationDraftRequest:
+      type: object
+      required:
+        - status
+        - applicationContent
+        - laaReference
+      properties:
+        status:
+          $ref: "../open-api-common/components.yml#/components/schemas/ApplicationStatus"
+        applicationContent:
+          type: object
+          description: Application data accumulated so far on the draft
+          additionalProperties: true
+          minProperties: 1
+        laaReference:
+          type: string
+          minLength: 1
+        potentialDuplicates:
+          type: array
+          description: List of potential duplicate applications
+          items:
+            $ref: "#/components/schemas/PotentialDuplicate"
+
+    CreateApplicationDraftRequest:
+      allOf:
+        - type: object
+          required:
+            - id
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: The unique reference used to identify the application.
+        - $ref: "#/components/schemas/SaveApplicationDraftRequest"
+
+    SaveApplicationDraftResponse:
+      type: object
+      required:
+        - applicationId
+        - savedAt
+      properties:
+        applicationId:
+          type: string
+          format: uuid
+        savedAt:
+          type: string
+          format: date-time
+
+    SubmitApplicationDraftResponse:
+      type: object
+      required:
+        - applicationId
+        - submittedAt
+      properties:
+        applicationId:
+          type: string
+          format: uuid
+        submittedAt:
+          type: string
+          format: date-time
 
     ApplicationLinkType:
       type: string
