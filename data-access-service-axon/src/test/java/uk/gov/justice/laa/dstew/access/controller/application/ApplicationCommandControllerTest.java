@@ -23,6 +23,7 @@ import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationComm
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionUseCase;
+import uk.gov.justice.laa.dstew.access.command.application.document.UploadApplicationDocumentResult;
 import uk.gov.justice.laa.dstew.access.command.application.document.UploadDocumentUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkApplicationUseCase;
@@ -206,6 +207,48 @@ class ApplicationCommandControllerTest {
     verify(uploadDocumentUseCase).execute(id, file);
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
     assertThat(response.getBody()).isEqualTo(expected);
+  }
+
+  @Test
+  void givenDocumentType_whenUploadApplicationDocument_thenDelegatesToUseCaseAndReturns201() {
+    UUID id = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    Instant uploadedAt = Instant.parse("2026-09-28T15:10:27.430Z");
+    MockMultipartFile file =
+        new MockMultipartFile("file", "test.pdf", "application/pdf", "content".getBytes());
+    UploadApplicationDocumentResult expected =
+        new UploadApplicationDocumentResult(
+            documentId,
+            "test.pdf",
+            "PDF",
+            "application/pdf",
+            7L,
+            uploadedAt,
+            "CIVIL_APPLY",
+            "checksum");
+    when(uploadDocumentUseCase.execute(id, file, "GATEWAY_EVIDENCE", "CIVIL_APPLY"))
+        .thenReturn(expected);
+
+    ResponseEntity<uk.gov.justice.laa.dstew.access.model.UploadApplicationDocumentResponse>
+        response =
+            controller.uploadApplicationDocument(
+                uk.gov.justice.laa.dstew.access.model.ServiceName.CIVIL_APPLY,
+                id,
+                file,
+                uk.gov.justice.laa.dstew.access.model.ApplicationDocumentType.GATEWAY_EVIDENCE);
+
+    verify(uploadDocumentUseCase).execute(id, file, "GATEWAY_EVIDENCE", "CIVIL_APPLY");
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    assertThat(response.getBody()).isNotNull();
+    assertThat(response.getBody().getDocumentId()).isEqualTo(documentId);
+    assertThat(response.getBody().getFileName()).isEqualTo("test.pdf");
+    assertThat(response.getBody().getFileType()).isEqualTo("PDF");
+    assertThat(response.getBody().getContentType()).isEqualTo("application/pdf");
+    assertThat(response.getBody().getSize()).isEqualTo(7L);
+    assertThat(response.getBody().getUploadedAt())
+        .isEqualTo(uploadedAt.atOffset(java.time.ZoneOffset.UTC));
+    assertThat(response.getBody().getSourceService()).isEqualTo("CIVIL_APPLY");
+    assertThat(response.getBody().getChecksum()).isEqualTo("checksum");
   }
 
   private CreateApplicationCommand stubCreateCommand() {

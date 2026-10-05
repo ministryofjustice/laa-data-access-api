@@ -11,6 +11,7 @@ import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequest
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationCreatedEvent;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationCreationDetails;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +31,9 @@ import uk.gov.justice.laa.dstew.access.command.application.ApplicationAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreationDetails;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreationDetailsFactory;
+import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadCommand;
+import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftStore;
@@ -75,6 +79,162 @@ class ApplicationAggregateDraftTest {
   @AfterEach
   void tearDown() {
     fixture.stop();
+  }
+
+  @Test
+  void givenDraft_whenDocumentUploaded_thenStoresFilenameAndEmitsThinMetadata() {
+    UUID applicationId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    Instant uploadedAt = Instant.parse("2026-10-02T10:00:00Z");
+    ApplicationDraftPayload draft =
+        new ApplicationDraftPayload("APPLICATION_SUBMITTED", "LAA-123", Map.of(), "{}", List.of());
+    when(draftStore.find(applicationId)).thenReturn(Optional.of(draft));
+
+    fixture
+        .given()
+        .events(new ApplicationDraftStartedEvent(applicationId, 1, "hash", uploadedAt))
+        .when()
+        .command(
+            new ApplicationDocumentUploadCommand(
+                applicationId,
+                documentId,
+                "GATEWAY_EVIDENCE",
+                uploadedAt,
+                12L,
+                "application/pdf",
+                "checksum",
+                "CIVIL_APPLY",
+                "client-report.pdf"))
+        .then()
+        .resultMessagePayload(documentId)
+        .events(
+            new ApplicationDocumentUploadedEvent(
+                applicationId,
+                documentId,
+                "GATEWAY_EVIDENCE",
+                uploadedAt,
+                12L,
+                "application/pdf",
+                "checksum",
+                "CIVIL_APPLY"));
+
+    ArgumentCaptor<ApplicationDraftPayload> payload =
+        ArgumentCaptor.forClass(ApplicationDraftPayload.class);
+    verify(draftStore).upsert(eq(applicationId), payload.capture(), eq("{}"), eq(uploadedAt));
+    assertThat(payload.getValue().documentFilenames())
+        .containsEntry(documentId, "client-report.pdf");
+    verify(applicationDataStore, never()).append(any(), any(Long.class), any(), any(), any());
+  }
+
+  @Test
+  void givenDraftWithFilename_whenSubmitted_thenCopiesFilenameIntoImmutableContent() {
+    UUID applicationId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-10-02T10:00:00Z");
+    ApplicationDraftPayload draft =
+        new ApplicationDraftPayload(
+                "APPLICATION_SUBMITTED",
+                "LAA-123",
+                validApplicationContent(applicationId, UUID.randomUUID()),
+                "{}",
+                List.of())
+            .withDocumentFilename(documentId, "client-report.pdf");
+    ApplicationCreationDetails details = applicationCreationDetails(applicationId);
+    when(draftStore.find(applicationId)).thenReturn(Optional.of(draft));
+    when(creationDetailsFactory.prepare(any(), any(), any(), any(), anyInt(), any()))
+        .thenReturn(details);
+    when(applicationDataStore.append(
+            eq(applicationId),
+            eq(0L),
+            any(),
+            eq(details.serialisedRequest()),
+            eq(details.occurredAt())))
+        .thenReturn("hash");
+
+    fixture
+        .given()
+        .events(
+            new ApplicationDraftStartedEvent(applicationId, 1, "hash", occurredAt),
+            new ApplicationDocumentUploadedEvent(
+                applicationId,
+                documentId,
+                "GATEWAY_EVIDENCE",
+                occurredAt,
+                12L,
+                "application/pdf",
+                "checksum",
+                "CIVIL_APPLY"))
+        .when()
+        .command(new SubmitApplicationDraftCommand(applicationId, occurredAt.plusSeconds(1)))
+        .then()
+        .resultMessagePayload(applicationId)
+        .events(
+            new ApplicationCreatedEvent(
+                applicationId,
+                0L,
+                "hash",
+                details.status(),
+                details.schemaVersion(),
+                details.occurredAt(),
+                details.potentialDuplicates()));
+
+    ArgumentCaptor<ApplicationDataPayload> payload =
+        ArgumentCaptor.forClass(ApplicationDataPayload.class);
+    verify(applicationDataStore)
+        .append(
+            eq(applicationId),
+            eq(0L),
+            payload.capture(),
+            eq(details.serialisedRequest()),
+            eq(details.occurredAt()));
+    assertThat(payload.getValue().documentFilenames())
+        .containsEntry(documentId, "client-report.pdf");
+    verify(draftStore).delete(applicationId);
+  }
+
+  @Test
+  void givenLegacyDraftPayload_whenFilenameAdded_thenLeavesOriginalContentUnchanged()
+      throws Exception {
+    UUID documentId = UUID.randomUUID();
+    ApplicationDraftPayload legacy =
+        new ObjectMapper()
+            .readValue(
+                """
+                {"status":"APPLICATION_SUBMITTED","laaReference":"LAA-123",
+                 "applicationContent":{},"serialisedRequest":"{}","potentialDuplicates":[]}
+                """,
+                ApplicationDraftPayload.class);
+
+    ApplicationDraftPayload updated = legacy.withDocumentFilename(documentId, "client-report.pdf");
+
+    assertThat(legacy.documentFilenames()).isEmpty();
+    assertThat(updated.documentFilenames()).containsEntry(documentId, "client-report.pdf");
+  }
+
+  @Test
+  void givenDraftWithoutContent_whenDocumentUploaded_thenRejects() {
+    UUID applicationId = UUID.randomUUID();
+    when(draftStore.find(applicationId)).thenReturn(Optional.empty());
+
+    fixture
+        .given()
+        .events(new ApplicationDraftStartedEvent(applicationId, 1, "hash", Instant.now()))
+        .when()
+        .command(
+            new ApplicationDocumentUploadCommand(
+                applicationId,
+                UUID.randomUUID(),
+                "GATEWAY_EVIDENCE",
+                Instant.now(),
+                12L,
+                "application/pdf",
+                "checksum",
+                "CIVIL_APPLY",
+                "report.pdf"))
+        .then()
+        .exception(ResourceNotFoundException.class)
+        .noEvents();
+    verify(draftStore, never()).upsert(any(), any(), any(), any());
   }
 
   @Test
@@ -268,7 +428,12 @@ class ApplicationAggregateDraftTest {
     when(draftStore.find(applicationId)).thenReturn(Optional.of(draftPayload));
     when(creationDetailsFactory.prepare(any(), any(), any(), any(), anyInt(), any()))
         .thenReturn(details);
-    when(applicationDataStore.append(eq(applicationId), eq(0L), eq(details)))
+    when(applicationDataStore.append(
+            eq(applicationId),
+            eq(0L),
+            eq(ApplicationDataPayload.from(details)),
+            eq(details.serialisedRequest()),
+            eq(details.occurredAt())))
         .thenReturn(fingerprint);
 
     SubmitApplicationDraftCommand command =
@@ -291,7 +456,13 @@ class ApplicationAggregateDraftTest {
                 details.occurredAt(),
                 details.potentialDuplicates()));
 
-    verify(applicationDataStore).append(applicationId, 0L, details);
+    verify(applicationDataStore)
+        .append(
+            applicationId,
+            0L,
+            ApplicationDataPayload.from(details),
+            details.serialisedRequest(),
+            details.occurredAt());
     verify(draftStore).delete(applicationId);
   }
 
