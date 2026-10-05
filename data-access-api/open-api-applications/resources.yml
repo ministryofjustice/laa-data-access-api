@@ -480,6 +480,7 @@ paths:
         - application-command
       summary: Upload a document to document storage and return the file ID
       operationId: uploadDocument
+      deprecated: true
       parameters:
         - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
         - name: id
@@ -510,6 +511,49 @@ paths:
         '400': { description: Bad request }
         '401': { description: Unauthorized }
         '403': { description: Forbidden }
+        '409': { description: Conflict - file with same name already exists }
+        '500': { description: Internal server error }
+
+  /api/v0/applications/{id}/documents:
+    post:
+      tags:
+        - application-document-command
+      summary: Upload a supporting document to an Application
+      operationId: uploadApplicationDocument
+      parameters:
+        - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+                - documentType
+              properties:
+                file:
+                  type: string
+                  format: binary
+                documentType:
+                  $ref: "./components.yml#/components/schemas/ApplicationDocumentType"
+      responses:
+        '201':
+          description: Document uploaded and recorded against the Application
+          content:
+            application/json:
+              schema:
+                $ref: "./components.yml#/components/schemas/UploadApplicationDocumentResponse"
+        '400': { description: Bad request }
+        '401': { description: Unauthorized }
+        '403': { description: Forbidden }
+        '404': { description: Application not found }
         '409': { description: Conflict - file with same name already exists }
         '500': { description: Internal server error }
 

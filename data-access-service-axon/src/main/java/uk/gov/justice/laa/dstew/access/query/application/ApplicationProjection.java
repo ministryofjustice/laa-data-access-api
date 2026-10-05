@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.query.application;
 import static uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationStatus.APPLICATION_SUBMITTED;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -24,11 +25,14 @@ import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
+import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
+import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftStartedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
@@ -111,6 +115,12 @@ public class ApplicationProjection {
               return new ApplicationDetailResult(application, linkedGroup, priorAuthorities);
             })
         .orElse(null);
+  }
+
+  /** Returns whether the projection exists, including drafts without submitted content. */
+  @QueryHandler
+  public boolean handle(ApplicationProjectionExistsQuery query) {
+    return applicationReadRepository.existsById(query.applicationId());
   }
 
   /** Returns the current-state projection for the requested Application. */
@@ -254,6 +264,11 @@ public class ApplicationProjection {
                 .leadApplicationId(null)
                 .potentialDuplicates(event.potentialDuplicates())
                 .officeCode(officeCode(data))
+                .uploadedDocuments(
+                    applicationReadRepository
+                        .findById(event.applicationId())
+                        .map(ApplicationReadModel::getUploadedDocuments)
+                        .orElse(List.of()))
                 .build());
     queryUpdateEmitter.emit(
         FindApplicationByIdQuery.class,
@@ -372,6 +387,62 @@ public class ApplicationProjection {
               application.setModifiedAt(event.occurredAt());
               applicationReadRepository.save(application);
             });
+  }
+
+  /** Projects filename-free document metadata and its sensitive-data version together. */
+  @EventHandler
+  public void on(ApplicationDocumentUploadedEvent event) {
+    ApplicationReadModel application =
+        applicationReadRepository
+            .findById(event.applicationId())
+            .orElseThrow(
+                () ->
+                    new IllegalStateException(
+                        "Application not found for document upload: " + event.applicationId()));
+    List<UploadDocument> documents = new ArrayList<>(application.getUploadedDocuments());
+    if (documents.stream().anyMatch(document -> document.documentId().equals(event.documentId()))) {
+      return;
+    }
+    documents.add(
+        new UploadDocument(
+            event.documentId(),
+            event.documentType(),
+            event.uploadedAt(),
+            event.size(),
+            event.contentType(),
+            event.checksum(),
+            event.sourceService(),
+            false));
+    application.setUploadedDocuments(List.copyOf(documents));
+    if (event.applicationDataVersion() != null) {
+      application.setApplicationDataVersion(event.applicationDataVersion());
+    }
+    application.setModifiedAt(event.uploadedAt());
+    applicationReadRepository.save(application);
+  }
+
+  /** Creates the current-state row when an application draft is started. */
+  @EventHandler
+  public void on(ApplicationDraftStartedEvent event, QueryUpdateEmitter queryUpdateEmitter) {
+    ApplicationReadModel application =
+        applicationReadRepository
+            .findById(event.applicationId())
+            .orElseGet(
+                () ->
+                    ApplicationReadModel.builder()
+                        .applicationId(event.applicationId())
+                        .status(ApplicationStatus.APPLICATION_IN_PROGRESS.getValue())
+                        .applicationDataVersion(0L)
+                        .applicationVersion(0L)
+                        .schemaVersion(event.schemaVersion())
+                        .createdAt(event.occurredAt())
+                        .modifiedAt(event.occurredAt())
+                        .build());
+    applicationReadRepository.save(application);
+    queryUpdateEmitter.emit(
+        ApplicationProjectionExistsQuery.class,
+        query -> query.applicationId().equals(event.applicationId()),
+        true);
   }
 
   private void updateLeadApplicationId(
@@ -499,6 +570,7 @@ public class ApplicationProjection {
     application.setAutoGranted(data.autoGranted());
     application.setMeritsDecisions(data.meritsDecisions());
     application.setCertificate(data.certificate());
+    application.setDocumentFilenames(data.documentFilenames());
     return application;
   }
 

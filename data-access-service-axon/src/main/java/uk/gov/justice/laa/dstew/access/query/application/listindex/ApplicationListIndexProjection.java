@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
 import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
@@ -231,6 +232,19 @@ public class ApplicationListIndexProjection {
         .ifPresent(
             row -> {
               row.setModifiedAt(event.occurredAt());
+              row.setProjectionPosition(message.identifier().hashCode());
+              listIndexRepository.save(row);
+            });
+  }
+
+  /** Updates application list ordering after an upload without loading filenames. */
+  @EventHandler
+  public void on(ApplicationDocumentUploadedEvent event, EventMessage message) {
+    listIndexRepository
+        .findById(event.applicationId())
+        .ifPresent(
+            row -> {
+              row.setModifiedAt(event.uploadedAt());
               row.setProjectionPosition(message.identifier().hashCode());
               listIndexRepository.save(row);
             });
