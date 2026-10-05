@@ -32,6 +32,7 @@ import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataI
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
+import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftStartedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
@@ -102,6 +103,12 @@ public class ApplicationProjection {
               return new ApplicationDetailResult(application, linkedGroup, priorAuthorities);
             })
         .orElse(null);
+  }
+
+  /** Returns whether the projection exists, including drafts without submitted content. */
+  @QueryHandler
+  public boolean handle(ApplicationProjectionExistsQuery query) {
+    return applicationReadRepository.existsById(query.applicationId());
   }
 
   /** Returns the current-state projection for the requested Application. */
@@ -360,14 +367,10 @@ public class ApplicationProjection {
     ApplicationReadModel application =
         applicationReadRepository
             .findById(event.applicationId())
-            .orElseGet(
+            .orElseThrow(
                 () ->
-                    ApplicationReadModel.builder()
-                        .applicationId(event.applicationId())
-                        .status(ApplicationStatus.APPLICATION_IN_PROGRESS.getValue())
-                        .createdAt(event.uploadedAt())
-                        .modifiedAt(event.uploadedAt())
-                        .build());
+                    new IllegalStateException(
+                        "Application not found for document upload: " + event.applicationId()));
     List<UploadDocument> documents = new ArrayList<>(application.getUploadedDocuments());
     if (documents.stream().anyMatch(document -> document.documentId().equals(event.documentId()))) {
       return;
@@ -388,6 +391,30 @@ public class ApplicationProjection {
     }
     application.setModifiedAt(event.uploadedAt());
     applicationReadRepository.save(application);
+  }
+
+  /** Creates the current-state row when an application draft is started. */
+  @EventHandler
+  public void on(ApplicationDraftStartedEvent event, QueryUpdateEmitter queryUpdateEmitter) {
+    ApplicationReadModel application =
+        applicationReadRepository
+            .findById(event.applicationId())
+            .orElseGet(
+                () ->
+                    ApplicationReadModel.builder()
+                        .applicationId(event.applicationId())
+                        .status(ApplicationStatus.APPLICATION_IN_PROGRESS.getValue())
+                        .applicationDataVersion(0L)
+                        .applicationVersion(0L)
+                        .schemaVersion(event.schemaVersion())
+                        .createdAt(event.occurredAt())
+                        .modifiedAt(event.occurredAt())
+                        .build());
+    applicationReadRepository.save(application);
+    queryUpdateEmitter.emit(
+        ApplicationProjectionExistsQuery.class,
+        query -> query.applicationId().equals(event.applicationId()),
+        true);
   }
 
   private void updateLeadApplicationId(

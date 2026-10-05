@@ -24,7 +24,10 @@ import org.axonframework.messaging.queryhandling.QueryUpdateEmitter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -32,6 +35,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
@@ -40,6 +44,7 @@ import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataP
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationNote;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
+import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftStartedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
@@ -117,12 +122,59 @@ class ApplicationProjectionTest {
     assertThat(application.getDocumentFilenames()).isNull();
   }
 
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void givenProjectionExistence_whenQueried_thenReturnsExistenceWithoutHydration(boolean exists) {
+    UUID applicationId = UUID.randomUUID();
+    when(applicationReadRepository.existsById(applicationId)).thenReturn(exists);
+
+    assertThat(projection.handle(new ApplicationProjectionExistsQuery(applicationId)))
+        .isEqualTo(exists);
+    org.mockito.Mockito.verifyNoInteractions(applicationDataStore);
+  }
+
+  @Test
+  void givenDraftStarted_whenProjected_thenCreatesReadableDraftAndEmitsUpdate() {
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-10-05T10:00:00Z");
+    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.empty());
+    when(applicationReadRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+    projection.on(
+        new ApplicationDraftStartedEvent(applicationId, 3, "fingerprint", occurredAt),
+        queryUpdateEmitter);
+
+    ArgumentCaptor<ApplicationReadModel> saved =
+        ArgumentCaptor.forClass(ApplicationReadModel.class);
+    verify(applicationReadRepository).save(saved.capture());
+    assertThat(saved.getValue().getApplicationId()).isEqualTo(applicationId);
+    assertThat(saved.getValue().getStatus())
+        .isEqualTo(ApplicationStatus.APPLICATION_IN_PROGRESS.getValue());
+    assertThat(saved.getValue().getSchemaVersion()).isEqualTo(3);
+    assertThat(saved.getValue().getCreatedAt()).isEqualTo(occurredAt);
+    assertThat(saved.getValue().getModifiedAt()).isEqualTo(occurredAt);
+    verify(queryUpdateEmitter)
+        .emit(
+            ArgumentMatchers.eq(ApplicationProjectionExistsQuery.class),
+            ArgumentMatchers.<Predicate<ApplicationProjectionExistsQuery>>any(),
+            ArgumentMatchers.eq(true));
+  }
+
   @Test
   void givenDraftDocument_thenApplicationCreated_thenPreservesProjectedMetadata() {
     UUID applicationId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
     when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.empty());
     when(applicationReadRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+    projection.on(
+        new ApplicationDraftStartedEvent(applicationId, 1, "fingerprint", Instant.now()),
+        queryUpdateEmitter);
+    ArgumentCaptor<ApplicationReadModel> draft =
+        ArgumentCaptor.forClass(ApplicationReadModel.class);
+    verify(applicationReadRepository).save(draft.capture());
+    when(applicationReadRepository.findById(applicationId))
+        .thenReturn(Optional.of(draft.getValue()));
 
     projection.on(
         new ApplicationDocumentUploadedEvent(
@@ -134,17 +186,12 @@ class ApplicationProjectionTest {
             "application/pdf",
             "checksum",
             "CIVIL_APPLY"));
-    ArgumentCaptor<ApplicationReadModel> draft =
-        ArgumentCaptor.forClass(ApplicationReadModel.class);
-    verify(applicationReadRepository).save(draft.capture());
-    when(applicationReadRepository.findById(applicationId))
-        .thenReturn(Optional.of(draft.getValue()));
 
     projection.on(applicationCreatedEvent(applicationId), queryUpdateEmitter);
 
     ArgumentCaptor<ApplicationReadModel> created =
         ArgumentCaptor.forClass(ApplicationReadModel.class);
-    verify(applicationReadRepository, org.mockito.Mockito.times(2)).save(created.capture());
+    verify(applicationReadRepository, org.mockito.Mockito.times(3)).save(created.capture());
     assertThat(created.getValue().getUploadedDocuments())
         .singleElement()
         .satisfies(document -> assertThat(document.documentId()).isEqualTo(documentId));
