@@ -16,7 +16,10 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationProvider;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationAggregate;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.CreatePriorAuthorityDraftCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDraftStartedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
@@ -32,6 +35,7 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
 
   @Mock private PriorAuthorityDraftStore draftStore;
   @Mock private ApplicationAggregate application;
+  @Mock private ApplicationDataStore applicationDataStore;
   @Mock private EventAppender eventAppender;
 
   @Captor private ArgumentCaptor<PriorAuthorityDataPayload> payloadCaptor;
@@ -46,11 +50,33 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
     CreatePriorAuthorityDraftCommand command =
         new CreatePriorAuthorityDraftCommand(
             priorAuthorityId, applicationId, content, "{}", 1, "PriorAuthority.json", OCCURRED_AT);
+    ApplicationDataPayload applicationData =
+        new ApplicationDataPayload(
+            null,
+            null,
+            ApplicationProvider.builder().officeCode("1A001B").build(),
+            null,
+            OCCURRED_AT,
+            null,
+            null,
+            null,
+            null,
+            "{}",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null);
 
     when(application.isGranted()).thenReturn(true);
+    when(applicationDataStore.latestVersion(applicationId)).thenReturn(3L);
+    when(applicationDataStore.get(applicationId, 3L)).thenReturn(applicationData);
 
     new CreatePriorAuthorityDraftCommandHandler()
-        .handle(command, draftStore, application, eventAppender);
+        .handle(command, draftStore, application, applicationDataStore, eventAppender);
 
     verify(draftStore)
         .upsert(
@@ -64,6 +90,7 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
     assertThat(payloadCaptor.getValue().content()).isEqualTo(content);
     assertThat(payloadCaptor.getValue().serialisedRequest()).isEqualTo("{}");
     assertThat(payloadCaptor.getValue().submittedAt()).isEqualTo(OCCURRED_AT);
+    assertThat(payloadCaptor.getValue().officeCode()).isEqualTo("1A001B");
     verify(eventAppender)
         .append(
             new PriorAuthorityDraftStartedEvent(
@@ -86,7 +113,7 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
     assertThatThrownBy(
             () ->
                 new CreatePriorAuthorityDraftCommandHandler()
-                    .handle(command, draftStore, application, eventAppender))
+                    .handle(command, draftStore, application, applicationDataStore, eventAppender))
         .isInstanceOf(ValidationException.class)
         .isInstanceOfSatisfying(
             ValidationException.class,
