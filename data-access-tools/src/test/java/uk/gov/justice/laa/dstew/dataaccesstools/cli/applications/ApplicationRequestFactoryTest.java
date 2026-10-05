@@ -3,12 +3,13 @@ package uk.gov.justice.laa.dstew.dataaccesstools.cli.applications;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.Set;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -70,35 +71,31 @@ class ApplicationRequestFactoryTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"1A234B", "9Z999Y"})
-  void usesSpecifiedOfficeCode(String officeCode) throws IOException {
-    JsonNode provider = providerOf(new ApplicationRequestFactory(42L, officeCode).create());
-
-    assertEquals(officeCode, provider.get("officeCode").asText());
-  }
-
-  @ParameterizedTest
   @ValueSource(longs = {1L, 42L, 123456789L})
-  void generatesOfficeCodeWhenNoneIsSpecified(long seed) throws IOException {
-    JsonNode provider = providerOf(new ApplicationRequestFactory(seed, null).create());
-
-    assertTrue(provider.get("officeCode").asText().matches("[0-9][A-Z][0-9]{3}[A-Z]"));
-  }
-
-  @ParameterizedTest
-  @ValueSource(strings = {"", "A12345", "1a234B", "1A23B", "1A234BC"})
-  void rejectsInvalidSpecifiedOfficeCode(String officeCode) {
-    assertThrows(
-        IllegalArgumentException.class, () -> new ApplicationRequestFactory(42L, officeCode));
+  void generatesCompleteDraftReadyForSubmission(long seed) throws IOException {
+    var application = new ApplicationRequestFactory(seed).create();
+    JsonNode request = MAPPER.readTree(application.request());
+    JsonNode content = request.required("applicationContent");
+    assertEquals(application.applicationId().toString(), request.required("id").asText());
+    assertEquals(application.laaReference(), request.required("laaReference").asText());
+    assertEquals("APPLICATION_SUBMITTED", request.required("status").asText());
+    Instant.parse(content.required("createdAt").asText());
+    Instant.parse(content.required("submittedAt").asText());
+    assertFalse(content.required("provider").required("officeCode").asText().isBlank());
+    assertFalse(content.required("provider").required("contactEmail").asText().isBlank());
+    JsonNode client = content.required("client");
+    LocalDate.parse(client.required("dateOfBirth").asText());
+    assertEquals(1, client.required("addresses").size());
+    assertFalse(client.required("addresses").get(0).required("postcode").asText().isBlank());
+    JsonNode proceedings = content.required("proceedings");
+    assertEquals(1, proceedings.size());
+    assertEquals(application.proceedingId().toString(), proceedings.get(0).required("id").asText());
+    assertTrue(proceedings.get(0).required("leadProceeding").asBoolean());
+    assertFalse(proceedings.get(0).required("scopeLimitations").isEmpty());
   }
 
   private JsonNode clientOf(ApplicationRequestFactory.ApplicationData application)
       throws IOException {
     return MAPPER.readTree(application.request()).get("applicationContent").get("client");
-  }
-
-  private JsonNode providerOf(ApplicationRequestFactory.ApplicationData application)
-      throws IOException {
-    return MAPPER.readTree(application.request()).get("applicationContent").get("provider");
   }
 }

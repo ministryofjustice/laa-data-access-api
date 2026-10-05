@@ -8,6 +8,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.net.http.HttpTimeoutException;
 import java.time.Duration;
 import java.util.Set;
 import java.util.UUID;
@@ -17,27 +18,88 @@ public final class HttpDataAccessApiClient implements DataAccessApiClient {
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private final URI baseUri;
   private final HttpClient client;
+  private final Duration readinessTimeout;
+  private final Duration retryDelay;
 
   public HttpDataAccessApiClient(URI baseUri) {
     this(baseUri, HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(20)).build());
   }
 
   HttpDataAccessApiClient(URI baseUri, HttpClient client) {
+    this(baseUri, client, Duration.ofSeconds(30), Duration.ofMillis(250));
+  }
+
+  HttpDataAccessApiClient(
+      URI baseUri, HttpClient client, Duration readinessTimeout, Duration retryDelay) {
     this.baseUri = baseUri.resolve(baseUri.getPath().endsWith("/") ? "" : "/");
     this.client = client;
+    this.readinessTimeout = readinessTimeout;
+    this.retryDelay = retryDelay;
   }
 
   @Override
-  public void createApplication(String requestBody) {
-    execute("POST", "api/v0/applications", requestBody, "CIVIL_APPLY", Set.of(201, 202));
+  public UUID createApplicationDraft(String requestBody) {
+    String path = "api/v0/application-drafts";
+    return locationId(
+        execute("POST", path, requestBody, "CIVIL_APPLY", Set.of(201, 202)), "POST", path);
+  }
+
+  @Override
+  public UUID submitApplicationDraft(UUID applicationId) {
+    String path = "api/v0/application-drafts/" + applicationId + "/submit";
+    UUID submittedId =
+        locationId(execute("POST", path, "", "CIVIL_APPLY", Set.of(200, 202)), "POST", path);
+    if (!applicationId.equals(submittedId)) {
+      throw new ApiException("POST /" + path + " returned a different application ID");
+    }
+    return submittedId;
   }
 
   @Override
   public ApplicationDecisionData getApplicationDecisionData(UUID applicationId) {
     HttpResponse<String> response =
         execute("GET", "api/v0/applications/" + applicationId, "", "CIVIL_APPLY", Set.of(200));
+    return decisionData(applicationId, response.body());
+  }
+
+  @Override
+  public void awaitApplicationReadable(UUID applicationId) {
+    long deadline = System.nanoTime() + readinessTimeout.toNanos();
+    String path = "api/v0/applications/" + applicationId;
+    String timeoutMessage =
+        "Timed out waiting for submitted application " + applicationId + " to become readable";
+    while (System.nanoTime() < deadline) {
+      Duration remaining = Duration.ofNanos(Math.max(1, deadline - System.nanoTime()));
+      HttpResponse<String> response;
+      try {
+        response = execute("GET", path, "", "CIVIL_APPLY", Set.of(200, 404), remaining);
+      } catch (ApiException exception) {
+        if (exception.getCause() instanceof HttpTimeoutException) {
+          throw new ApiException(timeoutMessage, exception);
+        }
+        throw exception;
+      }
+      if (response.statusCode() == 200) {
+        decisionData(applicationId, response.body());
+        return;
+      }
+      long delay = Math.min(retryDelay.toNanos(), deadline - System.nanoTime());
+      if (delay > 0) {
+        try {
+          Thread.sleep(Duration.ofNanos(delay));
+        } catch (InterruptedException exception) {
+          Thread.currentThread().interrupt();
+          throw new ApiException(
+              "Waiting for application " + applicationId + " interrupted", exception);
+        }
+      }
+    }
+    throw new ApiException(timeoutMessage);
+  }
+
+  private ApplicationDecisionData decisionData(UUID applicationId, String body) {
     try {
-      JsonNode application = OBJECT_MAPPER.readTree(response.body());
+      JsonNode application = OBJECT_MAPPER.readTree(body);
       return new ApplicationDecisionData(
           application.required("laaReference").asText(),
           application
@@ -122,9 +184,19 @@ public final class HttpDataAccessApiClient implements DataAccessApiClient {
 
   private HttpResponse<String> execute(
       String method, String path, String body, String serviceName, Set<Integer> acceptedStatuses) {
+    return execute(method, path, body, serviceName, acceptedStatuses, Duration.ofSeconds(30));
+  }
+
+  private HttpResponse<String> execute(
+      String method,
+      String path,
+      String body,
+      String serviceName,
+      Set<Integer> acceptedStatuses,
+      Duration timeout) {
     HttpRequest request =
         HttpRequest.newBuilder(baseUri.resolve(path))
-            .timeout(Duration.ofSeconds(30))
+            .timeout(timeout)
             .header("Authorization", "Bearer " + DEV_TOKEN)
             .header("X-Service-Name", serviceName)
             .header("Content-Type", "application/json")
