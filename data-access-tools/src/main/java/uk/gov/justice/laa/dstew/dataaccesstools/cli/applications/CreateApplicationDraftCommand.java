@@ -4,16 +4,16 @@ import java.util.concurrent.Callable;
 import picocli.CommandLine;
 
 @CommandLine.Command(
-    name = "create-autogranted",
+    name = "create-draft",
     mixinStandardHelpOptions = true,
-    description = "Create applications that are autogranted.")
-public final class CreateAutograntedApplicationsCommand implements Callable<Integer> {
+    description = "Create complete application drafts ready for evidence uploads or submission.")
+public final class CreateApplicationDraftCommand implements Callable<Integer> {
   @CommandLine.ParentCommand private ApplicationsCommand applications;
 
   @CommandLine.Option(
       names = "--count",
       required = true,
-      description = "Number of applications to create.")
+      description = "Number of drafts to create.")
   private int count;
 
   @Override
@@ -21,11 +21,6 @@ public final class CreateAutograntedApplicationsCommand implements Callable<Inte
     if (count < 1) {
       throw new CommandLine.ParameterException(new CommandLine(this), "--count must be positive");
     }
-    var workflow =
-        new ApplicationCreationWorkflow(
-            applications.root().client(),
-            new ApplicationRequestFactory(applications.root().seed()),
-            new DecisionRequestFactory());
-    return applications.root().print(workflow.createAutogranted(count));
+    return applications.root().print(applications.creationWorkflow().createDrafts(count));
   }
 }
