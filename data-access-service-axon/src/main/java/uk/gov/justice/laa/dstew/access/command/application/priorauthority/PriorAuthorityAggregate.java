@@ -5,7 +5,6 @@ import java.util.UUID;
 import org.axonframework.eventsourcing.annotation.EventSourcingHandler;
 import org.axonframework.eventsourcing.annotation.reflection.EntityCreator;
 import org.axonframework.extension.spring.stereotype.EventSourced;
-import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
@@ -17,11 +16,10 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
  * {@link PriorAuthorityDraftStartedEvent}.
  *
  * <p>This class is an event-sourcing container that delegates to {@link PriorAuthorityEvolve} for
- * state mutations. Coverage is provided through integration tests.
+ * state mutations.
  */
 @EventSourced(tagKey = "PriorAuthorityAggregate", idType = UUID.class)
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
-@ExcludeFromGeneratedCodeCoverage
 public class PriorAuthorityAggregate {
 
   private UUID priorAuthorityId;
