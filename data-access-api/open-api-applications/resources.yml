@@ -186,13 +186,13 @@ paths:
                 summary: Target is standalone (first-time link)
                 description: Omit linkedGroupVersion entirely; the target is not yet in a group.
                 value:
-                  applicationId: 3fa85f64-5717-4562-b3fc-2c963f66afa7
+                  applicationId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
                   linkType: FAMILY
               targetAlreadyLinked:
                 summary: Target already belongs to a group
                 description: Supply the target group's linkedGroupVersion exactly as last read.
                 value:
-                  applicationId: 3fa85f64-5717-4562-b3fc-2c963f66afa7
+                  applicationId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
                   linkType: FAMILY
                   linkedGroupVersion: 2
       responses:

@@ -54,7 +54,7 @@ public class ApplicationLinkRequestExampleCustomizer implements OpenApiCustomize
         "Omit linkedGroupVersion entirely; the target is not yet in a group.");
     firstTimeLink.setValue(
         Map.of(
-            "applicationId", "3fa85f64-5717-4562-b3fc-2c963f66afa7",
+            "applicationId", "3fa85f64-5717-4562-b3fc-2c963f66afa6",
             "linkType", "FAMILY"));
 
     var targetAlreadyLinked = new Example();
@@ -63,7 +63,7 @@ public class ApplicationLinkRequestExampleCustomizer implements OpenApiCustomize
         "Supply the target group's linkedGroupVersion exactly as last read.");
     targetAlreadyLinked.setValue(
         Map.of(
-            "applicationId", "3fa85f64-5717-4562-b3fc-2c963f66afa7",
+            "applicationId", "3fa85f64-5717-4562-b3fc-2c963f66afa6",
             "linkType", "FAMILY",
             "linkedGroupVersion", 2));
 
