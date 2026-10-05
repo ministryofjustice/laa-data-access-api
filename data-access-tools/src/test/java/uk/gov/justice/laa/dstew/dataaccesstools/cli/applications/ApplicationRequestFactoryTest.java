@@ -12,6 +12,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.Set;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -92,6 +93,20 @@ class ApplicationRequestFactoryTest {
     assertEquals(application.proceedingId().toString(), proceedings.get(0).required("id").asText());
     assertTrue(proceedings.get(0).required("leadProceeding").asBoolean());
     assertFalse(proceedings.get(0).required("scopeLimitations").isEmpty());
+  }
+
+  @Test
+  void usesSpecifiedOfficeCode() throws IOException {
+    var application = new ApplicationRequestFactory(42, "1A234B").create();
+
+    assertEquals(
+        "1A234B",
+        MAPPER
+            .readTree(application.request())
+            .required("applicationContent")
+            .required("provider")
+            .required("officeCode")
+            .asText());
   }
 
   private JsonNode clientOf(ApplicationRequestFactory.ApplicationData application)

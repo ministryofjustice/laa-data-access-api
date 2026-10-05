@@ -22,7 +22,11 @@ public final class ApplicationsCommand {
   }
 
   ApplicationCreationWorkflow creationWorkflow() {
+    return creationWorkflow(null);
+  }
+
+  ApplicationCreationWorkflow creationWorkflow(String officeCode) {
     return new ApplicationCreationWorkflow(
-        root.client(), new ApplicationRequestFactory(root.seed()), new DecisionRequestFactory());
+        root.client(), new ApplicationRequestFactory(root.seed(), officeCode), new DecisionRequestFactory());
   }
 }

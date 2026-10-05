@@ -25,12 +25,18 @@ public final class CreateApplicationsCommand implements Callable<Integer> {
       description = "Outcome: submitted (default), manual, autogranted, granted, refused.")
   private Outcome outcome;
 
+  @CommandLine.Option(
+      names = "--office-code",
+      converter = OfficeCodeConverter.class,
+      description = "Provider office code to use for every created application.")
+  private String officeCode;
+
   @Override
   public Integer call() {
     if (count < 1) {
       throw new CommandLine.ParameterException(new CommandLine(this), "--count must be positive");
     }
-    return applications.root().print(applications.creationWorkflow().create(count, outcome));
+    return applications.root().print(applications.creationWorkflow(officeCode).create(count, outcome));
   }
 
   static final class OutcomeConverter implements CommandLine.ITypeConverter<Outcome> {
