@@ -16,6 +16,12 @@ public final class CreateAutograntedApplicationsCommand implements Callable<Inte
       description = "Number of applications to create.")
   private int count;
 
+  @CommandLine.Option(
+      names = "--office-code",
+      converter = OfficeCodeConverter.class,
+      description = "Provider office code for every application in the batch.")
+  private String officeCode;
+
   @Override
   public Integer call() {
     if (count < 1) {
@@ -24,7 +30,7 @@ public final class CreateAutograntedApplicationsCommand implements Callable<Inte
     var workflow =
         new ApplicationCreationWorkflow(
             applications.root().client(),
-            new ApplicationRequestFactory(applications.root().seed()),
+            new ApplicationRequestFactory(applications.root().seed(), officeCode),
             new DecisionRequestFactory());
     return applications.root().print(workflow.createAutogranted(count));
   }

@@ -18,7 +18,7 @@ data-access-tools/build/install/data-access-tools/bin/data-access-tools
 
 All requests send the development token `Bearer swagger-caseworker-token` and the required `X-Service-Name: CIVIL_APPLY` header. The API uses this token's assigned Entra OID as the authenticated user for work-list assignments and decisions; do not supply a caseworker ID.
 
-Applications are created sequentially. Each application uses randomly generated applicant, address, provider, and proceeding data (via [datafaker](https://www.datafaker.net/)); pass the root `--seed <long>` option to make a batch reproducible, otherwise a random seed is used each run. `create-autogranted` records an `AUTOGRANTED` outcome with a certificate. The granted and refused workflows record the `MANUAL` auto-grant outcome before making their decision. A batch continues after a failed application and exits non-zero if any item failed.
+Applications are created sequentially. Each application uses randomly generated applicant, address, provider, and proceeding data (via [datafaker](https://www.datafaker.net/)); pass the root `--seed <long>` option to make a batch reproducible, otherwise a random seed is used each run. The application creation commands accept `--office-code <code>` to use one provider office code for every application in a batch; codes must match `[0-9][A-Z][0-9]{3}[A-Z]`. Without this option, office codes are randomly generated. `create-autogranted` records an `AUTOGRANTED` outcome with a certificate. The granted and refused workflows record the `MANUAL` auto-grant outcome before making their decision. A batch continues after a failed application and exits non-zero if any item failed.
 
 Prior-authority commands require `--type` with `EXPERT`, `DISBURSEMENT`, `COUNSEL`, or `ALL`; `--count` is the number created for each selected type. `create-drafts` requires an existing granted application and leaves the generated prior authorities as drafts. `create-submitted` creates an application, assigns it to the Swagger token's authenticated user, records a granted decision, creates its draft, saves valid type-specific content, and submits it. Each result line labels its `applicationId`, `priorAuthorityId`, and state.
 
@@ -49,6 +49,11 @@ data-access-tools/build/install/data-access-tools/bin/data-access-tools \
 data-access-tools/build/install/data-access-tools/bin/data-access-tools \
   --api-url http://localhost:8082 --seed 42 \
   applications create-granted --count 10
+
+# Use one provider office code for every application in a batch
+data-access-tools/build/install/data-access-tools/bin/data-access-tools \
+  --api-url http://localhost:8082 \
+  applications create-granted --count 10 --office-code 1A234B
 
 # Create draft prior authorities of all types against an existing granted application
 data-access-tools/build/install/data-access-tools/bin/data-access-tools \

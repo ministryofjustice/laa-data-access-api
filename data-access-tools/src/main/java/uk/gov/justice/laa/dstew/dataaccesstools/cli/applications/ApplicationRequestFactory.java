@@ -29,13 +29,22 @@ public final class ApplicationRequestFactory {
           new ScopeLimitation("Emergency hearing", "Limited to the emergency hearing only"));
 
   private final Faker faker;
+  private final String officeCode;
 
   public ApplicationRequestFactory() {
-    this(ThreadLocalRandom.current().nextLong());
+    this(ThreadLocalRandom.current().nextLong(), null);
   }
 
   public ApplicationRequestFactory(long seed) {
+    this(seed, null);
+  }
+
+  public ApplicationRequestFactory(long seed, String officeCode) {
     this.faker = new Faker(new Random(seed));
+    if (officeCode != null && !officeCode.matches(OfficeCodeConverter.PATTERN)) {
+      throw new IllegalArgumentException("officeCode must match " + OfficeCodeConverter.PATTERN);
+    }
+    this.officeCode = officeCode;
   }
 
   public ApplicationData create() {
@@ -61,7 +70,7 @@ public final class ApplicationRequestFactory {
                 reference,
                 timestamp,
                 timestamp,
-                randomOfficeCode(),
+                officeCode == null ? randomOfficeCode() : officeCode,
                 faker.internet().emailAddress(),
                 faker.name().firstName(),
                 faker.name().lastName(),

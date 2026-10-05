@@ -67,7 +67,7 @@ import uk.gov.laa.springboot.oauth2.Oauth2AuthenticationEntryPoint;
 public class SecurityConfig {
 
   private static final String AUTHORITY_PREFIX = "APPROLE_";
-  private static final List<String> DEV_TOKEN_ACCOUNTS = List.of("0Z1234AB", "1A9876XY");
+  private static final List<String> DEV_TOKEN_ACCOUNTS = List.of("0Z123A", "1A987X");
   private static final String DEV_TOKEN_ENTRA_OID = "00000000-0000-0000-0000-000000000001";
   private static final Map<String, DevToken> DEV_TOKENS =
       Map.of(
