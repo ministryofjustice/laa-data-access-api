@@ -63,6 +63,22 @@ class DevTokenInMemoryTest {
   }
 
   @Test
+  void givenSwaggerProviderToken_whenGetUnknownPriorAuthority_thenReturnsNotFound() {
+    HttpHeaders headers = new HttpHeaders();
+    headers.set("X-Service-Name", "CIVIL_APPLY");
+    headers.setBearerAuth("swagger-provider-token");
+
+    ResponseEntity<String> response =
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/prior-authorities/" + UUID.randomUUID(),
+            HttpMethod.GET,
+            new HttpEntity<>(headers),
+            String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+  }
+
+  @Test
   void givenSwaggerCaseworkerTokens_whenAuthenticated_thenEachHasItsConfiguredEntraOid() {
     assertThat(authenticate("swagger-caseworker-token").getClaimAsString("oid"))
         .isEqualTo("00000000-0000-0000-0000-000000000001");

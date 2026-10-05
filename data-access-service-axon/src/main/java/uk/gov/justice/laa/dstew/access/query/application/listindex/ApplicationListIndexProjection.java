@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
 import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
@@ -85,6 +86,7 @@ public class ApplicationListIndexProjection {
             .clientFirstName(client != null ? client.getFirstName() : null)
             .clientLastName(client != null ? client.getLastName() : null)
             .clientDateOfBirth(client != null ? client.getDateOfBirth() : null)
+            .officeCode(officeCode(data))
             .streamVersion(0L)
             .projectionPosition(message.identifier().hashCode())
             .build());
@@ -208,6 +210,7 @@ public class ApplicationListIndexProjection {
               row.setClientFirstName(client != null ? client.getFirstName() : null);
               row.setClientLastName(client != null ? client.getLastName() : null);
               row.setClientDateOfBirth(client != null ? client.getDateOfBirth() : null);
+              row.setOfficeCode(officeCode(data));
               row.setStreamVersion(event.applicationVersion());
               row.setModifiedAt(event.occurredAt());
               row.setProjectionPosition(message.identifier().hashCode());
@@ -273,6 +276,19 @@ public class ApplicationListIndexProjection {
             });
   }
 
+  /** Updates application list ordering after an upload without loading filenames. */
+  @EventHandler
+  public void on(ApplicationDocumentUploadedEvent event, EventMessage message) {
+    listIndexRepository
+        .findById(event.applicationId())
+        .ifPresent(
+            row -> {
+              row.setModifiedAt(event.uploadedAt());
+              row.setProjectionPosition(message.identifier().hashCode());
+              listIndexRepository.save(row);
+            });
+  }
+
   private void updateLeadApplicationId(
       UUID applicationId, UUID leadApplicationId, Instant occurredAt, EventMessage message) {
     listIndexRepository
@@ -290,5 +306,9 @@ public class ApplicationListIndexProjection {
   @ResetHandler
   public void reset() {
     listIndexRepository.deleteAllInBatch();
+  }
+
+  private static String officeCode(ApplicationDataPayload data) {
+    return data == null || data.provider() == null ? null : data.provider().getOfficeCode();
   }
 }

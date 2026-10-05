@@ -26,6 +26,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
@@ -53,6 +54,36 @@ class ApplicationListIndexProjectionTest {
   private static EventMessage anyMessage() {
     return new GenericEventMessage(
         "test-id", new MessageType(String.class), "test", Map.of(), Instant.now());
+  }
+
+  @Test
+  void givenDocumentUpload_whenHandled_thenUpdatesSortTimestampWithoutContentLookup() {
+    UUID applicationId = UUID.randomUUID();
+    Instant uploadedAt = Instant.parse("2026-09-28T15:10:27.430Z");
+    ApplicationListIndexReadModel row =
+        ApplicationListIndexReadModel.builder()
+            .applicationId(applicationId)
+            .streamVersion(7L)
+            .build();
+    when(listIndexRepository.findById(applicationId)).thenReturn(Optional.of(row));
+
+    projection.on(
+        new ApplicationDocumentUploadedEvent(
+            applicationId,
+            UUID.randomUUID(),
+            "GATEWAY_EVIDENCE",
+            uploadedAt,
+            12L,
+            "application/pdf",
+            "checksum",
+            "CIVIL_APPLY",
+            1L),
+        anyMessage());
+
+    verify(listIndexRepository).save(row);
+    assertThat(row.getModifiedAt()).isEqualTo(uploadedAt);
+    assertThat(row.getStreamVersion()).isEqualTo(7L);
+    verify(applicationDataStore, never()).get(any(), any(Long.class));
   }
 
   // -------------------------------------------------------------------------
