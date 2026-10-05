@@ -8,8 +8,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationCreationDetails;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,6 +21,60 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.dao.DataIntegrityViolationException;
 
 class ApplicationDataStoreTest {
+
+  @Test
+  void givenFilename_whenContentUpdated_thenEveryUpdatePreservesImmutableFilenameMap() {
+    UUID documentId = UUID.randomUUID();
+    ApplicationDataPayload original =
+        ApplicationDataPayload.from(applicationCreationDetails(UUID.randomUUID()));
+    ApplicationDataPayload payload = original.withDocumentFilename(documentId, "client-report.pdf");
+
+    assertThat(original.documentFilenames()).isEmpty();
+    List<ApplicationDataPayload> updates =
+        List.of(
+            payload.withAssignment("Assigned"),
+            payload.withManualAssessmentRequired(),
+            payload.withNote("note", Instant.now()),
+            payload.withDecision(
+                "GRANTED",
+                uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState.MANUAL,
+                Map.of(),
+                null,
+                "{}",
+                "decision"),
+            payload.withApplicationUpdate(
+                payload.client(),
+                payload.provider(),
+                payload.opponents(),
+                payload.submittedAt(),
+                payload.usedDelegatedFunctions(),
+                payload.categoryOfLaw(),
+                payload.matterType(),
+                payload.proceedings(),
+                "{}",
+                true));
+    assertThat(updates)
+        .allSatisfy(
+            updated ->
+                assertThat(updated.documentFilenames())
+                    .containsExactlyEntriesOf(Map.of(documentId, "client-report.pdf")));
+    assertThatThrownBy(() -> payload.documentFilenames().put(UUID.randomUUID(), "other.pdf"))
+        .isInstanceOf(UnsupportedOperationException.class);
+  }
+
+  @Test
+  void givenLegacyPayloadWithoutFilenameMap_whenDeserialized_thenNormalizesToEmpty()
+      throws Exception {
+    ObjectMapper mapper = new ObjectMapper().findAndRegisterModules();
+    ObjectNode json =
+        mapper.valueToTree(
+            ApplicationDataPayload.from(applicationCreationDetails(UUID.randomUUID())));
+    json.remove("documentFilenames");
+
+    ApplicationDataPayload payload = mapper.treeToValue(json, ApplicationDataPayload.class);
+
+    assertThat(payload.documentFilenames()).isEmpty();
+  }
 
   private ApplicationDataRepository repository;
   private ApplicationDataStore store;
