@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.command.application.data;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -33,7 +34,8 @@ public record ApplicationDataPayload(
     String decisionSerialisedRequest,
     String decisionEventDescription,
     String assignmentEventDescription,
-    List<ApplicationNote> notes) {
+    List<ApplicationNote> notes,
+    Map<UUID, String> documentFilenames) {
 
   /**
    * Normalises a null {@code notes} and {@code opponents} lists to empty lists so that existing
@@ -44,6 +46,49 @@ public record ApplicationDataPayload(
     notes = notes == null ? List.of() : List.copyOf(notes);
     opponents = opponents == null ? List.of() : List.copyOf(opponents);
     autoGranted = autoGranted == null ? AutoGrantedState.PENDING : autoGranted;
+    documentFilenames = documentFilenames == null ? Map.of() : Map.copyOf(documentFilenames);
+  }
+
+  /** Creates content without document filenames for existing callers. */
+  public ApplicationDataPayload(
+      String laaReference,
+      ApplicationClient client,
+      ApplicationProvider provider,
+      List<Opponent> opponents,
+      Instant submittedAt,
+      Boolean usedDelegatedFunctions,
+      String categoryOfLaw,
+      String matterType,
+      List<Proceeding> proceedings,
+      String serialisedRequest,
+      String overallDecision,
+      AutoGrantedState autoGranted,
+      Map<UUID, ApplicationMeritsDecision> meritsDecisions,
+      Map<String, Object> certificate,
+      String decisionSerialisedRequest,
+      String decisionEventDescription,
+      String assignmentEventDescription,
+      List<ApplicationNote> notes) {
+    this(
+        laaReference,
+        client,
+        provider,
+        opponents,
+        submittedAt,
+        usedDelegatedFunctions,
+        categoryOfLaw,
+        matterType,
+        proceedings,
+        serialisedRequest,
+        overallDecision,
+        autoGranted,
+        meritsDecisions,
+        certificate,
+        decisionSerialisedRequest,
+        decisionEventDescription,
+        assignmentEventDescription,
+        notes,
+        Map.of());
   }
 
   /**
@@ -100,7 +145,8 @@ public record ApplicationDataPayload(
         newDecisionSerialisedRequest,
         newDecisionEventDescription,
         assignmentEventDescription,
-        notes);
+        notes,
+        documentFilenames);
   }
 
   /** Returns a complete new data version containing assignment audit details. */
@@ -123,7 +169,8 @@ public record ApplicationDataPayload(
         decisionSerialisedRequest,
         decisionEventDescription,
         newAssignmentEventDescription,
-        notes);
+        notes,
+        documentFilenames);
   }
 
   /** Returns a complete new data version marked as requiring manual assessment. */
@@ -146,7 +193,8 @@ public record ApplicationDataPayload(
         decisionSerialisedRequest,
         decisionEventDescription,
         assignmentEventDescription,
-        notes);
+        notes,
+        documentFilenames);
   }
 
   /** Returns a complete new data version containing replacement Application content. */
@@ -179,7 +227,8 @@ public record ApplicationDataPayload(
         resetAssessment ? null : decisionSerialisedRequest,
         resetAssessment ? null : decisionEventDescription,
         assignmentEventDescription,
-        notes);
+        notes,
+        documentFilenames);
   }
 
   /** Returns a complete new data version with the given note appended. */
@@ -204,6 +253,33 @@ public record ApplicationDataPayload(
         decisionSerialisedRequest,
         decisionEventDescription,
         assignmentEventDescription,
-        List.copyOf(updated));
+        List.copyOf(updated),
+        documentFilenames);
+  }
+
+  /** Returns a complete new data version containing the original document filename. */
+  public ApplicationDataPayload withDocumentFilename(UUID documentId, String originalFilename) {
+    Map<UUID, String> updated = new HashMap<>(documentFilenames);
+    updated.put(documentId, originalFilename);
+    return new ApplicationDataPayload(
+        laaReference,
+        client,
+        provider,
+        opponents,
+        submittedAt,
+        usedDelegatedFunctions,
+        categoryOfLaw,
+        matterType,
+        proceedings,
+        serialisedRequest,
+        overallDecision,
+        autoGranted,
+        meritsDecisions,
+        certificate,
+        decisionSerialisedRequest,
+        decisionEventDescription,
+        assignmentEventDescription,
+        notes,
+        updated);
   }
 }

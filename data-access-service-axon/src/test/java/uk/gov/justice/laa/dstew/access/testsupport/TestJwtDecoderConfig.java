@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.testsupport;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -21,6 +22,13 @@ public class TestJwtDecoderConfig {
 
   public static final String BEARER_TOKEN = "test-caseworker-token";
   public static final String OTHER_BEARER_TOKEN = "other-test-caseworker-token";
+  public static final String OFFICE_A_BEARER_TOKEN = "office-a-caseworker-token";
+  public static final String OFFICE_A_AND_B_BEARER_TOKEN = "office-a-and-b-caseworker-token";
+  public static final String NO_ACCOUNTS_BEARER_TOKEN = "no-accounts-caseworker-token";
+  public static final String UNSCOPED_BEARER_TOKEN = "unscoped-caseworker-token";
+  public static final String ACCESS_AS_USER = "access_as_user";
+  public static final String ACCESS_AS_PROVIDER = "access_as_provider";
+  public static final List<String> TEST_LAA_ACCOUNTS = List.of("1A001B", "2B002C");
   public static final UUID CASEWORKER_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
   public static final UUID OTHER_CASEWORKER_ID =
       UUID.fromString("22222222-2222-2222-2222-222222222222");
@@ -31,23 +39,41 @@ public class TestJwtDecoderConfig {
   @Primary
   JwtDecoder jwtDecoder() {
     return StubJwtDecoder.of(
-        new StubJwtToken(
-            BEARER_TOKEN,
-            "caseworker@example.com",
-            new String[] {"LAA_CASEWORKER"},
+        userToken(BEARER_TOKEN, "caseworker@example.com", CASEWORKER_ID),
+        userToken(OTHER_BEARER_TOKEN, "other-caseworker@example.com", OTHER_CASEWORKER_ID),
+        token(
+            UNSCOPED_BEARER_TOKEN,
+            "unscoped-caseworker@example.com",
+            CASEWORKER_ID,
             null,
-            Map.of("iss", ISSUER_URI, "aud", List.of(AUDIENCE), "oid", CASEWORKER_ID.toString())),
-        new StubJwtToken(
-            OTHER_BEARER_TOKEN,
-            "other-caseworker@example.com",
-            new String[] {"LAA_CASEWORKER"},
-            null,
-            Map.of(
-                "iss",
-                ISSUER_URI,
-                "aud",
-                List.of(AUDIENCE),
-                "oid",
-                OTHER_CASEWORKER_ID.toString())));
+            Map.of()),
+        providerToken(OFFICE_A_BEARER_TOKEN, List.of(TEST_LAA_ACCOUNTS.getFirst())),
+        providerToken(OFFICE_A_AND_B_BEARER_TOKEN, TEST_LAA_ACCOUNTS),
+        providerToken(NO_ACCOUNTS_BEARER_TOKEN, List.of()));
+  }
+
+  private static StubJwtToken userToken(String token, String subject, UUID oid) {
+    return token(token, subject, oid, ACCESS_AS_USER, Map.of());
+  }
+
+  private static StubJwtToken providerToken(String token, List<String> accounts) {
+    return token(
+        token,
+        "accounts-provider@example.com",
+        CASEWORKER_ID,
+        ACCESS_AS_PROVIDER,
+        Map.of("LAA_ACCOUNTS", accounts));
+  }
+
+  private static StubJwtToken token(
+      String token, String subject, UUID oid, String scope, Map<String, Object> additionalClaims) {
+    Map<String, Object> claims = new HashMap<>(additionalClaims);
+    claims.put("iss", ISSUER_URI);
+    claims.put("aud", List.of(AUDIENCE));
+    claims.put("oid", oid.toString());
+    if (scope != null) {
+      claims.put("scp", scope);
+    }
+    return new StubJwtToken(token, subject, new String[] {"LAA_CASEWORKER"}, null, claims);
   }
 }

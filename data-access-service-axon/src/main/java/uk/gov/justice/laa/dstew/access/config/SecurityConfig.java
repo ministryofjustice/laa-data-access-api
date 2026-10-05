@@ -18,6 +18,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.env.Environment;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationManagerResolver;
 import org.springframework.security.authorization.AuthorizationDecision;
@@ -49,6 +50,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.filter.OncePerRequestFilter;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
+import uk.gov.justice.laa.dstew.access.security.ApplicationReadScopeAuthorizationManager;
 import uk.gov.justice.laa.dstew.access.shared.security.EffectiveAuthorizationProvider;
 import uk.gov.laa.springboot.oauth2.EndpointAccessManager;
 import uk.gov.laa.springboot.oauth2.Oauth2AccessDeniedHandler;
@@ -65,19 +67,28 @@ import uk.gov.laa.springboot.oauth2.Oauth2AuthenticationEntryPoint;
 public class SecurityConfig {
 
   private static final String AUTHORITY_PREFIX = "APPROLE_";
-  private static final List<String> DEV_TOKEN_ACCOUNTS = List.of("0Z1234AB", "1A9876XY");
+  private static final List<String> DEV_TOKEN_ACCOUNTS = List.of("0Z123A", "1A987X");
   private static final String DEV_TOKEN_ENTRA_OID = "00000000-0000-0000-0000-000000000001";
   private static final String SECOND_DEV_TOKEN_ENTRA_OID = "00000000-0000-0000-0000-000000000002";
+  private static final String PROVIDER_DEV_TOKEN_ENTRA_OID = "00000000-0000-0000-0000-000000000003";
   private static final List<String> CASEWORKER_ROLES =
       List.of("APPROLE_LAA_CASEWORKER", "ROLE_LAA_CASEWORKER");
   private static final Map<String, DevToken> DEV_TOKENS =
       Map.of(
           "swagger-caseworker-token",
-          new DevToken(CASEWORKER_ROLES, DEV_TOKEN_ENTRA_OID),
+          new DevToken(
+              List.of("APPROLE_LAA_CASEWORKER", "ROLE_LAA_CASEWORKER"),
+              "access_as_user",
+              DEV_TOKEN_ENTRA_OID),
+          "swagger-provider-token",
+          new DevToken(
+              List.of("APPROLE_LAA_CASEWORKER", "ROLE_LAA_CASEWORKER"),
+              "access_as_provider",
+              PROVIDER_DEV_TOKEN_ENTRA_OID),
           "swagger-caseworker-token-2",
-          new DevToken(CASEWORKER_ROLES, SECOND_DEV_TOKEN_ENTRA_OID),
+          new DevToken(CASEWORKER_ROLES, "access_as_user", SECOND_DEV_TOKEN_ENTRA_OID),
           "unknown-token",
-          new DevToken(List.of("APPROLE_UNKNOWN"), DEV_TOKEN_ENTRA_OID));
+          new DevToken(List.of("APPROLE_UNKNOWN"), "", ""));
 
   @Value("${feature.enable-dev-token:false}")
   private boolean enableDevToken;
@@ -92,7 +103,8 @@ public class SecurityConfig {
       ObjectProvider<AuthenticationManagerResolver<HttpServletRequest>>
           authenticationManagerResolver,
       @Qualifier("jacksonJsonMapper") ObjectMapper objectMapper,
-      @Qualifier("xAuthorizationFilter") OncePerRequestFilter authorizationFilter)
+      @Qualifier("xAuthorizationFilter") OncePerRequestFilter authorizationFilter,
+      ApplicationReadScopeAuthorizationManager applicationReadScopeAuthorizationManager)
       throws Exception {
 
     httpSecurity
@@ -106,6 +118,9 @@ public class SecurityConfig {
         .authorizeHttpRequests(
             auth -> {
               auth.requestMatchers(endpointAccessManager.getUnprotectedUris()).permitAll();
+              auth.requestMatchers(
+                      HttpMethod.GET, "/api/v0/applications", "/api/v0/applications/**")
+                  .access(applicationReadScopeAuthorizationManager);
               auth.anyRequest()
                   .access(
                       (authentication, context) ->
@@ -210,6 +225,11 @@ public class SecurityConfig {
     return new SecurityContextEffectiveAuthorizationProvider();
   }
 
+  @Bean
+  public ApplicationReadScopeAuthorizationManager applicationReadScopeAuthorizationManager() {
+    return new ApplicationReadScopeAuthorizationManager();
+  }
+
   private AuthenticationManager jwtAuthenticationManager(JwtDecoder jwtDecoder) {
     JwtAuthenticationProvider authenticationProvider = new JwtAuthenticationProvider(jwtDecoder);
     authenticationProvider.setJwtAuthenticationConverter(jwtAuthenticationConverter());
@@ -252,12 +272,13 @@ public class SecurityConfig {
             .header("alg", "none")
             .subject("dev-user")
             .claim("LAA_ACCOUNTS", DEV_TOKEN_ACCOUNTS)
+            .claim("scp", devToken.scope())
             .claim("oid", devToken.entraOid())
             .issuedAt(issuedAt)
             .expiresAt(issuedAt.plusSeconds(300))
             .build();
     return new JwtAuthenticationToken(
-        jwt, devToken.roles().stream().map(SimpleGrantedAuthority::new).toList());
+        jwt, devToken.authorities().stream().map(SimpleGrantedAuthority::new).toList());
   }
 
   private boolean isDevTokenRequest(HttpServletRequest request) {
@@ -274,7 +295,7 @@ public class SecurityConfig {
     return DEV_TOKENS.containsKey(token);
   }
 
-  private record DevToken(List<String> roles, String entraOid) {}
+  private record DevToken(List<String> authorities, String scope, String entraOid) {}
 
   /** Gives methods to check the SecurityContext for roles and username. */
   @ExcludeFromGeneratedCodeCoverage
