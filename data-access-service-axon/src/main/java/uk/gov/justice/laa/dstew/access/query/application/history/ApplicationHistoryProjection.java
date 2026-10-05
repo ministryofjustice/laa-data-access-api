@@ -31,6 +31,14 @@ import uk.gov.justice.laa.dstew.access.config.interceptor.RequestMetadataDispatc
 @Namespace("application-history-projection")
 public class ApplicationHistoryProjection {
 
+  /**
+   * Translates internally stored event-type strings to the public {@code DomainEventType} contract
+   * value exposed over the API, where the two differ. Internal types not present here are already
+   * identical to their public contract value.
+   */
+  private static final Map<String, String> INTERNAL_TO_PUBLIC_EVENT_TYPE =
+      Map.of("APPLICATION_NOTE_CREATED", "APPLICATION_NOTES");
+
   private final ApplicationHistoryReadRepository applicationHistoryReadRepository;
   private final ObjectMapper objectMapper;
   private final ApplicationDataStore applicationDataStore;
@@ -183,8 +191,9 @@ public class ApplicationHistoryProjection {
         applicationHistoryReadRepository
             .findAllByApplicationIdOrderByOccurredAtAsc(query.applicationId())
             .stream()
-            .filter(h -> query.eventTypes().contains(h.getEventType()))
+            .filter(h -> query.eventTypes().contains(toPublicEventType(h.getEventType())))
             .map(this::hydrateEventDescription)
+            .map(this::applyPublicEventType)
             .toList();
     List<PriorAuthorityHistoryReadModel> priorAuthorityRows =
         priorAuthorityHistoryReadRepository.findAllByApplicationIdOrderByOccurredAtAsc(
@@ -192,6 +201,17 @@ public class ApplicationHistoryProjection {
     List<PriorAuthorityHistoryGroupResult> priorAuthorityGroups =
         priorAuthorityHistoryAssembler.assemble(priorAuthorityRows);
     return new ApplicationHistoryResult(applicationEvents, priorAuthorityGroups);
+  }
+
+  /** Translates an internally stored event type to its public {@code DomainEventType} value. */
+  private String toPublicEventType(String internalEventType) {
+    return INTERNAL_TO_PUBLIC_EVENT_TYPE.getOrDefault(internalEventType, internalEventType);
+  }
+
+  /** Rewrites {@code history}'s event type to the public contract value before it is returned. */
+  private ApplicationHistoryReadModel applyPublicEventType(ApplicationHistoryReadModel history) {
+    history.setEventType(toPublicEventType(history.getEventType()));
+    return history;
   }
 
   private ApplicationHistoryReadModel hydrateEventDescription(ApplicationHistoryReadModel history) {

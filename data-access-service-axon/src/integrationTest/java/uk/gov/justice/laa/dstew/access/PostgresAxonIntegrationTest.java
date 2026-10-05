@@ -1390,6 +1390,21 @@ class PostgresAxonIntegrationTest {
         .doesNotContain("Integration test note");
 
     awaitHistoryTypes(applicationId, "APPLICATION_CREATED", "APPLICATION_NOTE_CREATED");
+
+    ResponseEntity<ApplicationHistoryResponse> historyResponse =
+        restTemplate.exchange(
+            "http://localhost:"
+                + port
+                + "/api/v0/applications/"
+                + applicationId
+                + "/history-search?eventType=APPLICATION_NOTES",
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            ApplicationHistoryResponse.class);
+    assertThat(historyResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(historyResponse.getBody().getEvents())
+        .extracting(event -> event.getDomainEventType().getValue())
+        .containsExactly("APPLICATION_NOTES");
   }
 
   @Test
