@@ -90,7 +90,8 @@ public class ApplicationProjection {
       PriorAuthorityReadRepository priorAuthorityReadRepository,
       ApplicationReadQueryGateway applicationReadQueryGateway,
       ApplicationCurrentStateAccessPolicy currentStateAccessPolicy,
-      ApplicationListIndexAccessPolicy listIndexAccessPolicy)
+      ApplicationListIndexAccessPolicy listIndexAccessPolicy,
+      ApplicationDraftStore draftStore) {
     this.applicationReadRepository = applicationReadRepository;
     this.groupReadRepository = groupReadRepository;
     this.applicationDataStore = applicationDataStore;

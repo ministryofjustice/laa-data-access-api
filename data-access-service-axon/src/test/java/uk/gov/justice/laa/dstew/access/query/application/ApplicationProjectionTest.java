@@ -88,10 +88,10 @@ class ApplicationProjectionTest {
             applicationDataStore,
             listIndexRepository,
             priorAuthorityReadRepository,
-            draftStore,
             applicationReadQueryGateway,
             currentStateAccessPolicy,
-            listIndexAccessPolicy);
+            listIndexAccessPolicy,
+            draftStore);
   }
 
   @Test
