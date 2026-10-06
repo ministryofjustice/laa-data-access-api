@@ -68,7 +68,7 @@ public final class LinkedApplicationGroupDecider {
       return Optional.empty();
     }
     if (command.expectedGroupVersion() != state.groupVersion) {
-      throw new LinkedApplicationGroupVersionConflictException(command.applicationId());
+      throw LinkedApplicationGroupVersionConflictException.groupVersionMismatch();
     }
 
     return Optional.of(

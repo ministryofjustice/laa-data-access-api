@@ -24,6 +24,16 @@ class LinkedApplicationGroupVersionConflictExceptionTest {
   }
 
   @Test
+  void givenGroupVersionConflict_whenCreated_thenNamesTargetWithoutId() {
+    var exception = LinkedApplicationGroupVersionConflictException.groupVersionMismatch();
+
+    assertThat(exception)
+        .hasMessage(
+            "Target linked group's version does not match the supplied linkedGroupVersion;"
+                + " re-read before retrying");
+  }
+
+  @Test
   void givenTargetNoLongerLinked_whenCreated_thenHasStableMessage() {
     var applicationId = UUID.randomUUID();
 

@@ -19,6 +19,13 @@ public class LinkedApplicationGroupVersionConflictException extends RuntimeExcep
     super(message);
   }
 
+  /** Creates a conflict when a standalone application tries to join a group at a stale version. */
+  public static LinkedApplicationGroupVersionConflictException groupVersionMismatch() {
+    return new LinkedApplicationGroupVersionConflictException(
+        "Target linked group's version does not match the supplied linkedGroupVersion;"
+            + " re-read before retrying");
+  }
+
   /** Creates a conflict when the target is no longer linked to a group. */
   public static LinkedApplicationGroupVersionConflictException targetNoLongerLinked(
       UUID targetApplicationId) {

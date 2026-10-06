@@ -205,9 +205,8 @@ class LinkedApplicationGroupDeciderTest {
                     new AddApplicationToLinkedGroupCommand(groupId, newMemberId, 1, OCCURRED_AT)))
         .isInstanceOf(LinkedApplicationGroupVersionConflictException.class)
         .hasMessage(
-            "Linked group of application "
-                + newMemberId
-                + " does not match the supplied linkedGroupVersion; re-read before retrying");
+            "Target linked group's version does not match the supplied linkedGroupVersion;"
+                + " re-read before retrying");
   }
 
   @Test
@@ -227,9 +226,8 @@ class LinkedApplicationGroupDeciderTest {
                     new AddApplicationToLinkedGroupCommand(groupId, newMemberId, 3, OCCURRED_AT)))
         .isInstanceOf(LinkedApplicationGroupVersionConflictException.class)
         .hasMessage(
-            "Linked group of application "
-                + newMemberId
-                + " does not match the supplied linkedGroupVersion; re-read before retrying");
+            "Target linked group's version does not match the supplied linkedGroupVersion;"
+                + " re-read before retrying");
   }
 
   @Test

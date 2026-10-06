@@ -9,7 +9,7 @@ missing required version input is HTTP 400.
 | Status | Detail |
 |---|---|
 | 409 | `Application <sourceId> already belongs to a different linked group` |
-| 409 | `Linked group of application <sourceId> does not match the supplied linkedGroupVersion; re-read before retrying` |
+| 409 | `Target linked group's version does not match the supplied linkedGroupVersion; re-read before retrying` |
 | 409 | `Application <targetId> is in a linked group; linkedGroupVersion is required` |
 | 409 | `Application <targetId> is no longer in a linked group; re-read before linking` |
 | 409 | `Application <targetId> is no longer in the linked group identified by linkedGroupVersion; re-read before retrying` |
