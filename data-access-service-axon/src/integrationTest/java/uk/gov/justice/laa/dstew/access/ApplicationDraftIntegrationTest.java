@@ -49,13 +49,13 @@ import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.CreateApplicationDraftRequest;
-import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
 import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 import uk.gov.justice.laa.dstew.access.model.SaveApplicationDraftRequest;
 import uk.gov.justice.laa.dstew.access.model.SaveApplicationDraftResponse;
 import uk.gov.justice.laa.dstew.access.model.SubmitApplicationDraftResponse;
 import uk.gov.justice.laa.dstew.access.model.UploadApplicationDocumentResponse;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
+import uk.gov.justice.laa.dstew.access.service.sds.SdsUploadResult;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 import util.ProjectionAwaiter;
 
@@ -573,7 +573,7 @@ class ApplicationDraftIntegrationTest {
       boolean submitted) {
     UUID applicationId = saveValidDraft();
     when(sdsService.saveEvidenceFile(any(), any(), any()))
-        .thenReturn(new DocumentUploadResponse().checksum("checksum"));
+        .thenReturn(new SdsUploadResult(null, null, "checksum"));
     UUID documentId = uploadDocument(applicationId, "original evidence.pdf");
     if (submitted) {
       ResponseEntity<String> submitResponse =
