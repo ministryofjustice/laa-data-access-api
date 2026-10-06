@@ -33,6 +33,26 @@ jobs:
     secrets:
       gh_token: ${{ secrets.GITHUB_TOKEN }}
 
+  # Verify every consumer contract against this main version and publish the results, so the
+  # version recorded as deployed to environment `main` (below) carries verification results.
+  # Not a deploy dependency: a failure is visible here but does not block the release.
+  pact-test:
+    needs: [ release ]
+    uses: ministryofjustice/laa-ccms-common-workflows/.github/workflows/pact-and-publish.yml@035ee98ca0047659f865532ea6234abd69529ee8 # v2.5.0
+    permissions:
+      contents: write
+      packages: write
+    with:
+      java_distribution: *JDK_DISTRIBUTION
+      pact_test_task: ":data-access-service-axon:pactTest"
+      pacticipant_name: 'laa-data-access-api'
+      is_provider: true
+    secrets:
+      gh_token: ${{ secrets.GITHUB_TOKEN }}
+      pact_broker_url: ${{ secrets.PACT_BROKER_URL }}
+      pact_broker_username: ${{ secrets.PACT_BROKER_USERNAME }}
+      pact_broker_password: ${{ secrets.PACT_BROKER_PASSWORD }}
+
   vulnerability-scan-app:
     runs-on: ubuntu-latest
     needs: [ release ]
@@ -95,7 +115,17 @@ jobs:
           kube-namespace: ${{ secrets.KUBE_NAMESPACE }}
           app-environment: uat
           image-tag: ${{ needs.release.outputs.published_artifact_version }}
-
+      # Consumers run `can-i-deploy --to-environment main` against this provider. Environment
+      # `main` is the LAA convention for the main-branch (UAT) deployment, so record it here.
+      - name: Record main deployment to pact broker
+        id: record_main_deployment
+        uses: ministryofjustice/laa-ccms-common-workflows/.github/actions/pact-record-deployment@035ee98ca0047659f865532ea6234abd69529ee8 # v2.5.0
+        with:
+          pacticipant: 'laa-data-access-api'
+          environment: 'main'
+          pact_broker_url: ${{ secrets.PACT_BROKER_URL }}
+          pact_broker_username: ${{ secrets.PACT_BROKER_USERNAME }}
+          pact_broker_password: ${{ secrets.PACT_BROKER_PASSWORD }}
 
   deploy-shared-mock-oauth2:
     runs-on: ubuntu-latest
