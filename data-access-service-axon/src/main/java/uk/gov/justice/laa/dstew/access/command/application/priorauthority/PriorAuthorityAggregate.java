@@ -23,8 +23,8 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.assign.DirectPriorAuthorityWorkItemAssignmentCommand;
 import uk.gov.justice.laa.dstew.access.command.worklist.unassign.DirectPriorAuthorityWorkItemUnassignmentCommand;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.EvidenceDocument;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityDocument;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
@@ -90,9 +90,9 @@ public class PriorAuthorityAggregate {
       PriorAuthorityDraftStore draftStore,
       EventAppender eventAppender) {
     PriorAuthorityDataPayload existingDraft = requireDraft(command.priorAuthorityId(), draftStore);
-    List<PriorAuthorityDocument> existingDocuments = copyUploadedDocuments(existingDraft);
+    List<EvidenceDocument> existingDocuments = copyUploadedDocuments(existingDraft);
     existingDocuments.add(
-        new PriorAuthorityDocument(
+        new EvidenceDocument(
             command.documentId(),
             null,
             command.originalFilename(),
@@ -127,7 +127,7 @@ public class PriorAuthorityAggregate {
       PriorAuthorityDraftStore draftStore,
       EventAppender eventAppender) {
     PriorAuthorityDataPayload existingDraft = requireDraft(command.priorAuthorityId(), draftStore);
-    List<PriorAuthorityDocument> updatedDocuments = copyUploadedDocuments(existingDraft);
+    List<EvidenceDocument> updatedDocuments = copyUploadedDocuments(existingDraft);
     boolean removed =
         updatedDocuments.removeIf(document -> document.documentId().equals(command.documentId()));
     if (!removed) {
@@ -159,7 +159,7 @@ public class PriorAuthorityAggregate {
       EventAppender eventAppender) {
     PriorAuthorityDocumentType.fromValue(command.documentType());
     PriorAuthorityDataPayload existingDraft = requireDraft(command.priorAuthorityId(), draftStore);
-    List<PriorAuthorityDocument> updatedDocuments = getUpdatedDocuments(command, existingDraft);
+    List<EvidenceDocument> updatedDocuments = getUpdatedDocuments(command, existingDraft);
 
     PriorAuthorityContent updatedContent =
         existingDraft.content().withUploadedDocuments(List.copyOf(updatedDocuments));
@@ -267,9 +267,9 @@ public class PriorAuthorityAggregate {
             command.occurredAt()));
   }
 
-  private static @NonNull List<PriorAuthorityDocument> getUpdatedDocuments(
+  private static @NonNull List<EvidenceDocument> getUpdatedDocuments(
       PriorAuthorityDocumentTypeUpdateCommand command, PriorAuthorityDataPayload existingDraft) {
-    List<PriorAuthorityDocument> updatedDocuments = copyUploadedDocuments(existingDraft);
+    List<EvidenceDocument> updatedDocuments = copyUploadedDocuments(existingDraft);
     int documentIndex =
         IntStream.range(0, updatedDocuments.size())
             .filter(index -> updatedDocuments.get(index).documentId().equals(command.documentId()))
@@ -279,7 +279,7 @@ public class PriorAuthorityAggregate {
                     new ResourceNotFoundException(
                         "Document %s not found for Prior Authority %s"
                             .formatted(command.documentId(), command.priorAuthorityId())));
-    PriorAuthorityDocument existingDocument = updatedDocuments.get(documentIndex);
+    EvidenceDocument existingDocument = updatedDocuments.get(documentIndex);
     updatedDocuments.set(documentIndex, existingDocument.withDocumentType(command.documentType()));
     return updatedDocuments;
   }
@@ -317,8 +317,7 @@ public class PriorAuthorityAggregate {
         .withSubmittedAt(command.occurredAt());
   }
 
-  private static List<PriorAuthorityDocument> copyUploadedDocuments(
-      PriorAuthorityDataPayload draft) {
+  private static List<EvidenceDocument> copyUploadedDocuments(PriorAuthorityDataPayload draft) {
     return draft.content().uploadedDocuments() == null
         ? new ArrayList<>()
         : new ArrayList<>(draft.content().uploadedDocuments());

@@ -16,7 +16,7 @@ import uk.gov.justice.laa.dstew.access.model.PriorAuthorityDocumentType;
 import uk.gov.justice.laa.dstew.access.model.UpdatePriorAuthorityDocumentTypeRequest;
 
 @ExtendWith(MockitoExtension.class)
-class UpdatePriorAuthorityDocumentTypeUseCaseTest {
+class UpdateEvidenceDocumentTypeUseCaseTest {
 
   @Mock private RetryingCommandDispatcher dispatcher;
 

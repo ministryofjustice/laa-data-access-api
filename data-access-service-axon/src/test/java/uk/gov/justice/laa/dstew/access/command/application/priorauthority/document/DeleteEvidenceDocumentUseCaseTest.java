@@ -24,13 +24,13 @@ import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentDeleteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.EvidenceDocument;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityDocument;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
 
 @ExtendWith(MockitoExtension.class)
-class DeletePriorAuthorityDocumentUseCaseTest {
+class DeleteEvidenceDocumentUseCaseTest {
 
   @Mock private PriorAuthorityDraftStore draftStore;
   @Mock private RetryingCommandDispatcher dispatcher;
@@ -117,7 +117,7 @@ class DeletePriorAuthorityDocumentUseCaseTest {
         null,
         null,
         List.of(
-            new PriorAuthorityDocument(
+            new EvidenceDocument(
                 documentId,
                 null,
                 "evidence.pdf",

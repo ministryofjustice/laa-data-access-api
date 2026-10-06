@@ -40,6 +40,11 @@ public class ApplicationReadQueryGateway {
     return executor.findOne(applicationReadRepository, functional, access);
   }
 
+  public List<ApplicationReadModel> findAllApplications(
+      Specification<ApplicationReadModel> functional, Specification<ApplicationReadModel> access) {
+    return executor.findAll(applicationReadRepository, functional, access);
+  }
+
   public List<ApplicationReadModel> findApplications(
       Collection<java.util.UUID> ids, Specification<ApplicationReadModel> access) {
     return executor.findAll(

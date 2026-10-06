@@ -15,7 +15,7 @@ public record PriorAuthorityContent(
     ExpertDetails expertDetails,
     CounselDetails counselDetails,
     DisbursementDetails disbursementDetails,
-    List<PriorAuthorityDocument> uploadedDocuments) {
+    List<EvidenceDocument> uploadedDocuments) {
 
   /** Creates content without any uploaded documents. */
   public PriorAuthorityContent(

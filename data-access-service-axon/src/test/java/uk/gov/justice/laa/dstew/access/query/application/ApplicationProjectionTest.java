@@ -39,9 +39,12 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
+import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftPayload;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftStore;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationNote;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftStartedEvent;
@@ -51,6 +54,7 @@ import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationRead
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.EvidenceDocument;
 import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
@@ -69,6 +73,7 @@ class ApplicationProjectionTest {
   @Mock private ApplicationDataStore applicationDataStore;
   @Mock private ApplicationListIndexReadRepository listIndexRepository;
   @Mock private PriorAuthorityReadRepository priorAuthorityReadRepository;
+  @Mock private ApplicationDraftStore draftStore;
   @Mock private ApplicationReadQueryGateway applicationReadQueryGateway;
   @Mock private ApplicationCurrentStateAccessPolicy currentStateAccessPolicy;
   @Mock private ApplicationListIndexAccessPolicy listIndexAccessPolicy;
@@ -85,7 +90,8 @@ class ApplicationProjectionTest {
             priorAuthorityReadRepository,
             applicationReadQueryGateway,
             currentStateAccessPolicy,
-            listIndexAccessPolicy);
+            listIndexAccessPolicy,
+            draftStore);
   }
 
   @Test
@@ -138,6 +144,92 @@ class ApplicationProjectionTest {
     assertThat(projection.handle(new ApplicationProjectionExistsQuery(applicationId)))
         .isEqualTo(exists);
     org.mockito.Mockito.verifyNoInteractions(applicationDataStore);
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void givenProjectedDocument_whenFound_thenHydratesFilenameFromSubmittedOrDraftContent(
+      boolean submitted) {
+    UUID applicationId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    Instant uploadedAt = Instant.parse("2026-09-28T15:10:27.430Z");
+    ApplicationReadModel application =
+        documentReadModel(applicationId, uploadedDocument(documentId, uploadedAt, false));
+    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(application));
+    givenDocumentFilenames(application, submitted, Map.of(documentId, "original evidence.pdf"));
+
+    assertThat(projection.handle(new FindApplicationDocumentQuery(applicationId, documentId)))
+        .isEqualTo(
+            new EvidenceDocument(
+                documentId,
+                "GATEWAY_EVIDENCE",
+                "original evidence.pdf",
+                null,
+                "application/pdf",
+                12L,
+                uploadedAt,
+                "CIVIL_APPLY",
+                "checksum"));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"missing application", "unknown document", "deleted", "no filename"})
+  void givenDocumentUnavailable_whenQueried_thenReturnsNull(String scenario) {
+    UUID applicationId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    ApplicationReadModel application =
+        documentReadModel(
+            applicationId,
+            uploadedDocument(
+                "unknown document".equals(scenario) ? UUID.randomUUID() : documentId,
+                Instant.parse("2026-09-28T15:10:27.430Z"),
+                "deleted".equals(scenario)));
+    when(applicationReadRepository.findById(applicationId))
+        .thenReturn(
+            "missing application".equals(scenario) ? Optional.empty() : Optional.of(application));
+    if ("no filename".equals(scenario)) {
+      givenDocumentFilenames(application, false, Map.of());
+    }
+
+    assertThat(projection.handle(new FindApplicationDocumentQuery(applicationId, documentId)))
+        .isNull();
+  }
+
+  private ApplicationReadModel documentReadModel(UUID applicationId, UploadDocument document) {
+    return ApplicationReadModel.builder()
+        .applicationId(applicationId)
+        .applicationDataVersion(0L)
+        .uploadedDocuments(List.of(document))
+        .build();
+  }
+
+  private UploadDocument uploadedDocument(UUID documentId, Instant uploadedAt, boolean deleted) {
+    return new UploadDocument(
+        documentId,
+        "GATEWAY_EVIDENCE",
+        uploadedAt,
+        12L,
+        "application/pdf",
+        "checksum",
+        "CIVIL_APPLY",
+        deleted);
+  }
+
+  private void givenDocumentFilenames(
+      ApplicationReadModel application, boolean submitted, Map<UUID, String> filenames) {
+    ApplicationDataId id = dataId(application);
+    if (submitted) {
+      ApplicationDataPayload payload = mock(ApplicationDataPayload.class);
+      when(payload.documentFilenames()).thenReturn(filenames);
+      when(applicationDataStore.getAll(List.of(id))).thenReturn(Map.of(id, payload));
+    } else {
+      when(applicationDataStore.getAll(List.of(id))).thenReturn(Map.of());
+      when(draftStore.find(application.getApplicationId()))
+          .thenReturn(
+              Optional.of(
+                  new ApplicationDraftPayload(
+                      "APPLICATION_SUBMITTED", "LAA-123", Map.of(), "{}", List.of(), filenames)));
+    }
   }
 
   @Test

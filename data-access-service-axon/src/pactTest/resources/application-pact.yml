@@ -1,0 +1,52 @@
+# Pact provider verification profile (activated with @ActiveProfiles("pact") on the base class).
+#
+# The real application runs on in-memory H2 with the schema generated on start, exactly as the
+# module's in-memory tests do. Nothing below the controllers is mocked: state handlers create data
+# through the real use cases, so the responses Pact compares come from real events, projections
+# and mappers. Only systems outside the service are stubbed or switched off.
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:axon-pact;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+  flyway:
+    enabled: false
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        default_schema: PUBLIC
+
+application:
+  projection:
+    # Generous wait so a create interaction returns 201 deterministically on a slow CI runner.
+    # Production keeps 5s; the 202 path is a separate contract, not something to hit by accident.
+    timeout: 30s
+
+# Real security stays on. Replayed requests carry the dev token, which the security config maps to
+# a caseworker identity with a fixed Entra OID (see SecurityConfig.DEV_TOKENS).
+feature:
+  disable-security: false
+  enable-dev-token: true
+
+# Placeholder issuer details: the dev token never reaches the JWT decoder, but the security
+# configuration requires these to build it.
+ENTRA_ISSUER_URI: https://issuer.example.test
+ENTRA_JWK_SET_URI: https://jwks.example.test/.well-known/jwks.json
+ENTRA_AUD: api://data-access-api-test
+
+# Secure Document Storage is an external dependency. No in-scope interaction calls it; the client
+# only needs configuration present to start.
+SDS_API_URL: http://sds-stub.test
+SDS_API_BUCKET: pact-bucket
+SDS_API_CLIENT_REGISTRATION_ID: moj-identity
+SDS_API_PRINCIPAL_NAME: pact-principal
+AUTH_CLIENT_ID: pact-client-id
+AUTH_CLIENT_SECRET: pact-client-secret
+AUTH_SCOPE: pact-scope
+AUTH_TENANT_ID: pact-tenant
+
+# SNS publication stays off: the publisher is only created when a topic ARN is configured.

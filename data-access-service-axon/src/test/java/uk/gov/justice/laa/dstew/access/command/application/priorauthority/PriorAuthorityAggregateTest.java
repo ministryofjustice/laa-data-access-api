@@ -37,8 +37,8 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decisi
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.EvidenceDocument;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityDocument;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityStatusConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
@@ -797,7 +797,7 @@ class PriorAuthorityAggregateTest {
                         null,
                         null,
                         List.of(
-                            new PriorAuthorityDocument(
+                            new EvidenceDocument(
                                 UUID.randomUUID(),
                                 "gateway_evidence",
                                 "first.pdf",
@@ -899,7 +899,7 @@ class PriorAuthorityAggregateTest {
                         null,
                         null,
                         List.of(
-                            new PriorAuthorityDocument(
+                            new EvidenceDocument(
                                 documentId,
                                 null,
                                 "evidence.pdf",
@@ -909,7 +909,7 @@ class PriorAuthorityAggregateTest {
                                 occurredAt,
                                 "CIVIL_APPLY",
                                 "checksum"),
-                            new PriorAuthorityDocument(
+                            new EvidenceDocument(
                                 documentTwoId,
                                 null,
                                 "other_evidence.pdf",
@@ -970,7 +970,7 @@ class PriorAuthorityAggregateTest {
                         null,
                         null,
                         List.of(
-                            new PriorAuthorityDocument(
+                            new EvidenceDocument(
                                 documentId,
                                 "INVOICE",
                                 "invoice.pdf",
@@ -980,7 +980,7 @@ class PriorAuthorityAggregateTest {
                                 occurredAt,
                                 "CIVIL_APPLY",
                                 "checksum"),
-                            new PriorAuthorityDocument(
+                            new EvidenceDocument(
                                 documentTwoId,
                                 "EXPERT_REPORT",
                                 "report.pdf",
@@ -1005,7 +1005,7 @@ class PriorAuthorityAggregateTest {
             eq("{}"),
             eq(occurredAt));
     assertThat(payloadCaptor.getValue().content().uploadedDocuments())
-        .extracting(PriorAuthorityDocument::documentType)
+        .extracting(EvidenceDocument::documentType)
         .containsExactly("GATEWAY_EVIDENCE", "EXPERT_REPORT");
   }
 
@@ -1094,7 +1094,7 @@ class PriorAuthorityAggregateTest {
                         null,
                         null,
                         List.of(
-                            new PriorAuthorityDocument(
+                            new EvidenceDocument(
                                 documentId,
                                 null,
                                 "delete.pdf",
@@ -1104,7 +1104,7 @@ class PriorAuthorityAggregateTest {
                                 occurredAt,
                                 "CIVIL_APPLY",
                                 "delete-checksum"),
-                            new PriorAuthorityDocument(
+                            new EvidenceDocument(
                                 remainingDocumentId,
                                 null,
                                 "keep.pdf",
@@ -1129,7 +1129,7 @@ class PriorAuthorityAggregateTest {
             eq("{}"),
             eq(occurredAt));
     assertThat(payloadCaptor.getValue().content().uploadedDocuments())
-        .extracting(PriorAuthorityDocument::documentId)
+        .extracting(EvidenceDocument::documentId)
         .containsExactly(remainingDocumentId);
     verify(eventAppender)
         .append(
