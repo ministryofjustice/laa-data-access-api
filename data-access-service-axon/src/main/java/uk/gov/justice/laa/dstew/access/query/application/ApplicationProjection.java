@@ -49,6 +49,7 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.EvidenceDocument;
+import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexAccessPolicy;
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexSpecification;
@@ -171,9 +172,12 @@ public class ApplicationProjection {
     List<ApplicationReadModel> content =
         assembler.hydrate(pageIds.stream().map(stateById::get).filter(Objects::nonNull).toList());
 
+    Map<UUID, LinkedApplicationGroupReadModel> groupsByGroupId = assembler.fetchGroups(content);
+
     return new FindAllApplicationsResult(
         content,
-        assembler.fetchGroups(content),
+        groupsByGroupId,
+        assembler.fetchLinkedLaaReferences(groupsByGroupId.values()),
         assembler.fetchPriorAuthorities(content),
         indexPage.getTotalElements(),
         query.page(),

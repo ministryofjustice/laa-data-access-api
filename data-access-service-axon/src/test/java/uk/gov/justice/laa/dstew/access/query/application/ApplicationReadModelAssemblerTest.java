@@ -55,7 +55,7 @@ class ApplicationReadModelAssemblerTest {
   }
 
   @Test
-  void givenLinkedMembers_whenAssemblingDetail_thenReturnsOtherMemberLaaReferences() {
+  void givenLinkedMembers_whenAssemblingDetail_thenReturnsMemberLaaReferences() {
     UUID applicationId = UUID.randomUUID();
     UUID linkedApplicationId = UUID.randomUUID();
     UUID unreferencedApplicationId = UUID.randomUUID();
@@ -71,7 +71,8 @@ class ApplicationReadModelAssemblerTest {
     when(groupReadRepository.findById(groupId)).thenReturn(Optional.of(group));
     when(priorAuthorityReadRepository.findAllByApplicationIdIn(List.of(applicationId)))
         .thenReturn(List.of());
-    when(listIndexRepository.findAllById(List.of(linkedApplicationId, unreferencedApplicationId)))
+    when(listIndexRepository.findAllById(
+            List.of(applicationId, linkedApplicationId, unreferencedApplicationId)))
         .thenReturn(
             List.of(
                 ApplicationListIndexReadModel.builder()
@@ -91,23 +92,31 @@ class ApplicationReadModelAssemblerTest {
   }
 
   @Test
-  void givenGroupWithOnlyThisApplication_whenAssemblingDetail_thenSkipsLaaReferenceLookup() {
-    UUID applicationId = UUID.randomUUID();
-    UUID groupId = UUID.randomUUID();
-    var application =
-        ApplicationReadModel.builder().applicationId(applicationId).linkedGroupId(groupId).build();
-    var group =
-        LinkedApplicationGroupReadModel.builder()
-            .groupId(groupId)
-            .memberIds(List.of(applicationId))
-            .build();
-    when(groupReadRepository.findById(groupId)).thenReturn(Optional.of(group));
-    when(priorAuthorityReadRepository.findAllByApplicationIdIn(List.of(applicationId)))
-        .thenReturn(List.of());
+  void givenGroupsSharingMembers_whenFetchingLinkedLaaReferences_thenLoadsEachMemberOnce() {
+    UUID sharedId = UUID.randomUUID();
+    UUID firstId = UUID.randomUUID();
+    UUID secondId = UUID.randomUUID();
+    var groups =
+        List.of(
+            LinkedApplicationGroupReadModel.builder().memberIds(List.of(firstId, sharedId)).build(),
+            LinkedApplicationGroupReadModel.builder()
+                .memberIds(List.of(sharedId, secondId))
+                .build());
+    when(listIndexRepository.findAllById(List.of(firstId, sharedId, secondId)))
+        .thenReturn(
+            List.of(
+                ApplicationListIndexReadModel.builder()
+                    .applicationId(sharedId)
+                    .laaReference("LAA-SHARED")
+                    .build()));
 
-    var result = assembler.assembleDetail(application);
+    assertThat(assembler.fetchLinkedLaaReferences(groups))
+        .containsExactly(entry(sharedId, "LAA-SHARED"));
+  }
 
-    assertThat(result.linkedLaaReferences()).isEmpty();
+  @Test
+  void givenNoGroups_whenFetchingLinkedLaaReferences_thenSkipsLookup() {
+    assertThat(assembler.fetchLinkedLaaReferences(List.of())).isEmpty();
     verifyNoInteractions(listIndexRepository);
   }
 

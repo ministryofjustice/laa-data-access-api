@@ -1003,7 +1003,7 @@ class ApplicationProjectionTest {
 
   @Test
   @SuppressWarnings("unchecked")
-  void givenApplicationWithGroupId_whenFindAllQuery_thenGroupFetchedByGroupId() {
+  void givenApplicationWithGroupId_whenFindAllQuery_thenFetchesGroupAndLaaReferences() {
     UUID appId = UUID.randomUUID();
     UUID groupId = UUID.randomUUID();
     ApplicationListIndexReadModel indexRow =
@@ -1033,6 +1033,13 @@ class ApplicationProjectionTest {
             .memberIds(List.of(appId))
             .build();
     when(groupReadRepository.findAllById(groupIdsCaptor.capture())).thenReturn(List.of(group));
+    when(listIndexRepository.findAllById(List.of(appId)))
+        .thenReturn(
+            List.of(
+                ApplicationListIndexReadModel.builder()
+                    .applicationId(appId)
+                    .laaReference("LAA-123")
+                    .build()));
 
     FindAllApplicationsResult result =
         projection.handle(
@@ -1040,6 +1047,7 @@ class ApplicationProjectionTest {
 
     assertThat(groupIdsCaptor.getValue()).containsExactly(groupId);
     assertThat(result.groupsByGroupId()).containsEntry(groupId, group);
+    assertThat(result.linkedLaaReferences()).containsExactly(entry(appId, "LAA-123"));
   }
 
   @Test

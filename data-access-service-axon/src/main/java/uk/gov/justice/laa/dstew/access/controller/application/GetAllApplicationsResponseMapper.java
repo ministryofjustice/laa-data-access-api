@@ -19,7 +19,6 @@ import uk.gov.justice.laa.dstew.access.model.PagingResponse;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsResult;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
-import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
 
 /** Maps a {@link FindAllApplicationsResult} to an {@link ApplicationSummaryResponse}. */
 @Component
@@ -28,12 +27,7 @@ public class GetAllApplicationsResponseMapper {
   /** Builds the paginated response from the query result. */
   public ResponseEntity<ApplicationSummaryResponse> toResponse(FindAllApplicationsResult result) {
     List<ApplicationSummary> summaries =
-        result.applications().stream()
-            .map(
-                app ->
-                    toSummary(
-                        app, result.groupsByGroupId(), result.priorAuthoritiesByApplicationId()))
-            .toList();
+        result.applications().stream().map(app -> toSummary(app, result)).toList();
 
     PagingResponse paging = new PagingResponse();
     paging.setPage(result.requestedPage());
@@ -48,11 +42,11 @@ public class GetAllApplicationsResponseMapper {
     return ResponseEntity.ok(response);
   }
 
-  private ApplicationSummary toSummary(
-      ApplicationReadModel app,
-      Map<UUID, LinkedApplicationGroupReadModel> groupsByGroupId,
-      Map<UUID, List<PriorAuthorityReadModel>> priorAuthoritiesByApplicationId) {
-    var group = app.getLinkedGroupId() == null ? null : groupsByGroupId.get(app.getLinkedGroupId());
+  private ApplicationSummary toSummary(ApplicationReadModel app, FindAllApplicationsResult result) {
+    var group =
+        app.getLinkedGroupId() == null
+            ? null
+            : result.groupsByGroupId().get(app.getLinkedGroupId());
     ApplicationSummary summary = new ApplicationSummary();
     summary.setApplicationId(app.getApplicationId());
     summary.setStatus(app.getStatus() != null ? ApplicationStatus.valueOf(app.getStatus()) : null);
@@ -71,10 +65,12 @@ public class GetAllApplicationsResponseMapper {
 
     populateClientDetails(summary, app);
 
-    summary.setLinkedApplications(toLinkedSummaries(app, group));
+    summary.setLinkedApplications(toLinkedSummaries(app, group, result.linkedLaaReferences()));
     summary.setPriorAuthorities(
         PriorAuthoritySummaryMapper.toSummaries(
-            priorAuthoritiesByApplicationId.getOrDefault(app.getApplicationId(), List.of())));
+            result
+                .priorAuthoritiesByApplicationId()
+                .getOrDefault(app.getApplicationId(), List.of())));
     return summary;
   }
 
@@ -112,7 +108,9 @@ public class GetAllApplicationsResponseMapper {
   }
 
   private List<LinkedApplicationSummaryResponse> toLinkedSummaries(
-      ApplicationReadModel app, LinkedApplicationGroupReadModel group) {
+      ApplicationReadModel app,
+      LinkedApplicationGroupReadModel group,
+      Map<UUID, String> linkedLaaReferences) {
     if (group == null) {
       return Collections.emptyList();
     }
@@ -122,6 +120,7 @@ public class GetAllApplicationsResponseMapper {
             memberId -> {
               LinkedApplicationSummaryResponse linked = new LinkedApplicationSummaryResponse();
               linked.setApplicationId(memberId);
+              linked.setLaaReference(linkedLaaReferences.get(memberId));
               linked.setIsLead(memberId.equals(group.getLeadApplicationId()));
               return linked;
             })

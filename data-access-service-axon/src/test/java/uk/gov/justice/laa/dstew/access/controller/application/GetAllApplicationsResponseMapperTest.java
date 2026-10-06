@@ -39,7 +39,7 @@ class GetAllApplicationsResponseMapperTest {
   @Test
   void givenEmptyResult_whenToResponse_thenReturnsEmptyListWith200() {
     FindAllApplicationsResult result =
-        new FindAllApplicationsResult(List.of(), Map.of(), Map.of(), 0L, 1, 20);
+        new FindAllApplicationsResult(List.of(), Map.of(), Map.of(), Map.of(), 0L, 1, 20);
 
     ResponseEntity<ApplicationSummaryResponse> response = mapper.toResponse(result);
 
@@ -91,7 +91,7 @@ class GetAllApplicationsResponseMapperTest {
 
     FindAllApplicationsResult result =
         new FindAllApplicationsResult(
-            List.of(app), Map.of(), Map.of(applicationId, priorAuthorities), 1L, 1, 20);
+            List.of(app), Map.of(), Map.of(), Map.of(applicationId, priorAuthorities), 1L, 1, 20);
 
     ApplicationSummary summary = mapper.toResponse(result).getBody().getApplications().get(0);
 
@@ -133,7 +133,9 @@ class GetAllApplicationsResponseMapperTest {
 
     ApplicationSummary summary =
         mapper
-            .toResponse(new FindAllApplicationsResult(List.of(app), Map.of(), Map.of(), 1L, 1, 20))
+            .toResponse(
+                new FindAllApplicationsResult(
+                    List.of(app), Map.of(), Map.of(), Map.of(), 1L, 1, 20))
             .getBody()
             .getApplications()
             .get(0);
@@ -153,7 +155,9 @@ class GetAllApplicationsResponseMapperTest {
 
     ApplicationSummary summary =
         mapper
-            .toResponse(new FindAllApplicationsResult(List.of(app), Map.of(), Map.of(), 1L, 1, 20))
+            .toResponse(
+                new FindAllApplicationsResult(
+                    List.of(app), Map.of(), Map.of(), Map.of(), 1L, 1, 20))
             .getBody()
             .getApplications()
             .get(0);
@@ -179,7 +183,9 @@ class GetAllApplicationsResponseMapperTest {
 
     ApplicationSummary summary =
         mapper
-            .toResponse(new FindAllApplicationsResult(List.of(app), Map.of(), Map.of(), 1L, 1, 20))
+            .toResponse(
+                new FindAllApplicationsResult(
+                    List.of(app), Map.of(), Map.of(), Map.of(), 1L, 1, 20))
             .getBody()
             .getApplications()
             .get(0);
@@ -218,7 +224,13 @@ class GetAllApplicationsResponseMapperTest {
         mapper
             .toResponse(
                 new FindAllApplicationsResult(
-                    List.of(leadApp), Map.of(groupId, group), Map.of(), 1L, 1, 20))
+                    List.of(leadApp),
+                    Map.of(groupId, group),
+                    Map.of(memberId, "LAA-MEMBER"),
+                    Map.of(),
+                    1L,
+                    1,
+                    20))
             .getBody()
             .getApplications()
             .get(0);
@@ -227,6 +239,7 @@ class GetAllApplicationsResponseMapperTest {
     assertThat(summary.getLinkedGroupVersion()).isEqualTo(3L);
     assertThat(summary.getLinkedApplications()).hasSize(1);
     assertThat(summary.getLinkedApplications().get(0).getApplicationId()).isEqualTo(memberId);
+    assertThat(summary.getLinkedApplications().get(0).getLaaReference()).isEqualTo("LAA-MEMBER");
     assertThat(summary.getLinkedApplications().get(0).getIsLead()).isFalse();
   }
 
@@ -256,7 +269,7 @@ class GetAllApplicationsResponseMapperTest {
         mapper
             .toResponse(
                 new FindAllApplicationsResult(
-                    List.of(memberApp), Map.of(groupId, group), Map.of(), 1L, 1, 20))
+                    List.of(memberApp), Map.of(groupId, group), Map.of(), Map.of(), 1L, 1, 20))
             .getBody()
             .getApplications()
             .get(0);
@@ -275,7 +288,9 @@ class GetAllApplicationsResponseMapperTest {
 
     ApplicationSummary summary =
         mapper
-            .toResponse(new FindAllApplicationsResult(List.of(app), Map.of(), Map.of(), 1L, 1, 20))
+            .toResponse(
+                new FindAllApplicationsResult(
+                    List.of(app), Map.of(), Map.of(), Map.of(), 1L, 1, 20))
             .getBody()
             .getApplications()
             .get(0);
@@ -295,7 +310,9 @@ class GetAllApplicationsResponseMapperTest {
 
     ApplicationSummary summary =
         mapper
-            .toResponse(new FindAllApplicationsResult(List.of(app), Map.of(), Map.of(), 1L, 1, 20))
+            .toResponse(
+                new FindAllApplicationsResult(
+                    List.of(app), Map.of(), Map.of(), Map.of(), 1L, 1, 20))
             .getBody()
             .getApplications()
             .get(0);
@@ -327,6 +344,7 @@ class GetAllApplicationsResponseMapperTest {
             .toResponse(
                 new FindAllApplicationsResult(
                     List.of(app),
+                    Map.of(),
                     Map.of(),
                     Map.of(applicationId, List.of(priorAuthority)),
                     1L,

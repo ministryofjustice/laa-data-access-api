@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.query.application;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -87,7 +88,7 @@ public class ApplicationReadModelAssembler {
         application,
         linkedGroup,
         priorAuthorities,
-        findLinkedLaaReferences(application, linkedGroup));
+        linkedGroup == null ? Map.of() : fetchLinkedLaaReferences(List.of(linkedGroup)));
   }
 
   /** Batch-fetches linked group read models for the given Applications, keyed by group ID. */
@@ -113,28 +114,24 @@ public class ApplicationReadModelAssembler {
         .collect(Collectors.groupingBy(PriorAuthorityReadModel::getApplicationId));
   }
 
-  static String officeCode(ApplicationDataPayload data) {
-    return data == null || data.provider() == null ? null : data.provider().getOfficeCode();
-  }
-
-  private Map<UUID, String> findLinkedLaaReferences(
-      ApplicationReadModel application, LinkedApplicationGroupReadModel linkedGroup) {
-    if (linkedGroup == null) {
+  /** Batch-fetches the LAA references of every member of the given groups, keyed by ID. */
+  public Map<UUID, String> fetchLinkedLaaReferences(
+      Collection<LinkedApplicationGroupReadModel> groups) {
+    List<UUID> memberIds =
+        groups.stream().flatMap(group -> group.getMemberIds().stream()).distinct().toList();
+    if (memberIds.isEmpty()) {
       return Map.of();
     }
-    List<UUID> otherMemberIds =
-        linkedGroup.getMemberIds().stream()
-            .filter(memberId -> !memberId.equals(application.getApplicationId()))
-            .toList();
-    if (otherMemberIds.isEmpty()) {
-      return Map.of();
-    }
-    return listIndexRepository.findAllById(otherMemberIds).stream()
+    return listIndexRepository.findAllById(memberIds).stream()
         .filter(member -> member.getLaaReference() != null)
         .collect(
             Collectors.toMap(
                 ApplicationListIndexReadModel::getApplicationId,
                 ApplicationListIndexReadModel::getLaaReference));
+  }
+
+  static String officeCode(ApplicationDataPayload data) {
+    return data == null || data.provider() == null ? null : data.provider().getOfficeCode();
   }
 
   private ApplicationDataId dataId(ApplicationReadModel application) {
