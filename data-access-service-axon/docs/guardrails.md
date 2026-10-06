@@ -118,9 +118,11 @@ convert it to a string before invoking document use cases; response mappers conv
 back to the enum. There is no separate internal enum or aggregate-level enum validation. Internal
 commands retain lifecycle and ownership checks, while REST binding rejects unknown document types.
 
-The `document` package owns shared `DocumentMetadata`, `DocumentDetails`, `DocumentDownload`, and
-`DocumentUploadResult` records. Persisted metadata remains filename-free; download use cases hydrate
-filenames from sensitive content storage. Application-specific queries and authorization stay in
+The `document` package owns shared `DocumentMetadata` and `DocumentUploadResult` records;
+`content.priorauthority` owns `EvidenceDocument`, and `query.application.priorauthority` owns
+`EvidenceDocumentDownload`. Prior Authority query use cases live in `usecase.application.priorauthority`.
+Persisted metadata remains filename-free; download use cases hydrate filenames from sensitive content
+storage. Application-specific queries and authorization stay in
 their owning use cases. SDS document responses use internal records rather than generated API DTOs.
 
 Regenerated clients use `DocumentType` instead of `ApplicationDocumentType` or

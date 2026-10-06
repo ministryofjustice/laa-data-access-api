@@ -15,8 +15,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import uk.gov.justice.laa.dstew.access.document.DocumentDetails;
-import uk.gov.justice.laa.dstew.access.document.DocumentDownload;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.EvidenceDocument;
+import uk.gov.justice.laa.dstew.access.query.application.priorauthority.EvidenceDocumentDownload;
 import uk.gov.justice.laa.dstew.access.usecase.application.priorauthority.DownloadPriorAuthorityDocumentUseCase;
 
 /** Verifies that the document controller delegates and maps download metadata. */
@@ -31,10 +31,10 @@ class EvidenceDocumentQueryControllerTest {
   void givenOwnedDocument_whenDownloaded_thenUsesOriginalFilenameAndMetadata() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
-    DocumentDetails document = document(documentId, "application/pdf", 123L);
+    EvidenceDocument document = document(documentId, "application/pdf", 123L);
     Resource resource = mock(Resource.class);
     when(downloadPriorAuthorityDocumentUseCase.downloadDocument(priorAuthorityId, documentId))
-        .thenReturn(new DocumentDownload(document, resource));
+        .thenReturn(new EvidenceDocumentDownload(document, resource));
 
     ResponseEntity<Resource> response =
         controller.downloadPriorAuthorityDocument(null, priorAuthorityId, documentId);
@@ -55,8 +55,8 @@ class EvidenceDocumentQueryControllerTest {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
     Instant uploadedAt = Instant.parse("2026-09-08T12:00:00Z");
-    DocumentDetails document =
-        new DocumentDetails(
+    EvidenceDocument document =
+        new EvidenceDocument(
             documentId,
             "GATEWAY_EVIDENCE",
             "evidence.pdf",
@@ -68,7 +68,7 @@ class EvidenceDocumentQueryControllerTest {
             "checksum");
     Resource resource = mock(Resource.class);
     when(downloadPriorAuthorityDocumentUseCase.downloadDocument(priorAuthorityId, documentId))
-        .thenReturn(new DocumentDownload(document, resource));
+        .thenReturn(new EvidenceDocumentDownload(document, resource));
 
     ResponseEntity<Resource> response =
         controller.downloadPriorAuthorityDocument(null, priorAuthorityId, documentId);
@@ -84,7 +84,7 @@ class EvidenceDocumentQueryControllerTest {
     UUID documentId = UUID.randomUUID();
     Resource resource = mock(Resource.class);
     when(downloadPriorAuthorityDocumentUseCase.downloadDocument(priorAuthorityId, documentId))
-        .thenReturn(new DocumentDownload(document(documentId, null, null), resource));
+        .thenReturn(new EvidenceDocumentDownload(document(documentId, null, null), resource));
 
     ResponseEntity<Resource> response =
         controller.downloadPriorAuthorityDocument(null, priorAuthorityId, documentId);
@@ -98,10 +98,10 @@ class EvidenceDocumentQueryControllerTest {
   void givenDocumentWithInvalidMediaType_whenDownloaded_thenUsesDefaultMediaType() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
-    DocumentDetails document = document(documentId, "invalid media type", 123L);
+    EvidenceDocument document = document(documentId, "invalid media type", 123L);
     Resource resource = mock(Resource.class);
     when(downloadPriorAuthorityDocumentUseCase.downloadDocument(priorAuthorityId, documentId))
-        .thenReturn(new DocumentDownload(document, resource));
+        .thenReturn(new EvidenceDocumentDownload(document, resource));
 
     ResponseEntity<Resource> response =
         controller.downloadPriorAuthorityDocument(null, priorAuthorityId, documentId);
@@ -110,8 +110,8 @@ class EvidenceDocumentQueryControllerTest {
         .isEqualTo(MediaType.APPLICATION_OCTET_STREAM);
   }
 
-  private DocumentDetails document(UUID documentId, String mediaType, Long size) {
-    return new DocumentDetails(
+  private EvidenceDocument document(UUID documentId, String mediaType, Long size) {
+    return new EvidenceDocument(
         documentId,
         null,
         "original evidence.pdf",
