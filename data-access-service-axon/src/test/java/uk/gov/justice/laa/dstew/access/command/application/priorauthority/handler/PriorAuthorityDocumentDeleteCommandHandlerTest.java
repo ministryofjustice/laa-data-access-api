@@ -23,8 +23,8 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorA
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentDeletedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.EvidenceDocument;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityDocument;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 
@@ -45,8 +45,8 @@ class PriorAuthorityDocumentDeleteCommandHandlerTest {
     UUID applicationId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
     UUID remainingDocumentId = UUID.randomUUID();
-    PriorAuthorityDocument documentToRemove =
-        new PriorAuthorityDocument(
+    EvidenceDocument documentToRemove =
+        new EvidenceDocument(
             documentId,
             null,
             "remove.pdf",
@@ -56,8 +56,8 @@ class PriorAuthorityDocumentDeleteCommandHandlerTest {
             OCCURRED_AT,
             "service",
             "checksum-1");
-    PriorAuthorityDocument remainingDocument =
-        new PriorAuthorityDocument(
+    EvidenceDocument remainingDocument =
+        new EvidenceDocument(
             remainingDocumentId,
             "GATEWAY_EVIDENCE",
             "keep.pdf",

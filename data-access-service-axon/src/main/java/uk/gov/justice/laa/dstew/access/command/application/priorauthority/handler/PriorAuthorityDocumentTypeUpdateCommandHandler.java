@@ -14,8 +14,8 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorA
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentTypeUpdateCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.EvidenceDocument;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityDocument;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityDocumentType;
 
@@ -41,7 +41,7 @@ public class PriorAuthorityDocumentTypeUpdateCommandHandler {
                     new ResourceNotFoundException(
                         "Prior Authority draft not found: " + command.priorAuthorityId()));
 
-    List<PriorAuthorityDocument> updatedDocuments = getUpdatedDocuments(command, existingDraft);
+    List<EvidenceDocument> updatedDocuments = getUpdatedDocuments(command, existingDraft);
 
     PriorAuthorityContent updatedContent =
         existingDraft.content().withUploadedDocuments(List.copyOf(updatedDocuments));
@@ -60,9 +60,9 @@ public class PriorAuthorityDocumentTypeUpdateCommandHandler {
     return command.documentId();
   }
 
-  private static @NonNull List<PriorAuthorityDocument> getUpdatedDocuments(
+  private static @NonNull List<EvidenceDocument> getUpdatedDocuments(
       PriorAuthorityDocumentTypeUpdateCommand command, PriorAuthorityDataPayload existingDraft) {
-    List<PriorAuthorityDocument> updatedDocuments = copyUploadedDocuments(existingDraft);
+    List<EvidenceDocument> updatedDocuments = copyUploadedDocuments(existingDraft);
     int documentIndex =
         IntStream.range(0, updatedDocuments.size())
             .filter(index -> updatedDocuments.get(index).documentId().equals(command.documentId()))
@@ -72,13 +72,12 @@ public class PriorAuthorityDocumentTypeUpdateCommandHandler {
                     new ResourceNotFoundException(
                         "Document %s not found for Prior Authority %s"
                             .formatted(command.documentId(), command.priorAuthorityId())));
-    PriorAuthorityDocument existingDocument = updatedDocuments.get(documentIndex);
+    EvidenceDocument existingDocument = updatedDocuments.get(documentIndex);
     updatedDocuments.set(documentIndex, existingDocument.withDocumentType(command.documentType()));
     return updatedDocuments;
   }
 
-  private static List<PriorAuthorityDocument> copyUploadedDocuments(
-      PriorAuthorityDataPayload draft) {
+  private static List<EvidenceDocument> copyUploadedDocuments(PriorAuthorityDataPayload draft) {
     return draft.content().uploadedDocuments() == null
         ? new ArrayList<>()
         : new ArrayList<>(draft.content().uploadedDocuments());

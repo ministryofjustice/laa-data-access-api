@@ -12,8 +12,8 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorA
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentDeleteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.EvidenceDocument;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityDocument;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 
 /** Handles deletion of documents from a prior-authority draft. */
@@ -36,7 +36,7 @@ public class PriorAuthorityDocumentDeleteCommandHandler {
                     new ResourceNotFoundException(
                         "Prior Authority draft not found: " + command.priorAuthorityId()));
 
-    List<PriorAuthorityDocument> updatedDocuments = copyUploadedDocuments(existingDraft);
+    List<EvidenceDocument> updatedDocuments = copyUploadedDocuments(existingDraft);
     boolean removed =
         updatedDocuments.removeIf(document -> document.documentId().equals(command.documentId()));
     if (!removed) {
@@ -62,8 +62,7 @@ public class PriorAuthorityDocumentDeleteCommandHandler {
     return command.documentId();
   }
 
-  private static List<PriorAuthorityDocument> copyUploadedDocuments(
-      PriorAuthorityDataPayload draft) {
+  private static List<EvidenceDocument> copyUploadedDocuments(PriorAuthorityDataPayload draft) {
     return draft.content().uploadedDocuments() == null
         ? new ArrayList<>()
         : new ArrayList<>(draft.content().uploadedDocuments());

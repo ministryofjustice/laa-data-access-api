@@ -25,7 +25,7 @@ import uk.gov.justice.laa.dstew.access.model.UpdatePriorAuthorityDocumentTypeReq
 import uk.gov.justice.laa.dstew.access.model.UploadPriorAuthorityDocumentResponse;
 
 @ExtendWith(MockitoExtension.class)
-class PriorAuthorityDocumentCommandControllerTest {
+class EvidenceDocumentCommandControllerTest {
 
   @Mock private UploadPriorAuthorityDocumentUseCase uploadUseCase;
   @Mock private UpdatePriorAuthorityDocumentTypeUseCase updateTypeUseCase;

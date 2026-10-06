@@ -12,8 +12,8 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorA
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentUploadCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.EvidenceDocument;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityDocument;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 
 /** Handles uploads of documents to a prior-authority draft. */
@@ -36,9 +36,9 @@ public class PriorAuthorityDocumentUploadCommandHandler {
                     new ResourceNotFoundException(
                         "Prior Authority draft not found: " + command.priorAuthorityId()));
 
-    List<PriorAuthorityDocument> existingDocuments = copyUploadedDocuments(existingDraft);
+    List<EvidenceDocument> existingDocuments = copyUploadedDocuments(existingDraft);
     existingDocuments.add(
-        new PriorAuthorityDocument(
+        new EvidenceDocument(
             command.documentId(),
             null,
             command.originalFilename(),
@@ -67,8 +67,7 @@ public class PriorAuthorityDocumentUploadCommandHandler {
     return command.documentId();
   }
 
-  private static List<PriorAuthorityDocument> copyUploadedDocuments(
-      PriorAuthorityDataPayload draft) {
+  private static List<EvidenceDocument> copyUploadedDocuments(PriorAuthorityDataPayload draft) {
     return draft.content().uploadedDocuments() == null
         ? new ArrayList<>()
         : new ArrayList<>(draft.content().uploadedDocuments());

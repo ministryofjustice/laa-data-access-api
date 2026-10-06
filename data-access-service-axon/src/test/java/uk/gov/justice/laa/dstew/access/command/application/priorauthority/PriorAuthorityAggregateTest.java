@@ -70,7 +70,6 @@ class PriorAuthorityAggregateTest {
   @DisplayName("on PriorAuthorityDocumentUploadedEvent delegates to PriorAuthorityEvolve")
   void testOnDocumentUploadedEvent() {
     PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
-    // Initialize with a draft event first to set priorAuthorityId
     aggregate.on(new PriorAuthorityDraftStartedEvent(PA_ID, APP_ID, PA_TYPE, SCHEMA_VERSION, NOW));
 
     UUID docId = UUID.randomUUID();
@@ -80,7 +79,6 @@ class PriorAuthorityAggregateTest {
 
     aggregate.on(event);
 
-    // Document event delegates to evolve which adds document to state
     assertThat(aggregate.getState().uploadedDocumentIds).contains(docId);
   }
 
@@ -88,19 +86,14 @@ class PriorAuthorityAggregateTest {
   @DisplayName("on PriorAuthorityDocumentDeletedEvent delegates to PriorAuthorityEvolve")
   void testOnDocumentDeletedEvent() {
     PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
-    // Initialize with a draft event first to set priorAuthorityId and upload a document
     aggregate.on(new PriorAuthorityDraftStartedEvent(PA_ID, APP_ID, PA_TYPE, SCHEMA_VERSION, NOW));
     UUID docId = UUID.randomUUID();
     aggregate.on(
         new PriorAuthorityDocumentUploadedEvent(
             PA_ID, docId, NOW, 1024L, "application/pdf", "checksum123", APP_ID));
 
-    PriorAuthorityDocumentDeletedEvent event =
-        new PriorAuthorityDocumentDeletedEvent(PA_ID, docId, NOW, APP_ID);
+    aggregate.on(new PriorAuthorityDocumentDeletedEvent(PA_ID, docId, NOW, APP_ID));
 
-    aggregate.on(event);
-
-    // Document event delegates to evolve which removes document from state
     assertThat(aggregate.getState().uploadedDocumentIds).doesNotContain(docId);
   }
 

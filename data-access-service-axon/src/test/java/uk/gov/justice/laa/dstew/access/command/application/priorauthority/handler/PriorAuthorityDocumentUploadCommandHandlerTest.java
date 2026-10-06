@@ -22,8 +22,8 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorA
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentUploadedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.EvidenceDocument;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityDocument;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 
@@ -44,7 +44,7 @@ class PriorAuthorityDocumentUploadCommandHandlerTest {
     UUID applicationId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
     PriorAuthorityContent existingContent =
-        new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Existing", null, null, null);
+        new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Existing", null, null, null, null);
     PriorAuthorityDataPayload existingDraft =
         new PriorAuthorityDataPayload(
             priorAuthorityId, applicationId, existingContent, "old", OCCURRED_AT);
@@ -77,7 +77,7 @@ class PriorAuthorityDocumentUploadCommandHandlerTest {
             eq("new"),
             eq(OCCURRED_AT));
     assertThat(payloadCaptor.getValue().content().uploadedDocuments())
-        .extracting(PriorAuthorityDocument::documentId)
+        .extracting(EvidenceDocument::documentId)
         .containsExactly(documentId);
     verify(eventAppender)
         .append(
@@ -97,8 +97,8 @@ class PriorAuthorityDocumentUploadCommandHandlerTest {
     UUID applicationId = UUID.randomUUID();
     UUID existingDocumentId = UUID.randomUUID();
     UUID newDocumentId = UUID.randomUUID();
-    PriorAuthorityDocument existingDocument =
-        new PriorAuthorityDocument(
+    EvidenceDocument existingDocument =
+        new EvidenceDocument(
             existingDocumentId,
             "REPORT",
             "existing.pdf",
@@ -146,7 +146,7 @@ class PriorAuthorityDocumentUploadCommandHandlerTest {
             eq("new"),
             eq(OCCURRED_AT));
     assertThat(payloadCaptor.getValue().content().uploadedDocuments())
-        .extracting(PriorAuthorityDocument::documentId)
+        .extracting(EvidenceDocument::documentId)
         .containsExactly(existingDocumentId, newDocumentId);
   }
 

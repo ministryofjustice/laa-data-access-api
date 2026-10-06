@@ -17,7 +17,7 @@ public record PriorAuthorityResult(
     ExpertDetails expertDetails,
     CounselDetails counselDetails,
     DisbursementDetails disbursementDetails,
-    List<PriorAuthorityDocument> uploadedDocuments,
+    List<EvidenceDocument> uploadedDocuments,
     PriorAuthorityDataPayload.DecisionDetails decisionDetails) {
 
   /** Builds the use-case result from the current-state projection, versioned content and status. */

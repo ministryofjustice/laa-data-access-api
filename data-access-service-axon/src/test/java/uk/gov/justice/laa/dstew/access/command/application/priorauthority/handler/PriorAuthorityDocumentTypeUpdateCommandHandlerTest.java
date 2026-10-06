@@ -23,8 +23,8 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorA
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentTypeUpdatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.EvidenceDocument;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityDocument;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityDocumentType;
@@ -45,8 +45,8 @@ class PriorAuthorityDocumentTypeUpdateCommandHandlerTest {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
-    PriorAuthorityDocument document =
-        new PriorAuthorityDocument(
+    EvidenceDocument document =
+        new EvidenceDocument(
             documentId,
             null,
             "file.pdf",
@@ -85,7 +85,7 @@ class PriorAuthorityDocumentTypeUpdateCommandHandlerTest {
             eq("new"),
             eq(OCCURRED_AT));
     assertThat(payloadCaptor.getValue().content().uploadedDocuments())
-        .extracting(PriorAuthorityDocument::documentType)
+        .extracting(EvidenceDocument::documentType)
         .containsExactly(PriorAuthorityDocumentType.GATEWAY_EVIDENCE.name());
     verify(eventAppender)
         .append(
