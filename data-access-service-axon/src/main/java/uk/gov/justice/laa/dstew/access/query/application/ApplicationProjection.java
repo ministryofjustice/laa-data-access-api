@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -29,8 +30,11 @@ import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEve
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftPayload;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftStartedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
@@ -44,19 +48,21 @@ import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpd
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.EvidenceDocument;
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexAccessPolicy;
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexSpecification;
 
 /** Independently replayable projection of the current state of each Application. */
 @Component
-@RequiredArgsConstructor
 @SequencingPolicy
+@RequiredArgsConstructor
 @Namespace("application-projection")
 public class ApplicationProjection {
 
   private final ApplicationReadRepository applicationReadRepository;
   private final ApplicationDataStore applicationDataStore;
+  private final ApplicationDraftStore draftStore;
   private final ApplicationReadQueryGateway applicationReadQueryGateway;
   private final ApplicationCurrentStateAccessPolicy currentStateAccessPolicy;
   private final ApplicationListIndexAccessPolicy listIndexAccessPolicy;
@@ -78,6 +84,24 @@ public class ApplicationProjection {
   @QueryHandler
   public boolean handle(ApplicationProjectionExistsQuery query) {
     return applicationReadRepository.existsById(query.applicationId());
+  }
+
+  /** Returns a live document with its filename hydrated, or {@code null} if either is absent. */
+  @QueryHandler
+  public @Nullable EvidenceDocument handle(FindApplicationDocumentQuery query) {
+    return applicationReadRepository
+        .findById(query.applicationId())
+        .flatMap(
+            application ->
+                application.getUploadedDocuments().stream()
+                    .filter(document -> document.documentId().equals(query.documentId()))
+                    .filter(document -> !document.deleted())
+                    .findFirst()
+                    .flatMap(
+                        document ->
+                            documentFilename(application, document.documentId())
+                                .map(fileName -> evidenceDocument(document, fileName))))
+        .orElse(null);
   }
 
   /** Returns the current-state projection for the requested Application. */
@@ -474,6 +498,35 @@ public class ApplicationProjection {
                   query -> query.applicationId().equals(applicationId),
                   saved);
             });
+  }
+
+  private Optional<String> documentFilename(ApplicationReadModel application, UUID documentId) {
+    ApplicationDataId id =
+        new ApplicationDataId(
+            application.getApplicationId(), application.getApplicationDataVersion());
+    ApplicationDataPayload data = applicationDataStore.getAll(List.of(id)).get(id);
+    // Drafts have no immutable content until submission.
+    Map<UUID, java.lang.String> filenames =
+        data != null
+            ? data.documentFilenames()
+            : draftStore
+                .find(application.getApplicationId())
+                .map(ApplicationDraftPayload::documentFilenames)
+                .orElse(Map.of());
+    return java.util.Optional.ofNullable(filenames.get(documentId));
+  }
+
+  private EvidenceDocument evidenceDocument(UploadDocument document, String fileName) {
+    return new EvidenceDocument(
+        document.documentId(),
+        document.documentType(),
+        fileName,
+        null,
+        document.contentType(),
+        document.size(),
+        document.uploadedAt(),
+        document.sourceService(),
+        document.checksum());
   }
 
   /** Clears the disposable current-state table before replay. */

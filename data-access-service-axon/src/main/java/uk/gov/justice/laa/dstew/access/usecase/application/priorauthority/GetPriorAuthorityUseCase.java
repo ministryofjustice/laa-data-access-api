@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.query.application.priorauthority;
+package uk.gov.justice.laa.dstew.access.usecase.application.priorauthority;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -6,6 +6,7 @@ import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.query.application.priorauthority.FindPriorAuthorityByPriorAuthorityIdQuery;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 
 /** Retrieves a Prior Authority submission from its projection. */

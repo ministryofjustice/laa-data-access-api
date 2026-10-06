@@ -10,7 +10,7 @@ import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentDeleteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityDocument;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.EvidenceDocument;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
@@ -49,7 +49,7 @@ public class DeletePriorAuthorityDocumentUseCase {
                 () ->
                     new ResourceNotFoundException(
                         "Prior Authority %s not found".formatted(priorAuthorityId)));
-    PriorAuthorityDocument document =
+    EvidenceDocument document =
         draft.content().uploadedDocuments().stream()
             .filter(candidate -> candidate.documentId().equals(documentId))
             .findFirst()

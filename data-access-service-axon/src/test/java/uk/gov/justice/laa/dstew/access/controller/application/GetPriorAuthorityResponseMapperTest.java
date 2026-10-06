@@ -17,9 +17,9 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.BillingType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.CounselDetails;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.CounselType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.DisbursementDetails;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.EvidenceDocument;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.ExpertCosts;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.ExpertDetails;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityDocument;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.TimeRequested;
@@ -180,7 +180,7 @@ class GetPriorAuthorityResponseMapperTest {
                     "{}"))
             .uploadedDocuments(
                 List.of(
-                    new PriorAuthorityDocument(
+                    new EvidenceDocument(
                         UUID.randomUUID(),
                         null,
                         "evidence.pdf",
@@ -225,7 +225,7 @@ class GetPriorAuthorityResponseMapperTest {
         PriorAuthorityResult.builder()
             .uploadedDocuments(
                 List.of(
-                    new PriorAuthorityDocument(
+                    new EvidenceDocument(
                         firstDocumentId,
                         "GATEWAY_EVIDENCE",
                         "evidence.pdf",
@@ -235,7 +235,7 @@ class GetPriorAuthorityResponseMapperTest {
                         firstUploadedAt,
                         "CIVIL_APPLY",
                         "first-checksum"),
-                    new PriorAuthorityDocument(
+                    new EvidenceDocument(
                         secondDocumentId,
                         "GATEWAY_EVIDENCE",
                         "evidence.pdf",
@@ -377,7 +377,7 @@ class GetPriorAuthorityResponseMapperTest {
             .priorAuthorityType(PriorAuthorityType.EXPERT)
             .uploadedDocuments(
                 List.of(
-                    new PriorAuthorityDocument(
+                    new EvidenceDocument(
                         UUID.randomUUID(),
                         "GATEWAY_EVIDENCE",
                         "a.pdf",
@@ -387,7 +387,7 @@ class GetPriorAuthorityResponseMapperTest {
                         uploadedAt,
                         "CIVIL_APPLY",
                         "checksum-one"),
-                    new PriorAuthorityDocument(
+                    new EvidenceDocument(
                         UUID.randomUUID(),
                         "MERITS_REPORT",
                         "b.pdf",
