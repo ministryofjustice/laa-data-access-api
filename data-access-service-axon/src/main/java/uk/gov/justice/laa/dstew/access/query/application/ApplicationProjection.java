@@ -7,10 +7,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 import org.axonframework.messaging.core.annotation.Namespace;
 import org.axonframework.messaging.core.annotation.SequencingPolicy;
 import org.axonframework.messaging.eventhandling.annotation.EventHandler;
@@ -29,7 +29,6 @@ import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEve
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
@@ -45,61 +44,23 @@ import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpd
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
-import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
-import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexAccessPolicy;
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadModel;
-import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexSpecification;
-import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
-import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadRepository;
 
 /** Independently replayable projection of the current state of each Application. */
 @Component
+@RequiredArgsConstructor
 @SequencingPolicy
 @Namespace("application-projection")
 public class ApplicationProjection {
 
   private final ApplicationReadRepository applicationReadRepository;
-  private final LinkedApplicationGroupReadRepository groupReadRepository;
   private final ApplicationDataStore applicationDataStore;
-  private final ApplicationListIndexReadRepository listIndexRepository;
-  private final PriorAuthorityReadRepository priorAuthorityReadRepository;
   private final ApplicationReadQueryGateway applicationReadQueryGateway;
   private final ApplicationCurrentStateAccessPolicy currentStateAccessPolicy;
   private final ApplicationListIndexAccessPolicy listIndexAccessPolicy;
-
-  /**
-   * Constructs the projection with its read repositories and application data store.
-   *
-   * @param applicationReadRepository persistence interface for {@code application_current_state}
-   * @param groupReadRepository persistence interface for {@code
-   *     linked_application_group_current_state}; used to fetch group membership for application
-   *     responses
-   * @param listIndexRepository persistence interface for {@code application_list_index}; used by
-   *     {@link FindAllApplicationsQuery} for database-side filtering and paging
-   * @param priorAuthorityReadRepository persistence interface for {@code
-   *     prior_authority_current_state}; used to fetch linked prior authorities for application
-   *     responses
-   */
-  public ApplicationProjection(
-      ApplicationReadRepository applicationReadRepository,
-      LinkedApplicationGroupReadRepository groupReadRepository,
-      ApplicationDataStore applicationDataStore,
-      ApplicationListIndexReadRepository listIndexRepository,
-      PriorAuthorityReadRepository priorAuthorityReadRepository,
-      ApplicationReadQueryGateway applicationReadQueryGateway,
-      ApplicationCurrentStateAccessPolicy currentStateAccessPolicy,
-      ApplicationListIndexAccessPolicy listIndexAccessPolicy) {
-    this.applicationReadRepository = applicationReadRepository;
-    this.groupReadRepository = groupReadRepository;
-    this.applicationDataStore = applicationDataStore;
-    this.listIndexRepository = listIndexRepository;
-    this.priorAuthorityReadRepository = priorAuthorityReadRepository;
-    this.applicationReadQueryGateway = applicationReadQueryGateway;
-    this.currentStateAccessPolicy = currentStateAccessPolicy;
-    this.listIndexAccessPolicy = listIndexAccessPolicy;
-  }
+  private final ApplicationReadModelAssembler assembler;
 
   /** Returns the hydrated Application and its related data, or {@code null} if absent. */
   @QueryHandler
@@ -108,22 +69,8 @@ public class ApplicationProjection {
         .findApplication(
             (root, criteriaQuery, cb) -> cb.equal(root.get("applicationId"), query.applicationId()),
             currentStateAccessPolicy.restrictionFor(query.accessScope()))
-        .flatMap(this::hydrate)
-        .map(
-            application -> {
-              LinkedApplicationGroupReadModel linkedGroup =
-                  application.getLinkedGroupId() == null
-                      ? null
-                      : groupReadRepository.findById(application.getLinkedGroupId()).orElse(null);
-              List<PriorAuthorityReadModel> priorAuthorities =
-                  priorAuthorityReadRepository.findAllByApplicationIdIn(
-                      List.of(query.applicationId()));
-              return new ApplicationDetailResult(
-                  application,
-                  linkedGroup,
-                  priorAuthorities,
-                  findLinkedLaaReferences(application, linkedGroup));
-            })
+        .flatMap(assembler::hydrate)
+        .map(assembler::assembleDetail)
         .orElse(null);
   }
 
@@ -140,7 +87,7 @@ public class ApplicationProjection {
         .findApplication(
             (root, criteriaQuery, cb) -> cb.equal(root.get("applicationId"), query.applicationId()),
             currentStateAccessPolicy.restrictionFor(query.accessScope()))
-        .flatMap(this::hydrate)
+        .flatMap(assembler::hydrate)
         .orElse(null);
   }
 
@@ -190,50 +137,20 @@ public class ApplicationProjection {
             .map(ApplicationListIndexReadModel::getApplicationId)
             .toList();
 
-    // Single batch load of current-state rows for the page
     Map<UUID, ApplicationReadModel> stateById =
         applicationReadQueryGateway
             .findApplications(pageIds, currentStateAccessPolicy.restrictionFor(query.accessScope()))
             .stream()
             .collect(Collectors.toMap(ApplicationReadModel::getApplicationId, Function.identity()));
 
-    // Single batch load of application_data payloads for the page
-    List<ApplicationDataId> dataIds =
-        stateById.values().stream()
-            .map(s -> new ApplicationDataId(s.getApplicationId(), s.getApplicationDataVersion()))
-            .toList();
-    Map<ApplicationDataId, ApplicationDataPayload> dataById = applicationDataStore.getAll(dataIds);
-
-    // Assemble hydrated read models preserving the index ordering
+    // Applications whose data payload is missing are dropped, preserving the index ordering.
     List<ApplicationReadModel> content =
-        pageIds.stream()
-            .map(stateById::get)
-            .filter(Objects::nonNull)
-            .map(
-                state -> {
-                  ApplicationDataId id =
-                      new ApplicationDataId(
-                          state.getApplicationId(), state.getApplicationDataVersion());
-                  ApplicationDataPayload data = dataById.get(id);
-                  return data == null ? null : hydrate(state, data);
-                })
-            .filter(Objects::nonNull)
-            .toList();
-
-    Map<UUID, LinkedApplicationGroupReadModel> groupsByGroupId = fetchGroups(content);
-
-    // Derived from the hydrated content rather than pageIds: applications dropped because their
-    // data payload was missing are absent from the response, so must not be batch-loaded for.
-    List<UUID> applicationIds =
-        content.stream().map(ApplicationReadModel::getApplicationId).toList();
-    Map<UUID, List<PriorAuthorityReadModel>> priorAuthoritiesByApplicationId =
-        priorAuthorityReadRepository.findAllByApplicationIdIn(applicationIds).stream()
-            .collect(Collectors.groupingBy(PriorAuthorityReadModel::getApplicationId));
+        assembler.hydrate(pageIds.stream().map(stateById::get).filter(Objects::nonNull).toList());
 
     return new FindAllApplicationsResult(
         content,
-        groupsByGroupId,
-        priorAuthoritiesByApplicationId,
+        assembler.fetchGroups(content),
+        assembler.fetchPriorAuthorities(content),
         indexPage.getTotalElements(),
         query.page(),
         query.pageSize());
@@ -243,7 +160,9 @@ public class ApplicationProjection {
   @QueryHandler
   public StalledAssessments handle(FindStalledAssessmentsQuery query) {
     return new StalledAssessments(
-        hydrate(applicationReadRepository.findAllByStatus(APPLICATION_SUBMITTED.name())).stream()
+        assembler
+            .hydrate(applicationReadRepository.findAllByStatus(APPLICATION_SUBMITTED.name()))
+            .stream()
             .filter(application -> application.getAutoGranted() == AutoGrantedState.PENDING)
             .filter(application -> application.getSubmittedAt() != null)
             .filter(application -> application.getSubmittedAt().isBefore(query.submittedBefore()))
@@ -274,7 +193,7 @@ public class ApplicationProjection {
                 .leadApplicationId(null)
                 .linkedGroupId(null)
                 .potentialDuplicates(event.potentialDuplicates())
-                .officeCode(officeCode(data))
+                .officeCode(ApplicationReadModelAssembler.officeCode(data))
                 .uploadedDocuments(
                     applicationReadRepository
                         .findById(event.applicationId())
@@ -376,7 +295,7 @@ public class ApplicationProjection {
               application.setApplicationDataVersion(event.applicationDataVersion());
               application.setModifiedAt(event.occurredAt());
               application.setOfficeCode(
-                  officeCode(
+                  ApplicationReadModelAssembler.officeCode(
                       applicationDataStore.get(
                           event.applicationId(), event.applicationDataVersion())));
               ApplicationReadModel saved = applicationReadRepository.save(application);
@@ -515,7 +434,8 @@ public class ApplicationProjection {
               application.setApplicationVersion(applicationVersion);
               application.setModifiedAt(occurredAt);
               application.setOfficeCode(
-                  officeCode(applicationDataStore.get(applicationId, applicationDataVersion)));
+                  ApplicationReadModelAssembler.officeCode(
+                      applicationDataStore.get(applicationId, applicationDataVersion)));
               ApplicationReadModel saved = applicationReadRepository.save(application);
               queryUpdateEmitter.emit(
                   FindApplicationByIdQuery.class,
@@ -545,7 +465,8 @@ public class ApplicationProjection {
               application.setApplicationVersion(applicationVersion);
               application.setModifiedAt(occurredAt);
               application.setOfficeCode(
-                  officeCode(applicationDataStore.get(applicationId, applicationDataVersion)));
+                  ApplicationReadModelAssembler.officeCode(
+                      applicationDataStore.get(applicationId, applicationDataVersion)));
               application.setStatus(applicationStatus.getValue());
               ApplicationReadModel saved = applicationReadRepository.save(application);
               queryUpdateEmitter.emit(
@@ -566,94 +487,5 @@ public class ApplicationProjection {
     Sort.Direction direction =
         "DESC".equalsIgnoreCase(orderBy) ? Sort.Direction.DESC : Sort.Direction.ASC;
     return Sort.by(direction, property).and(Sort.by(Sort.Direction.ASC, "applicationId"));
-  }
-
-  private Optional<ApplicationReadModel> hydrate(ApplicationReadModel application) {
-    ApplicationDataId id =
-        new ApplicationDataId(
-            application.getApplicationId(), application.getApplicationDataVersion());
-    ApplicationDataPayload data = applicationDataStore.getAll(List.of(id)).get(id);
-    return data == null ? Optional.empty() : Optional.of(hydrate(application, data));
-  }
-
-  private List<ApplicationReadModel> hydrate(List<ApplicationReadModel> applications) {
-    List<ApplicationDataId> ids =
-        applications.stream()
-            .map(
-                application ->
-                    new ApplicationDataId(
-                        application.getApplicationId(), application.getApplicationDataVersion()))
-            .toList();
-    Map<ApplicationDataId, ApplicationDataPayload> dataById = applicationDataStore.getAll(ids);
-    return applications.stream()
-        .map(
-            application -> {
-              ApplicationDataId id =
-                  new ApplicationDataId(
-                      application.getApplicationId(), application.getApplicationDataVersion());
-              ApplicationDataPayload data = dataById.get(id);
-              return data == null ? null : hydrate(application, data);
-            })
-        .filter(Objects::nonNull)
-        .toList();
-  }
-
-  private ApplicationReadModel hydrate(
-      ApplicationReadModel application, ApplicationDataPayload data) {
-    application.setLaaReference(data.laaReference());
-    application.setClient(data.client());
-    application.setProvider(data.provider());
-    application.setOfficeCode(officeCode(data));
-    application.setOpponents(data.opponents());
-    application.setSubmittedAt(data.submittedAt());
-    application.setUsedDelegatedFunctions(data.usedDelegatedFunctions());
-    application.setCategoryOfLaw(data.categoryOfLaw());
-    application.setMatterType(data.matterType());
-    application.setProceedings(data.proceedings());
-    application.setDecisionStatus(data.overallDecision());
-    application.setAutoGranted(data.autoGranted());
-    application.setMeritsDecisions(data.meritsDecisions());
-    application.setCertificate(data.certificate());
-    application.setDocumentFilenames(data.documentFilenames());
-    return application;
-  }
-
-  /** Batch-fetches the LAA references of the other members of the Application's linked group. */
-  private Map<UUID, String> findLinkedLaaReferences(
-      ApplicationReadModel application, LinkedApplicationGroupReadModel linkedGroup) {
-    if (linkedGroup == null) {
-      return Map.of();
-    }
-    List<UUID> otherMemberIds =
-        linkedGroup.getMemberIds().stream()
-            .filter(memberId -> !memberId.equals(application.getApplicationId()))
-            .toList();
-    if (otherMemberIds.isEmpty()) {
-      return Map.of();
-    }
-    return listIndexRepository.findAllById(otherMemberIds).stream()
-        .filter(member -> member.getLaaReference() != null)
-        .collect(
-            Collectors.toMap(
-                ApplicationListIndexReadModel::getApplicationId,
-                ApplicationListIndexReadModel::getLaaReference));
-  }
-
-  /** Batch-fetches linked group read models for the result page, keyed by linked group ID. */
-  private Map<UUID, LinkedApplicationGroupReadModel> fetchGroups(
-      List<ApplicationReadModel> applications) {
-    List<UUID> groupIds =
-        applications.stream()
-            .map(ApplicationReadModel::getLinkedGroupId)
-            .filter(Objects::nonNull)
-            .distinct()
-            .toList();
-    return groupReadRepository.findAllById(groupIds).stream()
-        .collect(
-            Collectors.toMap(LinkedApplicationGroupReadModel::getGroupId, Function.identity()));
-  }
-
-  private static String officeCode(ApplicationDataPayload data) {
-    return data == null || data.provider() == null ? null : data.provider().getOfficeCode();
   }
 }

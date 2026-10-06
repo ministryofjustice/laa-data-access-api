@@ -82,13 +82,15 @@ class ApplicationProjectionTest {
     projection =
         new ApplicationProjection(
             applicationReadRepository,
-            groupReadRepository,
             applicationDataStore,
-            listIndexRepository,
-            priorAuthorityReadRepository,
             applicationReadQueryGateway,
             currentStateAccessPolicy,
-            listIndexAccessPolicy);
+            listIndexAccessPolicy,
+            new ApplicationReadModelAssembler(
+                applicationDataStore,
+                groupReadRepository,
+                listIndexRepository,
+                priorAuthorityReadRepository));
   }
 
   @Test
@@ -1004,11 +1006,10 @@ class ApplicationProjectionTest {
     ApplicationDataId dataId = new ApplicationDataId(applicationId, 1L);
     ApplicationDataPayload applicationData =
         ApplicationDataPayload.from(applicationCreationDetails(applicationId));
-    UUID linkedApplicationId = UUID.randomUUID();
     LinkedApplicationGroupReadModel group =
         LinkedApplicationGroupReadModel.builder()
             .leadApplicationId(applicationId)
-            .memberIds(List.of(applicationId, linkedApplicationId))
+            .memberIds(List.of(applicationId, UUID.randomUUID()))
             .build();
     PriorAuthorityReadModel priorAuthority =
         PriorAuthorityReadModel.builder()
@@ -1025,13 +1026,6 @@ class ApplicationProjectionTest {
     when(groupReadRepository.findById(groupId)).thenReturn(Optional.of(group));
     when(priorAuthorityReadRepository.findAllByApplicationIdIn(List.of(applicationId)))
         .thenReturn(List.of(priorAuthority));
-    when(listIndexRepository.findAllById(List.of(linkedApplicationId)))
-        .thenReturn(
-            List.of(
-                ApplicationListIndexReadModel.builder()
-                    .applicationId(linkedApplicationId)
-                    .laaReference("LAA-LINKED")
-                    .build()));
 
     ApplicationDetailResult result =
         projection.handle(new FindApplicationDetailQuery(applicationId));
@@ -1039,8 +1033,6 @@ class ApplicationProjectionTest {
     assertThat(result.application().getLaaReference()).isEqualTo("LAA-123");
     assertThat(result.linkedGroup()).isSameAs(group);
     assertThat(result.priorAuthorities()).containsExactly(priorAuthority);
-    assertThat(result.linkedLaaReferences())
-        .containsExactly(entry(linkedApplicationId, "LAA-LINKED"));
     verify(applicationReadQueryGateway).findApplication(any(), any());
   }
 
