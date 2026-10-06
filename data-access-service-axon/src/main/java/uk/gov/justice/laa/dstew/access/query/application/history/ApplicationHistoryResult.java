@@ -6,5 +6,5 @@ import java.util.List;
  * Aggregated result of an application history query, combining application and PA group results.
  */
 public record ApplicationHistoryResult(
-    List<ApplicationHistoryReadModel> applicationHistoryEvents,
+    List<ApplicationHistoryEventResult> applicationHistoryEvents,
     List<PriorAuthorityHistoryGroupResult> priorAuthorityHistoryGroups) {}

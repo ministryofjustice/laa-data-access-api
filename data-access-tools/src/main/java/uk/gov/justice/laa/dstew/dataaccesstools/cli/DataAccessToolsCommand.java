@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.dataaccesstools.cli;
 
 import java.net.URI;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ThreadLocalRandom;
 import picocli.CommandLine;
 import uk.gov.justice.laa.dstew.dataaccesstools.cli.applications.ApplicationsCommand;
 import uk.gov.justice.laa.dstew.dataaccesstools.cli.local.LocalCommand;
@@ -18,6 +19,11 @@ public final class DataAccessToolsCommand implements Callable<Integer> {
   @CommandLine.Option(names = "--api-url", description = "Base URL of the Data Access API.")
   private URI apiUrl;
 
+  @CommandLine.Option(
+      names = "--seed",
+      description = "Seed for random data generation, for reproducible output.")
+  private Long seed;
+
   public static void main(String[] arguments) {
     System.exit(new CommandLine(new DataAccessToolsCommand()).execute(arguments));
   }
@@ -33,6 +39,10 @@ public final class DataAccessToolsCommand implements Callable<Integer> {
           new CommandLine(this), "--api-url must use http or https");
     }
     return new HttpDataAccessApiClient(apiUrl);
+  }
+
+  public long seed() {
+    return seed != null ? seed : ThreadLocalRandom.current().nextLong();
   }
 
   public int print(WorkflowResult result) {

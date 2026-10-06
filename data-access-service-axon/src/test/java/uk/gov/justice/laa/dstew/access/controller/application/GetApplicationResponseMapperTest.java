@@ -16,11 +16,13 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.Opponent;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ScopeLimitation;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
+import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationMeritsDecision;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
+import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthoritySummary;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
@@ -29,6 +31,66 @@ import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAut
 class GetApplicationResponseMapperTest {
 
   private final GetApplicationResponseMapper mapper = new GetApplicationResponseMapper();
+
+  @Test
+  void givenActiveDeletedAndLegacyDocuments_whenMapped_thenReturnsOrderedActiveDocuments() {
+    UUID activeId = UUID.randomUUID();
+    UUID legacyId = UUID.randomUUID();
+    Instant uploadedAt = Instant.parse("2026-09-28T10:00:00Z");
+    ApplicationReadModel application =
+        baseReadModel()
+            .uploadedDocuments(
+                List.of(
+                    new UploadDocument(
+                        activeId,
+                        "GATEWAY_EVIDENCE",
+                        uploadedAt.plusSeconds(1),
+                        12L,
+                        "application/pdf",
+                        "checksum",
+                        "CIVIL_APPLY",
+                        false),
+                    new UploadDocument(
+                        UUID.randomUUID(),
+                        "GATEWAY_EVIDENCE",
+                        uploadedAt,
+                        13L,
+                        "application/pdf",
+                        "deleted-checksum",
+                        "CIVIL_APPLY",
+                        true),
+                    new UploadDocument(
+                        legacyId,
+                        "EXPERT_REPORT",
+                        uploadedAt,
+                        14L,
+                        "application/pdf",
+                        "legacy-checksum",
+                        "CIVIL_APPLY",
+                        false)))
+            .documentFilenames(Map.of(activeId, "client-report.pdf"))
+            .build();
+
+    var documents = mapper.toResponse(application).getUploadedDocuments();
+
+    assertThat(documents)
+        .extracting(document -> document.getDocumentId())
+        .containsExactly(legacyId, activeId);
+    assertThat(documents.getFirst().getFileName()).isNull();
+    assertThat(documents.getLast().getFileName()).isEqualTo("client-report.pdf");
+    assertThat(documents.getLast().getDocumentType()).isEqualTo("GATEWAY_EVIDENCE");
+    assertThat(documents.getLast().getSize()).isEqualTo(12L);
+    assertThat(documents.getLast().getContentType()).isEqualTo("application/pdf");
+    assertThat(documents.getLast().getChecksum()).isEqualTo("checksum");
+    assertThat(documents.getLast().getSourceService()).isEqualTo("CIVIL_APPLY");
+    assertThat(documents.getLast().getUploadedAt())
+        .isEqualTo(uploadedAt.plusSeconds(1).atOffset(ZoneOffset.UTC));
+  }
+
+  @Test
+  void givenNoDocuments_whenMapped_thenReturnsEmptyArray() {
+    assertThat(mapper.toResponse(baseReadModel().build()).getUploadedDocuments()).isEmpty();
+  }
 
   private ApplicationReadModel.ApplicationReadModelBuilder baseReadModel() {
     return ApplicationReadModel.builder()
@@ -351,5 +413,62 @@ class GetApplicationResponseMapperTest {
     var response = mapper.toResponse(readModel);
 
     assertThat(response.getProceedings().getFirst().getInvolvedChildren()).isEmpty();
+  }
+
+  @Test
+  void givenPopulatedPotentialDuplicates_whenMapped_thenPotentialDuplicatesAreMapped() {
+    UUID duplicateId1 = UUID.randomUUID();
+    UUID duplicateId2 = UUID.randomUUID();
+    List<PotentialDuplicate> potentialDuplicates =
+        List.of(
+            PotentialDuplicate.builder()
+                .applicationId(duplicateId1)
+                .laaReference("LAA-00001")
+                .legacyReference("LEGACY-001")
+                .build(),
+            PotentialDuplicate.builder()
+                .applicationId(duplicateId2)
+                .laaReference("LAA-00002")
+                .legacyReference(null)
+                .build(),
+            PotentialDuplicate.builder()
+                .applicationId(null)
+                .laaReference("LAA-00003")
+                .legacyReference(null)
+                .build());
+    ApplicationReadModel readModel =
+        baseReadModel().potentialDuplicates(potentialDuplicates).build();
+
+    var response = mapper.toResponse(readModel, null, List.of());
+
+    assertThat(response.getPotentialDuplicates()).hasSize(3);
+    assertThat(response.getPotentialDuplicates().get(0).getApplicationId()).isEqualTo(duplicateId1);
+    assertThat(response.getPotentialDuplicates().get(0).getLaaReference()).isEqualTo("LAA-00001");
+    assertThat(response.getPotentialDuplicates().get(0).getLegacyReference())
+        .isEqualTo("LEGACY-001");
+    assertThat(response.getPotentialDuplicates().get(1).getApplicationId()).isEqualTo(duplicateId2);
+    assertThat(response.getPotentialDuplicates().get(1).getLaaReference()).isEqualTo("LAA-00002");
+    assertThat(response.getPotentialDuplicates().get(1).getLegacyReference()).isNull();
+    assertThat(response.getPotentialDuplicates().get(2).getApplicationId()).isNull();
+    assertThat(response.getPotentialDuplicates().get(2).getLaaReference()).isEqualTo("LAA-00003");
+    assertThat(response.getPotentialDuplicates().get(2).getLegacyReference()).isNull();
+  }
+
+  @Test
+  void givenEmptyPotentialDuplicates_whenMapped_thenPotentialDuplicatesIsEmpty() {
+    ApplicationReadModel readModel = baseReadModel().potentialDuplicates(List.of()).build();
+
+    var response = mapper.toResponse(readModel, null, List.of());
+
+    assertThat(response.getPotentialDuplicates()).isEmpty();
+  }
+
+  @Test
+  void givenNullPotentialDuplicates_whenMapped_thenPotentialDuplicatesIsNull() {
+    ApplicationReadModel readModel = baseReadModel().potentialDuplicates(null).build();
+
+    var response = mapper.toResponse(readModel, null, List.of());
+
+    assertThat(response.getPotentialDuplicates()).isNull();
   }
 }

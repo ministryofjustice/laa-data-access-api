@@ -6,6 +6,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Collection;
 import java.util.HexFormat;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
@@ -84,6 +85,19 @@ public class ApplicationDataStore {
                 new IllegalStateException(
                     "Application data not found for " + applicationId + " version " + version))
         .getPayload();
+  }
+
+  /**
+   * Finds a specific version of an application's data, if it is still retained.
+   *
+   * @param applicationId the application identifier
+   * @param version the data version
+   * @return the stored payload, or empty if that version is not present
+   */
+  public Optional<ApplicationDataPayload> findPayload(UUID applicationId, long version) {
+    return repository
+        .findById(new ApplicationDataId(applicationId, version))
+        .map(ApplicationData::getPayload);
   }
 
   /**

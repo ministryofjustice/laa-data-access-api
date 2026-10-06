@@ -1,9 +1,13 @@
 package uk.gov.justice.laa.dstew.access.command.application;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validApplicationContent;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationCreatedEvent;
@@ -13,6 +17,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.axonframework.eventsourcing.configuration.EventSourcedEntityModule;
 import org.axonframework.eventsourcing.configuration.EventSourcingConfigurer;
@@ -20,13 +25,20 @@ import org.axonframework.test.fixture.AxonTestFixture;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftPayload;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeDecisionProceeding;
 import uk.gov.justice.laa.dstew.access.command.application.decision.RecordAutoGrantedOutcomeCommand;
+import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftStartedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.ValidateApplicationGrantedCommand;
@@ -41,12 +53,57 @@ import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictExce
 import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException;
 import uk.gov.justice.laa.dstew.access.exception.InvalidApplicationStateException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 class ApplicationAggregateTest {
 
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "APPLICATION_IN_PROGRESS",
+        "APPLICATION_SUBMITTED",
+        "APPLICATION_GRANTED",
+        "APPLICATION_REFUSED"
+      })
+  void givenCreatedApplication_whenDocumentUploaded_thenRejectsBeforeReadingOrWritingData(
+      String status) {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationCreatedEvent created = applicationCreatedEvent(applicationId);
+    fixture
+        .given()
+        .events(
+            new ApplicationCreatedEvent(
+                applicationId,
+                created.applicationDataVersion(),
+                created.requestFingerprint(),
+                status,
+                created.schemaVersion(),
+                created.occurredAt(),
+                created.potentialDuplicates()))
+        .when()
+        .command(
+            new ApplicationDocumentUploadCommand(
+                applicationId,
+                UUID.randomUUID(),
+                "GATEWAY_EVIDENCE",
+                Instant.now(),
+                12L,
+                "application/pdf",
+                "checksum",
+                "CIVIL_APPLY",
+                "original.pdf"))
+        .then()
+        .exception(ValidationException.class)
+        .noEvents();
+
+    verify(applicationDataStore, never()).get(any(), anyLong());
+    verify(applicationDataStore, never()).append(any(), anyLong(), any(), any(), any());
+  }
+
   private AxonTestFixture fixture;
   private ApplicationDataStore applicationDataStore;
+  private ApplicationDraftStore draftStore;
   private ApplicationUpdateDetailsFactory updateDetailsFactory;
 
   @BeforeEach
@@ -59,6 +116,7 @@ class ApplicationAggregateTest {
           }
         };
     applicationDataStore = mock(ApplicationDataStore.class);
+    draftStore = mock(ApplicationDraftStore.class);
     updateDetailsFactory = mock(ApplicationUpdateDetailsFactory.class);
     when(applicationDataStore.append(any(), anyLong(), any()))
         .thenAnswer(
@@ -400,7 +458,8 @@ class ApplicationAggregateTest {
             "fingerprint",
             "APPLICATION_IN_PROGRESS",
             1,
-            Instant.parse("2026-07-21T09:00:00Z"));
+            Instant.parse("2026-07-21T09:00:00Z"),
+            null);
 
     fixture
         .given()
@@ -509,6 +568,228 @@ class ApplicationAggregateTest {
   }
 
   @Test
+  void givenApplicationDraft_whenDocumentUploaded_thenAppendsEventToApplicationStream() {
+    UUID applicationId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    Instant uploadedAt = Instant.parse("2026-09-28T15:10:27.430Z");
+    ApplicationDocumentUploadCommand command =
+        new ApplicationDocumentUploadCommand(
+            applicationId,
+            documentId,
+            "GATEWAY_EVIDENCE",
+            uploadedAt,
+            12L,
+            "application/pdf",
+            "checksum",
+            "CIVIL_APPLY",
+            "originalFilename.pdf");
+    when(draftStore.find(applicationId)).thenReturn(java.util.Optional.of(draftPayload()));
+
+    fixture
+        .given()
+        .events(draftStartedEvent(applicationId))
+        .when()
+        .command(command)
+        .then()
+        .resultMessagePayload(documentId)
+        .events(
+            new ApplicationDocumentUploadedEvent(
+                applicationId,
+                documentId,
+                "GATEWAY_EVIDENCE",
+                uploadedAt,
+                12L,
+                "application/pdf",
+                "checksum",
+                "CIVIL_APPLY"));
+
+    ArgumentCaptor<ApplicationDraftPayload> payload =
+        ArgumentCaptor.forClass(ApplicationDraftPayload.class);
+    verify(draftStore).upsert(eq(applicationId), payload.capture(), eq("{}"), eq(uploadedAt));
+    assertThat(payload.getValue().documentFilenames())
+        .containsEntry(documentId, "originalFilename.pdf");
+  }
+
+  @Test
+  void givenRecordedDocument_whenIdenticalUploadRetried_thenRejectsWithoutAppending() {
+    UUID applicationId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    Instant uploadedAt = Instant.parse("2026-09-28T15:10:27.430Z");
+    when(draftStore.find(applicationId))
+        .thenReturn(Optional.of(draftPayload().withDocumentFilename(documentId, "original.pdf")));
+
+    fixture
+        .given()
+        .events(
+            draftStartedEvent(applicationId),
+            new ApplicationDocumentUploadedEvent(
+                applicationId,
+                documentId,
+                "GATEWAY_EVIDENCE",
+                uploadedAt,
+                12L,
+                "application/pdf",
+                "checksum",
+                "CIVIL_APPLY"))
+        .when()
+        .command(
+            new ApplicationDocumentUploadCommand(
+                applicationId,
+                documentId,
+                "GATEWAY_EVIDENCE",
+                uploadedAt,
+                12L,
+                "application/pdf",
+                "checksum",
+                "CIVIL_APPLY",
+                "original.pdf"))
+        .then()
+        .exception(ValidationException.class)
+        .noEvents();
+
+    verify(applicationDataStore, never()).append(any(), anyLong(), any(), any(), any());
+    verify(draftStore, never()).upsert(any(), any(), any(), any());
+  }
+
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(longs = 1L)
+  void givenCreatedApplicationWithLegacyOrVersionedDocument_whenAnotherUploaded_thenRejects(
+      Long version) {
+    UUID applicationId = UUID.randomUUID();
+    UUID previousDocumentId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    Instant uploadedAt = Instant.parse("2026-09-28T15:10:27.430Z");
+    fixture
+        .given()
+        .events(
+            applicationCreatedEvent(applicationId),
+            new ApplicationDocumentUploadedEvent(
+                applicationId,
+                previousDocumentId,
+                "GATEWAY_EVIDENCE",
+                uploadedAt,
+                12L,
+                "application/pdf",
+                "previous-checksum",
+                "CIVIL_APPLY",
+                version))
+        .when()
+        .command(
+            new ApplicationDocumentUploadCommand(
+                applicationId,
+                documentId,
+                "GATEWAY_EVIDENCE",
+                uploadedAt.plusSeconds(1),
+                13L,
+                "application/pdf",
+                "checksum",
+                "CIVIL_APPLY",
+                "original.pdf"))
+        .then()
+        .exception(ValidationException.class)
+        .noEvents();
+    verify(draftStore, never()).upsert(any(), any(), any(), any());
+  }
+
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(strings = {"", " "})
+  void givenMissingFilename_whenUploaded_thenRejectsBeforeReadingContent(String filename) {
+    UUID applicationId = UUID.randomUUID();
+    fixture
+        .given()
+        .events(draftStartedEvent(applicationId))
+        .when()
+        .command(
+            new ApplicationDocumentUploadCommand(
+                applicationId,
+                UUID.randomUUID(),
+                "GATEWAY_EVIDENCE",
+                Instant.now(),
+                12L,
+                "application/pdf",
+                "checksum",
+                "CIVIL_APPLY",
+                filename))
+        .then()
+        .exception(ValidationException.class)
+        .noEvents();
+
+    verify(applicationDataStore, never()).get(any(), anyLong());
+    verify(applicationDataStore, never()).append(any(), anyLong(), any(), any(), any());
+  }
+
+  @Test
+  void givenRecordedDocument_whenFilenameDiffers_thenRejectsWithoutAppending() {
+    UUID applicationId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    Instant uploadedAt = Instant.parse("2026-09-28T15:10:27.430Z");
+    when(draftStore.find(applicationId))
+        .thenReturn(
+            java.util.Optional.of(draftPayload().withDocumentFilename(documentId, "original.pdf")));
+
+    fixture
+        .given()
+        .events(
+            draftStartedEvent(applicationId),
+            new ApplicationDocumentUploadedEvent(
+                applicationId,
+                documentId,
+                "GATEWAY_EVIDENCE",
+                uploadedAt,
+                12L,
+                "application/pdf",
+                "checksum",
+                "CIVIL_APPLY"))
+        .when()
+        .command(
+            new ApplicationDocumentUploadCommand(
+                applicationId,
+                documentId,
+                "GATEWAY_EVIDENCE",
+                uploadedAt,
+                12L,
+                "application/pdf",
+                "checksum",
+                "CIVIL_APPLY",
+                "changed.pdf"))
+        .then()
+        .exception(ValidationException.class)
+        .noEvents();
+
+    verify(applicationDataStore, never()).append(any(), anyLong(), any(), any(), any());
+    verify(draftStore, never()).upsert(any(), any(), any(), any());
+  }
+
+  @Test
+  void givenDraftWriteFailure_whenDocumentUploaded_thenDoesNotEmitEvent() {
+    UUID applicationId = UUID.randomUUID();
+    when(draftStore.find(applicationId)).thenReturn(java.util.Optional.of(draftPayload()));
+    when(draftStore.upsert(any(), any(), any(), any()))
+        .thenThrow(new IllegalStateException("storage failure"));
+
+    fixture
+        .given()
+        .events(draftStartedEvent(applicationId))
+        .when()
+        .command(
+            new ApplicationDocumentUploadCommand(
+                applicationId,
+                UUID.randomUUID(),
+                "GATEWAY_EVIDENCE",
+                Instant.now(),
+                12L,
+                "application/pdf",
+                "checksum",
+                "CIVIL_APPLY",
+                "original.pdf"))
+        .then()
+        .exception(IllegalStateException.class)
+        .noEvents();
+  }
+
+  @Test
   void givenGrantedApplication_whenValidateApplicationGranted_thenSucceedsWithNoEvents() {
     UUID applicationId = UUID.randomUUID();
 
@@ -582,13 +863,27 @@ class ApplicationAggregateTest {
                             configuration -> creationDetailsFactory)
                         .registerComponent(
                             ApplicationDataStore.class, configuration -> applicationDataStore)
+                        .registerComponent(ApplicationDraftStore.class, configuration -> draftStore)
                         .registerComponent(
                             ApplicationUpdateDetailsFactory.class,
-                            configuration -> updateDetailsFactory)));
+                            configuration -> updateDetailsFactory)
+                        .registerComponent(
+                            JsonSchemaValidator.class,
+                            configuration -> mock(JsonSchemaValidator.class))));
   }
 
   private CreateApplicationCommand createCommand(UUID applicationId, String serialisedRequest) {
     return createCommandWithSchema(applicationId, serialisedRequest, 1);
+  }
+
+  private ApplicationDraftStartedEvent draftStartedEvent(UUID applicationId) {
+    return new ApplicationDraftStartedEvent(
+        applicationId, 1, "hash", Instant.parse("2026-10-02T09:00:00Z"));
+  }
+
+  private ApplicationDraftPayload draftPayload() {
+    return new ApplicationDraftPayload(
+        "APPLICATION_SUBMITTED", "LAA-123", Map.of(), "{}", List.of());
   }
 
   private MakeApplicationDecisionCommand decisionCommand(
@@ -631,7 +926,8 @@ class ApplicationAggregateTest {
                 .code("SE003")
                 .build()),
         original.serialisedRequest(),
-        original.occurredAt());
+        original.occurredAt(),
+        List.of());
   }
 
   private CreateApplicationCommand createCommandWithSchema(
@@ -643,7 +939,8 @@ class ApplicationAggregateTest {
         validApplicationContent(applicationId, proceedingIdFor(applicationId)),
         serialisedRequest,
         schemaVersion,
-        "BaseCivilApplication.json");
+        "BaseCivilApplication.json",
+        null);
   }
 
   private UUID proceedingIdFor(UUID applicationId) {

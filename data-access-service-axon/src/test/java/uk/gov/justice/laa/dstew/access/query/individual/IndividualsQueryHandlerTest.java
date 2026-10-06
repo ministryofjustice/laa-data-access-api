@@ -1,9 +1,11 @@
 package uk.gov.justice.laa.dstew.access.query.individual;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
@@ -18,21 +20,27 @@ import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreationDe
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
+import uk.gov.justice.laa.dstew.access.query.application.ApplicationCurrentStateAccessPolicy;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
-import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadRepository;
+import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadQueryGateway;
+import uk.gov.justice.laa.dstew.access.query.utils.security.OfficeCodeReadAccessScope;
 import uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture;
 
 class IndividualsQueryHandlerTest {
 
-  private ApplicationReadRepository applicationRepository;
+  private ApplicationReadQueryGateway applicationReadQueryGateway;
   private ApplicationDataStore applicationDataStore;
   private IndividualsQueryHandler handler;
 
   @BeforeEach
   void setUp() {
-    applicationRepository = mock(ApplicationReadRepository.class);
+    applicationReadQueryGateway = mock(ApplicationReadQueryGateway.class);
     applicationDataStore = mock(ApplicationDataStore.class);
-    handler = new IndividualsQueryHandler(applicationRepository, applicationDataStore);
+    handler =
+        new IndividualsQueryHandler(
+            applicationReadQueryGateway,
+            applicationDataStore,
+            new ApplicationCurrentStateAccessPolicy());
   }
 
   @Test
@@ -43,7 +51,8 @@ class IndividualsQueryHandlerTest {
     ApplicationReadModel secondApplication = application(secondApplicationId, 4L);
     ApplicationClient client =
         ApplicationClient.builder().firstName("Ada").lastName("Lovelace").build();
-    when(applicationRepository.findAll()).thenReturn(List.of(firstApplication, secondApplication));
+    when(applicationReadQueryGateway.findAllApplications(any(), any()))
+        .thenReturn(List.of(firstApplication, secondApplication));
     when(applicationDataStore.getAll(anyCollection()))
         .thenReturn(
             Map.of(
@@ -83,7 +92,8 @@ class IndividualsQueryHandlerTest {
                         .countryName("United Kingdom")
                         .build()))
             .build();
-    when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(application));
+    when(applicationReadQueryGateway.findApplication(any(), any()))
+        .thenReturn(Optional.of(application));
     when(applicationDataStore.getAll(anyCollection()))
         .thenReturn(
             Map.of(new ApplicationDataId(applicationId, 3L), payload(applicationId, client)));
@@ -91,7 +101,7 @@ class IndividualsQueryHandlerTest {
     FindIndividualsResult result =
         handler.handle(new FindIndividualsQuery(applicationId, "CLIENT", true, 1, 20));
 
-    verify(applicationRepository).findById(applicationId);
+    verify(applicationReadQueryGateway).findApplication(any(), any());
     assertThat(result.client()).isEqualTo(client);
     assertThat(result.includeClientDetails()).isTrue();
   }
@@ -99,7 +109,7 @@ class IndividualsQueryHandlerTest {
   @Test
   void givenUnknownApplication_whenQueried_thenReturnsEmptyPage() {
     UUID applicationId = UUID.randomUUID();
-    when(applicationRepository.findById(applicationId)).thenReturn(Optional.empty());
+    when(applicationReadQueryGateway.findApplication(any(), any())).thenReturn(Optional.empty());
     when(applicationDataStore.getAll(List.of())).thenReturn(Map.of());
 
     FindIndividualsResult result =
@@ -118,15 +128,34 @@ class IndividualsQueryHandlerTest {
   }
 
   @Test
+  void givenProviderOfficeScope_whenQueryCreated_thenRetainsScope() {
+    OfficeCodeReadAccessScope scope = new OfficeCodeReadAccessScope(java.util.Set.of("OFFICE-1"));
+
+    FindIndividualsQuery query = new FindIndividualsQuery(null, "CLIENT", false, 1, 20, scope);
+
+    assertThat(query.accessScope()).isEqualTo(scope);
+  }
+
+  @Test
+  void
+      givenProviderScopeWithoutVisibleApplications_whenQueried_thenReturnsEmptyWithoutLoadingData() {
+    OfficeCodeReadAccessScope scope = new OfficeCodeReadAccessScope(java.util.Set.of("OFFICE-1"));
+    when(applicationReadQueryGateway.findAllApplications(any(), any())).thenReturn(List.of());
+
+    FindIndividualsResult result =
+        handler.handle(new FindIndividualsQuery(null, "CLIENT", false, 1, 20, scope));
+
+    assertThat(result.client()).isNull();
+    assertThat(result.totalRecords()).isZero();
+    verifyNoInteractions(applicationDataStore);
+  }
+
+  @Test
   void givenNonClientType_whenQueried_thenReturnsEmpty() {
     UUID applicationId = UUID.randomUUID();
     ApplicationReadModel application = application(applicationId, 1L);
     ApplicationClient client =
         ApplicationClient.builder().firstName("Ada").lastName("Lovelace").build();
-    when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(application));
-    when(applicationDataStore.getAll(anyCollection()))
-        .thenReturn(
-            Map.of(new ApplicationDataId(applicationId, 1L), payload(applicationId, client)));
 
     FindIndividualsResult result =
         handler.handle(new FindIndividualsQuery(applicationId, "OTHER", false, 1, 20));
@@ -159,6 +188,7 @@ class IndividualsQueryHandlerTest {
             base.matterType(),
             base.proceedings(),
             base.serialisedRequest(),
-            base.occurredAt()));
+            base.occurredAt(),
+            List.of()));
   }
 }

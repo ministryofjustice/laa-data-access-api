@@ -311,7 +311,7 @@ Returns the free-form certificate object stored on the application's immutable d
 `GET /api/v0/applications/{id}/history-search`
 
 ```bash
-curl -s "http://localhost:8082/api/v0/applications/8c9e6c2e-4f1a-4e3a-9c2b-1a2b3c4d5e6f/history-search?eventType=APPLICATION_CREATED&eventType=APPLICATION_NOTES" \
+curl -s "http://localhost:8082/api/v0/applications/8c9e6c2e-4f1a-4e3a-9c2b-1a2b3c4d5e6f/history-search?eventType=APPLICATION_CREATED&eventType=APPLICATION_NOTE_CREATED" \
   -H "X-Service-Name: CIVIL_DECIDE"
 ```
 
@@ -319,7 +319,7 @@ curl -s "http://localhost:8082/api/v0/applications/8c9e6c2e-4f1a-4e3a-9c2b-1a2b3
 (`APPLICATION_CREATED`, `APPLICATION_UPDATED`, `APPLICATION_GROUP_CREATED`,
 `APPLICATION_GROUP_JOINED`, `ASSIGN_APPLICATION_TO_CASEWORKER`,
 `UNASSIGN_APPLICATION_TO_CASEWORKER`, `APPLICATION_MAKE_DECISION_REFUSED`,
-`APPLICATION_MAKE_DECISION_GRANTED`, `APPLICATION_NOTES`).
+`APPLICATION_MAKE_DECISION_GRANTED`, `APPLICATION_NOTE_CREATED`).
 
 Example response (verified against a running instance, after creating the application above):
 

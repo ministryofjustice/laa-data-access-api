@@ -1,11 +1,13 @@
 package uk.gov.justice.laa.dstew.access.testutils;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import net.datafaker.Faker;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 
 /** Builds valid API requests shared by fast and Postgres integration tests. */
 public final class ApplicationCreateRequestFixture {
@@ -87,6 +89,21 @@ public final class ApplicationCreateRequestFixture {
         .build();
   }
 
+  /** Creates a valid request with an explicit provider office code and LAA reference. */
+  public static ApplicationCreateRequest validCreateApplicationRequest(
+      UUID applicationId, UUID applyProceedingId, String officeCode, String laaReference) {
+    Map<String, Object> content =
+        new HashMap<>(validApplicationContent(applicationId, applyProceedingId));
+    content.put(
+        "provider", Map.of("officeCode", officeCode, "contactEmail", "provider@example.com"));
+    return ApplicationCreateRequest.builder()
+        .id(applicationId)
+        .status(ApplicationStatus.APPLICATION_SUBMITTED)
+        .applicationContent(content)
+        .laaReference(laaReference)
+        .build();
+  }
+
   /** Creates a valid request using the supplied Apply identifiers. */
   public static ApplicationCreateRequest validCreateApplicationRequestWithRandomData(
       UUID applicationId, UUID applyProceedingId) {
@@ -95,6 +112,37 @@ public final class ApplicationCreateRequestFixture {
         .status(ApplicationStatus.APPLICATION_SUBMITTED)
         .applicationContent(validApplicationContentWithRandomData(applicationId, applyProceedingId))
         .laaReference("LAA-123")
+        .build();
+  }
+
+  /** Creates a valid request with potentialDuplicates using the supplied identifiers. */
+  public static ApplicationCreateRequest validCreateApplicationRequestWithPotentialDuplicates(
+      UUID applicationId, UUID applyProceedingId, List<PotentialDuplicate> potentialDuplicates) {
+    return ApplicationCreateRequest.builder()
+        .id(applicationId)
+        .status(ApplicationStatus.APPLICATION_SUBMITTED)
+        .applicationContent(validApplicationContent(applicationId, applyProceedingId))
+        .laaReference("LAA-123")
+        .potentialDuplicates(potentialDuplicates)
+        .build();
+  }
+
+  /** Creates a PotentialDuplicate for testing. */
+  public static PotentialDuplicate potentialDuplicateWithLaaReference(String laaReference) {
+    return PotentialDuplicate.builder()
+        .applicationId(UUID.randomUUID())
+        .laaReference(laaReference)
+        .legacyReference(null)
+        .build();
+  }
+
+  /** Creates a PotentialDuplicate with both laaReference and legacyReference. */
+  public static PotentialDuplicate potentialDuplicateWithBothReferences(
+      String laaReference, String legacyReference) {
+    return PotentialDuplicate.builder()
+        .applicationId(UUID.randomUUID())
+        .laaReference(laaReference)
+        .legacyReference(legacyReference)
         .build();
   }
 

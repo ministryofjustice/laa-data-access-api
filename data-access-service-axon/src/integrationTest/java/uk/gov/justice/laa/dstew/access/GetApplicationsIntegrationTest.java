@@ -3,10 +3,12 @@ package uk.gov.justice.laa.dstew.access;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.awaitility.Awaitility.await;
+import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validApplicationContent;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -33,6 +35,7 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResu
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
+import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantedOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityDraftRequest;
@@ -86,6 +89,151 @@ class GetApplicationsIntegrationTest {
         .contains(applicationId);
     ApplicationSummary application = findApplication(response, applicationId);
     assertThat(application.getPriorAuthorities()).isEmpty();
+  }
+
+  @Test
+  void givenCallerWithoutApplicationScope_whenGetApplications_thenReturnsForbidden() {
+    HttpHeaders headers = headers();
+    headers.setBearerAuth(TestJwtDecoderConfig.UNSCOPED_BEARER_TOKEN);
+
+    ResponseEntity<String> response =
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/applications",
+            HttpMethod.GET,
+            new HttpEntity<>(headers),
+            String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+  }
+
+  @Test
+  void givenCallerWithoutApplicationScope_whenGetApplicationNotes_thenReturnsForbidden() {
+    HttpHeaders headers = headers();
+    headers.setBearerAuth(TestJwtDecoderConfig.UNSCOPED_BEARER_TOKEN);
+
+    ResponseEntity<String> response =
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/applications/" + UUID.randomUUID() + "/notes",
+            HttpMethod.GET,
+            new HttpEntity<>(headers),
+            String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+  }
+
+  @Test
+  void givenCivilManageAccounts_whenGetApplications_thenFiltersBeforePagingAndCounting() {
+    String reference = "ACCESS-" + UUID.randomUUID();
+    UUID officeA = createApplication("1A001B", reference);
+    UUID officeB = createApplication("2B002C", reference);
+    UUID officeC = createApplication("3C003D", reference);
+    awaitApplicationProjection(officeA);
+    awaitApplicationProjection(officeB);
+    awaitApplicationProjection(officeC);
+
+    ResponseEntity<ApplicationSummaryResponse> response =
+        restTemplate.exchange(
+            "http://localhost:"
+                + port
+                + "/api/v0/applications?laaReference="
+                + reference
+                + "&pageSize=1",
+            HttpMethod.GET,
+            new HttpEntity<>(civilManageHeaders(TestJwtDecoderConfig.OFFICE_A_AND_B_BEARER_TOKEN)),
+            ApplicationSummaryResponse.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(response.getBody().getPaging().getTotalRecords()).isEqualTo(2);
+    assertThat(response.getBody().getApplications())
+        .extracting(ApplicationSummary::getApplicationId)
+        .containsAnyOf(officeA, officeB)
+        .doesNotContain(officeC);
+  }
+
+  @Test
+  void givenCivilManageCallerWithoutMatchingAccount_whenGetApplication_thenReturnsNotFound() {
+    String reference = "ACCESS-" + UUID.randomUUID();
+    UUID applicationId = createApplication("2B002C", reference);
+    awaitApplicationProjection(applicationId);
+
+    ResponseEntity<String> detail =
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/applications/" + applicationId,
+            HttpMethod.GET,
+            new HttpEntity<>(civilManageHeaders(TestJwtDecoderConfig.OFFICE_A_BEARER_TOKEN)),
+            String.class);
+    ResponseEntity<ApplicationSummaryResponse> list =
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/applications?laaReference=" + reference,
+            HttpMethod.GET,
+            new HttpEntity<>(civilManageHeaders(TestJwtDecoderConfig.OFFICE_A_BEARER_TOKEN)),
+            ApplicationSummaryResponse.class);
+
+    assertThat(detail.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    assertThat(list.getBody().getApplications()).isEmpty();
+    assertThat(list.getBody().getPaging().getTotalRecords()).isZero();
+  }
+
+  @Test
+  void givenCivilManageCallerWithoutAccounts_whenGetApplications_thenReturnsNoRows() {
+    String reference = "ACCESS-" + UUID.randomUUID();
+    UUID applicationId = createApplication("1A001B", reference);
+    awaitApplicationProjection(applicationId);
+
+    ResponseEntity<ApplicationSummaryResponse> response =
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/applications?laaReference=" + reference,
+            HttpMethod.GET,
+            new HttpEntity<>(civilManageHeaders(TestJwtDecoderConfig.NO_ACCOUNTS_BEARER_TOKEN)),
+            ApplicationSummaryResponse.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(response.getBody().getApplications()).isEmpty();
+    assertThat(response.getBody().getPaging().getTotalRecords()).isZero();
+  }
+
+  @Test
+  void givenProviderOfficeChanges_whenProjectionsAdvance_thenCivilManageVisibilityChanges() {
+    String reference = "ACCESS-" + UUID.randomUUID();
+    UUID applicationId = createApplication("1A001B", reference);
+    awaitApplicationProjection(applicationId);
+
+    ResponseEntity<ApplicationResponse> initiallyVisible =
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/applications/" + applicationId,
+            HttpMethod.GET,
+            new HttpEntity<>(civilManageHeaders(TestJwtDecoderConfig.OFFICE_A_BEARER_TOKEN)),
+            ApplicationResponse.class);
+    assertThat(initiallyVisible.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+    Map<String, Object> updatedContent =
+        new HashMap<>(validApplicationContent(applicationId, UUID.randomUUID()));
+    updatedContent.put(
+        "provider", Map.of("officeCode", "2B002C", "contactEmail", "provider@example.com"));
+    ResponseEntity<Void> update =
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/applications/" + applicationId,
+            HttpMethod.PATCH,
+            new HttpEntity<>(new ApplicationUpdateRequest(updatedContent), headers()),
+            Void.class);
+    assertThat(update.getStatusCode()).isIn(HttpStatus.NO_CONTENT, HttpStatus.ACCEPTED);
+    awaitApplicationProjectionVersion(applicationId, 1L);
+
+    ResponseEntity<String> noLongerVisible =
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/applications/" + applicationId,
+            HttpMethod.GET,
+            new HttpEntity<>(civilManageHeaders(TestJwtDecoderConfig.OFFICE_A_BEARER_TOKEN)),
+            String.class);
+    ResponseEntity<ApplicationResponse> visibleWithUpdatedOffice =
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/applications/" + applicationId,
+            HttpMethod.GET,
+            new HttpEntity<>(civilManageHeaders(TestJwtDecoderConfig.OFFICE_A_AND_B_BEARER_TOKEN)),
+            ApplicationResponse.class);
+
+    assertThat(noLongerVisible.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    assertThat(visibleWithUpdatedOffice.getStatusCode()).isEqualTo(HttpStatus.OK);
   }
 
   @Test
@@ -228,6 +376,20 @@ class GetApplicationsIntegrationTest {
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
   }
 
+  private UUID createApplication(String officeCode, String laaReference) {
+    UUID applicationId = UUID.randomUUID();
+    ResponseEntity<Void> response =
+        restTemplate.postForEntity(
+            "http://localhost:" + port + "/api/v0/applications",
+            new HttpEntity<>(
+                validCreateApplicationRequest(
+                    applicationId, UUID.randomUUID(), officeCode, laaReference),
+                headers()),
+            Void.class);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    return applicationId;
+  }
+
   private ApplicationReadModel awaitApplicationProjection(UUID applicationId) {
     return await()
         .alias("application projection to be populated for " + applicationId)
@@ -344,6 +506,13 @@ class GetApplicationsIntegrationTest {
     headers.set("X-Service-Name", "CIVIL_APPLY");
     headers.set("X-Schema-Version", "1");
     headers.setBearerAuth(TestJwtDecoderConfig.BEARER_TOKEN);
+    return headers;
+  }
+
+  private HttpHeaders civilManageHeaders(String bearerToken) {
+    HttpHeaders headers = headers();
+    headers.set("X-Service-Name", "CIVIL_MANAGE");
+    headers.setBearerAuth(bearerToken);
     return headers;
   }
 }

@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.query.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
@@ -24,29 +25,40 @@ import org.axonframework.messaging.queryhandling.QueryUpdateEmitter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
+import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
+import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftPayload;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftStore;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationNote;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
+import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftStartedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.EvidenceDocument;
+import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
+import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexAccessPolicy;
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
@@ -61,6 +73,10 @@ class ApplicationProjectionTest {
   @Mock private ApplicationDataStore applicationDataStore;
   @Mock private ApplicationListIndexReadRepository listIndexRepository;
   @Mock private PriorAuthorityReadRepository priorAuthorityReadRepository;
+  @Mock private ApplicationDraftStore draftStore;
+  @Mock private ApplicationReadQueryGateway applicationReadQueryGateway;
+  @Mock private ApplicationCurrentStateAccessPolicy currentStateAccessPolicy;
+  @Mock private ApplicationListIndexAccessPolicy listIndexAccessPolicy;
   private ApplicationProjection projection;
 
   @BeforeEach
@@ -71,7 +87,267 @@ class ApplicationProjectionTest {
             groupReadRepository,
             applicationDataStore,
             listIndexRepository,
-            priorAuthorityReadRepository);
+            priorAuthorityReadRepository,
+            applicationReadQueryGateway,
+            currentStateAccessPolicy,
+            listIndexAccessPolicy,
+            draftStore);
+  }
+
+  @Test
+  void givenDocumentUpload_whenReplayedTwice_thenMetadataAndVersionArePersistedOnce() {
+    UUID applicationId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    Instant uploadedAt = Instant.parse("2026-09-28T15:10:27.430Z");
+    ApplicationReadModel application =
+        ApplicationReadModel.builder()
+            .applicationId(applicationId)
+            .applicationDataVersion(0L)
+            .applicationVersion(7L)
+            .build();
+    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(application));
+    ApplicationDocumentUploadedEvent event =
+        new ApplicationDocumentUploadedEvent(
+            applicationId,
+            documentId,
+            "GATEWAY_EVIDENCE",
+            uploadedAt,
+            12L,
+            "application/pdf",
+            "checksum",
+            "CIVIL_APPLY",
+            1L);
+
+    projection.on(event);
+    projection.on(event);
+
+    verify(applicationReadRepository).save(application);
+    assertThat(application.getApplicationDataVersion()).isEqualTo(1L);
+    assertThat(application.getApplicationVersion()).isEqualTo(7L);
+    assertThat(application.getModifiedAt()).isEqualTo(uploadedAt);
+    assertThat(application.getUploadedDocuments())
+        .singleElement()
+        .satisfies(
+            document -> {
+              assertThat(document.documentId()).isEqualTo(documentId);
+              assertThat(document.deleted()).isFalse();
+            });
+    assertThat(application.getDocumentFilenames()).isNull();
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void givenProjectionExistence_whenQueried_thenReturnsExistenceWithoutHydration(boolean exists) {
+    UUID applicationId = UUID.randomUUID();
+    when(applicationReadRepository.existsById(applicationId)).thenReturn(exists);
+
+    assertThat(projection.handle(new ApplicationProjectionExistsQuery(applicationId)))
+        .isEqualTo(exists);
+    org.mockito.Mockito.verifyNoInteractions(applicationDataStore);
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void givenProjectedDocument_whenFound_thenHydratesFilenameFromSubmittedOrDraftContent(
+      boolean submitted) {
+    UUID applicationId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    Instant uploadedAt = Instant.parse("2026-09-28T15:10:27.430Z");
+    ApplicationReadModel application =
+        documentReadModel(applicationId, uploadedDocument(documentId, uploadedAt, false));
+    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(application));
+    givenDocumentFilenames(application, submitted, Map.of(documentId, "original evidence.pdf"));
+
+    assertThat(projection.handle(new FindApplicationDocumentQuery(applicationId, documentId)))
+        .isEqualTo(
+            new EvidenceDocument(
+                documentId,
+                "GATEWAY_EVIDENCE",
+                "original evidence.pdf",
+                null,
+                "application/pdf",
+                12L,
+                uploadedAt,
+                "CIVIL_APPLY",
+                "checksum"));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"missing application", "unknown document", "deleted", "no filename"})
+  void givenDocumentUnavailable_whenQueried_thenReturnsNull(String scenario) {
+    UUID applicationId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    ApplicationReadModel application =
+        documentReadModel(
+            applicationId,
+            uploadedDocument(
+                "unknown document".equals(scenario) ? UUID.randomUUID() : documentId,
+                Instant.parse("2026-09-28T15:10:27.430Z"),
+                "deleted".equals(scenario)));
+    when(applicationReadRepository.findById(applicationId))
+        .thenReturn(
+            "missing application".equals(scenario) ? Optional.empty() : Optional.of(application));
+    if ("no filename".equals(scenario)) {
+      givenDocumentFilenames(application, false, Map.of());
+    }
+
+    assertThat(projection.handle(new FindApplicationDocumentQuery(applicationId, documentId)))
+        .isNull();
+  }
+
+  private ApplicationReadModel documentReadModel(UUID applicationId, UploadDocument document) {
+    return ApplicationReadModel.builder()
+        .applicationId(applicationId)
+        .applicationDataVersion(0L)
+        .uploadedDocuments(List.of(document))
+        .build();
+  }
+
+  private UploadDocument uploadedDocument(UUID documentId, Instant uploadedAt, boolean deleted) {
+    return new UploadDocument(
+        documentId,
+        "GATEWAY_EVIDENCE",
+        uploadedAt,
+        12L,
+        "application/pdf",
+        "checksum",
+        "CIVIL_APPLY",
+        deleted);
+  }
+
+  private void givenDocumentFilenames(
+      ApplicationReadModel application, boolean submitted, Map<UUID, String> filenames) {
+    ApplicationDataId id = dataId(application);
+    if (submitted) {
+      ApplicationDataPayload payload = mock(ApplicationDataPayload.class);
+      when(payload.documentFilenames()).thenReturn(filenames);
+      when(applicationDataStore.getAll(List.of(id))).thenReturn(Map.of(id, payload));
+    } else {
+      when(applicationDataStore.getAll(List.of(id))).thenReturn(Map.of());
+      when(draftStore.find(application.getApplicationId()))
+          .thenReturn(
+              Optional.of(
+                  new ApplicationDraftPayload(
+                      "APPLICATION_SUBMITTED", "LAA-123", Map.of(), "{}", List.of(), filenames)));
+    }
+  }
+
+  @Test
+  void givenDraftStarted_whenProjected_thenCreatesReadableDraftAndEmitsUpdate() {
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-10-05T10:00:00Z");
+    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.empty());
+    when(applicationReadRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+    projection.on(
+        new ApplicationDraftStartedEvent(applicationId, 3, "fingerprint", occurredAt),
+        queryUpdateEmitter);
+
+    ArgumentCaptor<ApplicationReadModel> saved =
+        ArgumentCaptor.forClass(ApplicationReadModel.class);
+    verify(applicationReadRepository).save(saved.capture());
+    assertThat(saved.getValue().getApplicationId()).isEqualTo(applicationId);
+    assertThat(saved.getValue().getStatus())
+        .isEqualTo(ApplicationStatus.APPLICATION_IN_PROGRESS.getValue());
+    assertThat(saved.getValue().getSchemaVersion()).isEqualTo(3);
+    assertThat(saved.getValue().getCreatedAt()).isEqualTo(occurredAt);
+    assertThat(saved.getValue().getModifiedAt()).isEqualTo(occurredAt);
+    verify(queryUpdateEmitter)
+        .emit(
+            ArgumentMatchers.eq(ApplicationProjectionExistsQuery.class),
+            ArgumentMatchers.<Predicate<ApplicationProjectionExistsQuery>>any(),
+            ArgumentMatchers.eq(true));
+  }
+
+  @Test
+  void givenDraftDocument_thenApplicationCreated_thenPreservesProjectedMetadata() {
+    UUID applicationId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.empty());
+    when(applicationReadRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+    projection.on(
+        new ApplicationDraftStartedEvent(applicationId, 1, "fingerprint", Instant.now()),
+        queryUpdateEmitter);
+    ArgumentCaptor<ApplicationReadModel> draft =
+        ArgumentCaptor.forClass(ApplicationReadModel.class);
+    verify(applicationReadRepository).save(draft.capture());
+    when(applicationReadRepository.findById(applicationId))
+        .thenReturn(Optional.of(draft.getValue()));
+
+    projection.on(
+        new ApplicationDocumentUploadedEvent(
+            applicationId,
+            documentId,
+            "GATEWAY_EVIDENCE",
+            Instant.now(),
+            12L,
+            "application/pdf",
+            "checksum",
+            "CIVIL_APPLY"));
+
+    projection.on(applicationCreatedEvent(applicationId), queryUpdateEmitter);
+
+    ArgumentCaptor<ApplicationReadModel> created =
+        ArgumentCaptor.forClass(ApplicationReadModel.class);
+    verify(applicationReadRepository, org.mockito.Mockito.times(3)).save(created.capture());
+    assertThat(created.getValue().getUploadedDocuments())
+        .singleElement()
+        .satisfies(document -> assertThat(document.documentId()).isEqualTo(documentId));
+    assertThat(created.getValue().getApplicationDataVersion()).isZero();
+    assertThat(created.getValue().getSchemaVersion()).isEqualTo(1);
+  }
+
+  @Test
+  void givenLegacyDocumentUpload_whenProjected_thenRetainsDataVersionAndUnknownFilename() {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationReadModel application =
+        ApplicationReadModel.builder()
+            .applicationId(applicationId)
+            .applicationDataVersion(4L)
+            .build();
+    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(application));
+
+    projection.on(
+        new ApplicationDocumentUploadedEvent(
+            applicationId,
+            UUID.randomUUID(),
+            "GATEWAY_EVIDENCE",
+            Instant.now(),
+            12L,
+            "application/pdf",
+            "checksum",
+            "CIVIL_APPLY"));
+
+    assertThat(application.getApplicationDataVersion()).isEqualTo(4L);
+    assertThat(application.getUploadedDocuments()).hasSize(1);
+  }
+
+  @Test
+  void givenDocumentFilenamePayload_whenDetailQueried_thenHydratesReferencedVersion() {
+    UUID applicationId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    ApplicationReadModel application =
+        ApplicationReadModel.builder()
+            .applicationId(applicationId)
+            .applicationDataVersion(2L)
+            .build();
+    ApplicationDataId dataId = new ApplicationDataId(applicationId, 2L);
+    when(applicationReadQueryGateway.findApplication(any(), any()))
+        .thenReturn(Optional.of(application));
+    when(applicationDataStore.getAll(List.of(dataId)))
+        .thenReturn(
+            Map.of(
+                dataId,
+                ApplicationDataPayload.from(applicationCreationDetails(applicationId))
+                    .withDocumentFilename(documentId, "client-report.pdf")));
+
+    ApplicationDetailResult result =
+        projection.handle(new FindApplicationDetailQuery(applicationId));
+
+    assertThat(result.application().getDocumentFilenames())
+        .containsEntry(documentId, "client-report.pdf");
+    verify(applicationDataStore).getAll(List.of(dataId));
   }
 
   @Test
@@ -124,6 +400,55 @@ class ApplicationProjectionTest {
     projection.reset();
 
     verify(applicationReadRepository).deleteAllInBatch();
+  }
+
+  @Test
+  void
+      givenCreatedEventWithPotentialDuplicates_whenHandled_thenSavesPotentialDuplicatesToReadModel() {
+    UUID applicationId = UUID.randomUUID();
+    List<PotentialDuplicate> duplicates =
+        List.of(
+            new PotentialDuplicate("LAA-456").applicationId(UUID.randomUUID()),
+            new PotentialDuplicate("LAA-789").legacyReference("LEGACY-001"));
+    ApplicationCreatedEvent eventWithDuplicates =
+        new ApplicationCreatedEvent(
+            applicationId,
+            0L,
+            ApplicationDataStore.fingerprint("{}"),
+            "APPLICATION_SUBMITTED",
+            1,
+            Instant.parse("2026-07-15T08:00:00Z"),
+            duplicates);
+    ApplicationReadModel[] savedCapture = new ApplicationReadModel[1];
+    when(applicationReadRepository.save(any()))
+        .thenAnswer(
+            invocation -> {
+              savedCapture[0] = invocation.getArgument(0);
+              return savedCapture[0];
+            });
+
+    projection.on(eventWithDuplicates, queryUpdateEmitter);
+
+    assertThat(savedCapture[0].getPotentialDuplicates()).isEqualTo(duplicates);
+  }
+
+  @Test
+  void
+      givenCreatedEventWithNoPotentialDuplicates_whenHandled_thenSavesNormalizedEmptyListToReadModel() {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationCreatedEvent event = applicationCreatedEvent(applicationId);
+    ApplicationReadModel[] savedCapture = new ApplicationReadModel[1];
+    when(applicationReadRepository.save(any()))
+        .thenAnswer(
+            invocation -> {
+              savedCapture[0] = invocation.getArgument(0);
+              return savedCapture[0];
+            });
+
+    projection.on(event, queryUpdateEmitter);
+
+    // ApplicationCreationDetails normalizes null to empty list, so projection saves empty list
+    assertThat(savedCapture[0].getPotentialDuplicates()).isEmpty();
   }
 
   @Test
@@ -323,7 +648,8 @@ class ApplicationProjectionTest {
             .applicationId(applicationId)
             .applicationDataVersion(1L)
             .build();
-    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(existing));
+    when(applicationReadQueryGateway.findApplication(any(), any()))
+        .thenReturn(Optional.of(existing));
     ApplicationDataPayload payload =
         ApplicationDataPayload.from(applicationCreationDetails(applicationId))
             .withNote("Test note", createdAt);
@@ -339,7 +665,7 @@ class ApplicationProjectionTest {
   @Test
   void givenMissingApplication_whenFindNotesQuery_thenReturnsEmpty() {
     UUID applicationId = UUID.randomUUID();
-    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.empty());
+    when(applicationReadQueryGateway.findApplication(any(), any())).thenReturn(Optional.empty());
 
     ApplicationNotesResult result =
         projection.handle(new FindNotesForApplicationQuery(applicationId));
@@ -355,7 +681,8 @@ class ApplicationProjectionTest {
             .applicationId(applicationId)
             .applicationDataVersion(0L)
             .build();
-    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(existing));
+    when(applicationReadQueryGateway.findApplication(any(), any()))
+        .thenReturn(Optional.of(existing));
     ApplicationDataPayload payload =
         ApplicationDataPayload.from(applicationCreationDetails(applicationId));
     when(applicationDataStore.get(applicationId, 0L)).thenReturn(payload);
@@ -374,7 +701,7 @@ class ApplicationProjectionTest {
     ApplicationListIndexReadModel indexRow =
         ApplicationListIndexReadModel.builder().applicationId(appId).build();
 
-    when(listIndexRepository.findAll(any(Specification.class), any(Pageable.class)))
+    when(applicationReadQueryGateway.findApplicationIndexPage(any(), any(), any()))
         .thenReturn(new PageImpl<>(List.of(indexRow)));
 
     ApplicationReadModel state =
@@ -383,7 +710,8 @@ class ApplicationProjectionTest {
             .applicationDataVersion(0L)
             .modifiedAt(Instant.EPOCH)
             .build();
-    when(applicationReadRepository.findAllById(List.of(appId))).thenReturn(List.of(state));
+    when(applicationReadQueryGateway.findApplications(eq(List.of(appId)), any()))
+        .thenReturn(List.of(state));
 
     ApplicationDataId dataId = new ApplicationDataId(appId, 0L);
     ApplicationDataPayload payload = ApplicationDataPayload.from(applicationCreationDetails(appId));
@@ -412,7 +740,7 @@ class ApplicationProjectionTest {
         .containsEntry(appId, List.of(priorAuthority));
 
     // Verify batch loads — not per-row findById calls
-    verify(applicationReadRepository).findAllById(List.of(appId));
+    verify(applicationReadQueryGateway).findApplications(eq(List.of(appId)), any());
     verify(applicationDataStore).getAll(List.of(dataId));
     verify(priorAuthorityReadRepository).findAllByApplicationIdIn(List.of(appId));
   }
@@ -420,7 +748,7 @@ class ApplicationProjectionTest {
   @Test
   @SuppressWarnings("unchecked")
   void givenEmptyIndexPage_whenFindAllApplicationsQuery_thenReturnsEmptyResult() {
-    when(listIndexRepository.findAll(any(Specification.class), any(Pageable.class)))
+    when(applicationReadQueryGateway.findApplicationIndexPage(any(), any(), any()))
         .thenReturn(new PageImpl<>(List.of()));
     when(groupReadRepository.findAllByLeadApplicationIdIn(any())).thenReturn(List.of());
     when(priorAuthorityReadRepository.findAllByApplicationIdIn(List.of())).thenReturn(List.of());
@@ -441,7 +769,7 @@ class ApplicationProjectionTest {
     UUID applicationIdWithPriorAuthority = UUID.randomUUID();
     UUID applicationIdWithout = UUID.randomUUID();
 
-    when(listIndexRepository.findAll(any(Specification.class), any(Pageable.class)))
+    when(applicationReadQueryGateway.findApplicationIndexPage(any(), any(), any()))
         .thenReturn(
             new PageImpl<>(
                 List.of(
@@ -453,7 +781,7 @@ class ApplicationProjectionTest {
                         .build())));
 
     List<UUID> pageIds = List.of(applicationIdWithPriorAuthority, applicationIdWithout);
-    when(applicationReadRepository.findAllById(pageIds))
+    when(applicationReadQueryGateway.findApplications(eq(pageIds), any()))
         .thenReturn(pageIds.stream().map(ApplicationProjectionTest::pageState).toList());
 
     when(applicationDataStore.getAll(any()))
@@ -558,7 +886,8 @@ class ApplicationProjectionTest {
   @SuppressWarnings("unchecked")
   void givenLastUpdatedSortAndDescOrder_whenFindAllQuery_thenPagedWithCorrectSort() {
     ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
-    when(listIndexRepository.findAll(any(Specification.class), pageableCaptor.capture()))
+    when(applicationReadQueryGateway.findApplicationIndexPage(
+            any(), pageableCaptor.capture(), any()))
         .thenReturn(new PageImpl<>(List.of()));
     when(groupReadRepository.findAllByLeadApplicationIdIn(any())).thenReturn(List.of());
 
@@ -578,7 +907,7 @@ class ApplicationProjectionTest {
     UUID leadId = UUID.randomUUID();
     ApplicationListIndexReadModel indexRow =
         ApplicationListIndexReadModel.builder().applicationId(appId).build();
-    when(listIndexRepository.findAll(any(Specification.class), any(Pageable.class)))
+    when(applicationReadQueryGateway.findApplicationIndexPage(any(), any(), any()))
         .thenReturn(new PageImpl<>(List.of(indexRow)));
 
     ApplicationReadModel state =
@@ -588,7 +917,8 @@ class ApplicationProjectionTest {
             .leadApplicationId(leadId)
             .modifiedAt(Instant.EPOCH)
             .build();
-    when(applicationReadRepository.findAllById(List.of(appId))).thenReturn(List.of(state));
+    when(applicationReadQueryGateway.findApplications(eq(List.of(appId)), any()))
+        .thenReturn(List.of(state));
 
     ApplicationDataId dataId = new ApplicationDataId(appId, 0L);
     ApplicationDataPayload payload = ApplicationDataPayload.from(applicationCreationDetails(appId));
@@ -610,7 +940,7 @@ class ApplicationProjectionTest {
     UUID appId = UUID.randomUUID();
     ApplicationListIndexReadModel indexRow =
         ApplicationListIndexReadModel.builder().applicationId(appId).build();
-    when(listIndexRepository.findAll(any(Specification.class), any(Pageable.class)))
+    when(applicationReadQueryGateway.findApplicationIndexPage(any(), any(), any()))
         .thenReturn(new PageImpl<>(List.of(indexRow)));
 
     ApplicationReadModel state =
@@ -619,7 +949,8 @@ class ApplicationProjectionTest {
             .applicationDataVersion(0L)
             .modifiedAt(Instant.EPOCH)
             .build();
-    when(applicationReadRepository.findAllById(List.of(appId))).thenReturn(List.of(state));
+    when(applicationReadQueryGateway.findApplications(eq(List.of(appId)), any()))
+        .thenReturn(List.of(state));
     when(applicationDataStore.getAll(any())).thenReturn(Map.of());
     when(groupReadRepository.findAllByLeadApplicationIdIn(any())).thenReturn(List.of());
 
@@ -638,7 +969,8 @@ class ApplicationProjectionTest {
             .applicationId(applicationId)
             .applicationDataVersion(0L)
             .build();
-    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(existing));
+    when(applicationReadQueryGateway.findApplication(any(), any()))
+        .thenReturn(Optional.of(existing));
     when(applicationDataStore.getAll(any())).thenReturn(Map.of());
 
     ApplicationReadModel result = projection.handle(new FindApplicationByIdQuery(applicationId));
@@ -669,7 +1001,8 @@ class ApplicationProjectionTest {
             .status("DRAFT")
             .createdAt(Instant.parse("2026-09-01T10:00:00Z"))
             .build();
-    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(application));
+    when(applicationReadQueryGateway.findApplication(any(), any()))
+        .thenReturn(Optional.of(application));
     when(applicationDataStore.getAll(List.of(dataId))).thenReturn(Map.of(dataId, applicationData));
     when(groupReadRepository.findByLeadApplicationId(applicationId)).thenReturn(Optional.of(group));
     when(priorAuthorityReadRepository.findAllByApplicationIdIn(List.of(applicationId)))
@@ -681,7 +1014,7 @@ class ApplicationProjectionTest {
     assertThat(result.application().getLaaReference()).isEqualTo("LAA-123");
     assertThat(result.linkedGroup()).isSameAs(group);
     assertThat(result.priorAuthorities()).containsExactly(priorAuthority);
-    verify(applicationReadRepository).findById(applicationId);
+    verify(applicationReadQueryGateway).findApplication(any(), any());
   }
 
   @Test
@@ -702,7 +1035,8 @@ class ApplicationProjectionTest {
             .leadApplicationId(leadApplicationId)
             .memberIds(List.of(leadApplicationId, applicationId))
             .build();
-    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(application));
+    when(applicationReadQueryGateway.findApplication(any(), any()))
+        .thenReturn(Optional.of(application));
     when(applicationDataStore.getAll(List.of(dataId))).thenReturn(Map.of(dataId, applicationData));
     when(groupReadRepository.findByLeadApplicationId(leadApplicationId))
         .thenReturn(Optional.of(group));
@@ -728,7 +1062,8 @@ class ApplicationProjectionTest {
     ApplicationDataId dataId = new ApplicationDataId(applicationId, 1L);
     ApplicationDataPayload applicationData =
         ApplicationDataPayload.from(applicationCreationDetails(applicationId));
-    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(application));
+    when(applicationReadQueryGateway.findApplication(any(), any()))
+        .thenReturn(Optional.of(application));
     when(applicationDataStore.getAll(List.of(dataId))).thenReturn(Map.of(dataId, applicationData));
     when(groupReadRepository.findByLeadApplicationId(applicationId)).thenReturn(Optional.empty());
     when(priorAuthorityReadRepository.findAllByApplicationIdIn(List.of(applicationId)))
@@ -745,7 +1080,7 @@ class ApplicationProjectionTest {
   @Test
   void givenMissingApplication_whenFindingDetail_thenReturnsNull() {
     UUID applicationId = UUID.randomUUID();
-    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.empty());
+    when(applicationReadQueryGateway.findApplication(any(), any())).thenReturn(Optional.empty());
 
     ApplicationDetailResult result =
         projection.handle(new FindApplicationDetailQuery(applicationId));
@@ -761,7 +1096,8 @@ class ApplicationProjectionTest {
             .applicationId(applicationId)
             .applicationDataVersion(1L)
             .build();
-    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(existing));
+    when(applicationReadQueryGateway.findApplication(any(), any()))
+        .thenReturn(Optional.of(existing));
     ApplicationDataId dataId = new ApplicationDataId(applicationId, 1L);
     ApplicationDataPayload payload =
         ApplicationDataPayload.from(applicationCreationDetails(applicationId));
@@ -796,7 +1132,8 @@ class ApplicationProjectionTest {
             .applicationId(applicationId)
             .applicationDataVersion(0L)
             .build();
-    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(existing));
+    when(applicationReadQueryGateway.findApplication(any(), any()))
+        .thenReturn(Optional.of(existing));
     when(applicationDataStore.get(applicationId, 0L)).thenReturn(null);
 
     ApplicationNotesResult result =

@@ -21,4 +21,5 @@ public record ApplicationReadModel(
     Long version,
     List<OpponentReadModel> opponents,
     ProviderReadModel provider,
-    List<ApplicationProceedingReadModel> proceedings) {}
+    List<ApplicationProceedingReadModel> proceedings,
+    List<PotentialDuplicateReadModel> potentialDuplicates) {}

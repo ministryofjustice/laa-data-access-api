@@ -9,6 +9,7 @@ import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventF
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.assertj.core.groups.Tuple;
 import org.axonframework.messaging.core.MessageType;
@@ -18,11 +19,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import tools.jackson.databind.ObjectMapper;
-import tools.jackson.databind.json.JsonMapper;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
@@ -30,17 +28,12 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationD
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityData;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataId;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataRepository;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.config.interceptor.RequestMetadataDispatchInterceptor;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
-import uk.gov.justice.laa.dstew.access.controller.application.GetApplicationHistoryResponseMapper;
 
 @ExtendWith(MockitoExtension.class)
 class ApplicationHistoryProjectionTest {
@@ -53,19 +46,17 @@ class ApplicationHistoryProjectionTest {
 
   @Mock private PriorAuthorityDataRepository priorAuthorityDataRepository;
 
-  @InjectMocks private ApplicationHistoryProjection projection;
-
-  private final ObjectMapper objectMapper = JsonMapper.builder().build();
+  private ApplicationHistoryProjection projection;
 
   @BeforeEach
   void setUp() {
     projection =
         new ApplicationHistoryProjection(
             repository,
-            objectMapper,
-            applicationDataStore,
+            new ApplicationHistoryAssembler(applicationDataStore),
             paRepository,
-            new PriorAuthorityHistoryAssembler(priorAuthorityDataRepository));
+            new PriorAuthorityHistoryAssembler(
+                new PriorAuthorityDataStore(priorAuthorityDataRepository)));
   }
 
   @Test
@@ -76,9 +67,8 @@ class ApplicationHistoryProjectionTest {
     LinkedApplicationGroupCreatedEvent event =
         new LinkedApplicationGroupCreatedEvent(
             leadId, leadId, List.of(leadId, memberId), occurredAt);
-    EventMessage message = message(event, "group-event-id");
 
-    projection.on(event, message);
+    projection.on(event, message(event, "group-event-id"));
 
     ArgumentCaptor<ApplicationHistoryReadModel> captor =
         ArgumentCaptor.forClass(ApplicationHistoryReadModel.class);
@@ -87,52 +77,43 @@ class ApplicationHistoryProjectionTest {
         .extracting(
             ApplicationHistoryReadModel::getEventId,
             ApplicationHistoryReadModel::getApplicationId,
-            ApplicationHistoryReadModel::getEventType)
+            ApplicationHistoryReadModel::getEventType,
+            ApplicationHistoryReadModel::getDataVersion,
+            ApplicationHistoryReadModel::getServiceName)
         .containsExactlyInAnyOrder(
-            Tuple.tuple("group-event-id:" + leadId, leadId, "APPLICATION_GROUP_CREATED"),
-            Tuple.tuple("group-event-id:" + memberId, memberId, "APPLICATION_GROUP_JOINED"));
-    for (ApplicationHistoryReadModel history : captor.getAllValues()) {
-      var payload = objectMapper.readTree(history.getRequestPayload());
-      assertThat(payload.get("groupId").asString()).isEqualTo(leadId.toString());
-      assertThat(payload.get("leadApplicationId").asString()).isEqualTo(leadId.toString());
-      assertThat(payload.get("memberApplicationIds")).hasSize(2);
-      assertThat(payload.get("occurredAt")).isNotNull();
-      assertThat(history.getServiceName()).isEqualTo("CIVIL_APPLY");
-      assertThat(history.getOccurredAt()).isEqualTo(occurredAt);
-    }
+            Tuple.tuple(
+                "group-event-id:" + leadId,
+                leadId,
+                "APPLICATION_GROUP_CREATED",
+                null,
+                "CIVIL_APPLY"),
+            Tuple.tuple(
+                "group-event-id:" + memberId,
+                memberId,
+                "APPLICATION_GROUP_JOINED",
+                null,
+                "CIVIL_APPLY"));
+    assertThat(captor.getAllValues())
+        .extracting(ApplicationHistoryReadModel::getOccurredAt)
+        .containsOnly(occurredAt);
   }
 
   @Test
-  void givenMemberAddedEvent_whenHandled_thenStoresJoinedHistoryWithSyntheticPayload()
-      throws Exception {
-    UUID groupId = UUID.randomUUID();
-    UUID leadId = UUID.randomUUID();
+  void givenMemberAddedEvent_whenHandled_thenStoresJoinedHistoryWithoutDataVersion() {
     UUID memberId = UUID.randomUUID();
-    Instant occurredAt = Instant.parse("2026-07-15T08:00:00Z");
     MemberAddedToGroupEvent event =
-        new MemberAddedToGroupEvent(groupId, leadId, memberId, occurredAt);
+        new MemberAddedToGroupEvent(
+            UUID.randomUUID(), UUID.randomUUID(), memberId, Instant.parse("2026-07-15T08:00:00Z"));
 
     projection.on(event, message(event, "member-event-id"));
 
     ArgumentCaptor<ApplicationHistoryReadModel> captor =
         ArgumentCaptor.forClass(ApplicationHistoryReadModel.class);
     verify(repository).save(captor.capture());
-    ApplicationHistoryReadModel history = captor.getValue();
-    assertThat(history.getEventId()).isEqualTo("member-event-id:" + memberId);
-    assertThat(history.getApplicationId()).isEqualTo(memberId);
-    assertThat(history.getEventType()).isEqualTo("APPLICATION_GROUP_JOINED");
-    var payload = objectMapper.readTree(history.getRequestPayload());
-    assertThat(payload.get("groupId").asString()).isEqualTo(groupId.toString());
-    assertThat(payload.get("leadApplicationId").asString()).isEqualTo(leadId.toString());
-    assertThat(payload.get("memberId").asString()).isEqualTo(memberId.toString());
-    assertThat(payload.get("occurredAt")).isNotNull();
-  }
-
-  @Test
-  void givenReset_whenHandled_thenDeletesHistory() {
-    projection.reset();
-
-    verify(repository).deleteAllInBatch();
+    assertThat(captor.getValue().getEventId()).isEqualTo("member-event-id:" + memberId);
+    assertThat(captor.getValue().getApplicationId()).isEqualTo(memberId);
+    assertThat(captor.getValue().getEventType()).isEqualTo("APPLICATION_GROUP_JOINED");
+    assertThat(captor.getValue().getDataVersion()).isNull();
   }
 
   @Test
@@ -151,107 +132,93 @@ class ApplicationHistoryProjectionTest {
         projection.handle(
             new FindApplicationHistoryQuery(applicationId, List.of("APPLICATION_CREATED")));
 
-    assertThat(result.applicationHistoryEvents()).containsExactly(created);
+    assertThat(result.applicationHistoryEvents())
+        .extracting(ApplicationHistoryEventResult::eventType)
+        .containsExactly("APPLICATION_CREATED");
   }
 
   @Test
-  void givenApplicationWorkItemAssigned_whenQueried_thenReconstructsCaseworker() {
+  void givenApplicationWorkItemAssigned_whenHandled_thenStoresMetadataCaseworkerId() {
     UUID applicationId = UUID.randomUUID();
-    UUID caseworkerId = UUID.randomUUID();
+    UUID eventCaseworkerId = UUID.randomUUID();
+    UUID metadataCaseworkerId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-07-20T08:00:00Z");
     WorkItemAssigned event =
         new WorkItemAssigned(
-            applicationId, WorkItemType.APPLICATION, 1L, 1L, caseworkerId, occurredAt);
-    projection.on(event, message(event, "assignment-event"));
+            applicationId, WorkItemType.APPLICATION, 1L, 1L, eventCaseworkerId, occurredAt);
+
+    projection.on(event, messageWithCaseworker(event, "assignment-event", metadataCaseworkerId));
+
     ArgumentCaptor<ApplicationHistoryReadModel> captor =
         ArgumentCaptor.forClass(ApplicationHistoryReadModel.class);
     verify(repository).save(captor.capture());
-    when(repository.findAllByApplicationIdOrderByOccurredAtAsc(applicationId))
-        .thenReturn(List.of(captor.getValue()));
-    when(paRepository.findAllByApplicationIdOrderByOccurredAtAsc(applicationId))
-        .thenReturn(List.of());
-
-    var result =
-        projection.handle(
-            new FindApplicationHistoryQuery(
-                applicationId, List.of("ASSIGN_APPLICATION_TO_CASEWORKER")));
-
-    assertThat(result.applicationHistoryEvents())
-        .singleElement()
-        .satisfies(
-            history -> {
-              try {
-                var payload = objectMapper.readTree(history.getRequestPayload());
-                assertThat(payload.get("caseworkerId").asString())
-                    .isEqualTo(caseworkerId.toString());
-              } catch (Exception exception) {
-                throw new AssertionError(exception);
-              }
-            });
+    assertThat(captor.getValue().getCaseworkerId()).isEqualTo(metadataCaseworkerId);
+    assertThat(captor.getValue().getDataVersion()).isNull();
   }
 
   @Test
-  void givenApplicationWorkItemUnassigned_whenQueried_thenReconstructsWithoutCaseworker()
-      throws Exception {
+  void givenApplicationWorkItemUnassigned_whenHandled_thenStoresMetadataCaseworkerId() {
     UUID applicationId = UUID.randomUUID();
-    Instant occurredAt = Instant.parse("2026-07-20T09:00:00Z");
+    UUID caseworkerId = UUID.randomUUID();
     WorkItemUnassigned event =
-        new WorkItemUnassigned(applicationId, WorkItemType.APPLICATION, 1L, 2L, occurredAt);
-    projection.on(event, message(event, "unassignment-event"));
+        new WorkItemUnassigned(
+            applicationId, WorkItemType.APPLICATION, 1L, 2L, Instant.parse("2026-07-20T09:00:00Z"));
+
+    projection.on(event, messageWithCaseworker(event, "unassignment-event", caseworkerId));
+
     ArgumentCaptor<ApplicationHistoryReadModel> captor =
         ArgumentCaptor.forClass(ApplicationHistoryReadModel.class);
     verify(repository).save(captor.capture());
-    when(repository.findAllByApplicationIdOrderByOccurredAtAsc(applicationId))
-        .thenReturn(List.of(captor.getValue()));
-    when(paRepository.findAllByApplicationIdOrderByOccurredAtAsc(applicationId))
-        .thenReturn(List.of());
-
-    var result =
-        projection.handle(
-            new FindApplicationHistoryQuery(
-                applicationId, List.of("UNASSIGN_APPLICATION_TO_CASEWORKER")));
-
-    var payload =
-        objectMapper.readTree(result.applicationHistoryEvents().getFirst().getRequestPayload());
-    assertThat(payload.get("caseworkerId")).isNull();
+    assertThat(captor.getValue().getCaseworkerId()).isEqualTo(caseworkerId);
+    assertThat(captor.getValue().getDataVersion()).isNull();
   }
 
   @Test
-  void givenDecisionHistory_whenQueried_thenReconstructsDescription() throws Exception {
+  void givenDecisionHistory_whenQueried_thenReconstructsDescription() {
     UUID applicationId = UUID.randomUUID();
-    Instant occurredAt = Instant.parse("2026-07-20T10:00:00Z");
     ApplicationDecisionMadeEvent event =
         new ApplicationDecisionMadeEvent(
-            applicationId, 1L, 4L, "GRANTED", AutoGrantedState.MANUAL, occurredAt);
+            applicationId,
+            1L,
+            4L,
+            "GRANTED",
+            AutoGrantedState.MANUAL,
+            Instant.parse("2026-07-20T10:00:00Z"));
     projection.on(event, message(event, "decision-event"));
     ArgumentCaptor<ApplicationHistoryReadModel> captor =
         ArgumentCaptor.forClass(ApplicationHistoryReadModel.class);
     verify(repository).save(captor.capture());
+    assertThat(captor.getValue().getDataVersion()).isEqualTo(4L);
     when(repository.findAllByApplicationIdOrderByOccurredAtAsc(applicationId))
         .thenReturn(List.of(captor.getValue()));
     when(paRepository.findAllByApplicationIdOrderByOccurredAtAsc(applicationId))
         .thenReturn(List.of());
-    when(applicationDataStore.get(applicationId, 4L))
+    when(applicationDataStore.findPayload(applicationId, 4L))
         .thenReturn(
-            ApplicationDataPayload.from(applicationCreationDetails(applicationId))
-                .withDecision(
-                    "GRANTED", AutoGrantedState.MANUAL, Map.of(), null, "{}", "Decision recorded"));
+            Optional.of(
+                ApplicationDataPayload.from(applicationCreationDetails(applicationId))
+                    .withDecision(
+                        "GRANTED",
+                        AutoGrantedState.MANUAL,
+                        Map.of(),
+                        null,
+                        "{}",
+                        "Decision recorded")));
 
     var result =
         projection.handle(
             new FindApplicationHistoryQuery(
                 applicationId, List.of("APPLICATION_MAKE_DECISION_GRANTED")));
 
-    var payload =
-        objectMapper.readTree(result.applicationHistoryEvents().getFirst().getRequestPayload());
-    assertThat(payload.get("eventDescription").asString()).isEqualTo("Decision recorded");
+    assertThat(result.applicationHistoryEvents().getFirst().eventDescription())
+        .isEqualTo("Decision recorded");
   }
 
   @Test
-  void givenNoteCreatedEvent_whenHandled_thenStoresNoteCreatedHistory() {
+  void givenNoteCreatedEvent_whenHandled_thenStoresNoteDataVersion() {
     UUID applicationId = UUID.randomUUID();
-    Instant occurredAt = Instant.parse("2026-07-20T10:00:00Z");
-    NoteCreatedEvent event = new NoteCreatedEvent(applicationId, 1L, occurredAt);
+    NoteCreatedEvent event =
+        new NoteCreatedEvent(applicationId, 1L, Instant.parse("2026-07-20T10:00:00Z"));
 
     projection.on(event, message(event, "note-event-id"));
 
@@ -260,13 +227,15 @@ class ApplicationHistoryProjectionTest {
     verify(repository).save(captor.capture());
     assertThat(captor.getValue().getEventType()).isEqualTo("APPLICATION_NOTE_CREATED");
     assertThat(captor.getValue().getApplicationId()).isEqualTo(applicationId);
-    assertThat(captor.getValue().getOccurredAt()).isEqualTo(occurredAt);
+    assertThat(captor.getValue().getDataVersion()).isEqualTo(1L);
+    assertThat(captor.getValue().getOccurredAt()).isEqualTo(event.occurredAt());
   }
 
   @Test
-  void givenNoteHistory_whenQueried_thenReconstructsNoteText() throws Exception {
+  void givenNoteHistory_whenQueried_thenReturnsNoteTextAsDescription() {
     UUID applicationId = UUID.randomUUID();
-    NoteCreatedEvent event = new NoteCreatedEvent(applicationId, 1L, Instant.now());
+    NoteCreatedEvent event =
+        new NoteCreatedEvent(applicationId, 1L, Instant.parse("2026-07-20T10:00:00Z"));
     projection.on(event, message(event, "note-event-id"));
     ArgumentCaptor<ApplicationHistoryReadModel> captor =
         ArgumentCaptor.forClass(ApplicationHistoryReadModel.class);
@@ -275,18 +244,19 @@ class ApplicationHistoryProjectionTest {
         .thenReturn(List.of(captor.getValue()));
     when(paRepository.findAllByApplicationIdOrderByOccurredAtAsc(applicationId))
         .thenReturn(List.of());
-    ApplicationDataPayload payloadWithNote =
-        ApplicationDataPayload.from(applicationCreationDetails(applicationId))
-            .withNote("My note text", Instant.now());
-    when(applicationDataStore.get(applicationId, 1L)).thenReturn(payloadWithNote);
+    when(applicationDataStore.findPayload(applicationId, 1L))
+        .thenReturn(
+            Optional.of(
+                ApplicationDataPayload.from(applicationCreationDetails(applicationId))
+                    .withNote("My note text", Instant.parse("2026-07-20T09:00:00Z"))));
 
     var result =
         projection.handle(
             new FindApplicationHistoryQuery(applicationId, List.of("APPLICATION_NOTE_CREATED")));
 
-    var payload =
-        objectMapper.readTree(result.applicationHistoryEvents().getFirst().getRequestPayload());
-    assertThat(payload.get("noteText").asString()).isEqualTo("My note text");
+    var history = result.applicationHistoryEvents().getFirst();
+    assertThat(history.eventType()).isEqualTo("APPLICATION_NOTE_CREATED");
+    assertThat(history.eventDescription()).isEqualTo("My note text");
   }
 
   @Test
@@ -305,7 +275,9 @@ class ApplicationHistoryProjectionTest {
         projection.handle(
             new FindApplicationHistoryQuery(applicationId, List.of("APPLICATION_CREATED")));
 
-    assertThat(result.applicationHistoryEvents()).hasSize(1);
+    assertThat(result.applicationHistoryEvents())
+        .extracting(ApplicationHistoryEventResult::eventType)
+        .containsExactly("APPLICATION_CREATED");
     assertThat(result.priorAuthorityHistoryGroups())
         .singleElement()
         .satisfies(
@@ -338,60 +310,9 @@ class ApplicationHistoryProjectionTest {
   }
 
   @Test
-  void
-      givenPriorAuthorityDecisionHistory_whenQueriedAndMapped_thenResponseContainsDecisionDetails() {
-    UUID applicationId = UUID.randomUUID();
-    UUID priorAuthorityId = UUID.randomUUID();
-    Instant occurredAt = Instant.parse("2026-08-05T10:00:00Z");
-    var priorAuthorityEvent =
-        PriorAuthorityHistoryReadModel.builder()
-            .eventId(UUID.randomUUID().toString())
-            .applicationId(applicationId)
-            .priorAuthorityId(priorAuthorityId)
-            .priorAuthorityType("EXPERT")
-            .eventType("PRIOR_AUTHORITY_MAKE_DECISION_GRANTED")
-            .itemVersion(3L)
-            .serviceName("CIVIL_APPLY")
-            .occurredAt(occurredAt)
-            .build();
-    when(repository.findAllByApplicationIdOrderByOccurredAtAsc(applicationId))
-        .thenReturn(List.of());
-    when(paRepository.findAllByApplicationIdOrderByOccurredAtAsc(applicationId))
-        .thenReturn(List.of(priorAuthorityEvent));
-    when(priorAuthorityDataRepository.findById(new PriorAuthorityDataId(priorAuthorityId, 3L)))
-        .thenReturn(
-            java.util.Optional.of(
-                priorAuthorityData(
-                    priorAuthorityId, applicationId, "GRANTED", "Reasoned decision")));
-
-    var result =
-        projection.handle(
-            new FindApplicationHistoryQuery(applicationId, List.of("APPLICATION_CREATED")));
-    var response = new GetApplicationHistoryResponseMapper(objectMapper).toResponse(result);
-
-    assertThat(response.getPriorAuthorities())
-        .singleElement()
-        .satisfies(
-            group -> {
-              assertThat(group.getPriorAuthorityId()).isEqualTo(priorAuthorityId);
-              assertThat(group.getPriorAuthorityType())
-                  .isEqualTo(uk.gov.justice.laa.dstew.access.model.PriorAuthorityType.EXPERT);
-              assertThat(group.getEvents())
-                  .singleElement()
-                  .satisfies(
-                      event -> {
-                        assertThat(event.getEventType())
-                            .isEqualTo("PRIOR_AUTHORITY_MAKE_DECISION_GRANTED");
-                        assertThat(event.getEventDescription())
-                            .isEqualTo(
-                                "Outcome: Granted, Decision at: 2026-08-05T10:00:00Z, Justification: Reasoned decision");
-                      });
-            });
-  }
-
-  @Test
   void givenReset_whenHandled_thenDeletesBothHistoryTables() {
     projection.reset();
+
     verify(repository).deleteAllInBatch();
     verify(paRepository).deleteAllInBatch();
   }
@@ -419,36 +340,26 @@ class ApplicationHistoryProjectionTest {
         Instant.parse("2026-07-15T08:00:00Z"));
   }
 
+  private EventMessage messageWithCaseworker(Object payload, String identifier, UUID caseworkerId) {
+    return new GenericEventMessage(
+        identifier,
+        new MessageType(payload.getClass()),
+        payload,
+        Map.of(
+            RequestMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY,
+            "CIVIL_APPLY",
+            RequestMetadataDispatchInterceptor.AUTHENTICATED_USER_ID_KEY,
+            caseworkerId.toString()),
+        Instant.parse("2026-07-15T08:00:00Z"));
+  }
+
   private ApplicationHistoryReadModel history(
       UUID applicationId, String eventType, Instant occurredAt) {
     return ApplicationHistoryReadModel.builder()
         .eventId(UUID.randomUUID().toString())
         .applicationId(applicationId)
         .eventType(eventType)
-        .requestPayload("{}")
         .occurredAt(occurredAt)
-        .build();
-  }
-
-  private PriorAuthorityData priorAuthorityData(
-      UUID priorAuthorityId, UUID applicationId, String decision, String decisionJustification) {
-    PriorAuthorityContent content =
-        new PriorAuthorityContent(PriorAuthorityType.EXPERT, null, null, null, null);
-    PriorAuthorityDataPayload payload =
-        new PriorAuthorityDataPayload(
-            priorAuthorityId,
-            applicationId,
-            content,
-            null,
-            Instant.parse("2026-08-05T09:30:00Z"),
-            new PriorAuthorityDataPayload.DecisionDetails(
-                decision, decisionJustification, null, null, null, null, null, null));
-    return PriorAuthorityData.builder()
-        .id(new PriorAuthorityDataId(priorAuthorityId, 3L))
-        .applicationId(applicationId)
-        .payload(payload)
-        .payloadHash("hash")
-        .createdAt(Instant.parse("2026-08-05T09:30:00Z"))
         .build();
   }
 }

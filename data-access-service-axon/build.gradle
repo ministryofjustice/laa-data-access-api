@@ -38,11 +38,17 @@ sourceSets {
         compileClasspath += sourceSets.testUtilities.output
         runtimeClasspath += sourceSets.testUtilities.output
     }
+    pactTest {
+        compileClasspath += sourceSets.main.output + sourceSets.testUtilities.output
+        runtimeClasspath += sourceSets.main.output + sourceSets.testUtilities.output
+    }
 }
 
 configurations {
     testUtilitiesImplementation.extendsFrom testImplementation
     testUtilitiesRuntimeOnly.extendsFrom testRuntimeOnly
+    pactTestImplementation.extendsFrom testImplementation
+    pactTestRuntimeOnly.extendsFrom testRuntimeOnly
 }
 
 dependencies {
@@ -108,6 +114,11 @@ dependencies {
     integrationTestImplementation "org.testcontainers:testcontainers-junit-jupiter:$versions.testcontainers"
     integrationTestImplementation "org.testcontainers:testcontainers-postgresql:$versions.testcontainers"
     integrationTestImplementation 'software.amazon.awssdk:sqs'
+
+    // Pact provider verification runs in the dedicated `pactTest` source set against the real
+    // application on in-memory H2. Only the broker client and HTTP replay support are extra.
+    pactTestImplementation 'au.com.dius.pact.provider:spring7:4.7.0-beta.3'
+    pactTestImplementation 'org.springframework.boot:spring-boot-starter-test'
 }
 
 test {
@@ -121,6 +132,54 @@ tasks.named('integrationTest') {
     exclude 'uk/gov/justice/laa/dstew/access/GenerateAxonMassDataDumpTest.class'
     jacoco {
         destinationFile = layout.buildDirectory.file("jacoco/integrationTest.exec").get().asFile
+    }
+}
+
+tasks.register('pactTest', Test) {
+    description = 'Runs Pact provider verification against consumer contracts pulled from the broker.'
+    group = 'verification'
+    dependsOn tasks.named('testUtilitiesClasses')
+    useJUnitPlatform()
+
+    testClassesDirs = sourceSets.pactTest.output.classesDirs
+    classpath = sourceSets.pactTest.runtimeClasspath
+
+    // Publish verification results back to the broker only when broker credentials are present.
+    // Set PACT_PUBLISH_RESULTS=false for a local diagnostic run that must not record a result.
+    def canPublish =
+            providers.environmentVariable('PACT_BROKER_USERNAME').isPresent() &&
+            providers.environmentVariable('PACT_BROKER_PASSWORD').isPresent() &&
+            providers.environmentVariable('PACT_PUBLISH_RESULTS').getOrElse('true') != 'false'
+    if (canPublish) {
+        systemProperty 'pact.verifier.publishResults', 'true'
+    }
+
+    // Provider version and branch are recorded with the published results so the broker's
+    // can-i-deploy and webhook triggers resolve against the provider's main branch.
+    systemProperty 'pact.provider.version', providers.environmentVariable('GIT_SHA').getOrElse('1.0.0')
+    def providerBranch = providers.environmentVariable('PACT_PROVIDER_BRANCH').orNull
+    if (providerBranch) {
+        systemProperty 'pact.provider.branch', providerBranch
+    }
+
+    // Broker connection is env-driven, with placeholders so the task still configures locally.
+    systemProperty 'pactbroker.url', providers.environmentVariable('PACT_BROKER_URL').getOrElse('https://laa-data-pact-broker.apps.live.cloud-platform.service.justice.gov.uk/')
+    systemProperty 'pactbroker.auth.username', providers.environmentVariable('PACT_BROKER_USERNAME').getOrElse('ABC')
+    systemProperty 'pactbroker.auth.password', providers.environmentVariable('PACT_BROKER_PASSWORD').getOrElse('ABC')
+
+    // Consumer-version selectors: filter by consumer name and branch when the webhook supplies them.
+    def consumerName = providers.environmentVariable('PACT_CONSUMER_NAME').orNull
+    if (consumerName) {
+        systemProperty 'pact.filter.consumers', consumerName
+    }
+    def consumerBranch = providers.environmentVariable('PACT_CONSUMER_BRANCH').getOrElse('main')
+    systemProperty 'pactbroker.consumerversionselectors.rawjson', "[{\"branch\":\"${consumerBranch}\"}]"
+
+    systemProperty 'pact.rootDir', layout.buildDirectory.dir("pacts").get().asFile.path
+
+    testLogging {
+        events TestLogEvent.PASSED, TestLogEvent.SKIPPED, TestLogEvent.FAILED
+        exceptionFormat = 'full'
     }
 }
 

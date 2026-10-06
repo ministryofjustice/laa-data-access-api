@@ -38,16 +38,55 @@ For a single application, a missing referenced payload means no hydrated applica
 For list queries, payloads are batch-loaded to avoid one lookup per row. Linked-group rows are also
 batch-loaded for the result page.
 
+Document upload events populate the `uploaded_documents` JSONB column in `application_current_state`.
+This list contains filename-free metadata and a deletion flag, not the assembled API response.
+The same handler advances the data-version pointer when present, keeping metadata and filename
+content aligned within the existing `application-projection` processor. Duplicate document IDs
+are not appended again. The list index also records the upload timestamp for last-updated sorting.
+
+New uploads occur before `ApplicationCreatedEvent`. Their handler seeds a thin current-state row to
+retain document metadata, but no immutable application-data payload exists yet, so the ordinary
+Application GET still returns not found while the Application is in draft. Creation preserves the
+projected document list and references the submission payload containing the filenames. This ordering
+is maintained by the same processor and survives reset/replay. The pre-submission metadata row must
+not be used as the authoritative draft lifecycle check.
+
+Query hydration loads the filename map from the payload referenced by the current-state row.
+Application detail mapping joins by document ID, excludes deleted documents, and orders active
+documents by upload time then document ID. It does not read aggregate state or call SDS for each
+document. Unknown legacy filenames remain absent rather than causing documents to disappear.
+The application document deletion endpoint is not implemented yet; uploads start with `deleted=false`.
+
+Migration V21 initializes the metadata column to an empty list. For an existing database whose
+processor has already passed historical document uploads, reset and replay `application-projection`
+to populate those documents. Replay `application-list-index-projection` as well to include their
+upload timestamps in sorting. Preserve the event store and `application_data` during either reset.
+New draft uploads become visible in Application details after submission and once the asynchronous
+projection catches up; the upload response does not add a read-your-write guarantee.
+
 ## History projection
 
 `ApplicationHistoryProjection` stores one public audit row per relevant event. Group events can
 produce several rows: one for the lead and one for each member. Their IDs combine the Axon message
 ID and application ID so each row remains unique and replay-idempotent.
 
-Decision, assignment, unassignment, and note events contain version pointers rather than their
-free-text details. When history is queried, the projection retrieves the matching
-`application_data` payload and reconstructs the public request fragment. If hydration fails, it
-returns the thin stored payload rather than failing the entire history query.
+History rows store event type, occurrence time, service/caseworker metadata, and a nullable
+`application_data` version pointer. Decision and note descriptions are hydrated from the exact
+referenced version when the history query is assembled; assignment and unassignment rows have no
+application-data pointer. If a referenced version is absent (for example, after retention), its
+description is `null` while the history row remains available. Other data-store failures are not
+treated as missing versions and continue to fail the query. Caseworker attribution comes from event
+metadata when present, so historical events without authenticated-user metadata have no
+caseworker attribution.
+
+### Deployment after the history schema change
+
+The history migration does not backfill existing rows. After deploying it, reset and replay the
+`application-history-projection` so rows are rebuilt with their `application_data` version pointers;
+otherwise pre-existing rows cannot hydrate decision or note descriptions. Historical events that
+were dispatched without authenticated-user metadata will still have no caseworker attribution after
+replay. Coordinate the reset through the approved processor lifecycle described below; do not edit
+processor tokens manually.
 
 ## Reset and replay
 

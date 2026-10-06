@@ -9,12 +9,12 @@ on:
 
 jobs:
   pact-test:
-    uses: ministryofjustice/laa-ccms-common-workflows/.github/workflows/pact-provider-webhook.yml@0c06c747af49e3efb703717e6185cf693494d5a4 # v2
+    uses: ministryofjustice/laa-ccms-common-workflows/.github/workflows/pact-provider-webhook.yml@035ee98ca0047659f865532ea6234abd69529ee8 # v2
     permissions:
       contents: write
       packages: write
     with:
-      pact_test_task: ":data-access-service:pactTest"
+      pact_test_task: ":data-access-service-axon:pactTest"
       provider_name: 'laa-data-access-api'
       consumer_name: ${{ github.event.inputs.consumer }}
       consumer_branch: ${{ github.event.inputs.consumerBranch }}

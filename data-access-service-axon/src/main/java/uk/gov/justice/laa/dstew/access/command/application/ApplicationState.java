@@ -1,6 +1,8 @@
 package uk.gov.justice.laa.dstew.access.command.application;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -20,4 +22,5 @@ public class ApplicationState {
   long applicationVersion;
   UUID caseworkerId;
   long assignmentVersion;
+  List<UploadDocument> uploadedDocuments = new ArrayList<>();
 }

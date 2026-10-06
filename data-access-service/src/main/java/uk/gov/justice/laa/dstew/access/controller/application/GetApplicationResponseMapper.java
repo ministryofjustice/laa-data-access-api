@@ -12,12 +12,14 @@ import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.InvolvedChildResponse;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.OpponentResponse;
+import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 import uk.gov.justice.laa.dstew.access.model.ProviderResponse;
 import uk.gov.justice.laa.dstew.access.model.ScopeLimitationResponse;
 import uk.gov.justice.laa.dstew.access.usecase.getapplication.model.ApplicationProceedingReadModel;
 import uk.gov.justice.laa.dstew.access.usecase.getapplication.model.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.usecase.getapplication.model.InvolvedChildReadModel;
 import uk.gov.justice.laa.dstew.access.usecase.getapplication.model.OpponentReadModel;
+import uk.gov.justice.laa.dstew.access.usecase.getapplication.model.PotentialDuplicateReadModel;
 import uk.gov.justice.laa.dstew.access.usecase.getapplication.model.ProviderReadModel;
 import uk.gov.justice.laa.dstew.access.usecase.getapplication.model.ScopeLimitationReadModel;
 import uk.gov.justice.laa.dstew.access.utils.EnumParsingUtils;
@@ -60,6 +62,8 @@ public class GetApplicationResponseMapper {
     applicationResponse.setProceedings(
         toApplicationProceedingResponses(applicationReadModel.proceedings()));
     applicationResponse.setVersion(applicationReadModel.version());
+    applicationResponse.setPotentialDuplicates(
+        toPotentialDuplicateResponses(applicationReadModel.potentialDuplicates()));
     return ResponseEntity.ok(applicationResponse);
   }
 
@@ -157,6 +161,22 @@ public class GetApplicationResponseMapper {
                     .scopeLimitation(scopeLimitation.scopeLimitation())
                     .scopeDescription(scopeLimitation.scopeDescription())
                     .build())
+        .toList();
+  }
+
+  private List<PotentialDuplicate> toPotentialDuplicateResponses(
+      List<PotentialDuplicateReadModel> potentialDuplicateReadModels) {
+    if (potentialDuplicateReadModels == null) {
+      return Collections.emptyList();
+    }
+
+    return potentialDuplicateReadModels.stream()
+        .map(
+            duplicate ->
+                new PotentialDuplicate()
+                    .applicationId(duplicate.applicationId())
+                    .laaReference(duplicate.laaReference())
+                    .legacyReference(duplicate.legacyReference()))
         .toList();
   }
 }

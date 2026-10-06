@@ -214,7 +214,7 @@ public class GetDomainEventTest extends BaseHarnessTest {
                 .caseworkerId(CaseworkerJohnDoe.getId())
                 .createdAt(DateTimeHelper.GetSystemInstanceWithoutNanoseconds())
                 .data(notesPayload)
-                .type(DomainEventType.APPLICATION_NOTES));
+                .type(DomainEventType.APPLICATION_NOTE_CREATED));
 
     HarnessResult result = getUri(TestConstants.URIs.APPLICATION_HISTORY_SEARCH, appId);
     ApplicationHistoryResponse actualResponse =

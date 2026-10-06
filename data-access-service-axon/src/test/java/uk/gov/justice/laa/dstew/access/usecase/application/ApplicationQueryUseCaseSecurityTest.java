@@ -23,6 +23,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationDetailResult;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationNotesResult;
+import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadAccessPolicyProvider;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsQuery;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsResult;
@@ -42,6 +43,7 @@ class ApplicationQueryUseCaseSecurityTest extends BaseSecuredUseCaseTest {
   @Autowired private ApplicationQueryUseCase useCase;
 
   @MockitoBean private QueryGateway queryGateway;
+  @MockitoBean private ApplicationReadAccessPolicyProvider accessPolicyProvider;
 
   @Test
   void givenNoRole_whenGetApplications_thenThrowsAuthorizationDeniedException() {
