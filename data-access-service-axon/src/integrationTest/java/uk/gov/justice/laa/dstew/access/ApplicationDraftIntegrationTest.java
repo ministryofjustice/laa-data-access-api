@@ -1,9 +1,15 @@
 package uk.gov.justice.laa.dstew.access;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validApplicationContent;
 
 import jakarta.annotation.PostConstruct;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -15,6 +21,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
@@ -22,6 +30,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Import;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -30,6 +39,9 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
@@ -37,10 +49,13 @@ import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.CreateApplicationDraftRequest;
+import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
 import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 import uk.gov.justice.laa.dstew.access.model.SaveApplicationDraftRequest;
 import uk.gov.justice.laa.dstew.access.model.SaveApplicationDraftResponse;
 import uk.gov.justice.laa.dstew.access.model.SubmitApplicationDraftResponse;
+import uk.gov.justice.laa.dstew.access.model.UploadApplicationDocumentResponse;
+import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 import util.ProjectionAwaiter;
 
@@ -66,6 +81,8 @@ class ApplicationDraftIntegrationTest {
   @Autowired private JdbcTemplate jdbcTemplate;
 
   @Autowired private QueryGateway queryGateway;
+
+  @MockitoBean private SdsService sdsService;
 
   private ProjectionAwaiter projectionAwaiter;
 
@@ -548,6 +565,90 @@ class ApplicationDraftIntegrationTest {
         .isEqualTo(duplicateId1);
     assertThat(projectedApplication.getPotentialDuplicates().get(0).getLaaReference())
         .isEqualTo("LAA-00001");
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void givenUploadedDocument_whenDownloaded_thenStreamsContentWithOriginalFilename(
+      boolean submitted) {
+    UUID applicationId = saveValidDraft();
+    when(sdsService.saveEvidenceFile(any(), any(), any()))
+        .thenReturn(new DocumentUploadResponse().checksum("checksum"));
+    UUID documentId = uploadDocument(applicationId, "original evidence.pdf");
+    if (submitted) {
+      ResponseEntity<String> submitResponse =
+          restTemplate.postForEntity(
+              submitUrl(applicationId), new HttpEntity<>(null, headers()), String.class);
+      assertThat(submitResponse.getStatusCode()).isIn(HttpStatus.OK, HttpStatus.ACCEPTED);
+    }
+    byte[] content = "%PDF-1.4\ncontent".getBytes();
+    when(sdsService.getEvidenceFile(applicationId, documentId, "original evidence.pdf"))
+        .thenReturn(new ByteArrayResource(content));
+
+    ResponseEntity<byte[]> response =
+        await()
+            .atMost(Duration.ofSeconds(10))
+            .until(
+                () ->
+                    restTemplate.exchange(
+                        documentUrl(applicationId, documentId),
+                        HttpMethod.GET,
+                        new HttpEntity<>(headers()),
+                        byte[].class),
+                candidate -> candidate.getStatusCode() == HttpStatus.OK);
+
+    assertThat(response.getHeaders().getContentType()).isEqualTo(MediaType.APPLICATION_PDF);
+    assertThat(response.getHeaders().getContentDisposition().getType()).isEqualTo("attachment");
+    assertThat(response.getHeaders().getContentDisposition().getFilename())
+        .isEqualTo("original evidence.pdf");
+    assertThat(response.getHeaders().getFirst("X-Document-Type")).isEqualTo("GATEWAY_EVIDENCE");
+    assertThat(response.getBody()).containsExactly(content);
+  }
+
+  @Test
+  void givenUnknownDocument_whenDownloaded_thenReturnsNotFoundWithoutCallingSds() {
+    UUID applicationId = saveValidDraft();
+
+    ResponseEntity<String> response =
+        restTemplate.exchange(
+            documentUrl(applicationId, UUID.randomUUID()),
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    verify(sdsService, never()).getEvidenceFile(any(), any(), any());
+  }
+
+  private UUID uploadDocument(UUID applicationId, String filename) {
+    MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+    body.add(
+        "file",
+        new ByteArrayResource("%PDF-1.4\ncontent".getBytes()) {
+          @Override
+          public String getFilename() {
+            return filename;
+          }
+        });
+    body.add("documentType", "GATEWAY_EVIDENCE");
+    HttpHeaders multipartHeaders = headers();
+    multipartHeaders.setContentType(MediaType.MULTIPART_FORM_DATA);
+
+    ResponseEntity<String> response =
+        restTemplate.postForEntity(
+            applicationUrl(applicationId) + "/documents",
+            new HttpEntity<>(body, multipartHeaders),
+            String.class);
+    assertThat(response.getStatusCode())
+        .withFailMessage("Upload response: %s", response.getBody())
+        .isEqualTo(HttpStatus.CREATED);
+    return objectMapper
+        .readValue(response.getBody(), UploadApplicationDocumentResponse.class)
+        .getDocumentId();
+  }
+
+  private String documentUrl(UUID applicationId, UUID documentId) {
+    return applicationUrl(applicationId) + "/documents/" + documentId;
   }
 
   private UUID saveDraft(UUID applicationId, String laaReference, Map<String, Object> content) {

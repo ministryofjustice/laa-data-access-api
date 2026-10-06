@@ -6,7 +6,7 @@ import lombok.With;
 
 /** Metadata for a document uploaded against a prior-authority draft. */
 @With
-public record PriorAuthorityDocument(
+public record EvidenceDocument(
     UUID documentId,
     String documentType,
     String fileName,

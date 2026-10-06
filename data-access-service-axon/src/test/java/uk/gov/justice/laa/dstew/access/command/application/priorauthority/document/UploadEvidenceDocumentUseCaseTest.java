@@ -33,7 +33,7 @@ import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
 
 @ExtendWith(MockitoExtension.class)
-class UploadPriorAuthorityDocumentUseCaseTest {
+class UploadEvidenceDocumentUseCaseTest {
 
   @Mock private PriorAuthorityDraftStore draftStore;
   @Mock private RetryingCommandDispatcher dispatcher;

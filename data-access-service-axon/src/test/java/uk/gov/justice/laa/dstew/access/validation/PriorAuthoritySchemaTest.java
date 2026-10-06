@@ -17,10 +17,10 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.BillingType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.CounselDetails;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.CounselType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.DisbursementDetails;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.EvidenceDocument;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.ExpertCosts;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.ExpertDetails;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityDocument;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.TimeRequested;
 
@@ -87,7 +87,7 @@ class PriorAuthoritySchemaTest {
             null,
             new DisbursementDetails("Interpreter", BigDecimal.valueOf(150.25)),
             List.of(
-                new PriorAuthorityDocument(
+                new EvidenceDocument(
                     UUID.randomUUID(),
                     "GATEWAY_EVIDENCE",
                     "evidence.pdf",
