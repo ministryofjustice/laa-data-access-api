@@ -117,8 +117,8 @@ jobs:
           image-tag: ${{ needs.release.outputs.published_artifact_version }}
       # Consumers run `can-i-deploy --to-environment main` against this provider. Environment
       # `main` is the LAA convention for the main-branch (UAT) deployment, so record it here.
-      - name: Record main deployment to pact broker
-        id: record_main_deployment
+      - name: Record UAT deployment to pact broker
+        id: record_uat_deployment
         uses: ministryofjustice/laa-ccms-common-workflows/.github/actions/pact-record-deployment@035ee98ca0047659f865532ea6234abd69529ee8 # v2.5.0
         with:
           pacticipant: 'laa-data-access-api'
