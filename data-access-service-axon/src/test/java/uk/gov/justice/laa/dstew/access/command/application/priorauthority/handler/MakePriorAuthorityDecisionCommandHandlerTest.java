@@ -137,6 +137,38 @@ class MakePriorAuthorityDecisionCommandHandlerTest {
     verifyNoInteractions(dataStore, eventAppender);
   }
 
+  @Test
+  void givenDifferentPriorAuthorityId_whenHandle_thenThrowsNotFound() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID differentPriorAuthorityId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+    MakePriorAuthorityDecisionCommand command =
+        new MakePriorAuthorityDecisionCommand(
+            priorAuthorityId,
+            caseworkerId,
+            0L,
+            "GRANTED",
+            "Decision recorded",
+            BigDecimal.ZERO,
+            null,
+            null,
+            null,
+            OCCURRED_AT,
+            "{}",
+            OCCURRED_AT);
+
+    when(priorAuthority.getPriorAuthorityId()).thenReturn(differentPriorAuthorityId);
+
+    assertThatExceptionOfType(ResourceNotFoundException.class)
+        .isThrownBy(
+            () ->
+                new MakePriorAuthorityDecisionCommandHandler()
+                    .handle(command, dataStore, priorAuthority, eventAppender))
+        .withMessage("No prior authority found with ID: " + priorAuthorityId);
+
+    verifyNoInteractions(dataStore, eventAppender);
+  }
+
   private static void setField(Object target, String fieldName, Object value) {
     try {
       Field field = target.getClass().getDeclaredField(fieldName);
