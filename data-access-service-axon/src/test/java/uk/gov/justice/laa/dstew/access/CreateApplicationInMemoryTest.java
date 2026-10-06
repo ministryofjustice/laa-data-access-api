@@ -333,9 +333,7 @@ class CreateApplicationInMemoryTest {
         .satisfies(
             history -> {
               assertThat(history.getEventType()).isEqualTo("APPLICATION_CREATED");
-              assertThat(history.getRequestPayload())
-                  .contains("\"applicationDataVersion\"", "\"requestFingerprint\"")
-                  .doesNotContain("LAA-123", "Ada", "Lovelace", "Care order");
+              assertThat(history.getDataVersion()).isZero();
               assertThat(history.getServiceName()).isEqualTo("CIVIL_APPLY");
             });
 

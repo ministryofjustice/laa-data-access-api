@@ -31,7 +31,9 @@ erDiagram
         string event_id PK
         uuid application_id
         string event_type
-        jsonb request_payload
+        bigint data_version
+        string service_name
+        uuid caseworker_id
         timestamptz occurred_at
     }
     LINKED_APPLICATION_GROUP_CURRENT_STATE {
@@ -96,8 +98,11 @@ remain aligned.
 ## Projection data
 
 `application_current_state` deliberately excludes most detailed application content. Query handlers
-hydrate it from the referenced `application_data` row. `application_history` stores serialized thin
-events, then reconstructs free-text descriptions and note content on query.
+hydrate it from the referenced `application_data` row. `application_history` stores event
+identity/type, metadata, occurrence time, and a nullable `data_version` pointer; it does not store a
+serialized request payload. Decision and note descriptions are hydrated from the referenced
+`application_data` version when queried. Events without application data (including group and
+assignment events) have no version pointer.
 
 Group events are stored on their own event stream and projected into
 `linked_application_group_current_state`. Application queries use

@@ -6,7 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/** Represents the inner request payload of an APPLICATION_NOTES domain event. */
+/** Represents the inner request payload of an APPLICATION_NOTE_CREATED domain event. */
 @Data
 @Builder
 @NoArgsConstructor
