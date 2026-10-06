@@ -203,7 +203,7 @@ public class SaveDomainEventService {
   }
 
   /**
-   * Posts an APPLICATION_NOTES domain event using domain types (new clean-architecture path).
+   * Posts an APPLICATION_NOTE_CREATED domain event using domain types (new clean-architecture path).
    *
    * @param applicationId the UUID of the application
    * @param caseworkerId the UUID of the assigned caseworker, or {@code null} if unassigned
@@ -212,7 +212,7 @@ public class SaveDomainEventService {
   public void saveCreateApplicationNoteDomainEvent(
       UUID applicationId, UUID caseworkerId, String serialisedNoteRequest) {
 
-    DomainEventType domainEventType = DomainEventType.APPLICATION_NOTES;
+    DomainEventType domainEventType = DomainEventType.APPLICATION_NOTE_CREATED;
 
     CreateApplicationNoteDomainEventDetails domainEventDetails =
         CreateApplicationNoteDomainEventDetails.builder()

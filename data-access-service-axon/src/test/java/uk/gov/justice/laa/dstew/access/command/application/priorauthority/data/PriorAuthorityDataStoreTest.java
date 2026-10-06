@@ -3,7 +3,6 @@ package uk.gov.justice.laa.dstew.access.command.application.priorauthority.data;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -12,20 +11,23 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 
+@ExtendWith(MockitoExtension.class)
 class PriorAuthorityDataStoreTest {
 
-  private PriorAuthorityDataRepository repository;
+  @Mock private PriorAuthorityDataRepository repository;
   private PriorAuthorityDataStore store;
 
   @BeforeEach
   void setUp() {
-    repository = mock(PriorAuthorityDataRepository.class);
     store = new PriorAuthorityDataStore(repository);
   }
 
@@ -110,5 +112,27 @@ class PriorAuthorityDataStoreTest {
         .isInstanceOf(IllegalStateException.class)
         .hasMessage(
             "Prior authority data not found for submission " + priorAuthorityId + " version 7");
+  }
+
+  @Test
+  void givenStoredVersion_whenFindPayload_thenReturnsThatVersion() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    PriorAuthorityDataPayload payload =
+        new PriorAuthorityDataPayload(priorAuthorityId, applicationId, null, "req", Instant.now());
+    PriorAuthorityDataId id = new PriorAuthorityDataId(priorAuthorityId, 2L);
+    when(repository.findById(id))
+        .thenReturn(Optional.of(PriorAuthorityData.builder().id(id).payload(payload).build()));
+
+    assertThat(store.findPayload(priorAuthorityId, 2L)).contains(payload);
+  }
+
+  @Test
+  void givenMissingVersion_whenFindPayload_thenReturnsEmpty() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    when(repository.findById(new PriorAuthorityDataId(priorAuthorityId, 7L)))
+        .thenReturn(Optional.empty());
+
+    assertThat(store.findPayload(priorAuthorityId, 7L)).isEmpty();
   }
 }

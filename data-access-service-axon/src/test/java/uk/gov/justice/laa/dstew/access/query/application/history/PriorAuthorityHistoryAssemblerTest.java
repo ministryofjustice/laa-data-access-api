@@ -18,6 +18,7 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataId;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataRepository;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 
@@ -30,7 +31,9 @@ class PriorAuthorityHistoryAssemblerTest {
 
   @BeforeEach
   void setUp() {
-    assembler = new PriorAuthorityHistoryAssembler(priorAuthorityDataRepository);
+    assembler =
+        new PriorAuthorityHistoryAssembler(
+            new PriorAuthorityDataStore(priorAuthorityDataRepository));
   }
 
   // --- grouping and ordering ---

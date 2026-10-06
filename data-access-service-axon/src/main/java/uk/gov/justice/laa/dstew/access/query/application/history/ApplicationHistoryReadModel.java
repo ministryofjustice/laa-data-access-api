@@ -10,8 +10,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 
 /** Append-only audit entry emitted by the Application event stream. */
@@ -34,9 +32,8 @@ public class ApplicationHistoryReadModel {
   @Column(name = "event_type", nullable = false)
   private String eventType;
 
-  @JdbcTypeCode(SqlTypes.JSON)
-  @Column(name = "request_payload", nullable = false)
-  private String requestPayload;
+  @Column(name = "data_version")
+  private Long dataVersion;
 
   @Column(name = "service_name")
   private String serviceName;

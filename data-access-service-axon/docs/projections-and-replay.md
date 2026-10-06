@@ -70,10 +70,23 @@ projection catches up; the upload response does not add a read-your-write guaran
 produce several rows: one for the lead and one for each member. Their IDs combine the Axon message
 ID and application ID so each row remains unique and replay-idempotent.
 
-Decision, assignment, unassignment, and note events contain version pointers rather than their
-free-text details. When history is queried, the projection retrieves the matching
-`application_data` payload and reconstructs the public request fragment. If hydration fails, it
-returns the thin stored payload rather than failing the entire history query.
+History rows store event type, occurrence time, service/caseworker metadata, and a nullable
+`application_data` version pointer. Decision and note descriptions are hydrated from the exact
+referenced version when the history query is assembled; assignment and unassignment rows have no
+application-data pointer. If a referenced version is absent (for example, after retention), its
+description is `null` while the history row remains available. Other data-store failures are not
+treated as missing versions and continue to fail the query. Caseworker attribution comes from event
+metadata when present, so historical events without authenticated-user metadata have no
+caseworker attribution.
+
+### Deployment after the history schema change
+
+The history migration does not backfill existing rows. After deploying it, reset and replay the
+`application-history-projection` so rows are rebuilt with their `application_data` version pointers;
+otherwise pre-existing rows cannot hydrate decision or note descriptions. Historical events that
+were dispatched without authenticated-user metadata will still have no caseworker attribution after
+replay. Coordinate the reset through the approved processor lifecycle described below; do not edit
+processor tokens manually.
 
 ## Reset and replay
 

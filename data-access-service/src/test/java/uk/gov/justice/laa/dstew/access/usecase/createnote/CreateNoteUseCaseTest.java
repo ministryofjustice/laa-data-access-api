@@ -78,7 +78,7 @@ class CreateNoteUseCaseTest {
     DomainEventEntity event = eventCaptor.getValue();
     assertThat(event.getApplicationId()).isEqualTo(applicationId);
     assertThat(event.getCaseworkerId()).isEqualTo(caseworkerId);
-    assertThat(event.getType()).isEqualTo(DomainEventType.APPLICATION_NOTES);
+    assertThat(event.getType()).isEqualTo(DomainEventType.APPLICATION_NOTE_CREATED);
     assertThat(event.getData()).contains("test note");
   }
 
@@ -103,7 +103,7 @@ class CreateNoteUseCaseTest {
     ArgumentCaptor<DomainEventEntity> captor = ArgumentCaptor.forClass(DomainEventEntity.class);
     verify(domainEventRepository).save(captor.capture());
     assertThat(captor.getValue().getCaseworkerId()).isNull();
-    assertThat(captor.getValue().getType()).isEqualTo(DomainEventType.APPLICATION_NOTES);
+    assertThat(captor.getValue().getType()).isEqualTo(DomainEventType.APPLICATION_NOTE_CREATED);
     assertThat(captor.getValue().getData()).contains("a default test note");
     assertThat(captor.getValue().getApplicationId()).isEqualTo(applicationId);
   }
