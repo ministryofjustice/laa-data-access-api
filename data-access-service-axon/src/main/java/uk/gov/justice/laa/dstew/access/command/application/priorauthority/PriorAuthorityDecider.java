@@ -19,12 +19,6 @@ public final class PriorAuthorityDecider {
 
   /** Returns a {@link PriorAuthorityDraftStartedEvent} for the first save of a new draft. */
   public static PriorAuthorityDraftStartedEvent decideStartDraft(
-      CreatePriorAuthorityDraftCommand command) {
-    return decideStartDraft(command, null);
-  }
-
-  /** Returns a {@link PriorAuthorityDraftStartedEvent} for the first save of a new draft. */
-  public static PriorAuthorityDraftStartedEvent decideStartDraft(
       CreatePriorAuthorityDraftCommand command, String officeCode) {
     String priorAuthorityType =
         command.content().priorAuthorityType() == null

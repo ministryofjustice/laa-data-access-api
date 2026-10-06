@@ -60,7 +60,7 @@ class PriorAuthorityDeciderTest {
             "PriorAuthority.json",
             OCCURRED_AT);
 
-    PriorAuthorityDraftStartedEvent event = PriorAuthorityDecider.decideStartDraft(command);
+    PriorAuthorityDraftStartedEvent event = PriorAuthorityDecider.decideStartDraft(command, null);
 
     assertThat(event.priorAuthorityType()).isNull();
     assertThat(event.officeCode()).isNull();
