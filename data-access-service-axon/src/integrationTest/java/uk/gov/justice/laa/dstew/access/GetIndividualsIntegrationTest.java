@@ -75,6 +75,34 @@ class GetIndividualsIntegrationTest {
   }
 
   @Test
+  void givenProviderScopedCallerOutsideApplicationOffice_whenGetIndividuals_thenReturnsEmptyList() {
+    UUID applicationId = UUID.randomUUID();
+    ResponseEntity<Void> createResponse =
+        restTemplate.postForEntity(
+            "http://localhost:" + port + "/api/v0/applications",
+            new HttpEntity<>(
+                validCreateApplicationRequest(
+                    applicationId, UUID.randomUUID(), "3C003D", "LAA-OTHER-OFFICE"),
+                createHeaders()),
+            Void.class);
+    assertThat(createResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    awaitApplicationProjection(applicationId);
+
+    ResponseEntity<IndividualsResponse> response =
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/individuals?applicationId=" + applicationId,
+            HttpMethod.GET,
+            new HttpEntity<>(serviceNameHeader(TestJwtDecoderConfig.OFFICE_A_BEARER_TOKEN)),
+            IndividualsResponse.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(response.getBody()).isNotNull();
+    assertThat(response.getBody().getIndividuals()).isEmpty();
+    assertThat(response.getBody().getPaging().getItemsReturned()).isZero();
+    assertThat(response.getBody().getPaging().getTotalRecords()).isZero();
+  }
+
+  @Test
   void givenMissingServiceNameHeader_whenGetIndividuals_thenReturnsBadRequest() {
     HttpHeaders headers = new HttpHeaders();
     headers.setBearerAuth(TestJwtDecoderConfig.BEARER_TOKEN);
@@ -120,9 +148,13 @@ class GetIndividualsIntegrationTest {
   }
 
   private HttpHeaders serviceNameHeader() {
+    return serviceNameHeader(TestJwtDecoderConfig.BEARER_TOKEN);
+  }
+
+  private HttpHeaders serviceNameHeader(String bearerToken) {
     HttpHeaders headers = new HttpHeaders();
     headers.set("X-Service-Name", "CIVIL_APPLY");
-    headers.setBearerAuth(TestJwtDecoderConfig.BEARER_TOKEN);
+    headers.setBearerAuth(bearerToken);
     return headers;
   }
 }
