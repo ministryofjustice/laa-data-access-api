@@ -7,14 +7,12 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 @ExcludeFromGeneratedCodeCoverage
 public class LinkedApplicationGroupVersionConflictException extends RuntimeException {
 
-  /** Creates a conflict with the application's expected linked-group version. */
-  public LinkedApplicationGroupVersionConflictException(
-      UUID applicationId, long expectedGroupVersion) {
+  /** Creates a conflict when the supplied token's version does not match the group. */
+  public LinkedApplicationGroupVersionConflictException(UUID applicationId) {
     this(
         "Linked group of application "
             + applicationId
-            + " has changed since version "
-            + expectedGroupVersion);
+            + " does not match the supplied linkedGroupVersion; re-read before retrying");
   }
 
   private LinkedApplicationGroupVersionConflictException(String message) {

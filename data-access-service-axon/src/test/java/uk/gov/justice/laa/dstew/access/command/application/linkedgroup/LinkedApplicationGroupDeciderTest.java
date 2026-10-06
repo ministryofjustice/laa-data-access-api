@@ -204,7 +204,32 @@ class LinkedApplicationGroupDeciderTest {
                     state,
                     new AddApplicationToLinkedGroupCommand(groupId, newMemberId, 1, OCCURRED_AT)))
         .isInstanceOf(LinkedApplicationGroupVersionConflictException.class)
-        .hasMessage("Linked group of application " + newMemberId + " has changed since version 1");
+        .hasMessage(
+            "Linked group of application "
+                + newMemberId
+                + " does not match the supplied linkedGroupVersion; re-read before retrying");
+  }
+
+  @Test
+  void givenFutureVersion_whenDecideAddApplication_thenDoesNotClaimItExisted() {
+    UUID groupId = UUID.randomUUID();
+    UUID leadId = UUID.randomUUID();
+    UUID newMemberId = UUID.randomUUID();
+    LinkedApplicationGroupState state =
+        stateAfterMemberAdded(
+            groupId, leadId, List.of(leadId, UUID.randomUUID()), UUID.randomUUID());
+
+    assertThat(state.groupVersion).isEqualTo(1);
+    assertThatThrownBy(
+            () ->
+                LinkedApplicationGroupDecider.decideAddApplication(
+                    state,
+                    new AddApplicationToLinkedGroupCommand(groupId, newMemberId, 3, OCCURRED_AT)))
+        .isInstanceOf(LinkedApplicationGroupVersionConflictException.class)
+        .hasMessage(
+            "Linked group of application "
+                + newMemberId
+                + " does not match the supplied linkedGroupVersion; re-read before retrying");
   }
 
   @Test
@@ -331,7 +356,10 @@ class LinkedApplicationGroupDeciderTest {
                 LinkedApplicationGroupDecider.decideChangeLead(
                     state, new ChangeLinkedGroupLeadCommand(groupId, associateId, 1, OCCURRED_AT)))
         .isInstanceOf(LinkedApplicationGroupVersionConflictException.class)
-        .hasMessage("Linked group of application " + associateId + " has changed since version 1");
+        .hasMessage(
+            "Linked group of application "
+                + associateId
+                + " does not match the supplied linkedGroupVersion; re-read before retrying");
   }
 
   @Test

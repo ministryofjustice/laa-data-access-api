@@ -98,11 +98,14 @@ class ApplicationExceptionHandlerTest {
 
     var response =
         handler.handleLinkedApplicationGroupVersionConflictException(
-            new LinkedApplicationGroupVersionConflictException(applicationId, 4L));
+            new LinkedApplicationGroupVersionConflictException(applicationId));
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
     assertThat(response.getBody().getDetail())
-        .isEqualTo("Linked group of application " + applicationId + " has changed since version 4");
+        .isEqualTo(
+            "Linked group of application "
+                + applicationId
+                + " does not match the supplied linkedGroupVersion; re-read before retrying");
   }
 
   @Test

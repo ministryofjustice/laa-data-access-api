@@ -261,8 +261,7 @@ public class ApplicationLinkMembershipIntegrationTest {
         .contains(
             "Linked group of application "
                 + group.memberIds().get(1)
-                + " has changed since version "
-                + group.version());
+                + " does not match the supplied linkedGroupVersion; re-read before retrying");
     assertThat(countDomainEvents(group.groupId(), LinkedApplicationGroupLeadChangedEvent.class))
         .isEqualTo(leadChangedCount);
     assertThat(route(group.memberIds().get(1)).getGroupId()).isEqualTo(group.groupId());
@@ -289,8 +288,7 @@ public class ApplicationLinkMembershipIntegrationTest {
         .contains(
             "Linked group of application "
                 + group.memberIds().get(1)
-                + " has changed since version "
-                + group.version());
+                + " does not match the supplied linkedGroupVersion; re-read before retrying");
     assertThat(
             countDomainEvents(group.groupId(), MemberRemovedFromGroupEvent.class)
                 + countDomainEvents(group.groupId(), LinkedApplicationGroupDissolvedEvent.class))

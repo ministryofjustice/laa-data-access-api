@@ -68,8 +68,7 @@ public final class LinkedApplicationGroupDecider {
       return Optional.empty();
     }
     if (command.expectedGroupVersion() != state.groupVersion) {
-      throw new LinkedApplicationGroupVersionConflictException(
-          command.applicationId(), command.expectedGroupVersion());
+      throw new LinkedApplicationGroupVersionConflictException(command.applicationId());
     }
 
     return Optional.of(
@@ -98,8 +97,7 @@ public final class LinkedApplicationGroupDecider {
       return Optional.empty();
     }
     if (command.expectedGroupVersion() != state.groupVersion) {
-      throw new LinkedApplicationGroupVersionConflictException(
-          command.newLeadApplicationId(), command.expectedGroupVersion());
+      throw new LinkedApplicationGroupVersionConflictException(command.newLeadApplicationId());
     }
 
     return Optional.of(
@@ -129,8 +127,7 @@ public final class LinkedApplicationGroupDecider {
               + state.groupId);
     }
     if (command.expectedGroupVersion() != state.groupVersion) {
-      throw new LinkedApplicationGroupVersionConflictException(
-          command.applicationId(), command.expectedGroupVersion());
+      throw new LinkedApplicationGroupVersionConflictException(command.applicationId());
     }
     if (command.applicationId().equals(state.leadApplicationId)) {
       throw new ApplicationLinkConflictException(

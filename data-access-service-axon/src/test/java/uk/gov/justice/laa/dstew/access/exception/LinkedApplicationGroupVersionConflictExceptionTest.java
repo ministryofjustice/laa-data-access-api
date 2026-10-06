@@ -11,14 +11,16 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class LinkedApplicationGroupVersionConflictExceptionTest {
 
   @Test
-  void givenApplicationAndExpectedVersion_whenCreated_thenHasStableMessage() {
+  void givenVersionConflict_whenCreated_thenDoesNotClaimVersionExisted() {
     var applicationId = UUID.randomUUID();
 
-    var exception = new LinkedApplicationGroupVersionConflictException(applicationId, 5L);
+    var exception = new LinkedApplicationGroupVersionConflictException(applicationId);
 
     assertThat(exception)
         .hasMessage(
-            "Linked group of application " + applicationId + " has changed since version 5");
+            "Linked group of application "
+                + applicationId
+                + " does not match the supplied linkedGroupVersion; re-read before retrying");
   }
 
   @Test
