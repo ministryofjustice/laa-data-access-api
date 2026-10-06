@@ -9,6 +9,7 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorA
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.MakePriorAuthorityDecisionCommand;
+import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 
 /** Handles decisions on prior-authority requests. */
 @Component
@@ -21,6 +22,8 @@ public class MakePriorAuthorityDecisionCommandHandler {
       PriorAuthorityDataStore dataStore,
       @InjectEntity(idProperty = "priorAuthorityId") PriorAuthorityAggregate priorAuthority,
       EventAppender eventAppender) {
+
+    requirePriorAuthorityExists(priorAuthority, command);
 
     PriorAuthorityDecider.decideDecision(priorAuthority.getState(), command)
         .ifPresent(
@@ -45,5 +48,14 @@ public class MakePriorAuthorityDecisionCommandHandler {
                   command.occurredAt());
               eventAppender.append(event);
             });
+  }
+
+  private static void requirePriorAuthorityExists(
+      PriorAuthorityAggregate priorAuthority, MakePriorAuthorityDecisionCommand command) {
+    if (priorAuthority.getPriorAuthorityId() == null
+        || !command.priorAuthorityId().equals(priorAuthority.getPriorAuthorityId())) {
+      throw new ResourceNotFoundException(
+          "No prior authority found with ID: " + command.priorAuthorityId());
+    }
   }
 }

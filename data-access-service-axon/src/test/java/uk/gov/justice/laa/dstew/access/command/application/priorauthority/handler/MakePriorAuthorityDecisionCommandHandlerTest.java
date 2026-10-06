@@ -1,8 +1,10 @@
 package uk.gov.justice.laa.dstew.access.command.application.priorauthority.handler;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
@@ -24,6 +26,7 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decisi
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
+import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 
 @ExtendWith(MockitoExtension.class)
 class MakePriorAuthorityDecisionCommandHandlerTest {
@@ -70,6 +73,7 @@ class MakePriorAuthorityDecisionCommandHandlerTest {
             OCCURRED_AT);
 
     when(priorAuthority.getState()).thenReturn(state);
+    when(priorAuthority.getPriorAuthorityId()).thenReturn(priorAuthorityId);
     when(priorAuthority.getDataVersion()).thenReturn(dataVersion);
     when(dataStore.get(priorAuthorityId, dataVersion)).thenReturn(current);
 
@@ -100,6 +104,37 @@ class MakePriorAuthorityDecisionCommandHandlerTest {
                 BigDecimal.valueOf(100.00),
                 OCCURRED_AT,
                 OCCURRED_AT));
+  }
+
+  @Test
+  void givenMissingPriorAuthority_whenHandle_thenThrowsNotFound() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+    MakePriorAuthorityDecisionCommand command =
+        new MakePriorAuthorityDecisionCommand(
+            priorAuthorityId,
+            caseworkerId,
+            0L,
+            "GRANTED",
+            "Decision recorded",
+            BigDecimal.ZERO,
+            null,
+            null,
+            null,
+            OCCURRED_AT,
+            "{}",
+            OCCURRED_AT);
+
+    when(priorAuthority.getPriorAuthorityId()).thenReturn(null);
+
+    assertThatExceptionOfType(ResourceNotFoundException.class)
+        .isThrownBy(
+            () ->
+                new MakePriorAuthorityDecisionCommandHandler()
+                    .handle(command, dataStore, priorAuthority, eventAppender))
+        .withMessage("No prior authority found with ID: " + priorAuthorityId);
+
+    verifyNoInteractions(dataStore, eventAppender);
   }
 
   private static void setField(Object target, String fieldName, Object value) {
