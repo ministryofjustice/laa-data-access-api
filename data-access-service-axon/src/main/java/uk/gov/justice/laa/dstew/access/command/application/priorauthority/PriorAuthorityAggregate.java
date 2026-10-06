@@ -29,6 +29,10 @@ public class PriorAuthorityAggregate {
     return state.applicationId;
   }
 
+  public String getOfficeCode() {
+    return state.officeCode;
+  }
+
   public String getPriorAuthorityType() {
     return state.priorAuthorityType;
   }

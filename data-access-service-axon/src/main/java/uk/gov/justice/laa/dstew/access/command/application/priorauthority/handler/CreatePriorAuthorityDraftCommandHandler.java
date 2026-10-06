@@ -60,7 +60,7 @@ public class CreatePriorAuthorityDraftCommandHandler {
         payload,
         command.serialisedRequest(),
         command.occurredAt());
-    eventAppender.append(PriorAuthorityDecider.decideStartDraft(command));
+    eventAppender.append(PriorAuthorityDecider.decideStartDraft(command, officeCode));
   }
 
   private static String applicationOfficeCode(

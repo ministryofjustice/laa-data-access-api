@@ -18,6 +18,7 @@ class PriorAuthorityAggregateTest {
   private static final UUID PA_ID = UUID.randomUUID();
   private static final UUID APP_ID = UUID.randomUUID();
   private static final String PA_TYPE = "testType";
+  private static final String OFFICE_CODE = "1A001B";
   private static final int SCHEMA_VERSION = 1;
   private static final UUID CASEWORKER_ID = UUID.randomUUID();
   private static final Instant NOW = Instant.now();
@@ -28,12 +29,14 @@ class PriorAuthorityAggregateTest {
   void testOnDraftStartedEvent() {
     PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
     PriorAuthorityDraftStartedEvent event =
-        new PriorAuthorityDraftStartedEvent(PA_ID, APP_ID, PA_TYPE, SCHEMA_VERSION, NOW);
+        new PriorAuthorityDraftStartedEvent(
+            PA_ID, APP_ID, PA_TYPE, SCHEMA_VERSION, NOW, OFFICE_CODE);
 
     aggregate.on(event);
 
     assertThat(aggregate.getPriorAuthorityId()).isEqualTo(PA_ID);
     assertThat(aggregate.getApplicationId()).isEqualTo(APP_ID);
+    assertThat(aggregate.getOfficeCode()).isEqualTo(OFFICE_CODE);
     assertThat(aggregate.getPriorAuthorityType()).isEqualTo(PA_TYPE);
   }
 
@@ -202,12 +205,15 @@ class PriorAuthorityAggregateTest {
   @DisplayName("getState returns internal PriorAuthorityState instance")
   void testGetState() {
     PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
-    aggregate.on(new PriorAuthorityDraftStartedEvent(PA_ID, APP_ID, PA_TYPE, SCHEMA_VERSION, NOW));
+    aggregate.on(
+        new PriorAuthorityDraftStartedEvent(
+            PA_ID, APP_ID, PA_TYPE, SCHEMA_VERSION, NOW, OFFICE_CODE));
 
     PriorAuthorityState state = aggregate.getState();
 
     assertThat(state.priorAuthorityId).isEqualTo(PA_ID);
     assertThat(state.applicationId).isEqualTo(APP_ID);
+    assertThat(state.officeCode).isEqualTo(OFFICE_CODE);
     assertThat(state.priorAuthorityType).isEqualTo(PA_TYPE);
   }
 }

@@ -99,7 +99,12 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
     verify(eventAppender)
         .append(
             new PriorAuthorityDraftStartedEvent(
-                priorAuthorityId, applicationId, PriorAuthorityType.EXPERT.name(), 1, OCCURRED_AT));
+                priorAuthorityId,
+                applicationId,
+                PriorAuthorityType.EXPERT.name(),
+                1,
+                OCCURRED_AT,
+                "1A001B"));
   }
 
   @Test
@@ -187,6 +192,10 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
             eq("{}"),
             eq(OCCURRED_AT));
     assertThat(payloadCaptor.getValue().officeCode()).isNull();
+    verify(eventAppender)
+        .append(
+            new PriorAuthorityDraftStartedEvent(
+                priorAuthorityId, applicationId, PriorAuthorityType.EXPERT.name(), 1, OCCURRED_AT));
   }
 
   @Test

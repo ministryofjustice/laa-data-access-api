@@ -35,13 +35,15 @@ class PriorAuthorityDeciderTest {
             1,
             "PriorAuthority.json",
             OCCURRED_AT);
-    PriorAuthorityDraftStartedEvent event = PriorAuthorityDecider.decideStartDraft(command);
+    PriorAuthorityDraftStartedEvent event =
+        PriorAuthorityDecider.decideStartDraft(command, "1A001B");
 
     assertThat(event.priorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(event.applicationId()).isEqualTo(applicationId);
     assertThat(event.priorAuthorityType()).isEqualTo(PriorAuthorityType.EXPERT.name());
     assertThat(event.schemaVersion()).isEqualTo(1);
     assertThat(event.occurredAt()).isEqualTo(OCCURRED_AT);
+    assertThat(event.officeCode()).isEqualTo("1A001B");
   }
 
   @Test
@@ -61,6 +63,7 @@ class PriorAuthorityDeciderTest {
     PriorAuthorityDraftStartedEvent event = PriorAuthorityDecider.decideStartDraft(command);
 
     assertThat(event.priorAuthorityType()).isNull();
+    assertThat(event.officeCode()).isNull();
   }
 
   @Test

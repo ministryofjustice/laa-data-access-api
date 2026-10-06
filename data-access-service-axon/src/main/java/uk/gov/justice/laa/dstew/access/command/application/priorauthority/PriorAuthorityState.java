@@ -14,6 +14,7 @@ import lombok.NoArgsConstructor;
 public class PriorAuthorityState {
   UUID priorAuthorityId;
   UUID applicationId;
+  String officeCode;
   long dataVersion;
   String requestFingerprint;
   boolean submitted;
