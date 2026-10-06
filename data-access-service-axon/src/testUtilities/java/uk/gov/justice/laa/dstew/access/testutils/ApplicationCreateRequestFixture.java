@@ -146,7 +146,8 @@ public final class ApplicationCreateRequestFixture {
         .build();
   }
 
-  private static Map<String, Object> validAddressContent() {
+  /** Creates valid address content containing only the required and common fields. */
+  public static Map<String, Object> validAddressContent() {
     return Map.ofEntries(
         Map.entry("location", "home"),
         Map.entry("addressLineOne", "1 Analytical Engine Way"),
