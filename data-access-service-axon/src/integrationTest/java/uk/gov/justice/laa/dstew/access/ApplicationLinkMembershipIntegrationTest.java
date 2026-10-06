@@ -6,8 +6,10 @@ import static org.awaitility.Awaitility.await;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
 
 import jakarta.annotation.PostConstruct;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,8 +23,11 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.axonframework.messaging.commandhandling.gateway.CommandGateway;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
@@ -42,6 +47,8 @@ import org.springframework.test.annotation.DirtiesContext;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.AddApplicationToLinkedGroupCommand;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupDissolvedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupLeadChangedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
@@ -135,8 +142,12 @@ public class ApplicationLinkMembershipIntegrationTest {
   void givenStandaloneApplication_whenMadeLead_thenConflict() {
     UUID applicationId = createApplication(uniqueLastName());
 
+    var routeBefore = routeMembership(List.of(applicationId));
     assertThat(makeLead(applicationId, token(UUID.randomUUID(), 0)).getStatusCode())
         .isEqualTo(HttpStatus.CONFLICT);
+    assertThat(routeMembership(List.of(applicationId))).isEqualTo(routeBefore);
+    assertThat(application(applicationId).getLinkedGroupVersion()).isNull();
+    assertThat(historyCount(applicationId, "APPLICATION_GROUP_LEAD_CHANGED")).isZero();
   }
 
   @Test
@@ -188,18 +199,28 @@ public class ApplicationLinkMembershipIntegrationTest {
   void givenLead_whenUnlinked_thenConflict() {
     var group = createGroup(2);
 
+    var routesBefore = routeMembership(group.memberIds());
     assertThat(unlink(group.leadId(), token(group.groupId(), group.version())).getStatusCode())
         .isEqualTo(HttpStatus.CONFLICT);
-    assertThat(route(group.leadId()).getRouteKind())
-        .isEqualTo(ApplicationGroupRouteKind.LINKED_GROUP);
+    awaitFinalGroupState(
+        group.groupId(), group.memberIds(), group.memberIds(), group.leadId(), group.version());
+    assertThat(routeMembership(group.memberIds())).isEqualTo(routesBefore);
+    assertThat(countDomainEvents(group.groupId(), MemberRemovedFromGroupEvent.class)).isZero();
+    assertThat(countDomainEvents(group.groupId(), LinkedApplicationGroupDissolvedEvent.class))
+        .isZero();
+    assertThat(historyCount(group.leadId(), "APPLICATION_GROUP_LEFT")).isZero();
   }
 
   @Test
   void givenStandaloneApplication_whenUnlinked_thenConflict() {
     UUID applicationId = createApplication(uniqueLastName());
 
+    var routeBefore = routeMembership(List.of(applicationId));
     assertThat(unlink(applicationId, token(UUID.randomUUID(), 0)).getStatusCode())
         .isEqualTo(HttpStatus.CONFLICT);
+    assertThat(routeMembership(List.of(applicationId))).isEqualTo(routeBefore);
+    assertThat(application(applicationId).getLinkedGroupVersion()).isNull();
+    assertThat(historyCount(applicationId, "APPLICATION_GROUP_LEFT")).isZero();
   }
 
   @Test
@@ -264,7 +285,11 @@ public class ApplicationLinkMembershipIntegrationTest {
                 + " does not match the supplied linkedGroupVersion; re-read before retrying");
     assertThat(countDomainEvents(group.groupId(), LinkedApplicationGroupLeadChangedEvent.class))
         .isEqualTo(leadChangedCount);
-    assertThat(route(group.memberIds().get(1)).getGroupId()).isEqualTo(group.groupId());
+    var allMembers = new ArrayList<>(group.memberIds());
+    allMembers.add(additionalMemberId);
+    awaitFinalGroupState(
+        group.groupId(), allMembers, allMembers, group.leadId(), group.version() + 1);
+    assertThat(historyCount(group.memberIds().get(1), "APPLICATION_GROUP_LEAD_CHANGED")).isZero();
   }
 
   @Test
@@ -293,7 +318,11 @@ public class ApplicationLinkMembershipIntegrationTest {
             countDomainEvents(group.groupId(), MemberRemovedFromGroupEvent.class)
                 + countDomainEvents(group.groupId(), LinkedApplicationGroupDissolvedEvent.class))
         .isEqualTo(removalEventCount);
-    assertThat(route(group.memberIds().get(1)).getGroupId()).isEqualTo(group.groupId());
+    var allMembers = new ArrayList<>(group.memberIds());
+    allMembers.add(additionalMemberId);
+    awaitFinalGroupState(
+        group.groupId(), allMembers, allMembers, group.leadId(), group.version() + 1);
+    assertThat(historyCount(group.memberIds().get(1), "APPLICATION_GROUP_LEFT")).isZero();
   }
 
   @ParameterizedTest
@@ -333,7 +362,13 @@ public class ApplicationLinkMembershipIntegrationTest {
     assertThat(conflict.getBody())
         .contains("is no longer in the linked group identified by linkedGroupVersion");
 
-    assertThat(route(applicationA).getGroupId()).isEqualTo(group2);
+    awaitFinalGroupState(
+        group2,
+        List.of(applicationA, applicationC),
+        List.of(applicationC, applicationA),
+        applicationC,
+        0);
+    assertThat(historyCount(applicationA, "APPLICATION_GROUP_LEAD_CHANGED")).isZero();
     assertThat(countDomainEvents(group2, MemberRemovedFromGroupEvent.class)).isZero();
     assertThat(countDomainEvents(group2, LinkedApplicationGroupDissolvedEvent.class)).isZero();
     assertThat(countDomainEvents(group2, LinkedApplicationGroupLeadChangedEvent.class)).isZero();
@@ -372,7 +407,14 @@ public class ApplicationLinkMembershipIntegrationTest {
 
     assertThat(link(applicationE, applicationB, staleToken).getStatusCode())
         .isEqualTo(HttpStatus.CONFLICT);
-    assertThat(route(applicationE).getRouteKind()).isEqualTo(ApplicationGroupRouteKind.STANDALONE);
+    awaitFinalGroupState(
+        group2,
+        List.of(applicationB, applicationD, applicationE),
+        List.of(applicationD, applicationB),
+        applicationD,
+        0);
+    assertThat(countDomainEvents(group2, MemberAddedToGroupEvent.class)).isZero();
+    assertThat(historyCount(applicationE, "APPLICATION_GROUP_JOINED")).isZero();
   }
 
   @Test
@@ -470,20 +512,319 @@ public class ApplicationLinkMembershipIntegrationTest {
             });
   }
 
-  @Test
-  void givenMissingVersion_whenMadeLead_thenBadRequest() {
-    UUID applicationId = createApplication(uniqueLastName());
+  @ParameterizedTest
+  @MethodSource("invalidGroupChangeRequests")
+  void givenInvalidVersion_whenChangingGroup_thenBadRequest(
+      String operation, String body, String expectedError) {
+    var applicationId = createApplication(uniqueLastName());
     var rawHeaders = headers();
     rawHeaders.setContentType(MediaType.APPLICATION_JSON);
 
     var response =
         restTemplate.exchange(
-            "/api/v0/applications/" + applicationId + "/make-lead",
+            "/api/v0/applications/" + applicationId + "/" + operation,
             HttpMethod.POST,
-            new HttpEntity<>("{}", rawHeaders),
+            new HttpEntity<>(body, rawHeaders),
             String.class);
 
+    assertValidationError(response, expectedError);
+    assertThat(route(applicationId).getRouteKind()).isEqualTo(ApplicationGroupRouteKind.STANDALONE);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"not-a-token", "3", "negative"})
+  void givenInvalidVersion_whenJoiningGroup_thenBadRequest(String invalidVersion) {
+    var group = createGroup(2);
+    var sourceId = createApplication(group.lastName());
+    var rawHeaders = headers();
+    rawHeaders.setContentType(MediaType.APPLICATION_JSON);
+    var versionValue =
+        "negative".equals(invalidVersion)
+            ? "\"" + negativeToken(group.groupId()) + "\""
+            : "3".equals(invalidVersion) ? "3" : "\"not-a-token\"";
+    var body =
+        "{\"applicationId\":\""
+            + group.leadId()
+            + "\",\"linkType\":\"FAMILY\",\"linkedGroupVersion\":"
+            + versionValue
+            + "}";
+
+    var response =
+        restTemplate.exchange(
+            "/api/v0/applications/" + sourceId + "/link",
+            HttpMethod.POST,
+            new HttpEntity<>(body, rawHeaders),
+            String.class);
+
+    assertValidationError(
+        response, "linkedGroupVersion: must be a valid linked group version token");
+    assertThat(route(sourceId).getRouteKind()).isEqualTo(ApplicationGroupRouteKind.STANDALONE);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"missing", "null"})
+  void givenNoTargetVersion_whenJoiningGroup_thenConflict(String versionForm) {
+    var group = createGroup(2);
+    var sourceId = createApplication(group.lastName());
+    var rawHeaders = headers();
+    rawHeaders.setContentType(MediaType.APPLICATION_JSON);
+    var body =
+        "{\"applicationId\":\""
+            + group.leadId()
+            + "\",\"linkType\":\"FAMILY\""
+            + ("null".equals(versionForm) ? ",\"linkedGroupVersion\":null" : "")
+            + "}";
+
+    var response =
+        restTemplate.exchange(
+            "/api/v0/applications/" + sourceId + "/link",
+            HttpMethod.POST,
+            new HttpEntity<>(body, rawHeaders),
+            String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+    assertThat(response.getBody()).contains("linkedGroupVersion is required");
+    assertThat(countDomainEvents(group.groupId(), MemberAddedToGroupEvent.class)).isZero();
+    awaitFinalGroupState(
+        group.groupId(),
+        List.of(group.leadId(), group.memberIds().get(1), sourceId),
+        group.memberIds(),
+        group.leadId(),
+        group.version());
+  }
+
+  private static List<Arguments> invalidGroupChangeRequests() {
+    var negative = "{\"linkedGroupVersion\":\"" + negativeToken(UUID.randomUUID()) + "\"}";
+    var bodies =
+        List.of(
+            Arguments.of("{}", "linkedGroupVersion: must not be null"),
+            Arguments.of("{\"linkedGroupVersion\":null}", "linkedGroupVersion: must not be null"),
+            Arguments.of(
+                "{\"linkedGroupVersion\":\"not-a-token\"}",
+                "linkedGroupVersion: must be a valid linked group version token"),
+            Arguments.of(
+                "{\"linkedGroupVersion\":3}",
+                "linkedGroupVersion: must be a valid linked group version token"),
+            Arguments.of(
+                negative, "linkedGroupVersion: must be a valid linked group version token"));
+    return List.of("make-lead", "unlink").stream()
+        .flatMap(
+            operation ->
+                bodies.stream().map(body -> Arguments.of(operation, body.get()[0], body.get()[1])))
+        .toList();
+  }
+
+  private static String negativeToken(UUID groupId) {
+    return Base64.getUrlEncoder()
+        .withoutPadding()
+        .encodeToString(("v1:linked-group:" + groupId + ":-1").getBytes(StandardCharsets.UTF_8));
+  }
+
+  private void assertValidationError(ResponseEntity<String> response, String expectedError) {
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(response.getBody())
+        .contains("\"status\":400", "\"detail\":\"Generic Validation Error\"")
+        .contains("\"errors\":[\"" + expectedError + "\"]");
+  }
+
+  @RepeatedTest(3)
+  void givenConcurrentAdds_whenTargetGroupVersionMatches_thenOnlyOneJoins() throws Exception {
+    var group = createGroup(2);
+    var firstSourceId = createApplication(group.lastName());
+    var secondSourceId = createApplication(group.lastName());
+    var results =
+        race(
+            () -> link(firstSourceId, group.leadId(), token(group.groupId(), group.version())),
+            () -> link(secondSourceId, group.leadId(), token(group.groupId(), group.version())));
+
+    assertThat(results)
+        .extracting(ResponseEntity::getStatusCode)
+        .containsExactlyInAnyOrder(HttpStatus.NO_CONTENT, HttpStatus.CONFLICT);
+    var successfulSourceId =
+        results.get(0).getStatusCode() == HttpStatus.NO_CONTENT ? firstSourceId : secondSourceId;
+    var rejectedSourceId =
+        successfulSourceId.equals(firstSourceId) ? secondSourceId : firstSourceId;
+    assertThat(countDomainEvents(group.groupId(), MemberAddedToGroupEvent.class)).isOne();
+    awaitFinalGroupState(
+        group.groupId(),
+        List.of(group.leadId(), group.memberIds().get(1), firstSourceId, secondSourceId),
+        List.of(group.leadId(), group.memberIds().get(1), successfulSourceId),
+        group.leadId(),
+        group.version() + 1);
+    assertThat(historyCount(rejectedSourceId, "APPLICATION_GROUP_JOINED")).isZero();
+  }
+
+  @RepeatedTest(3)
+  void givenConcurrentIdenticalLinks_whenStandalone_thenOneGroupIsCreated() throws Exception {
+    var lastName = uniqueLastName();
+    var sourceId = createApplication(lastName);
+    var targetId = createApplication(lastName);
+    var createdBefore = countAllDomainEvents(LinkedApplicationGroupCreatedEvent.class);
+    var results = race(() -> link(sourceId, targetId, null), () -> link(sourceId, targetId, null));
+
+    assertThat(results)
+        .extracting(ResponseEntity::getStatusCode)
+        .containsOnly(HttpStatus.NO_CONTENT);
+    var groupId = awaitRoute(sourceId, ApplicationGroupRouteKind.LINKED_GROUP).getGroupId();
+    assertThat(countDomainEvents(groupId, LinkedApplicationGroupCreatedEvent.class)).isOne();
+    assertThat(countAllDomainEvents(LinkedApplicationGroupCreatedEvent.class))
+        .isEqualTo(createdBefore + 1);
+    awaitFinalGroupState(
+        groupId, List.of(sourceId, targetId), List.of(targetId, sourceId), targetId, 0);
+  }
+
+  @Test
+  void givenConcurrentAddAndUnlink_whenThreeMembers_thenOneConflicts() throws Exception {
+    var group = createGroup(3);
+    var sourceId = createApplication(group.lastName());
+    var removedId = group.memberIds().get(1);
+    var previousAddCount = countDomainEvents(group.groupId(), MemberAddedToGroupEvent.class);
+    var results =
+        race(
+            () -> link(sourceId, group.leadId(), token(group.groupId(), group.version())),
+            () -> unlink(removedId, token(group.groupId(), group.version())));
+
+    assertThat(results)
+        .extracting(ResponseEntity::getStatusCode)
+        .containsExactlyInAnyOrder(HttpStatus.NO_CONTENT, HttpStatus.CONFLICT);
+    assertThat(
+            countDomainEvents(group.groupId(), MemberAddedToGroupEvent.class)
+                - previousAddCount
+                + countDomainEvents(group.groupId(), MemberRemovedFromGroupEvent.class))
+        .isOne();
+    var addSucceeded = results.get(0).getStatusCode() == HttpStatus.NO_CONTENT;
+    var expectedMembers = new ArrayList<>(group.memberIds());
+    if (addSucceeded) {
+      expectedMembers.add(sourceId);
+      assertThat(historyCount(removedId, "APPLICATION_GROUP_LEFT")).isZero();
+    } else {
+      expectedMembers.remove(removedId);
+      assertThat(historyCount(sourceId, "APPLICATION_GROUP_JOINED")).isZero();
+    }
+    var allParticipants = new ArrayList<>(group.memberIds());
+    allParticipants.add(sourceId);
+    awaitFinalGroupState(
+        group.groupId(), allParticipants, expectedMembers, group.leadId(), group.version() + 1);
+  }
+
+  @Test
+  void givenConcurrentAddAndMakeLead_whenThreeMembers_thenOneConflicts() throws Exception {
+    var group = createGroup(3);
+    var sourceId = createApplication(group.lastName());
+    var newLeadId = group.memberIds().get(1);
+    var previousAddCount = countDomainEvents(group.groupId(), MemberAddedToGroupEvent.class);
+    var results =
+        race(
+            () -> link(sourceId, group.leadId(), token(group.groupId(), group.version())),
+            () -> makeLead(newLeadId, token(group.groupId(), group.version())));
+
+    assertThat(results)
+        .extracting(ResponseEntity::getStatusCode)
+        .containsExactlyInAnyOrder(HttpStatus.NO_CONTENT, HttpStatus.CONFLICT);
+    assertThat(
+            countDomainEvents(group.groupId(), MemberAddedToGroupEvent.class)
+                - previousAddCount
+                + countDomainEvents(group.groupId(), LinkedApplicationGroupLeadChangedEvent.class))
+        .isOne();
+    var addSucceeded = results.get(0).getStatusCode() == HttpStatus.NO_CONTENT;
+    var allParticipants = new ArrayList<>(group.memberIds());
+    allParticipants.add(sourceId);
+    var expectedMembers = addSucceeded ? allParticipants : group.memberIds();
+    awaitFinalGroupState(
+        group.groupId(),
+        allParticipants,
+        expectedMembers,
+        addSucceeded ? group.leadId() : newLeadId,
+        group.version() + 1);
+  }
+
+  @Test
+  void givenConcurrentIdenticalMakeLead_whenRetried_thenOnlyOneEvent() throws Exception {
+    var group = createGroup(3);
+    var newLeadId = group.memberIds().get(1);
+    var results =
+        race(
+            () -> makeLead(newLeadId, token(group.groupId(), group.version())),
+            () -> makeLead(newLeadId, token(group.groupId(), group.version())));
+
+    assertThat(results)
+        .extracting(ResponseEntity::getStatusCode)
+        .containsOnly(HttpStatus.NO_CONTENT);
+    assertThat(countDomainEvents(group.groupId(), LinkedApplicationGroupLeadChangedEvent.class))
+        .isOne();
+    awaitFinalGroupState(
+        group.groupId(), group.memberIds(), group.memberIds(), newLeadId, group.version() + 1);
+  }
+
+  @Test
+  void givenConcurrentIdenticalUnlinks_whenRetried_thenOnlyOneEvent() throws Exception {
+    var group = createGroup(3);
+    var removedId = group.memberIds().get(1);
+    var results =
+        race(
+            () -> unlink(removedId, token(group.groupId(), group.version())),
+            () -> unlink(removedId, token(group.groupId(), group.version())));
+
+    assertThat(results)
+        .extracting(ResponseEntity::getStatusCode)
+        .containsExactlyInAnyOrder(HttpStatus.NO_CONTENT, HttpStatus.CONFLICT);
+    assertThat(countDomainEvents(group.groupId(), MemberRemovedFromGroupEvent.class)).isOne();
+    awaitFinalGroupState(
+        group.groupId(),
+        group.memberIds(),
+        List.of(group.leadId(), group.memberIds().get(2)),
+        group.leadId(),
+        group.version() + 1);
+  }
+
+  @Test
+  void givenConcurrentIdenticalGroupLinks_whenRetried_thenOnlyOneEvent() throws Exception {
+    var group = createGroup(2);
+    var sourceId = createApplication(group.lastName());
+    var results =
+        race(
+            () -> link(sourceId, group.leadId(), token(group.groupId(), group.version())),
+            () -> link(sourceId, group.leadId(), token(group.groupId(), group.version())));
+
+    assertThat(results)
+        .extracting(ResponseEntity::getStatusCode)
+        .containsOnly(HttpStatus.NO_CONTENT);
+    assertThat(countDomainEvents(group.groupId(), MemberAddedToGroupEvent.class)).isOne();
+    var expectedMembers = List.of(group.leadId(), group.memberIds().get(1), sourceId);
+    awaitFinalGroupState(
+        group.groupId(), expectedMembers, expectedMembers, group.leadId(), group.version() + 1);
+  }
+
+  @Test
+  void givenConcurrentAddsToDifferentGroups_whenLinked_thenBothSucceed() throws Exception {
+    var firstGroup = createGroup(2);
+    var secondGroup = createGroup(2);
+    var firstSourceId = createApplication(firstGroup.lastName());
+    var secondSourceId = createApplication(secondGroup.lastName());
+    var results =
+        race(
+            () ->
+                link(
+                    firstSourceId,
+                    firstGroup.leadId(),
+                    token(firstGroup.groupId(), firstGroup.version())),
+            () ->
+                link(
+                    secondSourceId,
+                    secondGroup.leadId(),
+                    token(secondGroup.groupId(), secondGroup.version())));
+
+    assertThat(results)
+        .extracting(ResponseEntity::getStatusCode)
+        .containsOnly(HttpStatus.NO_CONTENT);
+    assertThat(countDomainEvents(firstGroup.groupId(), MemberAddedToGroupEvent.class)).isOne();
+    assertThat(countDomainEvents(secondGroup.groupId(), MemberAddedToGroupEvent.class)).isOne();
+    var firstMembers = List.of(firstGroup.leadId(), firstGroup.memberIds().get(1), firstSourceId);
+    var secondMembers =
+        List.of(secondGroup.leadId(), secondGroup.memberIds().get(1), secondSourceId);
+    awaitFinalGroupState(firstGroup.groupId(), firstMembers, firstMembers, firstGroup.leadId(), 1);
+    awaitFinalGroupState(
+        secondGroup.groupId(), secondMembers, secondMembers, secondGroup.leadId(), 1);
   }
 
   @Test
@@ -501,10 +842,12 @@ public class ApplicationLinkMembershipIntegrationTest {
         .containsExactlyInAnyOrder(HttpStatus.NO_CONTENT, HttpStatus.CONFLICT);
     assertThat(countDomainEvents(group.groupId(), LinkedApplicationGroupLeadChangedEvent.class))
         .isOne();
-    awaitMembership(
+    awaitFinalGroupState(
+        group.groupId(),
         group.memberIds(),
-        results.get(0).getStatusCode() == HttpStatus.NO_CONTENT ? firstTargetId : secondTargetId);
-    assertNoSingleMemberGroups();
+        group.memberIds(),
+        results.get(0).getStatusCode() == HttpStatus.NO_CONTENT ? firstTargetId : secondTargetId,
+        group.version() + 1);
   }
 
   @Test
@@ -524,15 +867,14 @@ public class ApplicationLinkMembershipIntegrationTest {
                 + countDomainEvents(group.groupId(), MemberRemovedFromGroupEvent.class))
         .isOne();
     var successfulLeadChange = results.get(0).getStatusCode().is2xxSuccessful();
-    assertThat(route(memberId).getRouteKind())
-        .isEqualTo(
-            successfulLeadChange
-                ? ApplicationGroupRouteKind.LINKED_GROUP
-                : ApplicationGroupRouteKind.STANDALONE);
-    if (successfulLeadChange) {
-      awaitMembership(group.memberIds(), memberId);
-    }
-    assertNoSingleMemberGroups();
+    awaitFinalGroupState(
+        group.groupId(),
+        group.memberIds(),
+        successfulLeadChange
+            ? group.memberIds()
+            : List.of(group.leadId(), group.memberIds().get(2)),
+        successfulLeadChange ? memberId : group.leadId(),
+        group.version() + 1);
   }
 
   @Test
@@ -547,23 +889,13 @@ public class ApplicationLinkMembershipIntegrationTest {
         .extracting(ResponseEntity::getStatusCode)
         .containsExactlyInAnyOrder(HttpStatus.NO_CONTENT, HttpStatus.CONFLICT);
     assertThat(countDomainEvents(group.groupId(), MemberRemovedFromGroupEvent.class)).isOne();
-    assertThat(route(group.leadId()).getRouteKind())
-        .isEqualTo(ApplicationGroupRouteKind.LINKED_GROUP);
-    assertThat(route(group.memberIds().get(1)).getRouteKind())
-        .isIn(ApplicationGroupRouteKind.LINKED_GROUP, ApplicationGroupRouteKind.STANDALONE);
-    assertThat(route(group.memberIds().get(2)).getRouteKind())
-        .isIn(ApplicationGroupRouteKind.LINKED_GROUP, ApplicationGroupRouteKind.STANDALONE);
-    assertThat(
-            List.of(route(group.memberIds().get(1)), route(group.memberIds().get(2))).stream()
-                .filter(route -> route.getRouteKind() == ApplicationGroupRouteKind.STANDALONE))
-        .hasSize(1);
-    awaitGroupMembers(
+    var firstRemoved = results.get(0).getStatusCode() == HttpStatus.NO_CONTENT;
+    awaitFinalGroupState(
         group.groupId(),
+        group.memberIds(),
+        List.of(group.leadId(), group.memberIds().get(firstRemoved ? 2 : 1)),
         group.leadId(),
-        route(group.memberIds().get(1)).getRouteKind() == ApplicationGroupRouteKind.LINKED_GROUP
-            ? group.memberIds().get(1)
-            : group.memberIds().get(2));
-    assertNoSingleMemberGroups();
+        group.version() + 1);
   }
 
   @Test
@@ -585,28 +917,27 @@ public class ApplicationLinkMembershipIntegrationTest {
             countDomainEvents(group.groupId(), LinkedApplicationGroupDissolvedEvent.class)
                 + countDomainEvents(group.groupId(), MemberAddedToGroupEvent.class))
         .isOne();
-    var leadRoute = route(group.leadId());
-    var removedRoute = route(unlinkedId);
-    var linkedRoute = route(newApplicationId);
     if (results.get(0).getStatusCode().is2xxSuccessful()) {
-      assertThat(List.of(leadRoute, removedRoute, linkedRoute))
-          .allSatisfy(
-              route ->
-                  assertThat(route.getRouteKind()).isEqualTo(ApplicationGroupRouteKind.STANDALONE));
+      awaitFinalGroupState(
+          group.groupId(),
+          List.of(group.leadId(), unlinkedId, newApplicationId),
+          List.of(),
+          null,
+          0);
     } else {
-      assertThat(List.of(leadRoute, removedRoute, linkedRoute))
-          .allSatisfy(
-              route -> {
-                assertThat(route.getRouteKind()).isEqualTo(ApplicationGroupRouteKind.LINKED_GROUP);
-                assertThat(route.getGroupId()).isEqualTo(group.groupId());
-              });
+      awaitFinalGroupState(
+          group.groupId(),
+          List.of(group.leadId(), unlinkedId, newApplicationId),
+          List.of(group.leadId(), unlinkedId, newApplicationId),
+          group.leadId(),
+          group.version() + 1);
     }
-    assertNoSingleMemberGroups();
   }
 
-  @Test
-  void givenRouteUpdateFails_whenGroupDissolved_thenEventAndRoutesRollBack() {
-    var group = createGroup(2);
+  @ParameterizedTest
+  @ValueSource(ints = {2, 3})
+  void givenRouteUpdateFails_whenMemberLeaves_thenEventAndRoutesRollBack(int memberCount) {
+    var group = createGroup(memberCount);
     UUID removedId = group.memberIds().get(1);
     try {
       jdbcTemplate.execute(
@@ -646,10 +977,60 @@ public class ApplicationLinkMembershipIntegrationTest {
 
     assertThat(countDomainEvents(group.groupId(), LinkedApplicationGroupDissolvedEvent.class))
         .isZero();
-    assertThat(groupRepository.findById(group.groupId())).isPresent();
-    assertThat(route(group.leadId()).getRouteKind())
-        .isEqualTo(ApplicationGroupRouteKind.LINKED_GROUP);
-    assertThat(route(removedId).getRouteKind()).isEqualTo(ApplicationGroupRouteKind.LINKED_GROUP);
+    assertThat(countDomainEvents(group.groupId(), MemberRemovedFromGroupEvent.class)).isZero();
+    assertThat(historyCount(removedId, "APPLICATION_GROUP_LEFT")).isZero();
+    awaitFinalGroupState(
+        group.groupId(), group.memberIds(), group.memberIds(), group.leadId(), group.version());
+  }
+
+  @Test
+  void givenRouteUpdateFails_whenAddingMember_thenEventAndRoutesRollBack() {
+    var group = createGroup(2);
+    var newMemberId = createApplication(group.lastName());
+    try {
+      jdbcTemplate.execute(
+          """
+                    CREATE OR REPLACE FUNCTION axon.reject_test_group_route_join()
+                    RETURNS trigger AS $$
+                    BEGIN
+                      IF OLD.group_id IS NULL AND NEW.group_id = '%s' THEN
+                        RAISE EXCEPTION 'forced application group route join failure';
+                      END IF;
+                      RETURN NEW;
+                    END;
+                    $$ LANGUAGE plpgsql
+                    """
+              .formatted(group.groupId()));
+      jdbcTemplate.execute(
+          """
+                    CREATE TRIGGER reject_test_group_route_join
+                    BEFORE UPDATE ON axon.application_group_route
+                    FOR EACH ROW EXECUTE FUNCTION axon.reject_test_group_route_join()
+                    """);
+
+      assertThatThrownBy(
+              () ->
+                  commandGateway.sendAndWait(
+                      new AddApplicationToLinkedGroupCommand(
+                          group.groupId(), newMemberId, group.version(), Instant.now())))
+          .satisfies(
+              failure ->
+                  assertThat(rootCause(failure))
+                      .hasMessageContaining("forced application group route join failure"));
+    } finally {
+      jdbcTemplate.execute(
+          "DROP TRIGGER IF EXISTS reject_test_group_route_join ON axon.application_group_route");
+      jdbcTemplate.execute("DROP FUNCTION IF EXISTS axon.reject_test_group_route_join()");
+    }
+
+    assertThat(countDomainEvents(group.groupId(), MemberAddedToGroupEvent.class)).isZero();
+    assertThat(historyCount(newMemberId, "APPLICATION_GROUP_JOINED")).isZero();
+    awaitFinalGroupState(
+        group.groupId(),
+        List.of(group.leadId(), group.memberIds().get(1), newMemberId),
+        group.memberIds(),
+        group.leadId(),
+        group.version());
   }
 
   private Group createGroup(int memberCount) {
@@ -843,6 +1224,56 @@ public class ApplicationLinkMembershipIntegrationTest {
                     }));
   }
 
+  private void awaitFinalGroupState(
+      UUID groupId,
+      List<UUID> allParticipants,
+      List<UUID> expectedMembers,
+      UUID expectedLead,
+      long expectedVersion) {
+    await()
+        .atMost(15, TimeUnit.SECONDS)
+        .pollInterval(100, TimeUnit.MILLISECONDS)
+        .untilAsserted(
+            () -> {
+              if (expectedMembers.isEmpty()) {
+                assertThat(groupRepository.findById(groupId)).isEmpty();
+              } else {
+                assertThat(groupRepository.findById(groupId))
+                    .hasValueSatisfying(
+                        projected -> {
+                          assertThat(projected.getMemberIds())
+                              .containsExactlyInAnyOrderElementsOf(expectedMembers);
+                          assertThat(projected.getLeadApplicationId()).isEqualTo(expectedLead);
+                          assertThat(projected.getVersion()).isEqualTo(expectedVersion);
+                        });
+              }
+              for (var applicationId : allParticipants) {
+                var isMember = expectedMembers.contains(applicationId);
+                var foundRoute = route(applicationId);
+                var response = application(applicationId);
+                assertThat(foundRoute.getRouteKind())
+                    .isEqualTo(
+                        isMember
+                            ? ApplicationGroupRouteKind.LINKED_GROUP
+                            : ApplicationGroupRouteKind.STANDALONE);
+                assertThat(foundRoute.getGroupId()).isEqualTo(isMember ? groupId : null);
+                assertThat(response.getLinkedGroupVersion())
+                    .isEqualTo(isMember ? token(groupId, expectedVersion) : null);
+                assertThat(response.getLinkedApplications())
+                    .extracting(LinkedApplicationSummaryResponse::getApplicationId)
+                    .containsExactlyInAnyOrderElementsOf(
+                        isMember
+                            ? expectedMembers.stream()
+                                .filter(id -> !id.equals(applicationId))
+                                .toList()
+                            : List.of());
+                assertThat(response.getIsLead())
+                    .isEqualTo(isMember && applicationId.equals(expectedLead));
+              }
+              assertNoSingleMemberGroups();
+            });
+  }
+
   private void awaitGroupDeleted(UUID groupId) {
     await()
         .atMost(15, TimeUnit.SECONDS)
@@ -858,6 +1289,13 @@ public class ApplicationLinkMembershipIntegrationTest {
                 """,
         Long.class,
         groupId.toString(),
+        eventType.getName());
+  }
+
+  private long countAllDomainEvents(Class<?> eventType) {
+    return jdbcTemplate.queryForObject(
+        "SELECT COUNT(*) FROM axon.domain_event_entry WHERE payload_type = ?",
+        Long.class,
         eventType.getName());
   }
 
