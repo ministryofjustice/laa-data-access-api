@@ -28,6 +28,7 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicat
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.document.UploadApplicationDocumentResult;
 import uk.gov.justice.laa.dstew.access.command.application.document.UploadDocumentUseCase;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.ExpectedLinkedGroup;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkType;
@@ -49,6 +50,7 @@ import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
 import uk.gov.justice.laa.dstew.access.model.LinkedGroupChangeRequest;
 import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedUserId;
+import uk.gov.justice.laa.dstew.access.version.VersionToken;
 
 /** Verifies that each controller endpoint delegates to the appropriate use case. */
 @ExtendWith(MockitoExtension.class)
@@ -166,8 +168,11 @@ class ApplicationCommandControllerTest {
   @Test
   void givenApplication_whenMakeApplicationLead_thenDelegatesAndReturnsNoContent() {
     UUID id = UUID.randomUUID();
-    LinkedGroupChangeRequest request = new LinkedGroupChangeRequest(3L);
-    MakeApplicationLeadCommand command = new MakeApplicationLeadCommand(id, 3L, Instant.now());
+    UUID groupId = UUID.randomUUID();
+    LinkedGroupChangeRequest request =
+        new LinkedGroupChangeRequest(VersionToken.linkedGroup(groupId, 3L).encode());
+    MakeApplicationLeadCommand command =
+        new MakeApplicationLeadCommand(id, new ExpectedLinkedGroup(groupId, 3L), Instant.now());
     when(makeApplicationLeadCommandMapper.toCommand(id, request)).thenReturn(command);
 
     ResponseEntity<Void> response = controller.makeApplicationLead(null, id, request);
@@ -179,8 +184,11 @@ class ApplicationCommandControllerTest {
   @Test
   void givenApplication_whenUnlinkApplication_thenDelegatesAndReturnsNoContent() {
     UUID id = UUID.randomUUID();
-    LinkedGroupChangeRequest request = new LinkedGroupChangeRequest(3L);
-    UnlinkApplicationCommand command = new UnlinkApplicationCommand(id, 3L, Instant.now());
+    UUID groupId = UUID.randomUUID();
+    LinkedGroupChangeRequest request =
+        new LinkedGroupChangeRequest(VersionToken.linkedGroup(groupId, 3L).encode());
+    UnlinkApplicationCommand command =
+        new UnlinkApplicationCommand(id, new ExpectedLinkedGroup(groupId, 3L), Instant.now());
     when(unlinkApplicationCommandMapper.toCommand(id, request)).thenReturn(command);
 
     ResponseEntity<Void> response = controller.unlinkApplication(null, id, request);

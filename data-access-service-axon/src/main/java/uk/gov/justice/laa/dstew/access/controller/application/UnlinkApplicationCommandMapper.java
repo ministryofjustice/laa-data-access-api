@@ -32,6 +32,8 @@ public class UnlinkApplicationCommandMapper {
       throw new ValidationException(List.of("linkedGroupVersion: must not be null"));
     }
     return new UnlinkApplicationCommand(
-        applicationId, request.getLinkedGroupVersion(), Instant.now(clock));
+        applicationId,
+        LinkedGroupVersionTokens.decode(request.getLinkedGroupVersion()),
+        Instant.now(clock));
   }
 }

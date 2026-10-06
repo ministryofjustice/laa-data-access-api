@@ -8,10 +8,11 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkApplicationCommand;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.ExpectedLinkedGroup;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkType;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkType;
+import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 class LinkApplicationCommandMapperTest {
 
@@ -51,22 +52,37 @@ class LinkApplicationCommandMapperTest {
   }
 
   @Test
-  void givenLinkedGroupVersion_whenMapped_thenPreservesVersion() {
+  void givenValidVersionToken_whenMapped_thenMapsExpectedGroup() {
+    var groupId = UUID.fromString("7c9e6679-7425-40de-944b-e07fc1f90ae7");
     var request = new ApplicationLinkRequest(UUID.randomUUID(), ApplicationLinkType.FAMILY);
-    request.setLinkedGroupVersion(7L);
+    request.setLinkedGroupVersion(
+        "djE6bGlua2VkLWdyb3VwOjdjOWU2Njc5LTc0MjUtNDBkZS05NDRiLWUwN2ZjMWY5MGFlNzo3");
 
     var command = mapper.toCommand(UUID.randomUUID(), request);
 
-    assertThat(command.expectedGroupVersion()).isEqualTo(7L);
+    assertThat(command.expectedTargetGroup()).isEqualTo(new ExpectedLinkedGroup(groupId, 7L));
   }
 
   @Test
-  void givenNegativeLinkedGroupVersion_whenCommandCreated_thenRejectsVersion() {
-    assertThatThrownBy(
-            () ->
-                new LinkApplicationCommand(
-                    UUID.randomUUID(), UUID.randomUUID(), LinkType.FAMILY, -1L, OCCURRED_AT))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("expectedGroupVersion must not be negative");
+  void givenNullVersionToken_whenMapped_thenMapsNullExpectedGroup() {
+    var request = new ApplicationLinkRequest(UUID.randomUUID(), ApplicationLinkType.FAMILY);
+
+    var command = mapper.toCommand(UUID.randomUUID(), request);
+
+    assertThat(command.expectedTargetGroup()).isNull();
+  }
+
+  @Test
+  void givenInvalidVersionToken_whenMapped_thenThrowsValidationException() {
+    var request = new ApplicationLinkRequest(UUID.randomUUID(), ApplicationLinkType.FAMILY);
+    request.setLinkedGroupVersion("not-a-token");
+
+    assertThatThrownBy(() -> mapper.toCommand(UUID.randomUUID(), request))
+        .isInstanceOfSatisfying(
+            ValidationException.class,
+            exception ->
+                assertThat(exception.errors())
+                    .containsExactly(
+                        "linkedGroupVersion: must be a valid linked group version token"));
   }
 }

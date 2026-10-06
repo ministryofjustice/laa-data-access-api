@@ -40,7 +40,9 @@ class ApplicationLinkRequestExampleCustomizerTest {
         .doesNotContainKey("linkedGroupVersion");
     assertThat(mediaType.getExamples().get("targetAlreadyLinked").getValue())
         .asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
-        .containsEntry("linkedGroupVersion", 2);
+        .containsEntry(
+            "linkedGroupVersion",
+            "djE6bGlua2VkLWdyb3VwOjdjOWU2Njc5LTc0MjUtNDBkZS05NDRiLWUwN2ZjMWY5MGFlNzoy");
   }
 
   @Test

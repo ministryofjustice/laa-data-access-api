@@ -26,7 +26,7 @@ Application creation does not create or extend linked groups.
    `ApplicationLinkRequest`.
 3. `LinkApplicationCommandHandler` validates the request and asks
    `ApplicationGroupRouteResolver` to lock the source and target routes. When the target is already
-   linked, include its `linkedGroupVersion` as last read; omit that value when the target is
+   linked, include its `linkedGroupVersion` token as last read; omit that value when the target is
    standalone.
 4. If both applications are standalone, the handler dispatches
    `EstablishLinkedApplicationGroupCommand` with a new group ID. The target application becomes the
@@ -104,6 +104,15 @@ joining an existing group. Make-lead and unlink requests require the version the
 A version conflict returns 409. Since application and group query projections update independently,
 a GET immediately after a successful command can briefly return the preceding version or membership.
 Clients should re-fetch and retry using the latest `linkedGroupVersion` after a conflict.
+
+`linkedGroupVersion` is an opaque token that encodes the group ID and group version. Clients must
+pass it back unchanged and must not parse it. The server checks the token's group against the locked
+route group before dispatching, and the aggregate checks the version. A token for a different group,
+such as a previously dissolved group, returns 409 even if the version numbers match.
+
+The token format is unpadded URL-safe Base64 of `v1:linked-group:<groupId>:<version>`. It is not
+signed and is always validated against write-side state. The generic codec is
+`version/VersionToken`, so other resources can adopt it.
 
 Every group mutation locks all route rows for that group with `PESSIMISTIC_WRITE`, in ascending
 application-ID order. Link/add also locks its target route. These locks serialize add, lead change,

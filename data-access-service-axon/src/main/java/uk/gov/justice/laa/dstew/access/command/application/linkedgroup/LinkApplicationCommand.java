@@ -10,7 +10,7 @@ public record LinkApplicationCommand(
     UUID sourceApplicationId,
     UUID targetApplicationId,
     LinkType linkType,
-    @Nullable Long expectedGroupVersion,
+    @Nullable ExpectedLinkedGroup expectedTargetGroup,
     Instant occurredAt) {
 
   /** Enforces the command invariants owned below the controller seam. */
@@ -18,8 +18,5 @@ public record LinkApplicationCommand(
     Objects.requireNonNull(sourceApplicationId, "sourceApplicationId must not be null");
     Objects.requireNonNull(targetApplicationId, "targetApplicationId must not be null");
     Objects.requireNonNull(occurredAt, "occurredAt must not be null");
-    if (expectedGroupVersion != null && expectedGroupVersion < 0) {
-      throw new IllegalArgumentException("expectedGroupVersion must not be negative");
-    }
   }
 }

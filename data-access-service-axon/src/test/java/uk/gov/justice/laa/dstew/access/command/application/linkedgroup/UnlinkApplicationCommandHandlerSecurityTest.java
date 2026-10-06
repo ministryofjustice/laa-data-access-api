@@ -54,6 +54,8 @@ class UnlinkApplicationCommandHandlerSecurityTest extends BaseSecuredUseCaseTest
 
   private UnlinkApplicationCommand command() {
     return new UnlinkApplicationCommand(
-        UUID.randomUUID(), 0, Instant.parse("2026-09-14T15:00:00Z"));
+        UUID.randomUUID(),
+        new ExpectedLinkedGroup(UUID.randomUUID(), 0),
+        Instant.parse("2026-09-14T15:00:00Z"));
   }
 }

@@ -190,18 +190,18 @@ paths:
                   linkType: FAMILY
               targetAlreadyLinked:
                 summary: Target already belongs to a group
-                description: Supply the target group's linkedGroupVersion exactly as last read.
+                description: Supply the target's linkedGroupVersion token exactly as last read.
                 value:
                   applicationId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
                   linkType: FAMILY
-                  linkedGroupVersion: 2
+                  linkedGroupVersion: djE6bGlua2VkLWdyb3VwOjdjOWU2Njc5LTc0MjUtNDBkZS05NDRiLWUwN2ZjMWY5MGFlNzoy
       responses:
         "204": { description: "Application linked, or already linked to the target group" }
-        "400": { description: "Invalid request, self-link, unsupported link type, or linkedGroupVersion is negative" }
+        "400": { description: "Invalid request, self-link, unsupported link type, or linkedGroupVersion is not a valid token" }
         "401": { description: Unauthorized }
         "403": { description: Forbidden }
         "404": { description: Source or target Application not found }
-        "409": { description: "Source Application belongs to a different linked group, or the target's linked group has changed since the supplied version" }
+        "409": { description: "Source Application belongs to a different linked group, the target's linked group has changed since the supplied version, or the target is no longer in the linked group identified by linkedGroupVersion" }
         "500": { description: Internal server error }
 
   /api/v0/applications/{id}/unlink:
@@ -227,11 +227,11 @@ paths:
               $ref: "./components.yml#/components/schemas/LinkedGroupChangeRequest"
       responses:
         "204": { description: Application removed; the group is dissolved if only one member would remain }
-        "400": { description: Invalid request (e.g. missing or negative linkedGroupVersion) }
+        "400": { description: Invalid request (e.g. missing or invalid linkedGroupVersion) }
         "401": { description: Unauthorized }
         "403": { description: Forbidden }
         "404": { description: Application not found }
-        "409": { description: "Application is not in a linked group, is the group lead, or the linked group has changed since the supplied version" }
+        "409": { description: "Application is not in a linked group, is the group lead, the linked group has changed since the supplied version, or the application is no longer in the linked group identified by linkedGroupVersion" }
         "500": { description: Internal server error }
 
   /api/v0/applications/{id}/make-lead:
@@ -257,11 +257,11 @@ paths:
               $ref: "./components.yml#/components/schemas/LinkedGroupChangeRequest"
       responses:
         "204": { description: Application is now the lead (or already was) }
-        "400": { description: Invalid request (e.g. missing or negative linkedGroupVersion) }
+        "400": { description: Invalid request (e.g. missing or invalid linkedGroupVersion) }
         "401": { description: Unauthorized }
         "403": { description: Forbidden }
         "404": { description: Application not found }
-        "409": { description: "Application is not in a linked group, or the linked group has changed since the supplied version" }
+        "409": { description: "Application is not in a linked group, the linked group has changed since the supplied version, or the application is no longer in the linked group identified by linkedGroupVersion" }
         "500": { description: Internal server error }
 
   /api/v0/applications/{id}/history-search:

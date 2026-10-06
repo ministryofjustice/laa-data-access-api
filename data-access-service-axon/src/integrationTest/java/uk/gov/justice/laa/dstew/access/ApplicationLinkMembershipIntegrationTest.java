@@ -22,6 +22,8 @@ import java.util.stream.Collectors;
 import org.axonframework.messaging.commandhandling.gateway.CommandGateway;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
@@ -58,6 +60,7 @@ import uk.gov.justice.laa.dstew.access.model.LinkedGroupChangeRequest;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
+import uk.gov.justice.laa.dstew.access.version.VersionToken;
 import util.ProjectionAwaiter;
 
 @Testcontainers
@@ -101,7 +104,7 @@ public class ApplicationLinkMembershipIntegrationTest {
         countDomainEvents(group.groupId(), LinkedApplicationGroupLeadChangedEvent.class);
     UUID newLeadId = group.memberIds().get(1);
 
-    assertThat(makeLead(newLeadId, group.version()).getStatusCode())
+    assertThat(makeLead(newLeadId, token(group.groupId(), group.version())).getStatusCode())
         .isEqualTo(HttpStatus.NO_CONTENT);
     awaitGroupVersion(newLeadId, group.version() + 1);
     awaitMembership(group.memberIds(), newLeadId);
@@ -121,7 +124,8 @@ public class ApplicationLinkMembershipIntegrationTest {
     long eventCount =
         countDomainEvents(group.groupId(), LinkedApplicationGroupLeadChangedEvent.class);
 
-    assertThat(makeLead(group.leadId(), 99).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    assertThat(makeLead(group.leadId(), token(group.groupId(), 99)).getStatusCode())
+        .isEqualTo(HttpStatus.NO_CONTENT);
 
     assertThat(countDomainEvents(group.groupId(), LinkedApplicationGroupLeadChangedEvent.class))
         .isEqualTo(eventCount);
@@ -131,12 +135,14 @@ public class ApplicationLinkMembershipIntegrationTest {
   void givenStandaloneApplication_whenMadeLead_thenConflict() {
     UUID applicationId = createApplication(uniqueLastName());
 
-    assertThat(makeLead(applicationId, 0).getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+    assertThat(makeLead(applicationId, token(UUID.randomUUID(), 0)).getStatusCode())
+        .isEqualTo(HttpStatus.CONFLICT);
   }
 
   @Test
   void givenUnknownApplication_whenMadeLead_thenNotFound() {
-    assertThat(makeLead(UUID.randomUUID(), 0).getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    assertThat(makeLead(UUID.randomUUID(), token(UUID.randomUUID(), 0)).getStatusCode())
+        .isEqualTo(HttpStatus.NOT_FOUND);
   }
 
   @Test
@@ -144,7 +150,8 @@ public class ApplicationLinkMembershipIntegrationTest {
     var group = createGroup(3);
     UUID removedId = group.memberIds().get(1);
 
-    assertThat(unlink(removedId, group.version()).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    assertThat(unlink(removedId, token(group.groupId(), group.version())).getStatusCode())
+        .isEqualTo(HttpStatus.NO_CONTENT);
     awaitStandalone(removedId);
     awaitMembership(List.of(group.leadId(), group.memberIds().get(2)), group.leadId());
 
@@ -163,7 +170,8 @@ public class ApplicationLinkMembershipIntegrationTest {
     var group = createGroup(2);
     UUID removedId = group.memberIds().get(1);
 
-    assertThat(unlink(removedId, group.version()).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    assertThat(unlink(removedId, token(group.groupId(), group.version())).getStatusCode())
+        .isEqualTo(HttpStatus.NO_CONTENT);
     awaitGroupDeleted(group.groupId());
     awaitStandalone(group.leadId());
     awaitStandalone(removedId);
@@ -180,7 +188,7 @@ public class ApplicationLinkMembershipIntegrationTest {
   void givenLead_whenUnlinked_thenConflict() {
     var group = createGroup(2);
 
-    assertThat(unlink(group.leadId(), group.version()).getStatusCode())
+    assertThat(unlink(group.leadId(), token(group.groupId(), group.version())).getStatusCode())
         .isEqualTo(HttpStatus.CONFLICT);
     assertThat(route(group.leadId()).getRouteKind())
         .isEqualTo(ApplicationGroupRouteKind.LINKED_GROUP);
@@ -190,12 +198,14 @@ public class ApplicationLinkMembershipIntegrationTest {
   void givenStandaloneApplication_whenUnlinked_thenConflict() {
     UUID applicationId = createApplication(uniqueLastName());
 
-    assertThat(unlink(applicationId, 0).getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+    assertThat(unlink(applicationId, token(UUID.randomUUID(), 0)).getStatusCode())
+        .isEqualTo(HttpStatus.CONFLICT);
   }
 
   @Test
   void givenUnknownApplication_whenUnlinked_thenNotFound() {
-    assertThat(unlink(UUID.randomUUID(), 0).getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    assertThat(unlink(UUID.randomUUID(), token(UUID.randomUUID(), 0)).getStatusCode())
+        .isEqualTo(HttpStatus.NOT_FOUND);
   }
 
   @Test
@@ -203,7 +213,8 @@ public class ApplicationLinkMembershipIntegrationTest {
     var group = createGroup(3);
     UUID removedId = group.memberIds().get(1);
     UUID newTargetId = createApplication(group.lastName());
-    assertThat(unlink(removedId, group.version()).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    assertThat(unlink(removedId, token(group.groupId(), group.version())).getStatusCode())
+        .isEqualTo(HttpStatus.NO_CONTENT);
     awaitStandalone(removedId);
 
     assertThat(link(removedId, newTargetId, null).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
@@ -220,11 +231,11 @@ public class ApplicationLinkMembershipIntegrationTest {
     var group = createGroup(3);
     UUID newLeadId = group.memberIds().get(1);
 
-    assertThat(makeLead(newLeadId, group.version()).getStatusCode())
+    assertThat(makeLead(newLeadId, token(group.groupId(), group.version())).getStatusCode())
         .isEqualTo(HttpStatus.NO_CONTENT);
     awaitGroupVersion(newLeadId, group.version() + 1);
 
-    assertThat(unlink(group.leadId(), group.version() + 1).getStatusCode())
+    assertThat(unlink(group.leadId(), token(group.groupId(), group.version() + 1)).getStatusCode())
         .isEqualTo(HttpStatus.NO_CONTENT);
     awaitStandalone(group.leadId());
     assertThat(route(newLeadId).getGroupId()).isEqualTo(group.groupId());
@@ -234,13 +245,17 @@ public class ApplicationLinkMembershipIntegrationTest {
   void givenStaleVersion_whenMadeLead_thenConflict() {
     var group = createGroup(3);
     UUID additionalMemberId = createApplication(group.lastName());
-    assertThat(link(additionalMemberId, group.leadId(), group.version()).getStatusCode())
+    assertThat(
+            link(additionalMemberId, group.leadId(), token(group.groupId(), group.version()))
+                .getStatusCode())
         .isEqualTo(HttpStatus.NO_CONTENT);
     awaitGroupVersion(additionalMemberId, group.version() + 1);
     long leadChangedCount =
         countDomainEvents(group.groupId(), LinkedApplicationGroupLeadChangedEvent.class);
 
-    var conflict = groupChangeWithBody(group.memberIds().get(1), group.version(), "make-lead");
+    var conflict =
+        groupChangeWithBody(
+            group.memberIds().get(1), token(group.groupId(), group.version()), "make-lead");
     assertThat(conflict.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
     assertThat(conflict.getBody())
         .contains(
@@ -257,14 +272,18 @@ public class ApplicationLinkMembershipIntegrationTest {
   void givenStaleVersion_whenUnlinked_thenConflict() {
     var group = createGroup(3);
     UUID additionalMemberId = createApplication(group.lastName());
-    assertThat(link(additionalMemberId, group.leadId(), group.version()).getStatusCode())
+    assertThat(
+            link(additionalMemberId, group.leadId(), token(group.groupId(), group.version()))
+                .getStatusCode())
         .isEqualTo(HttpStatus.NO_CONTENT);
     awaitGroupVersion(additionalMemberId, group.version() + 1);
     long removalEventCount =
         countDomainEvents(group.groupId(), MemberRemovedFromGroupEvent.class)
             + countDomainEvents(group.groupId(), LinkedApplicationGroupDissolvedEvent.class);
 
-    var conflict = groupChangeWithBody(group.memberIds().get(1), group.version(), "unlink");
+    var conflict =
+        groupChangeWithBody(
+            group.memberIds().get(1), token(group.groupId(), group.version()), "unlink");
     assertThat(conflict.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
     assertThat(conflict.getBody())
         .contains(
@@ -279,23 +298,105 @@ public class ApplicationLinkMembershipIntegrationTest {
     assertThat(route(group.memberIds().get(1)).getGroupId()).isEqualTo(group.groupId());
   }
 
+  @ParameterizedTest
+  @ValueSource(strings = {"unlink", "make-lead"})
+  void givenStaleTokenFromDissolvedGroup_whenAppliedToNewGroup_thenConflict(String operation) {
+    var lastName = uniqueLastName();
+    var applicationA = createApplication(lastName);
+    var applicationB = createApplication(lastName);
+    var applicationC = createApplication(lastName);
+
+    assertThat(link(applicationA, applicationB, null).getStatusCode())
+        .isEqualTo(HttpStatus.NO_CONTENT);
+    var group1 = awaitRoute(applicationA, ApplicationGroupRouteKind.LINKED_GROUP).getGroupId();
+    awaitGroupProjection(group1, List.of(applicationB, applicationA));
+    assertThat(group(group1).getLeadApplicationId()).isEqualTo(applicationB);
+    var staleToken =
+        await()
+            .atMost(15, TimeUnit.SECONDS)
+            .pollInterval(100, TimeUnit.MILLISECONDS)
+            .until(
+                () -> application(applicationA).getLinkedGroupVersion(),
+                version -> version != null);
+    assertThat(staleToken).isEqualTo(token(group1, 0));
+
+    assertThat(unlink(applicationA, staleToken).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    awaitStandalone(applicationA);
+
+    assertThat(link(applicationA, applicationC, null).getStatusCode())
+        .isEqualTo(HttpStatus.NO_CONTENT);
+    var group2 = awaitRoute(applicationA, ApplicationGroupRouteKind.LINKED_GROUP).getGroupId();
+    assertThat(group2).isNotEqualTo(group1);
+    awaitGroupProjection(group2, List.of(applicationC, applicationA));
+    assertThat(group(group2).getLeadApplicationId()).isEqualTo(applicationC);
+
+    var conflict = groupChangeWithBody(applicationA, staleToken, operation);
+    assertThat(conflict.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+    assertThat(conflict.getBody())
+        .contains("is no longer in the linked group identified by linkedGroupVersion");
+
+    assertThat(route(applicationA).getGroupId()).isEqualTo(group2);
+    assertThat(countDomainEvents(group2, MemberRemovedFromGroupEvent.class)).isZero();
+    assertThat(countDomainEvents(group2, LinkedApplicationGroupDissolvedEvent.class)).isZero();
+    assertThat(countDomainEvents(group2, LinkedApplicationGroupLeadChangedEvent.class)).isZero();
+  }
+
+  @Test
+  void givenStaleTargetTokenFromDissolvedGroup_whenLinking_thenConflict() {
+    var lastName = uniqueLastName();
+    var applicationA = createApplication(lastName);
+    var applicationB = createApplication(lastName);
+    var applicationD = createApplication(lastName);
+    var applicationE = createApplication(lastName);
+
+    assertThat(link(applicationA, applicationB, null).getStatusCode())
+        .isEqualTo(HttpStatus.NO_CONTENT);
+    var group1 = awaitRoute(applicationB, ApplicationGroupRouteKind.LINKED_GROUP).getGroupId();
+    awaitGroupProjection(group1, List.of(applicationB, applicationA));
+    assertThat(group(group1).getLeadApplicationId()).isEqualTo(applicationB);
+    var staleToken =
+        await()
+            .atMost(15, TimeUnit.SECONDS)
+            .pollInterval(100, TimeUnit.MILLISECONDS)
+            .until(
+                () -> application(applicationB).getLinkedGroupVersion(),
+                version -> version != null);
+    assertThat(staleToken).isEqualTo(token(group1, 0));
+
+    assertThat(unlink(applicationA, staleToken).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    awaitStandalone(applicationB);
+    assertThat(link(applicationB, applicationD, null).getStatusCode())
+        .isEqualTo(HttpStatus.NO_CONTENT);
+    var group2 = awaitRoute(applicationB, ApplicationGroupRouteKind.LINKED_GROUP).getGroupId();
+    assertThat(group2).isNotEqualTo(group1);
+    awaitGroupProjection(group2, List.of(applicationD, applicationB));
+    assertThat(group(group2).getLeadApplicationId()).isEqualTo(applicationD);
+
+    assertThat(link(applicationE, applicationB, staleToken).getStatusCode())
+        .isEqualTo(HttpStatus.CONFLICT);
+    assertThat(route(applicationE).getRouteKind()).isEqualTo(ApplicationGroupRouteKind.STANDALONE);
+  }
+
   @Test
   void givenLinkedApplication_whenFetched_thenExposesLinkedGroupVersion() {
     var group = createGroup(2);
-    assertThat(application(group.leadId()).getLinkedGroupVersion()).isZero();
+    assertThat(application(group.leadId()).getLinkedGroupVersion())
+        .isEqualTo(token(group.groupId(), 0));
 
     UUID thirdMemberId = createApplication(group.lastName());
     List<UUID> allMemberIds = new ArrayList<>(group.memberIds());
     allMemberIds.add(thirdMemberId);
-    assertThat(link(thirdMemberId, group.leadId(), 0L).getStatusCode())
+    assertThat(link(thirdMemberId, group.leadId(), token(group.groupId(), 0)).getStatusCode())
         .isEqualTo(HttpStatus.NO_CONTENT);
     awaitGroupVersion(thirdMemberId, 1);
-    assertThat(application(thirdMemberId).getLinkedGroupVersion()).isEqualTo(1L);
+    assertThat(application(thirdMemberId).getLinkedGroupVersion())
+        .isEqualTo(token(group.groupId(), 1));
 
     UUID newLeadId = group.memberIds().get(1);
-    assertThat(makeLead(newLeadId, 1).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    assertThat(makeLead(newLeadId, token(group.groupId(), 1)).getStatusCode())
+        .isEqualTo(HttpStatus.NO_CONTENT);
     awaitGroupVersion(newLeadId, 2);
-    assertThat(application(newLeadId).getLinkedGroupVersion()).isEqualTo(2L);
+    assertThat(application(newLeadId).getLinkedGroupVersion()).isEqualTo(token(group.groupId(), 2));
 
     await()
         .atMost(15, TimeUnit.SECONDS)
@@ -323,7 +424,8 @@ public class ApplicationLinkMembershipIntegrationTest {
               assertThat(summaries)
                   .allSatisfy(
                       summary -> {
-                        assertThat(summary.getLinkedGroupVersion()).isEqualTo(2L);
+                        assertThat(summary.getLinkedGroupVersion())
+                            .isEqualTo(token(group.groupId(), 2));
                         assertThat(summary.getIsLead())
                             .isEqualTo(summary.getApplicationId().equals(newLeadId));
                         assertThat(summary.getLinkedApplications())
@@ -340,7 +442,8 @@ public class ApplicationLinkMembershipIntegrationTest {
                       });
             });
 
-    assertThat(unlink(thirdMemberId, 2).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    assertThat(unlink(thirdMemberId, token(group.groupId(), 2)).getStatusCode())
+        .isEqualTo(HttpStatus.NO_CONTENT);
     awaitStandalone(thirdMemberId);
     assertThat(application(thirdMemberId).getLinkedGroupVersion()).isNull();
     await()
@@ -392,8 +495,8 @@ public class ApplicationLinkMembershipIntegrationTest {
     var secondTargetId = group.memberIds().get(2);
     var results =
         race(
-            () -> makeLead(firstTargetId, group.version()),
-            () -> makeLead(secondTargetId, group.version()));
+            () -> makeLead(firstTargetId, token(group.groupId(), group.version())),
+            () -> makeLead(secondTargetId, token(group.groupId(), group.version())));
 
     assertThat(results)
         .extracting(ResponseEntity::getStatusCode)
@@ -411,7 +514,9 @@ public class ApplicationLinkMembershipIntegrationTest {
     var group = createGroup(3);
     var memberId = group.memberIds().get(1);
     var results =
-        race(() -> makeLead(memberId, group.version()), () -> unlink(memberId, group.version()));
+        race(
+            () -> makeLead(memberId, token(group.groupId(), group.version())),
+            () -> unlink(memberId, token(group.groupId(), group.version())));
 
     assertThat(results)
         .extracting(ResponseEntity::getStatusCode)
@@ -437,8 +542,8 @@ public class ApplicationLinkMembershipIntegrationTest {
     var group = createGroup(3);
     var results =
         race(
-            () -> unlink(group.memberIds().get(1), group.version()),
-            () -> unlink(group.memberIds().get(2), group.version()));
+            () -> unlink(group.memberIds().get(1), token(group.groupId(), group.version())),
+            () -> unlink(group.memberIds().get(2), token(group.groupId(), group.version())));
 
     assertThat(results)
         .extracting(ResponseEntity::getStatusCode)
@@ -470,8 +575,8 @@ public class ApplicationLinkMembershipIntegrationTest {
     var newApplicationId = createApplication(group.lastName());
     var results =
         race(
-            () -> unlink(unlinkedId, group.version()),
-            () -> link(newApplicationId, group.leadId(), group.version()));
+            () -> unlink(unlinkedId, token(group.groupId(), group.version())),
+            () -> link(newApplicationId, group.leadId(), token(group.groupId(), group.version())));
 
     assertThat(results)
         .extracting(ResponseEntity::getStatusCode)
@@ -560,7 +665,8 @@ public class ApplicationLinkMembershipIntegrationTest {
         .isEqualTo(HttpStatus.NO_CONTENT);
     var groupId = awaitRoute(leadId, ApplicationGroupRouteKind.LINKED_GROUP).getGroupId();
     for (int index = 2; index < memberCount; index++) {
-      assertThat(link(memberIds.get(index), leadId, (long) index - 2).getStatusCode())
+      assertThat(
+              link(memberIds.get(index), leadId, token(groupId, (long) index - 2)).getStatusCode())
           .isEqualTo(HttpStatus.NO_CONTENT);
     }
     awaitGroupProjection(groupId, memberIds);
@@ -594,9 +700,9 @@ public class ApplicationLinkMembershipIntegrationTest {
     return applicationId;
   }
 
-  private ResponseEntity<Void> link(UUID sourceId, UUID targetId, Long version) {
+  private ResponseEntity<Void> link(UUID sourceId, UUID targetId, String token) {
     var request = new ApplicationLinkRequest(targetId, ApplicationLinkType.FAMILY);
-    request.setLinkedGroupVersion(version);
+    request.setLinkedGroupVersion(token);
     return restTemplate.exchange(
         "/api/v0/applications/" + sourceId + "/link",
         HttpMethod.POST,
@@ -605,27 +711,27 @@ public class ApplicationLinkMembershipIntegrationTest {
   }
 
   private ResponseEntity<String> groupChangeWithBody(
-      UUID applicationId, long version, String operation) {
+      UUID applicationId, String token, String operation) {
     return restTemplate.exchange(
         "/api/v0/applications/" + applicationId + "/" + operation,
         HttpMethod.POST,
-        new HttpEntity<>(new LinkedGroupChangeRequest(version), headers()),
+        new HttpEntity<>(new LinkedGroupChangeRequest(token), headers()),
         String.class);
   }
 
-  private ResponseEntity<Void> makeLead(UUID applicationId, long version) {
-    return groupChange(applicationId, version, "make-lead");
+  private ResponseEntity<Void> makeLead(UUID applicationId, String token) {
+    return groupChange(applicationId, token, "make-lead");
   }
 
-  private ResponseEntity<Void> unlink(UUID applicationId, long version) {
-    return groupChange(applicationId, version, "unlink");
+  private ResponseEntity<Void> unlink(UUID applicationId, String token) {
+    return groupChange(applicationId, token, "unlink");
   }
 
-  private ResponseEntity<Void> groupChange(UUID applicationId, long version, String operation) {
+  private ResponseEntity<Void> groupChange(UUID applicationId, String token, String operation) {
     return restTemplate.exchange(
         "/api/v0/applications/" + applicationId + "/" + operation,
         HttpMethod.POST,
-        new HttpEntity<>(new LinkedGroupChangeRequest(version), headers()),
+        new HttpEntity<>(new LinkedGroupChangeRequest(token), headers()),
         Void.class);
   }
 
@@ -719,7 +825,7 @@ public class ApplicationLinkMembershipIntegrationTest {
         .untilAsserted(
             () ->
                 assertThat(application(applicationId).getLinkedGroupVersion())
-                    .isEqualTo(expectedVersion));
+                    .isEqualTo(token(route(applicationId).getGroupId(), expectedVersion)));
   }
 
   private void awaitMembership(List<UUID> memberIds, UUID leadId) {
@@ -755,6 +861,10 @@ public class ApplicationLinkMembershipIntegrationTest {
         Long.class,
         groupId.toString(),
         eventType.getName());
+  }
+
+  private static String token(UUID groupId, long version) {
+    return VersionToken.linkedGroup(groupId, version).encode();
   }
 
   private long historyCount(UUID applicationId, String eventType) {

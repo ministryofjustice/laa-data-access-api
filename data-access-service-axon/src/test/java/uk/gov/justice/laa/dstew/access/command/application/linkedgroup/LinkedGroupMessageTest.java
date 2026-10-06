@@ -93,34 +93,50 @@ class LinkedGroupMessageTest {
   @Test
   void givenValues_whenMakeLeadCommandCreated_thenValuesArePreserved() {
     var applicationId = UUID.randomUUID();
-    var command = new MakeApplicationLeadCommand(applicationId, 9L, OCCURRED_AT);
+    var expectedGroup = new ExpectedLinkedGroup(UUID.randomUUID(), 9L);
+    var command = new MakeApplicationLeadCommand(applicationId, expectedGroup, OCCURRED_AT);
 
     assertThat(command.applicationId()).isEqualTo(applicationId);
-    assertThat(command.expectedGroupVersion()).isEqualTo(9L);
+    assertThat(command.expectedGroup()).isEqualTo(expectedGroup);
     assertThat(command.occurredAt()).isEqualTo(OCCURRED_AT);
   }
 
   @Test
-  void givenNegativeVersion_whenMakeLeadCommandCreated_thenThrowsIllegalArgument() {
-    assertThatThrownBy(() -> new MakeApplicationLeadCommand(UUID.randomUUID(), -1L, OCCURRED_AT))
+  void givenNegativeVersion_whenExpectedGroupCreated_thenThrowsIllegalArgument() {
+    assertThatThrownBy(() -> new ExpectedLinkedGroup(UUID.randomUUID(), -1L))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("expectedGroupVersion must not be negative");
+        .hasMessage("version must not be negative");
+  }
+
+  @Test
+  void givenNullGroupId_whenExpectedGroupCreated_thenThrowsNullPointer() {
+    assertThatThrownBy(() -> new ExpectedLinkedGroup(null, 0L))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessage("groupId must not be null");
+  }
+
+  @Test
+  void givenNullExpectedGroup_whenMakeLeadCommandCreated_thenThrowsNullPointer() {
+    assertThatThrownBy(() -> new MakeApplicationLeadCommand(UUID.randomUUID(), null, OCCURRED_AT))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessage("expectedGroup must not be null");
   }
 
   @Test
   void givenValues_whenUnlinkCommandCreated_thenValuesArePreserved() {
     var applicationId = UUID.randomUUID();
-    var command = new UnlinkApplicationCommand(applicationId, 10L, OCCURRED_AT);
+    var expectedGroup = new ExpectedLinkedGroup(UUID.randomUUID(), 10L);
+    var command = new UnlinkApplicationCommand(applicationId, expectedGroup, OCCURRED_AT);
 
     assertThat(command.applicationId()).isEqualTo(applicationId);
-    assertThat(command.expectedGroupVersion()).isEqualTo(10L);
+    assertThat(command.expectedGroup()).isEqualTo(expectedGroup);
     assertThat(command.occurredAt()).isEqualTo(OCCURRED_AT);
   }
 
   @Test
-  void givenNegativeVersion_whenUnlinkCommandCreated_thenThrowsIllegalArgument() {
-    assertThatThrownBy(() -> new UnlinkApplicationCommand(UUID.randomUUID(), -1L, OCCURRED_AT))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("expectedGroupVersion must not be negative");
+  void givenNullExpectedGroup_whenUnlinkCommandCreated_thenThrowsNullPointer() {
+    assertThatThrownBy(() -> new UnlinkApplicationCommand(UUID.randomUUID(), null, OCCURRED_AT))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessage("expectedGroup must not be null");
   }
 }

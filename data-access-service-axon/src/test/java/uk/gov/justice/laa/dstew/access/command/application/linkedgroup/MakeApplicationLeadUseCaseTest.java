@@ -21,7 +21,10 @@ class MakeApplicationLeadUseCaseTest {
   @Test
   void givenCommand_whenExecuted_thenDelegatesToCommandHandler() {
     var command =
-        new MakeApplicationLeadCommand(UUID.randomUUID(), 3, Instant.parse("2026-09-14T15:00:00Z"));
+        new MakeApplicationLeadCommand(
+            UUID.randomUUID(),
+            new ExpectedLinkedGroup(UUID.randomUUID(), 3),
+            Instant.parse("2026-09-14T15:00:00Z"));
 
     useCase.execute(command);
 

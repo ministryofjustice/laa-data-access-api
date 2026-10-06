@@ -21,7 +21,10 @@ class UnlinkApplicationUseCaseTest {
   @Test
   void givenCommand_whenExecuted_thenDelegatesToCommandHandler() {
     var command =
-        new UnlinkApplicationCommand(UUID.randomUUID(), 3, Instant.parse("2026-09-14T15:00:00Z"));
+        new UnlinkApplicationCommand(
+            UUID.randomUUID(),
+            new ExpectedLinkedGroup(UUID.randomUUID(), 3),
+            Instant.parse("2026-09-14T15:00:00Z"));
 
     useCase.execute(command);
 

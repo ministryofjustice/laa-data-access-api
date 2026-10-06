@@ -160,7 +160,7 @@ class ApplicationCommandControllerSecurityTest {
         restTemplate.exchange(
             commandUrl(applicationId, "make-lead"),
             HttpMethod.POST,
-            new HttpEntity<>(new LinkedGroupChangeRequest(0L), headers),
+            new HttpEntity<>(new LinkedGroupChangeRequest("invalid-token"), headers),
             String.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
@@ -178,7 +178,7 @@ class ApplicationCommandControllerSecurityTest {
         restTemplate.exchange(
             commandUrl(applicationId, "unlink"),
             HttpMethod.POST,
-            new HttpEntity<>(new LinkedGroupChangeRequest(0L), headers),
+            new HttpEntity<>(new LinkedGroupChangeRequest("invalid-token"), headers),
             String.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);

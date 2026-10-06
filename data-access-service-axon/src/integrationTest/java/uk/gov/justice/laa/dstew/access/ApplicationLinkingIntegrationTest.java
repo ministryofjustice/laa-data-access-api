@@ -64,6 +64,7 @@ import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
+import uk.gov.justice.laa.dstew.access.version.VersionToken;
 import util.ProjectionAwaiter;
 
 @Testcontainers
@@ -243,7 +244,8 @@ public class ApplicationLinkingIntegrationTest {
     long memberAddedEventCount =
         countDomainEvents(groupId, MemberAddedToGroupEvent.class.getName());
 
-    ResponseEntity<Void> response = linkApplication(sourceApplicationId, targetApplicationId, 0L);
+    ResponseEntity<Void> response =
+        linkApplication(sourceApplicationId, targetApplicationId, token(groupId, 0));
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
     assertThat(countDomainEvents(groupId, MemberAddedToGroupEvent.class.getName()))
@@ -305,7 +307,8 @@ public class ApplicationLinkingIntegrationTest {
         targetGroupId, targetLeadApplicationId, targetLeadApplicationId, targetApplicationId);
     long groupEventCount = countGroupEvents();
 
-    ResponseEntity<Void> response = linkApplication(sourceApplicationId, targetApplicationId, 0L);
+    ResponseEntity<Void> response =
+        linkApplication(sourceApplicationId, targetApplicationId, token(targetGroupId, 0));
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
     assertThat(countGroupEvents()).isEqualTo(groupEventCount);
@@ -351,7 +354,7 @@ public class ApplicationLinkingIntegrationTest {
         countDomainEvents(groupId, MemberAddedToGroupEvent.class.getName());
 
     ResponseEntity<Void> secondResponse =
-        linkApplication(sourceApplicationId, targetApplicationId, 0L);
+        linkApplication(sourceApplicationId, targetApplicationId, token(groupId, 0));
 
     assertThat(secondResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
     assertThat(countDomainEvents(groupId, LinkedApplicationGroupCreatedEvent.class.getName()))
@@ -436,12 +439,16 @@ public class ApplicationLinkingIntegrationTest {
     assertThat(linkApplication(firstAssociateId, targetApplicationId).getStatusCode())
         .isEqualTo(HttpStatus.NO_CONTENT);
     var targetRoute = awaitRoute(targetApplicationId, ApplicationGroupRouteKind.LINKED_GROUP);
-    assertThat(linkApplication(secondAssociateId, targetApplicationId, 0L).getStatusCode())
+    assertThat(
+            linkApplication(
+                    secondAssociateId, targetApplicationId, token(targetRoute.getGroupId(), 0))
+                .getStatusCode())
         .isEqualTo(HttpStatus.NO_CONTENT);
     var groupId = targetRoute.getGroupId();
     long membersBefore = countDomainEvents(groupId, MemberAddedToGroupEvent.class.getName());
 
-    ResponseEntity<Void> response = linkApplication(sourceApplicationId, targetApplicationId, 0L);
+    ResponseEntity<Void> response =
+        linkApplication(sourceApplicationId, targetApplicationId, token(groupId, 0));
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
     assertThat(countDomainEvents(groupId, MemberAddedToGroupEvent.class.getName()))
@@ -477,7 +484,8 @@ public class ApplicationLinkingIntegrationTest {
     createApplication(targetApplicationId, clientLastName);
     long eventsBefore = countGroupEvents();
 
-    ResponseEntity<Void> response = linkApplication(sourceApplicationId, targetApplicationId, 0L);
+    ResponseEntity<Void> response =
+        linkApplication(sourceApplicationId, targetApplicationId, token(UUID.randomUUID(), 0));
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
     assertThat(countGroupEvents()).isEqualTo(eventsBefore);
@@ -534,9 +542,19 @@ public class ApplicationLinkingIntegrationTest {
     ExecutorService executor = Executors.newFixedThreadPool(2);
     try {
       CompletableFuture<ResponseEntity<Void>> first =
-          concurrentLink(executor, barrier, sourceApplicationId, firstTargetApplicationId, 0L);
+          concurrentLink(
+              executor,
+              barrier,
+              sourceApplicationId,
+              firstTargetApplicationId,
+              token(firstGroupId, 0));
       CompletableFuture<ResponseEntity<Void>> second =
-          concurrentLink(executor, barrier, sourceApplicationId, secondTargetApplicationId, 0L);
+          concurrentLink(
+              executor,
+              barrier,
+              sourceApplicationId,
+              secondTargetApplicationId,
+              token(secondGroupId, 0));
 
       assertThat(List.of(first.get(20, TimeUnit.SECONDS), second.get(20, TimeUnit.SECONDS)))
           .extracting(ResponseEntity::getStatusCode)
@@ -727,10 +745,14 @@ public class ApplicationLinkingIntegrationTest {
     return linkApplication(sourceId, targetId, null);
   }
 
-  private ResponseEntity<Void> linkApplication(UUID sourceId, UUID targetId, Long version) {
+  private static String token(UUID groupId, long version) {
+    return VersionToken.linkedGroup(groupId, version).encode();
+  }
+
+  private ResponseEntity<Void> linkApplication(UUID sourceId, UUID targetId, String token) {
     ApplicationLinkRequest request =
         new ApplicationLinkRequest(targetId, ApplicationLinkType.FAMILY);
-    request.setLinkedGroupVersion(version);
+    request.setLinkedGroupVersion(token);
     return restTemplate.exchange(
         "/api/v0/applications/" + sourceId + "/link",
         HttpMethod.POST,
@@ -757,12 +779,12 @@ public class ApplicationLinkingIntegrationTest {
   }
 
   private CompletableFuture<ResponseEntity<Void>> concurrentLink(
-      ExecutorService executor, CyclicBarrier barrier, UUID sourceId, UUID targetId, Long version) {
+      ExecutorService executor, CyclicBarrier barrier, UUID sourceId, UUID targetId, String token) {
     return CompletableFuture.supplyAsync(
         () -> {
           try {
             barrier.await(10, TimeUnit.SECONDS);
-            return linkApplication(sourceId, targetId, version);
+            return linkApplication(sourceId, targetId, token);
           } catch (Exception exception) {
             throw new RuntimeException(exception);
           }

@@ -149,7 +149,8 @@ class CreateApplicationInMemoryTest {
 
     assertThat(examples.has("firstTimeLink")).isTrue();
     assertThat(examples.at("/firstTimeLink/value/linkedGroupVersion").isMissingNode()).isTrue();
-    assertThat(examples.at("/targetAlreadyLinked/value/linkedGroupVersion").asInt()).isEqualTo(2);
+    assertThat(examples.at("/targetAlreadyLinked/value/linkedGroupVersion").asText())
+        .isEqualTo("djE6bGlua2VkLWdyb3VwOjdjOWU2Njc5LTc0MjUtNDBkZS05NDRiLWUwN2ZjMWY5MGFlNzoy");
   }
 
   @Test

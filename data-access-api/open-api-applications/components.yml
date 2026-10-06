@@ -114,9 +114,11 @@ components:
           items:
             $ref: "#/components/schemas/LinkedApplicationSummaryResponse"
         linkedGroupVersion:
-          type: integer
-          format: int64
-          description: Version of the linked group; absent when the application is not linked
+          type: string
+          description: >-
+            Opaque token identifying the application's linked group and its current version;
+            absent when the application is not linked. Pass it back unchanged on link, unlink,
+            and make-lead requests. Do not parse it.
         version:
           type: integer
           format: int64
@@ -272,10 +274,10 @@ components:
         linkType:
           $ref: "#/components/schemas/ApplicationLinkType"
         linkedGroupVersion:
-          type: integer
-          format: int64
-          minimum: 0
-          description: Version of the target Application's linked group as last read; omit when the target is not linked
+          type: string
+          description: >-
+            The target Application's linkedGroupVersion token exactly as last read; omit when the
+            target is not linked
 
     LinkedGroupChangeRequest:
       type: object
@@ -283,10 +285,10 @@ components:
       required: [linkedGroupVersion]
       properties:
         linkedGroupVersion:
-          type: integer
-          format: int64
-          minimum: 0
-          description: Version of the application's linked group the change is based on, used for concurrency control
+          type: string
+          description: >-
+            The application's linkedGroupVersion token exactly as last read, used for concurrency
+            control
 
     ApplicationSummary:
       type: object
@@ -336,9 +338,11 @@ components:
           items:
             $ref: "#/components/schemas/LinkedApplicationSummaryResponse"
         linkedGroupVersion:
-          type: integer
-          format: int64
-          description: Version of the linked group; absent when the application is not linked
+          type: string
+          description: >-
+            Opaque token identifying the application's linked group and its current version;
+            absent when the application is not linked. Pass it back unchanged on link, unlink,
+            and make-lead requests. Do not parse it.
         priorAuthorities:
           type: array
           items:

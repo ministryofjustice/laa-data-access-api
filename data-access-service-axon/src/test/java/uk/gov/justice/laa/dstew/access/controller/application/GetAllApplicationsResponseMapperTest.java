@@ -26,6 +26,7 @@ import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsResult;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
+import uk.gov.justice.laa.dstew.access.version.VersionToken;
 
 class GetAllApplicationsResponseMapperTest {
 
@@ -236,7 +237,8 @@ class GetAllApplicationsResponseMapperTest {
             .get(0);
 
     assertThat(summary.getIsLead()).isTrue();
-    assertThat(summary.getLinkedGroupVersion()).isEqualTo(3L);
+    assertThat(summary.getLinkedGroupVersion())
+        .isEqualTo(VersionToken.linkedGroup(groupId, 3L).encode());
     assertThat(summary.getLinkedApplications()).hasSize(1);
     assertThat(summary.getLinkedApplications().get(0).getApplicationId()).isEqualTo(memberId);
     assertThat(summary.getLinkedApplications().get(0).getLaaReference()).isEqualTo("LAA-MEMBER");

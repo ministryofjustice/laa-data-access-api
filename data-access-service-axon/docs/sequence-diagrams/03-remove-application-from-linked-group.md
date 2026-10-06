@@ -21,11 +21,12 @@ sequenceDiagram
     participant HistoryProjection as ApplicationHistoryProjection<br/>(async)
     participant ListProjection as ApplicationListIndexProjection<br/>(async)
 
-    Client->>Controller: POST /api/v0/applications/{id}/unlink<br/>linkedGroupVersion
+    Client->>Controller: POST /api/v0/applications/{id}/unlink<br/>linkedGroupVersion (token)
     Controller->>UseCase: execute(UnlinkApplicationCommand)
     UseCase->>Handler: handle(command)
-    Handler->>Resolver: resolveGroupForMutation(applicationId)
+    Handler->>Resolver: resolveGroupForMutation(applicationId, expectedGroupId)
     Resolver->>Resolver: lock all group routes<br/>ordered by application ID
+    Resolver->>Resolver: group ≠ expectedGroupId → 409
     Resolver-->>Handler: groupId
     Handler->>Dispatcher: dispatch(RemoveApplicationFromLinkedGroupCommand)
     Dispatcher->>Aggregate: handle(command)

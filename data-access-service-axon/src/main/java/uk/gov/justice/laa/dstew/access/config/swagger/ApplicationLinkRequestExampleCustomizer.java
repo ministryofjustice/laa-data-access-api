@@ -17,14 +17,16 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
  * uk.gov.justice.laa.dstew.access.api.ApplicationCommandApi} do not carry {@code
  * requestBody.content.*.examples} from the source spec into the generated
  * {@code @Parameter}/{@code @RequestBody} annotations, so springdoc's runtime-derived document
- * would otherwise show Swagger UI's synthesised default ({@code linkedGroupVersion: 0}) for every
- * request, misleading callers linking a standalone application for the first time.
+ * would otherwise show Swagger UI's synthesised default ({@code linkedGroupVersion: "string"}) for
+ * every request, misleading callers linking a standalone application for the first time.
  */
 @Component
 @ExcludeFromGeneratedCodeCoverage
 public class ApplicationLinkRequestExampleCustomizer implements OpenApiCustomizer {
 
   private static final String LINK_PATH = "/api/v0/applications/{id}/link";
+  private static final String EXAMPLE_LINKED_GROUP_VERSION =
+      "djE6bGlua2VkLWdyb3VwOjdjOWU2Njc5LTc0MjUtNDBkZS05NDRiLWUwN2ZjMWY5MGFlNzoy";
 
   @Override
   public void customise(OpenAPI openApi) {
@@ -60,12 +62,12 @@ public class ApplicationLinkRequestExampleCustomizer implements OpenApiCustomize
     var targetAlreadyLinked = new Example();
     targetAlreadyLinked.setSummary("Target already belongs to a group");
     targetAlreadyLinked.setDescription(
-        "Supply the target group's linkedGroupVersion exactly as last read.");
+        "Supply the target's linkedGroupVersion token exactly as last read.");
     targetAlreadyLinked.setValue(
         Map.of(
             "applicationId", "3fa85f64-5717-4562-b3fc-2c963f66afa6",
             "linkType", "FAMILY",
-            "linkedGroupVersion", 2));
+            "linkedGroupVersion", EXAMPLE_LINKED_GROUP_VERSION));
 
     Map<String, Example> examples = new LinkedHashMap<>();
     examples.put("firstTimeLink", firstTimeLink);

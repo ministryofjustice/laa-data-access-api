@@ -19,6 +19,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import uk.gov.justice.laa.dstew.access.exception.LinkedApplicationGroupVersionConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
@@ -118,7 +119,7 @@ class ApplicationGroupRouteResolverTest {
     UUID applicationId = UUID.randomUUID();
     when(routes.findMembershipByApplicationId(applicationId)).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> resolver.resolveGroupForMutation(applicationId))
+    assertThatThrownBy(() -> resolver.resolveGroupForMutation(applicationId, UUID.randomUUID()))
         .isInstanceOf(ResourceNotFoundException.class)
         .hasMessage("No application group route found for application " + applicationId);
   }
@@ -129,7 +130,7 @@ class ApplicationGroupRouteResolverTest {
     when(routes.findMembershipByApplicationId(applicationId))
         .thenReturn(Optional.of(new RouteMembership(ApplicationGroupRouteKind.STANDALONE, null)));
 
-    assertThatThrownBy(() -> resolver.resolveGroupForMutation(applicationId))
+    assertThatThrownBy(() -> resolver.resolveGroupForMutation(applicationId, UUID.randomUUID()))
         .isInstanceOf(ApplicationLinkConflictException.class)
         .hasMessage("Application " + applicationId + " is not in a linked group");
   }
@@ -146,9 +147,29 @@ class ApplicationGroupRouteResolverTest {
             Optional.of(new RouteMembership(ApplicationGroupRouteKind.LINKED_GROUP, groupId)));
     when(routes.findAllByGroupIdForUpdate(groupId)).thenReturn(List.of(firstRoute, secondRoute));
 
-    assertThat(resolver.resolveGroupForMutation(applicationId)).isEqualTo(groupId);
+    assertThat(resolver.resolveGroupForMutation(applicationId, groupId)).isEqualTo(groupId);
 
     verify(routes).findAllByGroupIdForUpdate(groupId);
+  }
+
+  @Test
+  void givenDifferentExpectedGroup_whenResolveGroupForMutation_thenThrowsConflict() {
+    UUID applicationId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    UUID expectedGroupId = UUID.randomUUID();
+    when(routes.findMembershipByApplicationId(applicationId))
+        .thenReturn(
+            Optional.of(new RouteMembership(ApplicationGroupRouteKind.LINKED_GROUP, groupId)));
+    when(routes.findAllByGroupIdForUpdate(groupId))
+        .thenReturn(List.of(route(applicationId, ApplicationGroupRouteKind.LINKED_GROUP, groupId)));
+
+    assertThatThrownBy(() -> resolver.resolveGroupForMutation(applicationId, expectedGroupId))
+        .isInstanceOf(LinkedApplicationGroupVersionConflictException.class)
+        .hasMessage(
+            "Application "
+                + applicationId
+                + " is no longer in the linked group identified by linkedGroupVersion;"
+                + " re-read before retrying");
   }
 
   @Test
@@ -162,7 +183,7 @@ class ApplicationGroupRouteResolverTest {
     when(routes.findAllByGroupIdForUpdate(groupId))
         .thenReturn(List.of(route(otherMemberId, ApplicationGroupRouteKind.LINKED_GROUP, groupId)));
 
-    assertThatThrownBy(() -> resolver.resolveGroupForMutation(applicationId))
+    assertThatThrownBy(() -> resolver.resolveGroupForMutation(applicationId, groupId))
         .isInstanceOf(ApplicationLinkConflictException.class)
         .hasMessage("Application " + applicationId + " is not in a linked group");
   }

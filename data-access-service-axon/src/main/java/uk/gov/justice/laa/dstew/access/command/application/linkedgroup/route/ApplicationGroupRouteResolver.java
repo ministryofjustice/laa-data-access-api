@@ -10,6 +10,7 @@ import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import uk.gov.justice.laa.dstew.access.exception.LinkedApplicationGroupVersionConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
@@ -56,9 +57,12 @@ public class ApplicationGroupRouteResolver {
             + " already belongs to a different linked group");
   }
 
-  /** Locks every route in the application's linked group and returns the group identifier. */
+  /**
+   * Locks every route in the application's linked group, verifies it is the group the caller last
+   * read, and returns its identifier.
+   */
   @Transactional
-  public UUID resolveGroupForMutation(UUID applicationId) {
+  public UUID resolveGroupForMutation(UUID applicationId, UUID expectedGroupId) {
     var membership =
         routes
             .findMembershipByApplicationId(applicationId)
@@ -75,6 +79,9 @@ public class ApplicationGroupRouteResolver {
         lockedRoutes.stream().anyMatch(route -> route.getApplicationId().equals(applicationId));
     if (!stillMember) {
       throw notInGroup(applicationId);
+    }
+    if (!groupId.equals(expectedGroupId)) {
+      throw LinkedApplicationGroupVersionConflictException.groupChanged(applicationId);
     }
     return groupId;
   }

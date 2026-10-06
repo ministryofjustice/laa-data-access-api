@@ -35,8 +35,10 @@ class UnlinkApplicationCommandHandlerTest {
   void givenLinkedApplication_whenHandled_thenDispatchesRemovalToResolvedGroup() {
     var applicationId = UUID.randomUUID();
     var groupId = UUID.randomUUID();
-    var command = new UnlinkApplicationCommand(applicationId, 4, OCCURRED_AT);
-    when(routeResolver.resolveGroupForMutation(applicationId)).thenReturn(groupId);
+    var command =
+        new UnlinkApplicationCommand(
+            applicationId, new ExpectedLinkedGroup(groupId, 4), OCCURRED_AT);
+    when(routeResolver.resolveGroupForMutation(applicationId, groupId)).thenReturn(groupId);
 
     handler.handle(command);
 
@@ -49,9 +51,12 @@ class UnlinkApplicationCommandHandlerTest {
   @Test
   void givenRouteResolverFails_whenHandled_thenPropagatesAndDoesNotDispatch() {
     var applicationId = UUID.randomUUID();
-    var command = new UnlinkApplicationCommand(applicationId, 4, OCCURRED_AT);
+    var groupId = UUID.randomUUID();
+    var command =
+        new UnlinkApplicationCommand(
+            applicationId, new ExpectedLinkedGroup(groupId, 4), OCCURRED_AT);
     var exception = new ResourceNotFoundException("route not found");
-    when(routeResolver.resolveGroupForMutation(applicationId)).thenThrow(exception);
+    when(routeResolver.resolveGroupForMutation(applicationId, groupId)).thenThrow(exception);
 
     assertThatThrownBy(() -> handler.handle(command)).isSameAs(exception);
 

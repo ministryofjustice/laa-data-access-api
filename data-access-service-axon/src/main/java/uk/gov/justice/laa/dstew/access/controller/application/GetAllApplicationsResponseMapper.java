@@ -59,7 +59,7 @@ public class GetAllApplicationsResponseMapper {
         app.getSubmittedAt() != null ? app.getSubmittedAt().atOffset(ZoneOffset.UTC) : null);
     summary.setLastUpdated(app.getModifiedAt().atOffset(ZoneOffset.UTC));
     summary.setIsLead(group != null && app.getApplicationId().equals(group.getLeadApplicationId()));
-    summary.setLinkedGroupVersion(group == null ? null : group.getVersion());
+    summary.setLinkedGroupVersion(LinkedGroupVersionTokens.encode(group));
     summary.setAssignedTo(app.getCaseworkerId());
     summary.setAutoGranted(AutoGranted.valueOf(app.getAutoGranted().name()));
 

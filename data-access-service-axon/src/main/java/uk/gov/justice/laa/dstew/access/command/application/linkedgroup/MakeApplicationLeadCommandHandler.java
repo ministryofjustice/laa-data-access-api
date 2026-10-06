@@ -18,12 +18,11 @@ public class MakeApplicationLeadCommandHandler {
   @Transactional
   @AllowApiCaseworker
   public void handle(MakeApplicationLeadCommand command) {
-    var groupId = routeResolver.resolveGroupForMutation(command.applicationId());
+    var expectedGroup = command.expectedGroup();
+    var groupId =
+        routeResolver.resolveGroupForMutation(command.applicationId(), expectedGroup.groupId());
     dispatcher.dispatch(
         new ChangeLinkedGroupLeadCommand(
-            groupId,
-            command.applicationId(),
-            command.expectedGroupVersion(),
-            command.occurredAt()));
+            groupId, command.applicationId(), expectedGroup.version(), command.occurredAt()));
   }
 }

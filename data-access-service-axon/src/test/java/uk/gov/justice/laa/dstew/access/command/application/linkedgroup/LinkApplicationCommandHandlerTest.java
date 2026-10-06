@@ -84,7 +84,7 @@ class LinkApplicationCommandHandlerTest {
     when(routeResolver.resolve(sourceApplicationId, targetApplicationId))
         .thenReturn(new ApplicationLinkPlan(ApplicationLinkAction.ALREADY_LINKED, existingGroupId));
 
-    handler.handle(linkCommand(GROUP_VERSION));
+    handler.handle(linkCommand(new ExpectedLinkedGroup(UUID.randomUUID(), GROUP_VERSION)));
 
     verify(routeResolver).resolve(sourceApplicationId, targetApplicationId);
     verifyNoInteractions(dispatcher);
@@ -118,7 +118,10 @@ class LinkApplicationCommandHandlerTest {
     when(routeResolver.resolve(sourceApplicationId, targetApplicationId))
         .thenReturn(new ApplicationLinkPlan(ApplicationLinkAction.CREATE_GROUP, null));
 
-    assertThatThrownBy(() -> handler.handle(linkCommand(GROUP_VERSION)))
+    assertThatThrownBy(
+            () ->
+                handler.handle(
+                    linkCommand(new ExpectedLinkedGroup(UUID.randomUUID(), GROUP_VERSION))))
         .isInstanceOfSatisfying(
             LinkedApplicationGroupVersionConflictException.class,
             exception ->
@@ -138,7 +141,7 @@ class LinkApplicationCommandHandlerTest {
         .thenReturn(
             new ApplicationLinkPlan(ApplicationLinkAction.ADD_TO_EXISTING_GROUP, existingGroupId));
 
-    handler.handle(linkCommand(GROUP_VERSION));
+    handler.handle(linkCommand(new ExpectedLinkedGroup(existingGroupId, GROUP_VERSION)));
 
     verify(dispatcher).dispatch(dispatchedCommandCaptor.capture());
     assertThat(dispatchedCommandCaptor.getValue())
@@ -168,6 +171,31 @@ class LinkApplicationCommandHandlerTest {
   }
 
   @Test
+  void givenTokenForDifferentGroup_whenLinkedToGroupedTarget_thenThrowsConflict() {
+    UUID existingGroupId = UUID.fromString("10000000-0000-0000-0000-000000000004");
+    UUID expectedGroupId = UUID.fromString("20000000-0000-0000-0000-000000000004");
+    when(routeResolver.resolve(sourceApplicationId, targetApplicationId))
+        .thenReturn(
+            new ApplicationLinkPlan(ApplicationLinkAction.ADD_TO_EXISTING_GROUP, existingGroupId));
+
+    assertThatThrownBy(
+            () ->
+                handler.handle(
+                    linkCommand(new ExpectedLinkedGroup(expectedGroupId, GROUP_VERSION))))
+        .isInstanceOfSatisfying(
+            LinkedApplicationGroupVersionConflictException.class,
+            exception ->
+                assertThat(exception.getMessage())
+                    .isEqualTo(
+                        "Application "
+                            + targetApplicationId
+                            + " is no longer in the linked group identified by linkedGroupVersion;"
+                            + " re-read before retrying"));
+
+    verifyNoInteractions(dispatcher);
+  }
+
+  @Test
   void propagatesResolverNotFoundExceptionUnchanged() {
     var exception =
         new ResourceNotFoundException(
@@ -191,12 +219,8 @@ class LinkApplicationCommandHandlerTest {
     verifyNoInteractions(dispatcher);
   }
 
-  private LinkApplicationCommand linkCommand(Long expectedGroupVersion) {
+  private LinkApplicationCommand linkCommand(ExpectedLinkedGroup expectedGroup) {
     return new LinkApplicationCommand(
-        sourceApplicationId,
-        targetApplicationId,
-        LinkType.FAMILY,
-        expectedGroupVersion,
-        OCCURRED_AT);
+        sourceApplicationId, targetApplicationId, LinkType.FAMILY, expectedGroup, OCCURRED_AT);
   }
 }

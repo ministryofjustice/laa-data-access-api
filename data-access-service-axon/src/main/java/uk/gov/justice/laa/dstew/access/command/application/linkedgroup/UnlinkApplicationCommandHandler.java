@@ -18,12 +18,11 @@ public class UnlinkApplicationCommandHandler {
   @Transactional
   @AllowApiCaseworker
   public void handle(UnlinkApplicationCommand command) {
-    var groupId = routeResolver.resolveGroupForMutation(command.applicationId());
+    var expectedGroup = command.expectedGroup();
+    var groupId =
+        routeResolver.resolveGroupForMutation(command.applicationId(), expectedGroup.groupId());
     dispatcher.dispatch(
         new RemoveApplicationFromLinkedGroupCommand(
-            groupId,
-            command.applicationId(),
-            command.expectedGroupVersion(),
-            command.occurredAt()));
+            groupId, command.applicationId(), expectedGroup.version(), command.occurredAt()));
   }
 }

@@ -38,4 +38,13 @@ public class LinkedApplicationGroupVersionConflictException extends RuntimeExcep
             + targetApplicationId
             + " is in a linked group; linkedGroupVersion is required");
   }
+
+  /** Creates a conflict when the application is no longer in the group the caller last read. */
+  public static LinkedApplicationGroupVersionConflictException groupChanged(UUID applicationId) {
+    return new LinkedApplicationGroupVersionConflictException(
+        "Application "
+            + applicationId
+            + " is no longer in the linked group identified by linkedGroupVersion;"
+            + " re-read before retrying");
+  }
 }

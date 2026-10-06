@@ -48,7 +48,7 @@ public class LinkApplicationCommandHandler {
   private Runnable planAction(LinkApplicationCommand command, ApplicationLinkPlan plan) {
     return switch (plan.action()) {
       case CREATE_GROUP -> {
-        if (command.expectedGroupVersion() != null) {
+        if (command.expectedTargetGroup() != null) {
           throw LinkedApplicationGroupVersionConflictException.targetNoLongerLinked(
               command.targetApplicationId());
         }
@@ -61,8 +61,13 @@ public class LinkApplicationCommandHandler {
                     command.occurredAt()));
       }
       case ADD_TO_EXISTING_GROUP -> {
-        if (command.expectedGroupVersion() == null) {
+        var expectedTargetGroup = command.expectedTargetGroup();
+        if (expectedTargetGroup == null) {
           throw LinkedApplicationGroupVersionConflictException.versionRequired(
+              command.targetApplicationId());
+        }
+        if (!expectedTargetGroup.groupId().equals(plan.groupId())) {
+          throw LinkedApplicationGroupVersionConflictException.groupChanged(
               command.targetApplicationId());
         }
         yield () ->
@@ -70,7 +75,7 @@ public class LinkApplicationCommandHandler {
                 new AddApplicationToLinkedGroupCommand(
                     plan.groupId(),
                     command.sourceApplicationId(),
-                    command.expectedGroupVersion(),
+                    expectedTargetGroup.version(),
                     command.occurredAt()));
       }
       case ALREADY_LINKED ->

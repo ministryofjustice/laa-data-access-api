@@ -47,4 +47,18 @@ class LinkedApplicationGroupVersionConflictExceptionTest {
                 + applicationId
                 + " is in a linked group; linkedGroupVersion is required");
   }
+
+  @Test
+  void givenGroupChanged_whenCreated_thenHasStableMessage() {
+    var applicationId = UUID.randomUUID();
+
+    var exception = LinkedApplicationGroupVersionConflictException.groupChanged(applicationId);
+
+    assertThat(exception)
+        .hasMessage(
+            "Application "
+                + applicationId
+                + " is no longer in the linked group identified by linkedGroupVersion;"
+                + " re-read before retrying");
+  }
 }

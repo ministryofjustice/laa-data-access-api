@@ -27,6 +27,7 @@ import uk.gov.justice.laa.dstew.access.model.PriorAuthoritySummary;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
+import uk.gov.justice.laa.dstew.access.version.VersionToken;
 
 class GetApplicationResponseMapperTest {
 
@@ -182,10 +183,12 @@ class GetApplicationResponseMapperTest {
   void givenLeadWithAssociations_whenMapped_thenMapsResponseFields() {
     UUID applicationId = UUID.randomUUID();
     UUID linkedApplicationId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
     Instant createdAt = Instant.parse("2026-01-01T08:00:00Z");
     ApplicationReadModel readModel = baseReadModel().applicationId(applicationId).build();
     LinkedApplicationGroupReadModel group =
         LinkedApplicationGroupReadModel.builder()
+            .groupId(groupId)
             .leadApplicationId(applicationId)
             .memberIds(List.of(applicationId, linkedApplicationId))
             .version(4L)
@@ -205,7 +208,8 @@ class GetApplicationResponseMapperTest {
             readModel, group, List.of(priorAuthority), Map.of(linkedApplicationId, "LAA-LINKED"));
 
     assertThat(response.getIsLead()).isTrue();
-    assertThat(response.getLinkedGroupVersion()).isEqualTo(4L);
+    assertThat(response.getLinkedGroupVersion())
+        .isEqualTo(VersionToken.linkedGroup(groupId, 4L).encode());
     assertThat(response.getLinkedApplications())
         .singleElement()
         .satisfies(
@@ -234,10 +238,12 @@ class GetApplicationResponseMapperTest {
   void givenMemberApplicationWithGroup_whenMapped_thenIncludesLeadAndIsNotLead() {
     UUID applicationId = UUID.randomUUID();
     UUID leadApplicationId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
     ApplicationReadModel readModel =
         baseReadModel().applicationId(applicationId).leadApplicationId(leadApplicationId).build();
     LinkedApplicationGroupReadModel group =
         LinkedApplicationGroupReadModel.builder()
+            .groupId(groupId)
             .leadApplicationId(leadApplicationId)
             .memberIds(List.of(leadApplicationId, applicationId))
             .build();
@@ -245,7 +251,8 @@ class GetApplicationResponseMapperTest {
     var response = mapper.toResponse(readModel, group, List.of(), Map.of());
 
     assertThat(response.getIsLead()).isFalse();
-    assertThat(response.getLinkedGroupVersion()).isZero();
+    assertThat(response.getLinkedGroupVersion())
+        .isEqualTo(VersionToken.linkedGroup(groupId, 0L).encode());
     assertThat(response.getLinkedApplications())
         .singleElement()
         .satisfies(
