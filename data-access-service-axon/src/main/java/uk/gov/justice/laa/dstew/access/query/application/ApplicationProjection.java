@@ -32,6 +32,8 @@ import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftPayload;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftStartedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
@@ -45,6 +47,7 @@ import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpd
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.EvidenceDocument;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexAccessPolicy;
@@ -65,6 +68,7 @@ public class ApplicationProjection {
   private final ApplicationDataStore applicationDataStore;
   private final ApplicationListIndexReadRepository listIndexRepository;
   private final PriorAuthorityReadRepository priorAuthorityReadRepository;
+  private final ApplicationDraftStore draftStore;
   private final ApplicationReadQueryGateway applicationReadQueryGateway;
   private final ApplicationCurrentStateAccessPolicy currentStateAccessPolicy;
   private final ApplicationListIndexAccessPolicy listIndexAccessPolicy;
@@ -81,6 +85,7 @@ public class ApplicationProjection {
    * @param priorAuthorityReadRepository persistence interface for {@code
    *     prior_authority_current_state}; used to fetch linked prior authorities for application
    *     responses
+   * @param draftStore draft content; used to hydrate document filenames before submission
    */
   public ApplicationProjection(
       ApplicationReadRepository applicationReadRepository,
@@ -90,7 +95,8 @@ public class ApplicationProjection {
       PriorAuthorityReadRepository priorAuthorityReadRepository,
       ApplicationReadQueryGateway applicationReadQueryGateway,
       ApplicationCurrentStateAccessPolicy currentStateAccessPolicy,
-      ApplicationListIndexAccessPolicy listIndexAccessPolicy) {
+      ApplicationListIndexAccessPolicy listIndexAccessPolicy,
+      ApplicationDraftStore draftStore) {
     this.applicationReadRepository = applicationReadRepository;
     this.groupReadRepository = groupReadRepository;
     this.applicationDataStore = applicationDataStore;
@@ -99,6 +105,7 @@ public class ApplicationProjection {
     this.applicationReadQueryGateway = applicationReadQueryGateway;
     this.currentStateAccessPolicy = currentStateAccessPolicy;
     this.listIndexAccessPolicy = listIndexAccessPolicy;
+    this.draftStore = draftStore;
   }
 
   /** Returns the hydrated Application and its related data, or {@code null} if absent. */
@@ -127,6 +134,24 @@ public class ApplicationProjection {
   @QueryHandler
   public boolean handle(ApplicationProjectionExistsQuery query) {
     return applicationReadRepository.existsById(query.applicationId());
+  }
+
+  /** Returns a live document with its filename hydrated, or {@code null} if either is absent. */
+  @QueryHandler
+  public @Nullable EvidenceDocument handle(FindApplicationDocumentQuery query) {
+    return applicationReadRepository
+        .findById(query.applicationId())
+        .flatMap(
+            application ->
+                application.getUploadedDocuments().stream()
+                    .filter(document -> document.documentId().equals(query.documentId()))
+                    .filter(document -> !document.deleted())
+                    .findFirst()
+                    .flatMap(
+                        document ->
+                            documentFilename(application, document.documentId())
+                                .map(fileName -> evidenceDocument(document, fileName))))
+        .orElse(null);
   }
 
   /** Returns the current-state projection for the requested Application. */
@@ -562,6 +587,35 @@ public class ApplicationProjection {
     Sort.Direction direction =
         "DESC".equalsIgnoreCase(orderBy) ? Sort.Direction.DESC : Sort.Direction.ASC;
     return Sort.by(direction, property).and(Sort.by(Sort.Direction.ASC, "applicationId"));
+  }
+
+  private Optional<String> documentFilename(ApplicationReadModel application, UUID documentId) {
+    ApplicationDataId id =
+        new ApplicationDataId(
+            application.getApplicationId(), application.getApplicationDataVersion());
+    ApplicationDataPayload data = applicationDataStore.getAll(List.of(id)).get(id);
+    // Drafts have no immutable content until submission.
+    Map<UUID, String> filenames =
+        data != null
+            ? data.documentFilenames()
+            : draftStore
+                .find(application.getApplicationId())
+                .map(ApplicationDraftPayload::documentFilenames)
+                .orElse(Map.of());
+    return Optional.ofNullable(filenames.get(documentId));
+  }
+
+  private EvidenceDocument evidenceDocument(UploadDocument document, String fileName) {
+    return new EvidenceDocument(
+        document.documentId(),
+        document.documentType(),
+        fileName,
+        null,
+        document.contentType(),
+        document.size(),
+        document.uploadedAt(),
+        document.sourceService(),
+        document.checksum());
   }
 
   private Optional<ApplicationReadModel> hydrate(ApplicationReadModel application) {

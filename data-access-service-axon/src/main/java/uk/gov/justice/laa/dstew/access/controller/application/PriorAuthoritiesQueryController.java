@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 import uk.gov.justice.laa.dstew.access.api.PriorAuthorityQueryApi;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityResponse;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
-import uk.gov.justice.laa.dstew.access.query.application.priorauthority.GetPriorAuthorityUseCase;
+import uk.gov.justice.laa.dstew.access.usecase.application.priorauthority.GetPriorAuthorityUseCase;
 
 /** HTTP query adapter for retrieving Prior Authority requests. */
 @RestController

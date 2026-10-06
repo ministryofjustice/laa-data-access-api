@@ -13,31 +13,31 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
-import uk.gov.justice.laa.dstew.access.api.PriorAuthorityDocumentQueryApi;
+import uk.gov.justice.laa.dstew.access.api.ApplicationDocumentQueryApi;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.EvidenceDocumentDownload;
-import uk.gov.justice.laa.dstew.access.usecase.application.priorauthority.DownloadPriorAuthorityDocumentUseCase;
+import uk.gov.justice.laa.dstew.access.usecase.application.DownloadApplicationDocumentUseCase;
 
-/** HTTP query adapter for downloading Prior Authority documents. */
+/** HTTP query adapter for downloading Application documents. */
 @RestController
-public class PriorAuthorityDocumentQueryController implements PriorAuthorityDocumentQueryApi {
-  private final DownloadPriorAuthorityDocumentUseCase downloadPriorAuthorityDocumentUseCase;
+public class ApplicationDocumentQueryController implements ApplicationDocumentQueryApi {
+  private final DownloadApplicationDocumentUseCase downloadApplicationDocumentUseCase;
 
-  public PriorAuthorityDocumentQueryController(
-      DownloadPriorAuthorityDocumentUseCase downloadPriorAuthorityDocumentUseCase) {
-    this.downloadPriorAuthorityDocumentUseCase = downloadPriorAuthorityDocumentUseCase;
+  public ApplicationDocumentQueryController(
+      DownloadApplicationDocumentUseCase downloadApplicationDocumentUseCase) {
+    this.downloadApplicationDocumentUseCase = downloadApplicationDocumentUseCase;
   }
 
-  /** Streams an owned Prior Authority document using its original filename. */
+  /** Streams an owned Application document using its original filename. */
   @Override
   @Operation(security = @SecurityRequirement(name = "BearerAuth"))
-  @GetMapping(PriorAuthorityDocumentQueryApi.PATH_DOWNLOAD_PRIOR_AUTHORITY_DOCUMENT)
-  public ResponseEntity<Resource> downloadPriorAuthorityDocument(
+  @GetMapping(ApplicationDocumentQueryApi.PATH_DOWNLOAD_APPLICATION_DOCUMENT)
+  public ResponseEntity<Resource> downloadApplicationDocument(
       @RequestHeader("X-Service-Name") ServiceName serviceName,
-      @PathVariable UUID priorAuthorityId,
+      @PathVariable UUID applicationId,
       @PathVariable UUID documentId) {
     EvidenceDocumentDownload download =
-        downloadPriorAuthorityDocumentUseCase.downloadDocument(priorAuthorityId, documentId);
+        downloadApplicationDocumentUseCase.downloadDocument(applicationId, documentId);
 
     ResponseEntity.BodyBuilder response =
         ResponseEntity.ok()

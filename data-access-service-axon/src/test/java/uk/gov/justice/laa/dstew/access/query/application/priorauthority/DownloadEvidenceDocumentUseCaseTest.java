@@ -14,13 +14,15 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.io.Resource;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityDocument;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.EvidenceDocument;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
+import uk.gov.justice.laa.dstew.access.usecase.application.priorauthority.DownloadPriorAuthorityDocumentUseCase;
+import uk.gov.justice.laa.dstew.access.usecase.application.priorauthority.GetPriorAuthorityUseCase;
 
 @ExtendWith(MockitoExtension.class)
-class DownloadPriorAuthorityDocumentUseCaseTest {
+class DownloadEvidenceDocumentUseCaseTest {
 
   @Mock private GetPriorAuthorityUseCase getPriorAuthorityUseCase;
   @Mock private SdsService sdsService;
@@ -31,7 +33,7 @@ class DownloadPriorAuthorityDocumentUseCaseTest {
   void givenOwnedDocument_whenDownloaded_thenRetrievesItsContentFromSds() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
-    PriorAuthorityDocument document = document(documentId);
+    EvidenceDocument document = document(documentId);
     PriorAuthorityResult result =
         PriorAuthorityResult.builder().uploadedDocuments(List.of(document)).build();
     Resource resource = org.mockito.Mockito.mock(Resource.class);
@@ -39,8 +41,7 @@ class DownloadPriorAuthorityDocumentUseCaseTest {
     when(sdsService.getEvidenceFile(priorAuthorityId, documentId, document.fileName()))
         .thenReturn(resource);
 
-    PriorAuthorityDocumentDownload download =
-        useCase.downloadDocument(priorAuthorityId, documentId);
+    EvidenceDocumentDownload download = useCase.downloadDocument(priorAuthorityId, documentId);
 
     assertThat(download.document()).isSameAs(document);
     assertThat(download.resource()).isSameAs(resource);
@@ -52,8 +53,8 @@ class DownloadPriorAuthorityDocumentUseCaseTest {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID firstDocumentId = UUID.randomUUID();
     UUID secondDocumentId = UUID.randomUUID();
-    PriorAuthorityDocument firstDocument = document(firstDocumentId);
-    PriorAuthorityDocument secondDocument = document(secondDocumentId);
+    EvidenceDocument firstDocument = document(firstDocumentId);
+    EvidenceDocument secondDocument = document(secondDocumentId);
     PriorAuthorityResult result =
         PriorAuthorityResult.builder()
             .uploadedDocuments(List.of(firstDocument, secondDocument))
@@ -63,7 +64,7 @@ class DownloadPriorAuthorityDocumentUseCaseTest {
     when(sdsService.getEvidenceFile(priorAuthorityId, secondDocumentId, "evidence.pdf"))
         .thenReturn(resource);
 
-    PriorAuthorityDocumentDownload download =
+    EvidenceDocumentDownload download =
         useCase.downloadDocument(priorAuthorityId, secondDocumentId);
 
     assertThat(download.document()).isSameAs(secondDocument);
@@ -84,8 +85,8 @@ class DownloadPriorAuthorityDocumentUseCaseTest {
             "No document found with ID: %s for prior authority: %s", documentId, priorAuthorityId);
   }
 
-  private PriorAuthorityDocument document(UUID documentId) {
-    return new PriorAuthorityDocument(
+  private EvidenceDocument document(UUID documentId) {
+    return new EvidenceDocument(
         documentId,
         null,
         "evidence.pdf",
