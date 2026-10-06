@@ -18,12 +18,13 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.io.Resource;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.EvidenceDocument;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
-import uk.gov.justice.laa.dstew.access.document.DocumentDetails;
-import uk.gov.justice.laa.dstew.access.document.DocumentDownload;
 import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
+import uk.gov.justice.laa.dstew.access.usecase.application.priorauthority.DownloadPriorAuthorityDocumentUseCase;
+import uk.gov.justice.laa.dstew.access.usecase.application.priorauthority.GetPriorAuthorityUseCase;
 
 @ExtendWith(MockitoExtension.class)
 class DownloadPriorAuthorityDocumentUseCaseTest {
@@ -48,11 +49,11 @@ class DownloadPriorAuthorityDocumentUseCaseTest {
     when(sdsService.getEvidenceFile(priorAuthorityId, documentId, "evidence.pdf"))
         .thenReturn(resource);
 
-    DocumentDownload download = useCase.downloadDocument(priorAuthorityId, documentId);
+    EvidenceDocumentDownload download = useCase.downloadDocument(priorAuthorityId, documentId);
 
     assertThat(download.document())
         .isEqualTo(
-            new DocumentDetails(
+            new EvidenceDocument(
                 documentId,
                 "GATEWAY_EVIDENCE",
                 "evidence.pdf",
@@ -84,7 +85,8 @@ class DownloadPriorAuthorityDocumentUseCaseTest {
     when(sdsService.getEvidenceFile(priorAuthorityId, secondDocumentId, "evidence.pdf"))
         .thenReturn(resource);
 
-    DocumentDownload download = useCase.downloadDocument(priorAuthorityId, secondDocumentId);
+    EvidenceDocumentDownload download =
+        useCase.downloadDocument(priorAuthorityId, secondDocumentId);
 
     assertThat(download.document().documentId()).isEqualTo(secondDocumentId);
     assertThat(download.resource()).isSameAs(resource);
@@ -142,7 +144,7 @@ class DownloadPriorAuthorityDocumentUseCaseTest {
     when(getPriorAuthorityUseCase.getPriorAuthority(priorAuthorityId)).thenReturn(result);
     when(sdsService.getEvidenceFile(priorAuthorityId, documentId, null)).thenReturn(resource);
 
-    DocumentDownload download = useCase.downloadDocument(priorAuthorityId, documentId);
+    EvidenceDocumentDownload download = useCase.downloadDocument(priorAuthorityId, documentId);
 
     assertThat(download.document().fileName()).isNull();
     assertThat(download.document().fileType()).isNull();

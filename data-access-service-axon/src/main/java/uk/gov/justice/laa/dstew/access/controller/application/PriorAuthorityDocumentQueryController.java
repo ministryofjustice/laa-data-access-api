@@ -14,9 +14,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 import uk.gov.justice.laa.dstew.access.api.PriorAuthorityDocumentQueryApi;
-import uk.gov.justice.laa.dstew.access.document.DocumentDownload;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
-import uk.gov.justice.laa.dstew.access.query.application.priorauthority.DownloadPriorAuthorityDocumentUseCase;
+import uk.gov.justice.laa.dstew.access.query.application.priorauthority.EvidenceDocumentDownload;
+import uk.gov.justice.laa.dstew.access.usecase.application.priorauthority.DownloadPriorAuthorityDocumentUseCase;
 
 /** HTTP query adapter for downloading Prior Authority documents. */
 @RestController
@@ -36,7 +36,7 @@ public class PriorAuthorityDocumentQueryController implements PriorAuthorityDocu
       @RequestHeader("X-Service-Name") ServiceName serviceName,
       @PathVariable UUID priorAuthorityId,
       @PathVariable UUID documentId) {
-    DocumentDownload download =
+    EvidenceDocumentDownload download =
         downloadPriorAuthorityDocumentUseCase.downloadDocument(priorAuthorityId, documentId);
 
     ResponseEntity.BodyBuilder response =

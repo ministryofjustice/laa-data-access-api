@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.document;
+package uk.gov.justice.laa.dstew.access.content.priorauthority;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -6,7 +6,7 @@ import lombok.With;
 
 /** Hydrated document metadata for downloads, independent of application type. */
 @With
-public record DocumentDetails(
+public record EvidenceDocument(
     UUID documentId,
     String documentType,
     String fileName,
