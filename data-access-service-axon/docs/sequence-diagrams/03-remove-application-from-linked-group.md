@@ -31,7 +31,7 @@ sequenceDiagram
     Handler->>Dispatcher: dispatch(RemoveApplicationFromLinkedGroupCommand)
     Dispatcher->>Aggregate: handle(command)
     Aggregate->>Aggregate: validate member, lead rule, and expected version
-    alt More than two members remain in the group
+    alt More than two members before removal
         Aggregate->>EventStore: append MemberRemovedFromGroupEvent
         EventStore->>RouteProjection: MemberRemovedFromGroupEvent
         RouteProjection->>RouteProjection: set removed member route to STANDALONE
