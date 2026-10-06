@@ -14,7 +14,7 @@ jobs:
       contents: write
       packages: write
     with:
-      pact_test_task: ":data-access-service:pactTest"
+      pact_test_task: ":data-access-service-axon:pactTest"
       provider_name: 'laa-data-access-api'
       consumer_name: ${{ github.event.inputs.consumer }}
       consumer_branch: ${{ github.event.inputs.consumerBranch }}
