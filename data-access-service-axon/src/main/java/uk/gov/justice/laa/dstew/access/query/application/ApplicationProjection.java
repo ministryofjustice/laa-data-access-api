@@ -118,7 +118,11 @@ public class ApplicationProjection {
               List<PriorAuthorityReadModel> priorAuthorities =
                   priorAuthorityReadRepository.findAllByApplicationIdIn(
                       List.of(query.applicationId()));
-              return new ApplicationDetailResult(application, linkedGroup, priorAuthorities);
+              return new ApplicationDetailResult(
+                  application,
+                  linkedGroup,
+                  priorAuthorities,
+                  findLinkedLaaReferences(application, linkedGroup));
             })
         .orElse(null);
   }
@@ -612,6 +616,27 @@ public class ApplicationProjection {
     application.setCertificate(data.certificate());
     application.setDocumentFilenames(data.documentFilenames());
     return application;
+  }
+
+  /** Batch-fetches the LAA references of the other members of the Application's linked group. */
+  private Map<UUID, String> findLinkedLaaReferences(
+      ApplicationReadModel application, LinkedApplicationGroupReadModel linkedGroup) {
+    if (linkedGroup == null) {
+      return Map.of();
+    }
+    List<UUID> otherMemberIds =
+        linkedGroup.getMemberIds().stream()
+            .filter(memberId -> !memberId.equals(application.getApplicationId()))
+            .toList();
+    if (otherMemberIds.isEmpty()) {
+      return Map.of();
+    }
+    return listIndexRepository.findAllById(otherMemberIds).stream()
+        .filter(member -> member.getLaaReference() != null)
+        .collect(
+            Collectors.toMap(
+                ApplicationListIndexReadModel::getApplicationId,
+                ApplicationListIndexReadModel::getLaaReference));
   }
 
   /** Batch-fetches linked group read models for the result page, keyed by linked group ID. */

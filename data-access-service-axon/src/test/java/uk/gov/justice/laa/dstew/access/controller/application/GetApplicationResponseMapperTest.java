@@ -200,7 +200,9 @@ class GetApplicationResponseMapperTest {
             .createdAt(createdAt)
             .build();
 
-    var response = mapper.toResponse(readModel, group, List.of(priorAuthority));
+    var response =
+        mapper.toResponse(
+            readModel, group, List.of(priorAuthority), Map.of(linkedApplicationId, "LAA-LINKED"));
 
     assertThat(response.getIsLead()).isTrue();
     assertThat(response.getLinkedGroupVersion()).isEqualTo(4L);
@@ -209,6 +211,7 @@ class GetApplicationResponseMapperTest {
         .satisfies(
             linkedApplication -> {
               assertThat(linkedApplication.getApplicationId()).isEqualTo(linkedApplicationId);
+              assertThat(linkedApplication.getLaaReference()).isEqualTo("LAA-LINKED");
               assertThat(linkedApplication.getIsLead()).isFalse();
             });
     assertThat(response.getPriorAuthorities())
@@ -239,7 +242,7 @@ class GetApplicationResponseMapperTest {
             .memberIds(List.of(leadApplicationId, applicationId))
             .build();
 
-    var response = mapper.toResponse(readModel, group, List.of());
+    var response = mapper.toResponse(readModel, group, List.of(), Map.of());
 
     assertThat(response.getIsLead()).isFalse();
     assertThat(response.getLinkedGroupVersion()).isZero();
@@ -254,7 +257,7 @@ class GetApplicationResponseMapperTest {
 
   @Test
   void givenApplicationWithoutRelations_whenMapped_thenReturnsEmptyAssociationLists() {
-    var response = mapper.toResponse(baseReadModel().build(), null, List.of());
+    var response = mapper.toResponse(baseReadModel().build(), null, List.of(), Map.of());
 
     assertThat(response.getIsLead()).isFalse();
     assertThat(response.getLinkedGroupVersion()).isNull();
@@ -443,7 +446,7 @@ class GetApplicationResponseMapperTest {
     ApplicationReadModel readModel =
         baseReadModel().potentialDuplicates(potentialDuplicates).build();
 
-    var response = mapper.toResponse(readModel, null, List.of());
+    var response = mapper.toResponse(readModel, null, List.of(), Map.of());
 
     assertThat(response.getPotentialDuplicates()).hasSize(3);
     assertThat(response.getPotentialDuplicates().get(0).getApplicationId()).isEqualTo(duplicateId1);
@@ -462,7 +465,7 @@ class GetApplicationResponseMapperTest {
   void givenEmptyPotentialDuplicates_whenMapped_thenPotentialDuplicatesIsEmpty() {
     ApplicationReadModel readModel = baseReadModel().potentialDuplicates(List.of()).build();
 
-    var response = mapper.toResponse(readModel, null, List.of());
+    var response = mapper.toResponse(readModel, null, List.of(), Map.of());
 
     assertThat(response.getPotentialDuplicates()).isEmpty();
   }
@@ -471,7 +474,7 @@ class GetApplicationResponseMapperTest {
   void givenNullPotentialDuplicates_whenMapped_thenPotentialDuplicatesIsNull() {
     ApplicationReadModel readModel = baseReadModel().potentialDuplicates(null).build();
 
-    var response = mapper.toResponse(readModel, null, List.of());
+    var response = mapper.toResponse(readModel, null, List.of(), Map.of());
 
     assertThat(response.getPotentialDuplicates()).isNull();
   }
