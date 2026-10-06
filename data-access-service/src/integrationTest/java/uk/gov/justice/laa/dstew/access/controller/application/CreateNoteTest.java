@@ -86,7 +86,7 @@ public class CreateNoteTest extends BaseHarnessTest {
     assertThat(domainEvents.size()).isEqualTo(1);
 
     DomainEventEntity event = domainEvents.getFirst();
-    assertThat(event.getType()).isEqualTo(DomainEventType.APPLICATION_NOTES);
+    assertThat(event.getType()).isEqualTo(DomainEventType.APPLICATION_NOTE_CREATED);
     assertThat(event.getApplicationId()).isEqualTo(application.getId());
     assertThat(event.getCaseworkerId()).isEqualTo(CaseworkerJohnDoe.getId());
     assertThat(event.getCreatedAt()).isNotNull();

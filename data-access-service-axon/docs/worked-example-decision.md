@@ -120,8 +120,9 @@ Content`. Tracking processors then consume the event independently:
 - `ApplicationProjection` updates the two version pointers and `modifiedAt`.
 - `ApplicationHistoryProjection` stores a thin public history row.
 
-When decision history is queried, the history projection uses the event's data version to retrieve
-the stored description and reconstruct the public history payload.
+When decision history is queried, the history assembler uses the event's data-version pointer to
+retrieve the stored event description and places it directly in the public history response. If
+retention has removed that version, the description is `null`; other data-store errors propagate.
 
 ## 8. How this is tested
 

@@ -2,11 +2,13 @@ package uk.gov.justice.laa.dstew.access.config.interceptor;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import org.axonframework.messaging.commandhandling.CommandMessage;
 import org.axonframework.messaging.core.MessageDispatchInterceptor;
 import org.axonframework.messaging.core.MessageDispatchInterceptorChain;
 import org.axonframework.messaging.core.MessageStream;
 import org.axonframework.messaging.core.unitofwork.ProcessingContext;
+import org.axonframework.messaging.eventhandling.EventMessage;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.support.ScopeNotActiveException;
@@ -69,5 +71,27 @@ public class RequestMetadataDispatchInterceptor
     } catch (ScopeNotActiveException exception) {
       return Map.of();
     }
+  }
+
+  /**
+   * Reads the dispatching request's service name from event metadata, if present.
+   *
+   * @param message the Axon event message
+   * @return the service name recorded at dispatch time, or {@code null} if absent
+   */
+  public static @Nullable String serviceName(EventMessage message) {
+    Object serviceName = message.metadata().get(SERVICE_NAME_METADATA_KEY);
+    return serviceName == null ? null : serviceName.toString();
+  }
+
+  /**
+   * Reads the dispatching request's authenticated actor from event metadata, if present.
+   *
+   * @param message the Axon event message
+   * @return the acting caseworker's identifier, or {@code null} if absent
+   */
+  public static @Nullable UUID caseworkerId(EventMessage message) {
+    Object authenticatedUserId = message.metadata().get(AUTHENTICATED_USER_ID_KEY);
+    return authenticatedUserId == null ? null : UUID.fromString(authenticatedUserId.toString());
   }
 }

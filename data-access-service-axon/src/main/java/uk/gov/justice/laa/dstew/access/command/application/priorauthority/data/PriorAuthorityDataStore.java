@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.command.application.priorauthority.data;
 
 import java.time.Instant;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
@@ -43,6 +44,19 @@ public class PriorAuthorityDataStore {
             .createdAt(occurredAt)
             .build());
     return fingerprint;
+  }
+
+  /**
+   * Finds a specific version of a prior-authority submission's data, if still retained.
+   *
+   * @param priorAuthorityId the prior-authority submission identifier
+   * @param dataVersion the data version
+   * @return the stored payload, or empty if that version is not present
+   */
+  public Optional<PriorAuthorityDataPayload> findPayload(UUID priorAuthorityId, long dataVersion) {
+    return repository
+        .findById(new PriorAuthorityDataId(priorAuthorityId, dataVersion))
+        .map(PriorAuthorityData::getPayload);
   }
 
   /**

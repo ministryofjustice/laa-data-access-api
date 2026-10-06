@@ -8,7 +8,6 @@ import org.axonframework.messaging.core.annotation.Namespace;
 import org.axonframework.messaging.eventhandling.EventMessage;
 import org.axonframework.messaging.eventhandling.annotation.EventHandler;
 import org.axonframework.messaging.eventhandling.replay.annotation.ResetHandler;
-import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
@@ -152,30 +151,10 @@ public class PriorAuthorityHistoryProjection {
             .priorAuthorityType(priorAuthorityType)
             .eventType(eventType)
             .itemVersion(itemVersion)
-            .serviceName(getServiceName(message))
-            .caseworkerId(getAuthenticatedUserId(message))
+            .serviceName(RequestMetadataDispatchInterceptor.serviceName(message))
+            .caseworkerId(RequestMetadataDispatchInterceptor.caseworkerId(message))
             .occurredAt(occurredAt)
             .build());
-  }
-
-  private static @Nullable String getServiceName(EventMessage message) {
-    Object serviceName =
-        message.metadata().get(RequestMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY);
-    return serviceName == null ? null : serviceName.toString();
-  }
-
-  private static @Nullable UUID getAuthenticatedUserId(EventMessage message) {
-    Object authenticatedUserId =
-        message.metadata().get(RequestMetadataDispatchInterceptor.AUTHENTICATED_USER_ID_KEY);
-    if (authenticatedUserId == null) {
-      return null;
-    }
-    try {
-      return UUID.fromString(authenticatedUserId.toString());
-    } catch (IllegalArgumentException e) {
-      log.warn("Invalid UUID in authenticated user metadata: {}", authenticatedUserId, e);
-      return null;
-    }
   }
 
   @ResetHandler

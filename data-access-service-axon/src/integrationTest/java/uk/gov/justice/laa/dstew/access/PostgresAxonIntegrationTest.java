@@ -398,6 +398,15 @@ class PostgresAxonIntegrationTest {
             ORDER BY sequence_name
             """,
             String.class);
+    List<String> applicationHistoryColumns =
+        jdbcTemplate.queryForList(
+            """
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_schema = 'axon'
+              AND table_name = 'application_history'
+            """,
+            String.class);
 
     assertThat(appliedVersions).containsExactlyElementsOf(expectedMigrationVersions());
     assertThat(tables)
@@ -419,6 +428,9 @@ class PostgresAxonIntegrationTest {
             "work_item_route",
             "work_list_item");
     assertThat(sequences).containsExactly("aggregate-event-global-index-sequence");
+    assertThat(applicationHistoryColumns)
+        .contains("data_version")
+        .doesNotContain("request_payload");
     assertThat(
             jdbcTemplate.queryForObject(
                 """
@@ -541,9 +553,7 @@ class PostgresAxonIntegrationTest {
         .satisfies(
             history -> {
               assertThat(history.getEventType()).isEqualTo("APPLICATION_CREATED");
-              assertThat(history.getRequestPayload())
-                  .contains("\"applicationDataVersion\"", "\"requestFingerprint\"")
-                  .doesNotContain("LAA-123", "Ada", "Lovelace", "Care order");
+              assertThat(history.getDataVersion()).isZero();
               assertThat(history.getServiceName()).isEqualTo("CIVIL_APPLY");
             });
 
@@ -1593,6 +1603,81 @@ class PostgresAxonIntegrationTest {
         .doesNotContain("Integration test note");
 
     awaitHistoryTypes(applicationId, "APPLICATION_CREATED", "APPLICATION_NOTE_CREATED");
+
+    ResponseEntity<ApplicationHistoryResponse> historyResponse =
+        restTemplate.exchange(
+            "http://localhost:"
+                + port
+                + "/api/v0/applications/"
+                + applicationId
+                + "/history-search?eventType=APPLICATION_NOTE_CREATED",
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            ApplicationHistoryResponse.class);
+    assertThat(historyResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(historyResponse.getBody().getEvents())
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getDomainEventType().getValue())
+                  .isEqualTo("APPLICATION_NOTE_CREATED");
+              assertThat(event.getEventDescription()).isEqualTo("Integration test note");
+              assertThat(event.getCaseworkerId()).isEqualTo(TestJwtDecoderConfig.CASEWORKER_ID);
+            });
+    assertThat(awaitHistoryTypes(applicationId, "APPLICATION_CREATED", "APPLICATION_NOTE_CREATED"))
+        .filteredOn(history -> history.getEventType().equals("APPLICATION_NOTE_CREATED"))
+        .singleElement()
+        .satisfies(history -> assertThat(history.getDataVersion()).isEqualTo(1L));
+  }
+
+  @Test
+  void givenAssignedApplication_whenUnassigned_thenHistoryRecordsAuthenticatedCaseworker() {
+    UUID applicationId = UUID.randomUUID();
+    applicationId(post(validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()));
+    projectionAwaiter.awaitApplication(applicationId);
+    markReadyForManualDecision(applicationId);
+
+    ResponseEntity<Void> assignResponse =
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/work-list/" + applicationId + "/assign",
+            HttpMethod.POST,
+            new HttpEntity<>(new WorkListAssignRequest(0L), headers()),
+            Void.class);
+    assertThat(assignResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+    ResponseEntity<Void> unassignResponse =
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/work-list/" + applicationId + "/unassign",
+            HttpMethod.POST,
+            new HttpEntity<>(new WorkListUnassignRequest(1L), headers()),
+            Void.class);
+    assertThat(unassignResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+    awaitHistoryTypes(
+        applicationId,
+        "APPLICATION_CREATED",
+        "ASSIGN_APPLICATION_TO_CASEWORKER",
+        "UNASSIGN_APPLICATION_TO_CASEWORKER");
+    ResponseEntity<ApplicationHistoryResponse> historyResponse =
+        restTemplate.exchange(
+            "http://localhost:"
+                + port
+                + "/api/v0/applications/"
+                + applicationId
+                + "/history-search?eventType=UNASSIGN_APPLICATION_TO_CASEWORKER",
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            ApplicationHistoryResponse.class);
+
+    assertThat(historyResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(historyResponse.getBody().getEvents())
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.getDomainEventType().getValue())
+                  .isEqualTo("UNASSIGN_APPLICATION_TO_CASEWORKER");
+              assertThat(event.getCaseworkerId()).isEqualTo(TestJwtDecoderConfig.CASEWORKER_ID);
+            });
   }
 
   @Test

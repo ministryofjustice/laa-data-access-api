@@ -10,11 +10,15 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
+import java.util.Map;
+import java.util.UUID;
 import org.axonframework.messaging.commandhandling.CommandMessage;
 import org.axonframework.messaging.commandhandling.GenericCommandMessage;
 import org.axonframework.messaging.core.MessageDispatchInterceptorChain;
 import org.axonframework.messaging.core.MessageStream;
 import org.axonframework.messaging.core.MessageType;
+import org.axonframework.messaging.eventhandling.EventMessage;
+import org.axonframework.messaging.eventhandling.GenericEventMessage;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -93,12 +97,56 @@ class RequestMetadataDispatchInterceptorTest {
         .hasMessageContaining("An Entra OID is required");
   }
 
+  @Test
+  void givenServiceNameMetadata_whenRead_thenReturnsServiceName() {
+    EventMessage event =
+        eventMessage(
+            Map.of(RequestMetadataDispatchInterceptor.SERVICE_NAME_METADATA_KEY, "CIVIL_APPLY"));
+
+    assertThat(RequestMetadataDispatchInterceptor.serviceName(event)).isEqualTo("CIVIL_APPLY");
+  }
+
+  @Test
+  void givenNoServiceNameMetadata_whenRead_thenReturnsNull() {
+    EventMessage event = eventMessage(Map.of());
+
+    assertThat(RequestMetadataDispatchInterceptor.serviceName(event)).isNull();
+  }
+
+  @Test
+  void givenAuthenticatedUserMetadata_whenRead_thenReturnsCaseworkerId() {
+    UUID caseworkerId = UUID.randomUUID();
+    EventMessage event =
+        eventMessage(
+            Map.of(
+                RequestMetadataDispatchInterceptor.AUTHENTICATED_USER_ID_KEY,
+                caseworkerId.toString()));
+
+    assertThat(RequestMetadataDispatchInterceptor.caseworkerId(event)).isEqualTo(caseworkerId);
+  }
+
+  @Test
+  void givenNoAuthenticatedUserMetadata_whenRead_thenReturnsNull() {
+    EventMessage event = eventMessage(Map.of());
+
+    assertThat(RequestMetadataDispatchInterceptor.caseworkerId(event)).isNull();
+  }
+
   @SuppressWarnings("unchecked")
   private MessageDispatchInterceptorChain<CommandMessage> chain() {
     MessageDispatchInterceptorChain<CommandMessage> chain =
         mock(MessageDispatchInterceptorChain.class);
     when(chain.proceed(any(), isNull())).thenReturn(mock(MessageStream.class));
     return chain;
+  }
+
+  private EventMessage eventMessage(Map<String, String> metadata) {
+    return new GenericEventMessage(
+        "event-id",
+        new MessageType(String.class),
+        "event",
+        metadata,
+        Instant.parse("2026-07-15T08:00:00Z"));
   }
 
   private Jwt.Builder jwt() {
