@@ -12,45 +12,54 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
  * <p>Every value is fixed on purpose. State handlers may run more than once against the same
  * in-memory database, and the create command is only idempotent when the request fingerprint
  * matches, so nothing here may be random. The shape mirrors {@code ApplicationCreateRequestFixture}
- * in the shared test utilities, which is known to pass the content schema validation.
+ * in the shared test utilities, which is known to pass the content schema validation. Identifiers
+ * nested in the content (proceeding, scope limitation) are derived from the application ID so two
+ * applications never share them.
  */
 final class PactApplicationFixtures {
 
-  /** The application every current consumer state refers to, explicitly or implicitly. */
-  static final UUID APPLICATION_001 = UUID.fromString("00000000-0000-0000-0000-000000000001");
-
-  private static final UUID PROCEEDING_001 =
-      UUID.fromString("00000000-0000-0000-0000-00000000a001");
-  private static final UUID SCOPE_LIMITATION_001 =
-      UUID.fromString("00000000-0000-0000-0000-00000000b001");
+  /** Office code shared by every seeded application, so any pair of them can be linked. */
+  static final String OFFICE_CODE = "1A001B";
 
   private PactApplicationFixtures() {}
 
-  /** A submitted special children act application for client Alice Anderson. */
+  /** The application behind the original Decide states: Alice Anderson, reference LAA-REF-0001. */
   static ApplicationCreateRequest submittedApplication001() {
+    return submittedApplication(PactIds.APPLICATION_001, "LAA-REF-0001", "Alice", "Anderson");
+  }
+
+  /** A submitted special children act application with the given identity. */
+  static ApplicationCreateRequest submittedApplication(
+      UUID applicationId, String laaReference, String clientFirstName, String clientLastName) {
     return ApplicationCreateRequest.builder()
-        .id(APPLICATION_001)
+        .id(applicationId)
         .status(ApplicationStatus.APPLICATION_SUBMITTED)
-        .laaReference("LAA-REF-0001")
-        .applicationContent(application001Content())
+        .laaReference(laaReference)
+        .applicationContent(content(applicationId, clientFirstName, clientLastName))
         .build();
   }
 
-  private static Map<String, Object> application001Content() {
+  /** Derives a stable proceeding ID from the application ID. */
+  static UUID proceedingIdFor(UUID applicationId) {
+    return UUID.nameUUIDFromBytes(("proceeding:" + applicationId).getBytes());
+  }
+
+  private static Map<String, Object> content(
+      UUID applicationId, String clientFirstName, String clientLastName) {
     return Map.ofEntries(
         Map.entry("createdAt", "2026-01-15T09:30:00Z"),
         Map.entry("submittedAt", "2026-01-15T10:00:00Z"),
         Map.entry(
-            "provider", Map.of("officeCode", "1A001B", "contactEmail", "provider@example.com")),
+            "provider", Map.of("officeCode", OFFICE_CODE, "contactEmail", "provider@example.com")),
         Map.entry(
             "client",
             Map.ofEntries(
-                Map.entry("firstName", "Alice"),
-                Map.entry("lastName", "Anderson"),
+                Map.entry("firstName", clientFirstName),
+                Map.entry("lastName", clientLastName),
                 Map.entry("dateOfBirth", "1980-01-01"),
                 Map.entry("appliedPreviously", false),
                 Map.entry("addresses", List.of(homeAddress())))),
-        Map.entry("proceedings", List.of(careOrderProceeding())));
+        Map.entry("proceedings", List.of(careOrderProceeding(applicationId))));
   }
 
   private static Map<String, Object> homeAddress() {
@@ -63,9 +72,11 @@ final class PactApplicationFixtures {
         Map.entry("countryName", "United Kingdom"));
   }
 
-  private static Map<String, Object> careOrderProceeding() {
+  private static Map<String, Object> careOrderProceeding(UUID applicationId) {
+    UUID scopeLimitationId =
+        UUID.nameUUIDFromBytes(("scope-limitation:" + applicationId).getBytes());
     return Map.ofEntries(
-        Map.entry("id", PROCEEDING_001.toString()),
+        Map.entry("id", proceedingIdFor(applicationId).toString()),
         Map.entry("leadProceeding", true),
         Map.entry("code", "SE003"),
         Map.entry("meaning", "Care order"),
@@ -83,15 +94,16 @@ final class PactApplicationFixtures {
         Map.entry("substantiveLevelOfServiceName", "Full Representation"),
         Map.entry("emergencyLevelOfService", 3),
         Map.entry("emergencyLevelOfServiceName", "Full Representation"),
-        Map.entry("scopeLimitations", List.of(finalHearingScopeLimitation())));
-  }
-
-  private static Map<String, Object> finalHearingScopeLimitation() {
-    return Map.ofEntries(
-        Map.entry("id", SCOPE_LIMITATION_001.toString()),
-        Map.entry("type", "SUBSTANTIVE"),
-        Map.entry("code", "FM062"),
-        Map.entry("meaning", "Final hearing"),
-        Map.entry("description", "Limited to all steps up to and including the final hearing"));
+        Map.entry(
+            "scopeLimitations",
+            List.of(
+                Map.ofEntries(
+                    Map.entry("id", scopeLimitationId.toString()),
+                    Map.entry("type", "SUBSTANTIVE"),
+                    Map.entry("code", "FM062"),
+                    Map.entry("meaning", "Final hearing"),
+                    Map.entry(
+                        "description",
+                        "Limited to all steps up to and including the final hearing")))));
   }
 }
