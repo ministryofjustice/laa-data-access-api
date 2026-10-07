@@ -89,6 +89,28 @@ class ApplicationEvolveTest {
         .isEqualTo(objectMapper.readTree(json));
   }
 
+  @ParameterizedTest
+  @ValueSource(strings = {"", ".pdf", ".PDF"})
+  void givenMetadataWithKnownSuffix_whenSerialized_thenPreservesSuffix(String fileSuffix) {
+    DocumentMetadata document =
+        new DocumentMetadata(
+            UUID.randomUUID(),
+            "INVOICE",
+            Instant.parse("2026-09-28T10:00:00Z"),
+            12L,
+            "application/pdf",
+            "checksum",
+            "CIVIL_APPLY",
+            false,
+            fileSuffix);
+    var objectMapper = tools.jackson.databind.json.JsonMapper.builder().build();
+
+    String json = objectMapper.writeValueAsString(document);
+
+    assertThat(objectMapper.readTree(json).get("fileSuffix").asText()).isEqualTo(fileSuffix);
+    assertThat(objectMapper.readValue(json, DocumentMetadata.class)).isEqualTo(document);
+  }
+
   @Test
   void givenDecisionMadeEventWithGranted_whenApply_thenSetsOverallDecision() {
     ApplicationState state = new ApplicationState();

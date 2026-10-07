@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.document;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.With;
@@ -15,7 +16,7 @@ public record DocumentMetadata(
     String checksum,
     String sourceService,
     boolean deleted,
-    String fileSuffix) {
+    @JsonInclude(JsonInclude.Include.NON_NULL) String fileSuffix) {
 
   /** Creates historical document metadata whose storage suffix is unknown. */
   public DocumentMetadata(
