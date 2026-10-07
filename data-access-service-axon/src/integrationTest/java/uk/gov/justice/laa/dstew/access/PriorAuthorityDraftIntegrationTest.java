@@ -132,6 +132,7 @@ class PriorAuthorityDraftIntegrationTest {
     assertThat(draft.getPriorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(draft.getApplicationId()).isEqualTo(applicationId);
     assertThat(draft.getStatus()).isEqualTo(PriorAuthorityResponse.StatusEnum.DRAFT);
+    assertThat(draft.getSubmittedAt()).isNull();
     assertThat(draft.getPriorAuthorityType())
         .isEqualTo(PriorAuthorityResponse.PriorAuthorityTypeEnum.EXPERT);
   }
@@ -280,6 +281,7 @@ class PriorAuthorityDraftIntegrationTest {
     PriorAuthorityResponse priorAuthority =
         objectMapper.readValue(getResponse.getBody(), PriorAuthorityResponse.class);
     assertThat(priorAuthority.getStatus()).isEqualTo(PriorAuthorityResponse.StatusEnum.SUBMITTED);
+    assertThat(priorAuthority.getSubmittedAt()).isEqualTo(body.getSubmittedAt());
     assertThat(priorAuthority.getDisbursementDetails().getDisbursementPurpose())
         .isEqualTo("Court interpreter");
   }
