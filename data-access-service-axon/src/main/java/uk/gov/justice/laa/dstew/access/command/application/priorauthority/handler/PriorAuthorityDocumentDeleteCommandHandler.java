@@ -20,13 +20,14 @@ public class PriorAuthorityDocumentDeleteCommandHandler {
 
   /** Deletes a document from the prior-authority draft and emits the corresponding event. */
   @CommandHandler
-    public DocumentMetadata handle(
+  public DocumentMetadata handle(
       PriorAuthorityDocumentDeleteCommand command,
       PriorAuthorityDraftStore draftStore,
       @InjectEntity(idProperty = "priorAuthorityId") PriorAuthorityAggregate priorAuthority,
       EventAppender eventAppender) {
 
     requireDraftLifecycle(priorAuthority);
+    PriorAuthorityDataPayload existingDraft = requireDraft(command.priorAuthorityId(), draftStore);
     DocumentMetadata document =
         priorAuthority.getState().getUploadedDocuments().stream()
             .filter(uploaded -> uploaded.documentId().equals(command.documentId()))
@@ -38,7 +39,6 @@ public class PriorAuthorityDocumentDeleteCommandHandler {
                         "Document %s not found for Prior Authority %s"
                             .formatted(command.documentId(), command.priorAuthorityId())));
 
-    PriorAuthorityDataPayload existingDraft = requireDraft(command.priorAuthorityId(), draftStore);
     draftStore.upsert(
         command.priorAuthorityId(),
         existingDraft.applicationId(),

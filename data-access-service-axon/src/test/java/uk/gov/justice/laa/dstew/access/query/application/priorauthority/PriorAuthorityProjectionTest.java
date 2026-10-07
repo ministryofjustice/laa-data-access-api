@@ -4,7 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType.*;
+import static uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType.COUNSEL;
+import static uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType.DISBURSEMENT;
+import static uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType.EXPERT;
 
 import java.lang.reflect.Method;
 import java.math.BigDecimal;

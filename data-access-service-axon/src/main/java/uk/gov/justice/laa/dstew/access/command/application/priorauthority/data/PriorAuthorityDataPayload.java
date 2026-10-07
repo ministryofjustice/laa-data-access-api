@@ -46,7 +46,8 @@ public record PriorAuthorityDataPayload(
       PriorAuthorityContent content,
       String serialisedRequest,
       Instant submittedAt) {
-    this(priorAuthorityId, applicationId, content, serialisedRequest, submittedAt, null, null, null);
+    this(
+        priorAuthorityId, applicationId, content, serialisedRequest, submittedAt, null, null, null);
   }
 
   /** Backward-compatible constructor for existing branches/tests using the older 6-arg shape. */

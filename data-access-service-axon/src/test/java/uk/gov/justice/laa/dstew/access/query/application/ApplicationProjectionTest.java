@@ -262,7 +262,7 @@ class ApplicationProjectionTest {
   @Test
   void givenDraftDocument_thenApplicationCreated_thenPreservesProjectedMetadata() {
     UUID applicationId = UUID.randomUUID();
-    UUID documentId = UUID.randomUUID();
+    final UUID documentId = UUID.randomUUID();
     when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.empty());
     when(applicationReadRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 

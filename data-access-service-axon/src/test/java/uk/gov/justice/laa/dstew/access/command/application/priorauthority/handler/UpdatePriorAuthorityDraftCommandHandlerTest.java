@@ -57,7 +57,7 @@ class UpdatePriorAuthorityDraftCommandHandlerTest {
             Map.of(documentId, "file.pdf"));
     PriorAuthorityContent updatedContent =
         new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Updated", null, null, null);
-    UpdatePriorAuthorityDraftCommand command =
+    final UpdatePriorAuthorityDraftCommand command =
         new UpdatePriorAuthorityDraftCommand(
             priorAuthorityId, updatedContent, "new", 2, "PriorAuthority.json", OCCURRED_AT);
 

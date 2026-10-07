@@ -48,20 +48,20 @@ public class PriorAuthorityDocumentUploadCommandHandler {
     return command.documentId();
   }
 
-    private static void requireDraftLifecycle(PriorAuthorityAggregate priorAuthority) {
-        if (priorAuthority.getState().isSubmitted()) {
-            throw new ValidationException(
-                    java.util.List.of("Documents can only be changed on a prior authority draft"));
-        }
+  private static void requireDraftLifecycle(PriorAuthorityAggregate priorAuthority) {
+    if (priorAuthority.getState().isSubmitted()) {
+      throw new ValidationException(
+          java.util.List.of("Documents can only be changed on a prior authority draft"));
     }
+  }
 
-    private static PriorAuthorityDataPayload requireDraft(
-            UUID priorAuthorityId, PriorAuthorityDraftStore draftStore) {
-        return draftStore
-                .find(priorAuthorityId)
-                .orElseThrow(
-                        () ->
-                                new ResourceNotFoundException(
-                                        "Prior Authority draft not found: " + priorAuthorityId));
+  private static PriorAuthorityDataPayload requireDraft(
+      UUID priorAuthorityId, PriorAuthorityDraftStore draftStore) {
+    return draftStore
+        .find(priorAuthorityId)
+        .orElseThrow(
+            () ->
+                new ResourceNotFoundException(
+                    "Prior Authority draft not found: " + priorAuthorityId));
   }
 }

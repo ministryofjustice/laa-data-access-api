@@ -43,8 +43,7 @@ class PriorAuthorityAggregateTest {
   void submittedEventRestoresDataVersion() {
     PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
     aggregate.on(
-        new PriorAuthoritySubmittedEvent(
-            PA_ID, APP_ID, PA_TYPE, SCHEMA_VERSION, 1L, null, NOW));
+        new PriorAuthoritySubmittedEvent(PA_ID, APP_ID, PA_TYPE, SCHEMA_VERSION, 1L, null, NOW));
 
     assertThat(aggregate.getPriorAuthorityId()).isEqualTo(PA_ID);
     assertThat(aggregate.getDataVersion()).isEqualTo(1L);
@@ -76,19 +75,11 @@ class PriorAuthorityAggregateTest {
   @DisplayName("upload event restores filename-free document metadata")
   void documentUploadedEventRestoresMetadata() {
     PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
-    aggregate.on(
-        new PriorAuthorityDraftStartedEvent(PA_ID, APP_ID, PA_TYPE, SCHEMA_VERSION, NOW));
+    aggregate.on(new PriorAuthorityDraftStartedEvent(PA_ID, APP_ID, PA_TYPE, SCHEMA_VERSION, NOW));
     UUID documentId = UUID.randomUUID();
     aggregate.on(
         new PriorAuthorityDocumentUploadedEvent(
-            PA_ID,
-            documentId,
-            NOW,
-            1024L,
-            "application/pdf",
-            "checksum123",
-            APP_ID,
-            "service"));
+            PA_ID, documentId, NOW, 1024L, "application/pdf", "checksum123", APP_ID, "service"));
 
     assertThat(aggregate.getState().getUploadedDocuments())
         .contains(
@@ -100,19 +91,11 @@ class PriorAuthorityAggregateTest {
   @DisplayName("delete event marks document metadata deleted")
   void documentDeletedEventMarksMetadataDeleted() {
     PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
-    aggregate.on(
-        new PriorAuthorityDraftStartedEvent(PA_ID, APP_ID, PA_TYPE, SCHEMA_VERSION, NOW));
+    aggregate.on(new PriorAuthorityDraftStartedEvent(PA_ID, APP_ID, PA_TYPE, SCHEMA_VERSION, NOW));
     UUID documentId = UUID.randomUUID();
     aggregate.on(
         new PriorAuthorityDocumentUploadedEvent(
-            PA_ID,
-            documentId,
-            NOW,
-            1024L,
-            "application/pdf",
-            "checksum123",
-            APP_ID,
-            "service"));
+            PA_ID, documentId, NOW, 1024L, "application/pdf", "checksum123", APP_ID, "service"));
 
     aggregate.on(new PriorAuthorityDocumentDeletedEvent(PA_ID, documentId, NOW, APP_ID));
 
@@ -126,19 +109,11 @@ class PriorAuthorityAggregateTest {
   @DisplayName("document-type event updates metadata")
   void documentTypeUpdatedEventUpdatesMetadata() {
     PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
-    aggregate.on(
-        new PriorAuthorityDraftStartedEvent(PA_ID, APP_ID, PA_TYPE, SCHEMA_VERSION, NOW));
+    aggregate.on(new PriorAuthorityDraftStartedEvent(PA_ID, APP_ID, PA_TYPE, SCHEMA_VERSION, NOW));
     UUID documentId = UUID.randomUUID();
     aggregate.on(
         new PriorAuthorityDocumentUploadedEvent(
-            PA_ID,
-            documentId,
-            NOW,
-            1024L,
-            "application/pdf",
-            "checksum123",
-            APP_ID,
-            "service"));
+            PA_ID, documentId, NOW, 1024L, "application/pdf", "checksum123", APP_ID, "service"));
 
     aggregate.on(new PriorAuthorityDocumentTypeUpdatedEvent(PA_ID, documentId, "INVOICE", NOW));
 
