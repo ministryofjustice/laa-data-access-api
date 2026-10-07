@@ -16,7 +16,32 @@ public record ApplicationDocumentUploadedEvent(
     String contentType,
     String checksum,
     String sourceService,
-    Long applicationDataVersion) {
+    Long applicationDataVersion,
+    String fileSuffix) {
+
+  /** Creates the historical event shape with a data-version pointer but no recorded suffix. */
+  public ApplicationDocumentUploadedEvent(
+      UUID applicationId,
+      UUID documentId,
+      String documentType,
+      Instant uploadedAt,
+      Long size,
+      String contentType,
+      String checksum,
+      String sourceService,
+      Long applicationDataVersion) {
+    this(
+        applicationId,
+        documentId,
+        documentType,
+        uploadedAt,
+        size,
+        contentType,
+        checksum,
+        sourceService,
+        applicationDataVersion,
+        null);
+  }
 
   /** Creates the legacy event shape without a sensitive-data version pointer. */
   public ApplicationDocumentUploadedEvent(

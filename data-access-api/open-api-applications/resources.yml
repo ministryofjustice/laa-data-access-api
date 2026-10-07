@@ -628,7 +628,7 @@ paths:
                   type: string
                   format: binary
                 documentType:
-                  $ref: "./components.yml#/components/schemas/ApplicationDocumentType"
+                  $ref: "../open-api-common/components.yml#/components/schemas/DocumentType"
       responses:
         '201':
           description: Document uploaded and recorded against the Application

@@ -39,7 +39,6 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
-import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
@@ -58,6 +57,7 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.EvidenceDocument;
+import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
@@ -178,7 +178,7 @@ class ApplicationProjectionTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"missing application", "unknown document", "deleted", "no filename"})
+  @ValueSource(strings = {"missing application", "unknown document", "deleted"})
   void givenDocumentUnavailable_whenQueried_thenReturnsNull(String scenario) {
     UUID applicationId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
@@ -192,15 +192,33 @@ class ApplicationProjectionTest {
     when(applicationReadRepository.findById(applicationId))
         .thenReturn(
             "missing application".equals(scenario) ? Optional.empty() : Optional.of(application));
-    if ("no filename".equals(scenario)) {
-      givenDocumentFilenames(application, false, Map.of());
-    }
-
     assertThat(projection.handle(new FindApplicationDocumentQuery(applicationId, documentId)))
         .isNull();
   }
 
-  private ApplicationReadModel documentReadModel(UUID applicationId, UploadDocument document) {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void givenDocumentWithoutFilename_whenQueried_thenReturnsMetadata(boolean submitted) {
+    UUID applicationId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    ApplicationReadModel application =
+        documentReadModel(
+            applicationId,
+            uploadedDocument(documentId, Instant.now(), false).withFileSuffix(".PDF"));
+    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(application));
+    givenDocumentFilenames(application, submitted, Map.of());
+
+    EvidenceDocument document =
+        projection.handle(new FindApplicationDocumentQuery(applicationId, documentId));
+
+    assertThat(document).isNotNull();
+    assertThat(document.documentId()).isEqualTo(documentId);
+    assertThat(document.fileName()).isNull();
+    assertThat(document.fileSuffix()).isEqualTo(".PDF");
+    assertThat(document.storageFilename()).isEqualTo(documentId + ".PDF");
+  }
+
+  private ApplicationReadModel documentReadModel(UUID applicationId, DocumentMetadata document) {
     return ApplicationReadModel.builder()
         .applicationId(applicationId)
         .applicationDataVersion(0L)
@@ -208,8 +226,8 @@ class ApplicationProjectionTest {
         .build();
   }
 
-  private UploadDocument uploadedDocument(UUID documentId, Instant uploadedAt, boolean deleted) {
-    return new UploadDocument(
+  private DocumentMetadata uploadedDocument(UUID documentId, Instant uploadedAt, boolean deleted) {
+    return new DocumentMetadata(
         documentId,
         "GATEWAY_EVIDENCE",
         uploadedAt,
@@ -267,7 +285,7 @@ class ApplicationProjectionTest {
   @Test
   void givenDraftDocument_thenApplicationCreated_thenPreservesProjectedMetadata() {
     UUID applicationId = UUID.randomUUID();
-    UUID documentId = UUID.randomUUID();
+    final UUID documentId = UUID.randomUUID();
     when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.empty());
     when(applicationReadRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
