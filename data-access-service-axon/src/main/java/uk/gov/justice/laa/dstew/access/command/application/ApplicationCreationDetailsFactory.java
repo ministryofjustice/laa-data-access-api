@@ -106,6 +106,8 @@ public class ApplicationCreationDetailsFactory {
         parsed.usedDelegatedFunctions(),
         parsed.categoryOfLaw(),
         parsed.matterType(),
+        parsed.categoryOfLawCode(),
+        parsed.matterTypeCode(),
         parsed.proceedings(),
         serialisedRequest,
         Instant.now(clock),

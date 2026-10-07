@@ -918,12 +918,16 @@ class ApplicationAggregateTest {
         original.usedDelegatedFunctions(),
         original.categoryOfLaw(),
         original.matterType(),
+        original.categoryOfLawCode(),
+        original.matterTypeCode(),
         List.of(
             Proceeding.builder()
                 .id(proceedingId)
                 .leadProceeding(true)
                 .description("Proceeding")
                 .code("SE003")
+                .categoryOfLawCode(original.categoryOfLawCode())
+                .matterTypeCode(original.matterTypeCode())
                 .build()),
         original.serialisedRequest(),
         original.occurredAt(),

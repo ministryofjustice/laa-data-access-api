@@ -14,14 +14,16 @@ Neither option is acceptable at scale. The thin list index solves this by extrac
 
 ## What Was Introduced
 
-### New database table: `application_list_index` (V15 migration)
+### New database table: `application_list_index` (V3 migration)
 
 A thin, purpose-built projection table containing only the columns needed for filtering, sorting, counting, and paging the list endpoint. Rich response-only fields are explicitly excluded.
 
-**Filterable/sortable columns stored:**
-- `status`, `laa_reference`, `matter_type`, `caseworker_id`
+**Columns stored:**
+- `status`, `laa_reference`, `matter_type` (display name), `matter_type_code`, `category_of_law_code`,
+  `caseworker_id`
 - `client_first_name`, `client_last_name`, `client_date_of_birth` — minimum PII required to support client name and DOB filter pushdown
-- `lead_application_id`, `submitted_at`, `is_auto_granted`
+- `lead_application_id`, `submitted_at`, `is_auto_granted`; `submitted_at` is the
+  `ApplicationCreatedEvent.occurredAt` value, not the content's submitted timestamp
 
 **Bookkeeping columns:**
 - `stream_version` — application domain version copied from applicable application events; the
@@ -32,7 +34,7 @@ A thin, purpose-built projection table containing only the columns needed for fi
 
 Without indexes, every filtered query against the list endpoint would require a full sequential scan of the `application_list_index` table — reading every row regardless of how many match the filter. As the table grows this becomes progressively slower and more expensive.
 
-- **Equality indexes** on `status`, `matter_type`, `laa_reference`, `caseworker_id` — allow PostgreSQL to seek directly to matching rows rather than scanning the full table when these filters are applied
+- **Equality indexes** on `status`, `matter_type_code`, `laa_reference`, `caseworker_id` — allow PostgreSQL to seek directly to matching rows rather than scanning the full table when these filters are applied
 - **Functional indexes** on `lower(client_first_name)` and `lower(client_last_name)` — client name filters use a case-insensitive `LIKE 'value%'` predicate (e.g. searching "jane" should match "Jane" or "JANE"). A standard B-tree index on the raw column would not be used by a `lower(column)` expression, so functional indexes on the pre-lowercased value are required. The `ApplicationListIndexSpecification` applies `lower()` consistently to match these indexes, ensuring PostgreSQL uses them rather than falling back to a sequential scan
 
 ### `ApplicationListIndexProjection`
@@ -61,7 +63,7 @@ and derive `isLead` from the group's current lead.
 
 ### `ApplicationListIndexSpecification`
 
-A Spring Data JPA `Specification` factory that converts `FindAllApplicationsQuery` filter parameters into database predicates. All non-null filters produce a PostgreSQL predicate. Client name filters use `lower()` to match the functional indexes in the V15 migration.
+A Spring Data JPA `Specification` factory that converts `FindAllApplicationsQuery` filter parameters into database predicates. A non-null `matterTypeCode` filter uses exact equality against the lead proceeding's `matter_type_code`; the display name is not used as a filter. The index stores the `matter_type` display name separately from its `matter_type_code`. Application `submitted_at` is event-derived and is the stable column used by submitted-date sorting. Client name filters use `lower()` to match their functional indexes.
 
 ### `ApplicationListIndexReadRepository`
 
@@ -80,7 +82,7 @@ The `ApplicationProjection.handle(FindAllApplicationsQuery)` method was refactor
 
 ## Key Benefits
 
-**Filter pushdown to the database.** Filtering by client name, DOB, status, matter type, and LAA reference now executes entirely in PostgreSQL against indexed columns. No application payloads are loaded until after paging has been applied.
+**Filter pushdown to the database.** Filtering by client name, DOB, status, matter type code, and LAA reference now executes entirely in PostgreSQL against indexed columns. No application payloads are loaded until after paging has been applied.
 
 **Elimination of N+1 queries.** The list endpoint now makes exactly two batch reads regardless of page size — one to `application_current_state`, one to `application_data` — rather than one query per application.
 

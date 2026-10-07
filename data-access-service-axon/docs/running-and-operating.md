@@ -201,13 +201,27 @@ replay, and failure semantics.
 Only reset a projection when its event handlers can replay every retained event version and any
 required `application_data` rows remain available.
 
-Resetting a projection should:
+For the application read-code and submission-time migration, the affected processors are
+`application-projection`, `application-list-index-projection`, and `work-list-projection`. There is
+no repository admin CLI that runs this operation. Use the established Axon processor-lifecycle
+procedure, without manually editing tokens or inventing a shell reset command:
 
-- stop only the selected tracking processor;
-- invoke its `@ResetHandler`, which clears its read table;
-- reset only that processor's tokens;
-- replay from the event store;
-- verify row counts and representative API responses before declaring recovery complete.
+1. Stop the three named tracking processors.
+2. For each processor, invoke its own `@ResetHandler` and reset only its own tokens using Axon's
+   processor lifecycle APIs.
+3. Replay each processor from the beginning, then resume it.
+4. Wait for all three processors to catch up.
+5. Compare their row counts and representative values against creation events and the
+   event-versioned proceedings. Verify `application_current_state.submitted_at` and
+   `application_list_index.submitted_at` against creation-event times, the list-index codes against
+   the referenced proceedings, and `work_list_item.ready_at` against application-readiness or
+   prior-authority-submission times. Ensure historical draft creation times remain earlier than
+   their creation-event submission times.
+6. Do not declare the replay complete until all old rows have been rebuilt and checked.
+
+The normal operation for a single projection follows the same order: stop only that processor,
+invoke its reset handler, reset only its tokens, replay from the event store, resume, and verify
+catch-up and representative rows.
 
 It must not delete `domain_event_entry`, `application_data`, or another processor's tokens. See
 [Projections and replay](projections-and-replay.md) for the data flow.

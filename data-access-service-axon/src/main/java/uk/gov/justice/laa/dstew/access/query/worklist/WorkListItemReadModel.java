@@ -43,9 +43,16 @@ public class WorkListItemReadModel {
   @Column(name = "category_of_law")
   private String categoryOfLaw;
 
+  @Column(name = "category_of_law_code")
+  private String categoryOfLawCode;
+
   @JdbcTypeCode(SqlTypes.JSON)
   @Column(name = "matter_types")
   private List<String> matterTypes;
+
+  @JdbcTypeCode(SqlTypes.JSON)
+  @Column(name = "matter_type_codes")
+  private List<String> matterTypeCodes;
 
   @Column(name = "application_status")
   private String applicationStatus;
@@ -56,8 +63,8 @@ public class WorkListItemReadModel {
   @Column(name = "expert_type")
   private String expertType;
 
-  @Column(name = "submitted_at")
-  private Instant submittedAt;
+  @Column(name = "ready_at")
+  private Instant readyAt;
 
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
@@ -94,7 +101,7 @@ public class WorkListItemReadModel {
     this.id = itemId;
     this.itemType = itemType;
     this.parentApplicationId = parentApplicationId;
-    this.submittedAt = updatedAt;
+    this.readyAt = updatedAt;
     this.updatedAt = updatedAt;
     this.assignmentBoundaryType = "DIRECT";
     this.assignmentBoundaryId = itemId;

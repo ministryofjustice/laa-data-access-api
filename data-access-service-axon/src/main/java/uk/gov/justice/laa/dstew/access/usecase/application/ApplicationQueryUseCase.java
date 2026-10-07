@@ -41,7 +41,7 @@ public class ApplicationQueryUseCase {
         new FindAllApplicationsQuery(
             query.status(),
             query.laaReference(),
-            query.matterType(),
+            query.matterTypeCode(),
             query.clientFirstName(),
             query.clientLastName(),
             query.clientDateOfBirth(),

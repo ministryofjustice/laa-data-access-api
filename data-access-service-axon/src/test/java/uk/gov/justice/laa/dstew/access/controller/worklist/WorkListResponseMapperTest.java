@@ -34,7 +34,7 @@ class WorkListResponseMapperTest {
     assertThat(item.getAssignmentVersion()).isZero();
     item.setAssignmentVersion(3L);
     item.setLaaReference("LAA-123");
-    item.setSubmittedAt(Instant.parse("2026-08-28T09:00:00Z"));
+    item.setReadyAt(Instant.parse("2026-08-28T09:00:00Z"));
     item.setPriorAuthorityType("EXPERT");
     item.setExpertType("Pathologist");
 

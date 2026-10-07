@@ -15,6 +15,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
@@ -52,6 +53,50 @@ class ApplicationReadModelAssemblerTest {
 
     assertThat(hydrated).containsExactly(first, last);
     assertThat(first.getLaaReference()).isEqualTo("LAA-123");
+  }
+
+  @Test
+  void givenHydratedPayload_whenAssembled_thenKeepsPersistedSubmittedAtAndCodes() {
+    UUID applicationId = UUID.randomUUID();
+    var eventSubmittedAt = java.time.Instant.parse("2026-08-01T10:00:00Z");
+    var application =
+        ApplicationReadModel.builder()
+            .applicationId(applicationId)
+            .applicationDataVersion(0L)
+            .submittedAt(eventSubmittedAt)
+            .build();
+    Proceeding proceeding =
+        Proceeding.builder()
+            .id(UUID.randomUUID())
+            .leadProceeding(true)
+            .code("SE003")
+            .description("Care order")
+            .categoryOfLawCode("MAT")
+            .matterTypeCode("KPBLW")
+            .build();
+    ApplicationDataPayload base = payload(applicationId);
+    ApplicationDataPayload data =
+        base.withApplicationUpdate(
+            base.client(),
+            base.provider(),
+            base.opponents(),
+            java.time.Instant.parse("2026-07-14T12:30:00Z"),
+            base.usedDelegatedFunctions(),
+            "Family",
+            "SPECIAL_CHILDREN_ACT",
+            "MAT",
+            "KPBLW",
+            List.of(proceeding),
+            "{}",
+            false);
+    ApplicationDataId dataId = new ApplicationDataId(applicationId, 0L);
+    when(applicationDataStore.getAll(List.of(dataId))).thenReturn(Map.of(dataId, data));
+
+    ApplicationReadModel hydrated = assembler.hydrate(application).orElseThrow();
+
+    assertThat(hydrated.getSubmittedAt()).isEqualTo(eventSubmittedAt);
+    assertThat(hydrated.getCategoryOfLawCode()).isEqualTo("MAT");
+    assertThat(hydrated.getMatterTypeCode()).isEqualTo("KPBLW");
   }
 
   @Test

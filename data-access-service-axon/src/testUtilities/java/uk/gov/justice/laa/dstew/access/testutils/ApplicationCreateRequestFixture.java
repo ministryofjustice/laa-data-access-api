@@ -89,6 +89,40 @@ public final class ApplicationCreateRequestFixture {
         .build();
   }
 
+  /** Creates valid application content with two separately identifiable matter type/code pairs. */
+  public static ApplicationCreateRequest applicationWithMatterPairs(
+      String category,
+      String categoryCode,
+      String firstMatter,
+      String firstCode,
+      String secondMatter,
+      String secondCode) {
+    UUID applicationId = UUID.randomUUID();
+    UUID firstProceedingId = UUID.randomUUID();
+    UUID secondProceedingId = UUID.randomUUID();
+    Map<String, Object> firstProceeding = new HashMap<>(validProceedingContent(firstProceedingId));
+    firstProceeding.put("categoryOfLaw", category);
+    firstProceeding.put("categoryOfLawCode", categoryCode);
+    firstProceeding.put("matterType", firstMatter);
+    firstProceeding.put("matterTypeCode", firstCode);
+    Map<String, Object> secondProceeding =
+        new HashMap<>(validProceedingContent(secondProceedingId));
+    secondProceeding.put("categoryOfLaw", category);
+    secondProceeding.put("categoryOfLawCode", categoryCode);
+    secondProceeding.put("matterType", secondMatter);
+    secondProceeding.put("matterTypeCode", secondCode);
+    Map<String, Object> content =
+        new HashMap<>(validApplicationContent(applicationId, firstProceedingId));
+    content.put("proceedings", List.of(firstProceeding, secondProceeding));
+
+    return ApplicationCreateRequest.builder()
+        .id(applicationId)
+        .status(ApplicationStatus.APPLICATION_SUBMITTED)
+        .applicationContent(content)
+        .laaReference("LAA-123")
+        .build();
+  }
+
   /** Creates a valid request with an explicit provider office code and LAA reference. */
   public static ApplicationCreateRequest validCreateApplicationRequest(
       UUID applicationId, UUID applyProceedingId, String officeCode, String laaReference) {

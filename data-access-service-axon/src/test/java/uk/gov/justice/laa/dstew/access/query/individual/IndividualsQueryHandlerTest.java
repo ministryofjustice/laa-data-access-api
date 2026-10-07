@@ -186,6 +186,8 @@ class IndividualsQueryHandlerTest {
             base.usedDelegatedFunctions(),
             base.categoryOfLaw(),
             base.matterType(),
+            base.categoryOfLawCode(),
+            base.matterTypeCode(),
             base.proceedings(),
             base.serialisedRequest(),
             base.occurredAt(),

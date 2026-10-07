@@ -79,8 +79,10 @@ public class ApplicationListIndexProjection {
             .laaReference(data.laaReference())
             .caseworkerId(null)
             .matterType(data.matterType() == null ? null : data.matterType())
+            .categoryOfLawCode(data.categoryOfLawCode())
+            .matterTypeCode(data.matterTypeCode())
             .autoGranted(AutoGrantedState.PENDING)
-            .submittedAt(data.submittedAt())
+            .submittedAt(event.occurredAt())
             .modifiedAt(event.occurredAt())
             .leadApplicationId(null)
             .clientFirstName(client != null ? client.getFirstName() : null)
@@ -205,8 +207,9 @@ public class ApplicationListIndexProjection {
               row.setStatus(event.status());
               row.setLaaReference(data.laaReference());
               row.setMatterType(data.matterType() == null ? null : data.matterType());
+              row.setCategoryOfLawCode(data.categoryOfLawCode());
+              row.setMatterTypeCode(data.matterTypeCode());
               row.setAutoGranted(data.autoGranted());
-              row.setSubmittedAt(data.submittedAt());
               row.setClientFirstName(client != null ? client.getFirstName() : null);
               row.setClientLastName(client != null ? client.getLastName() : null);
               row.setClientDateOfBirth(client != null ? client.getDateOfBirth() : null);

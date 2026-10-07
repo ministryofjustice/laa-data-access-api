@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.query.worklist;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Stream;
@@ -45,7 +46,7 @@ public class WorkListProjection {
     this.priorAuthorityDataStore = priorAuthorityDataStore;
   }
 
-  /** Returns a database-filtered page of active work, oldest submission first. */
+  /** Returns a database-filtered page of active work, oldest ready item first. */
   @QueryHandler
   public FindWorkListItemsResult handle(FindWorkListItemsQuery query) {
     Page<WorkListItemReadModel> page =
@@ -54,7 +55,7 @@ public class WorkListProjection {
             PageRequest.of(
                 query.page() - 1,
                 query.pageSize(),
-                Sort.by(Sort.Direction.ASC, "submittedAt")
+                Sort.by(Sort.Direction.ASC, "readyAt")
                     .and(Sort.by(Sort.Direction.ASC, "itemType"))
                     .and(Sort.by(Sort.Direction.ASC, "id"))));
     return new FindWorkListItemsResult(
@@ -174,14 +175,21 @@ public class WorkListProjection {
   }
 
   private void populateApplicationFields(WorkListItemReadModel item, ApplicationDataPayload data) {
+    record MatterPair(String name, String code) {}
+
     item.setLaaReference(data.laaReference());
     item.setCategoryOfLaw(data.categoryOfLaw());
+    item.setCategoryOfLawCode(data.categoryOfLawCode());
     item.setUsedDelegatedFunctions(data.usedDelegatedFunctions());
-    item.setMatterTypes(
+    List<MatterPair> matterPairs =
         (data.proceedings() == null ? Stream.<Proceeding>empty() : data.proceedings().stream())
-            .map(Proceeding::getMatterType)
             .filter(Objects::nonNull)
+            .map(
+                proceeding ->
+                    new MatterPair(proceeding.getMatterType(), proceeding.getMatterTypeCode()))
             .distinct()
-            .toList());
+            .toList();
+    item.setMatterTypes(matterPairs.stream().map(MatterPair::name).toList());
+    item.setMatterTypeCodes(matterPairs.stream().map(MatterPair::code).toList());
   }
 }

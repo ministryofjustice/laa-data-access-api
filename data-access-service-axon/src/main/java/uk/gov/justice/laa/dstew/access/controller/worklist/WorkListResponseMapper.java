@@ -41,7 +41,7 @@ public class WorkListResponseMapper {
     response.setAssignmentVersion(item.getAssignmentVersion());
     response.setAssignmentBoundaryType(
         WorkListItem.AssignmentBoundaryTypeEnum.valueOf(item.getAssignmentBoundaryType()));
-    response.setSubmittedAt(item.getSubmittedAt().atOffset(ZoneOffset.UTC));
+    response.setSubmittedAt(item.getReadyAt().atOffset(ZoneOffset.UTC));
     response.setLaaReference(item.getLaaReference());
     response.setUsedDelegatedFunctions(item.getUsedDelegatedFunctions());
     response.setCategoryOfLaw(toCategoryOfLaw(item.getCategoryOfLaw()));

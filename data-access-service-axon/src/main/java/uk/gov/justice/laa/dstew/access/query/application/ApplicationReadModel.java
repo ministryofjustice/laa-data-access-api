@@ -70,13 +70,18 @@ public class ApplicationReadModel {
   @Column(name = "caseworker_id")
   private UUID caseworkerId;
 
-  @Transient private Instant submittedAt;
+  @Column(name = "submitted_at")
+  private Instant submittedAt;
 
   @Transient private Boolean usedDelegatedFunctions;
 
   @Transient private String categoryOfLaw;
 
   @Transient private String matterType;
+
+  @Transient private String categoryOfLawCode;
+
+  @Transient private String matterTypeCode;
 
   @Transient private List<Proceeding> proceedings;
 

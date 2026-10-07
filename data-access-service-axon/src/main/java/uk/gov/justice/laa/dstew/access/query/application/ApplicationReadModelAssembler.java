@@ -62,10 +62,11 @@ public class ApplicationReadModelAssembler {
     application.setProvider(data.provider());
     application.setOfficeCode(officeCode(data));
     application.setOpponents(data.opponents());
-    application.setSubmittedAt(data.submittedAt());
     application.setUsedDelegatedFunctions(data.usedDelegatedFunctions());
     application.setCategoryOfLaw(data.categoryOfLaw());
     application.setMatterType(data.matterType());
+    application.setCategoryOfLawCode(data.categoryOfLawCode());
+    application.setMatterTypeCode(data.matterTypeCode());
     application.setProceedings(data.proceedings());
     application.setDecisionStatus(data.overallDecision());
     application.setAutoGranted(data.autoGranted());

@@ -13,6 +13,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration;
@@ -86,6 +87,26 @@ class ApplicationQueryUseCaseSecurityTest extends BaseSecuredUseCaseTest {
     FindAllApplicationsResult result = useCase.getApplications(query);
 
     assertThat(result).isSameAs(expected);
+  }
+
+  @Test
+  void givenMatterTypeCode_whenGettingApplications_thenPassesExactCodeToQuery() {
+    setSecurityContext(CASEWORKER_ROLE);
+    FindAllApplicationsQuery query =
+        new FindAllApplicationsQuery(null, null, "KPBLW", null, null, null, null, null, 1, 20);
+    FindAllApplicationsResult expected =
+        new FindAllApplicationsResult(List.of(), Map.of(), Map.of(), Map.of(), 0, 1, 20);
+    when(queryGateway.query(
+            any(FindAllApplicationsQuery.class), eq(FindAllApplicationsResult.class)))
+        .thenReturn(CompletableFuture.completedFuture(expected));
+
+    useCase.getApplications(query);
+
+    ArgumentCaptor<FindAllApplicationsQuery> captured =
+        ArgumentCaptor.forClass(FindAllApplicationsQuery.class);
+    org.mockito.Mockito.verify(queryGateway)
+        .query(captured.capture(), eq(FindAllApplicationsResult.class));
+    assertThat(captured.getValue().matterTypeCode()).isEqualTo("KPBLW");
   }
 
   @Test

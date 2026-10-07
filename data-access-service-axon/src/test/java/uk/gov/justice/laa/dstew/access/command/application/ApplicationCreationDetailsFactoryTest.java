@@ -46,6 +46,8 @@ class ApplicationCreationDetailsFactoryTest {
     assertThat(details.status()).isEqualTo("APPLICATION_SUBMITTED");
     assertThat(details.laaReference()).isEqualTo("LAA-123");
     assertThat(details.schemaVersion()).isEqualTo(1);
+    assertThat(details.categoryOfLawCode()).isEqualTo("MAT");
+    assertThat(details.matterTypeCode()).isEqualTo("KPBLW");
     assertThat(details.occurredAt()).isEqualTo(FIXED_NOW);
   }
 
@@ -157,6 +159,8 @@ class ApplicationCreationDetailsFactoryTest {
             "usedDelegatedFunctions",
             "categoryOfLaw",
             "matterType",
+            "categoryOfLawCode",
+            "matterTypeCode",
             "proceedings",
             "serialisedRequest",
             "occurredAt",
@@ -207,9 +211,11 @@ class ApplicationCreationDetailsFactoryTest {
             .id(proceedingId)
             .leadProceeding(true)
             .description("Care order")
+            .categoryOfLawCode("MAT")
+            .matterTypeCode("KPBLW")
             .build();
     return new ParsedAppContentDetails(
-        null, null, null, null, null, null, null, List.of(proceeding));
+        null, null, null, null, null, "MAT", "KPBLW", null, null, List.of(proceeding));
   }
 
   private CreateApplicationCommand command(UUID applicationId) {
@@ -231,6 +237,8 @@ class ApplicationCreationDetailsFactoryTest {
         null,
         "Family",
         "SPECIAL_CHILDREN_ACT",
+        "MAT",
+        "KPBLW",
         Instant.parse("2026-07-14T12:30:00Z"),
         false,
         List.of());

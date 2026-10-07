@@ -208,6 +208,8 @@ public class ApplicationProjection {
   public void on(ApplicationCreatedEvent event, QueryUpdateEmitter queryUpdateEmitter) {
     ApplicationDataPayload data =
         applicationDataStore.get(event.applicationId(), event.applicationDataVersion());
+    ApplicationReadModel existing =
+        applicationReadRepository.findById(event.applicationId()).orElse(null);
     ApplicationReadModel saved =
         applicationReadRepository.save(
             ApplicationReadModel.builder()
@@ -216,17 +218,14 @@ public class ApplicationProjection {
                 .applicationDataVersion(event.applicationDataVersion())
                 .applicationVersion(0L)
                 .schemaVersion(event.schemaVersion())
-                .createdAt(event.occurredAt())
+                .createdAt(existing == null ? event.occurredAt() : existing.getCreatedAt())
+                .submittedAt(event.occurredAt())
                 .modifiedAt(event.occurredAt())
                 .leadApplicationId(null)
                 .linkedGroupId(null)
                 .potentialDuplicates(event.potentialDuplicates())
                 .officeCode(ApplicationReadModelAssembler.officeCode(data))
-                .uploadedDocuments(
-                    applicationReadRepository
-                        .findById(event.applicationId())
-                        .map(ApplicationReadModel::getUploadedDocuments)
-                        .orElse(List.of()))
+                .uploadedDocuments(existing == null ? List.of() : existing.getUploadedDocuments())
                 .build());
     queryUpdateEmitter.emit(
         FindApplicationByIdQuery.class,

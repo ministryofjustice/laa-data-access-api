@@ -19,6 +19,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.dao.DataIntegrityViolationException;
+import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 
 class ApplicationDataStoreTest {
 
@@ -26,7 +27,28 @@ class ApplicationDataStoreTest {
   void givenFilename_whenContentUpdated_thenEveryUpdatePreservesImmutableFilenameMap() {
     UUID documentId = UUID.randomUUID();
     ApplicationDataPayload original =
-        ApplicationDataPayload.from(applicationCreationDetails(UUID.randomUUID()));
+        ApplicationDataPayload.from(applicationCreationDetails(UUID.randomUUID()))
+            .withApplicationUpdate(
+                null,
+                null,
+                List.of(),
+                Instant.parse("2026-07-14T12:30:00Z"),
+                false,
+                "Family",
+                "Children Act",
+                "MAT",
+                "KPBLW",
+                List.of(
+                    Proceeding.builder()
+                        .id(UUID.randomUUID())
+                        .leadProceeding(true)
+                        .code("SE003")
+                        .description("Care order")
+                        .categoryOfLawCode("MAT")
+                        .matterTypeCode("KPBLW")
+                        .build()),
+                "{}",
+                false);
     ApplicationDataPayload payload = original.withDocumentFilename(documentId, "client-report.pdf");
 
     assertThat(original.documentFilenames()).isEmpty();
@@ -50,6 +72,8 @@ class ApplicationDataStoreTest {
                 payload.usedDelegatedFunctions(),
                 payload.categoryOfLaw(),
                 payload.matterType(),
+                payload.categoryOfLawCode(),
+                payload.matterTypeCode(),
                 payload.proceedings(),
                 "{}",
                 true));
@@ -58,6 +82,12 @@ class ApplicationDataStoreTest {
             updated ->
                 assertThat(updated.documentFilenames())
                     .containsExactlyEntriesOf(Map.of(documentId, "client-report.pdf")));
+    assertThat(updates)
+        .allSatisfy(
+            updated -> {
+              assertThat(updated.categoryOfLawCode()).isEqualTo("MAT");
+              assertThat(updated.matterTypeCode()).isEqualTo("KPBLW");
+            });
     assertThatThrownBy(() -> payload.documentFilenames().put(UUID.randomUUID(), "other.pdf"))
         .isInstanceOf(UnsupportedOperationException.class);
   }
@@ -74,6 +104,32 @@ class ApplicationDataStoreTest {
     ApplicationDataPayload payload = mapper.treeToValue(json, ApplicationDataPayload.class);
 
     assertThat(payload.documentFilenames()).isEmpty();
+  }
+
+  @Test
+  void givenLegacyPayloadWithoutTopLevelCodes_whenDeserialized_thenRestoresLeadCodes()
+      throws Exception {
+    ObjectMapper mapper = new ObjectMapper().findAndRegisterModules();
+    ObjectNode json =
+        mapper.valueToTree(
+            ApplicationDataPayload.from(applicationCreationDetails(UUID.randomUUID())));
+    json.set(
+        "proceedings",
+        mapper.valueToTree(
+            List.of(
+                Proceeding.builder()
+                    .id(UUID.randomUUID())
+                    .leadProceeding(true)
+                    .code("SE003")
+                    .description("Care order")
+                    .categoryOfLawCode("MAT")
+                    .matterTypeCode("KPBLW")
+                    .build())));
+
+    ApplicationDataPayload payload = mapper.treeToValue(json, ApplicationDataPayload.class);
+
+    assertThat(payload.categoryOfLawCode()).isEqualTo("MAT");
+    assertThat(payload.matterTypeCode()).isEqualTo("KPBLW");
   }
 
   private ApplicationDataRepository repository;

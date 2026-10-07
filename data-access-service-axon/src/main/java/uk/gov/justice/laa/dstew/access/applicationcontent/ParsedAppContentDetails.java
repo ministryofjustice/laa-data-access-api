@@ -12,6 +12,8 @@ public record ParsedAppContentDetails(
     List<Opponent> opponents,
     String categoryOfLaw,
     String matterType,
+    String categoryOfLawCode,
+    String matterTypeCode,
     Instant submittedAt,
     Boolean usedDelegatedFunctions,
     List<Proceeding> proceedings) {}

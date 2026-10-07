@@ -30,8 +30,8 @@ public final class ApplicationListIndexSpecification {
       if (query.laaReference() != null) {
         predicates.add(cb.equal(root.get("laaReference"), query.laaReference()));
       }
-      if (query.matterType() != null) {
-        predicates.add(cb.equal(root.get("matterType"), query.matterType()));
+      if (query.matterTypeCode() != null) {
+        predicates.add(cb.equal(root.get("matterTypeCode"), query.matterTypeCode()));
       }
       if (query.clientFirstName() != null) {
         predicates.add(likeIgnoreCase(cb, root, "clientFirstName", query.clientFirstName()));

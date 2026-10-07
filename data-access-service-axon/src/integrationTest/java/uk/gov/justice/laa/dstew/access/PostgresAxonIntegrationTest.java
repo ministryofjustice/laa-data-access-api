@@ -502,8 +502,7 @@ class PostgresAxonIntegrationTest {
             String.class);
     assertThat(currentStateColumns)
         .contains("application_data_version")
-        .doesNotContain(
-            "laa_reference", "application_content", "individuals", "submitted_at", "proceedings");
+        .doesNotContain("laa_reference", "application_content", "individuals", "proceedings");
   }
 
   @Test
@@ -531,7 +530,8 @@ class PostgresAxonIntegrationTest {
     assertThat(projected.getStatus()).isEqualTo("APPLICATION_SUBMITTED");
     assertThat(projected.getLaaReference()).isEqualTo("LAA-123");
     assertThat(projected.getSchemaVersion()).isEqualTo(1);
-    assertThat(projected.getSubmittedAt()).isEqualTo(Instant.parse("2026-07-14T12:30:00Z"));
+    assertThat(projected.getSubmittedAt()).isEqualTo(projected.getModifiedAt());
+    assertThat(projected.getSubmittedAt()).isNotEqualTo(Instant.parse("2026-07-14T12:30:00Z"));
     assertThat(projected.getOfficeCode()).isEqualTo("1A001B");
     assertThat(projected.getUsedDelegatedFunctions()).isFalse();
     assertThat(projected.getCategoryOfLaw()).isEqualTo("Family");
@@ -1000,7 +1000,7 @@ class PostgresAxonIntegrationTest {
             .status(ApplicationStatus.APPLICATION_SUBMITTED)
             .laaReference("LAA-123")
             .lastUpdated(actual.getLastUpdated())
-            .submittedAt(OffsetDateTime.parse("2026-07-14T12:30:00Z"))
+            .submittedAt(actual.getLastUpdated())
             .isLead(false)
             .usedDelegatedFunctions(false)
             .autoGranted(AutoGranted.PENDING)

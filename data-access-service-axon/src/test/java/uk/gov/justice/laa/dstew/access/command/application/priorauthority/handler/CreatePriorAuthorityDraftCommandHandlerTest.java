@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import org.junit.jupiter.api.Test;
@@ -64,6 +65,8 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
             null,
             null,
             null,
+            null,
+            null,
             "{}",
             null,
             null,
@@ -72,7 +75,8 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
             null,
             null,
             null,
-            null);
+            null,
+            Map.of());
 
     when(application.isGranted()).thenReturn(true);
     when(draftStore.exists(priorAuthorityId)).thenReturn(false);
@@ -165,6 +169,8 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
             null,
             null,
             null,
+            null,
+            null,
             "{}",
             null,
             null,
@@ -173,7 +179,8 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
             null,
             null,
             null,
-            null);
+            null,
+            Map.of());
 
     when(application.isGranted()).thenReturn(true);
     when(draftStore.exists(priorAuthorityId)).thenReturn(false);

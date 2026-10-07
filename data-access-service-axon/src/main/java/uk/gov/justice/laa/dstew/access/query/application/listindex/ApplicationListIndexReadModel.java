@@ -52,6 +52,12 @@ public class ApplicationListIndexReadModel {
   @Column(name = "matter_type")
   private String matterType;
 
+  @Column(name = "category_of_law_code")
+  private String categoryOfLawCode;
+
+  @Column(name = "matter_type_code")
+  private String matterTypeCode;
+
   @Enumerated(EnumType.STRING)
   @Column(name = "auto_granted", nullable = false)
   private AutoGrantedState autoGranted;

@@ -11,7 +11,14 @@ rebuilt without changing aggregate event streams or immutable application-data v
 | `application-history-projection` | Pooled streaming | `application_history` |
 | `linked-application-group-projection` | Pooled streaming | `linked_application_group_current_state` |
 | `application-list-index-projection` | Pooled streaming | `application_list_index` |
+| `work-list-projection` | Pooled streaming | `work_list_item` |
 | `application-group-route` | Subscribing | `application_group_route`, synchronously in the command transaction |
+
+`application-projection` owns the event-derived `application_current_state.submitted_at`.
+`application-list-index-projection` owns the lead-proceeding name/code columns and the
+event-derived `application_list_index.submitted_at` used for submitted-date sorting.
+`work-list-projection` owns `work_list_item`, including `ready_at`, which records when an
+application became ready or a prior authority was submitted.
 
 Tracking processors maintain tokens and run independently of the command thread. A failure stops
 token progress past the failing event, allowing recovery without silently skipping it. The
@@ -158,6 +165,18 @@ sequenceDiagram
 
 Do not delete Axon event rows or `application_data` as part of a projection reset. Those are source
 records, not projections.
+
+After deploying the read-model migration, the existing rows are not backfilled. Stop
+`application-projection`, `application-list-index-projection`, and `work-list-projection`; reset
+each processor only through its Axon lifecycle API so its reset handler clears only its own table
+and its tokens restart from the beginning; then resume all three processors. Wait for each processor
+to catch up before relying on the rebuilt values. Compare table counts and representative
+`submitted_at` values with their creation events, compare stored legal codes with the proceedings in
+the event-pinned `application_data` versions, and compare `ready_at` with the readiness or
+prior-authority submission events. Historical drafts must replay their draft-start event before
+their creation event so `created_at` retains the original draft time. Do not mark the replay complete
+until all old rows have been rebuilt. No repository admin CLI executes this reset; follow the
+processor-lifecycle operation in [Running and operating](running-and-operating.md#projection-reset-and-replay).
 
 ## Development checklist
 

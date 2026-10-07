@@ -42,6 +42,8 @@ import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationRead
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 
 class WorkListProjectionTest {
   private WorkListItemReadRepository items;
@@ -58,7 +60,7 @@ class WorkListProjectionTest {
   }
 
   @Test
-  void givenManualApplication_whenHandled_thenCreatesUnassignedApplicationWorkItem() {
+  void givenApplicationReady_whenProjected_thenReadyAtIsReadinessEventTime() {
     UUID applicationId = UUID.randomUUID();
 
     ApplicationDataPayload data = mock(ApplicationDataPayload.class);
@@ -90,11 +92,11 @@ class WorkListProjectionTest {
     assertThat(row.getAssignmentBoundaryType()).isEqualTo("DIRECT");
     assertThat(row.getAssignmentVersion()).isZero();
     assertThat(row.getItemVersion()).isEqualTo(3L);
-    assertThat(row.getSubmittedAt()).isEqualTo(occurredAt);
+    assertThat(row.getReadyAt()).isEqualTo(occurredAt);
   }
 
   @Test
-  void givenCreatedPriorAuthority_whenHandled_thenCreatesDirectWorkUnderItsParent() {
+  void givenPriorAuthoritySubmitted_whenProjected_thenReadyAtIsSubmissionEventTime() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     ApplicationDataPayload parentData = mock(ApplicationDataPayload.class);
@@ -107,8 +109,10 @@ class WorkListProjectionTest {
     when(applicationDataStore.get(applicationId, 7L)).thenReturn(parentData);
     when(parentData.laaReference()).thenReturn("LAA-654321");
     when(parentData.categoryOfLaw()).thenReturn("FAMILY");
+    when(parentData.categoryOfLawCode()).thenReturn("MAT");
     when(parentData.proceedings()).thenReturn(List.of(proceeding));
     when(proceeding.getMatterType()).thenReturn("SPECIAL_CHILDREN_ACT");
+    when(proceeding.getMatterTypeCode()).thenReturn("KPBLW");
     when(priorAuthorityDataStore.get(priorAuthorityId, 0L)).thenReturn(priorAuthorityData);
     when(priorAuthorityData.content()).thenReturn(content);
     when(content.priorAuthorityType())
@@ -134,12 +138,76 @@ class WorkListProjectionTest {
     assertThat(captor.getValue().getParentApplicationId()).isEqualTo(applicationId);
     assertThat(captor.getValue().getAssignmentBoundaryId()).isEqualTo(priorAuthorityId);
     assertThat(captor.getValue().getAssignmentVersion()).isZero();
-    assertThat(captor.getValue().getSubmittedAt()).isEqualTo(Instant.parse("2026-08-28T10:00:00Z"));
+    assertThat(captor.getValue().getReadyAt()).isEqualTo(Instant.parse("2026-08-28T10:00:00Z"));
     assertThat(captor.getValue().getLaaReference()).isEqualTo("LAA-654321");
     assertThat(captor.getValue().getCategoryOfLaw()).isEqualTo("FAMILY");
     assertThat(captor.getValue().getMatterTypes()).containsExactly("SPECIAL_CHILDREN_ACT");
+    assertThat(captor.getValue().getCategoryOfLawCode()).isEqualTo("MAT");
+    assertThat(captor.getValue().getMatterTypeCodes()).containsExactly("KPBLW");
     assertThat(captor.getValue().getPriorAuthorityType()).isEqualTo("EXPERT");
     assertThat(captor.getValue().getExpertType()).isEqualTo("Pathologist");
+  }
+
+  @Test
+  void givenPriorAuthority_whenProjected_thenUsesParentMatterPairs() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    ApplicationDataPayload parentData = mock(ApplicationDataPayload.class);
+    PriorAuthorityDataPayload priorAuthorityData = mock(PriorAuthorityDataPayload.class);
+    PriorAuthorityContent content = mock(PriorAuthorityContent.class);
+    when(applicationDataStore.get(applicationId, 7L)).thenReturn(parentData);
+    when(parentData.categoryOfLaw()).thenReturn("Family");
+    when(parentData.categoryOfLawCode()).thenReturn("MAT");
+    when(parentData.proceedings()).thenReturn(List.of(proceeding("Children Act", "KPBLW")));
+    when(priorAuthorityDataStore.get(priorAuthorityId, 0L)).thenReturn(priorAuthorityData);
+    when(priorAuthorityData.content()).thenReturn(content);
+    when(content.priorAuthorityType()).thenReturn(PriorAuthorityType.COUNSEL);
+
+    projection.on(
+        new PriorAuthoritySubmittedEvent(
+            priorAuthorityId,
+            applicationId,
+            "type",
+            1,
+            0,
+            7L,
+            Instant.parse("2026-08-28T10:00:00Z")),
+        message());
+
+    ArgumentCaptor<WorkListItemReadModel> captor =
+        ArgumentCaptor.forClass(WorkListItemReadModel.class);
+    verify(items).save(captor.capture());
+    assertThat(captor.getValue().getCategoryOfLaw()).isEqualTo("Family");
+    assertThat(captor.getValue().getCategoryOfLawCode()).isEqualTo("MAT");
+    assertThat(captor.getValue().getMatterTypes()).containsExactly("Children Act");
+    assertThat(captor.getValue().getMatterTypeCodes()).containsExactly("KPBLW");
+  }
+
+  @Test
+  void givenRepeatedMatterPair_whenProjected_thenKeepsAlignedDistinctPairs() {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationDataPayload data = mock(ApplicationDataPayload.class);
+    List<Proceeding> proceedings =
+        List.of(
+            proceeding("Children Act", "KPBLW"),
+            proceeding("Children Act", "KPBLW"),
+            proceeding("Children Act", "ALT"));
+    when(applicationDataStore.get(applicationId, 5L)).thenReturn(data);
+    when(data.proceedings()).thenReturn(proceedings);
+    when(data.categoryOfLaw()).thenReturn("Family");
+    when(data.categoryOfLawCode()).thenReturn("MAT");
+
+    projection.on(
+        new ApplicationReadyForManualAssessmentEvent(
+            applicationId, 3L, 5L, Instant.parse("2026-08-28T10:00:00Z")),
+        message());
+
+    ArgumentCaptor<WorkListItemReadModel> captor =
+        ArgumentCaptor.forClass(WorkListItemReadModel.class);
+    verify(items).save(captor.capture());
+    assertThat(captor.getValue().getMatterTypes()).containsExactly("Children Act", "Children Act");
+    assertThat(captor.getValue().getMatterTypeCodes()).containsExactly("KPBLW", "ALT");
+    assertThat(captor.getValue().getCategoryOfLawCode()).isEqualTo("MAT");
   }
 
   @Test
@@ -188,7 +256,7 @@ class WorkListProjectionTest {
   }
 
   @Test
-  void givenWorkListQuery_whenHandled_thenPagesWithOldestSubmissionFirst() {
+  void givenWorkListQuery_whenHandled_thenPagesWithOldestReadyTimeFirst() {
     WorkListItemReadModel item =
         new WorkListItemReadModel(
             WorkItemType.APPLICATION,
@@ -210,8 +278,19 @@ class WorkListProjectionTest {
     assertThat(result.items()).containsExactly(item);
     assertThat(result.requestedPage()).isEqualTo(1);
     assertThat(result.requestedPageSize()).isEqualTo(20);
-    assertThat(pageable.getValue().getSort().getOrderFor("submittedAt").getDirection())
+    assertThat(pageable.getValue().getSort().getOrderFor("readyAt").getDirection())
         .isEqualTo(Sort.Direction.ASC);
+  }
+
+  private Proceeding proceeding(String name, String code) {
+    return Proceeding.builder()
+        .id(UUID.randomUUID())
+        .leadProceeding(false)
+        .code("SE003")
+        .description("Proceeding")
+        .matterType(name)
+        .matterTypeCode(code)
+        .build();
   }
 
   @Test

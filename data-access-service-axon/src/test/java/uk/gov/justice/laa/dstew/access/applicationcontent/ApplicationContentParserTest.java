@@ -91,4 +91,38 @@ class ApplicationContentParserTest {
     assertThat(result.proceedings()).isEmpty();
     assertThat(result.opponents()).isNotNull();
   }
+
+  @Test
+  void givenLeadProceeding_whenParsing_thenReturnsNamesAndCodes() {
+    Map<String, Object> rawContent =
+        Map.of(
+            "submittedAt",
+            "2026-01-15T10:20:30Z",
+            "proceedings",
+            List.of(
+                Map.of(
+                    "id",
+                    UUID.randomUUID().toString(),
+                    "leadProceeding",
+                    true,
+                    "code",
+                    "SE003",
+                    "description",
+                    "Test proceeding",
+                    "categoryOfLaw",
+                    "Family",
+                    "categoryOfLawCode",
+                    "MAT",
+                    "matterType",
+                    "SPECIAL_CHILDREN_ACT",
+                    "matterTypeCode",
+                    "KPBLW")));
+
+    ParsedAppContentDetails result = parser.parse(rawContent);
+
+    assertThat(result.categoryOfLaw()).isEqualTo("Family");
+    assertThat(result.categoryOfLawCode()).isEqualTo("MAT");
+    assertThat(result.matterType()).isEqualTo("SPECIAL_CHILDREN_ACT");
+    assertThat(result.matterTypeCode()).isEqualTo("KPBLW");
+  }
 }
