@@ -114,7 +114,7 @@
       "description": "Scope limitations for the proceeding"
     },
     "involvedChildren": {
-      "type": "array",
+      "type": ["array", "null"],
       "items": {
         "$ref": "Child.json"
       },

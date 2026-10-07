@@ -9,6 +9,7 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteResolver;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationLinkPlan;
+import uk.gov.justice.laa.dstew.access.exception.LinkedApplicationGroupVersionConflictException;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
@@ -46,19 +47,37 @@ public class LinkApplicationCommandHandler {
   @SuppressWarnings("checkstyle:MissingSwitchDefault")
   private Runnable planAction(LinkApplicationCommand command, ApplicationLinkPlan plan) {
     return switch (plan.action()) {
-      case CREATE_GROUP ->
-          () ->
-              dispatcher.dispatch(
-                  new EstablishLinkedApplicationGroupCommand(
-                      UUID.randomUUID(),
-                      command.targetApplicationId(),
-                      List.of(command.targetApplicationId(), command.sourceApplicationId()),
-                      command.occurredAt()));
-      case ADD_TO_EXISTING_GROUP ->
-          () ->
-              dispatcher.dispatch(
-                  new AddApplicationToLinkedGroupCommand(
-                      plan.groupId(), command.sourceApplicationId(), command.occurredAt()));
+      case CREATE_GROUP -> {
+        if (command.expectedTargetGroup() != null) {
+          throw LinkedApplicationGroupVersionConflictException.targetNoLongerLinked(
+              command.targetApplicationId());
+        }
+        yield () ->
+            dispatcher.dispatch(
+                new EstablishLinkedApplicationGroupCommand(
+                    UUID.randomUUID(),
+                    command.targetApplicationId(),
+                    List.of(command.targetApplicationId(), command.sourceApplicationId()),
+                    command.occurredAt()));
+      }
+      case ADD_TO_EXISTING_GROUP -> {
+        var expectedTargetGroup = command.expectedTargetGroup();
+        if (expectedTargetGroup == null) {
+          throw LinkedApplicationGroupVersionConflictException.versionRequired(
+              command.targetApplicationId());
+        }
+        if (!expectedTargetGroup.groupId().equals(plan.groupId())) {
+          throw LinkedApplicationGroupVersionConflictException.groupChanged(
+              command.targetApplicationId());
+        }
+        yield () ->
+            dispatcher.dispatch(
+                new AddApplicationToLinkedGroupCommand(
+                    plan.groupId(),
+                    command.sourceApplicationId(),
+                    expectedTargetGroup.version(),
+                    command.occurredAt()));
+      }
       case ALREADY_LINKED ->
           () -> {
             // Idempotent success.

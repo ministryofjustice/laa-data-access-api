@@ -17,6 +17,8 @@ import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationUseC
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.document.UploadDocumentUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkApplicationUseCase;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MakeApplicationLeadUseCase;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.UnlinkApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ReadyApplicationResult;
@@ -33,6 +35,7 @@ import uk.gov.justice.laa.dstew.access.model.DocumentDeleteResponse;
 import uk.gov.justice.laa.dstew.access.model.DocumentType;
 import uk.gov.justice.laa.dstew.access.model.DocumentUpdateResponse;
 import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
+import uk.gov.justice.laa.dstew.access.model.LinkedGroupChangeRequest;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.model.UploadApplicationDocumentResponse;
@@ -55,12 +58,16 @@ public class ApplicationCommandController
   private final UpdateApplicationUseCase updateApplicationUseCase;
   private final UploadDocumentUseCase uploadDocumentUseCase;
   private final LinkApplicationUseCase linkApplicationUseCase;
+  private final MakeApplicationLeadUseCase makeApplicationLeadUseCase;
+  private final UnlinkApplicationUseCase unlinkApplicationUseCase;
   private final CreateApplicationCommandMapper commandMapper;
   private final MakeDecisionCommandMapper decisionCommandMapper;
   private final CreateNoteCommandMapper createNoteCommandMapper;
   private final AutoGrantOutcomeCommandMapper autoGrantOutcomeCommandMapper;
   private final UpdateApplicationCommandMapper updateApplicationCommandMapper;
   private final LinkApplicationCommandMapper linkCommandMapper;
+  private final MakeApplicationLeadCommandMapper makeApplicationLeadCommandMapper;
+  private final UnlinkApplicationCommandMapper unlinkApplicationCommandMapper;
   private final AuthenticatedUserId authenticatedUserId;
 
   /** Creates the command adapter. */
@@ -72,12 +79,16 @@ public class ApplicationCommandController
       UpdateApplicationUseCase updateApplicationUseCase,
       UploadDocumentUseCase uploadDocumentUseCase,
       LinkApplicationUseCase linkApplicationUseCase,
+      MakeApplicationLeadUseCase makeApplicationLeadUseCase,
+      UnlinkApplicationUseCase unlinkApplicationUseCase,
       CreateApplicationCommandMapper commandMapper,
       MakeDecisionCommandMapper decisionCommandMapper,
       CreateNoteCommandMapper createNoteCommandMapper,
       AutoGrantOutcomeCommandMapper autoGrantOutcomeCommandMapper,
       UpdateApplicationCommandMapper updateApplicationCommandMapper,
       LinkApplicationCommandMapper linkCommandMapper,
+      MakeApplicationLeadCommandMapper makeApplicationLeadCommandMapper,
+      UnlinkApplicationCommandMapper unlinkApplicationCommandMapper,
       AuthenticatedUserId authenticatedUserId) {
     this.createApplicationUseCase = createApplicationUseCase;
     this.makeDecisionUseCase = makeDecisionUseCase;
@@ -86,12 +97,16 @@ public class ApplicationCommandController
     this.updateApplicationUseCase = updateApplicationUseCase;
     this.uploadDocumentUseCase = uploadDocumentUseCase;
     this.linkApplicationUseCase = linkApplicationUseCase;
+    this.makeApplicationLeadUseCase = makeApplicationLeadUseCase;
+    this.unlinkApplicationUseCase = unlinkApplicationUseCase;
     this.commandMapper = commandMapper;
     this.decisionCommandMapper = decisionCommandMapper;
     this.createNoteCommandMapper = createNoteCommandMapper;
     this.autoGrantOutcomeCommandMapper = autoGrantOutcomeCommandMapper;
     this.updateApplicationCommandMapper = updateApplicationCommandMapper;
     this.linkCommandMapper = linkCommandMapper;
+    this.makeApplicationLeadCommandMapper = makeApplicationLeadCommandMapper;
+    this.unlinkApplicationCommandMapper = unlinkApplicationCommandMapper;
     this.authenticatedUserId = authenticatedUserId;
   }
 
@@ -111,6 +126,26 @@ public class ApplicationCommandController
   public ResponseEntity<Void> linkApplication(
       ServiceName serviceName, UUID id, ApplicationLinkRequest request) {
     linkApplicationUseCase.execute(linkCommandMapper.toCommand(id, request));
+    return ResponseEntity.noContent().build();
+  }
+
+  /** Makes an Application the lead of its linked group. */
+  @Override
+  @LogMethodArguments
+  @LogMethodResponse
+  public ResponseEntity<Void> makeApplicationLead(
+      ServiceName serviceName, UUID id, LinkedGroupChangeRequest request) {
+    makeApplicationLeadUseCase.execute(makeApplicationLeadCommandMapper.toCommand(id, request));
+    return ResponseEntity.noContent().build();
+  }
+
+  /** Removes an Application from its linked group. */
+  @Override
+  @LogMethodArguments
+  @LogMethodResponse
+  public ResponseEntity<Void> unlinkApplication(
+      ServiceName serviceName, UUID id, LinkedGroupChangeRequest request) {
+    unlinkApplicationUseCase.execute(unlinkApplicationCommandMapper.toCommand(id, request));
     return ResponseEntity.noContent().build();
   }
 
