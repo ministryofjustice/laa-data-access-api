@@ -34,6 +34,7 @@ experience should follow the learning path below before using the documents as a
 | [Document lifecycle](document-lifecycle.md) | Application and Prior Authority upload, document queries, type updates, deletion, and SDS key decisions |
 | [Failure behaviour](failure-behaviour.md) | Expected API, transaction, projection, and recovery outcomes for common failures |
 | [Running and operating](running-and-operating.md) | Local startup, tests, store inspection, processor recovery, and retention operations |
+| [Pact provider states](pact-provider-states.md) | The state strings consumers use in contract tests, the identifiers each guarantees, and how verification runs |
 | [Glossary](glossary.md) | Axon and module-specific terminology used throughout these guides |
 | [Sequence diagrams](sequence-diagrams/README.md) | Step-by-step application creation, linked-group changes, and projection flows |
 | [Architecture decisions](adr/README.md) | Why significant design choices were made and when they should be revisited |

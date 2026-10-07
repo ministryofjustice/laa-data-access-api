@@ -107,6 +107,10 @@ components:
           type: string
           description: Lifecycle status of the prior authority request
           enum: [DRAFT, SUBMITTED, DECIDED]
+        submittedAt:
+          type: string
+          format: date-time
+          description: Original UTC submission timestamp; absent before submission
         assignedTo:
           type: string
           format: uuid

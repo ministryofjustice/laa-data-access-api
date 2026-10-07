@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.content.priorauthority;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -15,6 +16,7 @@ public record PriorAuthorityResult(
     UUID applicationId,
     String justification,
     String status,
+    Instant submittedAt,
     PriorAuthorityType priorAuthorityType,
     ExpertDetails expertDetails,
     CounselDetails counselDetails,
@@ -36,6 +38,7 @@ public record PriorAuthorityResult(
         priorAuthority.getApplicationId(),
         content.justification(),
         priorAuthority.getStatus(),
+        payload.submittedAt(),
         priorAuthorityType,
         priorAuthorityType == PriorAuthorityType.EXPERT ? toExpertDetails(content) : null,
         priorAuthorityType == PriorAuthorityType.COUNSEL ? toCounselDetails(content) : null,

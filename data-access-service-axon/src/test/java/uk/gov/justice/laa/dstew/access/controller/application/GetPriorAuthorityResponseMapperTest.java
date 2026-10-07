@@ -72,12 +72,14 @@ class GetPriorAuthorityResponseMapperTest {
   void givenExpertResult_whenMapped_thenConvertsUseCaseTypesToGeneratedApiTypes() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
+    Instant submittedAt = Instant.parse("2026-09-11T10:00:00.123456789Z");
     PriorAuthorityResult result =
         PriorAuthorityResult.builder()
             .priorAuthorityId(priorAuthorityId)
             .applicationId(applicationId)
             .justification("Expert is required")
             .status("SUBMITTED")
+            .submittedAt(submittedAt)
             .decisionDetails(
                 new PriorAuthorityDataPayload.DecisionDetails(
                     "GRANTED", "Decision recorded", null, null, null, null, null, "{}"))
@@ -100,6 +102,7 @@ class GetPriorAuthorityResponseMapperTest {
 
     assertThat(response.getPriorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(response.getApplicationId()).isEqualTo(applicationId);
+    assertThat(response.getSubmittedAt()).isEqualTo(submittedAt.atOffset(ZoneOffset.UTC));
     assertThat(response.getPriorAuthorityType().getValue()).isEqualTo("EXPERT");
     assertThat(response.getStatus()).isEqualTo(PriorAuthorityResponse.StatusEnum.SUBMITTED);
     assertThat(response.getDecision().getValue()).isEqualTo("GRANTED");
@@ -159,6 +162,7 @@ class GetPriorAuthorityResponseMapperTest {
     var response = mapper.toResponse(result);
 
     assertThat(response.getPriorAuthorityType()).isNull();
+    assertThat(response.getSubmittedAt()).isNull();
     assertThat(response.getExpertDetails()).isNull();
     assertThat(response.getCounselDetails()).isNull();
     assertThat(response.getDisbursementDetails()).isNull();

@@ -45,7 +45,7 @@ public class SubmitPriorAuthorityDraftCommandHandler {
         command.priorAuthorityId(),
         0L,
         priorAuthority.getApplicationId(),
-        payload,
+        payload.withSubmittedAt(command.occurredAt()),
         payload.serialisedRequest(),
         command.occurredAt());
 

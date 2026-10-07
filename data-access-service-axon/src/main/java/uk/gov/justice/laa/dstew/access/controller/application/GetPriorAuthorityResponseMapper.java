@@ -29,6 +29,10 @@ public class GetPriorAuthorityResponseMapper {
     response.setPriorAuthorityId(result.priorAuthorityId());
     response.setApplicationId(result.applicationId());
     response.setJustification(result.justification());
+    response.setSubmittedAt(
+        result.submittedAt() == null
+            ? null
+            : result.submittedAt().atOffset(java.time.ZoneOffset.UTC));
     response.setStatus(
         result.status() == null
             ? null

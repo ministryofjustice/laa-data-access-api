@@ -387,19 +387,22 @@ class PriorAuthorityProjectionTest {
     assertThat(result.priorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(result.applicationId()).isEqualTo(applicationId);
     assertThat(result.status()).isEqualTo("DRAFT");
+    assertThat(result.submittedAt()).isNull();
     assertThat(result.priorAuthorityType()).isEqualTo(EXPERT);
   }
 
-  @Test
-  void givenPriorAuthorityId_whenQueryHandled_thenReturnsHydratedResult() {
+  @ParameterizedTest
+  @ValueSource(strings = {"SUBMITTED", "DECIDED"})
+  void givenPriorAuthorityId_whenQueryHandled_thenReturnsHydratedResult(String status) {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
+    Instant submittedAt = Instant.parse("2026-09-11T10:00:00Z");
     PriorAuthorityReadModel model =
         PriorAuthorityReadModel.builder()
             .priorAuthorityId(priorAuthorityId)
             .applicationId(applicationId)
             .dataVersion(4L)
-            .status("SUBMITTED")
+            .status(status)
             .build();
     PriorAuthorityContent content =
         new PriorAuthorityContent(
@@ -412,7 +415,7 @@ class PriorAuthorityProjectionTest {
     when(dataStore.get(priorAuthorityId, 4L))
         .thenReturn(
             new PriorAuthorityDataPayload(
-                priorAuthorityId, applicationId, content, "{}", Instant.now()));
+                priorAuthorityId, applicationId, content, "{}", submittedAt));
 
     PriorAuthorityResult result =
         projection.handle(new FindPriorAuthorityByPriorAuthorityIdQuery(priorAuthorityId));
@@ -421,7 +424,8 @@ class PriorAuthorityProjectionTest {
     assertThat(result.applicationId()).isEqualTo(applicationId);
     assertThat(result.priorAuthorityType()).isEqualTo(COUNSEL);
     assertThat(result.justification()).isEqualTo("Counsel is required");
-    assertThat(result.status()).isEqualTo("SUBMITTED");
+    assertThat(result.status()).isEqualTo(status);
+    assertThat(result.submittedAt()).isEqualTo(submittedAt);
     assertThat(result.counselDetails().counselType()).isEqualTo(CounselType.TWO_JUNIOR_COUNSEL);
     assertThat(result.expertDetails()).isNull();
     assertThat(result.disbursementDetails()).isNull();
