@@ -143,6 +143,7 @@ tasks.register('pactTest', Test) {
 
     testClassesDirs = sourceSets.pactTest.output.classesDirs
     classpath = sourceSets.pactTest.runtimeClasspath
+    exclude 'uk/gov/justice/laa/dstew/access/pact/PactProviderBootCheckTest.class'
 
     // Publish verification results back to the broker only when broker credentials are present.
     // Set PACT_PUBLISH_RESULTS=false for a local diagnostic run that must not record a result.
@@ -155,25 +156,41 @@ tasks.register('pactTest', Test) {
     }
 
     // Provider version and branch are recorded with the published results so the broker's
-    // can-i-deploy and webhook triggers resolve against the provider's main branch.
+    // can-i-deploy and webhook triggers resolve against the provider's main branch. The shared
+    // LAA workflows export the branch as GIT_BRANCH; GITHUB_REF_NAME covers other Actions runs.
     systemProperty 'pact.provider.version', providers.environmentVariable('GIT_SHA').getOrElse('1.0.0')
-    def providerBranch = providers.environmentVariable('PACT_PROVIDER_BRANCH').orNull
+    def providerBranch = providers.environmentVariable('PACT_PROVIDER_BRANCH')
+            .orElse(providers.environmentVariable('GIT_BRANCH'))
+            .orElse(providers.environmentVariable('GITHUB_REF_NAME'))
+            .orNull
     if (providerBranch) {
         systemProperty 'pact.provider.branch', providerBranch
+        systemProperty 'pactbroker.providerBranch', providerBranch
     }
+
+    // Pending pacts: a consumer's brand-new or changed pact must not turn this provider's build red
+    // until it has been verified successfully once. The broker reports it as pending instead.
+    // Work-in-progress pacts from consumer feature branches are verified too, without failing.
+    systemProperty 'pactbroker.enablePending', 'true'
+    systemProperty 'pactbroker.includeWipPactsSince', '2026-10-01'
 
     // Broker connection is env-driven, with placeholders so the task still configures locally.
     systemProperty 'pactbroker.url', providers.environmentVariable('PACT_BROKER_URL').getOrElse('https://laa-data-pact-broker.apps.live.cloud-platform.service.justice.gov.uk/')
     systemProperty 'pactbroker.auth.username', providers.environmentVariable('PACT_BROKER_USERNAME').getOrElse('ABC')
     systemProperty 'pactbroker.auth.password', providers.environmentVariable('PACT_BROKER_PASSWORD').getOrElse('ABC')
 
-    // Consumer-version selectors: filter by consumer name and branch when the webhook supplies them.
+    // Consumer-version selectors. The webhook names one consumer and branch, so verify exactly that
+    // pact. Otherwise (main builds, local runs) verify what each consumer has on its main branch and
+    // whatever is currently deployed or released, which is Pact's recommended default.
     def consumerName = providers.environmentVariable('PACT_CONSUMER_NAME').orNull
     if (consumerName) {
         systemProperty 'pact.filter.consumers', consumerName
     }
-    def consumerBranch = providers.environmentVariable('PACT_CONSUMER_BRANCH').getOrElse('main')
-    systemProperty 'pactbroker.consumerversionselectors.rawjson', "[{\"branch\":\"${consumerBranch}\"}]"
+    def consumerBranch = providers.environmentVariable('PACT_CONSUMER_BRANCH').orNull
+    def selectors = consumerBranch
+            ? "[{\"branch\":\"${consumerBranch}\"}]"
+            : '[{"mainBranch":true},{"deployedOrReleased":true}]'
+    systemProperty 'pactbroker.consumerversionselectors.rawjson', selectors
 
     systemProperty 'pact.rootDir', layout.buildDirectory.dir("pacts").get().asFile.path
 
@@ -181,6 +198,24 @@ tasks.register('pactTest', Test) {
         events TestLogEvent.PASSED, TestLogEvent.SKIPPED, TestLogEvent.FAILED
         exceptionFormat = 'full'
     }
+}
+
+// Runs on every build without the broker: boots the Pact provider context on in-memory H2 and
+// exercises every provider state handler, so a renamed use case, a broken profile or a seeding
+// helper that no longer matches the domain rules fails the pull request rather than the next
+// consumer-triggered verification.
+tasks.register('pactBootCheck', Test) {
+    description = 'Boots the Pact provider test context and runs every provider state, without the broker.'
+    group = 'verification'
+    dependsOn tasks.named('testUtilitiesClasses')
+    useJUnitPlatform()
+    testClassesDirs = sourceSets.pactTest.output.classesDirs
+    classpath = sourceSets.pactTest.runtimeClasspath
+    include 'uk/gov/justice/laa/dstew/access/pact/PactProviderBootCheckTest.class'
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('pactBootCheck')
 }
 
 tasks.register('generateAxonMassDataDump', Test) {
