@@ -12,6 +12,7 @@ import static uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthor
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -145,7 +146,7 @@ class PriorAuthorityProjectionTest {
             .applicationId(applicationId)
             .dataVersion(0L)
             .status(status)
-            .uploadedDocuments(java.util.List.of(document))
+            .uploadedDocuments(List.of(document))
             .build();
     PriorAuthorityDataPayload payload =
         new PriorAuthorityDataPayload(
@@ -204,7 +205,7 @@ class PriorAuthorityProjectionTest {
             .priorAuthorityId(priorAuthorityId)
             .status(status)
             .dataVersion(2L)
-            .uploadedDocuments(java.util.List.of(metadata.withFileSuffix(".PDF")))
+            .uploadedDocuments(List.of(metadata.withFileSuffix(".PDF")))
             .build();
     PriorAuthorityDataPayload payload =
         new PriorAuthorityDataPayload(priorAuthorityId, UUID.randomUUID(), null, "{}", uploadedAt)
@@ -251,7 +252,7 @@ class PriorAuthorityProjectionTest {
         PriorAuthorityReadModel.builder()
             .priorAuthorityId(priorAuthorityId)
             .status("DRAFT")
-            .uploadedDocuments(java.util.List.of(metadata))
+            .uploadedDocuments(List.of(metadata))
             .build();
     when(repository.findById(priorAuthorityId))
         .thenReturn("missing owner".equals(scenario) ? Optional.empty() : Optional.of(model));
@@ -282,7 +283,7 @@ class PriorAuthorityProjectionTest {
             .priorAuthorityId(priorAuthorityId)
             .status(status)
             .dataVersion(2L)
-            .uploadedDocuments(java.util.List.of(metadata))
+            .uploadedDocuments(List.of(metadata))
             .build();
     when(repository.findById(priorAuthorityId)).thenReturn(Optional.of(model));
     if ("DRAFT".equals(status)) {

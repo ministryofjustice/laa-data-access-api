@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.command.application.priorauthority.handler;
 
+import java.util.List;
 import java.util.UUID;
 import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
@@ -27,11 +28,11 @@ public class PriorAuthorityDocumentUploadCommandHandler {
 
     requireDraftLifecycle(priorAuthority);
     if (command.originalFilename() == null || command.originalFilename().isBlank()) {
-      throw new ValidationException(java.util.List.of("Original filename is required"));
+      throw new ValidationException(List.of("Original filename is required"));
     }
     if (priorAuthority.getState().getUploadedDocuments().stream()
         .anyMatch(document -> document.documentId().equals(command.documentId()))) {
-      throw new ValidationException(java.util.List.of("Document ID already records an upload"));
+      throw new ValidationException(List.of("Document ID already records an upload"));
     }
 
     PriorAuthorityDataPayload existingDraft = requireDraft(command.priorAuthorityId(), draftStore);
@@ -51,7 +52,7 @@ public class PriorAuthorityDocumentUploadCommandHandler {
   private static void requireDraftLifecycle(PriorAuthorityAggregate priorAuthority) {
     if (priorAuthority.getState().isSubmitted()) {
       throw new ValidationException(
-          java.util.List.of("Documents can only be changed on a prior authority draft"));
+          List.of("Documents can only be changed on a prior authority draft"));
     }
   }
 

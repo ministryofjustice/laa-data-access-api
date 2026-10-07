@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.command.application.priorauthority.handler;
 
+import java.util.List;
 import java.util.UUID;
 import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
@@ -45,7 +46,7 @@ public class PriorAuthorityDocumentTypeUpdateCommandHandler {
   private static void requireDraftLifecycle(PriorAuthorityAggregate priorAuthority) {
     if (priorAuthority.getState().isSubmitted()) {
       throw new ValidationException(
-          java.util.List.of("Documents can only be changed on a prior authority draft"));
+          List.of("Documents can only be changed on a prior authority draft"));
     }
   }
 

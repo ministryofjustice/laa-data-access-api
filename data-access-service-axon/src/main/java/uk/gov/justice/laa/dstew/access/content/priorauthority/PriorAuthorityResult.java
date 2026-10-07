@@ -38,7 +38,9 @@ public record PriorAuthorityResult(
         priorAuthority.getApplicationId(),
         content.justification(),
         priorAuthority.getStatus(),
-        payload.submittedAt(),
+        PriorAuthorityStatus.DRAFT.name().equals(priorAuthority.getStatus())
+            ? null
+            : payload.submittedAt(),
         priorAuthorityType,
         priorAuthorityType == PriorAuthorityType.EXPERT ? toExpertDetails(content) : null,
         priorAuthorityType == PriorAuthorityType.COUNSEL ? toCounselDetails(content) : null,
