@@ -51,8 +51,8 @@ import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
 import uk.gov.justice.laa.dstew.access.model.LinkedGroupChangeRequest;
 import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedUserId;
-import uk.gov.justice.laa.dstew.access.version.VersionToken;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsUploadResult;
+import uk.gov.justice.laa.dstew.access.version.VersionToken;
 
 /** Verifies that each controller endpoint delegates to the appropriate use case. */
 @ExtendWith(MockitoExtension.class)
