@@ -3,12 +3,17 @@ package uk.gov.justice.laa.dstew.access.query.application.priorauthority;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-import static uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType.*;
+import static uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType.COUNSEL;
+import static uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType.DISBURSEMENT;
+import static uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType.EXPERT;
 
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.axonframework.messaging.queryhandling.QueryUpdateEmitter;
@@ -21,6 +26,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.DisbursementInformation;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentDeletedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentTypeUpdatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentUploadedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDraftStartedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
@@ -32,12 +40,14 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.BillingType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.CounselDetails;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.CounselType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.DisbursementDetails;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.EvidenceDocument;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.ExpertCosts;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.ExpertDetails;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.TimeRequested;
+import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 
 @ExtendWith(MockitoExtension.class)
 class PriorAuthorityProjectionTest {
@@ -47,6 +57,253 @@ class PriorAuthorityProjectionTest {
   @Mock private PriorAuthorityDraftStore draftStore;
   @Mock private QueryUpdateEmitter queryUpdateEmitter;
   @InjectMocks private PriorAuthorityProjection projection;
+
+  @Test
+  void givenDocumentEvents_whenReplayedTwice_thenProjectsMetadataOnceWithTypeAndDeletedFlag() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID keptId = UUID.randomUUID();
+    UUID deletedId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    Instant uploadedAt = Instant.parse("2026-09-10T09:00:00Z");
+    PriorAuthorityReadModel model =
+        PriorAuthorityReadModel.builder()
+            .priorAuthorityId(priorAuthorityId)
+            .applicationId(applicationId)
+            .status("DRAFT")
+            .build();
+    when(repository.findById(priorAuthorityId)).thenReturn(Optional.of(model));
+    var keptUpload =
+        new PriorAuthorityDocumentUploadedEvent(
+            priorAuthorityId,
+            keptId,
+            uploadedAt,
+            12L,
+            "application/pdf",
+            "checksum",
+            applicationId,
+            "CIVIL_APPLY",
+            ".PDF");
+    var deletedUpload =
+        uploaded(priorAuthorityId, deletedId, applicationId, uploadedAt.plusSeconds(1));
+    var typeUpdate =
+        new PriorAuthorityDocumentTypeUpdatedEvent(
+            priorAuthorityId, keptId, "EXPERT_REPORT", uploadedAt.plusSeconds(2));
+    var deletion =
+        new PriorAuthorityDocumentDeletedEvent(
+            priorAuthorityId, deletedId, uploadedAt.plusSeconds(3), applicationId);
+
+    for (int replay = 0; replay < 2; replay++) {
+      projection.on(keptUpload);
+      projection.on(deletedUpload);
+      projection.on(typeUpdate);
+      projection.on(deletion);
+    }
+
+    assertThat(model.getUploadedDocuments())
+        .containsExactly(
+            new DocumentMetadata(
+                keptId,
+                "EXPERT_REPORT",
+                uploadedAt,
+                12L,
+                "application/pdf",
+                "checksum",
+                "CIVIL_APPLY",
+                false,
+                ".PDF"),
+            new DocumentMetadata(
+                deletedId,
+                null,
+                uploadedAt.plusSeconds(1),
+                12L,
+                "application/pdf",
+                "checksum",
+                "CIVIL_APPLY",
+                true));
+    assertThat(model.getModifiedAt()).isEqualTo(uploadedAt.plusSeconds(3));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"DRAFT", "SUBMITTED"})
+  void givenProjectedDocuments_whenQueryHandled_thenCombinesMetadataWithPayloadFilenames(
+      String status) {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    DocumentMetadata document =
+        new DocumentMetadata(
+            documentId,
+            null,
+            Instant.now(),
+            12L,
+            "application/pdf",
+            "checksum",
+            "CIVIL_APPLY",
+            false);
+    PriorAuthorityReadModel model =
+        PriorAuthorityReadModel.builder()
+            .priorAuthorityId(priorAuthorityId)
+            .applicationId(applicationId)
+            .dataVersion(0L)
+            .status(status)
+            .uploadedDocuments(List.of(document))
+            .build();
+    PriorAuthorityDataPayload payload =
+        new PriorAuthorityDataPayload(
+                priorAuthorityId,
+                applicationId,
+                new PriorAuthorityContent(EXPERT, "Expert required", null, null, null),
+                "{}",
+                Instant.now())
+            .withDocumentFilename(documentId, "evidence.pdf");
+    when(repository.findById(priorAuthorityId)).thenReturn(Optional.of(model));
+    if ("DRAFT".equals(status)) {
+      when(draftStore.find(priorAuthorityId)).thenReturn(Optional.of(payload));
+    } else {
+      when(dataStore.get(priorAuthorityId, 0L)).thenReturn(payload);
+    }
+
+    PriorAuthorityResult result =
+        projection.handle(new FindPriorAuthorityByPriorAuthorityIdQuery(priorAuthorityId));
+
+    assertThat(result.uploadedDocuments()).containsExactly(document);
+    assertThat(result.documentFilenames())
+        .containsExactlyEntriesOf(Map.of(documentId, "evidence.pdf"));
+  }
+
+  private static PriorAuthorityDocumentUploadedEvent uploaded(
+      UUID priorAuthorityId, UUID documentId, UUID applicationId, Instant uploadedAt) {
+    return new PriorAuthorityDocumentUploadedEvent(
+        priorAuthorityId,
+        documentId,
+        uploadedAt,
+        12L,
+        "application/pdf",
+        "checksum",
+        applicationId,
+        "CIVIL_APPLY");
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"DRAFT", "SUBMITTED", "DECIDED"})
+  void givenOwnedDocument_whenDocumentQueried_thenHydratesFilename(String status) {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    Instant uploadedAt = Instant.parse("2026-09-10T09:00:00Z");
+    DocumentMetadata metadata =
+        new DocumentMetadata(
+            documentId,
+            "EXPERT_REPORT",
+            uploadedAt,
+            12L,
+            "application/pdf",
+            "checksum",
+            "CIVIL_APPLY",
+            false);
+    PriorAuthorityReadModel model =
+        PriorAuthorityReadModel.builder()
+            .priorAuthorityId(priorAuthorityId)
+            .status(status)
+            .dataVersion(2L)
+            .uploadedDocuments(List.of(metadata.withFileSuffix(".PDF")))
+            .build();
+    PriorAuthorityDataPayload payload =
+        new PriorAuthorityDataPayload(priorAuthorityId, UUID.randomUUID(), null, "{}", uploadedAt)
+            .withDocumentFilename(documentId, "evidence.PDF");
+    when(repository.findById(priorAuthorityId)).thenReturn(Optional.of(model));
+    if ("DRAFT".equals(status)) {
+      when(draftStore.find(priorAuthorityId)).thenReturn(Optional.of(payload));
+    } else {
+      when(dataStore.get(priorAuthorityId, 2L)).thenReturn(payload);
+    }
+
+    assertThat(projection.handle(new FindPriorAuthorityDocumentQuery(priorAuthorityId, documentId)))
+        .isEqualTo(
+            new EvidenceDocument(
+                documentId,
+                "EXPERT_REPORT",
+                "evidence.PDF",
+                null,
+                "application/pdf",
+                12L,
+                uploadedAt,
+                "CIVIL_APPLY",
+                "checksum",
+                ".PDF"));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"missing owner", "unknown document", "deleted"})
+  void givenUnavailableDocument_whenDocumentQueried_thenReturnsNullWithoutHydration(
+      String scenario) {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    DocumentMetadata metadata =
+        new DocumentMetadata(
+            "unknown document".equals(scenario) ? UUID.randomUUID() : documentId,
+            null,
+            Instant.now(),
+            12L,
+            "application/pdf",
+            null,
+            "CIVIL_APPLY",
+            "deleted".equals(scenario));
+    PriorAuthorityReadModel model =
+        PriorAuthorityReadModel.builder()
+            .priorAuthorityId(priorAuthorityId)
+            .status("DRAFT")
+            .uploadedDocuments(List.of(metadata))
+            .build();
+    when(repository.findById(priorAuthorityId))
+        .thenReturn("missing owner".equals(scenario) ? Optional.empty() : Optional.of(model));
+
+    assertThat(projection.handle(new FindPriorAuthorityDocumentQuery(priorAuthorityId, documentId)))
+        .isNull();
+    verifyNoInteractions(draftStore, dataStore);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"DRAFT", "SUBMITTED", "DECIDED"})
+  void givenDocumentWithoutFilename_whenDocumentQueried_thenReturnsMetadata(String status) {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    DocumentMetadata metadata =
+        new DocumentMetadata(
+            documentId,
+            null,
+            Instant.now(),
+            12L,
+            "application/pdf",
+            null,
+            "CIVIL_APPLY",
+            false,
+            ".PDF");
+    PriorAuthorityReadModel model =
+        PriorAuthorityReadModel.builder()
+            .priorAuthorityId(priorAuthorityId)
+            .status(status)
+            .dataVersion(2L)
+            .uploadedDocuments(List.of(metadata))
+            .build();
+    when(repository.findById(priorAuthorityId)).thenReturn(Optional.of(model));
+    if ("DRAFT".equals(status)) {
+      when(draftStore.find(priorAuthorityId)).thenReturn(Optional.empty());
+    } else {
+      when(dataStore.get(priorAuthorityId, 2L))
+          .thenReturn(
+              new PriorAuthorityDataPayload(
+                  priorAuthorityId, UUID.randomUUID(), null, "{}", Instant.now()));
+    }
+
+    EvidenceDocument document =
+        projection.handle(new FindPriorAuthorityDocumentQuery(priorAuthorityId, documentId));
+
+    assertThat(document).isNotNull();
+    assertThat(document.documentId()).isEqualTo(documentId);
+    assertThat(document.fileName()).isNull();
+    assertThat(document.fileSuffix()).isEqualTo(".PDF");
+    assertThat(document.storageFilename()).isEqualTo(documentId + ".PDF");
+  }
 
   @Test
   void givenExistingDraft_whenSubmitted_thenPreservesCreatedAtAndUpdatesCurrentState() {
