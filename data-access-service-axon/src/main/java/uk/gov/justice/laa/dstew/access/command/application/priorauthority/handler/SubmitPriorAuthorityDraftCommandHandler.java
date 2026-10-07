@@ -1,0 +1,61 @@
+package uk.gov.justice.laa.dstew.access.command.application.priorauthority.handler;
+
+import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
+import org.axonframework.messaging.eventhandling.gateway.EventAppender;
+import org.axonframework.modelling.annotation.InjectEntity;
+import org.springframework.stereotype.Component;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityAggregate;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDecider;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.SubmitPriorAuthorityDraftCommand;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
+import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
+
+/** Handles submission of prior-authority drafts. */
+@Component
+public class SubmitPriorAuthorityDraftCommandHandler {
+
+  /** Submits a prior-authority draft, validates its schema, and emits the submitted event. */
+  @CommandHandler
+  public void handle(
+      SubmitPriorAuthorityDraftCommand command,
+      PriorAuthorityDraftStore draftStore,
+      PriorAuthorityDataStore dataStore,
+      ApplicationDataStore applicationDataStore,
+      JsonSchemaValidator jsonSchemaValidator,
+      @InjectEntity(idProperty = "priorAuthorityId") PriorAuthorityAggregate priorAuthority,
+      EventAppender eventAppender) {
+
+    PriorAuthorityDataPayload payload =
+        draftStore
+            .find(command.priorAuthorityId())
+            .orElseThrow(
+                () ->
+                    new ResourceNotFoundException(
+                        "Prior Authority draft not found: " + command.priorAuthorityId()));
+
+    int schemaVersion = priorAuthority.getState().getSchemaVersion();
+
+    jsonSchemaValidator.validate(payload.content(), "PriorAuthority.json", schemaVersion);
+
+    dataStore.append(
+        command.priorAuthorityId(),
+        0L,
+        priorAuthority.getApplicationId(),
+        payload,
+        payload.serialisedRequest(),
+        command.occurredAt());
+
+    long applicationDataVersion =
+        applicationDataStore.latestVersion(priorAuthority.getApplicationId());
+
+    eventAppender.append(
+        PriorAuthorityDecider.decideSubmit(
+            command, priorAuthority.getState(), applicationDataVersion));
+
+    draftStore.delete(command.priorAuthorityId());
+  }
+}

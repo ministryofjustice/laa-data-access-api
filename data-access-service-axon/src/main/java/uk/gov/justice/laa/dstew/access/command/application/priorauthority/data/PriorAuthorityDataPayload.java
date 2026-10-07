@@ -17,7 +17,8 @@ public record PriorAuthorityDataPayload(
     PriorAuthorityContent content,
     String serialisedRequest,
     Instant submittedAt,
-    DecisionDetails decisionDetails) {
+    DecisionDetails decisionDetails,
+    String officeCode) {
 
   /** Decision data recorded once a prior-authority request has been decided. */
   public record DecisionDetails(
@@ -37,13 +38,37 @@ public record PriorAuthorityDataPayload(
       PriorAuthorityContent content,
       String serialisedRequest,
       Instant submittedAt) {
-    this(priorAuthorityId, applicationId, content, serialisedRequest, submittedAt, null);
+    this(priorAuthorityId, applicationId, content, serialisedRequest, submittedAt, null, null);
+  }
+
+  /** Backward-compatible constructor for existing branches/tests using the older 6-arg shape. */
+  public PriorAuthorityDataPayload(
+      UUID priorAuthorityId,
+      UUID applicationId,
+      PriorAuthorityContent content,
+      String serialisedRequest,
+      Instant submittedAt,
+      DecisionDetails decisionDetails) {
+    this(
+        priorAuthorityId,
+        applicationId,
+        content,
+        serialisedRequest,
+        submittedAt,
+        decisionDetails,
+        null);
   }
 
   /** Returns a complete new data version containing the supplied decision details. */
   public PriorAuthorityDataPayload withDecision(DecisionDetails newDecision) {
     return new PriorAuthorityDataPayload(
-        priorAuthorityId, applicationId, content, serialisedRequest, submittedAt, newDecision);
+        priorAuthorityId,
+        applicationId,
+        content,
+        serialisedRequest,
+        submittedAt,
+        newDecision,
+        officeCode);
   }
 
   /** Returns the recorded decision value, or {@code null} if the request has not been decided. */

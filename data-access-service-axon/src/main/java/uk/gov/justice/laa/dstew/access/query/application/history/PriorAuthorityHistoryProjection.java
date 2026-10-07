@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.query.application.history;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.axonframework.messaging.core.annotation.Namespace;
 import org.axonframework.messaging.eventhandling.EventMessage;
 import org.axonframework.messaging.eventhandling.annotation.EventHandler;
@@ -23,6 +24,7 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType
 @Component
 @RequiredArgsConstructor
 @Namespace("prior-authority-history-projection")
+@Slf4j
 public class PriorAuthorityHistoryProjection {
 
   private final PriorAuthorityDataRepository priorAuthorityDataRepository;
@@ -61,8 +63,12 @@ public class PriorAuthorityHistoryProjection {
       return;
     }
 
-    PriorAuthorityRef ref = lookupPriorAuthorityRef(event.workItemId());
+    PriorAuthorityRef ref = lookupPriorAuthorityRef(event.workItemId(), event.itemVersion());
     if (ref == null) {
+      log.warn(
+          "Prior authority data not found for PA assignment event: priorAuthorityId={}, version={}",
+          event.workItemId(),
+          event.itemVersion());
       return;
     }
 
@@ -83,8 +89,12 @@ public class PriorAuthorityHistoryProjection {
       return;
     }
 
-    PriorAuthorityRef ref = lookupPriorAuthorityRef(event.workItemId());
+    PriorAuthorityRef ref = lookupPriorAuthorityRef(event.workItemId(), event.itemVersion());
     if (ref == null) {
+      log.warn(
+          "Prior authority data not found for PA unassignment event: priorAuthorityId={}, version={}",
+          event.workItemId(),
+          event.itemVersion());
       return;
     }
 
@@ -111,9 +121,9 @@ public class PriorAuthorityHistoryProjection {
         "unsupported prior-authority decision value: " + event.overallDecision());
   }
 
-  private PriorAuthorityRef lookupPriorAuthorityRef(UUID priorAuthorityId) {
+  private PriorAuthorityRef lookupPriorAuthorityRef(UUID priorAuthorityId, long dataVersion) {
     return priorAuthorityDataRepository
-        .findById(new PriorAuthorityDataId(priorAuthorityId, 0L))
+        .findById(new PriorAuthorityDataId(priorAuthorityId, dataVersion))
         .map(
             pa -> {
               PriorAuthorityType type = pa.getPayload().content().priorAuthorityType();

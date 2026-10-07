@@ -340,7 +340,8 @@ class PriorAuthorityProjectionTest {
                     null,
                     DisbursementInformation.builder().build(),
                     null,
-                    "{\"decision\":\"GRANTED\"}")));
+                    "{\"decision\":\"GRANTED\"}"),
+                null));
 
     PriorAuthorityResult result =
         projection.handle(new FindPriorAuthorityByPriorAuthorityIdQuery(priorAuthorityId));
