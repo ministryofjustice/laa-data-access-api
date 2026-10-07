@@ -50,16 +50,6 @@ components:
         - APPLICATION_MAKE_DECISION_GRANTED
         - APPLICATION_NOTE_CREATED
 
-    CategoryOfLaw:
-      type: string
-      enum:
-        - FAMILY
-
-    MatterType:
-      type: string
-      enum:
-        - SPECIAL_CHILDREN_ACT
-
     EventHistoryRequest:
       type: object
       properties:

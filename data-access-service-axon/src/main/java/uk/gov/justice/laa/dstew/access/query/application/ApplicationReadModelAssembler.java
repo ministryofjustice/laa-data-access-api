@@ -89,7 +89,7 @@ public class ApplicationReadModelAssembler {
         application,
         linkedGroup,
         priorAuthorities,
-        linkedGroup == null ? Map.of() : fetchLinkedLaaReferences(List.of(linkedGroup)));
+        linkedGroup == null ? Map.of() : fetchLinkedMemberDetails(List.of(linkedGroup)));
   }
 
   /** Batch-fetches linked group read models for the given Applications, keyed by group ID. */
@@ -115,20 +115,38 @@ public class ApplicationReadModelAssembler {
         .collect(Collectors.groupingBy(PriorAuthorityReadModel::getApplicationId));
   }
 
-  /** Batch-fetches the LAA references of every member of the given groups, keyed by ID. */
-  public Map<UUID, String> fetchLinkedLaaReferences(
+  /** Batch-fetches required summary details for every linked group member, keyed by ID. */
+  public Map<UUID, LinkedApplicationMemberDetails> fetchLinkedMemberDetails(
       Collection<LinkedApplicationGroupReadModel> groups) {
     List<UUID> memberIds =
         groups.stream().flatMap(group -> group.getMemberIds().stream()).distinct().toList();
     if (memberIds.isEmpty()) {
       return Map.of();
     }
-    return listIndexRepository.findAllById(memberIds).stream()
-        .filter(member -> member.getLaaReference() != null)
-        .collect(
-            Collectors.toMap(
-                ApplicationListIndexReadModel::getApplicationId,
-                ApplicationListIndexReadModel::getLaaReference));
+    Map<UUID, ApplicationListIndexReadModel> membersById =
+        listIndexRepository.findAllById(memberIds).stream()
+            .collect(
+                Collectors.toMap(
+                    ApplicationListIndexReadModel::getApplicationId, Function.identity()));
+    return memberIds.stream()
+        .map(
+            memberId -> {
+              ApplicationListIndexReadModel member = membersById.get(memberId);
+              if (member == null
+                  || member.getLaaReference() == null
+                  || member.getClientFirstName() == null
+                  || member.getClientLastName() == null) {
+                throw new IllegalStateException(
+                    "Linked application list-index details are incomplete for " + memberId);
+              }
+              return Map.entry(
+                  memberId,
+                  new LinkedApplicationMemberDetails(
+                      member.getLaaReference(),
+                      member.getClientFirstName(),
+                      member.getClientLastName()));
+            })
+        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
   }
 
   static String officeCode(ApplicationDataPayload data) {

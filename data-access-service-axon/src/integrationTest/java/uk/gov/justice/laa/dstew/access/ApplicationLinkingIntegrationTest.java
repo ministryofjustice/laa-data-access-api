@@ -151,6 +151,8 @@ public class ApplicationLinkingIntegrationTest {
             linkedApplication -> {
               assertThat(linkedApplication.getApplicationId()).isEqualTo(sourceApplicationId);
               assertThat(linkedApplication.getIsLead()).isFalse();
+              assertThat(linkedApplication.getClientFirstName()).isEqualTo("Ada");
+              assertThat(linkedApplication.getClientLastName()).isEqualTo(clientLastName);
             });
     assertThat(sourceResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(sourceResponse.getBody().getIsLead()).isFalse();
@@ -160,6 +162,8 @@ public class ApplicationLinkingIntegrationTest {
             linkedApplication -> {
               assertThat(linkedApplication.getApplicationId()).isEqualTo(targetApplicationId);
               assertThat(linkedApplication.getIsLead()).isTrue();
+              assertThat(linkedApplication.getClientFirstName()).isEqualTo("Ada");
+              assertThat(linkedApplication.getClientLastName()).isEqualTo(clientLastName);
             });
   }
 
@@ -919,9 +923,13 @@ public class ApplicationLinkingIntegrationTest {
                       .allMatch(
                           linkedApplication ->
                               Objects.equals(
-                                  linkedApplication.getIsLead(),
-                                  Objects.equals(
-                                      linkedApplication.getApplicationId(), leadApplicationId)));
+                                      linkedApplication.getIsLead(),
+                                      Objects.equals(
+                                          linkedApplication.getApplicationId(), leadApplicationId))
+                                  && "Ada".equals(linkedApplication.getClientFirstName())
+                                  && Objects.equals(
+                                      linkedApplication.getClientLastName(),
+                                      summary.getClientLastName()));
             });
   }
 
@@ -945,11 +953,15 @@ public class ApplicationLinkingIntegrationTest {
               .containsExactlyInAnyOrderElementsOf(expectedLinkedApplicationIds);
           assertThat(summary.getLinkedApplications())
               .allSatisfy(
-                  linkedApplication ->
-                      assertThat(linkedApplication.getIsLead())
-                          .isEqualTo(
-                              Objects.equals(
-                                  linkedApplication.getApplicationId(), leadApplicationId)));
+                  linkedApplication -> {
+                    assertThat(linkedApplication.getIsLead())
+                        .isEqualTo(
+                            Objects.equals(
+                                linkedApplication.getApplicationId(), leadApplicationId));
+                    assertThat(linkedApplication.getClientFirstName()).isEqualTo("Ada");
+                    assertThat(linkedApplication.getClientLastName())
+                        .isEqualTo(summary.getClientLastName());
+                  });
         });
   }
 

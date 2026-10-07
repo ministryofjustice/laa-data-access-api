@@ -12,12 +12,11 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.AutoGranted;
-import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryResponse;
-import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.PagingResponse;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsResult;
+import uk.gov.justice.laa.dstew.access.query.application.LinkedApplicationMemberDetails;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 
 /** Maps a {@link FindAllApplicationsResult} to an {@link ApplicationSummaryResponse}. */
@@ -53,8 +52,10 @@ public class GetAllApplicationsResponseMapper {
     summary.setLaaReference(app.getLaaReference());
     summary.setOfficeCode(app.getOfficeCode());
     summary.setUsedDelegatedFunctions(app.getUsedDelegatedFunctions());
-    summary.setCategoryOfLaw(toCategoryOfLaw(app.getCategoryOfLaw()));
-    summary.setMatterType(toMatterType(app.getMatterType()));
+    summary.setCategoryOfLaw(app.getCategoryOfLaw());
+    summary.setCategoryOfLawCode(app.getCategoryOfLawCode());
+    summary.setMatterType(app.getMatterType());
+    summary.setMatterTypeCode(app.getMatterTypeCode());
     summary.setSubmittedAt(
         app.getSubmittedAt() != null ? app.getSubmittedAt().atOffset(ZoneOffset.UTC) : null);
     summary.setLastUpdated(app.getModifiedAt().atOffset(ZoneOffset.UTC));
@@ -65,35 +66,13 @@ public class GetAllApplicationsResponseMapper {
 
     populateClientDetails(summary, app);
 
-    summary.setLinkedApplications(toLinkedSummaries(app, group, result.linkedLaaReferences()));
+    summary.setLinkedApplications(toLinkedSummaries(app, group, result.linkedMemberDetails()));
     summary.setPriorAuthorities(
         PriorAuthoritySummaryMapper.toSummaries(
             result
                 .priorAuthoritiesByApplicationId()
                 .getOrDefault(app.getApplicationId(), List.of())));
     return summary;
-  }
-
-  private CategoryOfLaw toCategoryOfLaw(String categoryOfLaw) {
-    if (categoryOfLaw == null) {
-      return null;
-    }
-    try {
-      return CategoryOfLaw.valueOf(categoryOfLaw.toUpperCase().replace(" ", "_"));
-    } catch (IllegalArgumentException e) {
-      return null;
-    }
-  }
-
-  private MatterType toMatterType(String matterType) {
-    if (matterType == null) {
-      return null;
-    }
-    try {
-      return MatterType.valueOf(matterType.toUpperCase().replace(" ", "_"));
-    } catch (IllegalArgumentException e) {
-      return null;
-    }
   }
 
   private void populateClientDetails(ApplicationSummary summary, ApplicationReadModel app) {
@@ -110,7 +89,7 @@ public class GetAllApplicationsResponseMapper {
   private List<LinkedApplicationSummaryResponse> toLinkedSummaries(
       ApplicationReadModel app,
       LinkedApplicationGroupReadModel group,
-      Map<UUID, String> linkedLaaReferences) {
+      Map<UUID, LinkedApplicationMemberDetails> linkedMemberDetails) {
     if (group == null) {
       return Collections.emptyList();
     }
@@ -118,10 +97,17 @@ public class GetAllApplicationsResponseMapper {
         .filter(memberId -> !memberId.equals(app.getApplicationId()))
         .map(
             memberId -> {
+              LinkedApplicationMemberDetails member = linkedMemberDetails.get(memberId);
+              if (member == null) {
+                throw new IllegalStateException(
+                    "Linked application details are missing for " + memberId);
+              }
               LinkedApplicationSummaryResponse linked = new LinkedApplicationSummaryResponse();
               linked.setApplicationId(memberId);
-              linked.setLaaReference(linkedLaaReferences.get(memberId));
+              linked.setLaaReference(member.laaReference());
               linked.setIsLead(memberId.equals(group.getLeadApplicationId()));
+              linked.setClientFirstName(member.clientFirstName());
+              linked.setClientLastName(member.clientLastName());
               return linked;
             })
         .toList();

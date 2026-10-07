@@ -18,7 +18,6 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.AutoGranted;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
-import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationDetailResult;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
@@ -65,11 +64,11 @@ public class ApplicationQueryController implements ApplicationQueryApi {
   /**
    * Returns a paginated, filtered list of Application summaries.
    *
-   * <p>Filters on {@code status}, {@code laaReference}, {@code matterType}, and {@code autoGranted}
-   * are applied. {@code clientFirstName}, {@code clientLastName}, {@code clientDateOfBirth}, and
-   * {@code userId} are accepted for API compatibility but not yet used as filters — a future
-   * migration will denormalise client fields from the {@code individuals} JSON column to enable
-   * them.
+   * <p>Filters on {@code status}, {@code laaReference}, {@code matterTypeCode}, and {@code
+   * autoGranted} are applied. {@code clientFirstName}, {@code clientLastName}, {@code
+   * clientDateOfBirth}, and {@code userId} are accepted for API compatibility but not yet used as
+   * filters — a future migration will denormalise client fields from the {@code individuals} JSON
+   * column to enable them.
    */
   @Override
   @LogMethodArguments
@@ -83,7 +82,7 @@ public class ApplicationQueryController implements ApplicationQueryApi {
       LocalDate clientDateOfBirth,
       UUID userId,
       AutoGranted autoGranted,
-      MatterType matterType,
+      String matterTypeCode,
       ApplicationSortBy sortBy,
       ApplicationOrderBy orderBy,
       Integer page,
@@ -93,7 +92,7 @@ public class ApplicationQueryController implements ApplicationQueryApi {
             new FindAllApplicationsQuery(
                 status == null ? null : status.name(),
                 laaReference,
-                matterType == null ? null : matterType.name(),
+                matterTypeCode,
                 clientFirstName,
                 clientLastName,
                 clientDateOfBirth,
@@ -116,7 +115,7 @@ public class ApplicationQueryController implements ApplicationQueryApi {
             detail.application(),
             detail.linkedGroup(),
             detail.priorAuthorities(),
-            detail.linkedLaaReferences()));
+            detail.linkedMemberDetails()));
   }
 
   /** Returns the certificate stored in the Application's current immutable data version. */

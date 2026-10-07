@@ -1,15 +1,19 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationAddress;
+import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationProvider;
 import uk.gov.justice.laa.dstew.access.applicationcontent.InvolvedChild;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Opponent;
@@ -18,13 +22,12 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.ScopeLimitation;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationMeritsDecision;
-import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
-import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
-import uk.gov.justice.laa.dstew.access.model.MatterType;
-import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
+import uk.gov.justice.laa.dstew.access.model.DecisionStatusResponse;
+import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatusResponse;
 import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthoritySummary;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
+import uk.gov.justice.laa.dstew.access.query.application.LinkedApplicationMemberDetails;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
 import uk.gov.justice.laa.dstew.access.version.VersionToken;
@@ -99,7 +102,17 @@ class GetApplicationResponseMapperTest {
         .status("APPLICATION_SUBMITTED")
         .applicationVersion(1L)
         .applicationDataVersion(1L)
+        .createdAt(Instant.parse("2026-01-01T08:00:00Z"))
+        .submittedAt(Instant.parse("2026-01-01T09:00:00Z"))
         .modifiedAt(Instant.parse("2026-01-01T10:00:00Z"))
+        .client(
+            ApplicationClient.builder()
+                .firstName("Test")
+                .lastName("Client")
+                .dateOfBirth(LocalDate.of(1990, 1, 1))
+                .appliedPreviously(false)
+                .addresses(List.of(ApplicationAddress.builder().build()))
+                .build())
         .autoGranted(AutoGrantedState.MANUAL);
   }
 
@@ -162,19 +175,18 @@ class GetApplicationResponseMapperTest {
     assertThat(response.getSubmittedAt())
         .isEqualTo(OffsetDateTime.ofInstant(submittedAt, ZoneOffset.UTC));
     assertThat(response.getAssignedTo()).isEqualTo(caseworkerId);
-    assertThat(response.getDecisionStatus()).isEqualTo(DecisionStatus.GRANTED);
+    assertThat(response.getDecisionStatus()).isEqualTo(DecisionStatusResponse.GRANTED);
     assertThat(response.getProvider().getOfficeCode()).isEqualTo("0B839E");
     assertThat(response.getProvider().getContactEmail()).isEqualTo("firm@example.com");
     assertThat(response.getOpponents()).hasSize(1);
     assertThat(response.getProceedings()).hasSize(1);
-    assertThat(response.getProceedings().getFirst().getCategoryOfLaw())
-        .isEqualTo(CategoryOfLaw.FAMILY);
+    assertThat(response.getProceedings().getFirst().getCategoryOfLaw()).isEqualTo("FAMILY");
     assertThat(response.getProceedings().getFirst().getMatterType())
-        .isEqualTo(MatterType.SPECIAL_CHILDREN_ACT);
+        .isEqualTo("SPECIAL_CHILDREN_ACT");
     assertThat(response.getProceedings().getFirst().getSubstantiveCostLimitation())
-        .isEqualTo(1350.0);
+        .isEqualByComparingTo(BigDecimal.valueOf(1350.00));
     assertThat(response.getProceedings().getFirst().getMeritsDecision())
-        .isEqualTo(MeritsDecisionStatus.REFUSED);
+        .isEqualTo(MeritsDecisionStatusResponse.REFUSED);
     assertThat(response.getProceedings().getFirst().getScopeLimitations()).hasSize(1);
     assertThat(response.getProceedings().getFirst().getInvolvedChildren()).hasSize(1);
   }
@@ -205,7 +217,12 @@ class GetApplicationResponseMapperTest {
 
     var response =
         mapper.toResponse(
-            readModel, group, List.of(priorAuthority), Map.of(linkedApplicationId, "LAA-LINKED"));
+            readModel,
+            group,
+            List.of(priorAuthority),
+            Map.of(
+                linkedApplicationId,
+                new LinkedApplicationMemberDetails("LAA-LINKED", "Grace", "Hopper")));
 
     assertThat(response.getIsLead()).isTrue();
     assertThat(response.getLinkedGroupVersion())
@@ -216,6 +233,8 @@ class GetApplicationResponseMapperTest {
             linkedApplication -> {
               assertThat(linkedApplication.getApplicationId()).isEqualTo(linkedApplicationId);
               assertThat(linkedApplication.getLaaReference()).isEqualTo("LAA-LINKED");
+              assertThat(linkedApplication.getClientFirstName()).isEqualTo("Grace");
+              assertThat(linkedApplication.getClientLastName()).isEqualTo("Hopper");
               assertThat(linkedApplication.getIsLead()).isFalse();
             });
     assertThat(response.getPriorAuthorities())
@@ -248,7 +267,14 @@ class GetApplicationResponseMapperTest {
             .memberIds(List.of(leadApplicationId, applicationId))
             .build();
 
-    var response = mapper.toResponse(readModel, group, List.of(), Map.of());
+    var response =
+        mapper.toResponse(
+            readModel,
+            group,
+            List.of(),
+            Map.of(
+                leadApplicationId,
+                new LinkedApplicationMemberDetails("LAA-LEAD", "Ada", "Lovelace")));
 
     assertThat(response.getIsLead()).isFalse();
     assertThat(response.getLinkedGroupVersion())
@@ -273,17 +299,16 @@ class GetApplicationResponseMapperTest {
   }
 
   @Test
-  void givenNullSubmittedAt_whenMapped_thenSubmittedAtIsNull() {
+  void givenNullSubmittedAt_whenMapped_thenRequiresProjectionTimestamp() {
     ApplicationReadModel readModel =
         baseReadModel().submittedAt(null).decisionStatus("GRANTED").build();
 
-    var response = mapper.toResponse(readModel);
-
-    assertThat(response.getSubmittedAt()).isNull();
+    assertThatThrownBy(() -> mapper.toResponse(readModel))
+        .isInstanceOf(IllegalStateException.class);
   }
 
   @Test
-  void givenNullDecisionStatus_whenMapped_thenDecisionStatusIsNull() {
+  void givenNullDecisionStatus_whenMapped_thenDecisionStatusIsPending() {
     ApplicationReadModel readModel =
         baseReadModel()
             .submittedAt(Instant.parse("2026-01-01T09:00:00Z"))
@@ -292,7 +317,7 @@ class GetApplicationResponseMapperTest {
 
     var response = mapper.toResponse(readModel);
 
-    assertThat(response.getDecisionStatus()).isNull();
+    assertThat(response.getDecisionStatus()).isEqualTo(DecisionStatusResponse.PENDING);
   }
 
   @Test
@@ -336,7 +361,7 @@ class GetApplicationResponseMapperTest {
   }
 
   @Test
-  void givenNullMeritsDecisions_whenMapped_thenMeritsDecisionIsNull() {
+  void givenNullMeritsDecisions_whenMapped_thenMeritsDecisionIsPending() {
     UUID proceedingId = UUID.randomUUID();
     ApplicationReadModel readModel =
         baseReadModel()
@@ -346,7 +371,8 @@ class GetApplicationResponseMapperTest {
 
     var response = mapper.toResponse(readModel);
 
-    assertThat(response.getProceedings().getFirst().getMeritsDecision()).isNull();
+    assertThat(response.getProceedings().getFirst().getMeritsDecision())
+        .isEqualTo(MeritsDecisionStatusResponse.PENDING);
   }
 
   @Test
@@ -363,7 +389,7 @@ class GetApplicationResponseMapperTest {
   }
 
   @Test
-  void givenNullDecisionInMeritsDecision_whenMapped_thenMeritsDecisionStatusIsNull() {
+  void givenNullDecisionInMeritsDecision_whenMapped_thenMeritsDecisionStatusIsPending() {
     UUID proceedingId = UUID.randomUUID();
     ApplicationMeritsDecision meritsDecision = new ApplicationMeritsDecision(null, null, null);
     ApplicationReadModel readModel =
@@ -374,11 +400,12 @@ class GetApplicationResponseMapperTest {
 
     var response = mapper.toResponse(readModel);
 
-    assertThat(response.getProceedings().getFirst().getMeritsDecision()).isNull();
+    assertThat(response.getProceedings().getFirst().getMeritsDecision())
+        .isEqualTo(MeritsDecisionStatusResponse.PENDING);
   }
 
   @Test
-  void givenUnknownCategoryOfLaw_whenMapped_thenCategoryOfLawIsNull() {
+  void givenUnknownCategoryOfLaw_whenMapped_thenCategoryOfLawIsPreserved() {
     UUID proceedingId = UUID.randomUUID();
     Proceeding proceeding =
         minimalProceeding(proceedingId).toBuilder().categoryOfLaw("UNKNOWN_CATEGORY").build();
@@ -387,11 +414,12 @@ class GetApplicationResponseMapperTest {
 
     var response = mapper.toResponse(readModel);
 
-    assertThat(response.getProceedings().getFirst().getCategoryOfLaw()).isNull();
+    assertThat(response.getProceedings().getFirst().getCategoryOfLaw())
+        .isEqualTo("UNKNOWN_CATEGORY");
   }
 
   @Test
-  void givenUnknownMatterType_whenMapped_thenMatterTypeIsNull() {
+  void givenUnknownMatterType_whenMapped_thenMatterTypeIsPreserved() {
     UUID proceedingId = UUID.randomUUID();
     Proceeding proceeding =
         minimalProceeding(proceedingId).toBuilder().matterType("UNKNOWN_MATTER_TYPE").build();
@@ -400,7 +428,8 @@ class GetApplicationResponseMapperTest {
 
     var response = mapper.toResponse(readModel);
 
-    assertThat(response.getProceedings().getFirst().getMatterType()).isNull();
+    assertThat(response.getProceedings().getFirst().getMatterType())
+        .isEqualTo("UNKNOWN_MATTER_TYPE");
   }
 
   @Test
@@ -475,6 +504,281 @@ class GetApplicationResponseMapperTest {
     var response = mapper.toResponse(readModel, null, List.of(), Map.of());
 
     assertThat(response.getPotentialDuplicates()).isEmpty();
+  }
+
+  @Test
+  void givenCreatedApplication_whenMapped_thenReturnsFullCreateContent() {
+    UUID applicationId = UUID.randomUUID();
+    UUID proceedingId = UUID.randomUUID();
+    Instant createdAt = Instant.parse("2026-08-01T09:00:00Z");
+    Instant submittedAt = Instant.parse("2026-08-01T10:00:00Z");
+    BigDecimal costLimit = new BigDecimal("1350.25");
+    ApplicationAddress address =
+        ApplicationAddress.builder()
+            .addressLineOne("1 Example Street")
+            .addressLineTwo("Flat 2")
+            .addressLineThree("District")
+            .city("London")
+            .county("Greater London")
+            .postcode("SW1A 1AA")
+            .organisation("Example Ltd")
+            .buildingNumberName("One")
+            .countryCode("GB")
+            .countryName("United Kingdom")
+            .location("HOME")
+            .lookupUsed(true)
+            .careOf("PERSON")
+            .careOfFirstName("Care")
+            .careOfLastName("Of")
+            .careOfOrganisationName("Care Org")
+            .build();
+    ApplicationClient client =
+        ApplicationClient.builder()
+            .firstName("Ada")
+            .lastName("Lovelace")
+            .lastNameAtBirth("Byron")
+            .dateOfBirth(LocalDate.of(1815, 12, 10))
+            .hasNationalInsuranceNumber(true)
+            .nationalInsuranceNumber("QQ123456C")
+            .appliedPreviously(true)
+            .previousApplicationId("APP-PREVIOUS")
+            .relationshipToInvolvedChildren("PARENT")
+            .addresses(List.of(address))
+            .build();
+    ScopeLimitation scope =
+        ScopeLimitation.builder()
+            .code("SCOPE-1")
+            .type("STANDARD")
+            .meaning("Defined scope")
+            .description("Scope detail")
+            .build();
+    InvolvedChild child =
+        InvolvedChild.builder()
+            .fullName("Child Name")
+            .dateOfBirth(LocalDate.of(2015, 4, 3))
+            .build();
+    Proceeding proceeding =
+        Proceeding.builder()
+            .id(proceedingId)
+            .leadProceeding(true)
+            .code("PR-123")
+            .meaning("Proceeding meaning")
+            .description("Proceeding description")
+            .matterType("Unknown matter")
+            .matterTypeCode("MAT-123")
+            .categoryOfLaw("Unknown law")
+            .categoryOfLawCode("CAT-123")
+            .clientInvolvementType("Applicant")
+            .clientInvolvementTypeCode("CLIENT-1")
+            .usedDelegatedFunctions(true)
+            .delegatedFunctionsDate(LocalDate.of(2026, 7, 20))
+            .delegatedFunctionsCostLimitation(new BigDecimal("2250.50"))
+            .substantiveLevelOfService(1)
+            .substantiveLevelOfServiceName("Full representation")
+            .emergencyLevelOfService(2)
+            .emergencyLevelOfServiceName("Emergency representation")
+            .substantiveCostLimitation(costLimit)
+            .scopeLimitations(List.of(scope))
+            .involvedChildren(List.of(child))
+            .build();
+    ApplicationReadModel application =
+        baseReadModel()
+            .applicationId(applicationId)
+            .createdAt(createdAt)
+            .submittedAt(submittedAt)
+            .modifiedAt(submittedAt)
+            .laaReference("LAA-123")
+            .client(client)
+            .officeCode("OFFICE-1")
+            .provider(
+                ApplicationProvider.builder()
+                    .officeCode("OFFICE-1")
+                    .contactEmail("provider@example.com")
+                    .build())
+            .opponents(
+                List.of(
+                    Opponent.builder()
+                        .opponentType("INDIVIDUAL")
+                        .firstName("Pat")
+                        .lastName("Opponent")
+                        .organisationName("Opponent Org")
+                        .build()))
+            .proceedings(List.of(proceeding))
+            .meritsDecisions(Map.of())
+            .usedDelegatedFunctions(true)
+            .build();
+
+    var response = mapper.toResponse(application);
+
+    assertThat(response.getApplicationId()).isEqualTo(applicationId);
+    assertThat(response.getStatus().getValue()).isEqualTo("APPLICATION_SUBMITTED");
+    assertThat(response.getLaaReference()).isEqualTo("LAA-123");
+    assertThat(response.getCreatedAt()).isEqualTo(createdAt.atOffset(ZoneOffset.UTC));
+    assertThat(response.getSubmittedAt()).isEqualTo(submittedAt.atOffset(ZoneOffset.UTC));
+    assertThat(response.getLastUpdated()).isEqualTo(submittedAt.atOffset(ZoneOffset.UTC));
+    assertThat(response.getIsLead()).isFalse();
+    assertThat(response.getUsedDelegatedFunctions()).isTrue();
+    assertThat(response.getClient().getFirstName()).isEqualTo("Ada");
+    assertThat(response.getClient().getLastName()).isEqualTo("Lovelace");
+    assertThat(response.getClient().getLastNameAtBirth()).isEqualTo("Byron");
+    assertThat(response.getClient().getDateOfBirth()).isEqualTo(client.getDateOfBirth());
+    assertThat(response.getClient().getHasNationalInsuranceNumber()).isTrue();
+    assertThat(response.getClient().getNationalInsuranceNumber()).isEqualTo("QQ123456C");
+    assertThat(response.getClient().getAppliedPreviously()).isTrue();
+    assertThat(response.getClient().getPreviousApplicationId()).isEqualTo("APP-PREVIOUS");
+    assertThat(response.getClient().getRelationshipToInvolvedChildren()).isEqualTo("PARENT");
+    assertThat(response.getClient().getAddresses()).hasSize(1);
+    var addressResponse = response.getClient().getAddresses().getFirst();
+    assertThat(addressResponse.getAddressLineOne()).isEqualTo("1 Example Street");
+    assertThat(addressResponse.getAddressLineTwo()).isEqualTo("Flat 2");
+    assertThat(addressResponse.getAddressLineThree()).isEqualTo("District");
+    assertThat(addressResponse.getCity()).isEqualTo("London");
+    assertThat(addressResponse.getCounty()).isEqualTo("Greater London");
+    assertThat(addressResponse.getPostcode()).isEqualTo("SW1A 1AA");
+    assertThat(addressResponse.getOrganisation()).isEqualTo("Example Ltd");
+    assertThat(addressResponse.getBuildingNumberName()).isEqualTo("One");
+    assertThat(addressResponse.getCountryCode()).isEqualTo("GB");
+    assertThat(addressResponse.getCountryName()).isEqualTo("United Kingdom");
+    assertThat(addressResponse.getLocation()).isEqualTo("HOME");
+    assertThat(addressResponse.getLookupUsed()).isTrue();
+    assertThat(addressResponse.getCareOf()).isEqualTo("PERSON");
+    assertThat(addressResponse.getCareOfFirstName()).isEqualTo("Care");
+    assertThat(addressResponse.getCareOfLastName()).isEqualTo("Of");
+    assertThat(addressResponse.getCareOfOrganisationName()).isEqualTo("Care Org");
+    assertThat(response.getProvider().getOfficeCode()).isEqualTo("OFFICE-1");
+    assertThat(response.getProvider().getContactEmail()).isEqualTo("provider@example.com");
+    assertThat(response.getOpponents())
+        .singleElement()
+        .satisfies(
+            mapped -> {
+              assertThat(mapped.getOpponentType()).isEqualTo("INDIVIDUAL");
+              assertThat(mapped.getFirstName()).isEqualTo("Pat");
+              assertThat(mapped.getLastName()).isEqualTo("Opponent");
+              assertThat(mapped.getOrganisationName()).isEqualTo("Opponent Org");
+            });
+    var mappedProceeding = response.getProceedings().getFirst();
+    assertThat(mappedProceeding.getProceedingId()).isEqualTo(proceedingId);
+    assertThat(mappedProceeding.getLeadProceeding()).isTrue();
+    assertThat(mappedProceeding.getCode()).isEqualTo("PR-123");
+    assertThat(mappedProceeding.getMeaning()).isEqualTo("Proceeding meaning");
+    assertThat(mappedProceeding.getDescription()).isEqualTo("Proceeding description");
+    assertThat(mappedProceeding.getMatterType()).isEqualTo("Unknown matter");
+    assertThat(mappedProceeding.getMatterTypeCode()).isEqualTo("MAT-123");
+    assertThat(mappedProceeding.getCategoryOfLaw()).isEqualTo("Unknown law");
+    assertThat(mappedProceeding.getCategoryOfLawCode()).isEqualTo("CAT-123");
+    assertThat(mappedProceeding.getClientInvolvementType()).isEqualTo("Applicant");
+    assertThat(mappedProceeding.getClientInvolvementTypeCode()).isEqualTo("CLIENT-1");
+    assertThat(mappedProceeding.getUsedDelegatedFunctions()).isTrue();
+    assertThat(mappedProceeding.getDelegatedFunctionsDate()).isEqualTo(LocalDate.of(2026, 7, 20));
+    assertThat(mappedProceeding.getDelegatedFunctionsCostLimitation())
+        .isEqualByComparingTo("2250.50");
+    assertThat(mappedProceeding.getSubstantiveLevelOfServiceCode()).isEqualTo(1);
+    assertThat(mappedProceeding.getSubstantiveLevelOfServiceName())
+        .isEqualTo("Full representation");
+    assertThat(mappedProceeding.getEmergencyLevelOfServiceCode()).isEqualTo(2);
+    assertThat(mappedProceeding.getEmergencyLevelOfServiceName())
+        .isEqualTo("Emergency representation");
+    assertThat(mappedProceeding.getSubstantiveCostLimitation()).isEqualByComparingTo(costLimit);
+    assertThat(mappedProceeding.getScopeLimitations())
+        .singleElement()
+        .satisfies(
+            mapped -> {
+              assertThat(mapped.getCode()).isEqualTo("SCOPE-1");
+              assertThat(mapped.getType()).isEqualTo("STANDARD");
+              assertThat(mapped.getMeaning()).isEqualTo("Defined scope");
+              assertThat(mapped.getDescription()).isEqualTo("Scope detail");
+            });
+    assertThat(mappedProceeding.getInvolvedChildren())
+        .singleElement()
+        .satisfies(
+            mapped -> {
+              assertThat(mapped.getFirstName()).isNull();
+              assertThat(mapped.getLastName()).isNull();
+              assertThat(mapped.getDateOfBirth()).isEqualTo(LocalDate.of(2015, 4, 3));
+            });
+    assertThat(response.getAutoGranted().getValue()).isEqualTo("MANUAL");
+    assertThat(response.getPotentialDuplicates()).isNull();
+    assertThat(response.getVersion()).isEqualTo(1L);
+  }
+
+  @Test
+  void givenNoDecisions_whenMapped_thenReturnsPending() {
+    Proceeding proceeding = minimalProceeding(UUID.randomUUID());
+    ApplicationReadModel application =
+        baseReadModel()
+            .createdAt(Instant.parse("2026-08-01T09:00:00Z"))
+            .submittedAt(Instant.parse("2026-08-01T10:00:00Z"))
+            .proceedings(List.of(proceeding))
+            .meritsDecisions(Map.of())
+            .decisionStatus(null)
+            .build();
+
+    var response = mapper.toResponse(application);
+
+    assertThat(response.getDecisionStatus()).isEqualTo(DecisionStatusResponse.PENDING);
+    assertThat(response.getProceedings().getFirst().getMeritsDecision())
+        .isEqualTo(MeritsDecisionStatusResponse.PENDING);
+  }
+
+  @Test
+  void givenUnknownLegalCategories_whenMapped_thenPreservesStringsAndCodes() {
+    Proceeding proceeding =
+        minimalProceeding(UUID.randomUUID()).toBuilder()
+            .categoryOfLaw("A category not in the old enum")
+            .categoryOfLawCode("CAT-991")
+            .matterType("A matter not in the old enum")
+            .matterTypeCode("MAT-123")
+            .build();
+    ApplicationReadModel application =
+        baseReadModel()
+            .createdAt(Instant.parse("2026-08-01T09:00:00Z"))
+            .submittedAt(Instant.parse("2026-08-01T10:00:00Z"))
+            .proceedings(List.of(proceeding))
+            .meritsDecisions(Map.of())
+            .build();
+
+    var mapped = mapper.toResponse(application).getProceedings().getFirst();
+
+    assertThat(mapped.getCategoryOfLaw()).isEqualTo("A category not in the old enum");
+    assertThat(mapped.getCategoryOfLawCode()).isEqualTo("CAT-991");
+    assertThat(mapped.getMatterType()).isEqualTo("A matter not in the old enum");
+    assertThat(mapped.getMatterTypeCode()).isEqualTo("MAT-123");
+  }
+
+  @Test
+  void givenLinkedMembers_whenMapped_thenIncludesClientNames() {
+    UUID applicationId = UUID.randomUUID();
+    UUID linkedId = UUID.randomUUID();
+    var group =
+        LinkedApplicationGroupReadModel.builder()
+            .groupId(UUID.randomUUID())
+            .leadApplicationId(applicationId)
+            .memberIds(List.of(applicationId, linkedId))
+            .build();
+    ApplicationReadModel application =
+        baseReadModel()
+            .applicationId(applicationId)
+            .createdAt(Instant.parse("2026-08-01T09:00:00Z"))
+            .submittedAt(Instant.parse("2026-08-01T10:00:00Z"))
+            .build();
+
+    var response =
+        mapper.toResponse(
+            application,
+            group,
+            List.of(),
+            Map.of(linkedId, new LinkedApplicationMemberDetails("LAA-LINKED", "Grace", "Hopper")));
+
+    assertThat(response.getLinkedApplications())
+        .singleElement()
+        .satisfies(
+            member -> {
+              assertThat(member.getApplicationId()).isEqualTo(linkedId);
+              assertThat(member.getLaaReference()).isEqualTo("LAA-LINKED");
+              assertThat(member.getClientFirstName()).isEqualTo("Grace");
+              assertThat(member.getClientLastName()).isEqualTo("Hopper");
+              assertThat(member.getIsLead()).isFalse();
+            });
   }
 
   @Test

@@ -7,27 +7,30 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
+import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationAddress;
+import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationProvider;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Opponent;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ScopeLimitation;
 import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationMeritsDecision;
+import uk.gov.justice.laa.dstew.access.model.AddressResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationDocumentResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.AutoGranted;
-import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
-import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
+import uk.gov.justice.laa.dstew.access.model.ClientResponse;
+import uk.gov.justice.laa.dstew.access.model.DecisionStatusResponse;
 import uk.gov.justice.laa.dstew.access.model.InvolvedChildResponse;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryResponse;
-import uk.gov.justice.laa.dstew.access.model.MatterType;
-import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
+import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatusResponse;
 import uk.gov.justice.laa.dstew.access.model.OpponentResponse;
 import uk.gov.justice.laa.dstew.access.model.ProviderResponse;
 import uk.gov.justice.laa.dstew.access.model.ScopeLimitationResponse;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
+import uk.gov.justice.laa.dstew.access.query.application.LinkedApplicationMemberDetails;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
 
@@ -45,31 +48,36 @@ public class GetApplicationResponseMapper {
       ApplicationReadModel application,
       LinkedApplicationGroupReadModel linkedGroup,
       List<PriorAuthorityReadModel> priorAuthorities,
-      Map<UUID, String> linkedLaaReferences) {
+      Map<UUID, LinkedApplicationMemberDetails> linkedMemberDetails) {
     ApplicationResponse response = new ApplicationResponse();
     response.setApplicationId(application.getApplicationId());
     response.setStatus(ApplicationStatus.valueOf(application.getStatus()));
     response.setLaaReference(application.getLaaReference());
+    if (application.getCreatedAt() == null) {
+      throw new IllegalStateException("Application createdAt is missing from its read model");
+    }
+    response.setCreatedAt(application.getCreatedAt().atOffset(ZoneOffset.UTC));
     response.setLastUpdated(application.getModifiedAt().atOffset(ZoneOffset.UTC));
-    response.setSubmittedAt(
-        application.getSubmittedAt() == null
-            ? null
-            : application.getSubmittedAt().atOffset(ZoneOffset.UTC));
+    if (application.getSubmittedAt() == null) {
+      throw new IllegalStateException("Application submittedAt is missing from its read model");
+    }
+    response.setSubmittedAt(application.getSubmittedAt().atOffset(ZoneOffset.UTC));
     response.setIsLead(
         linkedGroup != null
             && application.getApplicationId().equals(linkedGroup.getLeadApplicationId()));
     response.setLinkedApplications(
-        toLinkedSummaries(application, linkedGroup, linkedLaaReferences));
+        toLinkedSummaries(application, linkedGroup, linkedMemberDetails));
     response.setAssignedTo(application.getCaseworkerId());
     response.setUsedDelegatedFunctions(application.getUsedDelegatedFunctions());
     response.setAutoGranted(AutoGranted.valueOf(application.getAutoGranted().name()));
     response.setDecisionStatus(
         application.getDecisionStatus() == null
-            ? null
-            : DecisionStatus.valueOf(application.getDecisionStatus()));
+            ? DecisionStatusResponse.PENDING
+            : DecisionStatusResponse.valueOf(application.getDecisionStatus()));
     response.setVersion(application.getApplicationVersion());
     response.setLinkedGroupVersion(LinkedGroupVersionTokens.encode(linkedGroup));
     response.setProvider(toProvider(application));
+    response.setClient(toClient(application.getClient()));
     response.setOpponents(toOpponents(application.getOpponents()));
     response.setProceedings(
         toProceedings(application.getProceedings(), application.getMeritsDecisions()));
@@ -77,6 +85,42 @@ public class GetApplicationResponseMapper {
     response.setPriorAuthorities(PriorAuthoritySummaryMapper.toSummaries(priorAuthorities));
     response.setUploadedDocuments(toUploadedDocuments(application));
     return response;
+  }
+
+  private ClientResponse toClient(ApplicationClient client) {
+    return ClientResponse.builder()
+        .firstName(client.getFirstName())
+        .lastName(client.getLastName())
+        .lastNameAtBirth(client.getLastNameAtBirth())
+        .dateOfBirth(client.getDateOfBirth())
+        .hasNationalInsuranceNumber(client.getHasNationalInsuranceNumber())
+        .nationalInsuranceNumber(client.getNationalInsuranceNumber())
+        .appliedPreviously(client.getAppliedPreviously())
+        .previousApplicationId(client.getPreviousApplicationId())
+        .relationshipToInvolvedChildren(client.getRelationshipToInvolvedChildren())
+        .addresses(client.getAddresses().stream().map(this::toAddress).toList())
+        .build();
+  }
+
+  private AddressResponse toAddress(ApplicationAddress address) {
+    return AddressResponse.builder()
+        .addressLineOne(address.getAddressLineOne())
+        .addressLineTwo(address.getAddressLineTwo())
+        .addressLineThree(address.getAddressLineThree())
+        .city(address.getCity())
+        .county(address.getCounty())
+        .postcode(address.getPostcode())
+        .organisation(address.getOrganisation())
+        .buildingNumberName(address.getBuildingNumberName())
+        .countryCode(address.getCountryCode())
+        .countryName(address.getCountryName())
+        .location(address.getLocation())
+        .lookupUsed(address.getLookupUsed())
+        .careOf(address.getCareOf())
+        .careOfFirstName(address.getCareOfFirstName())
+        .careOfLastName(address.getCareOfLastName())
+        .careOfOrganisationName(address.getCareOfOrganisationName())
+        .build();
   }
 
   private List<ApplicationDocumentResponse> toUploadedDocuments(ApplicationReadModel application) {
@@ -146,45 +190,31 @@ public class GetApplicationResponseMapper {
         meritsDecisions == null ? null : meritsDecisions.get(proceeding.getId());
     return ApplicationProceedingResponse.builder()
         .proceedingId(proceeding.getId())
-        .proceedingDescription(proceeding.getDescription())
-        .proceedingType(proceeding.getMeaning())
+        .leadProceeding(proceeding.getLeadProceeding())
+        .code(proceeding.getCode())
+        .meaning(proceeding.getMeaning())
+        .description(proceeding.getDescription())
+        .matterType(proceeding.getMatterType())
+        .matterTypeCode(proceeding.getMatterTypeCode())
+        .categoryOfLaw(proceeding.getCategoryOfLaw())
+        .categoryOfLawCode(proceeding.getCategoryOfLawCode())
+        .clientInvolvementType(proceeding.getClientInvolvementType())
+        .clientInvolvementTypeCode(proceeding.getClientInvolvementTypeCode())
+        .usedDelegatedFunctions(proceeding.getUsedDelegatedFunctions())
         .delegatedFunctionsDate(proceeding.getDelegatedFunctionsDate())
-        .categoryOfLaw(toCategoryOfLaw(proceeding.getCategoryOfLaw()))
-        .matterType(toMatterType(proceeding.getMatterType()))
-        .levelOfService(proceeding.getSubstantiveLevelOfServiceName())
-        .substantiveCostLimitation(
-            proceeding.getSubstantiveCostLimitation() == null
-                ? null
-                : proceeding.getSubstantiveCostLimitation().doubleValue())
+        .delegatedFunctionsCostLimitation(proceeding.getDelegatedFunctionsCostLimitation())
+        .substantiveLevelOfServiceCode(proceeding.getSubstantiveLevelOfService())
+        .substantiveLevelOfServiceName(proceeding.getSubstantiveLevelOfServiceName())
+        .emergencyLevelOfServiceCode(proceeding.getEmergencyLevelOfService())
+        .emergencyLevelOfServiceName(proceeding.getEmergencyLevelOfServiceName())
+        .substantiveCostLimitation(proceeding.getSubstantiveCostLimitation())
         .meritsDecision(
             meritsDecision == null || meritsDecision.decision() == null
-                ? null
-                : MeritsDecisionStatus.valueOf(meritsDecision.decision()))
+                ? MeritsDecisionStatusResponse.PENDING
+                : MeritsDecisionStatusResponse.valueOf(meritsDecision.decision()))
         .scopeLimitations(toScopeLimitations(proceeding.getScopeLimitations()))
         .involvedChildren(toInvolvedChildren(proceeding))
         .build();
-  }
-
-  private CategoryOfLaw toCategoryOfLaw(String categoryOfLaw) {
-    if (categoryOfLaw == null) {
-      return null;
-    }
-    try {
-      return CategoryOfLaw.valueOf(categoryOfLaw.toUpperCase().replace(" ", "_"));
-    } catch (IllegalArgumentException e) {
-      return null;
-    }
-  }
-
-  private MatterType toMatterType(String matterType) {
-    if (matterType == null) {
-      return null;
-    }
-    try {
-      return MatterType.valueOf(matterType.toUpperCase().replace(" ", "_"));
-    } catch (IllegalArgumentException e) {
-      return null;
-    }
   }
 
   private List<ScopeLimitationResponse> toScopeLimitations(List<ScopeLimitation> scopeLimitations) {
@@ -195,8 +225,10 @@ public class GetApplicationResponseMapper {
         .map(
             scopeLimitation ->
                 ScopeLimitationResponse.builder()
-                    .scopeLimitation(scopeLimitation.getMeaning())
-                    .scopeDescription(scopeLimitation.getDescription())
+                    .code(scopeLimitation.getCode())
+                    .type(scopeLimitation.getType())
+                    .meaning(scopeLimitation.getMeaning())
+                    .description(scopeLimitation.getDescription())
                     .build())
         .toList();
   }
@@ -207,17 +239,21 @@ public class GetApplicationResponseMapper {
     }
     return proceeding.getInvolvedChildren().stream()
         .map(
-            child ->
-                new InvolvedChildResponse()
-                    .fullName(child.getFullName())
-                    .dateOfBirth(child.getDateOfBirth()))
+            child -> {
+              // TODO: agree mapping from fullName to firstName/lastName in the separate child-name
+              // work.
+              return new InvolvedChildResponse()
+                  .firstName(null)
+                  .lastName(null)
+                  .dateOfBirth(child.getDateOfBirth());
+            })
         .toList();
   }
 
   private List<LinkedApplicationSummaryResponse> toLinkedSummaries(
       ApplicationReadModel application,
       LinkedApplicationGroupReadModel linkedGroup,
-      Map<UUID, String> linkedLaaReferences) {
+      Map<UUID, LinkedApplicationMemberDetails> linkedMemberDetails) {
     if (linkedGroup == null) {
       return Collections.emptyList();
     }
@@ -225,10 +261,17 @@ public class GetApplicationResponseMapper {
         .filter(memberId -> !memberId.equals(application.getApplicationId()))
         .map(
             memberId -> {
+              LinkedApplicationMemberDetails member = linkedMemberDetails.get(memberId);
+              if (member == null) {
+                throw new IllegalStateException(
+                    "Linked application details are missing for " + memberId);
+              }
               LinkedApplicationSummaryResponse linked = new LinkedApplicationSummaryResponse();
               linked.setApplicationId(memberId);
-              linked.setLaaReference(linkedLaaReferences.get(memberId));
+              linked.setLaaReference(member.laaReference());
               linked.setIsLead(memberId.equals(linkedGroup.getLeadApplicationId()));
+              linked.setClientFirstName(member.clientFirstName());
+              linked.setClientLastName(member.clientLastName());
               return linked;
             })
         .toList();

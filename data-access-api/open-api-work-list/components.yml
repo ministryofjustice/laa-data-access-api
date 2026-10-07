@@ -30,9 +30,10 @@ components:
           enum:
             - DIRECT
             - LINKED_GROUP
-        submittedAt:
+        readyAt:
           type: string
           format: date-time
+          description: When this work item became ready for assessment (application readiness, or prior authority submission)
         laaReference:
           type: string
           description: LAA reference for the application item or the parent application of a PA item
@@ -40,12 +41,21 @@ components:
           type: boolean
           description: Whether the application used delegated functions; omitted for PA items
         categoryOfLaw:
-          $ref: "../open-api-common/components.yml#/components/schemas/CategoryOfLaw"
+          type: string
+          description: Category of law of the parent application's lead proceeding; omitted for prior authority items
+        categoryOfLawCode:
+          type: string
+          description: Category of law code of the parent application's lead proceeding; omitted for prior authority items
         matterTypes:
           type: array
-          description: Matter types across the application or PA parent application's proceedings
+          description: Distinct matter type/code pairs from the application (or prior authority parent) proceedings in proceeding order; index i has its code at index i of matterTypeCodes
           items:
-            $ref: "../open-api-common/components.yml#/components/schemas/MatterType"
+            type: string
+        matterTypeCodes:
+          type: array
+          description: Codes paired by index with matterTypes, from distinct matter type/code pairs in proceeding order
+          items:
+            type: string
         applicationStatus:
           $ref: "../open-api-common/components.yml#/components/schemas/ApplicationStatus"
         priorAuthorityType:

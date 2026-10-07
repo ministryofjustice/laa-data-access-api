@@ -3,12 +3,16 @@ package uk.gov.justice.laa.dstew.access;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.awaitility.Awaitility.await;
+import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.applicationWithMatterPairs;
+import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validAddressContent;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validApplicationContent;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -32,6 +36,9 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
+import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationLinkRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationLinkType;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
@@ -39,7 +46,9 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantedOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityDraftRequest;
+import uk.gov.justice.laa.dstew.access.model.DecisionStatusResponse;
 import uk.gov.justice.laa.dstew.access.model.DisbursementDetails;
+import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatusResponse;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthoritySummary;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.model.SavePriorAuthorityDraftResponse;
@@ -89,6 +98,303 @@ class GetApplicationsIntegrationTest {
         .contains(applicationId);
     ApplicationSummary application = findApplication(response, applicationId);
     assertThat(application.getPriorAuthorities()).isEmpty();
+  }
+
+  @Test
+  void givenSubmittedApplication_whenGetById_thenReturnsCreateContent() {
+    UUID applicationId = UUID.randomUUID();
+    UUID firstProceedingId = UUID.randomUUID();
+    UUID secondProceedingId = UUID.randomUUID();
+    ApplicationCreateRequest request =
+        validCreateApplicationRequest(applicationId, firstProceedingId);
+    Map<String, Object> content = new HashMap<>(request.getApplicationContent());
+    Map<String, Object> client = new HashMap<>((Map<String, Object>) content.get("client"));
+    client.put("lastNameAtBirth", "Byron");
+    client.put("hasNationalInsuranceNumber", true);
+    client.put("nationalInsuranceNumber", "QQ123456C");
+    client.put("previousApplicationId", "PREVIOUS-123");
+    client.put("relationshipToInvolvedChildren", "Parent");
+    Map<String, Object> addressContent = new HashMap<>(validAddressContent());
+    addressContent.put("addressLineTwo", "Suite 2");
+    addressContent.put("addressLineThree", "Historic district");
+    addressContent.put("county", "Greater London");
+    addressContent.put("organisation", "Analytical Engines Ltd");
+    addressContent.put("buildingNumberName", "Engine House");
+    addressContent.put("lookupUsed", true);
+    addressContent.put("careOf", "PERSON");
+    addressContent.put("careOfFirstName", "Augusta");
+    addressContent.put("careOfLastName", "King");
+    addressContent.put("careOfOrganisationName", "Engine House Ltd");
+    client.put("addresses", List.of(addressContent));
+    content.put("client", client);
+    Map<String, Object> firstProceeding =
+        new HashMap<>((Map<String, Object>) ((List<?>) content.get("proceedings")).getFirst());
+    firstProceeding.put("meaning", "Meaning one");
+    firstProceeding.put("description", "Description one");
+    firstProceeding.put("categoryOfLaw", "New category");
+    firstProceeding.put("categoryOfLawCode", "CAT-001");
+    firstProceeding.put("matterType", "New matter");
+    firstProceeding.put("matterTypeCode", "MAT-001");
+    firstProceeding.put("substantiveCostLimitation", "2500.25");
+    Map<String, Object> secondProceeding = new HashMap<>(firstProceeding);
+    secondProceeding.put("id", secondProceedingId.toString());
+    secondProceeding.put("leadProceeding", false);
+    secondProceeding.put("meaning", "Meaning two");
+    secondProceeding.put("description", "Description two");
+    secondProceeding.put("matterType", "Second matter");
+    secondProceeding.put("matterTypeCode", "MAT-002");
+    content.put("proceedings", List.of(firstProceeding, secondProceeding));
+    content.put(
+        "opponents",
+        List.of(Map.of("opponentType", "INDIVIDUAL", "firstName", "Rae", "lastName", "Opponent")));
+    request.setApplicationContent(content);
+    request.setLaaReference("DETAIL-" + applicationId);
+    assertThat(
+            restTemplate
+                .postForEntity(
+                    "http://localhost:" + port + "/api/v0/applications",
+                    new HttpEntity<>(request, headers()),
+                    Void.class)
+                .getStatusCode())
+        .isEqualTo(HttpStatus.CREATED);
+    awaitApplicationProjection(applicationId);
+
+    ResponseEntity<ApplicationResponse> response = getApplication(applicationId);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    ApplicationResponse detail = response.getBody();
+    assertThat(detail).isNotNull();
+    assertThat(detail.getApplicationId()).isEqualTo(applicationId);
+    assertThat(detail.getLaaReference()).isEqualTo("DETAIL-" + applicationId);
+    Instant createdAt =
+        jdbcTemplate.queryForObject(
+            "SELECT created_at FROM axon.application_current_state WHERE application_id = ?",
+            Instant.class,
+            applicationId);
+    Instant submittedAt =
+        jdbcTemplate.queryForObject(
+            "SELECT submitted_at FROM axon.application_current_state WHERE application_id = ?",
+            Instant.class,
+            applicationId);
+    assertThat(createdAt).isEqualTo(submittedAt);
+    assertThat(detail.getCreatedAt().toInstant()).isEqualTo(createdAt);
+    assertThat(detail.getSubmittedAt().toInstant()).isEqualTo(submittedAt);
+    assertThat(detail.getClient().getFirstName()).isEqualTo("Ada");
+    assertThat(detail.getClient().getLastName()).isEqualTo("Lovelace");
+    assertThat(detail.getClient().getLastNameAtBirth()).isEqualTo("Byron");
+    assertThat(detail.getClient().getDateOfBirth()).isEqualTo(LocalDate.of(1815, 12, 10));
+    assertThat(detail.getClient().getHasNationalInsuranceNumber()).isTrue();
+    assertThat(detail.getClient().getNationalInsuranceNumber()).isEqualTo("QQ123456C");
+    assertThat(detail.getClient().getAppliedPreviously()).isFalse();
+    assertThat(detail.getClient().getPreviousApplicationId()).isEqualTo("PREVIOUS-123");
+    assertThat(detail.getClient().getRelationshipToInvolvedChildren()).isEqualTo("Parent");
+    assertThat(detail.getClient().getAddresses())
+        .singleElement()
+        .satisfies(
+            address -> {
+              assertThat(address.getAddressLineOne()).isEqualTo("1 Analytical Engine Way");
+              assertThat(address.getAddressLineTwo()).isEqualTo("Suite 2");
+              assertThat(address.getAddressLineThree()).isEqualTo("Historic district");
+              assertThat(address.getLocation()).isEqualTo("home");
+              assertThat(address.getCity()).isEqualTo("London");
+              assertThat(address.getCounty()).isEqualTo("Greater London");
+              assertThat(address.getPostcode()).isEqualTo("SW1A 1AA");
+              assertThat(address.getOrganisation()).isEqualTo("Analytical Engines Ltd");
+              assertThat(address.getBuildingNumberName()).isEqualTo("Engine House");
+              assertThat(address.getCountryCode()).isEqualTo("GBR");
+              assertThat(address.getCountryName()).isEqualTo("United Kingdom");
+              assertThat(address.getLookupUsed()).isTrue();
+              assertThat(address.getCareOf()).isEqualTo("PERSON");
+              assertThat(address.getCareOfFirstName()).isEqualTo("Augusta");
+              assertThat(address.getCareOfLastName()).isEqualTo("King");
+              assertThat(address.getCareOfOrganisationName()).isEqualTo("Engine House Ltd");
+            });
+    assertThat(detail.getProvider().getOfficeCode()).isEqualTo("1A001B");
+    assertThat(detail.getProvider().getContactEmail()).isEqualTo("provider@example.com");
+    assertThat(detail.getOpponents())
+        .singleElement()
+        .satisfies(
+            opponent -> {
+              assertThat(opponent.getFirstName()).isEqualTo("Rae");
+              assertThat(opponent.getLastName()).isEqualTo("Opponent");
+            });
+    assertThat(detail.getProceedings())
+        .extracting(
+            proceeding -> proceeding.getMeaning(),
+            proceeding -> proceeding.getMatterType(),
+            proceeding -> proceeding.getMatterTypeCode())
+        .containsExactly(
+            tuple("Meaning one", "New matter", "MAT-001"),
+            tuple("Meaning two", "Second matter", "MAT-002"));
+    assertThat(detail.getProceedings().getFirst().getProceedingId()).isEqualTo(firstProceedingId);
+    assertThat(detail.getProceedings().getFirst().getCode()).isEqualTo("SE003");
+    assertThat(detail.getProceedings().getFirst().getCategoryOfLaw()).isEqualTo("New category");
+    assertThat(detail.getProceedings().getFirst().getCategoryOfLawCode()).isEqualTo("CAT-001");
+    assertThat(detail.getProceedings().getFirst().getDescription()).isEqualTo("Description one");
+    assertThat(detail.getProceedings().getFirst().getClientInvolvementType())
+        .isEqualTo("Respondent");
+    assertThat(detail.getProceedings().getFirst().getClientInvolvementTypeCode()).isEqualTo("A");
+    assertThat(detail.getProceedings().getFirst().getUsedDelegatedFunctions()).isFalse();
+    assertThat(detail.getProceedings().getFirst().getSubstantiveLevelOfServiceCode()).isEqualTo(3);
+    assertThat(detail.getProceedings().getFirst().getSubstantiveLevelOfServiceName())
+        .isEqualTo("Full Representation");
+    assertThat(detail.getProceedings().getFirst().getEmergencyLevelOfServiceCode()).isEqualTo(3);
+    assertThat(detail.getProceedings().getFirst().getEmergencyLevelOfServiceName())
+        .isEqualTo("Full Representation");
+    assertThat(detail.getProceedings().getFirst().getSubstantiveCostLimitation())
+        .isEqualByComparingTo(new BigDecimal("2500.25"));
+    assertThat(detail.getProceedings().getFirst().getScopeLimitations())
+        .singleElement()
+        .satisfies(
+            scope -> {
+              assertThat(scope.getCode()).isEqualTo("FM062");
+              assertThat(scope.getType()).isEqualTo("SUBSTANTIVE");
+              assertThat(scope.getMeaning()).isEqualTo("Final hearing");
+              assertThat(scope.getDescription())
+                  .isEqualTo("Limited to all steps up to and including the final hearing");
+            });
+    assertThat(detail.getDecisionStatus()).isEqualTo(DecisionStatusResponse.PENDING);
+    assertThat(detail.getProceedings().getFirst().getMeritsDecision())
+        .isEqualTo(MeritsDecisionStatusResponse.PENDING);
+  }
+
+  @Test
+  void givenDifferentContentAndEventTimes_whenListed_thenSortsByEventSubmittedAt() {
+    String reference = "EVENT-TIME-" + UUID.randomUUID();
+    UUID firstId = UUID.randomUUID();
+    UUID secondId = UUID.randomUUID();
+    ApplicationCreateRequest first = validCreateApplicationRequest(firstId, UUID.randomUUID());
+    ApplicationCreateRequest second = validCreateApplicationRequest(secondId, UUID.randomUUID());
+    first.setLaaReference(reference);
+    second.setLaaReference(reference);
+    Map<String, Object> firstContent = new HashMap<>(first.getApplicationContent());
+    Map<String, Object> secondContent = new HashMap<>(second.getApplicationContent());
+    firstContent.put("submittedAt", "2099-01-01T00:00:00Z");
+    secondContent.put("submittedAt", "2000-01-01T00:00:00Z");
+    first.setApplicationContent(firstContent);
+    second.setApplicationContent(secondContent);
+    create(first);
+    awaitApplicationProjection(firstId);
+    create(second);
+    awaitApplicationProjection(secondId);
+
+    ResponseEntity<ApplicationSummaryResponse> response =
+        restTemplate.exchange(
+            "http://localhost:"
+                + port
+                + "/api/v0/applications?laaReference="
+                + reference
+                + "&sortBy=SUBMITTED_DATE&orderBy=ASC&pageSize=100",
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            ApplicationSummaryResponse.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(response.getBody().getApplications())
+        .extracting(ApplicationSummary::getApplicationId)
+        .containsExactly(firstId, secondId);
+    ApplicationResponse firstDetail = getApplication(firstId).getBody();
+    ApplicationResponse secondDetail = getApplication(secondId).getBody();
+    assertThat(response.getBody().getApplications())
+        .extracting(ApplicationSummary::getSubmittedAt)
+        .containsExactly(firstDetail.getSubmittedAt(), secondDetail.getSubmittedAt());
+  }
+
+  @Test
+  void givenMatterTypeCodes_whenFiltered_thenMatchesLeadCodeExactly() {
+    ApplicationCreateRequest matching =
+        applicationWithMatterPairs(
+            "Family", "CAT-123", "Shared display name", "MAT-123", "Other matter", "MAT-999");
+    ApplicationCreateRequest nonMatching =
+        applicationWithMatterPairs(
+            "Family", "CAT-123", "Shared display name", "OTHER-CODE", "Other matter", "MAT-999");
+    String reference = "CODE-FILTER-" + UUID.randomUUID();
+    matching.setLaaReference(reference);
+    nonMatching.setLaaReference(reference);
+    create(matching);
+    create(nonMatching);
+    awaitApplicationProjection(matching.getId());
+    awaitApplicationProjection(nonMatching.getId());
+
+    ResponseEntity<ApplicationSummaryResponse> response =
+        restTemplate.exchange(
+            "http://localhost:"
+                + port
+                + "/api/v0/applications?laaReference="
+                + reference
+                + "&matterTypeCode=MAT-123&page=1&pageSize=10",
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            ApplicationSummaryResponse.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(response.getBody().getPaging().getTotalRecords()).isEqualTo(1);
+    assertThat(response.getBody().getPaging().getItemsReturned()).isEqualTo(1);
+    assertThat(response.getBody().getApplications())
+        .extracting(ApplicationSummary::getApplicationId)
+        .containsExactly(matching.getId());
+    assertThat(response.getBody().getApplications())
+        .extracting(
+            ApplicationSummary::getCategoryOfLaw,
+            ApplicationSummary::getCategoryOfLawCode,
+            ApplicationSummary::getMatterType,
+            ApplicationSummary::getMatterTypeCode)
+        .containsExactly(tuple("Family", "CAT-123", "Shared display name", "MAT-123"));
+  }
+
+  @Test
+  void givenLinkedApplications_whenListedAndRead_thenReturnsClientNames() {
+    UUID leadId = UUID.randomUUID();
+    UUID memberId = UUID.randomUUID();
+    String lastName = "Linked-" + UUID.randomUUID().toString().replace("-", "");
+    ApplicationCreateRequest lead = applicationWithClient(leadId, lastName, "Ada");
+    ApplicationCreateRequest member = applicationWithClient(memberId, lastName, "Grace");
+    create(lead);
+    create(member);
+    awaitApplicationProjection(leadId);
+    awaitApplicationProjection(memberId);
+    ResponseEntity<Void> linked =
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/applications/" + memberId + "/link",
+            HttpMethod.POST,
+            new HttpEntity<>(
+                new ApplicationLinkRequest(leadId, ApplicationLinkType.FAMILY), headers()),
+            Void.class);
+    assertThat(linked.getStatusCode()).isIn(HttpStatus.NO_CONTENT, HttpStatus.ACCEPTED);
+
+    await()
+        .atMost(15, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              ResponseEntity<ApplicationSummaryResponse> applications = listApplications(lastName);
+              assertThat(applications.getBody().getApplications())
+                  .extracting(ApplicationSummary::getApplicationId)
+                  .contains(leadId, memberId);
+              assertThat(findApplication(applications, leadId).getLinkedApplications()).hasSize(1);
+            });
+    ResponseEntity<ApplicationSummaryResponse> listed = listApplications(lastName);
+    for (UUID applicationId : List.of(leadId, memberId)) {
+      ApplicationSummary summary = findApplication(listed, applicationId);
+      ApplicationResponse detail = getApplication(applicationId).getBody();
+      assertThat(summary.getLinkedApplications())
+          .singleElement()
+          .satisfies(
+              linkedMember -> {
+                assertThat(linkedMember.getApplicationId()).isNotEqualTo(applicationId);
+                assertThat(linkedMember.getLaaReference()).isEqualTo("LAA-123");
+                assertThat(linkedMember.getClientFirstName())
+                    .isEqualTo(applicationId.equals(leadId) ? "Grace" : "Ada");
+                assertThat(linkedMember.getClientLastName()).isEqualTo(lastName);
+              });
+      assertThat(detail.getLinkedApplications())
+          .singleElement()
+          .satisfies(
+              linkedMember -> {
+                assertThat(linkedMember.getApplicationId()).isNotEqualTo(applicationId);
+                assertThat(linkedMember.getClientFirstName())
+                    .isEqualTo(applicationId.equals(leadId) ? "Grace" : "Ada");
+                assertThat(linkedMember.getClientLastName()).isEqualTo(lastName);
+              });
+    }
   }
 
   @Test
@@ -376,6 +682,28 @@ class GetApplicationsIntegrationTest {
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
   }
 
+  private void create(ApplicationCreateRequest request) {
+    ResponseEntity<Void> response =
+        restTemplate.postForEntity(
+            "http://localhost:" + port + "/api/v0/applications",
+            new HttpEntity<>(request, headers()),
+            Void.class);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+  }
+
+  private ApplicationCreateRequest applicationWithClient(
+      UUID applicationId, String clientLastName, String firstName) {
+    ApplicationCreateRequest request =
+        validCreateApplicationRequest(applicationId, UUID.randomUUID());
+    Map<String, Object> content = new HashMap<>(request.getApplicationContent());
+    Map<String, Object> client = new HashMap<>((Map<String, Object>) content.get("client"));
+    client.put("firstName", firstName);
+    client.put("lastName", clientLastName);
+    content.put("client", client);
+    request.setApplicationContent(content);
+    return request;
+  }
+
   private UUID createApplication(String officeCode, String laaReference) {
     UUID applicationId = UUID.randomUUID();
     ResponseEntity<Void> response =
@@ -499,6 +827,26 @@ class GetApplicationsIntegrationTest {
         .filter(application -> application.getApplicationId().equals(applicationId))
         .findFirst()
         .orElseThrow();
+  }
+
+  private ResponseEntity<ApplicationSummaryResponse> listApplications(String lastName) {
+    return restTemplate.exchange(
+        "http://localhost:"
+            + port
+            + "/api/v0/applications?clientLastName="
+            + lastName
+            + "&pageSize=100",
+        HttpMethod.GET,
+        new HttpEntity<>(headers()),
+        ApplicationSummaryResponse.class);
+  }
+
+  private ResponseEntity<ApplicationResponse> getApplication(UUID applicationId) {
+    return restTemplate.exchange(
+        "http://localhost:" + port + "/api/v0/applications/" + applicationId,
+        HttpMethod.GET,
+        new HttpEntity<>(headers()),
+        ApplicationResponse.class);
   }
 
   private HttpHeaders headers() {

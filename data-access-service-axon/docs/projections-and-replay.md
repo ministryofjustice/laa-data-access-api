@@ -20,6 +20,13 @@ event-derived `application_list_index.submitted_at` used for submitted-date sort
 `work-list-projection` owns `work_list_item`, including `ready_at`, which records when an
 application became ready or a prior authority was submitted.
 
+Migration V25 adds event-derived `submitted_at` to `application_current_state`, code columns to
+`application_list_index` and `work_list_item`, and renames the work-list timestamp to `ready_at`.
+Existing rows are not backfilled by the migration; their new values are rebuilt only by replaying
+the owning processors. Required detail/list response fields must not be relied on until the
+application and list-index processors have caught up and their event times and codes have been
+checked against the creation events and event-versioned proceedings.
+
 Tracking processors maintain tokens and run independently of the command thread. A failure stops
 token progress past the failing event, allowing recovery without silently skipping it. The
 application command handler dispatches linked-group commands after locking the relevant routes;

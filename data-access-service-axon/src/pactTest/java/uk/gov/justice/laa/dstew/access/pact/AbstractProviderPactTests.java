@@ -136,7 +136,7 @@ public abstract class AbstractProviderPactTests {
                 queryGateway
                     .query(
                         new FindAllApplicationsQuery(
-                            null, null, null, null, null, null, null, null, null, 1, 100),
+                            null, null, "KPBLW", null, null, null, null, null, null, 1, 100),
                         FindAllApplicationsResult.class)
                     .join(),
             result ->

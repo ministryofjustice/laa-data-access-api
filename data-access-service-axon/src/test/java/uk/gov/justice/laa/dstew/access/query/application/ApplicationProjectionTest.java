@@ -1048,7 +1048,7 @@ class ApplicationProjectionTest {
 
   @Test
   @SuppressWarnings("unchecked")
-  void givenApplicationWithGroupId_whenFindAllQuery_thenFetchesGroupAndLaaReferences() {
+  void givenApplicationWithGroupId_whenFindAllQuery_thenFetchesGroupAndMemberDetails() {
     UUID appId = UUID.randomUUID();
     UUID groupId = UUID.randomUUID();
     ApplicationListIndexReadModel indexRow =
@@ -1084,6 +1084,8 @@ class ApplicationProjectionTest {
                 ApplicationListIndexReadModel.builder()
                     .applicationId(appId)
                     .laaReference("LAA-123")
+                    .clientFirstName("Ada")
+                    .clientLastName("Lovelace")
                     .build()));
 
     FindAllApplicationsResult result =
@@ -1092,7 +1094,9 @@ class ApplicationProjectionTest {
 
     assertThat(groupIdsCaptor.getValue()).containsExactly(groupId);
     assertThat(result.groupsByGroupId()).containsEntry(groupId, group);
-    assertThat(result.linkedLaaReferences()).containsExactly(entry(appId, "LAA-123"));
+    assertThat(result.linkedMemberDetails())
+        .containsExactly(
+            entry(appId, new LinkedApplicationMemberDetails("LAA-123", "Ada", "Lovelace")));
   }
 
   @Test
@@ -1142,6 +1146,7 @@ class ApplicationProjectionTest {
   @Test
   void givenLeadApplication_whenFindingDetail_thenReturnsHydratedApplicationAndRelatedData() {
     UUID applicationId = UUID.randomUUID();
+    UUID linkedApplicationId = UUID.randomUUID();
     ApplicationReadModel application =
         ApplicationReadModel.builder()
             .applicationId(applicationId)
@@ -1154,7 +1159,7 @@ class ApplicationProjectionTest {
     LinkedApplicationGroupReadModel group =
         LinkedApplicationGroupReadModel.builder()
             .leadApplicationId(applicationId)
-            .memberIds(List.of(applicationId, UUID.randomUUID()))
+            .memberIds(List.of(applicationId, linkedApplicationId))
             .build();
     PriorAuthorityReadModel priorAuthority =
         PriorAuthorityReadModel.builder()
@@ -1169,6 +1174,21 @@ class ApplicationProjectionTest {
     UUID groupId = application.getLinkedGroupId();
     group.setGroupId(groupId);
     when(groupReadRepository.findById(groupId)).thenReturn(Optional.of(group));
+    when(listIndexRepository.findAllById(List.of(applicationId, linkedApplicationId)))
+        .thenReturn(
+            List.of(
+                ApplicationListIndexReadModel.builder()
+                    .applicationId(applicationId)
+                    .laaReference("LAA-APPLICATION")
+                    .clientFirstName("Ada")
+                    .clientLastName("Lovelace")
+                    .build(),
+                ApplicationListIndexReadModel.builder()
+                    .applicationId(linkedApplicationId)
+                    .laaReference("LAA-LINKED")
+                    .clientFirstName("Grace")
+                    .clientLastName("Hopper")
+                    .build()));
     when(priorAuthorityReadRepository.findAllByApplicationIdIn(List.of(applicationId)))
         .thenReturn(List.of(priorAuthority));
 
@@ -1205,6 +1225,21 @@ class ApplicationProjectionTest {
     group.setGroupId(application.getLinkedGroupId());
     when(groupReadRepository.findById(application.getLinkedGroupId()))
         .thenReturn(Optional.of(group));
+    when(listIndexRepository.findAllById(List.of(leadApplicationId, applicationId)))
+        .thenReturn(
+            List.of(
+                ApplicationListIndexReadModel.builder()
+                    .applicationId(leadApplicationId)
+                    .laaReference("LAA-LEAD")
+                    .clientFirstName("Ada")
+                    .clientLastName("Lovelace")
+                    .build(),
+                ApplicationListIndexReadModel.builder()
+                    .applicationId(applicationId)
+                    .laaReference("LAA-MEMBER")
+                    .clientFirstName("Grace")
+                    .clientLastName("Hopper")
+                    .build()));
     when(priorAuthorityReadRepository.findAllByApplicationIdIn(List.of(applicationId)))
         .thenReturn(List.of());
 

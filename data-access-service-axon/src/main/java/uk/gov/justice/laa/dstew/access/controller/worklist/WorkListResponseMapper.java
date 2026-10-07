@@ -3,9 +3,8 @@ package uk.gov.justice.laa.dstew.access.controller.worklist;
 import java.time.ZoneOffset;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
-import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
-import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.PagingResponse;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.model.WorkListItem;
@@ -41,14 +40,14 @@ public class WorkListResponseMapper {
     response.setAssignmentVersion(item.getAssignmentVersion());
     response.setAssignmentBoundaryType(
         WorkListItem.AssignmentBoundaryTypeEnum.valueOf(item.getAssignmentBoundaryType()));
-    response.setSubmittedAt(item.getReadyAt().atOffset(ZoneOffset.UTC));
+    response.setReadyAt(item.getReadyAt().atOffset(ZoneOffset.UTC));
     response.setLaaReference(item.getLaaReference());
     response.setUsedDelegatedFunctions(item.getUsedDelegatedFunctions());
-    response.setCategoryOfLaw(toCategoryOfLaw(item.getCategoryOfLaw()));
-    response.setMatterTypes(
-        item.getMatterTypes() == null
-            ? null
-            : item.getMatterTypes().stream().map(this::toMatterType).toList());
+    boolean priorAuthority = item.getItemType() == WorkItemType.PRIOR_AUTHORITY;
+    response.setCategoryOfLaw(priorAuthority ? null : item.getCategoryOfLaw());
+    response.setCategoryOfLawCode(priorAuthority ? null : item.getCategoryOfLawCode());
+    response.setMatterTypes(item.getMatterTypes());
+    response.setMatterTypeCodes(item.getMatterTypeCodes());
     response.setApplicationStatus(
         item.getApplicationStatus() == null
             ? null
@@ -59,15 +58,5 @@ public class WorkListResponseMapper {
             : PriorAuthorityType.valueOf(item.getPriorAuthorityType()));
     response.setExpertType(item.getExpertType());
     return response;
-  }
-
-  private CategoryOfLaw toCategoryOfLaw(String categoryOfLaw) {
-    return categoryOfLaw == null
-        ? null
-        : CategoryOfLaw.valueOf(categoryOfLaw.toUpperCase().replace(" ", "_"));
-  }
-
-  private MatterType toMatterType(String matterType) {
-    return MatterType.valueOf(matterType.toUpperCase().replace(" ", "_"));
   }
 }

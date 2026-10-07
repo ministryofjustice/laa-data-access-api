@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.query.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.entry;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -100,10 +101,9 @@ class ApplicationReadModelAssemblerTest {
   }
 
   @Test
-  void givenLinkedMembers_whenAssemblingDetail_thenReturnsMemberLaaReferences() {
+  void givenLinkedMembers_whenAssemblingDetail_thenReturnsMemberDetails() {
     UUID applicationId = UUID.randomUUID();
     UUID linkedApplicationId = UUID.randomUUID();
-    UUID unreferencedApplicationId = UUID.randomUUID();
     UUID groupId = UUID.randomUUID();
     var application =
         ApplicationReadModel.builder().applicationId(applicationId).linkedGroupId(groupId).build();
@@ -111,33 +111,43 @@ class ApplicationReadModelAssemblerTest {
         LinkedApplicationGroupReadModel.builder()
             .groupId(groupId)
             .leadApplicationId(applicationId)
-            .memberIds(List.of(applicationId, linkedApplicationId, unreferencedApplicationId))
+            .memberIds(List.of(applicationId, linkedApplicationId))
             .build();
     when(groupReadRepository.findById(groupId)).thenReturn(Optional.of(group));
     when(priorAuthorityReadRepository.findAllByApplicationIdIn(List.of(applicationId)))
         .thenReturn(List.of());
-    when(listIndexRepository.findAllById(
-            List.of(applicationId, linkedApplicationId, unreferencedApplicationId)))
+    when(listIndexRepository.findAllById(List.of(applicationId, linkedApplicationId)))
         .thenReturn(
             List.of(
                 ApplicationListIndexReadModel.builder()
-                    .applicationId(linkedApplicationId)
-                    .laaReference("LAA-LINKED")
+                    .applicationId(applicationId)
+                    .laaReference("LAA-APPLICATION")
+                    .clientFirstName("Ada")
+                    .clientLastName("Lovelace")
                     .build(),
                 ApplicationListIndexReadModel.builder()
-                    .applicationId(unreferencedApplicationId)
+                    .applicationId(linkedApplicationId)
+                    .laaReference("LAA-LINKED")
+                    .clientFirstName("Grace")
+                    .clientLastName("Hopper")
                     .build()));
 
     var result = assembler.assembleDetail(application);
 
     assertThat(result.application()).isSameAs(application);
     assertThat(result.linkedGroup()).isSameAs(group);
-    assertThat(result.linkedLaaReferences())
-        .containsExactly(entry(linkedApplicationId, "LAA-LINKED"));
+    assertThat(result.linkedMemberDetails())
+        .containsOnly(
+            entry(
+                applicationId,
+                new LinkedApplicationMemberDetails("LAA-APPLICATION", "Ada", "Lovelace")),
+            entry(
+                linkedApplicationId,
+                new LinkedApplicationMemberDetails("LAA-LINKED", "Grace", "Hopper")));
   }
 
   @Test
-  void givenGroupsSharingMembers_whenFetchingLinkedLaaReferences_thenLoadsEachMemberOnce() {
+  void givenGroupsSharingMembers_whenFetchingLinkedMemberDetails_thenLoadsEachMemberOnce() {
     UUID sharedId = UUID.randomUUID();
     UUID firstId = UUID.randomUUID();
     UUID secondId = UUID.randomUUID();
@@ -151,18 +161,64 @@ class ApplicationReadModelAssemblerTest {
         .thenReturn(
             List.of(
                 ApplicationListIndexReadModel.builder()
+                    .applicationId(firstId)
+                    .laaReference("LAA-FIRST")
+                    .clientFirstName("First")
+                    .clientLastName("Member")
+                    .build(),
+                ApplicationListIndexReadModel.builder()
                     .applicationId(sharedId)
                     .laaReference("LAA-SHARED")
+                    .clientFirstName("Shared")
+                    .clientLastName("Member")
+                    .build(),
+                ApplicationListIndexReadModel.builder()
+                    .applicationId(secondId)
+                    .laaReference("LAA-SECOND")
+                    .clientFirstName("Second")
+                    .clientLastName("Member")
                     .build()));
 
-    assertThat(assembler.fetchLinkedLaaReferences(groups))
-        .containsExactly(entry(sharedId, "LAA-SHARED"));
+    assertThat(assembler.fetchLinkedMemberDetails(groups))
+        .contains(
+            entry(firstId, new LinkedApplicationMemberDetails("LAA-FIRST", "First", "Member")),
+            entry(sharedId, new LinkedApplicationMemberDetails("LAA-SHARED", "Shared", "Member")),
+            entry(secondId, new LinkedApplicationMemberDetails("LAA-SECOND", "Second", "Member")));
   }
 
   @Test
-  void givenNoGroups_whenFetchingLinkedLaaReferences_thenSkipsLookup() {
-    assertThat(assembler.fetchLinkedLaaReferences(List.of())).isEmpty();
+  void givenNoGroups_whenFetchingLinkedMemberDetails_thenSkipsLookup() {
+    assertThat(assembler.fetchLinkedMemberDetails(List.of())).isEmpty();
     verifyNoInteractions(listIndexRepository);
+  }
+
+  @Test
+  void givenMissingLinkedMemberDetails_whenFetching_thenRejectsIncompleteMember() {
+    UUID memberId = UUID.randomUUID();
+    var group = LinkedApplicationGroupReadModel.builder().memberIds(List.of(memberId)).build();
+    when(listIndexRepository.findAllById(List.of(memberId))).thenReturn(List.of());
+
+    assertThatThrownBy(() -> assembler.fetchLinkedMemberDetails(List.of(group)))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining(memberId.toString());
+  }
+
+  @Test
+  void givenLinkedMemberWithoutRequiredName_whenFetching_thenRejectsIncompleteMember() {
+    UUID memberId = UUID.randomUUID();
+    var group = LinkedApplicationGroupReadModel.builder().memberIds(List.of(memberId)).build();
+    when(listIndexRepository.findAllById(List.of(memberId)))
+        .thenReturn(
+            List.of(
+                ApplicationListIndexReadModel.builder()
+                    .applicationId(memberId)
+                    .laaReference("LAA-MEMBER")
+                    .clientLastName("Member")
+                    .build()));
+
+    assertThatThrownBy(() -> assembler.fetchLinkedMemberDetails(List.of(group)))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining(memberId.toString());
   }
 
   @Test
@@ -175,7 +231,7 @@ class ApplicationReadModelAssemblerTest {
     var result = assembler.assembleDetail(application);
 
     assertThat(result.linkedGroup()).isNull();
-    assertThat(result.linkedLaaReferences()).isEmpty();
+    assertThat(result.linkedMemberDetails()).isEmpty();
     verifyNoInteractions(groupReadRepository, listIndexRepository);
   }
 

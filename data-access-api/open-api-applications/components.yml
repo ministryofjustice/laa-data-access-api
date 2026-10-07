@@ -20,6 +20,16 @@ components:
         - AUTOGRANTED
         - MANUAL
 
+    DecisionStatusResponse:
+      type: string
+      description: >-
+        Overall decision on the application. PENDING until a decision is made. Response-only;
+        command requests use DecisionStatus.
+      enum:
+        - PENDING
+        - GRANTED
+        - REFUSED
+
     ApplicationDocumentType:
       type: string
       enum:
@@ -44,17 +54,137 @@ components:
         - PRIMARY_QUOTE
         - ADDITIONAL_QUOTE
 
+    ClientResponse:
+      type: object
+      required:
+        - firstName
+        - lastName
+        - dateOfBirth
+        - appliedPreviously
+        - addresses
+      properties:
+        firstName:
+          type: string
+          description: Client first name
+        lastName:
+          type: string
+          description: Client last name
+        lastNameAtBirth:
+          type: string
+          nullable: true
+          description: Client last name at birth
+        dateOfBirth:
+          type: string
+          format: date
+          description: Client date of birth
+        hasNationalInsuranceNumber:
+          type: boolean
+          nullable: true
+          description: Whether the client has a National Insurance number
+        nationalInsuranceNumber:
+          type: string
+          nullable: true
+          description: Client National Insurance number
+        appliedPreviously:
+          type: boolean
+          description: Whether the client has applied previously
+        previousApplicationId:
+          type: string
+          nullable: true
+          description: Reference to the previous application
+        relationshipToInvolvedChildren:
+          type: string
+          nullable: true
+          description: Client relationship to involved children
+        addresses:
+          type: array
+          minItems: 1
+          description: Client correspondence address history
+          items:
+            $ref: "#/components/schemas/AddressResponse"
+
+    AddressResponse:
+      type: object
+      required:
+        - location
+        - postcode
+        - countryCode
+        - countryName
+      properties:
+        addressLineOne:
+          type: string
+          description: First line of the address
+        addressLineTwo:
+          type: string
+          description: Second line of the address
+        addressLineThree:
+          type: string
+          nullable: true
+          description: Third line of the address
+        city:
+          type: string
+          description: Town or city
+        county:
+          type: string
+          description: County
+        postcode:
+          type: string
+          description: Postcode
+        organisation:
+          type: string
+          nullable: true
+          description: Organisation name for the address
+        buildingNumberName:
+          type: string
+          description: Building number or name
+        countryCode:
+          type: string
+          description: ISO country code
+        countryName:
+          type: string
+          description: Country name
+        location:
+          type: string
+          description: Address location type
+        lookupUsed:
+          type: boolean
+          description: Indicates if address lookup was used
+        careOf:
+          type: string
+          nullable: true
+          description: Care-of type
+        careOfFirstName:
+          type: string
+          nullable: true
+          description: Care-of first name
+        careOfLastName:
+          type: string
+          nullable: true
+          description: Care-of last name
+        careOfOrganisationName:
+          type: string
+          nullable: true
+          description: Care-of organisation name
     OpponentResponse:
       type: object
+      required:
+        - opponentType
       properties:
         opponentType:
           type: string
+          description: Opponent type
         firstName:
           type: string
+          nullable: true
+          description: Opponent first name
         lastName:
           type: string
+          nullable: true
+          description: Opponent last name
         organisationName:
           type: string
+          nullable: true
+          description: Opponent organisation name
 
     ApplicationResponse:
       type: object
@@ -62,66 +192,100 @@ components:
         - applicationId
         - status
         - laaReference
+        - createdAt
         - lastUpdated
-        - proceedings
-        - applicationVersion
+        - submittedAt
+        - isLead
+        - usedDelegatedFunctions
         - autoGranted
+        - decisionStatus
+        - client
+        - opponents
+        - proceedings
+        - provider
         - priorAuthorities
+        - uploadedDocuments
         - linkedApplications
+        - version
       properties:
         applicationId:
           type: string
           format: uuid
+          description: Unique identifier for the application
         status:
           $ref: "../open-api-common/components.yml#/components/schemas/ApplicationStatus"
         laaReference:
           type: string
+          description: LAA reference for the application
+        createdAt:
+          type: string
+          format: date-time
+          description: >-
+            Timestamp when the application was started in this service, either when the draft was
+            started or, for applications created directly, when they were created
         lastUpdated:
           type: string
           format: date-time
+          description: Timestamp when the application was last modified
         assignedTo:
           type: string
           format: uuid
+          nullable: true
+          description: Caseworker the application is assigned to, null when unassigned
         submittedAt:
           type: string
           format: date-time
+          description: Timestamp when the application was submitted to this service
         isLead:
           type: boolean
+          description: Whether this application is the lead of its linked application group
         usedDelegatedFunctions:
           type: boolean
+          description: Whether delegated functions were used on any proceeding
         autoGranted:
           $ref: "#/components/schemas/AutoGranted"
         decisionStatus:
-          $ref: "#/components/schemas/DecisionStatus"
+          $ref: "#/components/schemas/DecisionStatusResponse"
+        client:
+          $ref: "#/components/schemas/ClientResponse"
         opponents:
           type: array
+          description: Opponents associated with the application, empty when there are none
           items:
             $ref: "#/components/schemas/OpponentResponse"
         proceedings:
-          $ref: "#/components/schemas/ApplicationProceedingsResponse"
+          type: array
+          minItems: 1
+          description: Proceedings associated with the application
+          items:
+            $ref: "#/components/schemas/ApplicationProceedingResponse"
         provider:
           $ref: "#/components/schemas/ProviderResponse"
         priorAuthorities:
           type: array
+          description: Prior authorities raised against the application
           items:
             $ref: "#/components/schemas/PriorAuthoritySummary"
         uploadedDocuments:
           type: array
+          description: Documents uploaded to the application, excluding deleted documents
           items:
             $ref: "#/components/schemas/ApplicationDocumentResponse"
-        linkedApplications:
-          type: array
-          items:
-            $ref: "#/components/schemas/LinkedApplicationSummaryResponse"
         linkedGroupVersion:
           type: string
           description: >-
             Opaque token identifying the application's linked group and its current version;
             absent when the application is not linked. Pass it back unchanged on link, unlink,
             and make-lead requests. Do not parse it.
+        linkedApplications:
+          type: array
+          description: Other applications in the same linked application group
+          items:
+            $ref: "#/components/schemas/LinkedApplicationSummaryResponse"
         version:
           type: integer
           format: int64
+          description: Current application version, used for concurrency control on commands
         potentialDuplicates:
           type: array
           description: List of potential duplicate applications
@@ -130,11 +294,17 @@ components:
 
     ProviderResponse:
       type: object
+      required:
+        - officeCode
+        - contactEmail
       properties:
         officeCode:
           type: string
+          description: Provider office code
         contactEmail:
           type: string
+          format: email
+          description: Provider contact email
 
     PotentialDuplicate:
       type: object
@@ -292,49 +462,87 @@ components:
 
     ApplicationSummary:
       type: object
-      description: (APPLICATION LIST PAGE / VIEW - OPEN APPLICATIONS ONLY BY DEFAULT)
+      description: Summary of an application for the application list
       required:
+        - applicationId
+        - status
+        - laaReference
+        - submittedAt
+        - lastUpdated
+        - usedDelegatedFunctions
+        - categoryOfLaw
+        - categoryOfLawCode
+        - matterType
+        - matterTypeCode
         - autoGranted
+        - clientFirstName
+        - clientLastName
+        - clientDateOfBirth
+        - officeCode
+        - isLead
         - priorAuthorities
+        - linkedApplications
       properties:
         applicationId:
           type: string
           format: uuid
-          description: The unique reference used to identify the application.
+          description: Unique identifier for the application
         status:
           $ref: "../open-api-common/components.yml#/components/schemas/ApplicationStatus"
+        laaReference:
+          type: string
+          description: LAA reference for the application
         submittedAt:
           type: string
           format: date-time
+          description: Timestamp when the application was submitted to this service
         lastUpdated:
           type: string
           format: date-time
+          description: Timestamp when the application was last modified
         usedDelegatedFunctions:
           type: boolean
+          description: Whether delegated functions were used on any proceeding
         categoryOfLaw:
-          $ref: "../open-api-common/components.yml#/components/schemas/CategoryOfLaw"
+          type: string
+          description: Category of law from the lead proceeding
+        categoryOfLawCode:
+          type: string
+          description: Category of law code from the lead proceeding
         matterType:
-          $ref: "../open-api-common/components.yml#/components/schemas/MatterType"
+          type: string
+          description: Matter type from the lead proceeding
+        matterTypeCode:
+          type: string
+          description: Matter type code from the lead proceeding
         assignedTo:
           type: string
           format: uuid
+          nullable: true
+          description: Caseworker the application is assigned to, null when unassigned
         autoGranted:
           $ref: "#/components/schemas/AutoGranted"
         clientFirstName:
           type: string
+          description: Client first name
         clientLastName:
           type: string
+          description: Client last name
         clientDateOfBirth:
           type: string
           format: date
-        laaReference:
-          type: string
+          description: Client date of birth
         officeCode:
           type: string
+          description: Provider office code
         isLead:
           type: boolean
+          description: Whether this application is the lead of its linked application group
         linkedApplications:
           type: array
+          description: >-
+            Other applications in the same linked application group. Uses the shared
+            LinkedApplicationSummaryResponse schema defined in the getApplicationById draft.
           items:
             $ref: "#/components/schemas/LinkedApplicationSummaryResponse"
         linkedGroupVersion:
@@ -345,9 +553,11 @@ components:
             and make-lead requests. Do not parse it.
         priorAuthorities:
           type: array
+          description: Prior authorities raised against the application
           items:
             $ref: "#/components/schemas/PriorAuthoritySummary"
 
+    # getApplications query parameter change (resources.yml): replaces the matterType enum filter
     ApplicationSummaryResponse:
       type: object
       properties:
@@ -360,14 +570,30 @@ components:
 
     LinkedApplicationSummaryResponse:
       type: object
+      description: Summary of another application in the same linked application group
+      required:
+        - applicationId
+        - laaReference
+        - isLead
+        - clientFirstName
+        - clientLastName
       properties:
         applicationId:
           type: string
           format: uuid
+          description: Unique identifier for the linked application
         laaReference:
           type: string
+          description: LAA reference for the linked application
         isLead:
           type: boolean
+          description: Whether the linked application is the lead of the group
+        clientFirstName:
+          type: string
+          description: Client first name on the linked application
+        clientLastName:
+          type: string
+          description: Client last name on the linked application
 
     PriorAuthoritySummary:
       type: object
@@ -581,62 +807,154 @@ components:
           additionalProperties: true
           description: Certificate information for the autogranted Decision
 
-    ApplicationProceedingsResponse:
-      type: array
-      items:
-        $ref: "#/components/schemas/ApplicationProceedingResponse"
-
     ApplicationProceedingResponse:
       type: object
       required:
         - proceedingId
+        - leadProceeding
+        - code
+        - meaning
+        - description
+        - matterType
+        - matterTypeCode
+        - categoryOfLaw
+        - categoryOfLawCode
+        - clientInvolvementType
+        - clientInvolvementTypeCode
+        - usedDelegatedFunctions
+        - substantiveLevelOfServiceCode
+        - substantiveLevelOfServiceName
+        - scopeLimitations
+        - meritsDecision
       properties:
         proceedingId:
           type: string
           format: uuid
-        proceedingType:
+          description: Unique identifier for the proceeding (supplied as id on create)
+        leadProceeding:
+          type: boolean
+          description: Whether this is the lead proceeding
+        code:
           type: string
-        proceedingDescription:
+          description: CCMS proceeding code
+        meaning:
           type: string
+          description: Proceeding meaning
+        description:
+          type: string
+          description: Proceeding description
+        matterType:
+          type: string
+          description: Matter type for the proceeding
+        matterTypeCode:
+          type: string
+          description: Matter type code for the proceeding
+        categoryOfLaw:
+          type: string
+          description: Category of law for the proceeding
+        categoryOfLawCode:
+          type: string
+          description: Category of law code for the proceeding
+        clientInvolvementType:
+          type: string
+          description: Client involvement type description
+        clientInvolvementTypeCode:
+          type: string
+          description: Client involvement type code from legal framework
+        usedDelegatedFunctions:
+          type: boolean
+          description: Whether delegated functions were used
         delegatedFunctionsDate:
           type: string
           format: date
-        categoryOfLaw:
-          $ref: "../open-api-common/components.yml#/components/schemas/CategoryOfLaw"
-        matterType:
-          $ref: "../open-api-common/components.yml#/components/schemas/MatterType"
-        levelOfService:
+          nullable: true
+          description: Date delegated functions were used
+        delegatedFunctionsCostLimitation:
+          type: number
+          nullable: true
+          description: Delegated functions cost limitation
+          example: 2250.0
+        substantiveLevelOfServiceCode:
+          type: integer
+          description: Substantive level of service code (supplied as substantiveLevelOfService on create)
+        substantiveLevelOfServiceName:
           type: string
+          description: Substantive level of service name
+        emergencyLevelOfServiceCode:
+          type: integer
+          nullable: true
+          description: Emergency level of service code (supplied as emergencyLevelOfService on create)
+        emergencyLevelOfServiceName:
+          type: string
+          nullable: true
+          description: Emergency level of service name
         substantiveCostLimitation:
           type: number
-          format: double
+          nullable: true
+          description: Substantive cost limitation
+          example: 2250.0
         scopeLimitations:
           type: array
+          minItems: 1
+          description: Scope limitations for the proceeding
           items:
             $ref: "#/components/schemas/ScopeLimitationResponse"
         involvedChildren:
           type: array
+          description: Children involved in the proceeding
           items:
             $ref: "#/components/schemas/InvolvedChildResponse"
         meritsDecision:
-          $ref: "#/components/schemas/MeritsDecisionStatus"
+          $ref: "#/components/schemas/MeritsDecisionStatusResponse"
+
+    MeritsDecisionStatusResponse:
+      type: string
+      description: >-
+        Merits decision on a proceeding. PENDING until a decision is made. Response-only;
+        command requests use MeritsDecisionStatus.
+      enum:
+        - PENDING
+        - GRANTED
+        - REFUSED
 
     InvolvedChildResponse:
       type: object
+      required:
+        - firstName
+        - lastName
+        - dateOfBirth
       properties:
-        fullName:
+        firstName:
           type: string
+          description: First name of the involved child
+        lastName:
+          type: string
+          description: Last name of the involved child
         dateOfBirth:
           type: string
           format: date
+          description: Date of birth of the involved child
 
     ScopeLimitationResponse:
       type: object
+      required:
+        - code
+        - type
+        - meaning
+        - description
       properties:
-        scopeLimitation:
+        code:
           type: string
-        scopeDescription:
+          description: Scope limitation code
+        type:
           type: string
+          description: Scope limitation type
+        meaning:
+          type: string
+          description: Scope limitation meaning
+        description:
+          type: string
+          description: Scope limitation description
 
     CreateNoteRequest:
       type: object

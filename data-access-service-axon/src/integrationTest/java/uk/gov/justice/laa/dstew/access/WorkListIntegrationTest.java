@@ -2,10 +2,14 @@ package uk.gov.justice.laa.dstew.access;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
+import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.applicationWithMatterPairs;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -30,6 +34,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.ObjectMapper;
+import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantedOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.BillingType;
@@ -290,15 +295,84 @@ class WorkListIntegrationTest {
                         assertThat(item.getParentApplicationId()).isEqualTo(parentApplicationId);
                         assertThat(item.getAssignedTo()).isNull();
                         assertThat(item.getLaaReference()).isEqualTo("LAA-123");
-                        assertThat(item.getCategoryOfLaw().getValue()).isEqualTo("FAMILY");
+                        assertThat(item.getCategoryOfLaw()).isNull();
+                        assertThat(item.getCategoryOfLawCode()).isNull();
                         assertThat(item.getMatterTypes())
-                            .extracting(matterType -> matterType.getValue())
+                            .extracting(matterType -> matterType)
                             .containsExactly("SPECIAL_CHILDREN_ACT");
+                        assertThat(item.getMatterTypeCodes()).containsExactly("KPBLW");
                         assertThat(item.getPriorAuthorityType())
                             .isEqualTo(PriorAuthorityType.DISBURSEMENT);
                         assertThat(item.getExpertType()).isNull();
                       });
             });
+  }
+
+  @Test
+  void givenUnknownLegalCategories_whenListed_thenReturnsRawNamesAndCodes() {
+    ApplicationCreateRequest request =
+        applicationWithMatterPairs(
+            "Category outside the old enum",
+            "CATEGORY-999",
+            "Matter outside the old enum",
+            "MATTER-999",
+            "Second matter",
+            "MATTER-998");
+    createManualApplication(request);
+    awaitWorkListContains("", request.getId(), null, 0L);
+
+    WorkListItem item = findWorkItem(request.getId());
+
+    assertThat(item.getCategoryOfLaw()).isEqualTo("Category outside the old enum");
+    assertThat(item.getCategoryOfLawCode()).isEqualTo("CATEGORY-999");
+    assertThat(item.getMatterTypes())
+        .containsExactly("Matter outside the old enum", "Second matter");
+    assertThat(item.getMatterTypeCodes()).containsExactly("MATTER-999", "MATTER-998");
+    assertThat(item.getReadyAt().toInstant()).isEqualTo(workListReadyAt(request.getId()));
+  }
+
+  @Test
+  void givenRepeatedProceedingMatterPairs_whenListed_thenKeepsArraysAligned() {
+    ApplicationCreateRequest request =
+        applicationWithMatterPairs(
+            "Category", "CAT-1", "Same display", "PAIR-1", "Same display", "PAIR-1");
+    Map<String, Object> content = new HashMap<>(request.getApplicationContent());
+    List<Map<String, Object>> proceedings = new ArrayList<>();
+    for (Object proceeding : (List<?>) content.get("proceedings")) {
+      proceedings.add(new HashMap<>((Map<String, Object>) proceeding));
+    }
+    Map<String, Object> third = new HashMap<>(proceedings.getFirst());
+    third.put("id", UUID.randomUUID().toString());
+    third.put("leadProceeding", false);
+    third.put("matterTypeCode", "PAIR-2");
+    proceedings.add(third);
+    content.put("proceedings", proceedings);
+    request.setApplicationContent(content);
+    createManualApplication(request);
+    awaitWorkListContains("", request.getId(), null, 0L);
+
+    WorkListItem item = findWorkItem(request.getId());
+
+    assertThat(item.getMatterTypes()).containsExactly("Same display", "Same display");
+    assertThat(item.getMatterTypeCodes()).containsExactly("PAIR-1", "PAIR-2");
+  }
+
+  @Test
+  void givenPriorAuthority_whenListed_thenUsesParentPairsButOmitsCategory() {
+    ApplicationCreateRequest request =
+        applicationWithMatterPairs(
+            "Parent category", "CAT-PARENT", "Parent matter", "PARENT-1", "Second", "PARENT-2");
+    createGrantedApplication(request);
+    UUID priorAuthorityId = createAndSubmitPriorAuthorityDraft(request.getId());
+    awaitWorkListContains("", priorAuthorityId, null, 0L, WorkListItemType.PRIOR_AUTHORITY);
+
+    WorkListItem item = findWorkItem(priorAuthorityId);
+
+    assertThat(item.getCategoryOfLaw()).isNull();
+    assertThat(item.getCategoryOfLawCode()).isNull();
+    assertThat(item.getMatterTypes()).containsExactly("Parent matter", "Second");
+    assertThat(item.getMatterTypeCodes()).containsExactly("PARENT-1", "PARENT-2");
+    assertThat(item.getReadyAt().toInstant()).isEqualTo(workListReadyAt(priorAuthorityId));
   }
 
   @Test
@@ -849,11 +923,14 @@ class WorkListIntegrationTest {
   }
 
   private void createManualApplication(UUID applicationId) {
+    createManualApplication(validCreateApplicationRequest(applicationId, UUID.randomUUID()));
+  }
+
+  private void createManualApplication(ApplicationCreateRequest request) {
     ResponseEntity<Void> created =
         restTemplate.postForEntity(
             "http://localhost:" + port + "/api/v0/applications",
-            new HttpEntity<>(
-                validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()),
+            new HttpEntity<>(request, headers()),
             Void.class);
     assertThat(created.getStatusCode()).isEqualTo(HttpStatus.CREATED);
 
@@ -862,7 +939,7 @@ class WorkListIntegrationTest {
             "http://localhost:"
                 + port
                 + "/api/v0/applications/"
-                + applicationId
+                + request.getId()
                 + "/auto-grant-outcome",
             HttpMethod.PATCH,
             new HttpEntity<>(new ManualOutcomeRequest(AutoGrantOutcome.MANUAL), headers()),
@@ -871,15 +948,18 @@ class WorkListIntegrationTest {
   }
 
   private void createGrantedApplication(UUID applicationId) {
+    createGrantedApplication(validCreateApplicationRequest(applicationId, UUID.randomUUID()));
+  }
+
+  private void createGrantedApplication(ApplicationCreateRequest request) {
     ResponseEntity<Void> created =
         restTemplate.postForEntity(
             "http://localhost:" + port + "/api/v0/applications",
-            new HttpEntity<>(
-                validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()),
+            new HttpEntity<>(request, headers()),
             Void.class);
     assertThat(created.getStatusCode()).isEqualTo(HttpStatus.CREATED);
 
-    markApplicationAutoGranted(applicationId);
+    markApplicationAutoGranted(request.getId());
   }
 
   private void markApplicationAutoGranted(UUID applicationId) {
@@ -995,6 +1075,18 @@ class WorkListIntegrationTest {
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(response.getBody()).isNotNull();
     return response.getBody();
+  }
+
+  private WorkListItem findWorkItem(UUID itemId) {
+    return getWorkList("").getItems().stream()
+        .filter(item -> item.getItemId().equals(itemId))
+        .findFirst()
+        .orElseThrow();
+  }
+
+  private Instant workListReadyAt(UUID itemId) {
+    return jdbcTemplate.queryForObject(
+        "SELECT ready_at FROM axon.work_list_item WHERE item_id = ?", Instant.class, itemId);
   }
 
   private String assignmentUrl(UUID itemId, String operation) {

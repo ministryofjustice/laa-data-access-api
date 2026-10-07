@@ -3,13 +3,12 @@ package uk.gov.justice.laa.dstew.access.controller.worklist;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
-import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
-import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.query.worklist.FindWorkListItemsResult;
 import uk.gov.justice.laa.dstew.access.query.worklist.WorkListItemReadModel;
@@ -55,6 +54,8 @@ class WorkListResponseMapperTest {
               assertThat(mapped.getAssignedTo()).isEqualTo(caseworkerId);
               assertThat(mapped.getAssignmentVersion()).isEqualTo(3L);
               assertThat(mapped.getAssignmentBoundaryType().getValue()).isEqualTo("DIRECT");
+              assertThat(mapped.getReadyAt())
+                  .isEqualTo(Instant.parse("2026-08-28T09:00:00Z").atOffset(ZoneOffset.UTC));
               assertThat(mapped.getLaaReference()).isEqualTo("LAA-123");
               assertThat(mapped.getPriorAuthorityType()).isEqualTo(PriorAuthorityType.EXPERT);
               assertThat(mapped.getExpertType()).isEqualTo("Pathologist");
@@ -73,7 +74,9 @@ class WorkListResponseMapperTest {
             1L);
     item.setUsedDelegatedFunctions(true);
     item.setCategoryOfLaw("Family");
+    item.setCategoryOfLawCode("FAM");
     item.setMatterTypes(List.of("Special Children Act"));
+    item.setMatterTypeCodes(List.of("SCA"));
     item.setApplicationStatus("APPLICATION_SUBMITTED");
 
     var response =
@@ -85,12 +88,72 @@ class WorkListResponseMapperTest {
         .satisfies(
             mapped -> {
               assertThat(mapped.getUsedDelegatedFunctions()).isTrue();
-              assertThat(mapped.getCategoryOfLaw()).isEqualTo(CategoryOfLaw.FAMILY);
-              assertThat(mapped.getMatterTypes()).containsExactly(MatterType.SPECIAL_CHILDREN_ACT);
+              assertThat(mapped.getCategoryOfLaw()).isEqualTo("Family");
+              assertThat(mapped.getCategoryOfLawCode()).isEqualTo("FAM");
+              assertThat(mapped.getMatterTypes()).containsExactly("Special Children Act");
+              assertThat(mapped.getMatterTypeCodes()).containsExactly("SCA");
+              assertThat(mapped.getReadyAt())
+                  .isEqualTo(Instant.parse("2026-09-01T10:00:00Z").atOffset(ZoneOffset.UTC));
               assertThat(mapped.getApplicationStatus())
                   .isEqualTo(ApplicationStatus.APPLICATION_SUBMITTED);
               assertThat(mapped.getPriorAuthorityType()).isNull();
               assertThat(mapped.getExpertType()).isNull();
             });
+  }
+
+  @Test
+  void givenUnknownLegalCategories_whenMapped_thenReturnsStringsAndAlignedCodes() {
+    WorkListItemReadModel item =
+        new WorkListItemReadModel(
+            WorkItemType.APPLICATION,
+            UUID.randomUUID(),
+            null,
+            Instant.parse("2026-09-01T10:00:00Z"),
+            1L,
+            1L);
+    item.setCategoryOfLaw("Unexpected category");
+    item.setCategoryOfLawCode("CAT-991");
+    item.setMatterTypes(List.of("Unexpected matter"));
+    item.setMatterTypeCodes(List.of("MAT-123"));
+
+    var mapped =
+        new WorkListResponseMapper()
+            .toResponse(new FindWorkListItemsResult(List.of(item), 1L, 1, 20))
+            .getBody()
+            .getItems()
+            .getFirst();
+
+    assertThat(mapped.getCategoryOfLaw()).isEqualTo("Unexpected category");
+    assertThat(mapped.getCategoryOfLawCode()).isEqualTo("CAT-991");
+    assertThat(mapped.getMatterTypes()).containsExactly("Unexpected matter");
+    assertThat(mapped.getMatterTypeCodes()).containsExactly("MAT-123");
+  }
+
+  @Test
+  void givenPriorAuthority_whenMapped_thenOmitsCategoryButKeepsParentMatterPairs() {
+    WorkListItemReadModel item =
+        new WorkListItemReadModel(
+            WorkItemType.PRIOR_AUTHORITY,
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            Instant.parse("2026-09-01T10:00:00Z"),
+            1L,
+            1L);
+    item.setCategoryOfLaw("Family");
+    item.setCategoryOfLawCode("FAM");
+    item.setMatterTypes(List.of("First", "Second"));
+    item.setMatterTypeCodes(List.of("M-1", "M-2"));
+
+    var mapped =
+        new WorkListResponseMapper()
+            .toResponse(new FindWorkListItemsResult(List.of(item), 1L, 1, 20))
+            .getBody()
+            .getItems()
+            .getFirst();
+
+    assertThat(mapped.getCategoryOfLaw()).isNull();
+    assertThat(mapped.getCategoryOfLawCode()).isNull();
+    assertThat(mapped.getMatterTypes()).containsExactly("First", "Second");
+    assertThat(mapped.getMatterTypeCodes()).containsExactly("M-1", "M-2");
   }
 }

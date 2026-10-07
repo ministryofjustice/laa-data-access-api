@@ -14,7 +14,7 @@ Neither option is acceptable at scale. The thin list index solves this by extrac
 
 ## What Was Introduced
 
-### New database table: `application_list_index` (V3 migration)
+### New database table: `application_list_index` (created by migration `V3__create_application_list_index.sql`)
 
 A thin, purpose-built projection table containing only the columns needed for filtering, sorting, counting, and paging the list endpoint. Rich response-only fields are explicitly excluded.
 
@@ -63,7 +63,7 @@ and derive `isLead` from the group's current lead.
 
 ### `ApplicationListIndexSpecification`
 
-A Spring Data JPA `Specification` factory that converts `FindAllApplicationsQuery` filter parameters into database predicates. A non-null `matterTypeCode` filter uses exact equality against the lead proceeding's `matter_type_code`; the display name is not used as a filter. The index stores the `matter_type` display name separately from its `matter_type_code`. Application `submitted_at` is event-derived and is the stable column used by submitted-date sorting. Client name filters use `lower()` to match their functional indexes.
+A Spring Data JPA `Specification` factory that converts `FindAllApplicationsQuery` filter parameters into database predicates. A non-null `matterTypeCode` filter uses exact equality against the lead proceeding's `matter_type_code`; the display name is not used as a filter. The response exposes the raw lead-proceeding `matterType` and `matterTypeCode` pair, alongside the raw `categoryOfLaw` and `categoryOfLawCode`; display values are not guessed from a closed enum. The index stores the lead proceeding's matter-type display name separately from its code. Application `submitted_at` is event-derived and is the stable column used by submitted-date sorting. Client name filters use `lower()` to match their functional indexes.
 
 ### `ApplicationListIndexReadRepository`
 

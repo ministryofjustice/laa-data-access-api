@@ -30,6 +30,8 @@ experience should follow the learning path below before using the documents as a
 | [Endpoint errors](endpoint-errors.md) | Public linked-application command conflict and validation responses |
 | [Events and sensitive data](events-and-sensitive-data.md) | Why events are thin, how `application_data` versions are connected to events, and what retention means |
 | [Projections and replay](projections-and-replay.md) | Which read models exist, how they are hydrated, and how reset/replay behaves |
+| [Application list projection — `ApplicationListIndexSpecification`](application-list-projection.md#applicationlistindexspecification) | Exact `matterTypeCode` filtering, raw lead-proceeding names and codes, and event-time sorting |
+| [Projection ownership and catch-up](projections-and-replay.md#processing-groups) | Which processor owns each new response field and why read fields require replay catch-up |
 | [Storage model](storage-model.md) | Which tables are authoritative or disposable and how their identifiers and versions relate |
 | [Failure behaviour](failure-behaviour.md) | Expected API, transaction, projection, and recovery outcomes for common failures |
 | [Running and operating](running-and-operating.md) | Local startup, tests, store inspection, processor recovery, and retention operations |
@@ -52,3 +54,6 @@ experience should follow the learning path below before using the documents as a
 
 The generated OpenAPI types are the public API contract. Commands and events are internal messages
 and should not be exposed directly by controllers.
+
+Application detail, list and work-list `categoryOfLaw` and `matterType` values are response
+strings paired with their codes; they are not limited to the old generated enums.

@@ -16,15 +16,19 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.ResponseEntity;
 import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationOrderBy;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSortBy;
+import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
-import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationDetailResult;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
+import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsQuery;
+import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsResult;
+import uk.gov.justice.laa.dstew.access.query.application.LinkedApplicationMemberDetails;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryResult;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
@@ -52,13 +56,15 @@ class ApplicationQueryControllerTest {
     ApplicationReadModel application = new ApplicationReadModel();
     LinkedApplicationGroupReadModel linkedGroup = new LinkedApplicationGroupReadModel();
     List<PriorAuthorityReadModel> priorAuthorities = List.of(new PriorAuthorityReadModel());
-    Map<UUID, String> linkedLaaReferences = Map.of(UUID.randomUUID(), "LAA-LINKED");
+    Map<UUID, LinkedApplicationMemberDetails> linkedMemberDetails =
+        Map.of(
+            UUID.randomUUID(), new LinkedApplicationMemberDetails("LAA-LINKED", "Grace", "Hopper"));
     ApplicationDetailResult detail =
         new ApplicationDetailResult(
-            application, linkedGroup, priorAuthorities, linkedLaaReferences);
+            application, linkedGroup, priorAuthorities, linkedMemberDetails);
     ApplicationResponse expectedResponse = new ApplicationResponse();
     when(applicationQueryUseCase.getApplicationDetail(applicationId)).thenReturn(detail);
-    when(responseMapper.toResponse(application, linkedGroup, priorAuthorities, linkedLaaReferences))
+    when(responseMapper.toResponse(application, linkedGroup, priorAuthorities, linkedMemberDetails))
         .thenReturn(expectedResponse);
 
     var response = controller.getApplicationById(ServiceName.CIVIL_APPLY, applicationId);
@@ -66,7 +72,7 @@ class ApplicationQueryControllerTest {
     assertThat(response.getBody()).isSameAs(expectedResponse);
     verify(applicationQueryUseCase).getApplicationDetail(applicationId);
     verify(responseMapper)
-        .toResponse(application, linkedGroup, priorAuthorities, linkedLaaReferences);
+        .toResponse(application, linkedGroup, priorAuthorities, linkedMemberDetails);
   }
 
   @Test
@@ -120,7 +126,13 @@ class ApplicationQueryControllerTest {
   }
 
   @Test
-  void givenNonNullMatterTypeSortByOrderBy_whenGetApplications_thenCallsUseCaseWithNames() {
+  void givenMatterTypeCode_whenGetApplications_thenPassesExactCode() {
+    FindAllApplicationsResult result =
+        new FindAllApplicationsResult(List.of(), Map.of(), Map.of(), Map.of(), 0, 1, 20);
+    when(applicationQueryUseCase.getApplications(any(FindAllApplicationsQuery.class)))
+        .thenReturn(result);
+    when(getAllResponseMapper.toResponse(result))
+        .thenReturn(ResponseEntity.ok(new ApplicationSummaryResponse()));
     controller.getApplications(
         ServiceName.CIVIL_APPLY,
         null,
@@ -130,10 +142,14 @@ class ApplicationQueryControllerTest {
         null,
         null,
         null,
-        MatterType.SPECIAL_CHILDREN_ACT,
+        "MAT-123",
         ApplicationSortBy.SUBMITTED_DATE,
         ApplicationOrderBy.ASC,
         null,
         null);
+
+    var query = ArgumentCaptor.forClass(FindAllApplicationsQuery.class);
+    verify(applicationQueryUseCase).getApplications(query.capture());
+    assertThat(query.getValue().matterTypeCode()).isEqualTo("MAT-123");
   }
 }

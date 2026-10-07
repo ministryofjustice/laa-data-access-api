@@ -177,7 +177,7 @@ public class ApplicationProjection {
     return new FindAllApplicationsResult(
         content,
         groupsByGroupId,
-        assembler.fetchLinkedLaaReferences(groupsByGroupId.values()),
+        assembler.fetchLinkedMemberDetails(groupsByGroupId.values()),
         assembler.fetchPriorAuthorities(content),
         indexPage.getTotalElements(),
         query.page(),
