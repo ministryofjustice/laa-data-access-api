@@ -87,7 +87,7 @@ public class ApplicationProjection {
     return applicationReadRepository.existsById(query.applicationId());
   }
 
-  /** Returns a live document with its filename hydrated, or {@code null} if either is absent. */
+  /** Returns a live document with its filename hydrated when available, or null if absent. */
   @QueryHandler
   public @Nullable EvidenceDocument handle(FindApplicationDocumentQuery query) {
     return applicationReadRepository
@@ -98,10 +98,11 @@ public class ApplicationProjection {
                     .filter(document -> document.documentId().equals(query.documentId()))
                     .filter(document -> !document.deleted())
                     .findFirst()
-                    .flatMap(
+                    .map(
                         document ->
-                            documentFilename(application, document.documentId())
-                                .map(fileName -> evidenceDocument(document, fileName))))
+                            evidenceDocument(
+                                document,
+                                documentFilename(application, document.documentId()).orElse(null))))
         .orElse(null);
   }
 
@@ -402,7 +403,8 @@ public class ApplicationProjection {
             event.contentType(),
             event.checksum(),
             event.sourceService(),
-            false));
+            false,
+            event.fileSuffix()));
     application.setUploadedDocuments(List.copyOf(documents));
     if (event.applicationDataVersion() != null) {
       application.setApplicationDataVersion(event.applicationDataVersion());
@@ -530,7 +532,8 @@ public class ApplicationProjection {
         document.size(),
         document.uploadedAt(),
         document.sourceService(),
-        document.checksum());
+        document.checksum(),
+        document.fileSuffix());
   }
 
   /** Clears the disposable current-state table before replay. */

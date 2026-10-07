@@ -38,6 +38,7 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.assign.DirectWorkItemAssignmentCommand;
 import uk.gov.justice.laa.dstew.access.command.worklist.unassign.DirectWorkItemUnassignmentCommand;
+import uk.gov.justice.laa.dstew.access.document.DocumentFileSuffix;
 import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
@@ -362,7 +363,9 @@ public class ApplicationAggregate {
             command.size(),
             command.contentType(),
             command.checksum(),
-            command.sourceService()));
+            command.sourceService(),
+            null,
+            DocumentFileSuffix.fromFilename(command.originalFilename())));
     return command.documentId();
   }
 

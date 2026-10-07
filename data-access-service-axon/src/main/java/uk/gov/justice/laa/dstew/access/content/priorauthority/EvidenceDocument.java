@@ -15,4 +15,35 @@ public record EvidenceDocument(
     Long size,
     Instant uploadedAt,
     String sourceService,
-    String checksum) {}
+    String checksum,
+    String fileSuffix) {
+
+  /** Creates a hydrated document for historical metadata without a recorded suffix. */
+  public EvidenceDocument(
+      UUID documentId,
+      String documentType,
+      String fileName,
+      String fileType,
+      String mediaType,
+      Long size,
+      Instant uploadedAt,
+      String sourceService,
+      String checksum) {
+    this(
+        documentId,
+        documentType,
+        fileName,
+        fileType,
+        mediaType,
+        size,
+        uploadedAt,
+        sourceService,
+        checksum,
+        null);
+  }
+
+  /** Uses persisted storage metadata, with an original-filename fallback for historical uploads. */
+  public String storageFilename() {
+    return fileSuffix == null ? fileName : documentId + fileSuffix;
+  }
+}

@@ -7,29 +7,27 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
-import java.util.List;
-import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.io.Resource;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.EvidenceDocument;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
-import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
 import uk.gov.justice.laa.dstew.access.usecase.application.priorauthority.DownloadPriorAuthorityDocumentUseCase;
-import uk.gov.justice.laa.dstew.access.usecase.application.priorauthority.GetPriorAuthorityUseCase;
 
 @ExtendWith(MockitoExtension.class)
 class DownloadEvidenceDocumentUseCaseTest {
 
-  @Mock private GetPriorAuthorityUseCase getPriorAuthorityUseCase;
+  @Mock private QueryGateway queryGateway;
   @Mock private SdsService sdsService;
 
   @InjectMocks private DownloadPriorAuthorityDocumentUseCase useCase;
@@ -39,13 +37,9 @@ class DownloadEvidenceDocumentUseCaseTest {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
     Instant uploadedAt = Instant.parse("2026-09-08T12:00:00Z");
-    PriorAuthorityResult result =
-        PriorAuthorityResult.builder()
-            .uploadedDocuments(List.of(document(documentId, uploadedAt, false)))
-            .documentFilenames(Map.of(documentId, "evidence.pdf"))
-            .build();
+    EvidenceDocument document = document(documentId, uploadedAt, "evidence.pdf");
     Resource resource = org.mockito.Mockito.mock(Resource.class);
-    when(getPriorAuthorityUseCase.getPriorAuthority(priorAuthorityId)).thenReturn(result);
+    givenQueryReturns(priorAuthorityId, documentId, document);
     when(sdsService.getEvidenceFile(priorAuthorityId, documentId, "evidence.pdf"))
         .thenReturn(resource);
 
@@ -69,19 +63,10 @@ class DownloadEvidenceDocumentUseCaseTest {
   @Test
   void givenSameNamedDocuments_whenOneIsDownloaded_thenUsesItsIndependentDocumentId() {
     UUID priorAuthorityId = UUID.randomUUID();
-    UUID firstDocumentId = UUID.randomUUID();
     UUID secondDocumentId = UUID.randomUUID();
-    PriorAuthorityResult result =
-        PriorAuthorityResult.builder()
-            .uploadedDocuments(
-                List.of(
-                    document(firstDocumentId, Instant.now(), false),
-                    document(secondDocumentId, Instant.now(), false)))
-            .documentFilenames(
-                Map.of(firstDocumentId, "evidence.pdf", secondDocumentId, "evidence.pdf"))
-            .build();
+    EvidenceDocument document = document(secondDocumentId, Instant.now(), "evidence.pdf");
     Resource resource = org.mockito.Mockito.mock(Resource.class);
-    when(getPriorAuthorityUseCase.getPriorAuthority(priorAuthorityId)).thenReturn(result);
+    givenQueryReturns(priorAuthorityId, secondDocumentId, document);
     when(sdsService.getEvidenceFile(priorAuthorityId, secondDocumentId, "evidence.pdf"))
         .thenReturn(resource);
 
@@ -93,17 +78,11 @@ class DownloadEvidenceDocumentUseCaseTest {
     verify(sdsService).getEvidenceFile(priorAuthorityId, secondDocumentId, "evidence.pdf");
   }
 
-  @ParameterizedTest
-  @ValueSource(booleans = {true, false})
-  void givenUnownedOrDeletedDocument_whenDownloaded_thenThrowsNotFound(boolean deleted) {
+  @Test
+  void givenUnownedOrDeletedDocument_whenDownloaded_thenThrowsNotFound() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
-    when(getPriorAuthorityUseCase.getPriorAuthority(priorAuthorityId))
-        .thenReturn(
-            PriorAuthorityResult.builder()
-                .uploadedDocuments(
-                    deleted ? List.of(document(documentId, Instant.now(), true)) : List.of())
-                .build());
+    givenQueryReturns(priorAuthorityId, documentId, null);
 
     assertThatExceptionOfType(ResourceNotFoundException.class)
         .isThrownBy(() -> useCase.downloadDocument(priorAuthorityId, documentId))
@@ -112,69 +91,65 @@ class DownloadEvidenceDocumentUseCaseTest {
     verifyNoInteractions(sdsService);
   }
 
-  @Test
-  void givenNullDocumentList_whenDownloaded_thenThrowsNotFound() {
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {" "})
+  void givenActiveDocumentWithNoFilename_whenDownloaded_thenRetrievesFromSds(String filename) {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
-    when(getPriorAuthorityUseCase.getPriorAuthority(priorAuthorityId))
-        .thenReturn(PriorAuthorityResult.builder().uploadedDocuments(null).build());
-
-    assertThatExceptionOfType(ResourceNotFoundException.class)
-        .isThrownBy(() -> useCase.downloadDocument(priorAuthorityId, documentId));
-    verifyNoInteractions(sdsService);
-  }
-
-  @Test
-  void givenActiveDocumentWithNoFilenameOrKnownContentType_whenDownloaded_thenReturnsNullFields() {
-    UUID priorAuthorityId = UUID.randomUUID();
-    UUID documentId = UUID.randomUUID();
-    DocumentMetadata document =
-        new DocumentMetadata(
-            documentId,
-            null,
-            Instant.now(),
-            123L,
-            "application/octet-stream",
-            "checksum",
-            "civil-apply",
-            false);
-    PriorAuthorityResult result =
-        PriorAuthorityResult.builder().uploadedDocuments(List.of(document)).build();
+    EvidenceDocument document = document(documentId, Instant.now(), filename);
     Resource resource = org.mockito.Mockito.mock(Resource.class);
-    when(getPriorAuthorityUseCase.getPriorAuthority(priorAuthorityId)).thenReturn(result);
-    when(sdsService.getEvidenceFile(priorAuthorityId, documentId, null)).thenReturn(resource);
+    givenQueryReturns(priorAuthorityId, documentId, document);
+    when(sdsService.getEvidenceFile(priorAuthorityId, documentId, filename)).thenReturn(resource);
 
     EvidenceDocumentDownload download = useCase.downloadDocument(priorAuthorityId, documentId);
 
-    assertThat(download.document().fileName()).isNull();
-    assertThat(download.document().fileType()).isNull();
+    assertThat(download.document().fileName()).isEqualTo(filename);
     assertThat(download.resource()).isSameAs(resource);
   }
 
-  @Test
-  void givenDifferentActiveDocument_whenDownloaded_thenThrowsNotFound() {
-    UUID priorAuthorityId = UUID.randomUUID();
-    UUID requestedDocumentId = UUID.randomUUID();
-    PriorAuthorityResult result =
-        PriorAuthorityResult.builder()
-            .uploadedDocuments(List.of(document(UUID.randomUUID(), Instant.now(), false)))
-            .build();
-    when(getPriorAuthorityUseCase.getPriorAuthority(priorAuthorityId)).thenReturn(result);
-
-    assertThatExceptionOfType(ResourceNotFoundException.class)
-        .isThrownBy(() -> useCase.downloadDocument(priorAuthorityId, requestedDocumentId));
-    verifyNoInteractions(sdsService);
+  private void givenQueryReturns(
+      UUID priorAuthorityId, UUID documentId, EvidenceDocument document) {
+    when(queryGateway.query(
+            new FindPriorAuthorityDocumentQuery(priorAuthorityId, documentId),
+            EvidenceDocument.class))
+        .thenReturn(CompletableFuture.completedFuture(document));
   }
 
-  private DocumentMetadata document(UUID documentId, Instant uploadedAt, boolean deleted) {
-    return new DocumentMetadata(
+  @ParameterizedTest
+  @ValueSource(strings = {".pdf", ".PDF", ".png", ""})
+  void givenSuffixWithoutFilename_whenDownloaded_thenUsesPersistedKey(String suffix) {
+    UUID ownerId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    EvidenceDocument document =
+        new EvidenceDocument(
+            documentId,
+            null,
+            null,
+            null,
+            "application/pdf",
+            12L,
+            Instant.now(),
+            "CIVIL_APPLY",
+            null,
+            suffix);
+    givenQueryReturns(ownerId, documentId, document);
+    Resource resource = org.mockito.Mockito.mock(Resource.class);
+    when(sdsService.getEvidenceFile(ownerId, documentId, documentId + suffix)).thenReturn(resource);
+
+    assertThat(useCase.downloadDocument(ownerId, documentId).resource()).isSameAs(resource);
+  }
+
+  private EvidenceDocument document(UUID documentId, Instant uploadedAt, String filename) {
+    return new EvidenceDocument(
         documentId,
         "GATEWAY_EVIDENCE",
-        uploadedAt,
-        123L,
+        filename,
+        "PDF",
         "application/pdf",
-        "checksum",
+        123L,
+        uploadedAt,
         "civil-apply",
-        deleted);
+        "checksum");
   }
 }

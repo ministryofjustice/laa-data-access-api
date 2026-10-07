@@ -22,7 +22,6 @@ import java.util.concurrent.TimeUnit;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
@@ -568,13 +567,23 @@ class ApplicationDraftIntegrationTest {
   }
 
   @ParameterizedTest
-  @ValueSource(booleans = {false, true})
+  @org.junit.jupiter.params.provider.CsvSource({
+    "false,false",
+    "false,true",
+    "true,false",
+    "true,true"
+  })
   void givenUploadedDocument_whenDownloaded_thenStreamsContentWithOriginalFilename(
-      boolean submitted) {
+      boolean submitted, boolean missingFilename) {
     UUID applicationId = saveValidDraft();
     when(sdsService.saveEvidenceFile(any(), any(), any()))
         .thenReturn(new SdsUploadResult(null, null, "checksum"));
     UUID documentId = uploadDocument(applicationId, "original evidence.pdf");
+    if (missingFilename) {
+      jdbcTemplate.update(
+          "UPDATE axon.application_draft SET payload = jsonb_set(payload, '{documentFilenames}', '{}'::jsonb) WHERE application_id = ?",
+          applicationId);
+    }
     if (submitted) {
       ResponseEntity<String> submitResponse =
           restTemplate.postForEntity(
@@ -582,7 +591,7 @@ class ApplicationDraftIntegrationTest {
       assertThat(submitResponse.getStatusCode()).isIn(HttpStatus.OK, HttpStatus.ACCEPTED);
     }
     byte[] content = "%PDF-1.4\ncontent".getBytes();
-    when(sdsService.getEvidenceFile(applicationId, documentId, "original evidence.pdf"))
+    when(sdsService.getEvidenceFile(applicationId, documentId, documentId + ".pdf"))
         .thenReturn(new ByteArrayResource(content));
 
     ResponseEntity<byte[]> response =
@@ -600,7 +609,7 @@ class ApplicationDraftIntegrationTest {
     assertThat(response.getHeaders().getContentType()).isEqualTo(MediaType.APPLICATION_PDF);
     assertThat(response.getHeaders().getContentDisposition().getType()).isEqualTo("attachment");
     assertThat(response.getHeaders().getContentDisposition().getFilename())
-        .isEqualTo("original evidence.pdf");
+        .isEqualTo(missingFilename ? documentId.toString() : "original evidence.pdf");
     assertThat(response.getHeaders().getFirst("X-Document-Type")).isEqualTo("GATEWAY_EVIDENCE");
     assertThat(response.getBody()).containsExactly(content);
   }

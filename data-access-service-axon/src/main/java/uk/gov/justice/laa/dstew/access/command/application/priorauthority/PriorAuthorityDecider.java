@@ -9,6 +9,7 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.MakePriorAuthorityDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
+import uk.gov.justice.laa.dstew.access.document.DocumentFileSuffix;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityStatusConflictException;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityVersionConflictException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
@@ -148,7 +149,8 @@ public final class PriorAuthorityDecider {
         command.contentType(),
         command.checksum(),
         applicationId,
-        command.sourceService());
+        command.sourceService(),
+        DocumentFileSuffix.fromFilename(command.originalFilename()));
   }
 
   /** Returns the persisted event for removing a prior-authority document. */

@@ -11,7 +11,6 @@ import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequest
 import jakarta.annotation.PostConstruct;
 import java.math.BigDecimal;
 import java.time.Duration;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
@@ -360,8 +359,10 @@ class PriorAuthorityDraftIntegrationTest {
         .isZero();
   }
 
-  @Test
-  void givenUploadedDocument_whenDownloaded_thenStreamsContentWithOriginalFilename() {
+  @org.junit.jupiter.params.ParameterizedTest
+  @org.junit.jupiter.params.provider.ValueSource(booleans = {false, true})
+  void givenUploadedDocument_whenDownloaded_thenStreamsContentWithOriginalFilename(
+      boolean missingFilename) {
     UUID applicationId = grantedApplication();
     UUID priorAuthorityId = saveDraft(applicationId, PriorAuthorityType.EXPERT, null, null);
     when(sdsService.saveEvidenceFile(any(), any(), any()))
@@ -384,8 +385,13 @@ class PriorAuthorityDraftIntegrationTest {
                   .anySatisfy(
                       document -> assertThat(document.getDocumentId()).isEqualTo(documentId));
             });
+    if (missingFilename) {
+      jdbcTemplate.update(
+          "UPDATE axon.prior_authority_draft SET payload = jsonb_set(payload, '{documentFilenames}', '{}'::jsonb) WHERE prior_authority_id = ?",
+          priorAuthorityId);
+    }
     byte[] content = "%PDF-1.4\ncontent".getBytes();
-    when(sdsService.getEvidenceFile(priorAuthorityId, documentId, "evidence.pdf"))
+    when(sdsService.getEvidenceFile(priorAuthorityId, documentId, documentId + ".pdf"))
         .thenReturn(new ByteArrayResource(content));
 
     ResponseEntity<byte[]> response =
@@ -400,9 +406,9 @@ class PriorAuthorityDraftIntegrationTest {
     assertThat(response.getHeaders().getContentLength()).isEqualTo(content.length);
     assertThat(response.getHeaders().getContentDisposition().getType()).isEqualTo("attachment");
     assertThat(response.getHeaders().getContentDisposition().getFilename())
-        .isEqualTo("evidence.pdf");
+        .isEqualTo(missingFilename ? documentId.toString() : "evidence.pdf");
     assertThat(response.getBody()).containsExactly(content);
-    verify(sdsService).getEvidenceFile(priorAuthorityId, documentId, "evidence.pdf");
+    verify(sdsService).getEvidenceFile(priorAuthorityId, documentId, documentId + ".pdf");
   }
 
   @Test
@@ -421,14 +427,38 @@ class PriorAuthorityDraftIntegrationTest {
     verify(sdsService, never()).getEvidenceFile(any(), any(), any());
   }
 
-  @Test
+  @org.junit.jupiter.params.ParameterizedTest
+  @org.junit.jupiter.params.provider.ValueSource(
+      strings = {"evidence.pdf", "evidence.PDF", "evidence"})
   void
-      givenDraftWithUploadedDocument_whenDeletePriorAuthorityDocument_thenReturnsNoContentAndRemovesDocument() {
+      givenDraftWithUploadedDocument_whenDeletePriorAuthorityDocument_thenReturnsNoContentAndRemovesDocument(
+          String filename) {
     UUID applicationId = grantedApplication();
     UUID priorAuthorityId = saveDraft(applicationId, PriorAuthorityType.EXPERT, null, null);
     when(sdsService.saveEvidenceFile(any(), any(), any()))
         .thenReturn(new SdsUploadResult(null, null, "checksum"));
-    UUID documentId = uploadDocument(priorAuthorityId, "evidence.pdf");
+    UUID documentId = uploadDocument(priorAuthorityId, filename);
+
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT payload -> 'documentFilenames' ->> ? FROM axon.prior_authority_draft WHERE prior_authority_id = ?",
+                String.class,
+                documentId.toString(),
+                priorAuthorityId))
+        .isEqualTo(filename);
+
+    String suffix =
+        filename.substring(
+            filename.lastIndexOf('.') < 0 ? filename.length() : filename.lastIndexOf('.'));
+    String eventPayload =
+        jdbcTemplate.queryForObject(
+            "SELECT convert_from(payload, 'UTF8') FROM axon.domain_event_entry WHERE aggregate_identifier = ? AND payload_type LIKE '%PriorAuthorityDocumentUploadedEvent'",
+            String.class, priorAuthorityId.toString());
+    assertThat(objectMapper.readTree(eventPayload).get("fileSuffix").asString()).isEqualTo(suffix);
+    assertThat(eventPayload).doesNotContain(filename);
+    jdbcTemplate.update(
+        "UPDATE axon.prior_authority_draft SET payload = jsonb_set(payload, '{documentFilenames}', '{}'::jsonb) WHERE prior_authority_id = ?",
+        priorAuthorityId);
 
     ResponseEntity<Void> deleteResponse =
         restTemplate.exchange(
@@ -438,7 +468,7 @@ class PriorAuthorityDraftIntegrationTest {
             Void.class);
 
     assertThat(deleteResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-    verify(sdsService).deleteFiles(priorAuthorityId, List.of(documentId.toString() + ".pdf"));
+    verify(sdsService).deleteEvidenceFile(priorAuthorityId, documentId, documentId + suffix);
 
     await()
         .atMost(Duration.ofSeconds(15))
@@ -715,14 +745,18 @@ class PriorAuthorityDraftIntegrationTest {
 
   private HttpEntity<MultiValueMap<String, Object>> uploadRequest(String filename) {
     MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+    HttpHeaders fileHeaders = new HttpHeaders();
+    fileHeaders.setContentType(MediaType.APPLICATION_PDF);
     body.add(
         "file",
-        new ByteArrayResource("%PDF-1.4\ncontent".getBytes()) {
-          @Override
-          public String getFilename() {
-            return filename;
-          }
-        });
+        new HttpEntity<>(
+            new ByteArrayResource("%PDF-1.4\ncontent".getBytes()) {
+              @Override
+              public String getFilename() {
+                return filename;
+              }
+            },
+            fileHeaders));
 
     HttpHeaders multipartHeaders = new HttpHeaders();
     multipartHeaders.set("X-Service-Name", "CIVIL_APPLY");

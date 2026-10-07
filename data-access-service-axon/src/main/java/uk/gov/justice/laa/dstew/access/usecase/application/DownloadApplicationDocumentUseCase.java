@@ -36,6 +36,7 @@ public class DownloadApplicationDocumentUseCase {
           "No document found with ID: %s for application: %s".formatted(documentId, applicationId));
     }
     return new EvidenceDocumentDownload(
-        document, sdsService.getEvidenceFile(applicationId, documentId, document.fileName()));
+        document,
+        sdsService.getEvidenceFile(applicationId, documentId, document.storageFilename()));
   }
 }

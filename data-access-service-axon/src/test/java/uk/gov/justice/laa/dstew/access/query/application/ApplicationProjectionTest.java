@@ -178,7 +178,7 @@ class ApplicationProjectionTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"missing application", "unknown document", "deleted", "no filename"})
+  @ValueSource(strings = {"missing application", "unknown document", "deleted"})
   void givenDocumentUnavailable_whenQueried_thenReturnsNull(String scenario) {
     UUID applicationId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
@@ -192,12 +192,30 @@ class ApplicationProjectionTest {
     when(applicationReadRepository.findById(applicationId))
         .thenReturn(
             "missing application".equals(scenario) ? Optional.empty() : Optional.of(application));
-    if ("no filename".equals(scenario)) {
-      givenDocumentFilenames(application, false, Map.of());
-    }
-
     assertThat(projection.handle(new FindApplicationDocumentQuery(applicationId, documentId)))
         .isNull();
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void givenDocumentWithoutFilename_whenQueried_thenReturnsMetadata(boolean submitted) {
+    UUID applicationId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    ApplicationReadModel application =
+        documentReadModel(
+            applicationId,
+            uploadedDocument(documentId, Instant.now(), false).withFileSuffix(".PDF"));
+    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(application));
+    givenDocumentFilenames(application, submitted, Map.of());
+
+    EvidenceDocument document =
+        projection.handle(new FindApplicationDocumentQuery(applicationId, documentId));
+
+    assertThat(document).isNotNull();
+    assertThat(document.documentId()).isEqualTo(documentId);
+    assertThat(document.fileName()).isNull();
+    assertThat(document.fileSuffix()).isEqualTo(".PDF");
+    assertThat(document.storageFilename()).isEqualTo(documentId + ".PDF");
   }
 
   private ApplicationReadModel documentReadModel(UUID applicationId, DocumentMetadata document) {

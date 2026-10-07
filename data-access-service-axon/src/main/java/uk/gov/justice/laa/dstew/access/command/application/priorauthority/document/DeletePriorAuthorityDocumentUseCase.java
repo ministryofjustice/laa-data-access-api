@@ -1,7 +1,6 @@
 package uk.gov.justice.laa.dstew.access.command.application.priorauthority.document;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,24 +36,23 @@ public class DeletePriorAuthorityDocumentUseCase {
   /** Records the deletion durably before attempting best-effort SDS deletion. */
   @AllowApiCaseworker
   public void execute(UUID priorAuthorityId, UUID documentId) {
-    draftStore
-        .find(priorAuthorityId)
-        .orElseThrow(
-            () ->
-                new ResourceNotFoundException(
-                    "Prior Authority %s not found".formatted(priorAuthorityId)));
+    var draft =
+        draftStore
+            .find(priorAuthorityId)
+            .orElseThrow(
+                () ->
+                    new ResourceNotFoundException(
+                        "Prior Authority %s not found".formatted(priorAuthorityId)));
+    String originalFileName = draft.documentFilenames().get(documentId);
     DocumentMetadata document =
         dispatcher.dispatch(
             new PriorAuthorityDocumentDeleteCommand(priorAuthorityId, documentId, Instant.now()),
             DocumentMetadata.class);
+    String storageFilename =
+        document.fileSuffix() == null ? originalFileName : documentId + document.fileSuffix();
 
     try {
-      String fileName =
-          documentId
-              + PriorAuthorityDocumentFormat.fromContentType(document.contentType())
-                  .orElseThrow(() -> new IllegalStateException("Unsupported document content type"))
-                  .fileExtension();
-      sdsService.deleteFiles(priorAuthorityId, List.of(fileName));
+      sdsService.deleteEvidenceFile(priorAuthorityId, documentId, storageFilename);
     } catch (RuntimeException exception) {
       LOG.error(
           "Prior Authority document was deleted but SDS file deletion failed for priorAuthorityId={} documentId={}",

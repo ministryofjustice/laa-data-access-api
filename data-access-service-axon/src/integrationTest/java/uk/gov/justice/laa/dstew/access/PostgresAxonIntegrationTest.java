@@ -204,6 +204,12 @@ class PostgresAxonIntegrationTest {
               assertThat(event.get("sequence_number")).isEqualTo(1L);
               assertThat(event.get("payload").toString())
                   .doesNotContain("originalFilename.pdf", "originalFilename", "fileName");
+              assertThat(
+                      objectMapper
+                          .readTree(event.get("payload").toString())
+                          .get("fileSuffix")
+                          .asString())
+                  .isEqualTo(".pdf");
             });
 
     assertThat(
@@ -253,6 +259,7 @@ class PostgresAxonIntegrationTest {
                 String.class,
                 applicationId))
         .contains(documentId.toString())
+        .contains("fileSuffix", ".pdf")
         .doesNotContain("originalFilename.pdf", "fileName");
     assertThat(
             jdbcTemplate.queryForObject(

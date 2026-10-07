@@ -23,6 +23,7 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.EvidenceDocument;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
 import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
@@ -63,10 +64,51 @@ public class PriorAuthorityProjection {
         .orElse(null);
   }
 
+  /** Returns an owned, active document, hydrating its filename when available. */
+  @Nullable
+  @QueryHandler
+  public EvidenceDocument handle(FindPriorAuthorityDocumentQuery query) {
+    return repository
+        .findById(query.priorAuthorityId())
+        .flatMap(
+            priorAuthority ->
+                priorAuthority.getUploadedDocuments().stream()
+                    .filter(document -> query.documentId().equals(document.documentId()))
+                    .filter(document -> !document.deleted())
+                    .findFirst()
+                    .map(
+                        document ->
+                            new EvidenceDocument(
+                                document.documentId(),
+                                document.documentType(),
+                                documentFilename(priorAuthority, document.documentId()),
+                                null,
+                                document.contentType(),
+                                document.size(),
+                                document.uploadedAt(),
+                                document.sourceService(),
+                                document.checksum(),
+                                document.fileSuffix())))
+        .orElse(null);
+  }
+
   /** Confirms whether a current-state projection has reached SUBMITTED. */
   @QueryHandler
   public boolean handle(PriorAuthoritySubmittedByPriorAuthorityIdQuery query) {
     return repository.findById(query.priorAuthorityId()).map(this::isPending).orElse(false);
+  }
+
+  private String documentFilename(PriorAuthorityReadModel priorAuthority, UUID documentId) {
+    if (PriorAuthorityStatus.DRAFT.name().equals(priorAuthority.getStatus())) {
+      return priorAuthorityDraftStore
+          .find(priorAuthority.getPriorAuthorityId())
+          .map(draft -> draft.documentFilenames().get(documentId))
+          .orElse(null);
+    }
+    PriorAuthorityDataPayload payload =
+        priorAuthorityDataStore.get(
+            priorAuthority.getPriorAuthorityId(), priorAuthority.getDataVersion());
+    return payload == null ? null : payload.documentFilenames().get(documentId);
   }
 
   private Optional<@NonNull PriorAuthorityResult> hydrate(
@@ -156,7 +198,8 @@ public class PriorAuthorityProjection {
                       event.contentType(),
                       event.checksum(),
                       event.sourceService(),
-                      false));
+                      false,
+                      event.fileSuffix()));
               current.setUploadedDocuments(List.copyOf(documents));
               current.setModifiedAt(event.uploadedAt());
               repository.save(current);

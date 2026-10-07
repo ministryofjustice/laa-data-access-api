@@ -25,6 +25,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.util.UriBuilder;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
+import uk.gov.justice.laa.dstew.access.document.DocumentFileSuffix;
 import uk.gov.justice.laa.dstew.access.exception.FileConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.model.SdsHealthResponse;
@@ -109,7 +110,7 @@ public class SdsService {
         buildMultipartBody(
             file,
             bodyMap,
-            documentId + getFileExtension(Objects.requireNonNull(file.getOriginalFilename())));
+            evidenceFileName(documentId, Objects.requireNonNull(file.getOriginalFilename())));
 
     return sdsUploadResponseHandler
         .handle(
@@ -182,7 +183,7 @@ public class SdsService {
    * buffering the document in this service.
    */
   public Resource getEvidenceFile(UUID folderId, UUID documentId, String originalFileName) {
-    SdsDownloadResult response = getFile(folderId, documentId + getFileExtension(originalFileName));
+    SdsDownloadResult response = getFile(folderId, evidenceFileName(documentId, originalFileName));
     String fileUrl = response == null ? null : response.fileUrl();
     if (fileUrl == null || fileUrl.isBlank()) {
       throw new ResourceNotFoundException("File not found");
@@ -192,6 +193,12 @@ public class SdsService {
     } catch (MalformedURLException exception) {
       throw new IllegalStateException("SDS returned an invalid document URL", exception);
     }
+  }
+
+  /** Deletes an evidence document using the same exact filename suffix as upload and download. */
+  public SdsDeleteResult deleteEvidenceFile(
+      UUID folderId, UUID documentId, String originalFileName) {
+    return deleteFiles(folderId, List.of(evidenceFileName(documentId, originalFileName)));
   }
 
   /**
@@ -249,8 +256,11 @@ public class SdsService {
   }
 
   private String getFileExtension(String fileName) {
-    int extensionStart = fileName.lastIndexOf('.');
-    return extensionStart >= 0 ? fileName.substring(extensionStart) : "";
+    return DocumentFileSuffix.fromFilename(fileName);
+  }
+
+  private String evidenceFileName(UUID documentId, String originalFileName) {
+    return documentId + getFileExtension(originalFileName);
   }
 
   private MultipartBodyBuilder buildMultipartBody(

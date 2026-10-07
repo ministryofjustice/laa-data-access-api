@@ -14,4 +14,28 @@ public record DocumentMetadata(
     String contentType,
     String checksum,
     String sourceService,
-    boolean deleted) {}
+    boolean deleted,
+    String fileSuffix) {
+
+  /** Creates historical document metadata whose storage suffix is unknown. */
+  public DocumentMetadata(
+      UUID documentId,
+      String documentType,
+      Instant uploadedAt,
+      Long size,
+      String contentType,
+      String checksum,
+      String sourceService,
+      boolean deleted) {
+    this(
+        documentId,
+        documentType,
+        uploadedAt,
+        size,
+        contentType,
+        checksum,
+        sourceService,
+        deleted,
+        null);
+  }
+}

@@ -15,4 +15,28 @@ public record PriorAuthorityDocumentUploadedEvent(
     String contentType,
     String checksum,
     UUID parentApplicationId,
-    String sourceService) {}
+    String sourceService,
+    String fileSuffix) {
+
+  /** Creates the historical upload event whose storage suffix is unknown. */
+  public PriorAuthorityDocumentUploadedEvent(
+      UUID priorAuthorityId,
+      UUID documentId,
+      Instant uploadedAt,
+      Long size,
+      String contentType,
+      String checksum,
+      UUID parentApplicationId,
+      String sourceService) {
+    this(
+        priorAuthorityId,
+        documentId,
+        uploadedAt,
+        size,
+        contentType,
+        checksum,
+        parentApplicationId,
+        sourceService,
+        null);
+  }
+}

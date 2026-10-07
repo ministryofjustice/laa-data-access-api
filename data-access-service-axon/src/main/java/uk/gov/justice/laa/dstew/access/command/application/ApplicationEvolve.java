@@ -93,7 +93,8 @@ public final class ApplicationEvolve {
             event.contentType(),
             event.checksum(),
             event.sourceService(),
-            false));
+            false,
+            event.fileSuffix()));
     if (event.applicationDataVersion() != null) {
       state.applicationDataVersion = event.applicationDataVersion();
     }

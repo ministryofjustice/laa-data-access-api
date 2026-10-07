@@ -68,7 +68,8 @@ public final class PriorAuthorityEvolve {
             event.contentType(),
             event.checksum(),
             event.sourceService(),
-            false));
+            false,
+            event.fileSuffix()));
   }
 
   /** Applies a {@link PriorAuthorityDocumentDeletedEvent} to the given state. */

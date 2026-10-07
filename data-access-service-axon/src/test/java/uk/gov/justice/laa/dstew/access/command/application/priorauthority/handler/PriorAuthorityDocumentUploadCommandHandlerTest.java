@@ -15,6 +15,7 @@ import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
@@ -46,8 +47,10 @@ class PriorAuthorityDocumentUploadCommandHandlerTest {
 
   @Captor private ArgumentCaptor<PriorAuthorityDataPayload> payloadCaptor;
 
-  @Test
-  void givenExistingDraft_whenHandle_thenAddsUploadedDocumentAndEmitsEvent() {
+  @ParameterizedTest
+  @CsvSource({"file.pdf,.pdf", "file.PDF,.PDF", "file.png,.png", "file,''"})
+  void givenExistingDraft_whenHandle_thenAddsUploadedDocumentAndEmitsEvent(
+      String filename, String suffix) {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
@@ -63,7 +66,7 @@ class PriorAuthorityDocumentUploadCommandHandlerTest {
             "service",
             "checksum",
             OCCURRED_AT,
-            "file.pdf",
+            filename,
             1024L,
             "application/pdf");
 
@@ -83,7 +86,7 @@ class PriorAuthorityDocumentUploadCommandHandlerTest {
             payloadCaptor.capture(),
             eq("old"),
             eq(OCCURRED_AT));
-    assertThat(payloadCaptor.getValue().documentFilenames()).containsEntry(documentId, "file.pdf");
+    assertThat(payloadCaptor.getValue().documentFilenames()).containsEntry(documentId, filename);
     verify(eventAppender)
         .append(
             new PriorAuthorityDocumentUploadedEvent(
@@ -94,7 +97,8 @@ class PriorAuthorityDocumentUploadCommandHandlerTest {
                 "application/pdf",
                 "checksum",
                 applicationId,
-                "service"));
+                "service",
+                suffix));
   }
 
   @Test
