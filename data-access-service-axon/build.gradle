@@ -171,8 +171,11 @@ tasks.register('pactTest', Test) {
     // Pending pacts: a consumer's brand-new or changed pact must not turn this provider's build red
     // until it has been verified successfully once. The broker reports it as pending instead.
     // Work-in-progress pacts from consumer feature branches are verified too, without failing.
+    // PACT_WIP_PACTS_SINCE (a repository variable, passed through as an env var) overrides the
+    // cutoff date without a source change.
     systemProperty 'pactbroker.enablePending', 'true'
-    systemProperty 'pactbroker.includeWipPactsSince', '2026-10-01'
+    systemProperty 'pactbroker.includeWipPactsSince',
+            providers.environmentVariable('PACT_WIP_PACTS_SINCE').getOrElse('2026-10-01')
 
     // Broker connection is env-driven, with placeholders so the task still configures locally.
     systemProperty 'pactbroker.url', providers.environmentVariable('PACT_BROKER_URL').getOrElse('https://laa-data-pact-broker.apps.live.cloud-platform.service.justice.gov.uk/')
