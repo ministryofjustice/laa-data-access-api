@@ -27,6 +27,7 @@ import uk.gov.justice.laa.dstew.access.model.PriorAuthoritySummary;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
+import uk.gov.justice.laa.dstew.access.version.VersionToken;
 
 class GetApplicationResponseMapperTest {
 
@@ -182,12 +183,15 @@ class GetApplicationResponseMapperTest {
   void givenLeadWithAssociations_whenMapped_thenMapsResponseFields() {
     UUID applicationId = UUID.randomUUID();
     UUID linkedApplicationId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
     Instant createdAt = Instant.parse("2026-01-01T08:00:00Z");
     ApplicationReadModel readModel = baseReadModel().applicationId(applicationId).build();
     LinkedApplicationGroupReadModel group =
         LinkedApplicationGroupReadModel.builder()
+            .groupId(groupId)
             .leadApplicationId(applicationId)
             .memberIds(List.of(applicationId, linkedApplicationId))
+            .version(4L)
             .build();
     PriorAuthorityReadModel priorAuthority =
         PriorAuthorityReadModel.builder()
@@ -199,14 +203,19 @@ class GetApplicationResponseMapperTest {
             .createdAt(createdAt)
             .build();
 
-    var response = mapper.toResponse(readModel, group, List.of(priorAuthority));
+    var response =
+        mapper.toResponse(
+            readModel, group, List.of(priorAuthority), Map.of(linkedApplicationId, "LAA-LINKED"));
 
     assertThat(response.getIsLead()).isTrue();
+    assertThat(response.getLinkedGroupVersion())
+        .isEqualTo(VersionToken.linkedGroup(groupId, 4L).encode());
     assertThat(response.getLinkedApplications())
         .singleElement()
         .satisfies(
             linkedApplication -> {
               assertThat(linkedApplication.getApplicationId()).isEqualTo(linkedApplicationId);
+              assertThat(linkedApplication.getLaaReference()).isEqualTo("LAA-LINKED");
               assertThat(linkedApplication.getIsLead()).isFalse();
             });
     assertThat(response.getPriorAuthorities())
@@ -229,17 +238,21 @@ class GetApplicationResponseMapperTest {
   void givenMemberApplicationWithGroup_whenMapped_thenIncludesLeadAndIsNotLead() {
     UUID applicationId = UUID.randomUUID();
     UUID leadApplicationId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
     ApplicationReadModel readModel =
         baseReadModel().applicationId(applicationId).leadApplicationId(leadApplicationId).build();
     LinkedApplicationGroupReadModel group =
         LinkedApplicationGroupReadModel.builder()
+            .groupId(groupId)
             .leadApplicationId(leadApplicationId)
             .memberIds(List.of(leadApplicationId, applicationId))
             .build();
 
-    var response = mapper.toResponse(readModel, group, List.of());
+    var response = mapper.toResponse(readModel, group, List.of(), Map.of());
 
     assertThat(response.getIsLead()).isFalse();
+    assertThat(response.getLinkedGroupVersion())
+        .isEqualTo(VersionToken.linkedGroup(groupId, 0L).encode());
     assertThat(response.getLinkedApplications())
         .singleElement()
         .satisfies(
@@ -251,9 +264,10 @@ class GetApplicationResponseMapperTest {
 
   @Test
   void givenApplicationWithoutRelations_whenMapped_thenReturnsEmptyAssociationLists() {
-    var response = mapper.toResponse(baseReadModel().build(), null, List.of());
+    var response = mapper.toResponse(baseReadModel().build(), null, List.of(), Map.of());
 
     assertThat(response.getIsLead()).isFalse();
+    assertThat(response.getLinkedGroupVersion()).isNull();
     assertThat(response.getLinkedApplications()).isEmpty();
     assertThat(response.getPriorAuthorities()).isEmpty();
   }
@@ -439,7 +453,7 @@ class GetApplicationResponseMapperTest {
     ApplicationReadModel readModel =
         baseReadModel().potentialDuplicates(potentialDuplicates).build();
 
-    var response = mapper.toResponse(readModel, null, List.of());
+    var response = mapper.toResponse(readModel, null, List.of(), Map.of());
 
     assertThat(response.getPotentialDuplicates()).hasSize(3);
     assertThat(response.getPotentialDuplicates().get(0).getApplicationId()).isEqualTo(duplicateId1);
@@ -458,7 +472,7 @@ class GetApplicationResponseMapperTest {
   void givenEmptyPotentialDuplicates_whenMapped_thenPotentialDuplicatesIsEmpty() {
     ApplicationReadModel readModel = baseReadModel().potentialDuplicates(List.of()).build();
 
-    var response = mapper.toResponse(readModel, null, List.of());
+    var response = mapper.toResponse(readModel, null, List.of(), Map.of());
 
     assertThat(response.getPotentialDuplicates()).isEmpty();
   }
@@ -467,7 +481,7 @@ class GetApplicationResponseMapperTest {
   void givenNullPotentialDuplicates_whenMapped_thenPotentialDuplicatesIsNull() {
     ApplicationReadModel readModel = baseReadModel().potentialDuplicates(null).build();
 
-    var response = mapper.toResponse(readModel, null, List.of());
+    var response = mapper.toResponse(readModel, null, List.of(), Map.of());
 
     assertThat(response.getPotentialDuplicates()).isNull();
   }

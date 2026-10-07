@@ -49,7 +49,10 @@ import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationNote;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftStartedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupDissolvedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupLeadChangedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberRemovedFromGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
@@ -84,14 +87,16 @@ class ApplicationProjectionTest {
     projection =
         new ApplicationProjection(
             applicationReadRepository,
-            groupReadRepository,
             applicationDataStore,
-            listIndexRepository,
-            priorAuthorityReadRepository,
+            draftStore,
             applicationReadQueryGateway,
             currentStateAccessPolicy,
             listIndexAccessPolicy,
-            draftStore);
+            new ApplicationReadModelAssembler(
+                applicationDataStore,
+                groupReadRepository,
+                listIndexRepository,
+                priorAuthorityReadRepository));
   }
 
   @Test
@@ -396,6 +401,23 @@ class ApplicationProjectionTest {
   }
 
   @Test
+  void givenCreatedEvent_whenHandled_thenInitializesApplicationWithoutLinkedGroup() {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationReadModel[] saved = new ApplicationReadModel[1];
+    when(applicationReadRepository.save(any()))
+        .thenAnswer(
+            invocation -> {
+              saved[0] = invocation.getArgument(0);
+              return saved[0];
+            });
+
+    projection.on(applicationCreatedEvent(applicationId), queryUpdateEmitter);
+
+    assertThat(saved[0].getLinkedGroupId()).isNull();
+    assertThat(saved[0].getLeadApplicationId()).isNull();
+  }
+
+  @Test
   void givenResetCalled_whenHandled_thenDeletesAllProjections() {
     projection.reset();
 
@@ -485,6 +507,7 @@ class ApplicationProjectionTest {
   void givenGroupCreatedEvent_whenHandled_thenKeepsLeadUnlinkedAndLinksMembers() {
     UUID leadApplicationId = UUID.randomUUID();
     UUID memberApplicationId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-07-15T08:00:00Z");
     ApplicationReadModel lead =
         ApplicationReadModel.builder().applicationId(leadApplicationId).build();
@@ -495,14 +518,16 @@ class ApplicationProjectionTest {
 
     projection.on(
         new LinkedApplicationGroupCreatedEvent(
-            UUID.randomUUID(),
+            groupId,
             leadApplicationId,
             List.of(leadApplicationId, memberApplicationId),
             occurredAt));
 
     assertThat(lead.getLeadApplicationId()).isNull();
+    assertThat(lead.getLinkedGroupId()).isEqualTo(groupId);
     assertThat(lead.getModifiedAt()).isEqualTo(occurredAt);
     assertThat(member.getLeadApplicationId()).isEqualTo(leadApplicationId);
+    assertThat(member.getLinkedGroupId()).isEqualTo(groupId);
     assertThat(member.getModifiedAt()).isEqualTo(occurredAt);
     verify(applicationReadRepository).save(lead);
     verify(applicationReadRepository).save(member);
@@ -512,18 +537,94 @@ class ApplicationProjectionTest {
   void givenMemberAddedToGroupEvent_whenHandled_thenLinksAddedMemberToLead() {
     UUID leadApplicationId = UUID.randomUUID();
     UUID memberApplicationId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-07-15T09:00:00Z");
     ApplicationReadModel member =
         ApplicationReadModel.builder().applicationId(memberApplicationId).build();
     when(applicationReadRepository.findById(memberApplicationId)).thenReturn(Optional.of(member));
 
     projection.on(
-        new MemberAddedToGroupEvent(
-            UUID.randomUUID(), leadApplicationId, memberApplicationId, occurredAt));
+        new MemberAddedToGroupEvent(groupId, leadApplicationId, memberApplicationId, occurredAt));
 
     assertThat(member.getLeadApplicationId()).isEqualTo(leadApplicationId);
+    assertThat(member.getLinkedGroupId()).isEqualTo(groupId);
     assertThat(member.getModifiedAt()).isEqualTo(occurredAt);
     verify(applicationReadRepository).save(member);
+  }
+
+  @Test
+  void givenLeadChangedEvent_whenHandled_thenUpdatesLeadForEveryGroupMember() {
+    UUID groupId = UUID.randomUUID();
+    UUID previousLeadId = UUID.randomUUID();
+    UUID newLeadId = UUID.randomUUID();
+    UUID otherMemberId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-15T10:00:00Z");
+    ApplicationReadModel previousLead =
+        ApplicationReadModel.builder().applicationId(previousLeadId).linkedGroupId(groupId).build();
+    ApplicationReadModel newLead =
+        ApplicationReadModel.builder().applicationId(newLeadId).linkedGroupId(groupId).build();
+    ApplicationReadModel otherMember =
+        ApplicationReadModel.builder().applicationId(otherMemberId).linkedGroupId(groupId).build();
+    when(applicationReadRepository.findAllByLinkedGroupId(groupId))
+        .thenReturn(List.of(previousLead, newLead, otherMember));
+
+    projection.on(
+        new LinkedApplicationGroupLeadChangedEvent(
+            groupId, previousLeadId, newLeadId, 1L, occurredAt));
+
+    assertThat(previousLead.getLeadApplicationId()).isEqualTo(newLeadId);
+    assertThat(newLead.getLeadApplicationId()).isNull();
+    assertThat(otherMember.getLeadApplicationId()).isEqualTo(newLeadId);
+    assertThat(List.of(previousLead, newLead, otherMember))
+        .allSatisfy(application -> assertThat(application.getModifiedAt()).isEqualTo(occurredAt));
+    verify(applicationReadRepository).saveAll(List.of(previousLead, newLead, otherMember));
+  }
+
+  @Test
+  void givenMemberRemovedEvent_whenHandled_thenClearsGroupMembership() {
+    UUID groupId = UUID.randomUUID();
+    UUID memberId = UUID.randomUUID();
+    ApplicationReadModel member =
+        ApplicationReadModel.builder()
+            .applicationId(memberId)
+            .linkedGroupId(groupId)
+            .leadApplicationId(UUID.randomUUID())
+            .build();
+    when(applicationReadRepository.findById(memberId)).thenReturn(Optional.of(member));
+    Instant occurredAt = Instant.parse("2026-07-15T11:00:00Z");
+
+    projection.on(
+        new MemberRemovedFromGroupEvent(groupId, UUID.randomUUID(), memberId, 2L, occurredAt));
+
+    assertThat(member.getLinkedGroupId()).isNull();
+    assertThat(member.getLeadApplicationId()).isNull();
+    assertThat(member.getModifiedAt()).isEqualTo(occurredAt);
+    verify(applicationReadRepository).save(member);
+  }
+
+  @Test
+  void givenDissolvedEvent_whenHandled_thenClearsMembershipForEveryApplication() {
+    UUID groupId = UUID.randomUUID();
+    UUID leadId = UUID.randomUUID();
+    UUID removedId = UUID.randomUUID();
+    ApplicationReadModel lead =
+        ApplicationReadModel.builder().applicationId(leadId).linkedGroupId(groupId).build();
+    ApplicationReadModel removed =
+        ApplicationReadModel.builder().applicationId(removedId).linkedGroupId(groupId).build();
+    when(applicationReadRepository.findById(leadId)).thenReturn(Optional.of(lead));
+    when(applicationReadRepository.findById(removedId)).thenReturn(Optional.of(removed));
+    Instant occurredAt = Instant.parse("2026-07-15T11:00:00Z");
+
+    projection.on(
+        new LinkedApplicationGroupDissolvedEvent(
+            groupId, leadId, removedId, List.of(leadId, removedId), 2L, occurredAt));
+
+    assertThat(lead.getLinkedGroupId()).isNull();
+    assertThat(lead.getLeadApplicationId()).isNull();
+    assertThat(removed.getLinkedGroupId()).isNull();
+    assertThat(removed.getLeadApplicationId()).isNull();
+    verify(applicationReadRepository).save(lead);
+    verify(applicationReadRepository).save(removed);
   }
 
   @Test
@@ -717,7 +818,7 @@ class ApplicationProjectionTest {
     ApplicationDataPayload payload = ApplicationDataPayload.from(applicationCreationDetails(appId));
     when(applicationDataStore.getAll(List.of(dataId))).thenReturn(Map.of(dataId, payload));
 
-    when(groupReadRepository.findAllByLeadApplicationIdIn(any())).thenReturn(List.of());
+    when(groupReadRepository.findAllById(any())).thenReturn(List.of());
 
     PriorAuthorityReadModel priorAuthority =
         PriorAuthorityReadModel.builder()
@@ -750,7 +851,7 @@ class ApplicationProjectionTest {
   void givenEmptyIndexPage_whenFindAllApplicationsQuery_thenReturnsEmptyResult() {
     when(applicationReadQueryGateway.findApplicationIndexPage(any(), any(), any()))
         .thenReturn(new PageImpl<>(List.of()));
-    when(groupReadRepository.findAllByLeadApplicationIdIn(any())).thenReturn(List.of());
+    when(groupReadRepository.findAllById(any())).thenReturn(List.of());
     when(priorAuthorityReadRepository.findAllByApplicationIdIn(List.of())).thenReturn(List.of());
 
     FindAllApplicationsResult result =
@@ -792,7 +893,7 @@ class ApplicationProjectionTest {
                         id -> new ApplicationDataId(id, 0L),
                         id -> ApplicationDataPayload.from(applicationCreationDetails(id)))));
 
-    when(groupReadRepository.findAllByLeadApplicationIdIn(any())).thenReturn(List.of());
+    when(groupReadRepository.findAllById(any())).thenReturn(List.of());
 
     PriorAuthorityReadModel priorAuthority =
         PriorAuthorityReadModel.builder()
@@ -889,7 +990,7 @@ class ApplicationProjectionTest {
     when(applicationReadQueryGateway.findApplicationIndexPage(
             any(), pageableCaptor.capture(), any()))
         .thenReturn(new PageImpl<>(List.of()));
-    when(groupReadRepository.findAllByLeadApplicationIdIn(any())).thenReturn(List.of());
+    when(groupReadRepository.findAllById(any())).thenReturn(List.of());
 
     projection.handle(
         new FindAllApplicationsQuery(
@@ -902,9 +1003,9 @@ class ApplicationProjectionTest {
 
   @Test
   @SuppressWarnings("unchecked")
-  void givenApplicationWithLeadId_whenFindAllQuery_thenGroupFetchedByLeadId() {
+  void givenApplicationWithGroupId_whenFindAllQuery_thenFetchesGroupAndLaaReferences() {
     UUID appId = UUID.randomUUID();
-    UUID leadId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
     ApplicationListIndexReadModel indexRow =
         ApplicationListIndexReadModel.builder().applicationId(appId).build();
     when(applicationReadQueryGateway.findApplicationIndexPage(any(), any(), any()))
@@ -914,7 +1015,7 @@ class ApplicationProjectionTest {
         ApplicationReadModel.builder()
             .applicationId(appId)
             .applicationDataVersion(0L)
-            .leadApplicationId(leadId)
+            .linkedGroupId(groupId)
             .modifiedAt(Instant.EPOCH)
             .build();
     when(applicationReadQueryGateway.findApplications(eq(List.of(appId)), any()))
@@ -924,14 +1025,29 @@ class ApplicationProjectionTest {
     ApplicationDataPayload payload = ApplicationDataPayload.from(applicationCreationDetails(appId));
     when(applicationDataStore.getAll(List.of(dataId))).thenReturn(Map.of(dataId, payload));
 
-    ArgumentCaptor<List<UUID>> leadIdsCaptor = ArgumentCaptor.forClass(List.class);
-    when(groupReadRepository.findAllByLeadApplicationIdIn(leadIdsCaptor.capture()))
-        .thenReturn(List.of());
+    ArgumentCaptor<List<UUID>> groupIdsCaptor = ArgumentCaptor.forClass(List.class);
+    LinkedApplicationGroupReadModel group =
+        LinkedApplicationGroupReadModel.builder()
+            .groupId(groupId)
+            .leadApplicationId(appId)
+            .memberIds(List.of(appId))
+            .build();
+    when(groupReadRepository.findAllById(groupIdsCaptor.capture())).thenReturn(List.of(group));
+    when(listIndexRepository.findAllById(List.of(appId)))
+        .thenReturn(
+            List.of(
+                ApplicationListIndexReadModel.builder()
+                    .applicationId(appId)
+                    .laaReference("LAA-123")
+                    .build()));
 
-    projection.handle(
-        new FindAllApplicationsQuery(null, null, null, null, null, null, null, null, 1, 20));
+    FindAllApplicationsResult result =
+        projection.handle(
+            new FindAllApplicationsQuery(null, null, null, null, null, null, null, null, 1, 20));
 
-    assertThat(leadIdsCaptor.getValue()).containsExactly(leadId);
+    assertThat(groupIdsCaptor.getValue()).containsExactly(groupId);
+    assertThat(result.groupsByGroupId()).containsEntry(groupId, group);
+    assertThat(result.linkedLaaReferences()).containsExactly(entry(appId, "LAA-123"));
   }
 
   @Test
@@ -952,7 +1068,7 @@ class ApplicationProjectionTest {
     when(applicationReadQueryGateway.findApplications(eq(List.of(appId)), any()))
         .thenReturn(List.of(state));
     when(applicationDataStore.getAll(any())).thenReturn(Map.of());
-    when(groupReadRepository.findAllByLeadApplicationIdIn(any())).thenReturn(List.of());
+    when(groupReadRepository.findAllById(any())).thenReturn(List.of());
 
     FindAllApplicationsResult result =
         projection.handle(
@@ -984,6 +1100,7 @@ class ApplicationProjectionTest {
     ApplicationReadModel application =
         ApplicationReadModel.builder()
             .applicationId(applicationId)
+            .linkedGroupId(UUID.randomUUID())
             .applicationDataVersion(1L)
             .build();
     ApplicationDataId dataId = new ApplicationDataId(applicationId, 1L);
@@ -1004,7 +1121,9 @@ class ApplicationProjectionTest {
     when(applicationReadQueryGateway.findApplication(any(), any()))
         .thenReturn(Optional.of(application));
     when(applicationDataStore.getAll(List.of(dataId))).thenReturn(Map.of(dataId, applicationData));
-    when(groupReadRepository.findByLeadApplicationId(applicationId)).thenReturn(Optional.of(group));
+    UUID groupId = application.getLinkedGroupId();
+    group.setGroupId(groupId);
+    when(groupReadRepository.findById(groupId)).thenReturn(Optional.of(group));
     when(priorAuthorityReadRepository.findAllByApplicationIdIn(List.of(applicationId)))
         .thenReturn(List.of(priorAuthority));
 
@@ -1025,7 +1144,7 @@ class ApplicationProjectionTest {
         ApplicationReadModel.builder()
             .applicationId(applicationId)
             .applicationDataVersion(1L)
-            .leadApplicationId(leadApplicationId)
+            .linkedGroupId(UUID.randomUUID())
             .build();
     ApplicationDataId dataId = new ApplicationDataId(applicationId, 1L);
     ApplicationDataPayload applicationData =
@@ -1038,7 +1157,8 @@ class ApplicationProjectionTest {
     when(applicationReadQueryGateway.findApplication(any(), any()))
         .thenReturn(Optional.of(application));
     when(applicationDataStore.getAll(List.of(dataId))).thenReturn(Map.of(dataId, applicationData));
-    when(groupReadRepository.findByLeadApplicationId(leadApplicationId))
+    group.setGroupId(application.getLinkedGroupId());
+    when(groupReadRepository.findById(application.getLinkedGroupId()))
         .thenReturn(Optional.of(group));
     when(priorAuthorityReadRepository.findAllByApplicationIdIn(List.of(applicationId)))
         .thenReturn(List.of());
@@ -1065,7 +1185,6 @@ class ApplicationProjectionTest {
     when(applicationReadQueryGateway.findApplication(any(), any()))
         .thenReturn(Optional.of(application));
     when(applicationDataStore.getAll(List.of(dataId))).thenReturn(Map.of(dataId, applicationData));
-    when(groupReadRepository.findByLeadApplicationId(applicationId)).thenReturn(Optional.empty());
     when(priorAuthorityReadRepository.findAllByApplicationIdIn(List.of(applicationId)))
         .thenReturn(List.of());
 
