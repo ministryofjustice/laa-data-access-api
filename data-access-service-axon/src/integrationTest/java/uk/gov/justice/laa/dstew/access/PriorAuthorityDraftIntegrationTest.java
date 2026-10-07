@@ -119,6 +119,12 @@ class PriorAuthorityDraftIntegrationTest {
                 Integer.class,
                 priorAuthorityId))
         .isEqualTo(1);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT office_code FROM axon.prior_authority_current_state WHERE prior_authority_id = ?",
+                String.class,
+                priorAuthorityId))
+        .isEqualTo("1A001B");
 
     ResponseEntity<String> draftResponse =
         restTemplate.exchange(

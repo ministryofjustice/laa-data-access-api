@@ -6,6 +6,7 @@ import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadAccessPolicyProvider;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.FindPriorAuthorityByPriorAuthorityIdQuery;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 
@@ -14,14 +15,17 @@ import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 public class GetPriorAuthorityUseCase {
 
   private final QueryGateway queryGateway;
+  private final ApplicationReadAccessPolicyProvider accessPolicyProvider;
 
   /**
    * Constructor for GetPriorAuthorityUseCase.
    *
    * @param queryGateway The Axon QueryGateway used to query Prior Authority read models
    */
-  public GetPriorAuthorityUseCase(QueryGateway queryGateway) {
+  public GetPriorAuthorityUseCase(
+      QueryGateway queryGateway, ApplicationReadAccessPolicyProvider accessPolicyProvider) {
     this.queryGateway = queryGateway;
+    this.accessPolicyProvider = accessPolicyProvider;
   }
 
   /** Retrieves the Prior Authority identified by its submission ID. */
@@ -30,7 +34,8 @@ public class GetPriorAuthorityUseCase {
     PriorAuthorityResult priorAuthority =
         queryGateway
             .query(
-                new FindPriorAuthorityByPriorAuthorityIdQuery(priorAuthorityId),
+                new FindPriorAuthorityByPriorAuthorityIdQuery(
+                    priorAuthorityId, accessPolicyProvider.resolve()),
                 PriorAuthorityResult.class)
             .join();
     return Optional.ofNullable(priorAuthority)

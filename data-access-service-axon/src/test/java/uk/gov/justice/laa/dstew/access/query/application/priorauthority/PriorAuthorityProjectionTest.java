@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.query.application.priorauthority;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType.*;
 
@@ -42,6 +43,8 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.TimeRequested;
 class PriorAuthorityProjectionTest {
 
   @Mock private PriorAuthorityReadRepository repository;
+  @Mock private PriorAuthorityReadQueryGateway readQueryGateway;
+  @Mock private PriorAuthorityCurrentStateAccessPolicy accessPolicy;
   @Mock private PriorAuthorityDataStore dataStore;
   @Mock private PriorAuthorityDraftStore draftStore;
   @Mock private QueryUpdateEmitter queryUpdateEmitter;
@@ -84,7 +87,7 @@ class PriorAuthorityProjectionTest {
     Instant occurredAt = Instant.parse("2026-09-04T10:00:00Z");
     PriorAuthorityDraftStartedEvent event =
         new PriorAuthorityDraftStartedEvent(
-            priorAuthorityId, applicationId, EXPERT.name(), 1, occurredAt);
+            priorAuthorityId, applicationId, EXPERT.name(), 1, occurredAt, "OFFICE-1");
     PriorAuthorityReadModel[] savedCapture = new PriorAuthorityReadModel[1];
     when(repository.save(any()))
         .thenAnswer(
@@ -100,6 +103,7 @@ class PriorAuthorityProjectionTest {
     assertThat(savedCapture[0].getDataVersion()).isZero();
     assertThat(savedCapture[0].getStatus()).isEqualTo("DRAFT");
     assertThat(savedCapture[0].getPriorAuthorityType()).isEqualTo(EXPERT.name());
+    assertThat(savedCapture[0].getOfficeCode()).isEqualTo("OFFICE-1");
     assertThat(savedCapture[0].getCreatedAt()).isEqualTo(occurredAt);
     assertThat(savedCapture[0].getModifiedAt()).isEqualTo(occurredAt);
   }
@@ -117,7 +121,7 @@ class PriorAuthorityProjectionTest {
             .build();
     PriorAuthorityContent content =
         new PriorAuthorityContent(EXPERT, "Expert required", null, null, null);
-    when(repository.findById(priorAuthorityId)).thenReturn(Optional.of(model));
+    when(readQueryGateway.findPriorAuthority(any(), any())).thenReturn(Optional.of(model));
     when(draftStore.find(priorAuthorityId))
         .thenReturn(
             Optional.of(
@@ -151,7 +155,7 @@ class PriorAuthorityProjectionTest {
             null,
             new CounselDetails(CounselType.TWO_JUNIOR_COUNSEL),
             null);
-    when(repository.findById(priorAuthorityId)).thenReturn(Optional.of(model));
+    when(readQueryGateway.findPriorAuthority(any(), any())).thenReturn(Optional.of(model));
     when(dataStore.get(priorAuthorityId, 4L))
         .thenReturn(
             new PriorAuthorityDataPayload(
@@ -273,10 +277,11 @@ class PriorAuthorityProjectionTest {
   @Test
   void givenMissingPriorAuthorityId_whenQueryHandled_thenReturnsNull() {
     UUID priorAuthorityId = UUID.randomUUID();
-    when(repository.findById(priorAuthorityId)).thenReturn(Optional.empty());
+    when(readQueryGateway.findPriorAuthority(any(), any())).thenReturn(Optional.empty());
 
     assertThat(projection.handle(new FindPriorAuthorityByPriorAuthorityIdQuery(priorAuthorityId)))
         .isNull();
+    verifyNoInteractions(dataStore, draftStore);
   }
 
   @Test
@@ -323,7 +328,7 @@ class PriorAuthorityProjectionTest {
             .build();
     PriorAuthorityContent content =
         new PriorAuthorityContent(EXPERT, "Expert required", null, null, null);
-    when(repository.findById(priorAuthorityId)).thenReturn(Optional.of(model));
+    when(readQueryGateway.findPriorAuthority(any(), any())).thenReturn(Optional.of(model));
     when(dataStore.get(priorAuthorityId, 2L))
         .thenReturn(
             new PriorAuthorityDataPayload(
@@ -419,7 +424,7 @@ class PriorAuthorityProjectionTest {
             .dataVersion(1L)
             .status("SUBMITTED")
             .build();
-    when(repository.findById(priorAuthorityId)).thenReturn(Optional.of(model));
+    when(readQueryGateway.findPriorAuthority(any(), any())).thenReturn(Optional.of(model));
     when(dataStore.get(priorAuthorityId, 1L))
         .thenReturn(
             new PriorAuthorityDataPayload(

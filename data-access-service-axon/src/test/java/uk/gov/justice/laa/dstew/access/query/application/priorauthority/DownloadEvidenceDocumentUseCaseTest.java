@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.query.application.priorauthority;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
@@ -83,6 +84,20 @@ class DownloadEvidenceDocumentUseCaseTest {
         .isThrownBy(() -> useCase.downloadDocument(priorAuthorityId, documentId))
         .withMessage(
             "No document found with ID: %s for prior authority: %s", documentId, priorAuthorityId);
+  }
+
+  @Test
+  void givenPriorAuthorityOutsideCallerScope_whenDownloaded_thenDoesNotRetrieveFromSds() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    when(getPriorAuthorityUseCase.getPriorAuthority(priorAuthorityId))
+        .thenThrow(
+            new ResourceNotFoundException("No prior authority found with ID: " + priorAuthorityId));
+
+    assertThatExceptionOfType(ResourceNotFoundException.class)
+        .isThrownBy(() -> useCase.downloadDocument(priorAuthorityId, documentId));
+
+    verifyNoInteractions(sdsService);
   }
 
   private EvidenceDocument document(UUID documentId) {
