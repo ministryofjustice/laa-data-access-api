@@ -68,7 +68,7 @@ public final class ApplicationRequestFactory {
           "provider":{"officeCode":"%s","contactEmail":"%s"},
           "client":{"firstName":"%s","lastName":"%s","dateOfBirth":"%s","appliedPreviously":%s,
             "addresses":[{"location":"home","addressLineOne":"%s","city":"%s","postcode":"%s","countryCode":"GBR","countryName":"United Kingdom"}]},
-          "proceedings":[{"id":"%s","leadProceeding":true,"code":"SE003","meaning":"Care order","description":"Care order","matterType":"SPECIAL_CHILDREN_ACT","matterTypeCode":"KPBLW","categoryOfLaw":"Family","categoryOfLawCode":"MAT","clientInvolvementType":"%s","clientInvolvementTypeCode":"%s","usedDelegatedFunctions":false,"delegatedFunctionsCostLimitation":"0","substantiveCostLimitation":"%d","substantiveLevelOfService":%d,"substantiveLevelOfServiceName":"%s","emergencyLevelOfService":%d,"emergencyLevelOfServiceName":"%s","scopeLimitations":[{"id":"%s","type":"SUBSTANTIVE","code":"%s","meaning":"%s","description":"%s"}]}]
+          "proceedings":[{"id":"%s","leadProceeding":true,"code":"SE003","meaning":"Care order","description":"Care order","matterType":"special children act (SCA)","matterTypeCode":"KPBLW","categoryOfLaw":"Family","categoryOfLawCode":"MAT","clientInvolvementType":"%s","clientInvolvementTypeCode":"%s","usedDelegatedFunctions":false,"delegatedFunctionsCostLimitation":"0","substantiveCostLimitation":"%d","substantiveLevelOfService":%d,"substantiveLevelOfServiceName":"%s","emergencyLevelOfService":%d,"emergencyLevelOfServiceName":"%s","scopeLimitations":[{"id":"%s","type":"SUBSTANTIVE","code":"%s","meaning":"%s","description":"%s"}]}]
         }}
         """
             .formatted(

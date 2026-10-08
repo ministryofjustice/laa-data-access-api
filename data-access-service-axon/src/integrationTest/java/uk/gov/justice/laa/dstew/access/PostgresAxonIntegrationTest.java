@@ -535,7 +535,7 @@ class PostgresAxonIntegrationTest {
     assertThat(projected.getOfficeCode()).isEqualTo("1A001B");
     assertThat(projected.getUsedDelegatedFunctions()).isFalse();
     assertThat(projected.getCategoryOfLaw()).isEqualTo("Family");
-    assertThat(projected.getMatterType()).isEqualTo("SPECIAL_CHILDREN_ACT");
+    assertThat(projected.getMatterType()).isEqualTo("special children act (SCA)");
     assertThat(projected.getCreatedAt()).isNotNull().isEqualTo(projected.getModifiedAt());
     assertThat(projected.getProvider()).isNotNull();
     assertThat(projected.getProvider().getOfficeCode()).isEqualTo("1A001B");
@@ -1027,7 +1027,7 @@ class PostgresAxonIntegrationTest {
                         .code("SE003")
                         .meaning("Care proceedings")
                         .description("Care order")
-                        .matterType("SPECIAL_CHILDREN_ACT")
+                        .matterType("special children act (SCA)")
                         .matterTypeCode("KPBLW")
                         .categoryOfLaw("Family")
                         .categoryOfLawCode("MAT")

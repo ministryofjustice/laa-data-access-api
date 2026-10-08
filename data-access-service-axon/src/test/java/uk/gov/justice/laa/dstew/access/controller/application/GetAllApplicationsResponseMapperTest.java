@@ -69,7 +69,7 @@ class GetAllApplicationsResponseMapperTest {
                 uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationProvider.builder()
                     .officeCode("2B002C")
                     .build())
-            .matterType("SPECIAL_CHILDREN_ACT")
+            .matterType("special children act (SCA)")
             .categoryOfLaw("FAMILY")
             .usedDelegatedFunctions(true)
             .submittedAt(Instant.parse("2026-07-01T10:00:00Z"))

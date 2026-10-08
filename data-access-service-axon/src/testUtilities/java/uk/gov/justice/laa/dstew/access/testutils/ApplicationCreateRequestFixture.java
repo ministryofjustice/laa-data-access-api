@@ -62,7 +62,7 @@ public final class ApplicationCreateRequestFixture {
         Map.entry("code", "SE003"),
         Map.entry("meaning", "Care order"),
         Map.entry("description", "Care order"),
-        Map.entry("matterType", "SPECIAL_CHILDREN_ACT"),
+        Map.entry("matterType", "special children act (SCA)"),
         Map.entry("matterTypeCode", "KPBLW"),
         Map.entry("categoryOfLaw", "Family"),
         Map.entry("categoryOfLawCode", "MAT"),

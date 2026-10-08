@@ -84,7 +84,7 @@ class ApplicationReadModelAssemblerTest {
             java.time.Instant.parse("2026-07-14T12:30:00Z"),
             base.usedDelegatedFunctions(),
             "Family",
-            "SPECIAL_CHILDREN_ACT",
+            "special children act (SCA)",
             "MAT",
             "KPBLW",
             List.of(proceeding),

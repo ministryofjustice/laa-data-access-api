@@ -36,7 +36,7 @@ curl -i -X POST http://localhost:8082/api/v0/applications \
           "leadProceeding": true,
           "description": "Care order proceedings",
           "categoryOfLaw": "FAMILY",
-          "matterType": "SPECIAL_CHILDREN_ACT"
+          "matterType": "special children act (SCA)"
         }
       ]
     },
@@ -115,7 +115,7 @@ remains submitted, a Decision write, or a ready write does not.
 `GET /api/v0/applications`
 
 ```bash
-curl -s "http://localhost:8082/api/v0/applications?status=APPLICATION_IN_PROGRESS&matterType=SPECIAL_CHILDREN_ACT&sortBy=LAST_UPDATED_DATE&orderBy=DESC&page=1&pageSize=20"
+curl -s "http://localhost:8082/api/v0/applications?status=APPLICATION_IN_PROGRESS&matterType=special%20children%20act%20(SCA)&sortBy=LAST_UPDATED_DATE&orderBy=DESC&page=1&pageSize=20"
 ```
 
 Example response (verified against a running instance, after creating the application above):
@@ -230,7 +230,7 @@ curl -i -X POST http://localhost:8082/api/v0/applications \
         "leadProceeding": true,
         "description": "Manual readiness test",
         "categoryOfLaw": "FAMILY",
-        "matterType": "SPECIAL_CHILDREN_ACT"
+        "matterType": "special children act (SCA)"
       }
     ]
   },

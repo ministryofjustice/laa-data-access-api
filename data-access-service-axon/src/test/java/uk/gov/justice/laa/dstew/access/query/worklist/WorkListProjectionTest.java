@@ -70,7 +70,7 @@ class WorkListProjectionTest {
     when(data.usedDelegatedFunctions()).thenReturn(true);
     when(data.categoryOfLaw()).thenReturn("FAMILY");
     when(data.proceedings()).thenReturn(List.of(proceeding));
-    when(proceeding.getMatterType()).thenReturn("SPECIAL_CHILDREN_ACT");
+    when(proceeding.getMatterType()).thenReturn("special children act (SCA)");
 
     Instant occurredAt = Instant.parse("2026-08-28T10:00:00Z");
     projection.on(
@@ -87,7 +87,7 @@ class WorkListProjectionTest {
     assertThat(row.getLaaReference()).isEqualTo("LAA-123456");
     assertThat(row.getUsedDelegatedFunctions()).isTrue();
     assertThat(row.getCategoryOfLaw()).isEqualTo("FAMILY");
-    assertThat(row.getMatterTypes()).containsExactly("SPECIAL_CHILDREN_ACT");
+    assertThat(row.getMatterTypes()).containsExactly("special children act (SCA)");
     assertThat(row.getApplicationStatus()).isEqualTo("APPLICATION_SUBMITTED");
     assertThat(row.getAssignmentBoundaryType()).isEqualTo("DIRECT");
     assertThat(row.getAssignmentVersion()).isZero();
@@ -111,7 +111,7 @@ class WorkListProjectionTest {
     when(parentData.categoryOfLaw()).thenReturn("FAMILY");
     when(parentData.categoryOfLawCode()).thenReturn("MAT");
     when(parentData.proceedings()).thenReturn(List.of(proceeding));
-    when(proceeding.getMatterType()).thenReturn("SPECIAL_CHILDREN_ACT");
+    when(proceeding.getMatterType()).thenReturn("special children act (SCA)");
     when(proceeding.getMatterTypeCode()).thenReturn("KPBLW");
     when(priorAuthorityDataStore.get(priorAuthorityId, 0L)).thenReturn(priorAuthorityData);
     when(priorAuthorityData.content()).thenReturn(content);
@@ -141,7 +141,7 @@ class WorkListProjectionTest {
     assertThat(captor.getValue().getReadyAt()).isEqualTo(Instant.parse("2026-08-28T10:00:00Z"));
     assertThat(captor.getValue().getLaaReference()).isEqualTo("LAA-654321");
     assertThat(captor.getValue().getCategoryOfLaw()).isEqualTo("FAMILY");
-    assertThat(captor.getValue().getMatterTypes()).containsExactly("SPECIAL_CHILDREN_ACT");
+    assertThat(captor.getValue().getMatterTypes()).containsExactly("special children act (SCA)");
     assertThat(captor.getValue().getCategoryOfLawCode()).isEqualTo("MAT");
     assertThat(captor.getValue().getMatterTypeCodes()).containsExactly("KPBLW");
     assertThat(captor.getValue().getPriorAuthorityType()).isEqualTo("EXPERT");

@@ -114,7 +114,7 @@ class ApplicationContentParserTest {
                     "categoryOfLawCode",
                     "MAT",
                     "matterType",
-                    "SPECIAL_CHILDREN_ACT",
+                    "special children act (SCA)",
                     "matterTypeCode",
                     "KPBLW")));
 
@@ -122,7 +122,7 @@ class ApplicationContentParserTest {
 
     assertThat(result.categoryOfLaw()).isEqualTo("Family");
     assertThat(result.categoryOfLawCode()).isEqualTo("MAT");
-    assertThat(result.matterType()).isEqualTo("SPECIAL_CHILDREN_ACT");
+    assertThat(result.matterType()).isEqualTo("special children act (SCA)");
     assertThat(result.matterTypeCode()).isEqualTo("KPBLW");
   }
 }

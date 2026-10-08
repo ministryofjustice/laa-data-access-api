@@ -236,7 +236,7 @@ class ApplicationCreationDetailsFactoryTest {
         null,
         null,
         "Family",
-        "SPECIAL_CHILDREN_ACT",
+        "special children act (SCA)",
         "MAT",
         "KPBLW",
         Instant.parse("2026-07-14T12:30:00Z"),

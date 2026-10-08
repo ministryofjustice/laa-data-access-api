@@ -147,7 +147,7 @@ class GetApplicationResponseMapperTest {
             .code("PR001")
             .description("Test proceeding")
             .categoryOfLaw("FAMILY")
-            .matterType("SPECIAL_CHILDREN_ACT")
+            .matterType("special children act (SCA)")
             .substantiveCostLimitation(BigDecimal.valueOf(1350.00))
             .scopeLimitations(List.of(scopeLimitation))
             .involvedChildren(List.of(child))
@@ -182,7 +182,7 @@ class GetApplicationResponseMapperTest {
     assertThat(response.getProceedings()).hasSize(1);
     assertThat(response.getProceedings().getFirst().getCategoryOfLaw()).isEqualTo("FAMILY");
     assertThat(response.getProceedings().getFirst().getMatterType())
-        .isEqualTo("SPECIAL_CHILDREN_ACT");
+        .isEqualTo("special children act (SCA)");
     assertThat(response.getProceedings().getFirst().getSubstantiveCostLimitation())
         .isEqualByComparingTo(BigDecimal.valueOf(1350.00));
     assertThat(response.getProceedings().getFirst().getMeritsDecision())

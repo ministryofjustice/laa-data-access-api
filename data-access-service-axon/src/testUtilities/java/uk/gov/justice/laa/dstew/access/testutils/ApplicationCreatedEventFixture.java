@@ -44,7 +44,7 @@ public final class ApplicationCreatedEventFixture {
         Instant.parse("2026-07-14T12:30:00Z"),
         false,
         "Family",
-        "SPECIAL_CHILDREN_ACT",
+        "special children act (SCA)",
         "MAT",
         "KPBLW",
         List.of(
@@ -55,7 +55,7 @@ public final class ApplicationCreatedEventFixture {
                 .description("Care order")
                 .categoryOfLaw("Family")
                 .categoryOfLawCode("MAT")
-                .matterType("SPECIAL_CHILDREN_ACT")
+                .matterType("special children act (SCA)")
                 .matterTypeCode("KPBLW")
                 .build()),
         "{}",

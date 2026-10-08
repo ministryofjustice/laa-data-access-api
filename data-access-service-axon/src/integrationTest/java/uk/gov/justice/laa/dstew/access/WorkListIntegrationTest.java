@@ -299,7 +299,7 @@ class WorkListIntegrationTest {
                         assertThat(item.getCategoryOfLawCode()).isNull();
                         assertThat(item.getMatterTypes())
                             .extracting(matterType -> matterType)
-                            .containsExactly("SPECIAL_CHILDREN_ACT");
+                            .containsExactly("special children act (SCA)");
                         assertThat(item.getMatterTypeCodes()).containsExactly("KPBLW");
                         assertThat(item.getPriorAuthorityType())
                             .isEqualTo(PriorAuthorityType.DISBURSEMENT);
