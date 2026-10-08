@@ -210,7 +210,8 @@ public class GetApplicationResponseMapper {
         .map(
             child ->
                 new InvolvedChildResponse()
-                    .fullName(child.getFullName())
+                    .firstName(child.getFirstName())
+                    .lastName(child.getLastName())
                     .dateOfBirth(child.getDateOfBirth()))
         .toList();
   }

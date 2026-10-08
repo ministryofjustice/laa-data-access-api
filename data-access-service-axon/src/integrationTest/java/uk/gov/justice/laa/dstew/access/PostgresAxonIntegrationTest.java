@@ -973,8 +973,10 @@ class PostgresAxonIntegrationTest {
             Map.of(
                 "id",
                 involvedChildId.toString(),
-                "fullName",
-                "Child Example",
+                "firstName",
+                "Child",
+                "lastName",
+                "Example",
                 "dateOfBirth",
                 "2015-01-02")));
     proceeding.put(
@@ -1044,7 +1046,8 @@ class PostgresAxonIntegrationTest {
                         .involvedChildren(
                             List.of(
                                 new InvolvedChildResponse()
-                                    .fullName("Child Example")
+                                    .firstName("Child")
+                                    .lastName("Example")
                                     .dateOfBirth(LocalDate.of(2015, 1, 2))))));
 
     assertThat(actual).usingRecursiveComparison().isEqualTo(expected);

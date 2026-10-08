@@ -600,7 +600,9 @@ components:
     InvolvedChildResponse:
       type: object
       properties:
-        fullName:
+        firstName:
+          type: string
+        lastName:
           type: string
         dateOfBirth:
           type: string
