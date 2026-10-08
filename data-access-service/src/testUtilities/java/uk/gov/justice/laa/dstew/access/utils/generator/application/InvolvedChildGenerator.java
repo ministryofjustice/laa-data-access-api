@@ -15,7 +15,8 @@ public class InvolvedChildGenerator
   public InvolvedChild createDefault() {
     return InvolvedChild.builder()
         .id(ApplicationMeritsGenerator.DEFAULT_INVOLVED_CHILD_ID)
-        .fullName(ApplicationMeritsGenerator.DEFAULT_INVOLVED_CHILD_FULL_NAME)
+        .firstName(ApplicationMeritsGenerator.DEFAULT_INVOLVED_CHILD_FIRST_NAME)
+        .lastName(ApplicationMeritsGenerator.DEFAULT_INVOLVED_CHILD_LAST_NAME)
         .dateOfBirth(ApplicationMeritsGenerator.DEFAULT_INVOLVED_CHILD_DATE_OF_BIRTH)
         .build();
   }
