@@ -90,9 +90,9 @@ final class PactApplicationFixtures {
         Map.entry("usedDelegatedFunctions", false),
         Map.entry("delegatedFunctionsCostLimitation", "0"),
         Map.entry("substantiveCostLimitation", "2500"),
-        Map.entry("substantiveLevelOfService", 3),
+        Map.entry("substantiveLevelOfServiceCode", 3),
         Map.entry("substantiveLevelOfServiceName", "Full Representation"),
-        Map.entry("emergencyLevelOfService", 3),
+        Map.entry("emergencyLevelOfServiceCode", 3),
         Map.entry("emergencyLevelOfServiceName", "Full Representation"),
         Map.entry(
             "scopeLimitations",
