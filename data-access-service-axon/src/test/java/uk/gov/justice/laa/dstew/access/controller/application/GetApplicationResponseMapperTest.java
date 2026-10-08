@@ -139,7 +139,7 @@ class GetApplicationResponseMapperTest {
         Opponent.builder().opponentType("INDIVIDUAL").firstName("Jane").lastName("Smith").build();
     ScopeLimitation scopeLimitation =
         ScopeLimitation.builder().meaning("SCOPE").description("Full scope").build();
-    InvolvedChild child = InvolvedChild.builder().fullName("Child One").build();
+    InvolvedChild child = InvolvedChild.builder().firstName("Child").lastName("One").build();
     Proceeding proceeding =
         Proceeding.builder()
             .id(proceedingId)
@@ -554,7 +554,8 @@ class GetApplicationResponseMapperTest {
             .build();
     InvolvedChild child =
         InvolvedChild.builder()
-            .fullName("Child Name")
+            .firstName("Joe")
+            .lastName("Blake")
             .dateOfBirth(LocalDate.of(2015, 4, 3))
             .build();
     Proceeding proceeding =
@@ -573,9 +574,9 @@ class GetApplicationResponseMapperTest {
             .usedDelegatedFunctions(true)
             .delegatedFunctionsDate(LocalDate.of(2026, 7, 20))
             .delegatedFunctionsCostLimitation(new BigDecimal("2250.50"))
-            .substantiveLevelOfService(1)
+            .substantiveLevelOfServiceCode(1)
             .substantiveLevelOfServiceName("Full representation")
-            .emergencyLevelOfService(2)
+            .emergencyLevelOfServiceCode(2)
             .emergencyLevelOfServiceName("Emergency representation")
             .substantiveCostLimitation(costLimit)
             .scopeLimitations(List.of(scope))
@@ -692,8 +693,8 @@ class GetApplicationResponseMapperTest {
         .singleElement()
         .satisfies(
             mapped -> {
-              assertThat(mapped.getFirstName()).isNull();
-              assertThat(mapped.getLastName()).isNull();
+              assertThat(mapped.getFirstName()).isEqualTo("Joe");
+              assertThat(mapped.getLastName()).isEqualTo("Blake");
               assertThat(mapped.getDateOfBirth()).isEqualTo(LocalDate.of(2015, 4, 3));
             });
     assertThat(response.getAutoGranted().getValue()).isEqualTo("MANUAL");

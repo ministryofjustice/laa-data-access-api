@@ -79,7 +79,8 @@ public class GetApplicationReadModelMapper {
         .map(
             child ->
                 InvolvedChildReadModel.builder()
-                    .fullName(child.getFullName())
+                    .firstName(child.getFirstName())
+                    .lastName(child.getLastName())
                     .dateOfBirth(child.getDateOfBirth())
                     .build())
         .toList();

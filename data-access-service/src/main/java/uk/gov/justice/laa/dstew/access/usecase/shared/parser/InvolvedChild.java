@@ -23,7 +23,9 @@ public class InvolvedChild {
 
   @Nullable private UUID id;
 
-  @Nullable private String fullName;
+  @Nullable private String firstName;
+
+  @Nullable private String lastName;
 
   @Nullable private LocalDate dateOfBirth;
 

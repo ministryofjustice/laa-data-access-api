@@ -203,9 +203,9 @@ public class GetApplicationResponseMapper {
         .usedDelegatedFunctions(proceeding.getUsedDelegatedFunctions())
         .delegatedFunctionsDate(proceeding.getDelegatedFunctionsDate())
         .delegatedFunctionsCostLimitation(proceeding.getDelegatedFunctionsCostLimitation())
-        .substantiveLevelOfServiceCode(proceeding.getSubstantiveLevelOfService())
+        .substantiveLevelOfServiceCode(proceeding.getSubstantiveLevelOfServiceCode())
         .substantiveLevelOfServiceName(proceeding.getSubstantiveLevelOfServiceName())
-        .emergencyLevelOfServiceCode(proceeding.getEmergencyLevelOfService())
+        .emergencyLevelOfServiceCode(proceeding.getEmergencyLevelOfServiceCode())
         .emergencyLevelOfServiceName(proceeding.getEmergencyLevelOfServiceName())
         .substantiveCostLimitation(proceeding.getSubstantiveCostLimitation())
         .meritsDecision(
@@ -239,14 +239,11 @@ public class GetApplicationResponseMapper {
     }
     return proceeding.getInvolvedChildren().stream()
         .map(
-            child -> {
-              // TODO: agree mapping from fullName to firstName/lastName in the separate child-name
-              // work.
-              return new InvolvedChildResponse()
-                  .firstName(null)
-                  .lastName(null)
-                  .dateOfBirth(child.getDateOfBirth());
-            })
+            child ->
+                new InvolvedChildResponse()
+                    .firstName(child.getFirstName())
+                    .lastName(child.getLastName())
+                    .dateOfBirth(child.getDateOfBirth()))
         .toList();
   }
 
