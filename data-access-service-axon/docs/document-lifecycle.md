@@ -34,6 +34,34 @@ document endpoints, not the legacy Application upload endpoint that uses the ori
 These key rules support future formats without changing deletion logic. Prior Authority upload
 validation still accepts PDF content only; this change does not broaden the accepted formats.
 
+SDS operations are outside the database transaction; upload orphans remain possible, and deletion
+cleanup is best-effort without automatic retry.
+
+## Prior Authority concurrency and retries
+
+Draft-body saves and document upload, type update, and deletion append events tagged for the same
+`PriorAuthorityAggregate` stream. `PriorAuthorityDraftUpdatedEvent` now tags its existing owner ID,
+and the aggregate handles it without changing business state. The event advances stream concurrency,
+not the immutable content `dataVersion`, and contains no draft content or filenames.
+
+The draft write and event append share the command transaction. If two commands read stale state,
+a competing stream append can reject one attempt and roll back its draft write.
+`RetryingCommandDispatcher` retries once by dispatching the command again against current state.
+The deterministic PostgreSQL tests verify that upload, type update, and deletion racing with a
+draft save retain both accepted changes after one rolled-back/retried attempt.
+
+The dispatcher recognises `ConcurrencyException`, `AppendEventsTransactionRejectedException`,
+and `DataIntegrityViolationException` caused by a unique-constraint violation (SQL state `23505`).
+Other failures propagate without this retry. A failed second attempt also propagates; bounded
+retry does not promise that every concurrent request succeeds. Internal command retry does not
+repeat SDS upload or make SDS cleanup transactional.
+
+This fix does not make queries immediately consistent, wait for deletion projection, or make
+repeated DELETE idempotent. It leaves the event JSON unchanged and does not retag historical stored
+events or recover previously lost content. See
+[Event evolution](event-evolution.md#prior-authority-draft-update-stream-tagging) for compatibility
+and [Conflicts and retries proposal](document-conflicts-and-retries-proposal.md) for deferred policies.
+
 ## Upload
 
 ```mermaid
@@ -69,8 +97,8 @@ optional `fileSuffix` is now also persisted in both upload events. There is no s
 step or database migration. See [Event evolution](event-evolution.md#document-upload-suffix) for
 the compatibility defaults and replay limitations.
 
-SDS is external to the command transaction. If SDS accepts an upload and the subsequent command
-fails, the stored object can remain orphaned. This existing failure boundary is unchanged.
+SDS upload occurs before command dispatch. If SDS accepts an upload but command validation or
+persistence subsequently fails, the object can remain in SDS without a committed document record.
 
 ## Dedicated document GET
 
@@ -179,10 +207,18 @@ handler removes that filename. The same suffix rule handles `.pdf`, `.PDF`, exte
 and future formats. Cleanup can therefore work without a sensitive filename. Only historical
 uploads with neither a suffix nor a filename target the bare UUID; no MIME inference occurs.
 
-If command validation or persistence fails, SDS deletion is not attempted. Once logical deletion
-commits, an SDS exception does not reverse it. Cleanup is best-effort with no automatic retry;
-per-file result handling retains its existing behaviour. Events retain deleted metadata for replay,
-and read queries exclude it. Application document deletion remains unimplemented.
+Logical deletion, including filename removal and the deletion event, commits before SDS cleanup
+starts. If command validation or persistence fails, SDS deletion is not attempted. If SDS cleanup
+throws an exception, the failure is logged; the committed logical deletion is not reversed and the
+successful response remains `204 No Content`, but the object may remain in SDS. Cleanup has no
+automatic retry, and existing per-file result handling is unchanged. Events retain deleted metadata
+for replay, and read queries exclude it. Application document deletion remains unimplemented.
+
+DELETE does not wait for the projection before returning `204`; it does not currently return `202`
+for projection lag. An unknown, wrong-owner, or already-deleted document returns `404`, without a
+new deletion event or SDS cleanup. Deletion of a submitted Prior Authority is also rejected because
+its draft no longer exists. Awaited deletion and idempotent repeated deletion remain proposals,
+not guarantees of this implementation.
 
 ## Verification boundaries
 
@@ -192,7 +228,15 @@ and read queries exclude it. Application document deletion remains unimplemented
   and idempotent replay of metadata events.
 - Download use-case and controller tests cover suffix-only lookup and attachment-name fallback.
 - Compatibility tests deserialize historical event and metadata JSON with unknown suffixes.
-- PostgreSQL-backed draft tests verify persisted suffixes and deletion without a full filename.
+- Aggregate tests deserialize the original draft-update JSON and apply its no-op handler before a
+  following document-type event, preserving identity, lifecycle, and document metadata.
+- PostgreSQL-backed draft tests verify persisted suffixes, deletion without a full filename,
+  submitted downloads, ownership rejection, and logical deletion despite SDS cleanup failure.
+- Forced PostgreSQL event-insert failures prove upload, type-update, and deletion draft writes
+  roll back with their events; failed deletion does not call SDS cleanup.
+- Gated stale-read tests prove a concurrent draft save and document mutation retry safely, with
+  both accepted changes and two owner-stream events retained. Separate races cover parallel
+  uploads, duplicate deletion, type update versus deletion, and late upload after submission.
 
 See [Testing Axon code](testing-axon-code.md) and [Projections and replay](projections-and-replay.md)
 for processor recovery and transaction coverage.

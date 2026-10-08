@@ -7,6 +7,7 @@ import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
@@ -36,6 +37,58 @@ class PriorAuthorityAggregateTest {
     assertThat(aggregate.getApplicationId()).isEqualTo(APP_ID);
     assertThat(aggregate.getOfficeCode()).isEqualTo(OFFICE_CODE);
     assertThat(aggregate.getPriorAuthorityType()).isEqualTo(PA_TYPE);
+  }
+
+  @Test
+  @DisplayName("historical draft updates replay without changing identity, lifecycle, or documents")
+  void givenHistoricalDraftUpdateJson_whenReplayed_thenPreservesAggregateState() {
+    ObjectMapper objectMapper = new ObjectMapper();
+    String historicalJson =
+        """
+      {
+        "priorAuthorityId": "%s",
+        "parentApplicationId": "%s",
+        "occurredAt": "2026-10-01T10:00:00Z"
+      }
+      """
+            .formatted(PA_ID, APP_ID);
+    PriorAuthorityDraftUpdatedEvent event =
+        objectMapper.readValue(historicalJson, PriorAuthorityDraftUpdatedEvent.class);
+    assertThat(event.priorAuthorityId()).isEqualTo(PA_ID);
+    assertThat(event.parentApplicationId()).isEqualTo(APP_ID);
+    assertThat(event.occurredAt()).isEqualTo(Instant.parse("2026-10-01T10:00:00Z"));
+    assertThat(objectMapper.readTree(objectMapper.writeValueAsString(event)))
+        .isEqualTo(objectMapper.readTree(historicalJson));
+
+    PriorAuthorityAggregate aggregate = new PriorAuthorityAggregate();
+    aggregate.on(
+        new PriorAuthorityDraftStartedEvent(
+            PA_ID, APP_ID, PA_TYPE, SCHEMA_VERSION, NOW, OFFICE_CODE));
+    UUID documentId = UUID.randomUUID();
+    aggregate.on(
+        new PriorAuthorityDocumentUploadedEvent(
+            PA_ID, documentId, NOW, 1024L, "application/pdf", "checksum123", APP_ID, "service"));
+    aggregate.on(event);
+    aggregate.on(new PriorAuthorityDocumentTypeUpdatedEvent(PA_ID, documentId, "INVOICE", NOW));
+
+    assertThat(aggregate.getPriorAuthorityId()).isEqualTo(PA_ID);
+    assertThat(aggregate.getApplicationId()).isEqualTo(APP_ID);
+    assertThat(aggregate.getOfficeCode()).isEqualTo(OFFICE_CODE);
+    assertThat(aggregate.getPriorAuthorityType()).isEqualTo(PA_TYPE);
+    assertThat(aggregate.getDataVersion()).isZero();
+    assertThat(aggregate.getState().isSubmitted()).isFalse();
+    assertThat(aggregate.getState().isDecided()).isFalse();
+    assertThat(aggregate.getState().getUploadedDocuments())
+        .containsExactly(
+            new DocumentMetadata(
+                documentId,
+                "INVOICE",
+                NOW,
+                1024L,
+                "application/pdf",
+                "checksum123",
+                "service",
+                false));
   }
 
   @Test

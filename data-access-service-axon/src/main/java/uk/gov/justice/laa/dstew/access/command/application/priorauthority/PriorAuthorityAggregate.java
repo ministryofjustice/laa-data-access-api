@@ -63,6 +63,10 @@ public class PriorAuthorityAggregate {
     this.priorAuthorityId = state.priorAuthorityId;
   }
 
+  /** Advances stream concurrency without changing the externally stored draft content. */
+  @EventSourcingHandler
+  void on(PriorAuthorityDraftUpdatedEvent event) {}
+
   @EventSourcingHandler
   void on(PriorAuthoritySubmittedEvent event) {
     PriorAuthorityEvolve.apply(state, event);
