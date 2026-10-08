@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Application linking | Axon</title>
+  <style>
+    :root { --ink:#202b28; --muted:#596760; --paper:#f6f8f5; --line:#cbd4ce; --green:#176b4b; --blue:#235ea0; --red:#a33440; --accent:#d9f0df; }
+    * { box-sizing:border-box; }
+    body { margin:0; color:var(--ink); background:var(--paper); font:15px/1.55 "Avenir Next", "Trebuchet MS", sans-serif; letter-spacing:0; }
+    button, select { font:inherit; }
+    button, select, a { -webkit-tap-highlight-color:transparent; }
+    :focus-visible { outline:3px solid var(--blue); outline-offset:4px; }
+    .shell { max-width:1260px; margin:auto; padding:0 36px; }
+    header { border-top:6px solid var(--green); border-bottom:1px solid var(--line); background:linear-gradient(110deg,#edf5ed,#f6f8f5 70%); }
+    .heading { padding-top:27px; padding-bottom:26px; display:flex; justify-content:space-between; align-items:center; gap:24px; }
+    .eyebrow { font-size:11px; font-weight:700; text-transform:uppercase; color:var(--green); margin:0 0 6px; }
+    h1 { font:600 38px/1.15 "Avenir Next", "Trebuchet MS", sans-serif; margin:0; }
+    .subtitle { margin:9px 0 0; color:var(--muted); }
+    .endpoint { font:12px/1.6 Menlo,Consolas,monospace; border-left:3px solid var(--green); padding-left:15px; overflow-wrap:anywhere; }
+    .endpoint strong { display:block; color:var(--green); }
+    main { padding-top:22px; padding-bottom:42px; }
+    .toolbar { display:flex; justify-content:space-between; align-items:end; gap:20px; padding-bottom:20px; border-bottom:1px solid var(--line); }
+    label { display:block; font-size:12px; font-weight:600; margin-bottom:6px; }
+    select { padding:9px 34px 9px 12px; border:1px solid #a9b7ae; border-radius:4px; background:white; color:var(--ink); max-width:100%; }
+    .buttons { display:flex; gap:8px; flex-wrap:wrap; }
+    button { border:1px solid #a9b7ae; background:white; color:var(--ink); border-radius:4px; min-height:42px; padding:8px 15px; cursor:pointer; }
+    button:hover { background:#edf3ee; }
+    button.primary { background:var(--green); color:white; border-color:var(--green); min-width:98px; }
+    button.primary:hover { background:#105438; }
+    button:disabled { opacity:.45; cursor:default; }
+    .play-symbol { display:inline-block; width:17px; text-align:left; }
+    .layout { display:grid; grid-template-columns:minmax(0,1fr) 310px; gap:32px; margin-top:22px; }
+    h2 { font-size:18px; line-height:1.3; margin:0 0 16px; font-weight:600; }
+    .legend { display:flex; gap:17px; flex-wrap:wrap; font-size:11px; color:var(--muted); margin-bottom:18px; }
+    .legend span { display:inline-flex; align-items:center; gap:6px; }
+    .dot { width:8px; height:8px; background:var(--line); border-radius:50%; }
+    .dot.live { background:var(--green); }
+    .dot.async { background:var(--blue); }
+    .diagram { padding:22px 18px; border:1px solid var(--line); border-radius:6px; background-color:#fff; background-image:radial-gradient(#dce4dd .7px,transparent .7px); background-size:14px 14px; }
+    .node { position:relative; max-width:340px; margin:0 auto; padding:12px 15px; border:1px solid var(--line); background:white; border-radius:4px; text-align:center; min-height:66px; transition:background .25s,border-color .25s,box-shadow .25s; }
+    .node strong { display:block; font-size:13px; font-weight:600; }
+    .node small { display:block; font-size:11px; color:var(--muted); margin-top:2px; }
+    .node[data-state="done"] { border-color:#91bea4; background:#f0f8f2; }
+    .node[data-state="active"] { border-color:var(--green); background:var(--accent); box-shadow:0 0 0 3px #176b4b18; }
+    .node[data-state="active"]::before { content:""; position:absolute; inset:-4px; border:1px solid var(--green); border-radius:7px; animation:pulse 1.8s ease-in-out infinite; pointer-events:none; }
+    .arrow { height:23px; width:1px; margin:auto; background:#a9b7ae; position:relative; }
+    .arrow::after { content:""; position:absolute; bottom:0; left:-3px; border-left:3.5px solid transparent; border-right:3.5px solid transparent; border-top:5px solid #a9b7ae; }
+    .branches { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; position:relative; padding-top:16px; }
+    .branches::before { content:""; position:absolute; top:0; left:12.5%; right:12.5%; border-top:1px solid #a9b7ae; }
+    .branch { position:relative; padding:11px 6px; min-height:110px; }
+    .branch::after { content:""; position:absolute; height:16px; width:1px; background:#a9b7ae; left:50%; top:-17px; }
+    .branch strong { font-size:12px; }
+    .branch small { font-size:10px; }
+    .branch[data-state="inactive"] { opacity:.42; }
+    .branch.reject[data-state="active"] { border-color:var(--red); background:#fcebee; box-shadow:0 0 0 3px #a3344014; }
+    .branch.reject[data-state="active"]::before { border-color:var(--red); }
+    .split { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:20px; align-items:start; }
+    .lane-label { text-align:center; font-size:10px; text-transform:uppercase; color:var(--muted); font-weight:600; margin:0 0 9px; }
+    .split .node { min-height:80px; }
+    .async-node { border-style:dashed; }
+    .async-node[data-state="active"] { border-color:var(--blue); background:#e7f0fb; box-shadow:0 0 0 3px #235ea018; }
+    .async-node[data-state="active"]::before { border-color:var(--blue); }
+    .async-node[data-state="done"] { border-color:#93b5d8; background:#f0f5fc; }
+    .aside { border-left:1px solid var(--line); padding-left:24px; }
+    .step-count { font:12px Menlo,Consolas,monospace; color:var(--green); margin:0 0 12px; }
+    progress { appearance:none; width:100%; height:4px; border:0; display:block; margin-bottom:21px; background:#e0e7e1; }
+    progress::-webkit-progress-bar { background:#e0e7e1; }
+    progress::-webkit-progress-value { background:var(--green); }
+    progress::-moz-progress-bar { background:var(--green); }
+    #step-title { font-size:22px; margin-bottom:10px; }
+    #step-description { margin:0; min-height:118px; }
+    .facts { margin-top:24px; border-top:1px solid var(--line); padding-top:18px; }
+    .facts dl { margin:0; }
+    .facts dt { font-size:11px; color:var(--muted); margin-top:14px; }
+    .facts dd { margin:2px 0 0; font-size:13px; }
+    .notice { margin-top:22px; padding-left:13px; border-left:3px solid var(--blue); font-size:13px; }
+    .notice strong { display:block; margin-bottom:4px; color:var(--blue); }
+    .description { border-top:1px solid var(--line); margin-top:30px; padding-top:24px; }
+    .definitions { display:flex; gap:26px; flex-wrap:wrap; color:var(--muted); font-size:13px; margin-bottom:18px; }
+    .definitions p { margin:0; }
+    .steps { margin:0; padding-left:22px; columns:2; column-gap:44px; }
+    .steps li { break-inside:avoid; padding:0 0 12px 5px; font-size:14px; }
+    code { font:12px Menlo,Consolas,monospace; overflow-wrap:anywhere; }
+    footer { margin-top:22px; padding-top:16px; border-top:1px solid var(--line); color:var(--muted); font-size:11px; }
+    @keyframes pulse { 0%,100% { opacity:.15; } 50% { opacity:.65; } }
+    @media (prefers-reduced-motion:reduce) { *,*::before { animation:none!important; transition:none!important; } }
+    @media (max-width:950px) { .shell { padding-left:22px; padding-right:22px; } .layout { grid-template-columns:minmax(0,1fr) 250px; gap:20px; } .aside { padding-left:18px; } .branches { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; padding-top:0; } .branches::before,.branch::after { display:none; } .branch { min-height:88px; } }
+    @media (max-width:700px) { .shell { padding-left:16px; padding-right:16px; } .heading { display:block; } h1 { font-size:30px; } .endpoint { margin-top:18px; } .toolbar { flex-direction:column; align-items:stretch; gap:14px; } select { width:100%; } .layout { grid-template-columns:minmax(0,1fr); } .aside { border-left:0; border-top:1px solid var(--line); padding:20px 0 0; } #step-description { min-height:0; } .facts dl { display:grid; grid-template-columns:1fr 1fr; gap:0 18px; } .facts dt { margin-top:8px; } .facts dd { grid-row:auto; } .steps { columns:1; } .diagram { padding:18px 12px; } .split { gap:10px; } .split .node { padding:10px 7px; } }
+    @media print { .toolbar,.legend { display:none; } .layout { grid-template-columns:1fr; } .aside { display:none; } .node,.branch { opacity:1!important; box-shadow:none!important; background:white!important; } .node::before { display:none; } .shell { padding:0; } .diagram { background:white; break-inside:avoid; } body { background:white; } header { border-top:0; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="shell heading">
+      <div><p class="eyebrow">Axon / Application service</p><h1>Application linking</h1><p class="subtitle">One group. One lead application. A shared office code.</p></div>
+      <div class="endpoint"><strong>POST</strong>/api/v0/applications/{id}/link</div>
+    </div>
+  </header>
+  <main class="shell">
+    <div class="toolbar">
+      <div><label for="scenario">Link request</label><select id="scenario">
+        <option value="create">Create a group</option><option value="add">Add a member to a group</option><option value="same">Applications already linked</option><option value="conflict">Source belongs to another group</option>
+      </select></div>
+      <div class="buttons">
+        <button class="primary" id="play" title="Play the process"><span class="play-symbol" aria-hidden="true">&#9654;</span><span id="play-label">Play</span></button>
+        <button id="previous" title="Previous step" aria-label="Previous step">&#8592;</button>
+        <button id="next" title="Next step" aria-label="Next step">&#8594;</button>
+        <button id="reset" title="Reset the process" aria-label="Reset the process">&#8634;</button>
+      </div>
+    </div>
+    <div class="layout">
+      <section aria-labelledby="diagram-heading">
+        <h2 id="diagram-heading">Link request flow</h2>
+        <div class="legend"><span><i class="dot live" aria-hidden="true"></i>Current step</span><span><i class="dot" aria-hidden="true"></i>Command transaction</span><span><i class="dot async" aria-hidden="true"></i>Separate event processor</span></div>
+        <div class="diagram" aria-label="Application linking process diagram">
+          <div class="node" id="request"><strong>Send the FAMILY link request</strong><small>Source ID in the path. Target ID in the body.</small></div>
+          <div class="arrow" aria-hidden="true"></div>
+          <div class="node" id="validate"><strong>Check access and request data</strong><small>Caseworker access. Different application IDs.</small></div>
+          <div class="arrow" aria-hidden="true"></div>
+          <div class="node" id="routes"><strong>Lock and check membership records</strong><small>Both applications exist. Office codes match.</small></div>
+          <div class="arrow" aria-hidden="true"></div>
+          <div class="node" id="classify"><strong>Check group membership</strong><small>Select the applicable action.</small></div>
+          <div class="arrow" aria-hidden="true"></div>
+          <div class="branches">
+            <div class="node branch" id="create"><strong>Create a group</strong><small>Neither has a group.<br>Target becomes the lead.</small></div>
+            <div class="node branch" id="add"><strong>Add the source</strong><small>Only target has a group.<br>Check group ID and version.</small></div>
+            <div class="node branch" id="same"><strong>Make no change</strong><small>Both are in the same group.<br>Return 204.</small></div>
+            <div class="node branch reject" id="conflict"><strong>Reject the request</strong><small>Source is in another group.<br>Return 409.</small></div>
+          </div>
+          <div class="arrow" aria-hidden="true"></div>
+          <div class="node" id="event"><strong>Store the group event</strong><small id="event-name">LinkedApplicationGroupCreatedEvent</small></div>
+          <div class="split">
+            <div><p class="lane-label">Command transaction</p>
+              <div class="node" id="membership"><strong>Update write-side membership</strong><small>Keep membership and the event in one transaction.</small></div>
+              <div class="arrow" aria-hidden="true"></div>
+              <div class="node" id="commit"><strong>Commit the transaction</strong><small>Return 204 No Content.</small></div>
+            </div>
+            <div><p class="lane-label">Separate event processor</p>
+              <div class="node async-node" id="projection"><strong>Update the group read model</strong><small>The processor reads the stored event.</small></div>
+              <div class="arrow" aria-hidden="true"></div>
+              <div class="node async-node" id="read"><strong>Return current group data</strong><small>After the read model receives the change.</small></div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <aside class="aside" aria-label="Current process step">
+        <p class="step-count" id="step-count"></p><progress id="progress" max="10" value="1" aria-label="Process progress"></progress>
+        <div aria-live="polite" aria-atomic="true"><h2 id="step-title"></h2><p id="step-description"></p></div>
+        <div class="facts"><h2>Request conditions</h2><dl id="conditions"></dl></div>
+        <div class="notice"><strong>Read-model delay</strong>A successful link response does not confirm that the read model is current. An immediate GET can return the previous group data.</div>
+      </aside>
+    </div>
+    <section class="description" aria-labelledby="description-heading">
+      <h2 id="description-heading">Process description</h2>
+      <div class="definitions"><p><strong>Source application:</strong> the application to add.</p><p><strong>Target application:</strong> the application that identifies the group to use.</p></div>
+      <ol class="steps">
+        <li>The client sends <code>POST /api/v0/applications/{id}/link</code>. The path contains the source application ID.</li>
+        <li>The request contains the target application ID and the link type <code>FAMILY</code>.</li>
+        <li>The service checks caseworker access. It rejects a request that uses the same ID for both applications.</li>
+        <li>The service locks both membership records. Both applications must exist and have the same office code.</li>
+        <li>If neither application belongs to a group, the service creates a group. The target becomes the lead. Do not supply <code>linkedGroupVersion</code>.</li>
+        <li>If only the target belongs to a group, the service adds the source. Supply the target's <code>linkedGroupVersion</code> token exactly as last read.</li>
+        <li>The service checks the group ID and version before it adds the source. It rejects the request if these values no longer match.</li>
+        <li>If both applications belong to the same group, the service returns success. It makes no change and stores no new event.</li>
+        <li>If the source belongs to another group, the service rejects the request. The service does not combine groups.</li>
+        <li>For a change, the service stores an event and updates write-side membership in the same transaction. It then returns <code>204 No Content</code>.</li>
+      </ol>
+    </section>
+    <footer>Scope: the Axon application linking implementation. The description uses ASD-STE100-style English. Formal compliance is not certified. The animation shows a logical sequence, not processing time. The read-model update runs separately after commit; it can finish before or after the client receives the response.</footer>
+  </main>
+  <script>
+    const common = [
+      ['request', 'Send the link request', 'The client sends the source application ID in the path. The request body contains the target application ID and the link type FAMILY.'],
+      ['validate', 'Check access and data', 'The service checks caseworker access. The source and target application IDs must be different. If a check fails, the service rejects the request.'],
+      ['routes', 'Lock membership records', 'The service locks the source and target membership records. Both applications must exist and have the same office code. If a check fails, the service rejects the request.'],
+      ['classify', 'Check group membership', 'The service uses write-side membership records to select the action. It does not use the group read model to make this decision.']
+    ];
+    const endings = [
+      ['membership', 'Update membership', 'The service updates write-side membership in the command transaction. If the membership update fails, the transaction does not commit.'],
+      ['commit', 'Commit and return success', 'The service commits the transaction and returns 204 No Content. The response does not wait for the group read model.'],
+      ['projection', 'Update the read model', 'A separate event processor reads the stored event. It updates the group members, lead application, and group version.'],
+      ['read', 'Read the group data', 'After the read model receives the change, a GET can return the current group data. Before this update, a GET can return the previous data.']
+    ];
+    const scenarios = {
+      create: {
+        steps: [...common, ['create', 'Create a group', 'Neither application belongs to a group. The service creates a group with both applications. The target becomes the lead. Do not supply linkedGroupVersion.'], ['event', 'Store the group-created event', 'The group aggregate produces LinkedApplicationGroupCreatedEvent. The event records the group ID, lead application ID, member IDs, and time.'], ...endings],
+        event: 'LinkedApplicationGroupCreatedEvent', facts: [['Source', 'No group'], ['Target', 'No group'], ['Version token', 'Omit linkedGroupVersion'], ['Result', 'New group; target is the lead']]
+      },
+      add: {
+        steps: [...common, ['add', 'Check version and add the source', 'Only the target belongs to a group. Supply its linkedGroupVersion token exactly as last read. The service checks the group ID and current aggregate version. A mismatch causes rejection.'], ['event', 'Store the member-added event', 'The group aggregate produces MemberAddedToGroupEvent. The source joins the target group. The lead application does not change.'], ...endings],
+        event: 'MemberAddedToGroupEvent', facts: [['Source', 'No group'], ['Target', 'Existing group'], ['Version token', 'Target token required'], ['Result', 'Source joins; lead does not change']]
+      },
+      same: {
+        steps: [...common, ['same', 'Return success without a change', 'Both applications belong to the same group. The service returns 204 No Content. It stores no new event and makes no membership change.']],
+        event: 'No new event', facts: [['Source', 'Same group as target'], ['Target', 'Same group as source'], ['New event', 'None'], ['Result', '204 No Content; no change']]
+      },
+      conflict: {
+        steps: [...common, ['conflict', 'Reject the request', 'The source belongs to a different group. The service returns 409 Conflict. It does not combine groups, store a new group event, or change membership.']],
+        event: 'No new event', facts: [['Source', 'Another group'], ['Target', 'No group or a different group'], ['New event', 'None'], ['Result', '409 Conflict; no change']]
+      }
+    };
+    const selector = document.getElementById('scenario');
+    const play = document.getElementById('play');
+    const previous = document.getElementById('previous');
+    const next = document.getElementById('next');
+    const nodes = [...document.querySelectorAll('.node')];
+    let position = 0;
+    let timer = null;
+    function stop() {
+      clearInterval(timer);
+      timer = null;
+      document.getElementById('play-label').textContent = 'Play';
+      play.querySelector('.play-symbol').innerHTML = '&#9654;';
+      play.title = 'Play the process';
+    }
+    function render() {
+      const scenario = scenarios[selector.value];
+      const steps = scenario.steps;
+      const current = steps[position];
+      nodes.forEach(node => {
+        const index = steps.findIndex(step => step[0] === node.id);
+        node.dataset.state = index < 0 ? 'inactive' : index < position ? 'done' : index === position ? 'active' : 'pending';
+        if (index === position) node.setAttribute('aria-current', 'step');
+        else node.removeAttribute('aria-current');
+        node.style.opacity = index < 0 ? '.42' : '1';
+      });
+      document.getElementById('step-count').textContent = `STEP ${String(position + 1).padStart(2, '0')} / ${String(steps.length).padStart(2, '0')}`;
+      document.getElementById('step-title').textContent = current[1];
+      document.getElementById('step-description').textContent = current[2];
+      document.getElementById('event-name').textContent = scenario.event;
+      const progress = document.getElementById('progress');
+      progress.max = steps.length;
+      progress.value = position + 1;
+      document.getElementById('conditions').replaceChildren(...scenario.facts.flatMap(([name, value]) => {
+        const term = document.createElement('dt');
+        const detail = document.createElement('dd');
+        term.textContent = name;
+        detail.textContent = value;
+        return [term, detail];
+      }));
+      previous.disabled = position === 0;
+      next.disabled = position === steps.length - 1;
+    }
+    function reset() { stop(); position = 0; render(); }
+    selector.addEventListener('change', reset);
+    document.getElementById('reset').addEventListener('click', reset);
+    previous.addEventListener('click', () => { stop(); position = Math.max(0, position - 1); render(); });
+    next.addEventListener('click', () => { stop(); position = Math.min(scenarios[selector.value].steps.length - 1, position + 1); render(); });
+    play.addEventListener('click', () => {
+      if (timer !== null) { stop(); return; }
+      if (position === scenarios[selector.value].steps.length - 1) position = 0;
+      render();
+      document.getElementById('play-label').textContent = 'Pause';
+      play.querySelector('.play-symbol').innerHTML = '&#10074;&#10074;';
+      play.title = 'Pause the process';
+      timer = setInterval(() => {
+        position += 1;
+        render();
+        if (position === scenarios[selector.value].steps.length - 1) stop();
+      }, 2200);
+    });
+    document.addEventListener('visibilitychange', () => { if (document.hidden) stop(); });
+    render();
+  </script>
+</body>
+</html>

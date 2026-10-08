@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Work list process | Axon</title>
+  <style>
+    :root { --ink:#202b28; --muted:#596760; --paper:#f6f8f5; --line:#cbd4ce; --green:#176b4b; --blue:#235ea0; --red:#a33440; }
+    * { box-sizing:border-box; }
+    body { margin:0; color:var(--ink); background:var(--paper); font:15px/1.55 "Avenir Next","Trebuchet MS",sans-serif; letter-spacing:0; }
+    button,select { font:inherit; }
+    :focus-visible { outline:3px solid var(--blue); outline-offset:4px; }
+    .shell { max-width:1260px; padding:0 36px; margin:auto; }
+    header { border-top:6px solid var(--green); border-bottom:1px solid var(--line); background:linear-gradient(110deg,#edf5ed,#f6f8f5 70%); }
+    .heading { padding-top:27px; padding-bottom:26px; display:flex; justify-content:space-between; align-items:center; gap:24px; }
+    .eyebrow { margin:0 0 6px; font-size:11px; font-weight:700; text-transform:uppercase; color:var(--green); }
+    h1 { font-size:38px; line-height:1.15; font-weight:600; margin:0; }
+    .subtitle { color:var(--muted); margin:9px 0 0; }
+    .endpoint { font:12px/1.7 Menlo,Consolas,monospace; border-left:3px solid var(--green); padding-left:15px; overflow-wrap:anywhere; }
+    .endpoint strong { color:var(--green); }
+    main { padding-top:22px!important; padding-bottom:40px!important; }
+    .toolbar { display:flex; justify-content:space-between; align-items:end; gap:20px; padding-bottom:20px; border-bottom:1px solid var(--line); }
+    label { display:block; font-size:12px; font-weight:600; margin-bottom:6px; }
+    select { padding:9px 34px 9px 12px; border:1px solid #a9b7ae; border-radius:4px; color:var(--ink); background:white; max-width:100%; }
+    .buttons { display:flex; gap:8px; flex-wrap:wrap; }
+    button { border:1px solid #a9b7ae; background:white; color:var(--ink); border-radius:4px; min-height:42px; padding:8px 15px; cursor:pointer; }
+    button:hover { background:#edf3ee; }
+    button.primary { background:var(--green); color:white; border-color:var(--green); min-width:98px; }
+    button.primary:hover { background:#105438; }
+    button:disabled { opacity:.45; cursor:default; }
+    .play-symbol { display:inline-block; width:17px; }
+    .layout { display:grid; grid-template-columns:minmax(0,1fr) 310px; gap:32px; margin-top:22px; }
+    h2 { font-size:18px; line-height:1.3; font-weight:600; margin:0 0 16px; }
+    .legend { display:flex; flex-wrap:wrap; gap:17px; font-size:11px; color:var(--muted); margin-bottom:18px; }
+    .legend span { display:inline-flex; align-items:center; gap:6px; }
+    .dot { width:8px; height:8px; border-radius:50%; background:var(--green); }
+    .dot.blue { background:var(--blue); }
+    .dot.red { background:var(--red); }
+    .diagram { padding:20px 18px; border:1px solid var(--line); border-radius:6px; background-color:white; background-image:radial-gradient(#dce4dd .7px,transparent .7px); background-size:14px 14px; }
+    .band-label { font-size:10px; color:var(--muted); text-transform:uppercase; font-weight:600; margin:0 0 9px; }
+    .entry { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .node { position:relative; max-width:360px; margin:auto; padding:11px 14px; border:1px solid var(--line); background:white; border-radius:4px; text-align:center; min-height:65px; width:100%; transition:background .25s,border-color .25s,box-shadow .25s; }
+    .node strong { display:block; font-size:13px; font-weight:600; }
+    .node small { display:block; font-size:11px; color:var(--muted); margin-top:2px; overflow-wrap:anywhere; }
+    .node[data-state="done"] { border-color:#91bea4; background:#f0f8f2; }
+    .node[data-state="active"] { border-color:var(--green); background:#d9f0df; box-shadow:0 0 0 3px #176b4b18; }
+    .node[data-state="active"]::before { content:""; position:absolute; inset:-4px; border:1px solid var(--green); border-radius:7px; animation:pulse 1.8s ease-in-out infinite; pointer-events:none; }
+    .node[data-state="inactive"] { opacity:.4; }
+    .node.async { border-style:dashed; }
+    .node.async[data-state="active"] { border-color:var(--blue); background:#e7f0fb; box-shadow:0 0 0 3px #235ea018; }
+    .node.async[data-state="active"]::before { border-color:var(--blue); }
+    .node.reject[data-state="active"] { border-color:var(--red); background:#fcebee; box-shadow:0 0 0 3px #a3344014; }
+    .node.reject[data-state="active"]::before { border-color:var(--red); }
+    .arrow { height:20px; width:1px; background:#a9b7ae; margin:auto; position:relative; }
+    .arrow::after { content:""; position:absolute; bottom:0; left:-3px; border-left:3.5px solid transparent; border-right:3.5px solid transparent; border-top:5px solid #a9b7ae; }
+    .choices { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+    .choices .node { min-height:86px; }
+    .command-band { border-top:1px solid var(--line); border-bottom:1px solid var(--line); margin:18px 0; padding:14px 0; }
+    .outcomes { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:18px; }
+    .aside { border-left:1px solid var(--line); padding-left:24px; }
+    .step-count { font:12px Menlo,Consolas,monospace; color:var(--green); margin:0 0 12px; }
+    progress { appearance:none; width:100%; height:4px; border:0; display:block; margin-bottom:21px; background:#e0e7e1; }
+    progress::-webkit-progress-bar { background:#e0e7e1; }
+    progress::-webkit-progress-value { background:var(--green); }
+    progress::-moz-progress-bar { background:var(--green); }
+    #step-title { font-size:22px; margin-bottom:10px; }
+    #step-description { margin:0; min-height:120px; }
+    .facts { margin-top:24px; border-top:1px solid var(--line); padding-top:18px; }
+    dl { margin:0; }
+    dt { font-size:11px; color:var(--muted); margin-top:14px; }
+    dd { margin:2px 0 0; font-size:13px; }
+    .notice { margin-top:22px; padding-left:13px; border-left:3px solid var(--blue); font-size:13px; }
+    .notice strong { display:block; margin-bottom:4px; color:var(--blue); }
+    .description { margin-top:30px; padding-top:24px; border-top:1px solid var(--line); }
+    .definitions { display:flex; gap:26px; flex-wrap:wrap; color:var(--muted); font-size:13px; margin-bottom:18px; }
+    .definitions p { margin:0; }
+    ol { margin:0; padding-left:22px; columns:2; column-gap:44px; }
+    li { break-inside:avoid; padding:0 0 12px 5px; font-size:14px; }
+    code { font:12px Menlo,Consolas,monospace; overflow-wrap:anywhere; }
+    .query-notes { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:24px; border-top:1px solid var(--line); padding-top:22px; margin-top:15px; }
+    .query-notes h3 { font-size:14px; margin:0 0 6px; }
+    .query-notes p { font-size:13px; margin:0; }
+    footer { margin-top:22px; padding-top:16px; border-top:1px solid var(--line); color:var(--muted); font-size:11px; }
+    footer a { color:var(--green); }
+    @keyframes pulse { 0%,100% { opacity:.15; } 50% { opacity:.65; } }
+    @media(prefers-reduced-motion:reduce) { *,*::before { animation:none!important; transition:none!important; } }
+    @media(max-width:950px) { .shell { padding-left:22px; padding-right:22px; } .layout { grid-template-columns:minmax(0,1fr) 250px; gap:20px; } .aside { padding-left:18px; } }
+    @media(max-width:700px) { .shell { padding-left:16px; padding-right:16px; } .heading { display:block; } h1 { font-size:30px; } .endpoint { margin-top:18px; } .toolbar { flex-direction:column; align-items:stretch; gap:14px; } select { width:100%; } .layout { grid-template-columns:minmax(0,1fr); } .aside { border-left:0; border-top:1px solid var(--line); padding:20px 0 0; } #step-description { min-height:0; } ol { columns:1; } .query-notes { grid-template-columns:1fr; gap:18px; } .diagram { padding:16px 10px; } .node { padding:10px 7px; } .choices { gap:6px; } .choices .node strong { font-size:11px; } .choices .node small { font-size:10px; } }
+    @media print { .toolbar,.legend { display:none; } .layout { grid-template-columns:1fr; } .aside { display:none; } .node { opacity:1!important; background:white!important; box-shadow:none!important; } .node::before { display:none; } .shell { padding:0; } .diagram { background:white; break-inside:avoid; } body { background:white; } header { border-top:0; } }
+  </style>
+</head>
+<body>
+  <header><div class="shell heading">
+    <div><p class="eyebrow">Axon / Application service</p><h1>Work list process</h1><p class="subtitle">Active work. Caseworker assignment. Decision completion.</p></div>
+    <div class="endpoint"><strong>GET</strong> /api/v0/work-list<br><strong>POST</strong> /api/v0/work-list/{itemId}/assign<br><strong>POST</strong> /api/v0/work-list/{itemId}/unassign</div>
+  </div></header>
+  <main class="shell">
+    <div class="toolbar">
+      <div><label for="scenario">Work item scenario</label><select id="scenario">
+        <option value="application">Assign an application</option><option value="priorAuthority">Assign a prior authority</option><option value="unassign">Return an item to the unassigned list</option><option value="stale">Reject a stale assignment version</option><option value="assigned">Reject an already assigned item</option><option value="complete">Complete an application decision</option>
+      </select></div>
+      <div class="buttons"><button class="primary" id="play" title="Play the process"><span class="play-symbol" aria-hidden="true">&#9654;</span><span id="play-label">Play</span></button><button id="previous" title="Previous step" aria-label="Previous step">&#8592;</button><button id="next" title="Next step" aria-label="Next step">&#8594;</button><button id="reset" title="Reset the process" aria-label="Reset the process">&#8634;</button></div>
+    </div>
+    <div class="layout">
+      <section aria-labelledby="diagram-heading">
+        <h2 id="diagram-heading">Work item lifecycle</h2>
+        <div class="legend"><span><i class="dot" aria-hidden="true"></i>Current command step</span><span><i class="dot blue" aria-hidden="true"></i>Read model</span><span><i class="dot red" aria-hidden="true"></i>Rejected request</span></div>
+        <div class="diagram" aria-label="Work-list lifecycle diagram">
+          <p class="band-label">Entry into active work</p>
+          <div class="entry"><div class="node" id="application"><strong>Application ready for manual assessment</strong><small>ApplicationReadyForManualAssessmentEvent</small></div><div class="node" id="priorAuthority"><strong>Prior authority submitted</strong><small>PriorAuthoritySubmittedEvent</small></div></div>
+          <div class="arrow" aria-hidden="true"></div>
+          <div class="node async" id="activate"><strong>Create the work-list row</strong><small>One application or prior-authority item.</small></div>
+          <div class="arrow" aria-hidden="true"></div>
+          <div class="node async" id="query"><strong>Query the active work list</strong><small>Filter the list. Return a page, oldest first.</small></div>
+          <div class="command-band"><p class="band-label">Caseworker command</p>
+            <div class="choices"><div class="node" id="assign"><strong>Assign to me</strong><small>Authenticated caseworker ID.</small></div><div class="node" id="unassign"><strong>Remove assignment</strong><small>Return the item to the open list.</small></div><div class="node" id="decision"><strong>Make a decision</strong><small>Separate decision endpoint.</small></div></div>
+            <div class="arrow" aria-hidden="true"></div>
+            <div class="node" id="route"><strong>Resolve the direct work-item route</strong><small>Application or prior-authority aggregate.</small></div>
+            <div class="arrow" aria-hidden="true"></div>
+            <div class="node" id="check"><strong>Check aggregate state and version</strong><small id="check-detail">Assignment version and current assignee.</small></div>
+            <div class="outcomes"><div class="node" id="event"><strong>Store the event</strong><small id="event-name">WorkItemAssigned</small></div><div class="node reject" id="reject"><strong>Reject the request</strong><small>409 Conflict. No assignment change.</small></div></div>
+            <div class="arrow" aria-hidden="true"></div>
+            <div class="node" id="commit"><strong>Commit and return success</strong><small id="response">Assignment endpoints return 200 OK.</small></div>
+          </div>
+          <p class="band-label">Separate event processor</p>
+          <div class="node async" id="project"><strong id="projection-title">Update the work-list row</strong><small id="projection-detail">Apply the assignee and assignment version.</small></div>
+          <div class="arrow" aria-hidden="true"></div>
+          <div class="node async" id="result"><strong id="result-title">Return the updated queue</strong><small id="result-detail">GET reads the updated work-list projection.</small></div>
+        </div>
+      </section>
+      <aside class="aside" aria-label="Current process step">
+        <p class="step-count" id="step-count"></p><progress id="progress" aria-label="Process progress" max="11" value="1"></progress>
+        <div aria-live="polite" aria-atomic="true"><h2 id="step-title"></h2><p id="step-description"></p></div>
+        <div class="facts"><h2>Scenario conditions</h2><dl id="conditions"></dl></div>
+        <div class="notice"><strong>Read-model delay</strong>A command response does not wait for the work-list projection. An immediate GET can return the previous assignment or a completed item.</div>
+        <div class="notice"><strong>Individual work items</strong>Assignment uses the application or prior-authority ID. The current route does not assign a linked group as one work item.</div>
+      </aside>
+    </div>
+    <section class="description" aria-labelledby="description-heading">
+      <h2 id="description-heading">Process description</h2>
+      <div class="definitions"><p><strong>Work item:</strong> an application or a prior authority that appears in the active work list.</p><p><strong>Assignment version:</strong> the number used to check an assignment change.</p></div>
+      <ol>
+        <li>An application enters the list when it is ready for manual assessment. A prior authority enters the list when it is submitted.</li>
+        <li>The work-list event processor creates a read-model row. The row contains the item ID, item type, submission time, and versions.</li>
+        <li>The client sends <code>GET /api/v0/work-list</code>. The service checks caseworker access and reads the work-list projection.</li>
+        <li>The service filters and sorts the results. It returns the oldest submission first, with item type and ID as additional sort fields.</li>
+        <li>To assign an item, send <code>POST /api/v0/work-list/{itemId}/assign</code>. Supply <code>expectedAssignmentVersion</code> from the item last read.</li>
+        <li>The service takes the assignee ID from the authenticated user's Entra OID. The request body cannot select another assignee.</li>
+        <li>The service reads the durable work-item route. It sends the command to the application or prior-authority aggregate. It does not use the work-list projection to route the command.</li>
+        <li>The aggregate checks the assignment version and current assignment. A stale version or an already assigned item causes a conflict. Successful assignment stores <code>WorkItemAssigned</code>.</li>
+        <li>To remove an assignment, send <code>POST /api/v0/work-list/{itemId}/unassign</code> with the current assignment version. Successful unassignment stores <code>WorkItemUnassigned</code>. An already unassigned item causes a conflict.</li>
+        <li>The command commits and returns <code>200 OK</code>. A separate event processor applies the assignment change to the work-list row.</li>
+        <li>A decision event removes its work-list row. An application decision removes only the application row. A prior-authority decision removes only the prior-authority row.</li>
+        <li>The next GET reflects the change after the projection processes the event. A conflict does not cause the service to retry the assignment automatically.</li>
+      </ol>
+      <div class="query-notes">
+        <div><h3>Open list</h3><p><code>unassigned=true</code> and <code>assignedToMe=false</code> are the defaults. Use <code>itemType</code> to select applications or prior authorities.</p></div>
+        <div><h3>Personal list</h3><p>Use <code>assignedToMe=true</code> and <code>unassigned=false</code>. Set both to true to include personal and unassigned work. They cannot both be false.</p></div>
+        <div><h3>Pages and changes</h3><p>Pages start at 1. The default page size is 20; the maximum is 100. Assignment does not directly replace another assignee. Remove the assignment before a new assignment.</p></div>
+      </div>
+    </section>
+    <footer>Scope: the current Axon work-list implementation. The description uses ASD-STE100-style English. Formal compliance is not certified. The animation shows a logical sequence, not processing time. Projection updates run separately after commit and can finish before or after the client receives the response. <a href="application-linking.html">Application linking</a></footer>
+  </main>
+  <script>
+    const step = (id,title,text) => [id,title,text];
+    const applicationEntry = step('application','Ready for manual assessment','The application records ApplicationReadyForManualAssessmentEvent. This event activates application work. Application submission alone does not create this work-list row.');
+    const priorAuthorityEntry = step('priorAuthority','Submit the prior authority','The prior authority records PriorAuthoritySubmittedEvent. This event activates prior-authority work under its parent application.');
+    const activate = step('activate','Create the work-list row','A separate event processor creates a row for the item. It loads the referenced content versions to populate the work-list fields.');
+    const query = step('query','Read the active work list','The client queries the work list. The service checks caseworker access, applies the filters, and returns a page sorted by submission time, item type, and ID.');
+    const assign = step('assign','Request assignment to me','The client sends the item ID and expectedAssignmentVersion. The service obtains the assignee from the authenticated Entra OID, not from request JSON.');
+    const route = step('route','Resolve the direct route','The service reads the durable work-item route. It selects the application or prior-authority aggregate. The work-list read model does not control this route. A missing or non-direct route returns 404.');
+    const check = step('check','Check assignment state','The aggregate compares expectedAssignmentVersion with its current assignment version. The item must not already be assigned. For an application, manual assessment must be active and no overall decision must exist.');
+    const assignedEvent = step('event','Store WorkItemAssigned','The aggregate records the work-item ID and type, authenticated caseworker ID, and next assignment version in WorkItemAssigned. The assignment version increases by one.');
+    const commit = step('commit','Commit and return 200','The service commits the assignment command and returns 200 OK. The response does not wait for the work-list projection.');
+    const project = step('project','Update the work-list row','The work-list processor applies the assignee and assignment version from the event. This read-model update runs separately from the command.');
+    const result = step('result','Read the personal queue','After the event is processed, GET with assignedToMe=true and unassigned=false returns the item in the authenticated caseworker\'s list.');
+    const prefix = [applicationEntry,activate,query,assign,route];
+    const scenarios = {
+      application: { steps:[...prefix,check,assignedEvent,commit,project,result], event:'WorkItemAssigned', facts:[['Item type','Application'],['Entry event','Manual assessment readiness'],['Assignee','Authenticated Entra OID'],['Result','200 OK; assigned to me']] },
+      priorAuthority: { steps:[priorAuthorityEntry,activate,query,assign,route,step('check','Check prior-authority assignment','The prior-authority handler checks the item identity, assignment version, and current assignee. A stale version or an existing assignee causes a conflict.'),assignedEvent,commit,project,result], event:'WorkItemAssigned', facts:[['Item type','Prior authority'],['Entry event','Prior-authority submission'],['Item ID','Prior-authority ID'],['Result','200 OK; assigned to me']] },
+      unassign: { steps:[query,step('unassign','Request removal of the assignment','Select an assigned item. Send its ID and expectedAssignmentVersion to the unassign endpoint. The item stays active; only its assignment changes.'),route,step('check','Check the current assignment','The assignment version must match. The item must be assigned. An already unassigned item causes 409 Conflict; it is not a successful no-op.'),step('event','Store WorkItemUnassigned','The aggregate stores WorkItemUnassigned and increases the assignment version by one. It clears the current assignee.'),commit,step('project','Clear the projected assignee','The work-list processor clears the assignee ID and applies the new assignment version. The active work-list row remains.'),step('result','Return the item to the open list','After the projection update, the item appears in the unassigned list. It no longer appears in its previous assignee\'s personal list.')], event:'WorkItemUnassigned', facts:[['Starting state','Assigned item'],['Version','Current assignment version'],['Result','200 OK; no assignee'],['Work-list row','Remains active']] },
+      stale: { steps:[...prefix,step('check','Detect the stale version','Another command changed the assignment after the client read the item. expectedAssignmentVersion no longer matches the aggregate assignment version.'),step('reject','Return 409 Conflict','The service rejects the request. It stores no assignment event and makes no assignment change. It does not retry the command automatically. Read the item again before a new request.')], event:'No assignment event', facts:[['Client version','Older than aggregate version'],['Result','409 Conflict'],['Assignment change','None'],['Automatic retry','None']] },
+      assigned: { steps:[...prefix,step('check','Detect an existing assignee','The supplied assignment version matches, but the item already has an assignee. This includes a repeat assignment to the same caseworker.'),step('reject','Return 409 Conflict','The service does not overwrite the assignee. It stores no new assignment event. Assignment is not an idempotent success when the item is already assigned.')], event:'No assignment event', facts:[['Starting state','Already assigned'],['Version','Matches aggregate version'],['Result','409 Conflict'],['Existing assignee','Unchanged']] },
+      complete: { steps:[query,step('decision','Submit an application decision','The client uses the application decision endpoint, not a work-list assignment endpoint. It supplies the application version required by that decision contract.'),step('check','Validate the decision','The application aggregate checks the decision rules, authenticated caseworker assignment, and application version. These checks are separate from assignment-version checks.'),step('event','Store the decision event','A successful decision records ApplicationDecisionMadeEvent. This scenario follows the application decision; a prior-authority decision uses its own event.'),step('commit','Commit the decision','The application decision commits. Its endpoint returns 204 No Content. The response does not wait for the work-list row to be removed.'),step('project','Remove the application row','The work-list processor handles ApplicationDecisionMadeEvent and deletes only the application row. It does not remove prior-authority rows for that application.'),step('result','Read the remaining active work','After the event is processed, the application no longer appears in the work list. Prior-authority items remain until their own decision events remove them.')], event:'ApplicationDecisionMadeEvent', facts:[['Command','Application decision'],['Version','Application version'],['Result','Application row removed'],['Prior-authority rows','Not removed by this event']] }
+    };
+    const selector = document.getElementById('scenario');
+    const play = document.getElementById('play');
+    const previous = document.getElementById('previous');
+    const next = document.getElementById('next');
+    const nodes = [...document.querySelectorAll('.node')];
+    let position = 0;
+    let timer = null;
+    function stop() {
+      clearInterval(timer); timer = null;
+      document.getElementById('play-label').textContent = 'Play';
+      play.querySelector('.play-symbol').innerHTML = '&#9654;';
+      play.title = 'Play the process';
+    }
+    function render() {
+      const scenario = scenarios[selector.value];
+      const steps = scenario.steps;
+      const current = steps[position];
+      nodes.forEach(node => {
+        const index = steps.findIndex(item => item[0] === node.id);
+        node.dataset.state = index < 0 ? 'inactive' : index < position ? 'done' : index === position ? 'active' : 'pending';
+        if(index === position) node.setAttribute('aria-current','step'); else node.removeAttribute('aria-current');
+      });
+      document.getElementById('step-count').textContent = `STEP ${String(position + 1).padStart(2,'0')} / ${String(steps.length).padStart(2,'0')}`;
+      document.getElementById('step-title').textContent = current[1];
+      document.getElementById('step-description').textContent = current[2];
+      document.getElementById('event-name').textContent = scenario.event;
+      document.getElementById('check-detail').textContent = selector.value === 'complete' ? 'Decision rules and application version.' : 'Assignment version and current assignee.';
+      document.getElementById('response').textContent = selector.value === 'complete' ? 'Decision endpoint returns 204 No Content.' : 'Assignment endpoints return 200 OK.';
+      document.getElementById('projection-title').textContent = selector.value === 'complete' ? 'Remove the application row' : 'Update the work-list row';
+      document.getElementById('projection-detail').textContent = selector.value === 'complete' ? 'Keep prior-authority rows until their own decisions.' : 'Apply the assignee and assignment version.';
+      document.getElementById('result-title').textContent = selector.value === 'complete' ? 'Return remaining active work' : 'Return the updated queue';
+      document.getElementById('result-detail').textContent = selector.value === 'complete' ? 'The completed application is no longer listed.' : 'GET reads the updated work-list projection.';
+      const progress = document.getElementById('progress'); progress.max = steps.length; progress.value = position + 1;
+      document.getElementById('conditions').replaceChildren(...scenario.facts.flatMap(([name,value]) => {
+        const term = document.createElement('dt'); const detail = document.createElement('dd');
+        term.textContent = name; detail.textContent = value; return [term,detail];
+      }));
+      previous.disabled = position === 0; next.disabled = position === steps.length - 1;
+    }
+    function reset() { stop(); position = 0; render(); }
+    selector.addEventListener('change',reset);
+    document.getElementById('reset').addEventListener('click',reset);
+    previous.addEventListener('click',() => { stop(); position = Math.max(0,position - 1); render(); });
+    next.addEventListener('click',() => { stop(); position = Math.min(scenarios[selector.value].steps.length - 1,position + 1); render(); });
+    play.addEventListener('click',() => {
+      if(timer !== null) { stop(); return; }
+      if(position === scenarios[selector.value].steps.length - 1) position = 0;
+      render(); document.getElementById('play-label').textContent = 'Pause';
+      play.querySelector('.play-symbol').innerHTML = '&#10074;&#10074;'; play.title = 'Pause the process';
+      timer = setInterval(() => { position += 1; render(); if(position === scenarios[selector.value].steps.length - 1) stop(); },2200);
+    });
+    document.addEventListener('visibilitychange',() => { if(document.hidden) stop(); });
+    render();
+  </script>
+</body>
+</html>
