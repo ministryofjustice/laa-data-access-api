@@ -177,4 +177,10 @@ public class DataAccessApiProviderTests extends AbstractProviderPactTests {
   public void noPriorAuthorityWithId() {
     states.noPriorAuthorityWithId();
   }
+
+  /** GET application by id expecting its prior authorities. */
+  @State(PactStates.APPLICATION_WITH_PRIOR_AUTHORITIES)
+  public void applicationWithPriorAuthorities() {
+    states.applicationWithPriorAuthorities();
+  }
 }
