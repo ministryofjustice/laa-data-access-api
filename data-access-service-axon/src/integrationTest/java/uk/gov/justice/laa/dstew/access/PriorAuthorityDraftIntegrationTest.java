@@ -217,6 +217,34 @@ class PriorAuthorityDraftIntegrationTest {
   }
 
   @Test
+  void
+      givenProviderWithoutThePriorAuthorityOffice_whenUpdatePriorAuthorityDraft_thenReturns403AndDoesNotChangeContent() {
+    UUID applicationId = grantedApplication();
+    UUID priorAuthorityId = saveDraft(applicationId, PriorAuthorityType.EXPERT, null, null);
+    SavePriorAuthorityDraftRequest updateRequest =
+        SavePriorAuthorityDraftRequest.builder().justification("Unauthorised update").build();
+
+    ResponseEntity<Void> updateResponse =
+        restTemplate.exchange(
+            priorAuthorityUrl(priorAuthorityId),
+            HttpMethod.PUT,
+            new HttpEntity<>(updateRequest, headers(TestJwtDecoderConfig.OFFICE_C_BEARER_TOKEN)),
+            Void.class);
+
+    assertThat(updateResponse.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+
+    ResponseEntity<String> draftResponse =
+        restTemplate.exchange(
+            priorAuthorityUrl(priorAuthorityId),
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            String.class);
+    PriorAuthorityResponse draft =
+        objectMapper.readValue(draftResponse.getBody(), PriorAuthorityResponse.class);
+    assertThat(draft.getJustification()).isNull();
+  }
+
+  @Test
   void givenDraftPayloadWithNullNestedFields_whenSavePriorAuthorityDraft_thenAcceptsDraft() {
     UUID applicationId = grantedApplication();
     CreatePriorAuthorityDraftRequest request =
@@ -695,10 +723,14 @@ class PriorAuthorityDraftIntegrationTest {
   }
 
   private HttpHeaders headers() {
+    return headers(TestJwtDecoderConfig.BEARER_TOKEN);
+  }
+
+  private HttpHeaders headers(String bearerToken) {
     HttpHeaders headers = new HttpHeaders();
     headers.set("X-Service-Name", "CIVIL_APPLY");
     headers.setContentType(MediaType.APPLICATION_JSON);
-    headers.setBearerAuth(TestJwtDecoderConfig.BEARER_TOKEN);
+    headers.setBearerAuth(bearerToken);
     return headers;
   }
 }

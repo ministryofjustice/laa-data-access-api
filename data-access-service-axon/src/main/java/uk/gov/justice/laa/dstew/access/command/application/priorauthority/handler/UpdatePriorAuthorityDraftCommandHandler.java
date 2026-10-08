@@ -14,6 +14,8 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.security.OfficeCodeResource;
+import uk.gov.justice.laa.dstew.access.security.RequireOfficeCodeWriteAccess;
 
 /** Handles updates to prior-authority drafts. */
 @Component
@@ -21,10 +23,12 @@ public class UpdatePriorAuthorityDraftCommandHandler {
 
   /** Updates the prior-authority draft and emits the corresponding event. */
   @CommandHandler
+  @RequireOfficeCodeWriteAccess
   void handle(
       UpdatePriorAuthorityDraftCommand command,
       PriorAuthorityDraftStore draftStore,
-      @InjectEntity(idProperty = "priorAuthorityId") PriorAuthorityAggregate priorAuthority,
+      @InjectEntity(idProperty = "priorAuthorityId") @OfficeCodeResource
+          PriorAuthorityAggregate priorAuthority,
       EventAppender eventAppender) {
 
     PriorAuthorityDataPayload existingDraft = requireDraft(command.priorAuthorityId(), draftStore);
