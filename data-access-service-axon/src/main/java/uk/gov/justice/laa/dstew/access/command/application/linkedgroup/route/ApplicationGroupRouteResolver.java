@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -84,6 +85,34 @@ public class ApplicationGroupRouteResolver {
       throw LinkedApplicationGroupVersionConflictException.groupChanged(applicationId);
     }
     return groupId;
+  }
+
+  /**
+   * Locks every route in the application's linked group and returns the member application
+   * identifiers, or {@link Optional#empty()} if the application is standalone.
+   *
+   * <p>Used for operations like assignment propagation, which have no expected group version to
+   * validate (unlike {@link #resolveGroupForMutation}).
+   */
+  @Transactional
+  public Optional<List<UUID>> resolveGroupMembersForAssignment(UUID applicationId) {
+    var membership =
+        routes
+            .findMembershipByApplicationId(applicationId)
+            .orElseThrow(
+                () ->
+                    new ResourceNotFoundException(
+                        "No application group route found for application " + applicationId));
+    if (membership.getRouteKind() == ApplicationGroupRouteKind.STANDALONE) {
+      return Optional.empty();
+    }
+    var lockedRoutes = routes.findAllByGroupIdForUpdate(membership.getGroupId());
+    var memberApplicationIds =
+        lockedRoutes.stream().map(ApplicationGroupRoute::getApplicationId).toList();
+    if (!memberApplicationIds.contains(applicationId)) {
+      return Optional.empty();
+    }
+    return Optional.of(memberApplicationIds);
   }
 
   private ApplicationGroupRoute requiredRoute(

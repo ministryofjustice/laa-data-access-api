@@ -36,6 +36,7 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
+import uk.gov.justice.laa.dstew.access.command.worklist.assign.DirectGroupWorkItemAssignmentCommand;
 import uk.gov.justice.laa.dstew.access.command.worklist.assign.DirectWorkItemAssignmentCommand;
 import uk.gov.justice.laa.dstew.access.command.worklist.unassign.DirectWorkItemUnassignmentCommand;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConflictException;
@@ -229,6 +230,32 @@ public class ApplicationAggregate {
     validateDirectWorkItem(command.workItemId(), command.expectedAssignmentVersion());
     if (state.caseworkerId != null) {
       throw new WorkItemAssignmentConflictException(command.workItemId(), "it is already assigned");
+    }
+    long nextAssignmentVersion = state.assignmentVersion + 1;
+    eventAppender.append(
+        new WorkItemAssigned(
+            command.workItemId(),
+            WorkItemType.APPLICATION,
+            state.applicationVersion,
+            nextAssignmentVersion,
+            command.caseworkerId(),
+            command.occurredAt()));
+  }
+
+  /**
+   * Applies a linked-group assignment to this application, replacing its current assignee.
+   *
+   * <p>Skips applications that are not manual and undecided, or are already assigned to the
+   * requested caseworker. This allows the group assignment to continue when some members cannot
+   * accept the assignment.
+   */
+  @CommandHandler
+  void handle(DirectGroupWorkItemAssignmentCommand command, EventAppender eventAppender) {
+    if (applicationId == null
+        || state.autoGranted != AutoGrantedState.MANUAL
+        || state.overallDecision != null
+        || Objects.equals(state.caseworkerId, command.caseworkerId())) {
+      return;
     }
     long nextAssignmentVersion = state.assignmentVersion + 1;
     eventAppender.append(
