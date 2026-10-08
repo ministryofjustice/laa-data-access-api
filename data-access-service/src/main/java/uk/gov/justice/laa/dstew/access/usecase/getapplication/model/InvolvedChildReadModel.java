@@ -5,4 +5,4 @@ import lombok.Builder;
 
 /** Read-model record for a child linked to a proceeding in the get-application response. */
 @Builder(toBuilder = true)
-public record InvolvedChildReadModel(String fullName, LocalDate dateOfBirth) {}
+public record InvolvedChildReadModel(String firstName, String lastName, LocalDate dateOfBirth) {}

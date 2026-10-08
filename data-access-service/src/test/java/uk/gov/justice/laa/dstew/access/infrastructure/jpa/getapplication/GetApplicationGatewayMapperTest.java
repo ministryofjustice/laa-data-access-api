@@ -207,7 +207,8 @@ class GetApplicationGatewayMapperTest {
     InvolvedChild child =
         InvolvedChild.builder()
             .id(childId)
-            .fullName("John Smith")
+            .firstName("John")
+            .lastName("Smith")
             .dateOfBirth(LocalDate.of(2020, 1, 1))
             .build();
 
@@ -222,7 +223,8 @@ class GetApplicationGatewayMapperTest {
         mapper.toProceedingDbProjection(proceedingEntity, List.of(merits), List.of(child));
 
     assertThat(actual.involvedChildren()).hasSize(1);
-    assertThat(actual.involvedChildren().getFirst().getFullName()).isEqualTo("John Smith");
+    assertThat(actual.involvedChildren().getFirst().getFirstName()).isEqualTo("John");
+    assertThat(actual.involvedChildren().getFirst().getLastName()).isEqualTo("Smith");
     assertThat(actual.involvedChildren().getFirst().getDateOfBirth())
         .isEqualTo(LocalDate.of(2020, 1, 1));
   }

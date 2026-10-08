@@ -126,7 +126,7 @@ class GetApplicationResponseMapperTest {
         Opponent.builder().opponentType("INDIVIDUAL").firstName("Jane").lastName("Smith").build();
     ScopeLimitation scopeLimitation =
         ScopeLimitation.builder().meaning("SCOPE").description("Full scope").build();
-    InvolvedChild child = InvolvedChild.builder().fullName("Child One").build();
+    InvolvedChild child = InvolvedChild.builder().firstName("Child").lastName("One").build();
     Proceeding proceeding =
         Proceeding.builder()
             .id(proceedingId)

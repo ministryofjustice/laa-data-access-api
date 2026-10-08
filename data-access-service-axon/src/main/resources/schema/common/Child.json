@@ -6,7 +6,8 @@
   "type": "object",
   "required": [
     "id",
-    "fullName",
+    "firstName",
+    "lastName",
     "dateOfBirth"
   ],
   "properties": {
@@ -15,9 +16,13 @@
       "format": "uuid",
       "description": "Unique identifier for the involved child"
     },
-    "fullName": {
+    "firstName": {
       "type": "string",
-      "description": "Full name of the involved child"
+      "description": "First name of the involved child"
+    },
+    "lastName": {
+      "type": "string",
+      "description": "Last name of the involved child"
     },
     "dateOfBirth": {
       "type": "string",

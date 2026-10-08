@@ -66,10 +66,10 @@ public class FullProceedingGenerator
         .putAdditionalProperty(
             "clientInvolvementTypeDescription",
             faker.options().option("A child subject of the proceeding", "Defendant", "Applicant"))
-        .putAdditionalProperty("emergencyLevelOfService", null)
+        .putAdditionalProperty("emergencyLevelOfServiceCode", null)
         .putAdditionalProperty("emergencyLevelOfServiceName", null)
         .putAdditionalProperty("emergencyLevelOfServiceStage", null)
-        .putAdditionalProperty("substantiveLevelOfService", faker.number().numberBetween(1, 5))
+        .putAdditionalProperty("substantiveLevelOfServiceCode", faker.number().numberBetween(1, 5))
         .putAdditionalProperty(
             "substantiveLevelOfServiceStage", faker.number().numberBetween(1, 10))
         .putAdditionalProperty("acceptedEmergencyDefaults", null)
