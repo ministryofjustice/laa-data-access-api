@@ -25,18 +25,26 @@ erDiagram
         bigint application_version
         bigint application_data_version
         uuid caseworker_id
+        uuid linked_group_id
     }
     APPLICATION_HISTORY {
         string event_id PK
         uuid application_id
         string event_type
-        jsonb request_payload
+        bigint data_version
+        string service_name
+        uuid caseworker_id
         timestamptz occurred_at
     }
     LINKED_APPLICATION_GROUP_CURRENT_STATE {
         uuid group_id PK
         uuid lead_application_id
         jsonb member_ids
+        bigint version
+    }
+    APPLICATION_LIST_INDEX {
+        uuid application_id PK
+        uuid lead_application_id
     }
     TOKEN_ENTRY {
         string processor_name PK
@@ -90,12 +98,21 @@ remain aligned.
 ## Projection data
 
 `application_current_state` deliberately excludes most detailed application content. Query handlers
-hydrate it from the referenced `application_data` row. `application_history` stores serialized thin
-events, then reconstructs free-text descriptions and note content on query.
+hydrate it from the referenced `application_data` row. `application_history` stores event
+identity/type, metadata, occurrence time, and a nullable `data_version` pointer; it does not store a
+serialized request payload. Decision and note descriptions are hydrated from the referenced
+`application_data` version when queried. Events without application data (including group and
+assignment events) have no version pointer.
 
 Group events are stored on their own event stream and projected into
-`linked_application_group_current_state`. The history projection fans a group event out into one
-public history row for the lead and one for each associated member.
+`linked_application_group_current_state`. Application queries use
+`application_current_state.linked_group_id` to find the group row by `group_id`; the lead is
+derived from that row rather than using the group's lead as a lookup key. The group read-model row
+contains the public group version and is deleted when a dissolution event is projected.
+
+The history projection fans group events out into application-specific history rows. Lead changes
+create a row for both old and new leads; member removal records the departing application, and
+dissolution records the departing application and the remaining former lead.
 
 ## Database controls
 

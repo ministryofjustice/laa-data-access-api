@@ -56,6 +56,41 @@ class PriorAuthorityDataPayloadTest {
     assertThat(decided.decisionSerialisedRequest()).isEqualTo("{\"decision\":\"GRANTED\"}");
   }
 
+  @Test
+  void givenSixArgumentConstructor_whenCreated_thenRetainsDecisionDetailsAndDefaultsOfficeCode() {
+    PriorAuthorityDataPayload.DecisionDetails decisionDetails = decisionDetails();
+
+    PriorAuthorityDataPayload payload =
+        new PriorAuthorityDataPayload(
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Need expert", null, null, null),
+            "{}",
+            SUBMITTED_AT,
+            decisionDetails);
+
+    assertThat(payload.decisionDetails()).isEqualTo(decisionDetails);
+    assertThat(payload.officeCode()).isNull();
+    assertThat(payload.decision()).isEqualTo("GRANTED");
+  }
+
+  @Test
+  void givenPayloadWithOfficeCode_whenApplyingDecision_thenPreservesOfficeCode() {
+    PriorAuthorityDataPayload original =
+        new PriorAuthorityDataPayload(
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Need expert", null, null, null),
+            "{}",
+            SUBMITTED_AT,
+            null,
+            "1A001B");
+
+    PriorAuthorityDataPayload decided = original.withDecision(decisionDetails());
+
+    assertThat(decided.officeCode()).isEqualTo("1A001B");
+  }
+
   private static PriorAuthorityDataPayload undecidedPayload() {
     return new PriorAuthorityDataPayload(
         UUID.randomUUID(),

@@ -42,6 +42,8 @@ import uk.gov.justice.laa.dstew.access.command.application.document.UploadDocume
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkType;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MakeApplicationLeadUseCase;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.UnlinkApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.ready.RecordAutoGrantOutcomeUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationUseCase;
@@ -50,6 +52,7 @@ import uk.gov.justice.laa.dstew.access.config.SecondaryAuthorizationFilter;
 import uk.gov.justice.laa.dstew.access.config.SecurityConfig;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkType;
+import uk.gov.justice.laa.dstew.access.model.LinkedGroupChangeRequest;
 import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedUserId;
 import uk.gov.laa.springboot.oauth2.testsupport.StubJwtDecoder;
@@ -81,12 +84,16 @@ class ApplicationCommandControllerSecurityTest {
   @MockitoBean private UpdateApplicationUseCase updateApplicationUseCase;
   @MockitoBean private UploadDocumentUseCase uploadDocumentUseCase;
   @MockitoBean private LinkApplicationUseCase linkApplicationUseCase;
+  @MockitoBean private MakeApplicationLeadUseCase makeApplicationLeadUseCase;
+  @MockitoBean private UnlinkApplicationUseCase unlinkApplicationUseCase;
   @MockitoBean private CreateApplicationCommandMapper commandMapper;
   @MockitoBean private MakeDecisionCommandMapper decisionCommandMapper;
   @MockitoBean private CreateNoteCommandMapper createNoteCommandMapper;
   @MockitoBean private AutoGrantOutcomeCommandMapper autoGrantOutcomeCommandMapper;
   @MockitoBean private UpdateApplicationCommandMapper updateApplicationCommandMapper;
   @MockitoBean private LinkApplicationCommandMapper linkApplicationCommandMapper;
+  @MockitoBean private MakeApplicationLeadCommandMapper makeApplicationLeadCommandMapper;
+  @MockitoBean private UnlinkApplicationCommandMapper unlinkApplicationCommandMapper;
   @MockitoBean private AuthenticatedUserId authenticatedUserId;
 
   @Test
@@ -143,12 +150,48 @@ class ApplicationCommandControllerSecurityTest {
   }
 
   @Test
+  void givenNoCredentials_whenMakeApplicationLead_thenReturnsUnauthorized() {
+    UUID applicationId = UUID.randomUUID();
+    HttpHeaders headers = new HttpHeaders();
+    headers.set("X-Service-Name", "CIVIL_APPLY");
+    headers.setContentType(MediaType.APPLICATION_JSON);
+
+    var response =
+        restTemplate.exchange(
+            commandUrl(applicationId, "make-lead"),
+            HttpMethod.POST,
+            new HttpEntity<>(new LinkedGroupChangeRequest("invalid-token"), headers),
+            String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    verifyNoInteractions(makeApplicationLeadCommandMapper, makeApplicationLeadUseCase);
+  }
+
+  @Test
+  void givenNoCredentials_whenUnlinkApplication_thenReturnsUnauthorized() {
+    UUID applicationId = UUID.randomUUID();
+    HttpHeaders headers = new HttpHeaders();
+    headers.set("X-Service-Name", "CIVIL_APPLY");
+    headers.setContentType(MediaType.APPLICATION_JSON);
+
+    var response =
+        restTemplate.exchange(
+            commandUrl(applicationId, "unlink"),
+            HttpMethod.POST,
+            new HttpEntity<>(new LinkedGroupChangeRequest("invalid-token"), headers),
+            String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    verifyNoInteractions(unlinkApplicationCommandMapper, unlinkApplicationUseCase);
+  }
+
+  @Test
   void givenAuthenticatedJwtUser_whenLinkApplication_thenReturnsNoContent() {
     UUID sourceApplicationId = UUID.randomUUID();
     ApplicationLinkRequest request = validLinkRequest();
     var command =
         new LinkApplicationCommand(
-            sourceApplicationId, request.getApplicationId(), LinkType.FAMILY, Instant.now());
+            sourceApplicationId, request.getApplicationId(), LinkType.FAMILY, null, Instant.now());
     when(linkApplicationCommandMapper.toCommand(sourceApplicationId, request)).thenReturn(command);
 
     HttpHeaders headers = new HttpHeaders();
@@ -194,6 +237,10 @@ class ApplicationCommandControllerSecurityTest {
 
   private String linkUrl(UUID applicationId) {
     return url() + "/" + applicationId + "/link";
+  }
+
+  private String commandUrl(UUID applicationId, String action) {
+    return url() + "/" + applicationId + "/" + action;
   }
 
   @SpringBootConfiguration

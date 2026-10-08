@@ -13,6 +13,9 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -23,10 +26,16 @@ import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationComm
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionUseCase;
+import uk.gov.justice.laa.dstew.access.command.application.document.UploadApplicationDocumentResult;
 import uk.gov.justice.laa.dstew.access.command.application.document.UploadDocumentUseCase;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.ExpectedLinkedGroup;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkType;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MakeApplicationLeadCommand;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MakeApplicationLeadUseCase;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.UnlinkApplicationCommand;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.UnlinkApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand;
@@ -38,10 +47,13 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationLinkRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkType;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
+import uk.gov.justice.laa.dstew.access.model.LinkedGroupChangeRequest;
 import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedUserId;
+import uk.gov.justice.laa.dstew.access.version.VersionToken;
 
 /** Verifies that each controller endpoint delegates to the appropriate use case. */
+@ExtendWith(MockitoExtension.class)
 class ApplicationCommandControllerTest {
 
   private CreateApplicationUseCase createApplicationUseCase;
@@ -51,12 +63,16 @@ class ApplicationCommandControllerTest {
   private UpdateApplicationUseCase updateApplicationUseCase;
   private UploadDocumentUseCase uploadDocumentUseCase;
   private LinkApplicationUseCase linkApplicationUseCase;
+  @Mock private MakeApplicationLeadUseCase makeApplicationLeadUseCase;
+  @Mock private UnlinkApplicationUseCase unlinkApplicationUseCase;
   private CreateApplicationCommandMapper commandMapper;
   private MakeDecisionCommandMapper decisionCommandMapper;
   private CreateNoteCommandMapper createNoteCommandMapper;
   private AutoGrantOutcomeCommandMapper autoGrantOutcomeCommandMapper;
   private UpdateApplicationCommandMapper updateApplicationCommandMapper;
   private LinkApplicationCommandMapper linkApplicationCommandMapper;
+  @Mock private MakeApplicationLeadCommandMapper makeApplicationLeadCommandMapper;
+  @Mock private UnlinkApplicationCommandMapper unlinkApplicationCommandMapper;
   private AuthenticatedUserId authenticatedUserId;
   private ApplicationCommandController controller;
 
@@ -87,12 +103,16 @@ class ApplicationCommandControllerTest {
             updateApplicationUseCase,
             uploadDocumentUseCase,
             linkApplicationUseCase,
+            makeApplicationLeadUseCase,
+            unlinkApplicationUseCase,
             commandMapper,
             decisionCommandMapper,
             createNoteCommandMapper,
             autoGrantOutcomeCommandMapper,
             updateApplicationCommandMapper,
             linkApplicationCommandMapper,
+            makeApplicationLeadCommandMapper,
+            unlinkApplicationCommandMapper,
             authenticatedUserId);
   }
 
@@ -135,12 +155,45 @@ class ApplicationCommandControllerTest {
     ApplicationLinkRequest request =
         new ApplicationLinkRequest(UUID.randomUUID(), ApplicationLinkType.FAMILY);
     var command =
-        new LinkApplicationCommand(id, request.getApplicationId(), LinkType.FAMILY, Instant.now());
+        new LinkApplicationCommand(
+            id, request.getApplicationId(), LinkType.FAMILY, null, Instant.now());
     when(linkApplicationCommandMapper.toCommand(id, request)).thenReturn(command);
 
     ResponseEntity<Void> response = controller.linkApplication(null, id, request);
 
     verify(linkApplicationUseCase).execute(command);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+  }
+
+  @Test
+  void givenApplication_whenMakeApplicationLead_thenDelegatesAndReturnsNoContent() {
+    UUID id = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    LinkedGroupChangeRequest request =
+        new LinkedGroupChangeRequest(VersionToken.linkedGroup(groupId, 3L).encode());
+    MakeApplicationLeadCommand command =
+        new MakeApplicationLeadCommand(id, new ExpectedLinkedGroup(groupId, 3L), Instant.now());
+    when(makeApplicationLeadCommandMapper.toCommand(id, request)).thenReturn(command);
+
+    ResponseEntity<Void> response = controller.makeApplicationLead(null, id, request);
+
+    verify(makeApplicationLeadUseCase).execute(command);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+  }
+
+  @Test
+  void givenApplication_whenUnlinkApplication_thenDelegatesAndReturnsNoContent() {
+    UUID id = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    LinkedGroupChangeRequest request =
+        new LinkedGroupChangeRequest(VersionToken.linkedGroup(groupId, 3L).encode());
+    UnlinkApplicationCommand command =
+        new UnlinkApplicationCommand(id, new ExpectedLinkedGroup(groupId, 3L), Instant.now());
+    when(unlinkApplicationCommandMapper.toCommand(id, request)).thenReturn(command);
+
+    ResponseEntity<Void> response = controller.unlinkApplication(null, id, request);
+
+    verify(unlinkApplicationUseCase).execute(command);
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
   }
 
@@ -206,6 +259,48 @@ class ApplicationCommandControllerTest {
     verify(uploadDocumentUseCase).execute(id, file);
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
     assertThat(response.getBody()).isEqualTo(expected);
+  }
+
+  @Test
+  void givenDocumentType_whenUploadApplicationDocument_thenDelegatesToUseCaseAndReturns201() {
+    UUID id = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    Instant uploadedAt = Instant.parse("2026-09-28T15:10:27.430Z");
+    MockMultipartFile file =
+        new MockMultipartFile("file", "test.pdf", "application/pdf", "content".getBytes());
+    UploadApplicationDocumentResult expected =
+        new UploadApplicationDocumentResult(
+            documentId,
+            "test.pdf",
+            "PDF",
+            "application/pdf",
+            7L,
+            uploadedAt,
+            "CIVIL_APPLY",
+            "checksum");
+    when(uploadDocumentUseCase.execute(id, file, "GATEWAY_EVIDENCE", "CIVIL_APPLY"))
+        .thenReturn(expected);
+
+    ResponseEntity<uk.gov.justice.laa.dstew.access.model.UploadApplicationDocumentResponse>
+        response =
+            controller.uploadApplicationDocument(
+                uk.gov.justice.laa.dstew.access.model.ServiceName.CIVIL_APPLY,
+                id,
+                file,
+                uk.gov.justice.laa.dstew.access.model.ApplicationDocumentType.GATEWAY_EVIDENCE);
+
+    verify(uploadDocumentUseCase).execute(id, file, "GATEWAY_EVIDENCE", "CIVIL_APPLY");
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    assertThat(response.getBody()).isNotNull();
+    assertThat(response.getBody().getDocumentId()).isEqualTo(documentId);
+    assertThat(response.getBody().getFileName()).isEqualTo("test.pdf");
+    assertThat(response.getBody().getFileType()).isEqualTo("PDF");
+    assertThat(response.getBody().getContentType()).isEqualTo("application/pdf");
+    assertThat(response.getBody().getSize()).isEqualTo(7L);
+    assertThat(response.getBody().getUploadedAt())
+        .isEqualTo(uploadedAt.atOffset(java.time.ZoneOffset.UTC));
+    assertThat(response.getBody().getSourceService()).isEqualTo("CIVIL_APPLY");
+    assertThat(response.getBody().getChecksum()).isEqualTo("checksum");
   }
 
   private CreateApplicationCommand stubCreateCommand() {

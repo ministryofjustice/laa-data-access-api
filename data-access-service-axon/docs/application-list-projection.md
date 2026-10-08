@@ -24,8 +24,9 @@ A thin, purpose-built projection table containing only the columns needed for fi
 - `lead_application_id`, `submitted_at`, `is_auto_granted`
 
 **Bookkeeping columns:**
-- `stream_version` — the application domain version at the time the row was last written; used as an optimistic concurrency guard
-- `projection_position` — tracks the event position at which the row was last written
+- `stream_version` — application domain version copied from applicable application events; the
+  current projection handlers do not use it as a conditional write guard
+- `projection_position` — a hash of the event identifier, not an ordered event position
 
 **Indexes created:**
 
@@ -43,12 +44,20 @@ An Axon `@EventHandler` component that maintains the list index in response to d
 | `ApplicationCreatedEvent` | Inserts a standalone index row; fetches client PII from `application_data` at this point |
 | `LinkedApplicationGroupCreatedEvent` | Updates `lead_application_id` for non-lead group members |
 | `MemberAddedToGroupEvent` | Updates `lead_application_id` for the added group member |
-| `ApplicationDecisionMadeEvent` | Updates `status` and `is_auto_granted` |
-| `ApplicationAssignedToCaseworkerEvent` | Updates `caseworker_id` |
-| `ApplicationUnassignedFromCaseworkerEvent` | Clears `caseworker_id` |
-| `NoteCreatedEvent` | Updates `projection_position` only (no filter fields change) |
+| `LinkedApplicationGroupLeadChangedEvent` | Recomputes the former lead and all its associated rows against the new lead |
+| `MemberRemovedFromGroupEvent` | Clears the removed member's `lead_application_id` |
+| `LinkedApplicationGroupDissolvedEvent` | Clears `lead_application_id` for all former members |
+| `ApplicationDecisionMadeEvent` and `ApplicationReadyForManualAssessmentEvent` | Update status/outcome fields |
+| `ApplicationUpdatedEvent` | Refreshes application filter and sort fields from its immutable data version |
+| `WorkItemAssigned` / `WorkItemUnassigned` | Set or clear `caseworker_id` for application work items |
+| `NoteCreatedEvent` | Updates modification/position bookkeeping only |
 
 Supports `@ResetHandler` — the table is wiped and fully rebuilt from the event log on replay.
+
+`lead_application_id` is maintained for index consumers by these events, but it is not the
+application query's linked-group lookup key. Application detail and list summaries identify a
+group through `application_current_state.linked_group_id`, fetch the group read model by its ID,
+and derive `isLead` from the group's current lead.
 
 ### `ApplicationListIndexSpecification`
 
@@ -83,6 +92,8 @@ The `ApplicationProjection.handle(FindAllApplicationsQuery)` method was refactor
 
 ## Considerations
 
-- **`projectionPosition` semantics:** The field is populated using `message.getIdentifier().hashCode()` — a hash of a string UUID into an `int`. This will not be monotonically increasing and cannot reliably measure projection lag against `domain_event_entry.global_index` as the Javadoc describes. The actual Axon token position would be needed for that purpose.
+- **`projectionPosition` semantics:** The field is populated using `message.identifier().hashCode()`. This will not be monotonically increasing and cannot reliably measure projection lag against `domain_event_entry.global_index`. The actual Axon token position would be needed for that purpose.
 - **Dual projection maintenance:** `ApplicationListIndexProjection` handles the same events as `ApplicationProjection`. New domain events will need to be assessed and wired into both projections.
+- **Independent processor lag:** The list index, application current-state, group, and history projections advance independently. List filtering/page selection reads `application_list_index`, while linked application summaries and `isLead` are derived from application/group query rows. A query may therefore observe these models at different points in their event processing.
+- **List-index sequencing and independent lag:** `ApplicationListIndexProjection` has a bare class-level `@SequencingPolicy`, so its pooled processor serializes its own application-row handlers across aggregate IDs. Real-Axon/PostgreSQL race tests cover creation/group-event and G1-to-G2 membership ordering within this projection. This does not synchronize it with `ApplicationProjection`, the group projection, or history; these processors still advance and lag independently. `stream_version` is not checked as a write guard, and the hash-based `projection_position` cannot establish cross-processor event order or measure lag.
 - **`caseworker_id` filter not yet exposed:** The column and its index exist in V15, but `caseworker_id` is not yet a filter parameter in `FindAllApplicationsQuery` or `ApplicationListIndexSpecification`. It is in place for a future filter.

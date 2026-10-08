@@ -1,8 +1,10 @@
 package uk.gov.justice.laa.dstew.access.query.application.listindex;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.UUID;
 import org.axonframework.messaging.core.annotation.Namespace;
+import org.axonframework.messaging.core.annotation.SequencingPolicy;
 import org.axonframework.messaging.eventhandling.EventMessage;
 import org.axonframework.messaging.eventhandling.annotation.EventHandler;
 import org.axonframework.messaging.eventhandling.replay.annotation.ResetHandler;
@@ -10,12 +12,16 @@ import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
 import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupDissolvedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupLeadChangedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberRemovedFromGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
@@ -38,6 +44,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
  * candidate row.
  */
 @Component
+@SequencingPolicy
 @Namespace("application-list-index-projection")
 public class ApplicationListIndexProjection {
 
@@ -79,6 +86,7 @@ public class ApplicationListIndexProjection {
             .clientFirstName(client != null ? client.getFirstName() : null)
             .clientLastName(client != null ? client.getLastName() : null)
             .clientDateOfBirth(client != null ? client.getDateOfBirth() : null)
+            .officeCode(officeCode(data))
             .streamVersion(0L)
             .projectionPosition(message.identifier().hashCode())
             .build());
@@ -105,6 +113,39 @@ public class ApplicationListIndexProjection {
   public void on(MemberAddedToGroupEvent event, EventMessage message) {
     updateLeadApplicationId(
         event.memberId(), event.leadApplicationId(), event.occurredAt(), message);
+  }
+
+  /** Updates every list-index row affected by a linked-group lead change. */
+  @EventHandler
+  public void on(LinkedApplicationGroupLeadChangedEvent event, EventMessage message) {
+    var members =
+        new ArrayList<>(
+            listIndexRepository.findAllByLeadApplicationId(event.previousLeadApplicationId()));
+    listIndexRepository.findById(event.previousLeadApplicationId()).ifPresent(members::add);
+    members.forEach(
+        row -> {
+          row.setLeadApplicationId(
+              row.getApplicationId().equals(event.newLeadApplicationId())
+                  ? null
+                  : event.newLeadApplicationId());
+          row.setModifiedAt(event.occurredAt());
+          row.setProjectionPosition(message.identifier().hashCode());
+          listIndexRepository.save(row);
+        });
+  }
+
+  /** Clears the list-index lead reference when a member leaves a group. */
+  @EventHandler
+  public void on(MemberRemovedFromGroupEvent event, EventMessage message) {
+    updateLeadApplicationId(event.memberId(), null, event.occurredAt(), message);
+  }
+
+  /** Clears list-index lead references when a group is dissolved. */
+  @EventHandler
+  public void on(LinkedApplicationGroupDissolvedEvent event, EventMessage message) {
+    event
+        .memberApplicationIds()
+        .forEach(memberId -> updateLeadApplicationId(memberId, null, event.occurredAt(), message));
   }
 
   /**
@@ -169,6 +210,7 @@ public class ApplicationListIndexProjection {
               row.setClientFirstName(client != null ? client.getFirstName() : null);
               row.setClientLastName(client != null ? client.getLastName() : null);
               row.setClientDateOfBirth(client != null ? client.getDateOfBirth() : null);
+              row.setOfficeCode(officeCode(data));
               row.setStreamVersion(event.applicationVersion());
               row.setModifiedAt(event.occurredAt());
               row.setProjectionPosition(message.identifier().hashCode());
@@ -234,6 +276,19 @@ public class ApplicationListIndexProjection {
             });
   }
 
+  /** Updates application list ordering after an upload without loading filenames. */
+  @EventHandler
+  public void on(ApplicationDocumentUploadedEvent event, EventMessage message) {
+    listIndexRepository
+        .findById(event.applicationId())
+        .ifPresent(
+            row -> {
+              row.setModifiedAt(event.uploadedAt());
+              row.setProjectionPosition(message.identifier().hashCode());
+              listIndexRepository.save(row);
+            });
+  }
+
   private void updateLeadApplicationId(
       UUID applicationId, UUID leadApplicationId, Instant occurredAt, EventMessage message) {
     listIndexRepository
@@ -251,5 +306,9 @@ public class ApplicationListIndexProjection {
   @ResetHandler
   public void reset() {
     listIndexRepository.deleteAllInBatch();
+  }
+
+  private static String officeCode(ApplicationDataPayload data) {
+    return data == null || data.provider() == null ? null : data.provider().getOfficeCode();
   }
 }

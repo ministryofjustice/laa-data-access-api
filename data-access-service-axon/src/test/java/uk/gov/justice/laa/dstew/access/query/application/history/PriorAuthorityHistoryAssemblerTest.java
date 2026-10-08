@@ -18,6 +18,7 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataId;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataRepository;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 
@@ -30,7 +31,9 @@ class PriorAuthorityHistoryAssemblerTest {
 
   @BeforeEach
   void setUp() {
-    assembler = new PriorAuthorityHistoryAssembler(priorAuthorityDataRepository);
+    assembler =
+        new PriorAuthorityHistoryAssembler(
+            new PriorAuthorityDataStore(priorAuthorityDataRepository));
   }
 
   // --- grouping and ordering ---
@@ -411,7 +414,8 @@ class PriorAuthorityHistoryAssemblerTest {
             null,
             Instant.parse("2026-08-01T09:30:00Z"),
             new PriorAuthorityDataPayload.DecisionDetails(
-                decision, decisionJustification, null, null, null, null, null, null));
+                decision, decisionJustification, null, null, null, null, null, null),
+            null);
     return PriorAuthorityData.builder()
         .id(new PriorAuthorityDataId(priorAuthorityId, 3L))
         .applicationId(applicationId)

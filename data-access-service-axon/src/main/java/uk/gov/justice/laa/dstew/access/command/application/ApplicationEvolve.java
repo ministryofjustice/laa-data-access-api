@@ -5,6 +5,7 @@ import lombok.NoArgsConstructor;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
+import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftStartedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
@@ -24,6 +25,13 @@ public final class ApplicationEvolve {
     state.autoGranted = AutoGrantedState.PENDING;
     state.applicationDataVersion = event.applicationDataVersion();
     state.applicationVersion = 0L;
+  }
+
+  /** Applies an {@link ApplicationDraftStartedEvent} to the given state. */
+  public static void apply(ApplicationState state, ApplicationDraftStartedEvent event) {
+    state.applicationId = event.applicationId();
+    state.schemaVersion = event.schemaVersion();
+    state.requestFingerprint = event.requestFingerprint();
   }
 
   /** Applies an {@link ApplicationUpdatedEvent} to the given state. */
@@ -71,5 +79,22 @@ public final class ApplicationEvolve {
   public static void apply(ApplicationState state, NoteCreatedEvent event) {
     state.applicationDataVersion = event.applicationDataVersion();
     // applicationVersion intentionally not updated — notes are decoupled from optimistic locking
+  }
+
+  /** Applies an {@link ApplicationDocumentUploadedEvent} to the given state. */
+  public static void apply(ApplicationState state, ApplicationDocumentUploadedEvent event) {
+    state.uploadedDocuments.add(
+        new UploadDocument(
+            event.documentId(),
+            event.documentType(),
+            event.uploadedAt(),
+            event.size(),
+            event.contentType(),
+            event.checksum(),
+            event.sourceService(),
+            false));
+    if (event.applicationDataVersion() != null) {
+      state.applicationDataVersion = event.applicationDataVersion();
+    }
   }
 }

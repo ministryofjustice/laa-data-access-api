@@ -21,6 +21,7 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationProvider;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Opponent;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
+import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationMeritsDecision;
 import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 
@@ -52,6 +53,9 @@ public class ApplicationReadModel {
 
   @Transient private ApplicationProvider provider;
 
+  @Column(name = "office_code")
+  private String officeCode;
+
   @Transient private List<Opponent> opponents;
 
   @Column(name = "schema_version")
@@ -59,6 +63,9 @@ public class ApplicationReadModel {
 
   @Column(name = "lead_application_id")
   private UUID leadApplicationId;
+
+  @Column(name = "linked_group_id")
+  private UUID linkedGroupId;
 
   @Column(name = "caseworker_id")
   private UUID caseworkerId;
@@ -81,6 +88,13 @@ public class ApplicationReadModel {
 
   @Transient private Map<String, Object> certificate;
 
+  @Builder.Default
+  @Column(name = "uploaded_documents", nullable = false)
+  @JdbcTypeCode(SqlTypes.JSON)
+  private List<UploadDocument> uploadedDocuments = List.of();
+
+  @Transient private Map<UUID, String> documentFilenames;
+
   @Column(name = "potential_duplicates")
   @JdbcTypeCode(SqlTypes.JSON)
   private List<PotentialDuplicate> potentialDuplicates;
@@ -91,8 +105,8 @@ public class ApplicationReadModel {
   @Column(name = "modified_at")
   private Instant modifiedAt;
 
-  /** Derives office code from provider for backward compatibility. */
+  /** Returns the persisted access key, falling back to hydrated provider content for responses. */
   public String getOfficeCode() {
-    return provider != null ? provider.getOfficeCode() : null;
+    return officeCode != null ? officeCode : provider == null ? null : provider.getOfficeCode();
   }
 }

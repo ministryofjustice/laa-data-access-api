@@ -113,7 +113,10 @@ public class ApplicationQueryController implements ApplicationQueryApi {
     ApplicationDetailResult detail = applicationQueryUseCase.getApplicationDetail(id);
     return ResponseEntity.ok(
         responseMapper.toResponse(
-            detail.application(), detail.linkedGroup(), detail.priorAuthorities()));
+            detail.application(),
+            detail.linkedGroup(),
+            detail.priorAuthorities(),
+            detail.linkedLaaReferences()));
   }
 
   /** Returns the certificate stored in the Application's current immutable data version. */

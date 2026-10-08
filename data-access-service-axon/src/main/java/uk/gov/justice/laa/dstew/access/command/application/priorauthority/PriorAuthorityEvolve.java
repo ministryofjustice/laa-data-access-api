@@ -14,6 +14,7 @@ public final class PriorAuthorityEvolve {
   public static void apply(PriorAuthorityState state, PriorAuthorityDraftStartedEvent event) {
     state.priorAuthorityId = event.priorAuthorityId();
     state.applicationId = event.applicationId();
+    state.officeCode = event.officeCode();
     state.priorAuthorityType = event.priorAuthorityType();
     state.schemaVersion = event.schemaVersion();
     state.submitted = false;

@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.content.priorauthority;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import lombok.Builder;
@@ -13,11 +14,12 @@ public record PriorAuthorityResult(
     UUID applicationId,
     String justification,
     String status,
+    Instant submittedAt,
     PriorAuthorityType priorAuthorityType,
     ExpertDetails expertDetails,
     CounselDetails counselDetails,
     DisbursementDetails disbursementDetails,
-    List<PriorAuthorityDocument> uploadedDocuments,
+    List<EvidenceDocument> uploadedDocuments,
     PriorAuthorityDataPayload.DecisionDetails decisionDetails) {
 
   /** Builds the use-case result from the current-state projection, versioned content and status. */
@@ -27,6 +29,7 @@ public record PriorAuthorityResult(
         priorAuthority.getPriorAuthorityId(),
         priorAuthority.getApplicationId(),
         status,
+        payload.submittedAt(),
         payload.content(),
         payload.decisionDetails());
   }
@@ -40,6 +43,7 @@ public record PriorAuthorityResult(
         payload.priorAuthorityId(),
         payload.applicationId(),
         PriorAuthorityStatus.DRAFT.name(),
+        null,
         payload.content(),
         payload.decisionDetails());
   }
@@ -48,6 +52,7 @@ public record PriorAuthorityResult(
       UUID priorAuthorityId,
       UUID applicationId,
       String status,
+      Instant submittedAt,
       PriorAuthorityContent content,
       PriorAuthorityDataPayload.DecisionDetails decisionDetails) {
     PriorAuthorityType priorAuthorityType = content.priorAuthorityType();
@@ -56,6 +61,7 @@ public record PriorAuthorityResult(
         applicationId,
         content.justification(),
         status,
+        submittedAt,
         priorAuthorityType,
         priorAuthorityType == PriorAuthorityType.EXPERT ? toExpertDetails(content) : null,
         priorAuthorityType == PriorAuthorityType.COUNSEL ? toCounselDetails(content) : null,

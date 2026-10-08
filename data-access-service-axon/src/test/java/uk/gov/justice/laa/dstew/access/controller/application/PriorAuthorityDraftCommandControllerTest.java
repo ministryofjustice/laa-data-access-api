@@ -116,8 +116,9 @@ class PriorAuthorityDraftCommandControllerTest {
   @Test
   void givenProjectionConfirmed_whenSubmitPriorAuthorityDraft_thenReturnsCreatedResponse() {
     UUID priorAuthorityId = UUID.randomUUID();
+    Instant submittedAt = Instant.parse("2026-09-01T10:00:00Z");
     SubmitPriorAuthorityDraftCommand command =
-        new SubmitPriorAuthorityDraftCommand(priorAuthorityId, Instant.now());
+        new SubmitPriorAuthorityDraftCommand(priorAuthorityId, submittedAt);
     when(submitCommandMapper.toSubmitCommand(priorAuthorityId)).thenReturn(command);
     when(submitUseCase.submit(command)).thenReturn(true);
 
@@ -127,6 +128,7 @@ class PriorAuthorityDraftCommandControllerTest {
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(response.getBody()).isNotNull();
     assertThat(response.getBody().getPriorAuthorityId()).isEqualTo(priorAuthorityId);
+    assertThat(response.getBody().getSubmittedAt()).isEqualTo(submittedAt.atOffset(ZoneOffset.UTC));
     assertThat(response.getBody().getSubmittedAt().getOffset()).isEqualTo(ZoneOffset.UTC);
     assertThat(response.getHeaders().getLocation()).isNotNull();
     assertThat(response.getHeaders().getLocation().getPath())

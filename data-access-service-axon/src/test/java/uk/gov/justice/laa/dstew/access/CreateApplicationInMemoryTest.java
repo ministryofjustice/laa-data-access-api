@@ -136,6 +136,24 @@ class CreateApplicationInMemoryTest {
   }
 
   @Test
+  void givenLinkApplicationOperation_whenOpenApiRequested_thenRequestBodyExamplesArePresent()
+      throws Exception {
+    ResponseEntity<String> response = restTemplate.getForEntity("/v3/api-docs", String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    JsonNode openApi = new ObjectMapper().readTree(response.getBody());
+    JsonNode examples =
+        openApi.at(
+            "/paths/~1api~1v0~1applications~1{id}~1link/post/requestBody/content/"
+                + "application~1json/examples");
+
+    assertThat(examples.has("firstTimeLink")).isTrue();
+    assertThat(examples.at("/firstTimeLink/value/linkedGroupVersion").isMissingNode()).isTrue();
+    assertThat(examples.at("/targetAlreadyLinked/value/linkedGroupVersion").asText())
+        .isEqualTo("djE6bGlua2VkLWdyb3VwOjdjOWU2Njc5LTc0MjUtNDBkZS05NDRiLWUwN2ZjMWY5MGFlNzoy");
+  }
+
+  @Test
   void givenUnknownApplication_whenGetApplication_thenReturnsNotFound() {
     UUID applicationId = UUID.randomUUID();
 
@@ -315,9 +333,7 @@ class CreateApplicationInMemoryTest {
         .satisfies(
             history -> {
               assertThat(history.getEventType()).isEqualTo("APPLICATION_CREATED");
-              assertThat(history.getRequestPayload())
-                  .contains("\"applicationDataVersion\"", "\"requestFingerprint\"")
-                  .doesNotContain("LAA-123", "Ada", "Lovelace", "Care order");
+              assertThat(history.getDataVersion()).isZero();
               assertThat(history.getServiceName()).isEqualTo("CIVIL_APPLY");
             });
 

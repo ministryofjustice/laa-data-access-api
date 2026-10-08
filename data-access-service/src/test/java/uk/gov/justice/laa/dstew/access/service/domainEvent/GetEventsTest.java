@@ -85,7 +85,7 @@ public class GetEventsTest extends BaseServiceTest {
     setSecurityContext(TestConstants.Roles.CASEWORKER);
     DomainEventEntity eventWithNullRequest =
         DataGenerator.createDefault(DomainEventGenerator.class).toBuilder()
-            .type(DomainEventType.APPLICATION_NOTES)
+            .type(DomainEventType.APPLICATION_NOTE_CREATED)
             .data(null)
             .build();
 
@@ -94,7 +94,7 @@ public class GetEventsTest extends BaseServiceTest {
 
     // when
     List<ApplicationDomainEventResponse> actualDomainEvents =
-        serviceUnderTest.getEvents(UUID.randomUUID(), List.of(DomainEventType.APPLICATION_NOTES));
+        serviceUnderTest.getEvents(UUID.randomUUID(), List.of(DomainEventType.APPLICATION_NOTE_CREATED));
 
     // then
     assertThat(actualDomainEvents.size()).isEqualTo(1);
@@ -111,7 +111,7 @@ public class GetEventsTest extends BaseServiceTest {
 
     DomainEventEntity eventWithNotesRequest =
         DataGenerator.createDefault(DomainEventGenerator.class).toBuilder()
-            .type(DomainEventType.APPLICATION_NOTES)
+            .type(DomainEventType.APPLICATION_NOTE_CREATED)
             .data(notesPayload)
             .build();
 
@@ -120,7 +120,7 @@ public class GetEventsTest extends BaseServiceTest {
 
     // when
     List<ApplicationDomainEventResponse> actualDomainEvents =
-        serviceUnderTest.getEvents(UUID.randomUUID(), List.of(DomainEventType.APPLICATION_NOTES));
+        serviceUnderTest.getEvents(UUID.randomUUID(), List.of(DomainEventType.APPLICATION_NOTE_CREATED));
 
     // then
     assertThat(actualDomainEvents.size()).isEqualTo(1);
@@ -133,7 +133,7 @@ public class GetEventsTest extends BaseServiceTest {
     setSecurityContext(TestConstants.Roles.CASEWORKER);
     DomainEventEntity eventWithBlankRequest =
         DataGenerator.createDefault(DomainEventGenerator.class).toBuilder()
-            .type(DomainEventType.APPLICATION_NOTES)
+            .type(DomainEventType.APPLICATION_NOTE_CREATED)
             .data("   ")
             .build();
 
@@ -142,7 +142,7 @@ public class GetEventsTest extends BaseServiceTest {
 
     // when
     List<ApplicationDomainEventResponse> actualDomainEvents =
-        serviceUnderTest.getEvents(UUID.randomUUID(), List.of(DomainEventType.APPLICATION_NOTES));
+        serviceUnderTest.getEvents(UUID.randomUUID(), List.of(DomainEventType.APPLICATION_NOTE_CREATED));
 
     // then
     assertThat(actualDomainEvents.size()).isEqualTo(1);
@@ -155,7 +155,7 @@ public class GetEventsTest extends BaseServiceTest {
     setSecurityContext(TestConstants.Roles.CASEWORKER);
     DomainEventEntity eventWithInvalidJson =
         DataGenerator.createDefault(DomainEventGenerator.class).toBuilder()
-            .type(DomainEventType.APPLICATION_NOTES)
+            .type(DomainEventType.APPLICATION_NOTE_CREATED)
             .data("invalid json data")
             .build();
 
@@ -164,7 +164,7 @@ public class GetEventsTest extends BaseServiceTest {
 
     // when
     List<ApplicationDomainEventResponse> actualDomainEvents =
-        serviceUnderTest.getEvents(UUID.randomUUID(), List.of(DomainEventType.APPLICATION_NOTES));
+        serviceUnderTest.getEvents(UUID.randomUUID(), List.of(DomainEventType.APPLICATION_NOTE_CREATED));
 
     // then
     assertThat(actualDomainEvents.size()).isEqualTo(1);

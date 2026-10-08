@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.testutils;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -88,6 +89,21 @@ public final class ApplicationCreateRequestFixture {
         .build();
   }
 
+  /** Creates a valid request with an explicit provider office code and LAA reference. */
+  public static ApplicationCreateRequest validCreateApplicationRequest(
+      UUID applicationId, UUID applyProceedingId, String officeCode, String laaReference) {
+    Map<String, Object> content =
+        new HashMap<>(validApplicationContent(applicationId, applyProceedingId));
+    content.put(
+        "provider", Map.of("officeCode", officeCode, "contactEmail", "provider@example.com"));
+    return ApplicationCreateRequest.builder()
+        .id(applicationId)
+        .status(ApplicationStatus.APPLICATION_SUBMITTED)
+        .applicationContent(content)
+        .laaReference(laaReference)
+        .build();
+  }
+
   /** Creates a valid request using the supplied Apply identifiers. */
   public static ApplicationCreateRequest validCreateApplicationRequestWithRandomData(
       UUID applicationId, UUID applyProceedingId) {
@@ -130,7 +146,8 @@ public final class ApplicationCreateRequestFixture {
         .build();
   }
 
-  private static Map<String, Object> validAddressContent() {
+  /** Creates valid address content containing only the required and common fields. */
+  public static Map<String, Object> validAddressContent() {
     return Map.ofEntries(
         Map.entry("location", "home"),
         Map.entry("addressLineOne", "1 Analytical Engine Way"),

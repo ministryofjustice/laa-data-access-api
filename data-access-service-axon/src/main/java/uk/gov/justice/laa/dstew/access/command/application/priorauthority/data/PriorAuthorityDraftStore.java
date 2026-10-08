@@ -75,6 +75,11 @@ public class PriorAuthorityDraftStore {
     return repository.findById(priorAuthorityId).map(PriorAuthorityDraft::getPayload);
   }
 
+  /** Returns whether a draft row currently exists for the given prior-authority ID. */
+  public boolean exists(UUID priorAuthorityId) {
+    return repository.existsById(priorAuthorityId);
+  }
+
   /**
    * Deletes the draft row for a prior-authority submission, typically once it has been submitted.
    *

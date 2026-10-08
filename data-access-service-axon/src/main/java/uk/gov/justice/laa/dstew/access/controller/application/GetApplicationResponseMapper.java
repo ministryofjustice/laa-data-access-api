@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.controller.application;
 
 import java.time.ZoneOffset;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -10,7 +11,9 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationProvider;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Opponent;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ScopeLimitation;
+import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationMeritsDecision;
+import uk.gov.justice.laa.dstew.access.model.ApplicationDocumentResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
@@ -34,14 +37,15 @@ public class GetApplicationResponseMapper {
 
   /** Builds a response without reparsing content from JSON. */
   public ApplicationResponse toResponse(ApplicationReadModel application) {
-    return toResponse(application, null, List.of());
+    return toResponse(application, null, List.of(), Map.of());
   }
 
   /** Builds a response from the application and its related projection rows. */
   public ApplicationResponse toResponse(
       ApplicationReadModel application,
       LinkedApplicationGroupReadModel linkedGroup,
-      List<PriorAuthorityReadModel> priorAuthorities) {
+      List<PriorAuthorityReadModel> priorAuthorities,
+      Map<UUID, String> linkedLaaReferences) {
     ApplicationResponse response = new ApplicationResponse();
     response.setApplicationId(application.getApplicationId());
     response.setStatus(ApplicationStatus.valueOf(application.getStatus()));
@@ -54,7 +58,8 @@ public class GetApplicationResponseMapper {
     response.setIsLead(
         linkedGroup != null
             && application.getApplicationId().equals(linkedGroup.getLeadApplicationId()));
-    response.setLinkedApplications(toLinkedSummaries(application, linkedGroup));
+    response.setLinkedApplications(
+        toLinkedSummaries(application, linkedGroup, linkedLaaReferences));
     response.setAssignedTo(application.getCaseworkerId());
     response.setUsedDelegatedFunctions(application.getUsedDelegatedFunctions());
     response.setAutoGranted(AutoGranted.valueOf(application.getAutoGranted().name()));
@@ -63,23 +68,40 @@ public class GetApplicationResponseMapper {
             ? null
             : DecisionStatus.valueOf(application.getDecisionStatus()));
     response.setVersion(application.getApplicationVersion());
+    response.setLinkedGroupVersion(LinkedGroupVersionTokens.encode(linkedGroup));
     response.setProvider(toProvider(application));
     response.setOpponents(toOpponents(application.getOpponents()));
     response.setProceedings(
         toProceedings(application.getProceedings(), application.getMeritsDecisions()));
     response.setPotentialDuplicates(application.getPotentialDuplicates());
     response.setPriorAuthorities(PriorAuthoritySummaryMapper.toSummaries(priorAuthorities));
+    response.setUploadedDocuments(toUploadedDocuments(application));
     return response;
   }
 
-  /** Builds a response using prior authorities indexed by application ID. */
-  public ApplicationResponse toResponse(
-      ApplicationReadModel application,
-      Map<UUID, List<PriorAuthorityReadModel>> priorAuthoritiesByApplicationId) {
-    return toResponse(
-        application,
-        null,
-        priorAuthoritiesByApplicationId.getOrDefault(application.getApplicationId(), List.of()));
+  private List<ApplicationDocumentResponse> toUploadedDocuments(ApplicationReadModel application) {
+    if (application.getUploadedDocuments() == null) {
+      return List.of();
+    }
+    Map<UUID, String> filenames =
+        application.getDocumentFilenames() == null ? Map.of() : application.getDocumentFilenames();
+    return application.getUploadedDocuments().stream()
+        .filter(document -> !document.deleted())
+        .sorted(
+            Comparator.comparing(UploadDocument::uploadedAt)
+                .thenComparing(UploadDocument::documentId))
+        .map(
+            document ->
+                new ApplicationDocumentResponse()
+                    .documentId(document.documentId())
+                    .documentType(document.documentType())
+                    .fileName(filenames.get(document.documentId()))
+                    .uploadedAt(document.uploadedAt().atOffset(ZoneOffset.UTC))
+                    .size(document.size())
+                    .contentType(document.contentType())
+                    .checksum(document.checksum())
+                    .sourceService(document.sourceService()))
+        .toList();
   }
 
   private ProviderResponse toProvider(ApplicationReadModel application) {
@@ -193,7 +215,9 @@ public class GetApplicationResponseMapper {
   }
 
   private List<LinkedApplicationSummaryResponse> toLinkedSummaries(
-      ApplicationReadModel application, LinkedApplicationGroupReadModel linkedGroup) {
+      ApplicationReadModel application,
+      LinkedApplicationGroupReadModel linkedGroup,
+      Map<UUID, String> linkedLaaReferences) {
     if (linkedGroup == null) {
       return Collections.emptyList();
     }
@@ -203,6 +227,7 @@ public class GetApplicationResponseMapper {
             memberId -> {
               LinkedApplicationSummaryResponse linked = new LinkedApplicationSummaryResponse();
               linked.setApplicationId(memberId);
+              linked.setLaaReference(linkedLaaReferences.get(memberId));
               linked.setIsLead(memberId.equals(linkedGroup.getLeadApplicationId()));
               return linked;
             })

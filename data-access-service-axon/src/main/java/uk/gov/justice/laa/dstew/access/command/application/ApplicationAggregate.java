@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.command.application;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import org.axonframework.eventsourcing.annotation.EventSourcingHandler;
@@ -12,11 +13,16 @@ import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftPayload;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftStore;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationMeritsDecision;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeDecisionProceeding;
 import uk.gov.justice.laa.dstew.access.command.application.decision.RecordAutoGrantedOutcomeCommand;
+import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftStartedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.draft.CreateApplicationDraftCommand;
+import uk.gov.justice.laa.dstew.access.command.application.draft.SubmitApplicationDraftCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.ValidateApplicationGrantedCommand;
@@ -33,7 +39,11 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.assign.DirectWorkItemAssignmentCommand;
 import uk.gov.justice.laa.dstew.access.command.worklist.unassign.DirectWorkItemUnassignmentCommand;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConflictException;
+import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
+import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
+import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /** Event-sourced consistency boundary for an Application and its owned child state. */
 @EventSourced(tagKey = "ApplicationAggregate", idType = UUID.class)
@@ -59,7 +69,10 @@ public class ApplicationAggregate {
       CreateApplicationCommand command,
       ApplicationCreationDetailsFactory factory,
       ApplicationDataStore applicationDataStore,
+      JsonSchemaValidator jsonSchemaValidator,
       EventAppender eventAppender) {
+    jsonSchemaValidator.validate(
+        command.applicationContent(), command.schemaName(), command.schemaVersion());
     if (applicationId == null) {
       ApplicationCreationDetails details = factory.prepare(command);
       long applicationDataVersion = 0L;
@@ -79,6 +92,100 @@ public class ApplicationAggregate {
           state, command.applicationId(), command.schemaVersion(), fingerprint, null, 0L);
     }
     return applicationId;
+  }
+
+  /**
+   * Creates an Application draft or handles an idempotent retry.
+   *
+   * <p>On the first command for this aggregate ID, validates the content and emits an {@link
+   * ApplicationDraftStartedEvent}. An identical retry returns the existing ID without emitting an
+   * event. A retry with a different payload or schema version throws {@link
+   * ApplicationCreationConflictException}.
+   *
+   * @throws ApplicationCreationConflictException if a retry has a different payload or schema
+   *     version
+   * @throws ValidationException if the content fails semantic validation
+   */
+  @CommandHandler
+  UUID handle(
+      CreateApplicationDraftCommand command,
+      ApplicationCreationDetailsFactory factory,
+      ApplicationDraftStore draftStore,
+      JsonSchemaValidator jsonSchemaValidator,
+      EventAppender eventAppender) {
+    jsonSchemaValidator.validate(
+        command.applicationContent(), command.schemaName(), command.schemaVersion());
+    if (applicationId == null) {
+      factory.validate(command.applicationContent());
+      ApplicationDraftPayload payload =
+          new ApplicationDraftPayload(
+              command.status(),
+              command.laaReference(),
+              command.applicationContent(),
+              command.serialisedRequest(),
+              command.potentialDuplicates());
+      String fingerprint =
+          draftStore.upsert(
+              command.applicationId(), payload, command.serialisedRequest(), command.occurredAt());
+      ApplicationDecider.decideStartDraft(
+              state,
+              command.applicationId(),
+              command.schemaVersion(),
+              fingerprint,
+              command.occurredAt())
+          .forEach(eventAppender::append);
+    } else {
+      String fingerprint = PayloadFingerprint.compute(command.serialisedRequest());
+      ApplicationDecider.decideStartDraft(
+          state,
+          command.applicationId(),
+          command.schemaVersion(),
+          fingerprint,
+          command.occurredAt());
+    }
+    return command.applicationId();
+  }
+
+  /**
+   * Completes an existing Application draft and emits an {@link ApplicationCreatedEvent}.
+   *
+   * @throws ResourceNotFoundException if no draft exists for this ID
+   * @throws ApplicationCreationConflictException if this ID has already been created or submitted
+   */
+  @CommandHandler
+  UUID handle(
+      SubmitApplicationDraftCommand command,
+      ApplicationDraftStore draftStore,
+      ApplicationCreationDetailsFactory detailsFactory,
+      ApplicationDataStore applicationDataStore,
+      EventAppender eventAppender) {
+    ApplicationDraftPayload draft = requireDraft(command.applicationId(), draftStore);
+
+    ApplicationCreationDetails details =
+        detailsFactory.prepare(
+            draft.status(),
+            draft.laaReference(),
+            draft.applicationContent(),
+            draft.serialisedRequest(),
+            state.schemaVersion,
+            draft.potentialDuplicates());
+    long applicationDataVersion = 0L;
+    ApplicationDataPayload payload = ApplicationDataPayload.from(details);
+    for (var filename : draft.documentFilenames().entrySet()) {
+      payload = payload.withDocumentFilename(filename.getKey(), filename.getValue());
+    }
+    String fingerprint =
+        applicationDataStore.append(
+            command.applicationId(),
+            applicationDataVersion,
+            payload,
+            details.serialisedRequest(),
+            details.occurredAt());
+    eventAppender.append(
+        ApplicationDecider.decideSubmitDraft(
+            command.applicationId(), applicationDataVersion, fingerprint, details));
+    draftStore.delete(command.applicationId());
+    return command.applicationId();
   }
 
   /** Validates that the targeted application has an overall decision of {@code GRANTED}. */
@@ -221,6 +328,51 @@ public class ApplicationAggregate {
     eventAppender.append(event);
   }
 
+  /** Records metadata for an application document that SDS has already accepted. */
+  @CommandHandler
+  UUID handle(
+      ApplicationDocumentUploadCommand command,
+      ApplicationDraftStore draftStore,
+      EventAppender eventAppender) {
+    requireApplicationDraft(command.applicationId());
+    if (command.originalFilename() == null || command.originalFilename().isBlank()) {
+      throw new ValidationException(List.of("Original filename is required"));
+    }
+    var current = requireDraft(command.applicationId(), draftStore);
+    var existing =
+        state.uploadedDocuments.stream()
+            .map(UploadDocument::documentId)
+            .anyMatch(id -> id.equals(command.documentId()));
+    if (existing) {
+      throw new ValidationException(List.of("Document ID already records a different upload"));
+    }
+
+    draftStore.upsert(
+        applicationId,
+        current.withDocumentFilename(command.documentId(), command.originalFilename()),
+        current.serialisedRequest(),
+        command.uploadedAt());
+    eventAppender.append(
+        new ApplicationDocumentUploadedEvent(
+            command.applicationId(),
+            command.documentId(),
+            command.documentType(),
+            command.uploadedAt(),
+            command.size(),
+            command.contentType(),
+            command.checksum(),
+            command.sourceService()));
+    return command.documentId();
+  }
+
+  private void requireApplicationDraft(UUID requestedApplicationId) {
+    requireApplicationExists(requestedApplicationId);
+    if (state.status != null) {
+      throw new ValidationException(
+          List.of("Documents can only be uploaded to an application draft"));
+    }
+  }
+
   private void validateManualDecision(MakeApplicationDecisionCommand command) {
     ApplicationDecider.validateManualDecisionAssignment(state, command);
   }
@@ -334,6 +486,16 @@ public class ApplicationAggregate {
     }
   }
 
+  private static ApplicationDraftPayload requireDraft(
+      UUID requestedApplicationId, ApplicationDraftStore draftStore) {
+    return draftStore
+        .find(requestedApplicationId)
+        .orElseThrow(
+            () ->
+                new ResourceNotFoundException(
+                    "No application draft found with Application ID: " + requestedApplicationId));
+  }
+
   private void validateDirectWorkItem(UUID workItemId, long expectedAssignmentVersion) {
     if (!applicationId.equals(workItemId)) {
       throw new ResourceNotFoundException("No application work item found with id: " + workItemId);
@@ -346,8 +508,18 @@ public class ApplicationAggregate {
     }
   }
 
+  public boolean isGranted() {
+    return "GRANTED".equals(state.overallDecision);
+  }
+
   @EventSourcingHandler
   void on(ApplicationCreatedEvent event) {
+    ApplicationEvolve.apply(state, event);
+    this.applicationId = state.applicationId;
+  }
+
+  @EventSourcingHandler
+  void on(ApplicationDraftStartedEvent event) {
     ApplicationEvolve.apply(state, event);
     this.applicationId = state.applicationId;
   }
@@ -379,6 +551,11 @@ public class ApplicationAggregate {
 
   @EventSourcingHandler
   void on(ApplicationUpdatedEvent event) {
+    ApplicationEvolve.apply(state, event);
+  }
+
+  @EventSourcingHandler
+  void on(ApplicationDocumentUploadedEvent event) {
     ApplicationEvolve.apply(state, event);
   }
 

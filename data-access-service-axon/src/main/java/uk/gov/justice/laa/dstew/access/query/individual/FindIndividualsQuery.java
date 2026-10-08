@@ -2,6 +2,8 @@ package uk.gov.justice.laa.dstew.access.query.individual;
 
 import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.query.PaginationHelper;
+import uk.gov.justice.laa.dstew.access.query.utils.security.ReadAccessScope;
+import uk.gov.justice.laa.dstew.access.query.utils.security.UnrestrictedReadAccessScope;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /** Query for a filtered, paginated view of individuals in current application data. */
@@ -10,7 +12,24 @@ public record FindIndividualsQuery(
     String individualType,
     boolean includeClientDetails,
     Integer page,
-    Integer pageSize) {
+    Integer pageSize,
+    ReadAccessScope accessScope) {
+
+  /** creates a FindIndividualsQuery with unrestricted access. */
+  public FindIndividualsQuery(
+      UUID applicationId,
+      String individualType,
+      boolean includeClientDetails,
+      Integer page,
+      Integer pageSize) {
+    this(
+        applicationId,
+        individualType,
+        includeClientDetails,
+        page,
+        pageSize,
+        new UnrestrictedReadAccessScope());
+  }
 
   /** Validates query relationships and resolves optional pagination values. */
   public FindIndividualsQuery {

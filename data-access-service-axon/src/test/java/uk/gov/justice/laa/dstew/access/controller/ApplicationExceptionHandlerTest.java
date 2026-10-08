@@ -17,6 +17,7 @@ import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictExcep
 import uk.gov.justice.laa.dstew.access.exception.FileConflictException;
 import uk.gov.justice.laa.dstew.access.exception.FileLengthRequiredException;
 import uk.gov.justice.laa.dstew.access.exception.InvalidApplicationStateException;
+import uk.gov.justice.laa.dstew.access.exception.LinkedApplicationGroupVersionConflictException;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityStatusConflictException;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityVersionConflictException;
@@ -89,6 +90,22 @@ class ApplicationExceptionHandlerTest {
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
     assertThat(response.getBody().getDetail())
         .isEqualTo("Application with id " + applicationId + " and version 4 not found");
+  }
+
+  @Test
+  void givenStaleLinkedGroupVersion_whenHandled_thenReturnsConflict() {
+    UUID applicationId = UUID.randomUUID();
+
+    var response =
+        handler.handleLinkedApplicationGroupVersionConflictException(
+            new LinkedApplicationGroupVersionConflictException(applicationId));
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+    assertThat(response.getBody().getDetail())
+        .isEqualTo(
+            "Linked group of application "
+                + applicationId
+                + " does not match the supplied linkedGroupVersion; re-read before retrying");
   }
 
   @Test

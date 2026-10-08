@@ -38,8 +38,40 @@ For example, a decision command:
    control fields;
 5. advances the aggregate and current-state projection to that version.
 
-Creation, decisions, assignments, unassignments, and notes follow the same append-and-reference
-pattern when their detailed payload changes.
+Application creation, decisions, and notes append application-data versions and carry the relevant
+version pointer in the event/history row. Decision and note descriptions are hydrated when history
+is queried. Assignment and unassignment history records do not point to application data; their
+acting caseworker is recorded from event metadata when available.
+
+Application document uploads are allowed only in the separate draft lifecycle, before
+`ApplicationCreatedEvent`. A fully created Application cannot accept uploads, even when its business
+status is `APPLICATION_IN_PROGRESS`. The draft payload's intended submission status is not the
+lifecycle guard: the aggregate tracks the draft lifecycle with `state.status == null`.
+
+The only document-specific sensitive value in draft content is `documentFilenames`, a map from
+document ID to original filename. Uploads update that map in `application_draft` and emit filename-free
+metadata events without a data-version pointer. Neither aggregate state nor the persisted document
+metadata projection contains the filename. Submission copies the map into version 0 of immutable
+`application_data` before emitting `ApplicationCreatedEvent` and deleting the draft row. Subsequent
+immutable content updates preserve the filename map.
+
+Both upload entry points look up the draft directly in `ApplicationDraftStore` before SDS is called.
+An absent draft returns a not-found error without calling SDS or dispatching an upload command.
+This is an existence check against authoritative draft storage, not a projection lookup or a guarantee
+that the draft remains open throughout the external call. The upload command checks the aggregate
+lifecycle before recording metadata, so submitting during an external upload
+cannot attach a new document to the created Application. Any upload command whose document ID is
+already recorded is rejected, including an identical retry, without writing draft content or emitting
+an event. Draft content is written before the event in the shared database transaction. SDS remains
+outside that transaction;
+a race or command failure after SDS acceptance can still leave an external file needing cleanup.
+
+Historical upload events with a data-version pointer still advance that version during replay.
+Events without a pointer retain the preceding version, including all new draft uploads.
+Older payloads without `documentFilenames` normalize to an empty map. Those documents remain visible
+in application details without an original filename; the event stream cannot recover names that
+were never persisted. Removing a document from the current response does not erase filenames from
+historical sensitive-data versions. Application-level retention removes those versions together.
 
 ## What is stored where
 
@@ -48,7 +80,7 @@ pattern when their detailed payload changes.
 | Axon event store | IDs, timestamps, status/type, version pointers, decision outcome, group membership | Durable business timeline and aggregate control state |
 | `application_data` | Application content, individuals, proceedings, certificates, notes, request JSON, free-text descriptions | Immutable versioned sensitive payloads |
 | `application_current_state` | IDs, status, timestamps, versions, caseworker ID and other thin query state | Disposable current-state projection |
-| `application_history` | Event type, service metadata, timestamp, thin event payload | Disposable audit projection, hydrated when queried |
+| `application_history` | Event type, service/caseworker metadata, timestamp, nullable application-data version | Disposable audit projection; descriptions are hydrated when queried |
 
 “Thin” means data minimisation, not a guarantee that an event contains no personal data. Stable
 identifiers, including application and caseworker IDs, may still be personal data depending on how
@@ -72,7 +104,11 @@ Deleting sensitive rows leaves the thin event history in place, but has conseque
 - the aggregate's control state can still replay from events;
 - queries cannot hydrate fields whose referenced data has been deleted;
 - future commands that require the current detailed payload cannot proceed normally;
-- history hydration falls back to its thin stored event payload when detailed data is unavailable.
+- history rows remain available, but descriptions that require a deleted application-data version
+  are returned as `null`.
+
+An absent referenced version is an expected consequence of retention. Other data-store failures are
+not treated as missing data and continue to fail the query.
 
 Retention therefore needs an application-level policy for what behaviour is expected after
 deletion. It is not equivalent to resetting a projection. The proposed lifecycle and unresolved

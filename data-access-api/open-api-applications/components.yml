@@ -20,6 +20,30 @@ components:
         - AUTOGRANTED
         - MANUAL
 
+    ApplicationDocumentType:
+      type: string
+      enum:
+        - GATEWAY_EVIDENCE
+        - MERITS_REPORT
+        - STATEMENT_OF_CASE
+        - COURT_APPLICATION
+        - COURT_ORDER
+        - EXPERT_REPORT
+        - COURT_APPLICATION_OR_ORDER
+        - PARENTAL_RESPONSIBILITY
+        - LOCAL_AUTHORITY_ASSESSMENT
+        - GROUNDS_OF_APPEAL
+        - COUNSEL_OPINION
+        - JUDGEMENT
+        - PLF_COURT_ORDER
+        - LETTER_OF_INSTRUCTION
+        - ESTIMATE_OF_COSTS
+        - ALTERNATIVE_QUOTE
+        - OTHER_PARTY_CERTIFICATE_REFERENCE
+        - OTHER_SUPPORTING_DOCUMENT
+        - PRIMARY_QUOTE
+        - ADDITIONAL_QUOTE
+
     OpponentResponse:
       type: object
       properties:
@@ -81,10 +105,20 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/PriorAuthoritySummary"
+        uploadedDocuments:
+          type: array
+          items:
+            $ref: "#/components/schemas/ApplicationDocumentResponse"
         linkedApplications:
           type: array
           items:
             $ref: "#/components/schemas/LinkedApplicationSummaryResponse"
+        linkedGroupVersion:
+          type: string
+          description: >-
+            Opaque token identifying the application's linked group and its current version;
+            absent when the application is not linked. Pass it back unchanged on link, unlink,
+            and make-lead requests. Do not parse it.
         version:
           type: integer
           format: int64
@@ -160,6 +194,67 @@ components:
           additionalProperties: true
           minProperties: 1
 
+    SaveApplicationDraftRequest:
+      type: object
+      required:
+        - status
+        - applicationContent
+        - laaReference
+      properties:
+        status:
+          $ref: "../open-api-common/components.yml#/components/schemas/ApplicationStatus"
+        applicationContent:
+          type: object
+          description: Application data accumulated so far on the draft
+          additionalProperties: true
+          minProperties: 1
+        laaReference:
+          type: string
+          minLength: 1
+        potentialDuplicates:
+          type: array
+          description: List of potential duplicate applications
+          items:
+            $ref: "#/components/schemas/PotentialDuplicate"
+
+    CreateApplicationDraftRequest:
+      allOf:
+        - type: object
+          required:
+            - id
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: The unique reference used to identify the application.
+        - $ref: "#/components/schemas/SaveApplicationDraftRequest"
+
+    SaveApplicationDraftResponse:
+      type: object
+      required:
+        - applicationId
+        - savedAt
+      properties:
+        applicationId:
+          type: string
+          format: uuid
+        savedAt:
+          type: string
+          format: date-time
+
+    SubmitApplicationDraftResponse:
+      type: object
+      required:
+        - applicationId
+        - submittedAt
+      properties:
+        applicationId:
+          type: string
+          format: uuid
+        submittedAt:
+          type: string
+          format: date-time
+
     ApplicationLinkType:
       type: string
       enum:
@@ -178,6 +273,22 @@ components:
           description: Target Application whose group the source Application should join
         linkType:
           $ref: "#/components/schemas/ApplicationLinkType"
+        linkedGroupVersion:
+          type: string
+          description: >-
+            The target Application's linkedGroupVersion token exactly as last read; omit when the
+            target is not linked
+
+    LinkedGroupChangeRequest:
+      type: object
+      additionalProperties: false
+      required: [linkedGroupVersion]
+      properties:
+        linkedGroupVersion:
+          type: string
+          description: >-
+            The application's linkedGroupVersion token exactly as last read, used for concurrency
+            control
 
     ApplicationSummary:
       type: object
@@ -226,6 +337,12 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/LinkedApplicationSummaryResponse"
+        linkedGroupVersion:
+          type: string
+          description: >-
+            Opaque token identifying the application's linked group and its current version;
+            absent when the application is not linked. Pass it back unchanged on link, unlink,
+            and make-lead requests. Do not parse it.
         priorAuthorities:
           type: array
           items:
@@ -558,6 +675,69 @@ components:
         success:
           type: string
         checksum:
+          type: string
+
+    UploadApplicationDocumentResponse:
+      type: object
+      required:
+        - documentId
+        - fileName
+        - fileType
+        - contentType
+        - size
+        - uploadedAt
+        - sourceService
+      properties:
+        documentId:
+          type: string
+          format: uuid
+        fileName:
+          type: string
+        fileType:
+          type: string
+          nullable: true
+          example: PDF
+        contentType:
+          type: string
+          nullable: true
+          example: application/pdf
+        size:
+          type: integer
+          format: int64
+        uploadedAt:
+          type: string
+          format: date-time
+        sourceService:
+          type: string
+        checksum:
+          type: string
+
+    ApplicationDocumentResponse:
+      type: object
+      required:
+        - documentId
+        - documentType
+        - uploadedAt
+      properties:
+        documentId:
+          type: string
+          format: uuid
+        documentType:
+          type: string
+        fileName:
+          type: string
+          description: Original filename, absent for legacy uploads where it was not recorded
+        uploadedAt:
+          type: string
+          format: date-time
+        size:
+          type: integer
+          format: int64
+        contentType:
+          type: string
+        checksum:
+          type: string
+        sourceService:
           type: string
 
     DocumentDownloadResponse:

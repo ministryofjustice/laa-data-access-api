@@ -17,9 +17,9 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.BillingType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.CounselDetails;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.CounselType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.DisbursementDetails;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.EvidenceDocument;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.ExpertCosts;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.ExpertDetails;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityDocument;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.TimeRequested;
@@ -34,12 +34,14 @@ class GetPriorAuthorityResponseMapperTest {
   void givenExpertResult_whenMapped_thenConvertsUseCaseTypesToGeneratedApiTypes() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
+    Instant submittedAt = Instant.parse("2026-09-11T10:00:00.123456789Z");
     PriorAuthorityResult result =
         PriorAuthorityResult.builder()
             .priorAuthorityId(priorAuthorityId)
             .applicationId(applicationId)
             .justification("Expert is required")
             .status("SUBMITTED")
+            .submittedAt(submittedAt)
             .decisionDetails(
                 new PriorAuthorityDataPayload.DecisionDetails(
                     "GRANTED", "Decision recorded", null, null, null, null, null, "{}"))
@@ -62,6 +64,7 @@ class GetPriorAuthorityResponseMapperTest {
 
     assertThat(response.getPriorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(response.getApplicationId()).isEqualTo(applicationId);
+    assertThat(response.getSubmittedAt()).isEqualTo(submittedAt.atOffset(ZoneOffset.UTC));
     assertThat(response.getPriorAuthorityType().getValue()).isEqualTo("EXPERT");
     assertThat(response.getStatus()).isEqualTo(PriorAuthorityResponse.StatusEnum.SUBMITTED);
     assertThat(response.getDecision().getValue()).isEqualTo("GRANTED");
@@ -121,6 +124,7 @@ class GetPriorAuthorityResponseMapperTest {
     var response = mapper.toResponse(result);
 
     assertThat(response.getPriorAuthorityType()).isNull();
+    assertThat(response.getSubmittedAt()).isNull();
     assertThat(response.getExpertDetails()).isNull();
     assertThat(response.getCounselDetails()).isNull();
     assertThat(response.getDisbursementDetails()).isNull();
@@ -180,7 +184,7 @@ class GetPriorAuthorityResponseMapperTest {
                     "{}"))
             .uploadedDocuments(
                 List.of(
-                    new PriorAuthorityDocument(
+                    new EvidenceDocument(
                         UUID.randomUUID(),
                         null,
                         "evidence.pdf",
@@ -225,7 +229,7 @@ class GetPriorAuthorityResponseMapperTest {
         PriorAuthorityResult.builder()
             .uploadedDocuments(
                 List.of(
-                    new PriorAuthorityDocument(
+                    new EvidenceDocument(
                         firstDocumentId,
                         "GATEWAY_EVIDENCE",
                         "evidence.pdf",
@@ -235,7 +239,7 @@ class GetPriorAuthorityResponseMapperTest {
                         firstUploadedAt,
                         "CIVIL_APPLY",
                         "first-checksum"),
-                    new PriorAuthorityDocument(
+                    new EvidenceDocument(
                         secondDocumentId,
                         "GATEWAY_EVIDENCE",
                         "evidence.pdf",
@@ -377,7 +381,7 @@ class GetPriorAuthorityResponseMapperTest {
             .priorAuthorityType(PriorAuthorityType.EXPERT)
             .uploadedDocuments(
                 List.of(
-                    new PriorAuthorityDocument(
+                    new EvidenceDocument(
                         UUID.randomUUID(),
                         "GATEWAY_EVIDENCE",
                         "a.pdf",
@@ -387,7 +391,7 @@ class GetPriorAuthorityResponseMapperTest {
                         uploadedAt,
                         "CIVIL_APPLY",
                         "checksum-one"),
-                    new PriorAuthorityDocument(
+                    new EvidenceDocument(
                         UUID.randomUUID(),
                         "MERITS_REPORT",
                         "b.pdf",
