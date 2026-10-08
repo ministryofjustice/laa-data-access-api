@@ -245,10 +245,8 @@ When using `swagger-provider-token` for testing, the `LAA_ACCOUNTS` claim is set
 The application detail, application list and work-list response contracts now return
 `categoryOfLaw` and `matterType` display names as strings, paired with their codes. Filter application
 lists with the exact lead-proceeding `matterTypeCode` query parameter; the former enum-valued
-`matterType` filter is no longer supported. Involved-child responses require `firstName` and
-`lastName`, but the stored create content currently provides only `fullName`. The response leaves
-those two fields null until a separate child-name mapping decision is made; this remains a
-tracked follow-up and does not change create JSON.
+`matterType` filter is no longer supported. Involved-child responses return the `firstName` and
+`lastName` supplied in the create content.
 
 #### Adding a new read endpoint or query
 

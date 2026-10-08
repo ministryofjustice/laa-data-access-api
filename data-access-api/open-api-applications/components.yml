@@ -876,14 +876,14 @@ components:
           example: 2250.0
         substantiveLevelOfServiceCode:
           type: integer
-          description: Substantive level of service code (supplied as substantiveLevelOfService on create)
+          description: Substantive level of service code
         substantiveLevelOfServiceName:
           type: string
           description: Substantive level of service name
         emergencyLevelOfServiceCode:
           type: integer
           nullable: true
-          description: Emergency level of service code (supplied as emergencyLevelOfService on create)
+          description: Emergency level of service code
         emergencyLevelOfServiceName:
           type: string
           nullable: true
