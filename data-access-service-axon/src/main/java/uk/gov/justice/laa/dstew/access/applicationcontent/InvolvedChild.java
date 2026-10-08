@@ -19,6 +19,7 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 public class InvolvedChild implements Serializable {
 
   @Nullable private UUID id;
-  @Nullable private String fullName;
+  @Nullable private String firstName;
+  @Nullable private String lastName;
   @Nullable private LocalDate dateOfBirth;
 }
