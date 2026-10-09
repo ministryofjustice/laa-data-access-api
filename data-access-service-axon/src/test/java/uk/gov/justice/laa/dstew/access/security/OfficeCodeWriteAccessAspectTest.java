@@ -41,8 +41,49 @@ class OfficeCodeWriteAccessAspectTest {
     assertThat(handler.wasHandled()).isTrue();
   }
 
+  @Test
+  void givenTwoAnnotatedResources_whenCallingAnnotatedMethod_thenRejectsInvalidHandlerShape() {
+    TwoResourcesHandler handler = proxiedHandler(new TwoResourcesHandler());
+
+    assertThatThrownBy(() -> handler.handle(new Resource("1A001B"), new Resource("1A001B")))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("Only one @OfficeCodeResource parameter is permitted");
+  }
+
+  @Test
+  void givenNoAnnotatedResource_whenCallingAnnotatedMethod_thenRejectsInvalidHandlerShape() {
+    NoResourceHandler handler = proxiedHandler(new NoResourceHandler());
+
+    assertThatThrownBy(() -> handler.handle(new Resource("1A001B")))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("must declare an @OfficeCodeResource parameter");
+  }
+
+  @Test
+  void givenResourceWithoutOfficeCode_whenCallingAnnotatedMethod_thenRejectsInvalidResource() {
+    NoOfficeCodeHandler handler = proxiedHandler(new NoOfficeCodeHandler());
+
+    assertThatThrownBy(() -> handler.handle(new ResourceWithoutOfficeCode()))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("must expose a readable officeCode property");
+  }
+
+  @Test
+  void
+      givenResourceWithNonStringOfficeCode_whenCallingAnnotatedMethod_thenRejectsInvalidResource() {
+    NonStringOfficeCodeHandler handler = proxiedHandler(new NonStringOfficeCodeHandler());
+
+    assertThatThrownBy(() -> handler.handle(new ResourceWithNonStringOfficeCode(1)))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("officeCode property must be a String");
+  }
+
   private ProtectedHandler proxiedHandler() {
-    AspectJProxyFactory factory = new AspectJProxyFactory(new ProtectedHandler());
+    return proxiedHandler(new ProtectedHandler());
+  }
+
+  private <T> T proxiedHandler(T handler) {
+    AspectJProxyFactory factory = new AspectJProxyFactory(handler);
     factory.addAspect(new OfficeCodeWriteAccessAspect(new OfficeCodeWriteAccessPolicy()));
     return factory.getProxy();
   }
@@ -72,4 +113,28 @@ class OfficeCodeWriteAccessAspectTest {
   }
 
   record Resource(String officeCode) {}
+
+  static class TwoResourcesHandler {
+    @RequireOfficeCodeWriteAccess
+    void handle(@OfficeCodeResource Resource first, @OfficeCodeResource Resource second) {}
+  }
+
+  static class NoResourceHandler {
+    @RequireOfficeCodeWriteAccess
+    void handle(Resource resource) {}
+  }
+
+  static class NoOfficeCodeHandler {
+    @RequireOfficeCodeWriteAccess
+    void handle(@OfficeCodeResource ResourceWithoutOfficeCode resource) {}
+  }
+
+  static class NonStringOfficeCodeHandler {
+    @RequireOfficeCodeWriteAccess
+    void handle(@OfficeCodeResource ResourceWithNonStringOfficeCode resource) {}
+  }
+
+  record ResourceWithoutOfficeCode() {}
+
+  record ResourceWithNonStringOfficeCode(Integer officeCode) {}
 }

@@ -60,6 +60,38 @@ class OfficeCodeWriteAccessPolicyTest {
         .isInstanceOf(AccessDeniedException.class);
   }
 
+  @Test
+  void givenUnsupportedScope_whenRequireWriteAccess_thenDenies() {
+    authenticate("unrelated_scope", List.of());
+
+    assertThatThrownBy(() -> policy.requireWriteAccess("1A001B"))
+        .isInstanceOf(AccessDeniedException.class);
+  }
+
+  @Test
+  void givenProviderScopeAndMissingResourceOfficeCode_whenRequireWriteAccess_thenDenies() {
+    authenticate("access_as_provider", List.of("1A001B"));
+
+    assertThatThrownBy(() -> policy.requireWriteAccess(null))
+        .isInstanceOf(AccessDeniedException.class);
+  }
+
+  @Test
+  void givenProviderScopeAndBlankResourceOfficeCode_whenRequireWriteAccess_thenDenies() {
+    authenticate("access_as_provider", List.of("1A001B"));
+
+    assertThatThrownBy(() -> policy.requireWriteAccess("  "))
+        .isInstanceOf(AccessDeniedException.class);
+  }
+
+  @Test
+  void
+      givenProviderScopeAndWhitespacePaddedMatchingOfficeCodes_whenRequireWriteAccess_thenAllows() {
+    authenticate("access_as_provider", List.of(" 1A001B "));
+
+    assertThatCode(() -> policy.requireWriteAccess(" 1A001B ")).doesNotThrowAnyException();
+  }
+
   private void authenticate(String scopes, List<String> officeCodes) {
     Jwt jwt =
         new Jwt(

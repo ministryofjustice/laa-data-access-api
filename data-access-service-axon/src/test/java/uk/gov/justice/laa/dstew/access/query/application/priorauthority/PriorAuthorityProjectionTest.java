@@ -158,7 +158,7 @@ class PriorAuthorityProjectionTest {
                 "{}",
                 Instant.now())
             .withDocumentFilename(documentId, "evidence.pdf");
-    when(repository.findById(priorAuthorityId)).thenReturn(Optional.of(model));
+    when(readQueryGateway.findPriorAuthority(any(), any())).thenReturn(Optional.of(model));
     if ("DRAFT".equals(status)) {
       when(draftStore.find(priorAuthorityId)).thenReturn(Optional.of(payload));
     } else {

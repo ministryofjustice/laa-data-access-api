@@ -12,6 +12,8 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorA
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.security.OfficeCodeResource;
+import uk.gov.justice.laa.dstew.access.security.RequireOfficeCodeWriteAccess;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /** Handles updates to document types in prior-authority drafts. */
@@ -20,10 +22,12 @@ public class PriorAuthorityDocumentTypeUpdateCommandHandler {
 
   /** Updates the document type for a document in the prior-authority draft and emits the event. */
   @CommandHandler
+  @RequireOfficeCodeWriteAccess
   public UUID handle(
       PriorAuthorityDocumentTypeUpdateCommand command,
       PriorAuthorityDraftStore draftStore,
-      @InjectEntity(idProperty = "priorAuthorityId") PriorAuthorityAggregate priorAuthority,
+      @InjectEntity(idProperty = "priorAuthorityId") @OfficeCodeResource
+          PriorAuthorityAggregate priorAuthority,
       EventAppender eventAppender) {
 
     requireDraftLifecycle(priorAuthority);

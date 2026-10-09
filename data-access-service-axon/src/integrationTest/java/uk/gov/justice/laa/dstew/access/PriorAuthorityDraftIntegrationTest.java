@@ -104,7 +104,8 @@ class PriorAuthorityDraftIntegrationTest {
   }
 
   @Test
-  void givenGrantedApplication_whenSavePriorAuthorityDraft_thenPersistsDraftAndProjects() {
+  void
+      givenAccessAsUserAndGrantedApplication_whenSavePriorAuthorityDraft_thenPersistsDraftAndProjects() {
     UUID applicationId = grantedApplication();
     CreatePriorAuthorityDraftRequest request =
         CreatePriorAuthorityDraftRequest.builder()
@@ -161,6 +162,31 @@ class PriorAuthorityDraftIntegrationTest {
   }
 
   @Test
+  void
+      givenProviderWithoutTheParentApplicationOffice_whenSavePriorAuthorityDraft_thenReturns403AndDoesNotCreateDraft() {
+    UUID applicationId = grantedApplication();
+    CreatePriorAuthorityDraftRequest request =
+        CreatePriorAuthorityDraftRequest.builder()
+            .applicationId(applicationId)
+            .priorAuthorityType(PriorAuthorityType.EXPERT)
+            .build();
+
+    ResponseEntity<String> response =
+        restTemplate.postForEntity(
+            saveDraftUrl(),
+            new HttpEntity<>(request, headers(TestJwtDecoderConfig.OFFICE_C_BEARER_TOKEN)),
+            String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM axon.prior_authority_draft WHERE application_id = ?",
+                Integer.class,
+                applicationId))
+        .isZero();
+  }
+
+  @Test
   void givenMissingApplication_whenSavePriorAuthorityDraft_thenReturnsNotFound() {
     UUID nonexistentApplicationId = UUID.randomUUID();
     CreatePriorAuthorityDraftRequest request =
@@ -208,7 +234,8 @@ class PriorAuthorityDraftIntegrationTest {
   }
 
   @Test
-  void givenExistingDraft_whenUpdatePriorAuthorityDraft_thenReturns204AndPersistsUpdatedContent() {
+  void
+      givenAccessAsUserAndExistingDraft_whenUpdatePriorAuthorityDraft_thenReturns204AndPersistsUpdatedContent() {
     UUID applicationId = grantedApplication();
     UUID priorAuthorityId = saveDraft(applicationId, PriorAuthorityType.EXPERT, null, null);
 
@@ -283,7 +310,8 @@ class PriorAuthorityDraftIntegrationTest {
   }
 
   @Test
-  void givenDraft_whenSubmitPriorAuthorityDraft_thenTransitionsToSubmittedAndDeletesDraft() {
+  void
+      givenAccessAsUserAndDraft_whenSubmitPriorAuthorityDraft_thenTransitionsToSubmittedAndDeletesDraft() {
     UUID applicationId = grantedApplication();
     UUID priorAuthorityId =
         saveDraft(
@@ -338,7 +366,41 @@ class PriorAuthorityDraftIntegrationTest {
   }
 
   @Test
-  void givenDraftWithUploadedDocument_whenSubmitPriorAuthorityDraft_thenPreservesDocument() {
+  void
+      givenProviderWithoutThePriorAuthorityOffice_whenSubmitPriorAuthorityDraft_thenReturns403AndKeepsDraft() {
+    UUID priorAuthorityId =
+        saveDraft(
+            grantedApplication(),
+            PriorAuthorityType.DISBURSEMENT,
+            "Interpreter costs for proceedings",
+            validDisbursementRequest());
+    int eventsBefore = eventCount(priorAuthorityId);
+
+    ResponseEntity<String> response =
+        restTemplate.postForEntity(
+            submitUrl(priorAuthorityId),
+            new HttpEntity<>(null, headers(TestJwtDecoderConfig.OFFICE_C_BEARER_TOKEN)),
+            String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    assertThat(eventCount(priorAuthorityId)).isEqualTo(eventsBefore);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM axon.prior_authority_draft WHERE prior_authority_id = ?",
+                Integer.class,
+                priorAuthorityId))
+        .isEqualTo(1);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM axon.prior_authority_data WHERE prior_authority_id = ?",
+                Integer.class,
+                priorAuthorityId))
+        .isZero();
+  }
+
+  @Test
+  void
+      givenAccessAsUserAndDraftWithUploadedDocument_whenSubmitPriorAuthorityDraft_thenPreservesDocument() {
     UUID applicationId = grantedApplication();
     UUID priorAuthorityId =
         saveDraft(
@@ -398,6 +460,49 @@ class PriorAuthorityDraftIntegrationTest {
               assertThat(document.getDocumentType()).isEqualTo(DocumentType.GATEWAY_EVIDENCE);
               assertThat(document.getFileName()).isEqualTo("evidence.pdf");
             });
+  }
+
+  @Test
+  void
+      givenProviderWithoutThePriorAuthorityOffice_whenUploadDocument_thenReturns403AndDoesNotAppendEvent() {
+    UUID priorAuthorityId = saveDraft(grantedApplication(), PriorAuthorityType.EXPERT, null, null);
+    int eventsBefore = eventCount(priorAuthorityId);
+
+    ResponseEntity<String> response =
+        restTemplate.postForEntity(
+            uploadUrl(priorAuthorityId),
+            uploadRequest("evidence.pdf", TestJwtDecoderConfig.OFFICE_C_BEARER_TOKEN),
+            String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    assertThat(eventCount(priorAuthorityId)).isEqualTo(eventsBefore);
+    assertThat(getPriorAuthority(priorAuthorityId).getUploadedDocuments()).isNull();
+  }
+
+  @Test
+  void
+      givenProviderWithoutThePriorAuthorityOffice_whenUpdateDocumentType_thenReturns403AndDoesNotAppendEvent() {
+    UUID priorAuthorityId = saveDraft(grantedApplication(), PriorAuthorityType.EXPERT, null, null);
+    when(sdsService.saveEvidenceFile(any(), any(), any()))
+        .thenReturn(new SdsUploadResult(null, null, "checksum"));
+    UUID documentId = uploadDocument(priorAuthorityId, "evidence.pdf");
+    awaitDocument(priorAuthorityId, documentId);
+    int eventsBefore = eventCount(priorAuthorityId);
+
+    ResponseEntity<String> response =
+        restTemplate.exchange(
+            documentUrl(priorAuthorityId, documentId),
+            HttpMethod.PATCH,
+            new HttpEntity<>(
+                new UpdatePriorAuthorityDocumentTypeRequest(DocumentType.GATEWAY_EVIDENCE),
+                headers(TestJwtDecoderConfig.OFFICE_C_BEARER_TOKEN)),
+            String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    assertThat(eventCount(priorAuthorityId)).isEqualTo(eventsBefore);
+    assertThat(getPriorAuthority(priorAuthorityId).getUploadedDocuments())
+        .singleElement()
+        .satisfies(document -> assertThat(document.getDocumentType()).isNull());
   }
 
   @Test
@@ -494,7 +599,7 @@ class PriorAuthorityDraftIntegrationTest {
   @org.junit.jupiter.params.provider.ValueSource(
       strings = {"evidence.pdf", "evidence.PDF", "evidence"})
   void
-      givenDraftWithUploadedDocument_whenDeletePriorAuthorityDocument_thenReturnsNoContentAndRemovesDocument(
+      givenAccessAsUserAndDraftWithUploadedDocument_whenDeletePriorAuthorityDocument_thenReturnsNoContentAndRemovesDocument(
           String filename) {
     UUID applicationId = grantedApplication();
     UUID priorAuthorityId = saveDraft(applicationId, PriorAuthorityType.EXPERT, null, null);
@@ -558,6 +663,31 @@ class PriorAuthorityDraftIntegrationTest {
             String.class);
     assertThat(downloadResponse.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     verify(sdsService, never()).getEvidenceFile(any(), any(), any());
+  }
+
+  @Test
+  void
+      givenProviderWithoutThePriorAuthorityOffice_whenDeleteDocument_thenReturns403AndDoesNotDeleteDocument() {
+    UUID priorAuthorityId = saveDraft(grantedApplication(), PriorAuthorityType.EXPERT, null, null);
+    when(sdsService.saveEvidenceFile(any(), any(), any()))
+        .thenReturn(new SdsUploadResult(null, null, "checksum"));
+    UUID documentId = uploadDocument(priorAuthorityId, "evidence.pdf");
+    awaitDocument(priorAuthorityId, documentId);
+    int eventsBefore = eventCount(priorAuthorityId);
+
+    ResponseEntity<String> response =
+        restTemplate.exchange(
+            deleteDocumentUrl(priorAuthorityId, documentId),
+            HttpMethod.DELETE,
+            new HttpEntity<>(headers(TestJwtDecoderConfig.OFFICE_C_BEARER_TOKEN)),
+            String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    assertThat(eventCount(priorAuthorityId)).isEqualTo(eventsBefore);
+    assertThat(getPriorAuthority(priorAuthorityId).getUploadedDocuments())
+        .singleElement()
+        .satisfies(document -> assertThat(document.getDocumentId()).isEqualTo(documentId));
+    verify(sdsService, never()).deleteEvidenceFile(any(), any(), any());
   }
 
   @org.junit.jupiter.params.ParameterizedTest
@@ -1394,6 +1524,11 @@ class PriorAuthorityDraftIntegrationTest {
   }
 
   private HttpEntity<MultiValueMap<String, Object>> uploadRequest(String filename) {
+    return uploadRequest(filename, TestJwtDecoderConfig.BEARER_TOKEN);
+  }
+
+  private HttpEntity<MultiValueMap<String, Object>> uploadRequest(
+      String filename, String bearerToken) {
     MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
     HttpHeaders fileHeaders = new HttpHeaders();
     fileHeaders.setContentType(MediaType.APPLICATION_PDF);
@@ -1411,7 +1546,7 @@ class PriorAuthorityDraftIntegrationTest {
     HttpHeaders multipartHeaders = new HttpHeaders();
     multipartHeaders.set("X-Service-Name", "CIVIL_APPLY");
     multipartHeaders.setContentType(MediaType.MULTIPART_FORM_DATA);
-    multipartHeaders.setBearerAuth(TestJwtDecoderConfig.BEARER_TOKEN);
+    multipartHeaders.setBearerAuth(bearerToken);
     return new HttpEntity<>(body, multipartHeaders);
   }
 

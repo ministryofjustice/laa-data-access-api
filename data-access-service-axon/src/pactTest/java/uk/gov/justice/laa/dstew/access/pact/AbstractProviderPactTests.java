@@ -1,6 +1,8 @@
 package uk.gov.justice.laa.dstew.access.pact;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.util.List;
 import org.axonframework.common.configuration.AxonConfiguration;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.junit.jupiter.api.AfterEach;
@@ -11,9 +13,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.core.io.ByteArrayResource;
-import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import uk.gov.justice.laa.dstew.access.DataAccessServiceAxonApplication;
@@ -59,6 +62,7 @@ import uk.gov.justice.laa.dstew.access.service.sds.SdsUploadResult;
 public abstract class AbstractProviderPactTests {
 
   private static final String STATE_SETUP_PRINCIPAL = "pact-provider-state-setup";
+  private static final String ACCESS_AS_USER = "access_as_user";
 
   @Autowired private QueryGateway queryGateway;
   @Autowired private AxonConfiguration axonConfiguration;
@@ -94,14 +98,7 @@ public abstract class AbstractProviderPactTests {
    */
   @BeforeEach
   void prepareStateSetup() {
-    TestingAuthenticationToken authentication =
-        new TestingAuthenticationToken(
-            STATE_SETUP_PRINCIPAL,
-            "n/a",
-            new SimpleGrantedAuthority("APPROLE_LAA_CASEWORKER"),
-            new SimpleGrantedAuthority("ROLE_LAA_CASEWORKER"));
-    authentication.setAuthenticated(true);
-    SecurityContextHolder.getContext().setAuthentication(authentication);
+    SecurityContextHolder.getContext().setAuthentication(stateSetupAuthentication());
     stubSecureDocumentStorage();
 
     ApplicationStateSeeder applications =
@@ -154,5 +151,23 @@ public abstract class AbstractProviderPactTests {
                 "%PDF-1.4\nPact provider state evidence".getBytes(StandardCharsets.US_ASCII)));
     Mockito.when(sdsService.getFile(ArgumentMatchers.any(), ArgumentMatchers.any()))
         .thenReturn(new SdsDownloadResult("https://sds.example.test/files/evidence.pdf"));
+  }
+
+  private JwtAuthenticationToken stateSetupAuthentication() {
+    Instant issuedAt = Instant.now();
+    Jwt jwt =
+        Jwt.withTokenValue(STATE_SETUP_PRINCIPAL)
+            .header("alg", "none")
+            .subject(STATE_SETUP_PRINCIPAL)
+            .claim("oid", PactIds.DEV_CASEWORKER.toString())
+            .claim("scp", ACCESS_AS_USER)
+            .issuedAt(issuedAt)
+            .expiresAt(issuedAt.plusSeconds(300))
+            .build();
+    return new JwtAuthenticationToken(
+        jwt,
+        List.of(
+            new SimpleGrantedAuthority("APPROLE_LAA_CASEWORKER"),
+            new SimpleGrantedAuthority("ROLE_LAA_CASEWORKER")));
   }
 }
