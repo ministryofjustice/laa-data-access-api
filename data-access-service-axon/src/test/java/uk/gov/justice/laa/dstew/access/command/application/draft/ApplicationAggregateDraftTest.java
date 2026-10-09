@@ -19,6 +19,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.axonframework.eventsourcing.configuration.EventSourcedEntityModule;
 import org.axonframework.eventsourcing.configuration.EventSourcingConfigurer;
+import org.axonframework.messaging.commandhandling.configuration.CommandHandlingModule;
 import org.axonframework.test.fixture.AxonTestFixture;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,6 +38,9 @@ import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataP
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftStore;
+import uk.gov.justice.laa.dstew.access.command.application.handler.ApplicationDocumentUploadCommandHandler;
+import uk.gov.justice.laa.dstew.access.command.application.handler.CreateApplicationDraftCommandHandler;
+import uk.gov.justice.laa.dstew.access.command.application.handler.SubmitApplicationDraftCommandHandler;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
@@ -62,6 +66,18 @@ class ApplicationAggregateDraftTest {
             EventSourcingConfigurer.create()
                 .registerEntity(
                     EventSourcedEntityModule.autodetected(UUID.class, ApplicationAggregate.class))
+                .registerCommandHandlingModule(
+                    CommandHandlingModule.named("application-draft-command-handlers")
+                        .commandHandlers(
+                            handlers ->
+                                handlers
+                                    .autodetectedCommandHandlingComponent(
+                                        configuration -> new CreateApplicationDraftCommandHandler())
+                                    .autodetectedCommandHandlingComponent(
+                                        configuration -> new SubmitApplicationDraftCommandHandler())
+                                    .autodetectedCommandHandlingComponent(
+                                        configuration ->
+                                            new ApplicationDocumentUploadCommandHandler())))
                 .componentRegistry(
                     registry ->
                         registry
@@ -176,7 +192,8 @@ class ApplicationAggregateDraftTest {
                 details.status(),
                 details.schemaVersion(),
                 details.occurredAt(),
-                details.potentialDuplicates()));
+                details.potentialDuplicates(),
+                details.provider().getOfficeCode()));
 
     ArgumentCaptor<ApplicationDataPayload> payload =
         ArgumentCaptor.forClass(ApplicationDataPayload.class);
@@ -268,7 +285,8 @@ class ApplicationAggregateDraftTest {
         .command(command)
         .then()
         .resultMessagePayload(applicationId)
-        .events(new ApplicationDraftStartedEvent(applicationId, 1, fingerprint, occurredAt));
+        .events(
+            new ApplicationDraftStartedEvent(applicationId, 1, fingerprint, occurredAt, "1A001B"));
 
     ArgumentCaptor<ApplicationDraftPayload> payloadCaptor =
         ArgumentCaptor.forClass(ApplicationDraftPayload.class);
@@ -454,7 +472,8 @@ class ApplicationAggregateDraftTest {
                 details.status(),
                 details.schemaVersion(),
                 details.occurredAt(),
-                details.potentialDuplicates()));
+                details.potentialDuplicates(),
+                details.provider().getOfficeCode()));
 
     verify(applicationDataStore)
         .append(

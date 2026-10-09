@@ -16,6 +16,7 @@ public class ApplicationState {
   int schemaVersion;
   String requestFingerprint;
   String status;
+  String officeCode;
   AutoGrantedState autoGranted = AutoGrantedState.PENDING;
   String overallDecision;
   long applicationDataVersion;

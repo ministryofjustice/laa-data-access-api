@@ -8,12 +8,15 @@ import java.time.Instant;
 import java.util.UUID;
 import org.axonframework.eventsourcing.configuration.EventSourcedEntityModule;
 import org.axonframework.eventsourcing.configuration.EventSourcingConfigurer;
+import org.axonframework.messaging.commandhandling.configuration.CommandHandlingModule;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import org.axonframework.test.fixture.AxonTestFixture;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
+import uk.gov.justice.laa.dstew.access.command.application.handler.DirectApplicationWorkItemAssignmentCommandHandler;
+import uk.gov.justice.laa.dstew.access.command.application.handler.DirectApplicationWorkItemUnassignmentCommandHandler;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
@@ -34,6 +37,17 @@ class DirectApplicationWorkItemAssignmentTest {
             EventSourcingConfigurer.create()
                 .registerEntity(
                     EventSourcedEntityModule.autodetected(UUID.class, ApplicationAggregate.class))
+                .registerCommandHandlingModule(
+                    CommandHandlingModule.named("application-work-item-command-handlers")
+                        .commandHandlers(
+                            handlers ->
+                                handlers
+                                    .autodetectedCommandHandlingComponent(
+                                        c ->
+                                            new DirectApplicationWorkItemAssignmentCommandHandler())
+                                    .autodetectedCommandHandlingComponent(
+                                        c ->
+                                            new DirectApplicationWorkItemUnassignmentCommandHandler())))
                 .componentRegistry(
                     registry ->
                         registry.registerComponent(ApplicationDataStore.class, c -> dataStore)));
@@ -90,16 +104,20 @@ class DirectApplicationWorkItemAssignmentTest {
     active.on(new WorkItemAssigned(id, WorkItemType.APPLICATION, 1L, 1L, caseworkerId, when));
     assertThatThrownBy(
             () ->
-                active.handle(
-                    new DirectWorkItemAssignmentCommand(id, caseworkerId, 1L, "{}", "", when),
-                    mock(EventAppender.class)))
+                new DirectApplicationWorkItemAssignmentCommandHandler()
+                    .handle(
+                        new DirectWorkItemAssignmentCommand(id, caseworkerId, 1L, "{}", "", when),
+                        active,
+                        mock(EventAppender.class)))
         .isInstanceOf(WorkItemAssignmentConflictException.class);
     assertThatThrownBy(
             () ->
-                active.handle(
-                    new DirectWorkItemAssignmentCommand(
-                        UUID.randomUUID(), caseworkerId, 1L, "{}", "", when),
-                    mock(EventAppender.class)))
+                new DirectApplicationWorkItemAssignmentCommandHandler()
+                    .handle(
+                        new DirectWorkItemAssignmentCommand(
+                            UUID.randomUUID(), caseworkerId, 1L, "{}", "", when),
+                        active,
+                        mock(EventAppender.class)))
         .isInstanceOf(ResourceNotFoundException.class);
 
     UUID inactiveId = UUID.randomUUID();
@@ -107,10 +125,12 @@ class DirectApplicationWorkItemAssignmentTest {
     inactive.on(created(inactiveId, when));
     assertThatThrownBy(
             () ->
-                inactive.handle(
-                    new DirectWorkItemAssignmentCommand(
-                        inactiveId, caseworkerId, 0L, "{}", "", when),
-                    mock(EventAppender.class)))
+                new DirectApplicationWorkItemAssignmentCommandHandler()
+                    .handle(
+                        new DirectWorkItemAssignmentCommand(
+                            inactiveId, caseworkerId, 0L, "{}", "", when),
+                        inactive,
+                        mock(EventAppender.class)))
         .isInstanceOf(ResourceNotFoundException.class);
   }
 

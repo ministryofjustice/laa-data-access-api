@@ -28,7 +28,8 @@ public final class ApplicationCreatedEventFixture {
         details.status(),
         details.schemaVersion(),
         details.occurredAt(),
-        details.potentialDuplicates());
+        details.potentialDuplicates(),
+        details.provider() == null ? null : details.provider().getOfficeCode());
   }
 
   /** Creates minimal creation details with stable values for the supplied identifier. */

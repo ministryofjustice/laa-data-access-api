@@ -15,12 +15,14 @@ import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventF
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.axonframework.eventsourcing.configuration.EventSourcedEntityModule;
 import org.axonframework.eventsourcing.configuration.EventSourcingConfigurer;
+import org.axonframework.messaging.commandhandling.configuration.CommandHandlingModule;
 import org.axonframework.test.fixture.AxonTestFixture;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,6 +41,18 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicat
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeDecisionProceeding;
 import uk.gov.justice.laa.dstew.access.command.application.decision.RecordAutoGrantedOutcomeCommand;
 import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftStartedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.handler.ApplicationDocumentUploadCommandHandler;
+import uk.gov.justice.laa.dstew.access.command.application.handler.CreateApplicationCommandHandler;
+import uk.gov.justice.laa.dstew.access.command.application.handler.CreateApplicationDraftCommandHandler;
+import uk.gov.justice.laa.dstew.access.command.application.handler.CreateNoteCommandHandler;
+import uk.gov.justice.laa.dstew.access.command.application.handler.DirectApplicationWorkItemAssignmentCommandHandler;
+import uk.gov.justice.laa.dstew.access.command.application.handler.DirectApplicationWorkItemUnassignmentCommandHandler;
+import uk.gov.justice.laa.dstew.access.command.application.handler.MakeApplicationDecisionCommandHandler;
+import uk.gov.justice.laa.dstew.access.command.application.handler.MarkApplicationReadyCommandHandler;
+import uk.gov.justice.laa.dstew.access.command.application.handler.RecordAutoGrantedOutcomeCommandHandler;
+import uk.gov.justice.laa.dstew.access.command.application.handler.SubmitApplicationDraftCommandHandler;
+import uk.gov.justice.laa.dstew.access.command.application.handler.UpdateApplicationCommandHandler;
+import uk.gov.justice.laa.dstew.access.command.application.handler.ValidateApplicationGrantedCommandHandler;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.ValidateApplicationGrantedCommand;
@@ -108,16 +122,15 @@ class ApplicationAggregateTest {
 
   @BeforeEach
   void setUp() {
-    ApplicationCreationDetailsFactory factory =
-        new ApplicationCreationDetailsFactory(null, null) {
-          @Override
-          public ApplicationCreationDetails prepare(CreateApplicationCommand command) {
-            return applicationCreationDetails(command.applicationId());
-          }
-        };
+    final ApplicationCreationDetailsFactory factory = mock(ApplicationCreationDetailsFactory.class);
     applicationDataStore = mock(ApplicationDataStore.class);
     draftStore = mock(ApplicationDraftStore.class);
     updateDetailsFactory = mock(ApplicationUpdateDetailsFactory.class);
+    when(factory.prepare(any(CreateApplicationCommand.class)))
+        .thenAnswer(
+            invocation ->
+                applicationCreationDetails(
+                    invocation.<CreateApplicationCommand>getArgument(0).applicationId()));
     when(applicationDataStore.append(any(), anyLong(), any()))
         .thenAnswer(
             invocation ->
@@ -855,6 +868,38 @@ class ApplicationAggregateTest {
         EventSourcingConfigurer.create()
             .registerEntity(
                 EventSourcedEntityModule.autodetected(UUID.class, ApplicationAggregate.class))
+            .registerCommandHandlingModule(
+                CommandHandlingModule.named("application-command-handlers")
+                    .commandHandlers(
+                        handlers ->
+                            handlers
+                                .autodetectedCommandHandlingComponent(
+                                    configuration -> new CreateApplicationCommandHandler())
+                                .autodetectedCommandHandlingComponent(
+                                    configuration -> new CreateApplicationDraftCommandHandler())
+                                .autodetectedCommandHandlingComponent(
+                                    configuration -> new SubmitApplicationDraftCommandHandler())
+                                .autodetectedCommandHandlingComponent(
+                                    configuration -> new ValidateApplicationGrantedCommandHandler())
+                                .autodetectedCommandHandlingComponent(
+                                    configuration -> new MakeApplicationDecisionCommandHandler())
+                                .autodetectedCommandHandlingComponent(
+                                    configuration -> new RecordAutoGrantedOutcomeCommandHandler())
+                                .autodetectedCommandHandlingComponent(
+                                    configuration ->
+                                        new DirectApplicationWorkItemAssignmentCommandHandler())
+                                .autodetectedCommandHandlingComponent(
+                                    configuration ->
+                                        new DirectApplicationWorkItemUnassignmentCommandHandler())
+                                .autodetectedCommandHandlingComponent(
+                                    configuration -> new CreateNoteCommandHandler())
+                                .autodetectedCommandHandlingComponent(
+                                    configuration -> new MarkApplicationReadyCommandHandler())
+                                .autodetectedCommandHandlingComponent(
+                                    configuration -> new UpdateApplicationCommandHandler())
+                                .autodetectedCommandHandlingComponent(
+                                    configuration ->
+                                        new ApplicationDocumentUploadCommandHandler())))
             .componentRegistry(
                 registry ->
                     registry
@@ -1071,6 +1116,133 @@ class ApplicationAggregateTest {
         .then()
         .exception(ApplicationAutoGrantOutcomeConflictException.class)
         .noEvents();
+  }
+
+  @Test
+  void givenGrantedDecisionWithCertificate_whenMade_thenIncludesCertificateInDataStore() {
+    UUID applicationId = UUID.randomUUID();
+    UUID proceedingId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-19T10:15:00Z");
+    Instant readyAt = Instant.parse("2026-07-19T10:00:00Z");
+    ApplicationCreationDetails details = detailsWithProceeding(applicationId, proceedingId);
+    ApplicationCreatedEvent created = applicationCreatedEvent(applicationId, details);
+    ApplicationDataPayload current =
+        ApplicationDataPayload.from(details).withManualAssessmentRequired();
+    when(applicationDataStore.get(applicationId, 1L)).thenReturn(current);
+    when(applicationDataStore.append(any(), anyLong(), any(), any(), any())).thenReturn("hash");
+
+    Map<String, Object> certificate = new HashMap<>();
+    certificate.put("reference", "CERT-REF-123");
+
+    fixture
+        .given()
+        .events(
+            created, new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, 1L, readyAt))
+        .when()
+        .command(
+            new MakeApplicationDecisionCommand(
+                applicationId,
+                null,
+                1L,
+                "GRANTED",
+                List.of(
+                    new MakeDecisionProceeding(proceedingId, "GRANTED", "reason", "justification")),
+                certificate,
+                "{\"overallDecision\":\"GRANTED\",\"certificate\":{\"reference\":\"CERT-REF-123\"}}",
+                "Decision recorded",
+                occurredAt))
+        .then()
+        .events(
+            new ApplicationDecisionMadeEvent(
+                applicationId, 2L, 2L, "GRANTED", AutoGrantedState.MANUAL, occurredAt));
+  }
+
+  @Test
+  void givenUpdateApplicationWithNullStatus_whenUpdated_thenPreservesCurrentStatus() {
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-20T10:00:00Z");
+    ApplicationCreationDetails details = applicationCreationDetails(applicationId);
+    ApplicationDataPayload currentPayload = ApplicationDataPayload.from(details);
+    ApplicationDataPayload updatedPayload = ApplicationDataPayload.from(details);
+    when(applicationDataStore.get(applicationId, 0L)).thenReturn(currentPayload);
+    when(applicationDataStore.append(any(), anyLong(), any(), any(), any())).thenReturn("hash");
+    when(updateDetailsFactory.prepare(any(), any(), anyBoolean())).thenReturn(updatedPayload);
+
+    fixture
+        .given()
+        .events(applicationCreatedEvent(applicationId, details))
+        .when()
+        .command(new UpdateApplicationCommand(applicationId, null, Map.of(), "{}", occurredAt))
+        .then()
+        .success();
+  }
+
+  @Test
+  void givenUpdateToSubmittedFromInProgress_whenUpdated_thenEnteringSubmittedIsTrue() {
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-20T10:00:00Z");
+    ApplicationCreationDetails details = applicationCreationDetails(applicationId);
+    ApplicationDataPayload currentPayload = ApplicationDataPayload.from(details);
+    ApplicationDataPayload updatedPayload = ApplicationDataPayload.from(details);
+    when(applicationDataStore.get(applicationId, 0L)).thenReturn(currentPayload);
+    when(applicationDataStore.append(any(), anyLong(), any(), any(), any())).thenReturn("hash");
+    when(updateDetailsFactory.prepare(any(), any(), eq(true))).thenReturn(updatedPayload);
+
+    fixture
+        .given()
+        .events(applicationCreatedEvent(applicationId, details))
+        .when()
+        .command(
+            new UpdateApplicationCommand(
+                applicationId, "APPLICATION_SUBMITTED", Map.of(), "{}", occurredAt))
+        .then()
+        .success();
+  }
+
+  @Test
+  void givenUpdateToSubmittedWhenAlreadySubmitted_whenUpdated_thenEnteringSubmittedIsFalse() {
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-20T10:00:00Z");
+    ApplicationCreatedEvent submitted =
+        new ApplicationCreatedEvent(
+            applicationId, 0L, "fingerprint", "APPLICATION_SUBMITTED", 1, Instant.now(), null);
+    ApplicationDataPayload currentPayload = mock(ApplicationDataPayload.class);
+    ApplicationDataPayload updatedPayload = mock(ApplicationDataPayload.class);
+    when(applicationDataStore.get(applicationId, 0L)).thenReturn(currentPayload);
+    when(applicationDataStore.append(any(), anyLong(), any(), any(), any())).thenReturn("hash");
+    when(updateDetailsFactory.prepare(any(), any(), eq(false))).thenReturn(updatedPayload);
+
+    fixture
+        .given()
+        .events(submitted)
+        .when()
+        .command(
+            new UpdateApplicationCommand(
+                applicationId, "APPLICATION_SUBMITTED", Map.of(), "{}", occurredAt))
+        .then()
+        .success();
+  }
+
+  @Test
+  void givenUpdateWithDifferentStatus_whenUpdated_thenEnteringSubmittedIsFalse() {
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-20T10:00:00Z");
+    ApplicationCreationDetails details = applicationCreationDetails(applicationId);
+    ApplicationDataPayload currentPayload = ApplicationDataPayload.from(details);
+    ApplicationDataPayload updatedPayload = ApplicationDataPayload.from(details);
+    when(applicationDataStore.get(applicationId, 0L)).thenReturn(currentPayload);
+    when(applicationDataStore.append(any(), anyLong(), any(), any(), any())).thenReturn("hash");
+    when(updateDetailsFactory.prepare(any(), any(), eq(false))).thenReturn(updatedPayload);
+
+    fixture
+        .given()
+        .events(applicationCreatedEvent(applicationId, details))
+        .when()
+        .command(
+            new UpdateApplicationCommand(
+                applicationId, "APPLICATION_GRANTED", Map.of(), "{}", occurredAt))
+        .then()
+        .success();
   }
 
   @AfterEach

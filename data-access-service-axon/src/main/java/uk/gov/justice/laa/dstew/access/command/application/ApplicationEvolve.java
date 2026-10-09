@@ -22,6 +22,7 @@ public final class ApplicationEvolve {
     state.schemaVersion = event.schemaVersion();
     state.requestFingerprint = event.requestFingerprint();
     state.status = event.status();
+    state.officeCode = event.officeCode();
     state.autoGranted = AutoGrantedState.PENDING;
     state.applicationDataVersion = event.applicationDataVersion();
     state.applicationVersion = 0L;
@@ -32,6 +33,7 @@ public final class ApplicationEvolve {
     state.applicationId = event.applicationId();
     state.schemaVersion = event.schemaVersion();
     state.requestFingerprint = event.requestFingerprint();
+    state.officeCode = event.officeCode();
   }
 
   /** Applies an {@link ApplicationUpdatedEvent} to the given state. */
