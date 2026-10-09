@@ -77,6 +77,24 @@ public final class ApplicationDecider {
       int schemaVersion,
       String fingerprint,
       Instant occurredAt) {
+    return decideStartDraft(state, applicationId, schemaVersion, fingerprint, occurredAt, null);
+  }
+
+  /**
+   * Decides whether to start an Application draft or treat the command as an idempotent retry.
+   *
+   * <p>Returns an {@link ApplicationDraftStartedEvent} for a new draft, an empty list for an
+   * identical retry while the Application remains in draft, or throws {@link
+   * ApplicationCreationConflictException} for a conflicting retry or when the Application has
+   * already been fully created.
+   */
+  public static List<Object> decideStartDraft(
+      ApplicationState state,
+      UUID applicationId,
+      int schemaVersion,
+      String fingerprint,
+      Instant occurredAt,
+      String officeCode) {
 
     if (state.applicationId != null) {
       boolean stillDraft = state.status == null;
@@ -89,7 +107,8 @@ public final class ApplicationDecider {
     }
 
     return List.of(
-        new ApplicationDraftStartedEvent(applicationId, schemaVersion, fingerprint, occurredAt));
+        new ApplicationDraftStartedEvent(
+            applicationId, schemaVersion, fingerprint, occurredAt, officeCode));
   }
 
   /**
@@ -269,6 +288,7 @@ public final class ApplicationDecider {
         details.status(),
         details.schemaVersion(),
         details.occurredAt(),
-        details.potentialDuplicates());
+        details.potentialDuplicates(),
+        details.provider() == null ? null : details.provider().getOfficeCode());
   }
 }

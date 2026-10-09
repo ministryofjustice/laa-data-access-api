@@ -21,6 +21,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.axonframework.eventsourcing.configuration.EventSourcedEntityModule;
 import org.axonframework.eventsourcing.configuration.EventSourcingConfigurer;
+import org.axonframework.messaging.commandhandling.configuration.CommandHandlingModule;
 import org.axonframework.test.fixture.AxonTestFixture;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,6 +40,18 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicat
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeDecisionProceeding;
 import uk.gov.justice.laa.dstew.access.command.application.decision.RecordAutoGrantedOutcomeCommand;
 import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftStartedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.handler.ApplicationDocumentUploadCommandHandler;
+import uk.gov.justice.laa.dstew.access.command.application.handler.CreateApplicationCommandHandler;
+import uk.gov.justice.laa.dstew.access.command.application.handler.CreateApplicationDraftCommandHandler;
+import uk.gov.justice.laa.dstew.access.command.application.handler.CreateNoteCommandHandler;
+import uk.gov.justice.laa.dstew.access.command.application.handler.DirectApplicationWorkItemAssignmentCommandHandler;
+import uk.gov.justice.laa.dstew.access.command.application.handler.DirectApplicationWorkItemUnassignmentCommandHandler;
+import uk.gov.justice.laa.dstew.access.command.application.handler.MakeApplicationDecisionCommandHandler;
+import uk.gov.justice.laa.dstew.access.command.application.handler.MarkApplicationReadyCommandHandler;
+import uk.gov.justice.laa.dstew.access.command.application.handler.RecordAutoGrantedOutcomeCommandHandler;
+import uk.gov.justice.laa.dstew.access.command.application.handler.SubmitApplicationDraftCommandHandler;
+import uk.gov.justice.laa.dstew.access.command.application.handler.UpdateApplicationCommandHandler;
+import uk.gov.justice.laa.dstew.access.command.application.handler.ValidateApplicationGrantedCommandHandler;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.ValidateApplicationGrantedCommand;
@@ -108,16 +121,15 @@ class ApplicationAggregateTest {
 
   @BeforeEach
   void setUp() {
-    ApplicationCreationDetailsFactory factory =
-        new ApplicationCreationDetailsFactory(null, null) {
-          @Override
-          public ApplicationCreationDetails prepare(CreateApplicationCommand command) {
-            return applicationCreationDetails(command.applicationId());
-          }
-        };
+    final ApplicationCreationDetailsFactory factory = mock(ApplicationCreationDetailsFactory.class);
     applicationDataStore = mock(ApplicationDataStore.class);
     draftStore = mock(ApplicationDraftStore.class);
     updateDetailsFactory = mock(ApplicationUpdateDetailsFactory.class);
+    when(factory.prepare(any(CreateApplicationCommand.class)))
+        .thenAnswer(
+            invocation ->
+                applicationCreationDetails(
+                    invocation.<CreateApplicationCommand>getArgument(0).applicationId()));
     when(applicationDataStore.append(any(), anyLong(), any()))
         .thenAnswer(
             invocation ->
@@ -855,6 +867,38 @@ class ApplicationAggregateTest {
         EventSourcingConfigurer.create()
             .registerEntity(
                 EventSourcedEntityModule.autodetected(UUID.class, ApplicationAggregate.class))
+            .registerCommandHandlingModule(
+                CommandHandlingModule.named("application-command-handlers")
+                    .commandHandlers(
+                        handlers ->
+                            handlers
+                                .autodetectedCommandHandlingComponent(
+                                    configuration -> new CreateApplicationCommandHandler())
+                                .autodetectedCommandHandlingComponent(
+                                    configuration -> new CreateApplicationDraftCommandHandler())
+                                .autodetectedCommandHandlingComponent(
+                                    configuration -> new SubmitApplicationDraftCommandHandler())
+                                .autodetectedCommandHandlingComponent(
+                                    configuration -> new ValidateApplicationGrantedCommandHandler())
+                                .autodetectedCommandHandlingComponent(
+                                    configuration -> new MakeApplicationDecisionCommandHandler())
+                                .autodetectedCommandHandlingComponent(
+                                    configuration -> new RecordAutoGrantedOutcomeCommandHandler())
+                                .autodetectedCommandHandlingComponent(
+                                    configuration ->
+                                        new DirectApplicationWorkItemAssignmentCommandHandler())
+                                .autodetectedCommandHandlingComponent(
+                                    configuration ->
+                                        new DirectApplicationWorkItemUnassignmentCommandHandler())
+                                .autodetectedCommandHandlingComponent(
+                                    configuration -> new CreateNoteCommandHandler())
+                                .autodetectedCommandHandlingComponent(
+                                    configuration -> new MarkApplicationReadyCommandHandler())
+                                .autodetectedCommandHandlingComponent(
+                                    configuration -> new UpdateApplicationCommandHandler())
+                                .autodetectedCommandHandlingComponent(
+                                    configuration ->
+                                        new ApplicationDocumentUploadCommandHandler())))
             .componentRegistry(
                 registry ->
                     registry
