@@ -16,6 +16,7 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
+import uk.gov.justice.laa.dstew.access.security.OfficeCodeWriteAccessPolicy;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /** Handles creation of prior-authority drafts. */
@@ -30,6 +31,7 @@ public class CreatePriorAuthorityDraftCommandHandler {
       PriorAuthorityDataStore dataStore,
       @InjectEntity(idProperty = "applicationId") ApplicationAggregate application,
       ApplicationDataStore applicationDataStore,
+      OfficeCodeWriteAccessPolicy writeAccessPolicy,
       EventAppender eventAppender) {
 
     if (draftStore.exists(command.priorAuthorityId())
@@ -44,6 +46,7 @@ public class CreatePriorAuthorityDraftCommandHandler {
     }
 
     String officeCode = applicationOfficeCode(applicationDataStore, command.applicationId());
+    writeAccessPolicy.requireWriteAccess(officeCode);
     PriorAuthorityDataPayload payload =
         new PriorAuthorityDataPayload(
             command.priorAuthorityId(),

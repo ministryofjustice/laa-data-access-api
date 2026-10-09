@@ -24,6 +24,7 @@ public class TestJwtDecoderConfig {
   public static final String OTHER_BEARER_TOKEN = "other-test-caseworker-token";
   public static final String OFFICE_A_BEARER_TOKEN = "office-a-caseworker-token";
   public static final String OFFICE_A_AND_B_BEARER_TOKEN = "office-a-and-b-caseworker-token";
+  public static final String OFFICE_C_BEARER_TOKEN = "office-c-caseworker-token";
   public static final String NO_ACCOUNTS_BEARER_TOKEN = "no-accounts-caseworker-token";
   public static final String UNSCOPED_BEARER_TOKEN = "unscoped-caseworker-token";
   public static final String ACCESS_AS_USER = "access_as_user";
@@ -49,6 +50,7 @@ public class TestJwtDecoderConfig {
             Map.of()),
         providerToken(OFFICE_A_BEARER_TOKEN, List.of(TEST_LAA_ACCOUNTS.getFirst())),
         providerToken(OFFICE_A_AND_B_BEARER_TOKEN, TEST_LAA_ACCOUNTS),
+        providerToken(OFFICE_C_BEARER_TOKEN, List.of("3C003D")),
         providerToken(NO_ACCOUNTS_BEARER_TOKEN, List.of()));
   }
 
