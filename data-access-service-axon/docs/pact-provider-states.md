@@ -72,6 +72,7 @@ EXPERT type with a complete, submittable content.
 | `a decided prior authority 00000000-0000-0000-0000-00000000a004 exists` | Status DECIDED, granted | GET, PATCH decision expecting 409 |
 | `a prior authority draft 00000000-0000-0000-0000-00000000a005 has an uploaded document` | Status DRAFT with one PDF named `evidence.pdf`. Returns `documentId` as an injected value | GET, PATCH, DELETE a document |
 | `no prior authority exists with id 00000000-0000-0000-0000-0000000adead` | That ID is never created | Any prior authority endpoint expecting 404 |
+| `application 00000000-0000-0000-0000-000000000009 has prior authorities` | Application `…0009` is granted and has at least one DRAFT and one SUBMITTED prior authority attached | GET application by id, asserting on the prior authorities list by type |
 
 ### Using the injected document id
 

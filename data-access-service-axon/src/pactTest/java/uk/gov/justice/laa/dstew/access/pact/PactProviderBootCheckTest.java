@@ -48,6 +48,7 @@ class PactProviderBootCheckTest extends AbstractProviderPactTests {
     Map<String, Object> injected = states.priorAuthorityWithDocumentExists();
     assertThat(injected).containsKey("documentId");
     states.noPriorAuthorityWithId();
+    states.applicationWithPriorAuthorities();
   }
 
   @Test

@@ -173,6 +173,18 @@ class ProviderStates {
     log.info("State: {}", PactStates.NO_PRIOR_AUTHORITY_WITH_ID);
   }
 
+  /**
+   * Application 009, the granted parent of every seeded prior authority, with at least one draft
+   * and one submitted prior authority attached, so GET application by id returns a populated list.
+   */
+  void applicationWithPriorAuthorities() {
+    log.info("State: {}", PactStates.APPLICATION_WITH_PRIOR_AUTHORITIES);
+    priorAuthorityDraftExists();
+    priorAuthoritySubmittedExists();
+    applications.awaitApplication(
+        PactIds.APPLICATION_PA_PARENT, app -> app.getDecisionStatus() != null);
+  }
+
   // ─── Helpers ─────────────────────────────────────────────────────────────────
 
   private static ApplicationCreateRequest priorAuthorityParent() {
