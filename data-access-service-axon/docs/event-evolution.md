@@ -51,6 +51,44 @@ Required work includes:
 Do not reuse an existing field with a new meaning. That is a semantic breaking change even if JSON
 deserialization succeeds.
 
+### Document upload suffix
+
+`ApplicationDocumentUploadedEvent` and `PriorAuthorityDocumentUploadedEvent` add the optional string
+`fileSuffix`. It records only the exact case-sensitive suffix of the stored UUID filename, never
+the full original filename. Existing IDs, version pointers, and upload semantics are unchanged.
+
+- Missing or null means historical metadata with an unknown suffix.
+- An empty string means a new upload known to have no suffix.
+- A value such as `.PDF` means the exact persisted storage suffix.
+
+Both forms deserialize without a revision or upcaster. Aggregate event folds and projections retain
+the field, including null. Historical queries and deletion fall back to the sensitive filename
+when available; they never infer a suffix from MIME type. The document metadata JSON columns need
+no schema migration. Reset/replay restores suffixes from events that contain them, but cannot
+recover suffixes missing from historical events. Existing projected rows may keep null until
+rebuilt. `DocumentUploadEventCompatibilityTest` uses old event and metadata JSON shapes, while
+PostgreSQL tests verify persisted suffixes and absence of full filenames from events.
+
+### Prior Authority draft-update stream tagging
+
+`PriorAuthorityDraftUpdatedEvent` retains its original three fields and JSON meaning:
+`priorAuthorityId`, `parentApplicationId`, and `occurredAt`. Its owner ID is now annotated
+with `@EventTag(key = "PriorAuthorityAggregate")`, and the aggregate explicitly handles
+the event without changing business state. This associates new draft saves with the
+same optimistic-concurrency stream as document mutations. A stale append rolls back
+its draft write, allowing the existing bounded dispatcher retry to reload current state.
+
+No event rename, revision, upcaster, or JSON migration is required. Historical JSON
+still deserializes and can be folded without altering identity, lifecycle, or documents.
+Previously persisted events are not retagged by changing the Java annotation, and
+already lost content cannot be reconstructed from this thin event. Any historical
+store remediation needs a separate decision; do not rewrite persisted metadata here.
+
+`PriorAuthorityAggregateTest` covers the old JSON and a following document-type event.
+The PostgreSQL draft integration tests force both competing commands to read stale
+state before writing, assert one rolled-back/retried attempt, and check that both
+accepted changes and both owner-stream events survive without sensitive event fields.
+
 ## New event type
 
 Prefer a new event type when the business fact has materially changed. Keep the old handler for

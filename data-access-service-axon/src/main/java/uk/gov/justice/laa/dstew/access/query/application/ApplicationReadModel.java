@@ -21,8 +21,8 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationProvider;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Opponent;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
-import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationMeritsDecision;
+import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 
 /** Replayable current-state read model for an Application. */
@@ -64,6 +64,9 @@ public class ApplicationReadModel {
   @Column(name = "lead_application_id")
   private UUID leadApplicationId;
 
+  @Column(name = "linked_group_id")
+  private UUID linkedGroupId;
+
   @Column(name = "caseworker_id")
   private UUID caseworkerId;
 
@@ -88,7 +91,7 @@ public class ApplicationReadModel {
   @Builder.Default
   @Column(name = "uploaded_documents", nullable = false)
   @JdbcTypeCode(SqlTypes.JSON)
-  private List<UploadDocument> uploadedDocuments = List.of();
+  private List<DocumentMetadata> uploadedDocuments = List.of();
 
   @Transient private Map<UUID, String> documentFilenames;
 

@@ -7,25 +7,27 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.io.Resource;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.EvidenceDocument;
-import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
 import uk.gov.justice.laa.dstew.access.usecase.application.priorauthority.DownloadPriorAuthorityDocumentUseCase;
-import uk.gov.justice.laa.dstew.access.usecase.application.priorauthority.GetPriorAuthorityUseCase;
 
 @ExtendWith(MockitoExtension.class)
 class DownloadEvidenceDocumentUseCaseTest {
 
-  @Mock private GetPriorAuthorityUseCase getPriorAuthorityUseCase;
+  @Mock private QueryGateway queryGateway;
   @Mock private SdsService sdsService;
 
   @InjectMocks private DownloadPriorAuthorityDocumentUseCase useCase;
@@ -34,82 +36,120 @@ class DownloadEvidenceDocumentUseCaseTest {
   void givenOwnedDocument_whenDownloaded_thenRetrievesItsContentFromSds() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
-    EvidenceDocument document = document(documentId);
-    PriorAuthorityResult result =
-        PriorAuthorityResult.builder().uploadedDocuments(List.of(document)).build();
+    Instant uploadedAt = Instant.parse("2026-09-08T12:00:00Z");
+    EvidenceDocument document = document(documentId, uploadedAt, "evidence.pdf");
     Resource resource = org.mockito.Mockito.mock(Resource.class);
-    when(getPriorAuthorityUseCase.getPriorAuthority(priorAuthorityId)).thenReturn(result);
-    when(sdsService.getEvidenceFile(priorAuthorityId, documentId, document.fileName()))
+    givenQueryReturns(priorAuthorityId, documentId, document);
+    when(sdsService.getEvidenceFile(priorAuthorityId, documentId, "evidence.pdf"))
         .thenReturn(resource);
 
     EvidenceDocumentDownload download = useCase.downloadDocument(priorAuthorityId, documentId);
 
-    assertThat(download.document()).isSameAs(document);
+    assertThat(download.document())
+        .isEqualTo(
+            new EvidenceDocument(
+                documentId,
+                "GATEWAY_EVIDENCE",
+                "evidence.pdf",
+                "PDF",
+                "application/pdf",
+                123L,
+                uploadedAt,
+                "civil-apply",
+                "checksum"));
     assertThat(download.resource()).isSameAs(resource);
-    verify(sdsService).getEvidenceFile(priorAuthorityId, documentId, document.fileName());
   }
 
   @Test
   void givenSameNamedDocuments_whenOneIsDownloaded_thenUsesItsIndependentDocumentId() {
     UUID priorAuthorityId = UUID.randomUUID();
-    UUID firstDocumentId = UUID.randomUUID();
     UUID secondDocumentId = UUID.randomUUID();
-    EvidenceDocument firstDocument = document(firstDocumentId);
-    EvidenceDocument secondDocument = document(secondDocumentId);
-    PriorAuthorityResult result =
-        PriorAuthorityResult.builder()
-            .uploadedDocuments(List.of(firstDocument, secondDocument))
-            .build();
+    EvidenceDocument document = document(secondDocumentId, Instant.now(), "evidence.pdf");
     Resource resource = org.mockito.Mockito.mock(Resource.class);
-    when(getPriorAuthorityUseCase.getPriorAuthority(priorAuthorityId)).thenReturn(result);
+    givenQueryReturns(priorAuthorityId, secondDocumentId, document);
     when(sdsService.getEvidenceFile(priorAuthorityId, secondDocumentId, "evidence.pdf"))
         .thenReturn(resource);
 
     EvidenceDocumentDownload download =
         useCase.downloadDocument(priorAuthorityId, secondDocumentId);
 
-    assertThat(download.document()).isSameAs(secondDocument);
+    assertThat(download.document().documentId()).isEqualTo(secondDocumentId);
     assertThat(download.resource()).isSameAs(resource);
     verify(sdsService).getEvidenceFile(priorAuthorityId, secondDocumentId, "evidence.pdf");
   }
 
   @Test
-  void givenUnownedDocument_whenDownloaded_thenThrowsNotFound() {
+  void givenUnownedOrDeletedDocument_whenDownloaded_thenThrowsNotFound() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
-    when(getPriorAuthorityUseCase.getPriorAuthority(priorAuthorityId))
-        .thenReturn(PriorAuthorityResult.builder().uploadedDocuments(List.of()).build());
+    givenQueryReturns(priorAuthorityId, documentId, null);
 
     assertThatExceptionOfType(ResourceNotFoundException.class)
         .isThrownBy(() -> useCase.downloadDocument(priorAuthorityId, documentId))
         .withMessage(
             "No document found with ID: %s for prior authority: %s", documentId, priorAuthorityId);
-  }
-
-  @Test
-  void givenPriorAuthorityOutsideCallerScope_whenDownloaded_thenDoesNotRetrieveFromSds() {
-    UUID priorAuthorityId = UUID.randomUUID();
-    UUID documentId = UUID.randomUUID();
-    when(getPriorAuthorityUseCase.getPriorAuthority(priorAuthorityId))
-        .thenThrow(
-            new ResourceNotFoundException("No prior authority found with ID: " + priorAuthorityId));
-
-    assertThatExceptionOfType(ResourceNotFoundException.class)
-        .isThrownBy(() -> useCase.downloadDocument(priorAuthorityId, documentId));
-
     verifyNoInteractions(sdsService);
   }
 
-  private EvidenceDocument document(UUID documentId) {
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {" "})
+  void givenActiveDocumentWithNoFilename_whenDownloaded_thenRetrievesFromSds(String filename) {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    EvidenceDocument document = document(documentId, Instant.now(), filename);
+    Resource resource = org.mockito.Mockito.mock(Resource.class);
+    givenQueryReturns(priorAuthorityId, documentId, document);
+    when(sdsService.getEvidenceFile(priorAuthorityId, documentId, filename)).thenReturn(resource);
+
+    EvidenceDocumentDownload download = useCase.downloadDocument(priorAuthorityId, documentId);
+
+    assertThat(download.document().fileName()).isEqualTo(filename);
+    assertThat(download.resource()).isSameAs(resource);
+  }
+
+  private void givenQueryReturns(
+      UUID priorAuthorityId, UUID documentId, EvidenceDocument document) {
+    when(queryGateway.query(
+            new FindPriorAuthorityDocumentQuery(priorAuthorityId, documentId),
+            EvidenceDocument.class))
+        .thenReturn(CompletableFuture.completedFuture(document));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {".pdf", ".PDF", ".png", ""})
+  void givenSuffixWithoutFilename_whenDownloaded_thenUsesPersistedKey(String suffix) {
+    UUID ownerId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    EvidenceDocument document =
+        new EvidenceDocument(
+            documentId,
+            null,
+            null,
+            null,
+            "application/pdf",
+            12L,
+            Instant.now(),
+            "CIVIL_APPLY",
+            null,
+            suffix);
+    givenQueryReturns(ownerId, documentId, document);
+    Resource resource = org.mockito.Mockito.mock(Resource.class);
+    when(sdsService.getEvidenceFile(ownerId, documentId, documentId + suffix)).thenReturn(resource);
+
+    assertThat(useCase.downloadDocument(ownerId, documentId).resource()).isSameAs(resource);
+  }
+
+  private EvidenceDocument document(UUID documentId, Instant uploadedAt, String filename) {
     return new EvidenceDocument(
         documentId,
-        null,
-        "evidence.pdf",
+        "GATEWAY_EVIDENCE",
+        filename,
         "PDF",
         "application/pdf",
         123L,
-        Instant.now(),
+        uploadedAt,
         "civil-apply",
-        null);
+        "checksum");
   }
 }

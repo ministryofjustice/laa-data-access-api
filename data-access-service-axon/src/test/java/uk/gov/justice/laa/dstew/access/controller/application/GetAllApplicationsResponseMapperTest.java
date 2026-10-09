@@ -26,6 +26,7 @@ import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsResult;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
+import uk.gov.justice.laa.dstew.access.version.VersionToken;
 
 class GetAllApplicationsResponseMapperTest {
 
@@ -39,7 +40,7 @@ class GetAllApplicationsResponseMapperTest {
   @Test
   void givenEmptyResult_whenToResponse_thenReturnsEmptyListWith200() {
     FindAllApplicationsResult result =
-        new FindAllApplicationsResult(List.of(), Map.of(), Map.of(), 0L, 1, 20);
+        new FindAllApplicationsResult(List.of(), Map.of(), Map.of(), Map.of(), 0L, 1, 20);
 
     ResponseEntity<ApplicationSummaryResponse> response = mapper.toResponse(result);
 
@@ -91,7 +92,7 @@ class GetAllApplicationsResponseMapperTest {
 
     FindAllApplicationsResult result =
         new FindAllApplicationsResult(
-            List.of(app), Map.of(), Map.of(applicationId, priorAuthorities), 1L, 1, 20);
+            List.of(app), Map.of(), Map.of(), Map.of(applicationId, priorAuthorities), 1L, 1, 20);
 
     ApplicationSummary summary = mapper.toResponse(result).getBody().getApplications().get(0);
 
@@ -133,7 +134,9 @@ class GetAllApplicationsResponseMapperTest {
 
     ApplicationSummary summary =
         mapper
-            .toResponse(new FindAllApplicationsResult(List.of(app), Map.of(), Map.of(), 1L, 1, 20))
+            .toResponse(
+                new FindAllApplicationsResult(
+                    List.of(app), Map.of(), Map.of(), Map.of(), 1L, 1, 20))
             .getBody()
             .getApplications()
             .get(0);
@@ -153,7 +156,9 @@ class GetAllApplicationsResponseMapperTest {
 
     ApplicationSummary summary =
         mapper
-            .toResponse(new FindAllApplicationsResult(List.of(app), Map.of(), Map.of(), 1L, 1, 20))
+            .toResponse(
+                new FindAllApplicationsResult(
+                    List.of(app), Map.of(), Map.of(), Map.of(), 1L, 1, 20))
             .getBody()
             .getApplications()
             .get(0);
@@ -179,7 +184,9 @@ class GetAllApplicationsResponseMapperTest {
 
     ApplicationSummary summary =
         mapper
-            .toResponse(new FindAllApplicationsResult(List.of(app), Map.of(), Map.of(), 1L, 1, 20))
+            .toResponse(
+                new FindAllApplicationsResult(
+                    List.of(app), Map.of(), Map.of(), Map.of(), 1L, 1, 20))
             .getBody()
             .getApplications()
             .get(0);
@@ -193,20 +200,23 @@ class GetAllApplicationsResponseMapperTest {
   void givenLeadApplicationWithGroup_whenToResponse_thenLinkedApplicationsExcludeSelf() {
     UUID leadId = UUID.randomUUID();
     UUID memberId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
 
     ApplicationReadModel leadApp =
         ApplicationReadModel.builder()
             .autoGranted(AutoGrantedState.PENDING)
             .applicationId(leadId)
+            .linkedGroupId(groupId)
             .modifiedAt(Instant.now())
             .leadApplicationId(null)
             .build();
 
     LinkedApplicationGroupReadModel group =
         LinkedApplicationGroupReadModel.builder()
-            .groupId(UUID.randomUUID())
+            .groupId(groupId)
             .leadApplicationId(leadId)
             .memberIds(new ArrayList<>(List.of(leadId, memberId)))
+            .version(3L)
             .createdAt(Instant.now())
             .modifiedAt(Instant.now())
             .build();
@@ -215,14 +225,23 @@ class GetAllApplicationsResponseMapperTest {
         mapper
             .toResponse(
                 new FindAllApplicationsResult(
-                    List.of(leadApp), Map.of(leadId, group), Map.of(), 1L, 1, 20))
+                    List.of(leadApp),
+                    Map.of(groupId, group),
+                    Map.of(memberId, "LAA-MEMBER"),
+                    Map.of(),
+                    1L,
+                    1,
+                    20))
             .getBody()
             .getApplications()
             .get(0);
 
     assertThat(summary.getIsLead()).isTrue();
+    assertThat(summary.getLinkedGroupVersion())
+        .isEqualTo(VersionToken.linkedGroup(groupId, 3L).encode());
     assertThat(summary.getLinkedApplications()).hasSize(1);
     assertThat(summary.getLinkedApplications().get(0).getApplicationId()).isEqualTo(memberId);
+    assertThat(summary.getLinkedApplications().get(0).getLaaReference()).isEqualTo("LAA-MEMBER");
     assertThat(summary.getLinkedApplications().get(0).getIsLead()).isFalse();
   }
 
@@ -230,16 +249,18 @@ class GetAllApplicationsResponseMapperTest {
   void givenMemberApplicationWithGroup_whenToResponse_thenIsLeadFalse() {
     UUID leadId = UUID.randomUUID();
     UUID memberId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
     ApplicationReadModel memberApp =
         ApplicationReadModel.builder()
             .autoGranted(AutoGrantedState.PENDING)
             .applicationId(memberId)
+            .linkedGroupId(groupId)
             .modifiedAt(Instant.now())
             .leadApplicationId(leadId)
             .build();
     LinkedApplicationGroupReadModel group =
         LinkedApplicationGroupReadModel.builder()
-            .groupId(UUID.randomUUID())
+            .groupId(groupId)
             .leadApplicationId(leadId)
             .memberIds(new ArrayList<>(List.of(leadId, memberId)))
             .createdAt(Instant.now())
@@ -250,7 +271,7 @@ class GetAllApplicationsResponseMapperTest {
         mapper
             .toResponse(
                 new FindAllApplicationsResult(
-                    List.of(memberApp), Map.of(leadId, group), Map.of(), 1L, 1, 20))
+                    List.of(memberApp), Map.of(groupId, group), Map.of(), Map.of(), 1L, 1, 20))
             .getBody()
             .getApplications()
             .get(0);
@@ -269,12 +290,15 @@ class GetAllApplicationsResponseMapperTest {
 
     ApplicationSummary summary =
         mapper
-            .toResponse(new FindAllApplicationsResult(List.of(app), Map.of(), Map.of(), 1L, 1, 20))
+            .toResponse(
+                new FindAllApplicationsResult(
+                    List.of(app), Map.of(), Map.of(), Map.of(), 1L, 1, 20))
             .getBody()
             .getApplications()
             .get(0);
 
     assertThat(summary.getLinkedApplications()).isEmpty();
+    assertThat(summary.getLinkedGroupVersion()).isNull();
   }
 
   @Test
@@ -288,7 +312,9 @@ class GetAllApplicationsResponseMapperTest {
 
     ApplicationSummary summary =
         mapper
-            .toResponse(new FindAllApplicationsResult(List.of(app), Map.of(), Map.of(), 1L, 1, 20))
+            .toResponse(
+                new FindAllApplicationsResult(
+                    List.of(app), Map.of(), Map.of(), Map.of(), 1L, 1, 20))
             .getBody()
             .getApplications()
             .get(0);
@@ -320,6 +346,7 @@ class GetAllApplicationsResponseMapperTest {
             .toResponse(
                 new FindAllApplicationsResult(
                     List.of(app),
+                    Map.of(),
                     Map.of(),
                     Map.of(applicationId, List.of(priorAuthority)),
                     1L,

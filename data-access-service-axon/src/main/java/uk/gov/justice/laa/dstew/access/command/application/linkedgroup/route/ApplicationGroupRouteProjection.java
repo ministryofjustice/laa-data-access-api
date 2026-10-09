@@ -12,7 +12,9 @@ import org.springframework.transaction.annotation.Transactional;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupDissolvedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberRemovedFromGroupEvent;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 
 /** Maintains durable write-side application-to-group routing in the command transaction. */
@@ -71,6 +73,34 @@ public class ApplicationGroupRouteProjection {
 
     route.join(event.groupId(), event.occurredAt());
     routes.save(route);
+  }
+
+  /** Transitions a removed member's route to standalone inside the command transaction. */
+  @EventHandler
+  @Transactional
+  public void on(MemberRemovedFromGroupEvent event) {
+    var route =
+        routes
+            .findByApplicationIdForUpdate(event.memberId())
+            .orElseThrow(
+                () ->
+                    new ResourceNotFoundException(
+                        "No application group route found for application " + event.memberId()));
+
+    route.leave(event.groupId(), event.occurredAt());
+    routes.save(route);
+  }
+
+  /** Releases every member route when the group is dissolved inside the command transaction. */
+  @EventHandler
+  @Transactional
+  public void on(LinkedApplicationGroupDissolvedEvent event) {
+    var memberApplicationIds = event.memberApplicationIds().stream().distinct().sorted().toList();
+    var lockedRoutes = routes.findAllByApplicationIdInForUpdate(memberApplicationIds);
+    ensureAllRoutesPresent(memberApplicationIds, lockedRoutes);
+
+    lockedRoutes.forEach(route -> route.leave(event.groupId(), event.occurredAt()));
+    routes.saveAll(lockedRoutes);
   }
 
   private void ensureAllRoutesPresent(

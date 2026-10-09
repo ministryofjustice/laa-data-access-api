@@ -12,11 +12,11 @@
   ],
   "properties": {
     "addressLineOne": {
-      "type": "string",
+      "type": ["string", "null"],
       "description": "First line of the address"
     },
     "addressLineTwo": {
-      "type": "string",
+      "type": ["string", "null"],
       "description": "Second line of the address"
     },
     "addressLineThree": {
@@ -27,11 +27,11 @@
       "description": "Third line of the address"
     },
     "city": {
-      "type": "string",
+      "type": ["string", "null"],
       "description": "Town or city"
     },
     "county": {
-      "type": "string",
+      "type": ["string", "null"],
       "description": "County"
     },
     "postcode": {
@@ -46,7 +46,7 @@
       "description": "Organisation name for the address"
     },
     "buildingNumberName": {
-      "type": "string",
+      "type": ["string", "null"],
       "description": "Building number or name"
     },
     "countryCode": {
@@ -62,7 +62,7 @@
       "description": "Address location type"
     },
     "lookupUsed": {
-      "type": "boolean",
+      "type": ["boolean", "null"],
       "description": "Indicates if address lookup was used"
     },
     "careOf": {

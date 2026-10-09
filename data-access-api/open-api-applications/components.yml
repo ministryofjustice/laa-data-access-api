@@ -20,30 +20,6 @@ components:
         - AUTOGRANTED
         - MANUAL
 
-    ApplicationDocumentType:
-      type: string
-      enum:
-        - GATEWAY_EVIDENCE
-        - MERITS_REPORT
-        - STATEMENT_OF_CASE
-        - COURT_APPLICATION
-        - COURT_ORDER
-        - EXPERT_REPORT
-        - COURT_APPLICATION_OR_ORDER
-        - PARENTAL_RESPONSIBILITY
-        - LOCAL_AUTHORITY_ASSESSMENT
-        - GROUNDS_OF_APPEAL
-        - COUNSEL_OPINION
-        - JUDGEMENT
-        - PLF_COURT_ORDER
-        - LETTER_OF_INSTRUCTION
-        - ESTIMATE_OF_COSTS
-        - ALTERNATIVE_QUOTE
-        - OTHER_PARTY_CERTIFICATE_REFERENCE
-        - OTHER_SUPPORTING_DOCUMENT
-        - PRIMARY_QUOTE
-        - ADDITIONAL_QUOTE
-
     OpponentResponse:
       type: object
       properties:
@@ -113,6 +89,12 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/LinkedApplicationSummaryResponse"
+        linkedGroupVersion:
+          type: string
+          description: >-
+            Opaque token identifying the application's linked group and its current version;
+            absent when the application is not linked. Pass it back unchanged on link, unlink,
+            and make-lead requests. Do not parse it.
         version:
           type: integer
           format: int64
@@ -267,6 +249,22 @@ components:
           description: Target Application whose group the source Application should join
         linkType:
           $ref: "#/components/schemas/ApplicationLinkType"
+        linkedGroupVersion:
+          type: string
+          description: >-
+            The target Application's linkedGroupVersion token exactly as last read; omit when the
+            target is not linked
+
+    LinkedGroupChangeRequest:
+      type: object
+      additionalProperties: false
+      required: [linkedGroupVersion]
+      properties:
+        linkedGroupVersion:
+          type: string
+          description: >-
+            The application's linkedGroupVersion token exactly as last read, used for concurrency
+            control
 
     ApplicationSummary:
       type: object
@@ -315,6 +313,12 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/LinkedApplicationSummaryResponse"
+        linkedGroupVersion:
+          type: string
+          description: >-
+            Opaque token identifying the application's linked group and its current version;
+            absent when the application is not linked. Pass it back unchanged on link, unlink,
+            and make-lead requests. Do not parse it.
         priorAuthorities:
           type: array
           items:
@@ -596,7 +600,9 @@ components:
     InvolvedChildResponse:
       type: object
       properties:
-        fullName:
+        firstName:
+          type: string
+        lastName:
           type: string
         dateOfBirth:
           type: string
@@ -695,7 +701,7 @@ components:
           type: string
           format: uuid
         documentType:
-          type: string
+          $ref: "../open-api-common/components.yml#/components/schemas/DocumentType"
         fileName:
           type: string
           description: Original filename, absent for legacy uploads where it was not recorded

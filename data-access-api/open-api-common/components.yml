@@ -17,6 +17,30 @@ components:
         minimum: 1
 
   schemas:
+    DocumentType:
+      type: string
+      enum:
+        - GATEWAY_EVIDENCE
+        - MERITS_REPORT
+        - STATEMENT_OF_CASE
+        - COURT_APPLICATION
+        - COURT_ORDER
+        - EXPERT_REPORT
+        - COURT_APPLICATION_OR_ORDER
+        - PARENTAL_RESPONSIBILITY
+        - LOCAL_AUTHORITY_ASSESSMENT
+        - GROUNDS_OF_APPEAL
+        - COUNSEL_OPINION
+        - JUDGEMENT
+        - PLF_COURT_ORDER
+        - LETTER_OF_INSTRUCTION
+        - ESTIMATE_OF_COSTS
+        - ALTERNATIVE_QUOTE
+        - OTHER_PARTY_CERTIFICATE_REFERENCE
+        - OTHER_SUPPORTING_DOCUMENT
+        - PRIMARY_QUOTE
+        - ADDITIONAL_QUOTE
+
     ServiceName:
       type: string
       enum:
@@ -41,6 +65,9 @@ components:
         - APPLICATION_UPDATED
         - APPLICATION_GROUP_CREATED
         - APPLICATION_GROUP_JOINED
+        - APPLICATION_GROUP_LEAD_CHANGED
+        - APPLICATION_GROUP_LEFT
+        - APPLICATION_GROUP_DISSOLVED
         - ASSIGN_APPLICATION_TO_CASEWORKER
         - UNASSIGN_APPLICATION_TO_CASEWORKER
         - APPLICATION_MAKE_DECISION_REFUSED

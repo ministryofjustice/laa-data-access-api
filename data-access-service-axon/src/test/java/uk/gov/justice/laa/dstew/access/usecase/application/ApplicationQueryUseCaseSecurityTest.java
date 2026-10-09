@@ -78,7 +78,7 @@ class ApplicationQueryUseCaseSecurityTest extends BaseSecuredUseCaseTest {
     FindAllApplicationsQuery query =
         new FindAllApplicationsQuery(null, null, null, null, null, null, null, null, 1, 20);
     FindAllApplicationsResult expected =
-        new FindAllApplicationsResult(List.of(), Map.of(), Map.of(), 0, 1, 20);
+        new FindAllApplicationsResult(List.of(), Map.of(), Map.of(), Map.of(), 0, 1, 20);
     when(queryGateway.query(
             any(FindAllApplicationsQuery.class), eq(FindAllApplicationsResult.class)))
         .thenReturn(CompletableFuture.completedFuture(expected));
@@ -94,7 +94,8 @@ class ApplicationQueryUseCaseSecurityTest extends BaseSecuredUseCaseTest {
     UUID applicationId = UUID.randomUUID();
     ApplicationReadModel application =
         ApplicationReadModel.builder().applicationId(applicationId).build();
-    ApplicationDetailResult expected = new ApplicationDetailResult(application, null, List.of());
+    ApplicationDetailResult expected =
+        new ApplicationDetailResult(application, null, List.of(), Map.of());
     when(queryGateway.query(
             any(FindApplicationDetailQuery.class), eq(ApplicationDetailResult.class)))
         .thenReturn(CompletableFuture.completedFuture(expected));

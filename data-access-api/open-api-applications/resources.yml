@@ -99,10 +99,22 @@ paths:
             schema:
               $ref: "./components.yml#/components/schemas/ApplicationCreateRequest"
       responses:
-        '201': { description: Created }
+        '201':
+          description: Created and projection readable
+          headers:
+            Location:
+              schema:
+                type: string
+        '202':
+          description: Created but projection not yet readable; poll the Location header
+          headers:
+            Location:
+              schema:
+                type: string
         '400': { description: Bad request }
         '401': { description: Unauthorized }
         '403': { description: Forbidden }
+        '409': { description: An application with this id already exists with different content }
         '500': { description: Internal server error }
 
   /api/v0/applications/{id}:
@@ -181,13 +193,87 @@ paths:
           application/json:
             schema:
               $ref: "./components.yml#/components/schemas/ApplicationLinkRequest"
+            examples:
+              firstTimeLink:
+                summary: Target is standalone (first-time link)
+                description: Omit linkedGroupVersion entirely; the target is not yet in a group.
+                value:
+                  applicationId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  linkType: FAMILY
+              targetAlreadyLinked:
+                summary: Target already belongs to a group
+                description: Supply the target's linkedGroupVersion token exactly as last read.
+                value:
+                  applicationId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  linkType: FAMILY
+                  linkedGroupVersion: djE6bGlua2VkLWdyb3VwOjdjOWU2Njc5LTc0MjUtNDBkZS05NDRiLWUwN2ZjMWY5MGFlNzoy
       responses:
-        "204": { description: Application linked, or already linked to the target group }
-        "400": { description: Invalid request, self-link, or unsupported link type }
+        "204": { description: "Application linked, or already linked to the target group" }
+        "400": { description: "Invalid request, self-link, unsupported link type, or linkedGroupVersion is not a valid token" }
         "401": { description: Unauthorized }
         "403": { description: Forbidden }
         "404": { description: Source or target Application not found }
-        "409": { description: Source Application belongs to a different linked group }
+        "409": { description: "Source Application belongs to a different linked group, the target's linked group has changed since the supplied version, or the target is no longer in the linked group identified by linkedGroupVersion" }
+        "500": { description: Internal server error }
+
+  /api/v0/applications/{id}/unlink:
+    post:
+      tags:
+        - application-command
+      operationId: unlinkApplication
+      summary: Remove an Application from its linked group
+      parameters:
+        - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
+        - name: id
+          in: path
+          required: true
+          description: Application to remove
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./components.yml#/components/schemas/LinkedGroupChangeRequest"
+      responses:
+        "204": { description: Application removed; the group is dissolved if only one member would remain }
+        "400": { description: Invalid request (e.g. missing or invalid linkedGroupVersion) }
+        "401": { description: Unauthorized }
+        "403": { description: Forbidden }
+        "404": { description: Application not found }
+        "409": { description: "Application is not in a linked group, is the group lead, the linked group has changed since the supplied version, or the application is no longer in the linked group identified by linkedGroupVersion" }
+        "500": { description: Internal server error }
+
+  /api/v0/applications/{id}/make-lead:
+    post:
+      tags:
+        - application-command
+      operationId: makeApplicationLead
+      summary: Make an Application the lead of its linked group
+      parameters:
+        - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
+        - name: id
+          in: path
+          required: true
+          description: Application to make lead
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./components.yml#/components/schemas/LinkedGroupChangeRequest"
+      responses:
+        "204": { description: Application is now the lead (or already was) }
+        "400": { description: Invalid request (e.g. missing or invalid linkedGroupVersion) }
+        "401": { description: Unauthorized }
+        "403": { description: Forbidden }
+        "404": { description: Application not found }
+        "409": { description: "Application is not in a linked group, the linked group has changed since the supplied version, or the application is no longer in the linked group identified by linkedGroupVersion" }
         "500": { description: Internal server error }
 
   /api/v0/applications/{id}/history-search:
@@ -542,7 +628,7 @@ paths:
                   type: string
                   format: binary
                 documentType:
-                  $ref: "./components.yml#/components/schemas/ApplicationDocumentType"
+                  $ref: "../open-api-common/components.yml#/components/schemas/DocumentType"
       responses:
         '201':
           description: Document uploaded and recorded against the Application

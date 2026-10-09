@@ -59,10 +59,7 @@ public class UpdatePriorAuthorityDraftCommandHandler {
       PriorAuthorityDataPayload existingDraft,
       String priorAuthorityType) {
     PriorAuthorityContent updatedContent =
-        command
-            .content()
-            .withPriorAuthorityType(PriorAuthorityType.valueOf(priorAuthorityType))
-            .withUploadedDocuments(existingDraft.content().uploadedDocuments());
+        command.content().withPriorAuthorityType(PriorAuthorityType.valueOf(priorAuthorityType));
     return existingDraft
         .withContent(updatedContent)
         .withSerialisedRequest(command.serialisedRequest())

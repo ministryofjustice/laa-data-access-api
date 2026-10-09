@@ -9,7 +9,10 @@ import org.axonframework.modelling.annotation.TargetEntityId;
 /** Adds one application to an already-established linked group. */
 @Command(routingKey = "groupId")
 public record AddApplicationToLinkedGroupCommand(
-    @TargetEntityId UUID groupId, UUID applicationId, Instant occurredAt) {
+    @TargetEntityId UUID groupId,
+    UUID applicationId,
+    long expectedGroupVersion,
+    Instant occurredAt) {
 
   /** Validates the routed group identity and application identifier. */
   public AddApplicationToLinkedGroupCommand {
