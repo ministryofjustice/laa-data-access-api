@@ -32,10 +32,10 @@ import uk.gov.justice.laa.dstew.access.controller.application.CreateApplicationC
 import uk.gov.justice.laa.dstew.access.controller.application.CreateNoteCommandMapper;
 import uk.gov.justice.laa.dstew.access.controller.application.MakeDecisionCommandMapper;
 import uk.gov.justice.laa.dstew.access.controller.application.SavePriorAuthorityDraftCommandMapper;
-import uk.gov.justice.laa.dstew.access.model.DocumentDownloadResponse;
-import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
 import uk.gov.justice.laa.dstew.access.query.worklist.WorkListItemReadRepository;
+import uk.gov.justice.laa.dstew.access.service.sds.SdsDownloadResult;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
+import uk.gov.justice.laa.dstew.access.service.sds.SdsUploadResult;
 
 /**
  * Shared scaffolding for Pact provider verification.
@@ -137,11 +137,9 @@ public abstract class AbstractProviderPactTests {
   }
 
   private void stubSecureDocumentStorage() {
-    DocumentUploadResponse uploaded =
-        new DocumentUploadResponse()
-            .detail("pact-bucket/evidence.pdf")
-            .success("File uploaded successfully")
-            .checksum("pact-checksum-0001");
+    SdsUploadResult uploaded =
+        new SdsUploadResult(
+            "pact-bucket/evidence.pdf", "File uploaded successfully", "pact-checksum-0001");
     Mockito.when(
             sdsService.saveEvidenceFile(
                 ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any()))
@@ -155,7 +153,6 @@ public abstract class AbstractProviderPactTests {
             new ByteArrayResource(
                 "%PDF-1.4\nPact provider state evidence".getBytes(StandardCharsets.US_ASCII)));
     Mockito.when(sdsService.getFile(ArgumentMatchers.any(), ArgumentMatchers.any()))
-        .thenReturn(
-            new DocumentDownloadResponse().fileURL("https://sds.example.test/files/evidence.pdf"));
+        .thenReturn(new SdsDownloadResult("https://sds.example.test/files/evidence.pdf"));
   }
 }

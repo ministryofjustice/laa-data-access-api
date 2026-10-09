@@ -1,17 +1,20 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import org.springframework.stereotype.Component;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.document.PriorAuthorityDocumentFormat;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
 import uk.gov.justice.laa.dstew.access.model.Apportionment;
 import uk.gov.justice.laa.dstew.access.model.BillingType;
 import uk.gov.justice.laa.dstew.access.model.CounselDetails;
 import uk.gov.justice.laa.dstew.access.model.CounselType;
 import uk.gov.justice.laa.dstew.access.model.DisbursementDetails;
+import uk.gov.justice.laa.dstew.access.model.DocumentType;
 import uk.gov.justice.laa.dstew.access.model.ExpertCosts;
 import uk.gov.justice.laa.dstew.access.model.ExpertDetails;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityDecisionDetails;
-import uk.gov.justice.laa.dstew.access.model.PriorAuthorityDocumentType;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityResponse;
 import uk.gov.justice.laa.dstew.access.model.TimeRequested;
 import uk.gov.justice.laa.dstew.access.model.UploadedDocument;
@@ -51,11 +54,15 @@ public class GetPriorAuthorityResponseMapper {
     return response;
   }
 
+  // Never-uploaded maps to null and all-deleted to empty, matching the former content list.
   private List<UploadedDocument> toUploadedDocuments(PriorAuthorityResult result) {
-    if (result.uploadedDocuments() == null) {
+    if (result.uploadedDocuments() == null || result.uploadedDocuments().isEmpty()) {
       return null;
     }
+    Map<UUID, String> filenames =
+        result.documentFilenames() == null ? Map.of() : result.documentFilenames();
     return result.uploadedDocuments().stream()
+        .filter(document -> !document.deleted())
         .map(
             document ->
                 new UploadedDocument()
@@ -63,10 +70,13 @@ public class GetPriorAuthorityResponseMapper {
                     .documentType(
                         document.documentType() == null
                             ? null
-                            : PriorAuthorityDocumentType.fromValue(document.documentType()))
-                    .fileName(document.fileName())
-                    .fileType(document.fileType())
-                    .mediaType(document.mediaType())
+                            : DocumentType.fromValue(document.documentType()))
+                    .fileName(filenames.get(document.documentId()))
+                    .fileType(
+                        PriorAuthorityDocumentFormat.fromContentType(document.contentType())
+                            .map(PriorAuthorityDocumentFormat::fileType)
+                            .orElse(null))
+                    .mediaType(document.contentType())
                     .size(document.size())
                     .uploadedAt(
                         document.uploadedAt() == null

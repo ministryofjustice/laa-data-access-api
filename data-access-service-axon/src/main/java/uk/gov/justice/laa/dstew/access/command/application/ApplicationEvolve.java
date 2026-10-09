@@ -11,6 +11,7 @@ import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationRead
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
+import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 
 /** Event-fold functions for {@link ApplicationState}. */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
@@ -84,7 +85,7 @@ public final class ApplicationEvolve {
   /** Applies an {@link ApplicationDocumentUploadedEvent} to the given state. */
   public static void apply(ApplicationState state, ApplicationDocumentUploadedEvent event) {
     state.uploadedDocuments.add(
-        new UploadDocument(
+        new DocumentMetadata(
             event.documentId(),
             event.documentType(),
             event.uploadedAt(),
@@ -92,7 +93,8 @@ public final class ApplicationEvolve {
             event.contentType(),
             event.checksum(),
             event.sourceService(),
-            false));
+            false,
+            event.fileSuffix()));
     if (event.applicationDataVersion() != null) {
       state.applicationDataVersion = event.applicationDataVersion();
     }
