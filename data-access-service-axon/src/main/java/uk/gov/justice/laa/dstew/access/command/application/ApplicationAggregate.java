@@ -247,14 +247,22 @@ public class ApplicationAggregate {
    *
    * <p>Skips applications that are not manual and undecided, or are already assigned to the
    * requested caseworker. This allows the group assignment to continue when some members cannot
-   * accept the assignment.
+   * accept the assignment. When {@code expectedAssignmentVersion} is supplied - which only happens
+   * for the single item the caseworker was actually looking at - a stale version is rejected.
    */
   @CommandHandler
   void handle(DirectGroupWorkItemAssignmentCommand command, EventAppender eventAppender) {
     if (applicationId == null
         || state.autoGranted != AutoGrantedState.MANUAL
-        || state.overallDecision != null
-        || Objects.equals(state.caseworkerId, command.caseworkerId())) {
+        || state.overallDecision != null) {
+      return;
+    }
+    if (command.expectedAssignmentVersion() != null
+        && command.expectedAssignmentVersion() != state.assignmentVersion) {
+      throw new WorkItemAssignmentConflictException(
+          command.workItemId(), "the assignment version is stale");
+    }
+    if (Objects.equals(state.caseworkerId, command.caseworkerId())) {
       return;
     }
     long nextAssignmentVersion = state.assignmentVersion + 1;

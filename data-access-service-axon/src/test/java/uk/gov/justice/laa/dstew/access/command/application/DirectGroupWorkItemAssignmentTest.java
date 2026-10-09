@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.command.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -19,6 +20,7 @@ import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataS
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.assign.DirectGroupWorkItemAssignmentCommand;
 
@@ -49,7 +51,9 @@ class DirectGroupWorkItemAssignmentTest {
         .given()
         .events(created(id, when), new ApplicationReadyForManualAssessmentEvent(id, 1L, 1L, when))
         .when()
-        .command(new DirectGroupWorkItemAssignmentCommand(id, caseworkerId, "{}", "Assigned", when))
+        .command(
+            new DirectGroupWorkItemAssignmentCommand(
+                id, caseworkerId, null, "{}", "Assigned", when))
         .then()
         .events(new WorkItemAssigned(id, WorkItemType.APPLICATION, 1L, 1L, caseworkerId, when));
     verifyNoInteractions(dataStore);
@@ -69,7 +73,8 @@ class DirectGroupWorkItemAssignmentTest {
 
     EventAppender appender = mock(EventAppender.class);
     aggregate.handle(
-        new DirectGroupWorkItemAssignmentCommand(id, newCaseworkerId, "{}", "Reassigned", when),
+        new DirectGroupWorkItemAssignmentCommand(
+            id, newCaseworkerId, null, "{}", "Reassigned", when),
         appender);
 
     ArgumentCaptor<WorkItemAssigned> eventCaptor = ArgumentCaptor.forClass(WorkItemAssigned.class);
@@ -91,10 +96,57 @@ class DirectGroupWorkItemAssignmentTest {
 
     EventAppender appender = mock(EventAppender.class);
     aggregate.handle(
-        new DirectGroupWorkItemAssignmentCommand(id, caseworkerId, "{}", "Assigned", when),
+        new DirectGroupWorkItemAssignmentCommand(id, caseworkerId, null, "{}", "Assigned", when),
         appender);
 
     verifyNoInteractions(appender);
+  }
+
+  @Test
+  void rejectsAStaleExpectedVersionForTheSpecificallyTargetedMember() {
+    UUID id = UUID.randomUUID();
+    UUID previousCaseworkerId = UUID.randomUUID();
+    UUID newCaseworkerId = UUID.randomUUID();
+    Instant when = Instant.parse("2026-08-28T10:00:00Z");
+    ApplicationAggregate aggregate = new ApplicationAggregate();
+    aggregate.on(created(id, when));
+    aggregate.on(new ApplicationReadyForManualAssessmentEvent(id, 1L, 1L, when));
+    aggregate.on(
+        new WorkItemAssigned(id, WorkItemType.APPLICATION, 1L, 1L, previousCaseworkerId, when));
+
+    EventAppender appender = mock(EventAppender.class);
+    assertThatThrownBy(
+            () ->
+                aggregate.handle(
+                    new DirectGroupWorkItemAssignmentCommand(
+                        id, newCaseworkerId, 0L, "{}", "Reassigned", when),
+                    appender))
+        .isInstanceOf(WorkItemAssignmentConflictException.class);
+    verifyNoInteractions(appender);
+  }
+
+  @Test
+  void assignsTheSpecificallyTargetedMemberWhenTheExpectedVersionMatches() {
+    UUID id = UUID.randomUUID();
+    UUID previousCaseworkerId = UUID.randomUUID();
+    UUID newCaseworkerId = UUID.randomUUID();
+    Instant when = Instant.parse("2026-08-28T10:00:00Z");
+    ApplicationAggregate aggregate = new ApplicationAggregate();
+    aggregate.on(created(id, when));
+    aggregate.on(new ApplicationReadyForManualAssessmentEvent(id, 1L, 1L, when));
+    aggregate.on(
+        new WorkItemAssigned(id, WorkItemType.APPLICATION, 1L, 1L, previousCaseworkerId, when));
+
+    EventAppender appender = mock(EventAppender.class);
+    aggregate.handle(
+        new DirectGroupWorkItemAssignmentCommand(id, newCaseworkerId, 1L, "{}", "Reassigned", when),
+        appender);
+
+    ArgumentCaptor<WorkItemAssigned> eventCaptor = ArgumentCaptor.forClass(WorkItemAssigned.class);
+    verify(appender).append(eventCaptor.capture());
+    assertThat(eventCaptor.getValue())
+        .isEqualTo(
+            new WorkItemAssigned(id, WorkItemType.APPLICATION, 1L, 2L, newCaseworkerId, when));
   }
 
   @Test
@@ -111,7 +163,8 @@ class DirectGroupWorkItemAssignmentTest {
             decidedId, 2L, 2L, "GRANTED", AutoGrantedState.MANUAL, when));
     EventAppender appender = mock(EventAppender.class);
     decided.handle(
-        new DirectGroupWorkItemAssignmentCommand(decidedId, caseworkerId, "{}", "Assigned", when),
+        new DirectGroupWorkItemAssignmentCommand(
+            decidedId, caseworkerId, null, "{}", "Assigned", when),
         appender);
     verifyNoInteractions(appender);
 
@@ -120,7 +173,8 @@ class DirectGroupWorkItemAssignmentTest {
     draftOnly.on(created(draftId, when));
     EventAppender draftAppender = mock(EventAppender.class);
     draftOnly.handle(
-        new DirectGroupWorkItemAssignmentCommand(draftId, caseworkerId, "{}", "Assigned", when),
+        new DirectGroupWorkItemAssignmentCommand(
+            draftId, caseworkerId, null, "{}", "Assigned", when),
         draftAppender);
     verifyNoInteractions(draftAppender);
   }

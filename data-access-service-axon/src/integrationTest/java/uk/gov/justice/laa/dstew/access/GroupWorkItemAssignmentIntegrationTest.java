@@ -88,12 +88,29 @@ class GroupWorkItemAssignmentIntegrationTest {
       awaitWorkListAssignee(memberId, TestJwtDecoderConfig.CASEWORKER_ID, 1L);
     }
 
-    assertThat(assign(memberIds.get(2), TestJwtDecoderConfig.OTHER_CASEWORKER_ID).getStatusCode())
+    assertThat(
+            assign(memberIds.get(2), TestJwtDecoderConfig.OTHER_CASEWORKER_ID, 1L).getStatusCode())
         .isEqualTo(HttpStatus.OK);
 
     for (UUID memberId : memberIds) {
       awaitWorkListAssignee(memberId, TestJwtDecoderConfig.OTHER_CASEWORKER_ID, 2L);
     }
+  }
+
+  @Test
+  void
+      givenAGroupedItemIsAlreadyReassigned_whenAssignedAgainWithTheOriginalStaleVersion_thenTheRequestIsRejected() {
+    List<UUID> memberIds = createGroup(2);
+    UUID targetId = memberIds.get(0);
+
+    assertThat(assign(targetId, TestJwtDecoderConfig.CASEWORKER_ID, 0L).getStatusCode())
+        .isEqualTo(HttpStatus.OK);
+    awaitWorkListAssignee(targetId, TestJwtDecoderConfig.CASEWORKER_ID, 1L);
+
+    ResponseEntity<String> staleReassignment =
+        assign(targetId, TestJwtDecoderConfig.OTHER_CASEWORKER_ID, 0L);
+
+    assertThat(staleReassignment.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
   }
 
   @Test
@@ -138,10 +155,16 @@ class GroupWorkItemAssignmentIntegrationTest {
   }
 
   private ResponseEntity<String> assign(UUID itemId, UUID caseworkerId) {
+    return assign(itemId, caseworkerId, 0L);
+  }
+
+  private ResponseEntity<String> assign(
+      UUID itemId, UUID caseworkerId, long expectedAssignmentVersion) {
     return restTemplate.exchange(
         "http://localhost:" + port + "/api/v0/work-list/" + itemId + "/assign",
         HttpMethod.POST,
-        new HttpEntity<>(new WorkListAssignRequest(0L), headersFor(caseworkerId)),
+        new HttpEntity<>(
+            new WorkListAssignRequest(expectedAssignmentVersion), headersFor(caseworkerId)),
         String.class);
   }
 

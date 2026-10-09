@@ -72,10 +72,12 @@ public class AssignWorkItemCommandHandler {
 
   private void assignGroup(List<UUID> memberApplicationIds, AssignWorkItemCommand command) {
     for (UUID memberApplicationId : memberApplicationIds) {
+      boolean isTargetedItem = memberApplicationId.equals(command.workItemId());
       commandGateway.sendAndWait(
           new DirectGroupWorkItemAssignmentCommand(
               memberApplicationId,
               command.caseworkerId(),
+              isTargetedItem ? command.expectedAssignmentVersion() : null,
               command.serialisedRequest(),
               command.eventDescription(),
               command.occurredAt()));

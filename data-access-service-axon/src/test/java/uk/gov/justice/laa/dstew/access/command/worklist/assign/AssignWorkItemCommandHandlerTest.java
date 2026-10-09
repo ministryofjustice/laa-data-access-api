@@ -115,12 +115,12 @@ class AssignWorkItemCommandHandlerTest {
         .verify(gateway)
         .sendAndWait(
             new DirectGroupWorkItemAssignmentCommand(
-                id, caseworkerId, "{}", "Assigned", occurredAt));
+                id, caseworkerId, 0L, "{}", "Assigned", occurredAt));
     order
         .verify(gateway)
         .sendAndWait(
             new DirectGroupWorkItemAssignmentCommand(
-                siblingId, caseworkerId, "{}", "Assigned", occurredAt));
+                siblingId, caseworkerId, null, "{}", "Assigned", occurredAt));
     verify(gateway, never())
         .sendAndWait(org.mockito.ArgumentMatchers.isA(DirectWorkItemAssignmentCommand.class));
   }
