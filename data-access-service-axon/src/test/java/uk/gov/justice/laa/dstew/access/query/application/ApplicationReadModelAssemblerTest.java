@@ -122,12 +122,14 @@ class ApplicationReadModelAssemblerTest {
                 ApplicationListIndexReadModel.builder()
                     .applicationId(applicationId)
                     .laaReference("LAA-APPLICATION")
+                    .status("APPLICATION_SUBMITTED")
                     .clientFirstName("Ada")
                     .clientLastName("Lovelace")
                     .build(),
                 ApplicationListIndexReadModel.builder()
                     .applicationId(linkedApplicationId)
                     .laaReference("LAA-LINKED")
+                    .status("APPLICATION_SUBMITTED")
                     .clientFirstName("Grace")
                     .clientLastName("Hopper")
                     .build()));
@@ -140,10 +142,12 @@ class ApplicationReadModelAssemblerTest {
         .containsOnly(
             entry(
                 applicationId,
-                new LinkedApplicationMemberDetails("LAA-APPLICATION", "Ada", "Lovelace")),
+                new LinkedApplicationMemberDetails(
+                    "LAA-APPLICATION", "APPLICATION_SUBMITTED", "Ada", "Lovelace")),
             entry(
                 linkedApplicationId,
-                new LinkedApplicationMemberDetails("LAA-LINKED", "Grace", "Hopper")));
+                new LinkedApplicationMemberDetails(
+                    "LAA-LINKED", "APPLICATION_SUBMITTED", "Grace", "Hopper")));
   }
 
   @Test
@@ -163,27 +167,39 @@ class ApplicationReadModelAssemblerTest {
                 ApplicationListIndexReadModel.builder()
                     .applicationId(firstId)
                     .laaReference("LAA-FIRST")
+                    .status("APPLICATION_SUBMITTED")
                     .clientFirstName("First")
                     .clientLastName("Member")
                     .build(),
                 ApplicationListIndexReadModel.builder()
                     .applicationId(sharedId)
                     .laaReference("LAA-SHARED")
+                    .status("APPLICATION_SUBMITTED")
                     .clientFirstName("Shared")
                     .clientLastName("Member")
                     .build(),
                 ApplicationListIndexReadModel.builder()
                     .applicationId(secondId)
                     .laaReference("LAA-SECOND")
+                    .status("APPLICATION_SUBMITTED")
                     .clientFirstName("Second")
                     .clientLastName("Member")
                     .build()));
 
     assertThat(assembler.fetchLinkedMemberDetails(groups))
         .contains(
-            entry(firstId, new LinkedApplicationMemberDetails("LAA-FIRST", "First", "Member")),
-            entry(sharedId, new LinkedApplicationMemberDetails("LAA-SHARED", "Shared", "Member")),
-            entry(secondId, new LinkedApplicationMemberDetails("LAA-SECOND", "Second", "Member")));
+            entry(
+                firstId,
+                new LinkedApplicationMemberDetails(
+                    "LAA-FIRST", "APPLICATION_SUBMITTED", "First", "Member")),
+            entry(
+                sharedId,
+                new LinkedApplicationMemberDetails(
+                    "LAA-SHARED", "APPLICATION_SUBMITTED", "Shared", "Member")),
+            entry(
+                secondId,
+                new LinkedApplicationMemberDetails(
+                    "LAA-SECOND", "APPLICATION_SUBMITTED", "Second", "Member")));
   }
 
   @Test

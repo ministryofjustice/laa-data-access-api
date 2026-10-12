@@ -575,6 +575,7 @@ components:
         - applicationId
         - laaReference
         - isLead
+        - status
         - clientFirstName
         - clientLastName
       properties:
@@ -588,6 +589,8 @@ components:
         isLead:
           type: boolean
           description: Whether the linked application is the lead of the group
+        status:
+          $ref: "../open-api-common/components.yml#/components/schemas/ApplicationStatus"
         clientFirstName:
           type: string
           description: Client first name on the linked application

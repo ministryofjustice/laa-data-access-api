@@ -19,6 +19,7 @@ import org.springframework.http.ResponseEntity;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthoritySummary;
@@ -230,7 +231,8 @@ class GetAllApplicationsResponseMapperTest {
                     Map.of(groupId, group),
                     Map.of(
                         memberId,
-                        new LinkedApplicationMemberDetails("LAA-MEMBER", "Grace", "Hopper")),
+                        new LinkedApplicationMemberDetails(
+                            "LAA-MEMBER", "APPLICATION_SUBMITTED", "Grace", "Hopper")),
                     Map.of(),
                     1L,
                     1,
@@ -245,6 +247,8 @@ class GetAllApplicationsResponseMapperTest {
     assertThat(summary.getLinkedApplications()).hasSize(1);
     assertThat(summary.getLinkedApplications().get(0).getApplicationId()).isEqualTo(memberId);
     assertThat(summary.getLinkedApplications().get(0).getLaaReference()).isEqualTo("LAA-MEMBER");
+    assertThat(summary.getLinkedApplications().get(0).getStatus())
+        .isEqualTo(ApplicationStatus.APPLICATION_SUBMITTED);
     assertThat(summary.getLinkedApplications().get(0).getClientFirstName()).isEqualTo("Grace");
     assertThat(summary.getLinkedApplications().get(0).getClientLastName()).isEqualTo("Hopper");
     assertThat(summary.getLinkedApplications().get(0).getIsLead()).isFalse();
@@ -321,7 +325,10 @@ class GetAllApplicationsResponseMapperTest {
         new FindAllApplicationsResult(
             List.of(lead),
             Map.of(groupId, group),
-            Map.of(memberId, new LinkedApplicationMemberDetails("LAA-MEMBER", "Grace", "Hopper")),
+            Map.of(
+                memberId,
+                new LinkedApplicationMemberDetails(
+                    "LAA-MEMBER", "APPLICATION_SUBMITTED", "Grace", "Hopper")),
             Map.of(),
             1,
             1,
@@ -335,6 +342,7 @@ class GetAllApplicationsResponseMapperTest {
             linked -> {
               assertThat(linked.getApplicationId()).isEqualTo(memberId);
               assertThat(linked.getLaaReference()).isEqualTo("LAA-MEMBER");
+              assertThat(linked.getStatus()).isEqualTo(ApplicationStatus.APPLICATION_SUBMITTED);
               assertThat(linked.getClientFirstName()).isEqualTo("Grace");
               assertThat(linked.getClientLastName()).isEqualTo("Hopper");
               assertThat(linked.getIsLead()).isFalse();
@@ -370,7 +378,9 @@ class GetAllApplicationsResponseMapperTest {
                     List.of(memberApp),
                     Map.of(groupId, group),
                     Map.of(
-                        leadId, new LinkedApplicationMemberDetails("LAA-LEAD", "Ada", "Lovelace")),
+                        leadId,
+                        new LinkedApplicationMemberDetails(
+                            "LAA-LEAD", "APPLICATION_SUBMITTED", "Ada", "Lovelace")),
                     Map.of(),
                     1L,
                     1,

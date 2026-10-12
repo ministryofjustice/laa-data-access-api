@@ -58,7 +58,9 @@ class ApplicationQueryControllerTest {
     List<PriorAuthorityReadModel> priorAuthorities = List.of(new PriorAuthorityReadModel());
     Map<UUID, LinkedApplicationMemberDetails> linkedMemberDetails =
         Map.of(
-            UUID.randomUUID(), new LinkedApplicationMemberDetails("LAA-LINKED", "Grace", "Hopper"));
+            UUID.randomUUID(),
+            new LinkedApplicationMemberDetails(
+                "LAA-LINKED", "APPLICATION_SUBMITTED", "Grace", "Hopper"));
     ApplicationDetailResult detail =
         new ApplicationDetailResult(
             application, linkedGroup, priorAuthorities, linkedMemberDetails);

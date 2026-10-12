@@ -106,6 +106,7 @@ public class GetAllApplicationsResponseMapper {
               linked.setApplicationId(memberId);
               linked.setLaaReference(member.laaReference());
               linked.setIsLead(memberId.equals(group.getLeadApplicationId()));
+              linked.setStatus(ApplicationStatus.valueOf(member.status()));
               linked.setClientFirstName(member.clientFirstName());
               linked.setClientLastName(member.clientLastName());
               return linked;

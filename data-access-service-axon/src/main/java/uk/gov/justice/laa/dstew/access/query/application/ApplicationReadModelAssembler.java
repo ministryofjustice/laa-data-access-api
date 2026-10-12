@@ -143,6 +143,7 @@ public class ApplicationReadModelAssembler {
                   memberId,
                   new LinkedApplicationMemberDetails(
                       member.getLaaReference(),
+                      member.getStatus(),
                       member.getClientFirstName(),
                       member.getClientLastName()));
             })

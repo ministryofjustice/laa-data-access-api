@@ -1084,6 +1084,7 @@ class ApplicationProjectionTest {
                 ApplicationListIndexReadModel.builder()
                     .applicationId(appId)
                     .laaReference("LAA-123")
+                    .status("APPLICATION_SUBMITTED")
                     .clientFirstName("Ada")
                     .clientLastName("Lovelace")
                     .build()));
@@ -1096,7 +1097,10 @@ class ApplicationProjectionTest {
     assertThat(result.groupsByGroupId()).containsEntry(groupId, group);
     assertThat(result.linkedMemberDetails())
         .containsExactly(
-            entry(appId, new LinkedApplicationMemberDetails("LAA-123", "Ada", "Lovelace")));
+            entry(
+                appId,
+                new LinkedApplicationMemberDetails(
+                    "LAA-123", "APPLICATION_SUBMITTED", "Ada", "Lovelace")));
   }
 
   @Test
@@ -1180,12 +1184,14 @@ class ApplicationProjectionTest {
                 ApplicationListIndexReadModel.builder()
                     .applicationId(applicationId)
                     .laaReference("LAA-APPLICATION")
+                    .status("APPLICATION_SUBMITTED")
                     .clientFirstName("Ada")
                     .clientLastName("Lovelace")
                     .build(),
                 ApplicationListIndexReadModel.builder()
                     .applicationId(linkedApplicationId)
                     .laaReference("LAA-LINKED")
+                    .status("APPLICATION_SUBMITTED")
                     .clientFirstName("Grace")
                     .clientLastName("Hopper")
                     .build()));
@@ -1231,12 +1237,14 @@ class ApplicationProjectionTest {
                 ApplicationListIndexReadModel.builder()
                     .applicationId(leadApplicationId)
                     .laaReference("LAA-LEAD")
+                    .status("APPLICATION_SUBMITTED")
                     .clientFirstName("Ada")
                     .clientLastName("Lovelace")
                     .build(),
                 ApplicationListIndexReadModel.builder()
                     .applicationId(applicationId)
                     .laaReference("LAA-MEMBER")
+                    .status("APPLICATION_SUBMITTED")
                     .clientFirstName("Grace")
                     .clientLastName("Hopper")
                     .build()));

@@ -58,6 +58,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkType;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryResponse;
@@ -151,6 +152,8 @@ public class ApplicationLinkingIntegrationTest {
             linkedApplication -> {
               assertThat(linkedApplication.getApplicationId()).isEqualTo(sourceApplicationId);
               assertThat(linkedApplication.getIsLead()).isFalse();
+              assertThat(linkedApplication.getStatus())
+                  .isEqualTo(ApplicationStatus.APPLICATION_SUBMITTED);
               assertThat(linkedApplication.getClientFirstName()).isEqualTo("Ada");
               assertThat(linkedApplication.getClientLastName()).isEqualTo(clientLastName);
             });
@@ -162,6 +165,8 @@ public class ApplicationLinkingIntegrationTest {
             linkedApplication -> {
               assertThat(linkedApplication.getApplicationId()).isEqualTo(targetApplicationId);
               assertThat(linkedApplication.getIsLead()).isTrue();
+              assertThat(linkedApplication.getStatus())
+                  .isEqualTo(ApplicationStatus.APPLICATION_SUBMITTED);
               assertThat(linkedApplication.getClientFirstName()).isEqualTo("Ada");
               assertThat(linkedApplication.getClientLastName()).isEqualTo(clientLastName);
             });
@@ -958,6 +963,8 @@ public class ApplicationLinkingIntegrationTest {
                         .isEqualTo(
                             Objects.equals(
                                 linkedApplication.getApplicationId(), leadApplicationId));
+                    assertThat(linkedApplication.getStatus())
+                        .isEqualTo(ApplicationStatus.APPLICATION_SUBMITTED);
                     assertThat(linkedApplication.getClientFirstName()).isEqualTo("Ada");
                     assertThat(linkedApplication.getClientLastName())
                         .isEqualTo(summary.getClientLastName());
