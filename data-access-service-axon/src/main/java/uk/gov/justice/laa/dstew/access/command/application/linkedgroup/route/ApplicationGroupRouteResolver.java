@@ -10,6 +10,7 @@ import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import uk.gov.justice.laa.dstew.access.exception.LinkedApplicationGroupVersionConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
@@ -56,6 +57,35 @@ public class ApplicationGroupRouteResolver {
             + " already belongs to a different linked group");
   }
 
+  /**
+   * Locks every route in the application's linked group, verifies it is the group the caller last
+   * read, and returns its identifier.
+   */
+  @Transactional
+  public UUID resolveGroupForMutation(UUID applicationId, UUID expectedGroupId) {
+    var membership =
+        routes
+            .findMembershipByApplicationId(applicationId)
+            .orElseThrow(
+                () ->
+                    new ResourceNotFoundException(
+                        "No application group route found for application " + applicationId));
+    if (membership.getRouteKind() == ApplicationGroupRouteKind.STANDALONE) {
+      throw notInGroup(applicationId);
+    }
+    var groupId = membership.getGroupId();
+    var lockedRoutes = routes.findAllByGroupIdForUpdate(groupId);
+    var stillMember =
+        lockedRoutes.stream().anyMatch(route -> route.getApplicationId().equals(applicationId));
+    if (!stillMember) {
+      throw notInGroup(applicationId);
+    }
+    if (!groupId.equals(expectedGroupId)) {
+      throw LinkedApplicationGroupVersionConflictException.groupChanged(applicationId);
+    }
+    return groupId;
+  }
+
   private ApplicationGroupRoute requiredRoute(
       Map<UUID, ApplicationGroupRoute> routesByApplicationId,
       UUID applicationId,
@@ -66,6 +96,11 @@ public class ApplicationGroupRouteResolver {
     }
     throw new ResourceNotFoundException(
         "No application group route found for " + routeRole + " application " + applicationId);
+  }
+
+  private ApplicationLinkConflictException notInGroup(UUID applicationId) {
+    return new ApplicationLinkConflictException(
+        "Application " + applicationId + " is not in a linked group");
   }
 
   private boolean isSameLinkedGroup(

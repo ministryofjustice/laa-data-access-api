@@ -9,6 +9,7 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.MakePriorAuthorityDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
+import uk.gov.justice.laa.dstew.access.document.DocumentFileSuffix;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityStatusConflictException;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityVersionConflictException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
@@ -19,7 +20,7 @@ public final class PriorAuthorityDecider {
 
   /** Returns a {@link PriorAuthorityDraftStartedEvent} for the first save of a new draft. */
   public static PriorAuthorityDraftStartedEvent decideStartDraft(
-      CreatePriorAuthorityDraftCommand command) {
+      CreatePriorAuthorityDraftCommand command, String officeCode) {
     String priorAuthorityType =
         command.content().priorAuthorityType() == null
             ? null
@@ -29,7 +30,8 @@ public final class PriorAuthorityDecider {
         command.applicationId(),
         priorAuthorityType,
         command.schemaVersion(),
-        command.occurredAt());
+        command.occurredAt(),
+        officeCode);
   }
 
   /**
@@ -146,7 +148,9 @@ public final class PriorAuthorityDecider {
         command.fileSize(),
         command.contentType(),
         command.checksum(),
-        applicationId);
+        applicationId,
+        command.sourceService(),
+        DocumentFileSuffix.fromFilename(command.originalFilename()));
   }
 
   /** Returns the persisted event for removing a prior-authority document. */

@@ -82,4 +82,23 @@ public class ApplicationGroupRoute {
     groupId = newGroupId;
     updatedAt = occurredAt;
   }
+
+  /** Moves a member to standalone, or no-ops when a removal was already applied. */
+  void leave(UUID expectedGroupId, Instant occurredAt) {
+    if (routeKind == ApplicationGroupRouteKind.STANDALONE) {
+      return;
+    }
+    if (!Objects.equals(groupId, expectedGroupId)) {
+      throw new IllegalStateException(
+          "Application "
+              + applicationId
+              + " belongs to linked group "
+              + groupId
+              + ", not "
+              + expectedGroupId);
+    }
+    routeKind = ApplicationGroupRouteKind.STANDALONE;
+    groupId = null;
+    updatedAt = occurredAt;
+  }
 }

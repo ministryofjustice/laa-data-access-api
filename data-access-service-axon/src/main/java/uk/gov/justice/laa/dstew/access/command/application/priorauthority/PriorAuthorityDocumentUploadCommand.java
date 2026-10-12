@@ -5,16 +5,14 @@ import java.util.UUID;
 import org.axonframework.messaging.commandhandling.annotation.Command;
 import org.axonframework.modelling.annotation.TargetEntityId;
 
-/** Command that performs and finalises a prior-authority document upload. */
+/** Command that records a prior-authority document after SDS accepts its content. */
 @Command(routingKey = "priorAuthorityId")
 public record PriorAuthorityDocumentUploadCommand(
     @TargetEntityId UUID priorAuthorityId,
     UUID documentId,
     String sourceService,
     String checksum,
-    String serialisedRequest,
     Instant occurredAt,
     String originalFilename,
     Long fileSize,
-    String fileType,
     String contentType) {}

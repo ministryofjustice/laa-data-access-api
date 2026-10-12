@@ -105,6 +105,14 @@ class PriorAuthorityDraftStoreTest {
   }
 
   @Test
+  void givenExistingDraft_whenExists_thenReturnsTrue() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    when(repository.existsById(priorAuthorityId)).thenReturn(true);
+
+    assertThat(store.exists(priorAuthorityId)).isTrue();
+  }
+
+  @Test
   void whenDelete_thenDelegatesToRepositoryDeleteById() {
     UUID priorAuthorityId = UUID.randomUUID();
 

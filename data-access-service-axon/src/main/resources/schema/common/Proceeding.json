@@ -17,7 +17,7 @@
     "clientInvolvementType",
     "clientInvolvementTypeCode",
     "usedDelegatedFunctions",
-    "substantiveLevelOfService",
+    "substantiveLevelOfServiceCode",
     "substantiveLevelOfServiceName",
     "scopeLimitations"
   ],
@@ -89,15 +89,15 @@
       "description": "Substantive cost limitation",
       "example": "2250.0"
     },
-    "substantiveLevelOfService": {
+    "substantiveLevelOfServiceCode": {
       "type": "integer",
-      "description": "Substantive level of service"
+      "description": "Substantive level of service code"
     },
     "substantiveLevelOfServiceName": {
       "type": "string",
       "description": "Substantive level of service name"
     },
-    "emergencyLevelOfService": {
+    "emergencyLevelOfServiceCode": {
       "type": ["integer", "null"],
       "description": "Emergency level of service"
     },
@@ -114,7 +114,7 @@
       "description": "Scope limitations for the proceeding"
     },
     "involvedChildren": {
-      "type": "array",
+      "type": ["array", "null"],
       "items": {
         "$ref": "Child.json"
       },

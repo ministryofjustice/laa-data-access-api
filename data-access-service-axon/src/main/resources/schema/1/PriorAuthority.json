@@ -20,12 +20,6 @@
     },
     "disbursementDetails": {
       "$ref": "../common/DisbursementDetails.json"
-    },
-    "uploadedDocuments": {
-      "type": "array",
-      "items": {
-        "$ref": "../common/UploadedDocument.json"
-      }
     }
   },
   "allOf": [

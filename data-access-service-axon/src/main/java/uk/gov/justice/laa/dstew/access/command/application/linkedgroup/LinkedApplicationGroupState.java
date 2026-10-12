@@ -12,4 +12,6 @@ public class LinkedApplicationGroupState {
   UUID groupId;
   UUID leadApplicationId;
   List<UUID> memberApplicationIds;
+  long groupVersion;
+  boolean dissolved;
 }

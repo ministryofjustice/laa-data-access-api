@@ -79,4 +79,9 @@ public class PriorAuthorityDataStore {
                         + dataVersion))
         .getPayload();
   }
+
+  /** Returns whether immutable submitted data already exists for this prior-authority ID. */
+  public boolean exists(UUID priorAuthorityId) {
+    return repository.existsById(new PriorAuthorityDataId(priorAuthorityId, 0L));
+  }
 }

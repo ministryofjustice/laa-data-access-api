@@ -176,8 +176,10 @@ class ProceedingMapperTest extends BaseMapperTest {
     assertThat(result).isNotNull();
     assertThat(result.getInvolvedChildren()).isNotNull().hasSize(1);
     InvolvedChildResponse involvedChild = result.getInvolvedChildren().get(0);
-    assertThat(involvedChild.getFullName())
-        .isEqualTo(ApplicationMeritsGenerator.DEFAULT_INVOLVED_CHILD_FULL_NAME);
+    assertThat(involvedChild.getFirstName())
+        .isEqualTo(ApplicationMeritsGenerator.DEFAULT_INVOLVED_CHILD_FIRST_NAME);
+    assertThat(involvedChild.getLastName())
+        .isEqualTo(ApplicationMeritsGenerator.DEFAULT_INVOLVED_CHILD_LAST_NAME);
     assertThat(involvedChild.getDateOfBirth())
         .isEqualTo(ApplicationMeritsGenerator.DEFAULT_INVOLVED_CHILD_DATE_OF_BIRTH);
   }
@@ -367,9 +369,9 @@ class ProceedingMapperTest extends BaseMapperTest {
             builder -> builder.applyProceedingId(applyProceedingId));
 
     InvolvedChild child1 =
-        InvolvedChild.builder().id(childId1).fullName("Alice").dateOfBirth(dob1).build();
+        InvolvedChild.builder().id(childId1).firstName("Alice").lastName("").dateOfBirth(dob1).build();
     InvolvedChild child2 =
-        InvolvedChild.builder().id(childId2).fullName("Bob").dateOfBirth(dob2).build();
+        InvolvedChild.builder().id(childId2).firstName("Bob").lastName("").dateOfBirth(dob2).build();
 
     ProceedingMerits merits =
         ProceedingMerits.builder()
@@ -386,7 +388,7 @@ class ProceedingMapperTest extends BaseMapperTest {
     assertThat(result).isNotNull();
     assertThat(result.getInvolvedChildren()).hasSize(2);
     assertThat(result.getInvolvedChildren())
-        .extracting(InvolvedChildResponse::getFullName)
+        .extracting(InvolvedChildResponse::getFirstName)
         .containsExactly("Alice", "Bob");
     assertThat(result.getInvolvedChildren())
         .extracting(InvolvedChildResponse::getDateOfBirth)

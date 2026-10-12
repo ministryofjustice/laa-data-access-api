@@ -9,6 +9,8 @@ For the rules and design choices behind these message flows, read
 | File | Description |
 |---|---|
 | [01-standalone-application-creation.md](01-standalone-application-creation.md) | Creating an application without linking side effects |
+| [02-change-linked-group-lead.md](02-change-linked-group-lead.md) | Changing a linked group's lead with version validation |
+| [03-remove-application-from-linked-group.md](03-remove-application-from-linked-group.md) | Removing an associate or dissolving a two-member group |
 | [04-sensitive-data-change.md](04-sensitive-data-change.md) | Appending an immutable sensitive-data version and emitting a thin event |
 
 Diagrams are written in [Mermaid](https://mermaid.js.org/) and render natively in GitHub, IntelliJ, and VS Code with the Mermaid plugin.

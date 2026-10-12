@@ -7,10 +7,11 @@ import org.springframework.web.multipart.MultipartFile;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadCommand;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftStore;
+import uk.gov.justice.laa.dstew.access.document.DocumentUploadResult;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
-import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
+import uk.gov.justice.laa.dstew.access.service.sds.SdsUploadResult;
 
 /** Uploads a document to SDS on behalf of an Application. */
 @Component
@@ -38,7 +39,7 @@ public class UploadDocumentUseCase {
    * @return the upload response from SDS containing the file key and checksum
    */
   @AllowApiCaseworker
-  public DocumentUploadResponse execute(UUID applicationId, MultipartFile file) {
+  public SdsUploadResult execute(UUID applicationId, MultipartFile file) {
     draftStore
         .find(applicationId)
         .orElseThrow(
@@ -50,7 +51,7 @@ public class UploadDocumentUseCase {
 
   /** Uploads a file to SDS and records its non-filename metadata against the Application. */
   @AllowApiCaseworker
-  public UploadApplicationDocumentResult execute(
+  public DocumentUploadResult execute(
       UUID applicationId, MultipartFile file, String documentType, String sourceService) {
     draftStore
         .find(applicationId)
@@ -60,7 +61,7 @@ public class UploadDocumentUseCase {
                     "No application draft found with Application ID: " + applicationId));
     UUID documentId = UUID.randomUUID();
     Instant uploadedAt = Instant.now();
-    DocumentUploadResponse response = sdsService.saveEvidenceFile(applicationId, documentId, file);
+    SdsUploadResult response = sdsService.saveEvidenceFile(applicationId, documentId, file);
     dispatcher.dispatch(
         new ApplicationDocumentUploadCommand(
             applicationId,
@@ -69,10 +70,10 @@ public class UploadDocumentUseCase {
             uploadedAt,
             file.getSize(),
             file.getContentType(),
-            response.getChecksum(),
+            response.checksum(),
             sourceService,
             file.getOriginalFilename()));
-    return new UploadApplicationDocumentResult(
+    return new DocumentUploadResult(
         documentId,
         file.getOriginalFilename(),
         fileType(file.getContentType()),
@@ -80,7 +81,7 @@ public class UploadDocumentUseCase {
         file.getSize(),
         uploadedAt,
         sourceService,
-        response.getChecksum());
+        response.checksum());
   }
 
   private String fileType(String contentType) {

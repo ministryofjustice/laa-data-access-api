@@ -1,7 +1,9 @@
 package uk.gov.justice.laa.dstew.access.validation;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validAddressContent;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validApplicationContent;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validProceedingContent;
 
@@ -10,6 +12,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class JsonSchemaValidatorTest {
 
@@ -21,6 +25,40 @@ class JsonSchemaValidatorTest {
         validApplicationContent(UUID.randomUUID(), UUID.randomUUID()),
         "BaseCivilApplication.json",
         1);
+  }
+
+  @SuppressWarnings("unchecked")
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "addressLineOne",
+        "addressLineTwo",
+        "city",
+        "county",
+        "buildingNumberName",
+        "lookupUsed"
+      })
+  void givenNullOptionalAddressField_whenValidate_thenAcceptsPayload(String fieldName) {
+    var payload = new HashMap<>(validApplicationContent(UUID.randomUUID(), UUID.randomUUID()));
+    var client = new HashMap<>((Map<String, Object>) payload.get("client"));
+    var address = new HashMap<>(validAddressContent());
+    address.put(fieldName, null);
+    client.put("addresses", List.of(address));
+    payload.put("client", client);
+
+    assertThatCode(() -> validator.validate(payload, "BaseCivilApplication.json", 1))
+        .doesNotThrowAnyException();
+  }
+
+  @Test
+  void givenNullInvolvedChildren_whenValidate_thenAcceptsPayload() {
+    var payload = new HashMap<>(validApplicationContent(UUID.randomUUID(), UUID.randomUUID()));
+    var proceeding = new HashMap<>(validProceedingContent(UUID.randomUUID()));
+    proceeding.put("involvedChildren", null);
+    payload.put("proceedings", List.of(proceeding));
+
+    assertThatCode(() -> validator.validate(payload, "BaseCivilApplication.json", 1))
+        .doesNotThrowAnyException();
   }
 
   @Test

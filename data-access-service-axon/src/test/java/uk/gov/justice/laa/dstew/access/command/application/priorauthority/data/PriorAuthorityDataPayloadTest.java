@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.DisbursementInformation;
@@ -54,6 +55,60 @@ class PriorAuthorityDataPayloadTest {
     assertThat(decided.disbursement()).isEqualTo(decisionDetails.disbursement());
     assertThat(decided.apportionment()).isEqualTo(decisionDetails.apportionment());
     assertThat(decided.decisionSerialisedRequest()).isEqualTo("{\"decision\":\"GRANTED\"}");
+  }
+
+  @Test
+  void givenSixArgumentConstructor_whenCreated_thenRetainsDecisionDetailsAndDefaultsOfficeCode() {
+    PriorAuthorityDataPayload.DecisionDetails decisionDetails = decisionDetails();
+
+    PriorAuthorityDataPayload payload =
+        new PriorAuthorityDataPayload(
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Need expert", null, null, null),
+            "{}",
+            SUBMITTED_AT,
+            decisionDetails);
+
+    assertThat(payload.decisionDetails()).isEqualTo(decisionDetails);
+    assertThat(payload.officeCode()).isNull();
+    assertThat(payload.decision()).isEqualTo("GRANTED");
+  }
+
+  @Test
+  void givenPayloadWithOfficeCodeAndFilenames_whenApplyingDecision_thenPreservesBoth() {
+    UUID documentId = UUID.randomUUID();
+    PriorAuthorityDataPayload original =
+        new PriorAuthorityDataPayload(
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Need expert", null, null, null),
+            "{}",
+            SUBMITTED_AT,
+            null,
+            "1A001B",
+            Map.of(documentId, "evidence.pdf"));
+
+    PriorAuthorityDataPayload decided = original.withDecision(decisionDetails());
+
+    assertThat(decided.officeCode()).isEqualTo("1A001B");
+    assertThat(decided.documentFilenames()).containsEntry(documentId, "evidence.pdf");
+  }
+
+  @Test
+  void givenNullFilenameMap_whenCreated_thenNormalizesToEmptyMap() {
+    PriorAuthorityDataPayload payload =
+        new PriorAuthorityDataPayload(
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Need expert", null, null, null),
+            "{}",
+            SUBMITTED_AT,
+            null,
+            "1A001B",
+            null);
+
+    assertThat(payload.documentFilenames()).isEmpty();
   }
 
   private static PriorAuthorityDataPayload undecidedPayload() {

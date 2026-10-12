@@ -12,4 +12,15 @@ public record PriorAuthorityDraftStartedEvent(
     UUID applicationId,
     String priorAuthorityType,
     int schemaVersion,
-    Instant occurredAt) {}
+    Instant occurredAt,
+    String officeCode) {
+
+  public PriorAuthorityDraftStartedEvent(
+      UUID priorAuthorityId,
+      UUID applicationId,
+      String priorAuthorityType,
+      int schemaVersion,
+      Instant occurredAt) {
+    this(priorAuthorityId, applicationId, priorAuthorityType, schemaVersion, occurredAt, null);
+  }
+}

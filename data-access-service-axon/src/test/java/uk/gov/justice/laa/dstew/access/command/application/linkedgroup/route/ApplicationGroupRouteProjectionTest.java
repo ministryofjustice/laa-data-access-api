@@ -23,7 +23,9 @@ import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEve
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupDissolvedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberRemovedFromGroupEvent;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 
 @ExtendWith(MockitoExtension.class)
@@ -217,6 +219,105 @@ class ApplicationGroupRouteProjectionTest {
     verify(routes, never()).save(any());
   }
 
+  @Test
+  void givenMemberRemoved_whenProjected_thenLeavesItsRoute() {
+    UUID groupId = UUID.randomUUID();
+    UUID memberId = UUID.randomUUID();
+    ApplicationGroupRoute memberRoute =
+        route(memberId, ApplicationGroupRouteKind.LINKED_GROUP, groupId);
+    when(routes.findByApplicationIdForUpdate(memberId)).thenReturn(Optional.of(memberRoute));
+
+    projection.on(memberRemovedEvent(groupId, memberId, ROUTED_AT));
+
+    verify(routes).save(memberRoute);
+    assertThat(memberRoute.getRouteKind()).isEqualTo(ApplicationGroupRouteKind.STANDALONE);
+    assertThat(memberRoute.getGroupId()).isNull();
+    assertThat(memberRoute.getUpdatedAt()).isEqualTo(ROUTED_AT);
+  }
+
+  @Test
+  void givenMemberRemovedWithoutRoute_whenProjected_thenThrowsNotFound() {
+    UUID groupId = UUID.randomUUID();
+    UUID memberId = UUID.randomUUID();
+    when(routes.findByApplicationIdForUpdate(memberId)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> projection.on(memberRemovedEvent(groupId, memberId, ROUTED_AT)))
+        .isInstanceOf(ResourceNotFoundException.class)
+        .hasMessage("No application group route found for application " + memberId);
+
+    verify(routes, never()).save(any());
+  }
+
+  @Test
+  void givenDissolvedGroup_whenProjected_thenLeavesEverySortedMemberRoute() {
+    UUID groupId = UUID.randomUUID();
+    UUID firstMemberId = UUID.fromString("00000000-0000-0000-0000-000000000001");
+    UUID secondMemberId = UUID.fromString("00000000-0000-0000-0000-000000000002");
+    UUID thirdMemberId = UUID.fromString("00000000-0000-0000-0000-000000000003");
+    List<UUID> memberIds = List.of(thirdMemberId, firstMemberId, secondMemberId, firstMemberId);
+    List<UUID> sortedMemberIds = List.of(firstMemberId, secondMemberId, thirdMemberId);
+    List<ApplicationGroupRoute> memberRoutes =
+        sortedMemberIds.stream()
+            .map(memberId -> route(memberId, ApplicationGroupRouteKind.LINKED_GROUP, groupId))
+            .toList();
+    when(routes.findAllByApplicationIdInForUpdate(sortedMemberIds)).thenReturn(memberRoutes);
+
+    projection.on(dissolvedEvent(groupId, memberIds, ROUTED_AT));
+
+    verify(routes).saveAll(memberRoutes);
+    assertThat(memberRoutes)
+        .allSatisfy(
+            memberRoute -> {
+              assertThat(memberRoute.getRouteKind())
+                  .isEqualTo(ApplicationGroupRouteKind.STANDALONE);
+              assertThat(memberRoute.getGroupId()).isNull();
+              assertThat(memberRoute.getUpdatedAt()).isEqualTo(ROUTED_AT);
+            });
+  }
+
+  @Test
+  void givenDissolvedGroupMissingRoute_whenProjected_thenThrowsNotFound() {
+    UUID groupId = UUID.randomUUID();
+    UUID firstMemberId = UUID.fromString("00000000-0000-0000-0000-000000000001");
+    UUID missingMemberId = UUID.fromString("00000000-0000-0000-0000-000000000002");
+    List<UUID> memberIds = List.of(firstMemberId, missingMemberId);
+    ApplicationGroupRoute firstRoute =
+        route(firstMemberId, ApplicationGroupRouteKind.LINKED_GROUP, groupId);
+    when(routes.findAllByApplicationIdInForUpdate(memberIds)).thenReturn(List.of(firstRoute));
+
+    assertThatThrownBy(() -> projection.on(dissolvedEvent(groupId, memberIds, ROUTED_AT)))
+        .isInstanceOf(ResourceNotFoundException.class)
+        .hasMessage("No application group routes found for applications " + memberIds);
+
+    verify(routes, never()).saveAll(any());
+  }
+
+  @Test
+  void givenDissolvedEventRedelivered_whenProjected_thenAlreadyStandaloneRoutesStayUnchanged() {
+    UUID groupId = UUID.randomUUID();
+    List<UUID> memberIds =
+        List.of(
+            UUID.fromString("00000000-0000-0000-0000-000000000002"),
+            UUID.fromString("00000000-0000-0000-0000-000000000001"));
+    List<UUID> sortedMemberIds = memberIds.stream().sorted().toList();
+    List<ApplicationGroupRoute> memberRoutes =
+        sortedMemberIds.stream()
+            .map(memberId -> route(memberId, ApplicationGroupRouteKind.STANDALONE, null))
+            .toList();
+    when(routes.findAllByApplicationIdInForUpdate(sortedMemberIds)).thenReturn(memberRoutes);
+
+    projection.on(dissolvedEvent(groupId, memberIds, ROUTED_AT));
+
+    assertThat(memberRoutes)
+        .allSatisfy(
+            memberRoute -> {
+              assertThat(memberRoute.getRouteKind())
+                  .isEqualTo(ApplicationGroupRouteKind.STANDALONE);
+              assertThat(memberRoute.getGroupId()).isNull();
+              assertThat(memberRoute.getUpdatedAt()).isEqualTo(ORIGINAL_OCCURRED_AT);
+            });
+  }
+
   private static ApplicationCreatedEvent applicationCreatedEvent(
       UUID applicationId, Instant occurredAt) {
     return applicationCreatedEvent(applicationId, 0L, occurredAt);
@@ -243,6 +344,22 @@ class ApplicationGroupRouteProjectionTest {
   private static MemberAddedToGroupEvent memberAddedEvent(
       UUID groupId, UUID memberId, Instant occurredAt) {
     return new MemberAddedToGroupEvent(groupId, UUID.randomUUID(), memberId, occurredAt);
+  }
+
+  private static MemberRemovedFromGroupEvent memberRemovedEvent(
+      UUID groupId, UUID memberId, Instant occurredAt) {
+    return new MemberRemovedFromGroupEvent(groupId, UUID.randomUUID(), memberId, 1L, occurredAt);
+  }
+
+  private static LinkedApplicationGroupDissolvedEvent dissolvedEvent(
+      UUID groupId, List<UUID> memberApplicationIds, Instant occurredAt) {
+    return new LinkedApplicationGroupDissolvedEvent(
+        groupId,
+        memberApplicationIds.getFirst(),
+        memberApplicationIds.getLast(),
+        memberApplicationIds,
+        1L,
+        occurredAt);
   }
 
   private static ApplicationGroupRoute route(

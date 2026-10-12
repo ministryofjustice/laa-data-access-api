@@ -3,10 +3,15 @@ package uk.gov.justice.laa.dstew.access.command.application.linkedgroup;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
+import org.jspecify.annotations.Nullable;
 
 /** Command for explicitly linking one application to another. */
 public record LinkApplicationCommand(
-    UUID sourceApplicationId, UUID targetApplicationId, LinkType linkType, Instant occurredAt) {
+    UUID sourceApplicationId,
+    UUID targetApplicationId,
+    LinkType linkType,
+    @Nullable ExpectedLinkedGroup expectedTargetGroup,
+    Instant occurredAt) {
 
   /** Enforces the command invariants owned below the controller seam. */
   public LinkApplicationCommand {

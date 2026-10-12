@@ -19,7 +19,8 @@ public class InvolvedChildReadModelGenerator
   @Override
   public InvolvedChildReadModel createDefault() {
     return InvolvedChildReadModel.builder()
-        .fullName("John Smith")
+        .firstName("John")
+        .lastName("Smith")
         .dateOfBirth(LocalDate.of(2022, 8, 20))
         .build();
   }

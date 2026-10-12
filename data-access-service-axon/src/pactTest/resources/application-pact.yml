@@ -22,9 +22,10 @@ spring:
 
 application:
   projection:
-    # Generous wait so a create interaction returns 201 deterministically on a slow CI runner.
-    # Production keeps 5s; the 202 path is a separate contract, not something to hit by accident.
-    timeout: 30s
+    # Long enough that a create interaction returns 201 deterministically on a slow CI runner,
+    # short enough that the deliberate 202 state (projection paused) does not stall the run.
+    # Production keeps 5s.
+    timeout: 10s
 
 # Real security stays on. Replayed requests carry the dev token, which the security config maps to
 # a caseworker identity with a fixed Entra OID (see SecurityConfig.DEV_TOKENS).
@@ -38,8 +39,8 @@ ENTRA_ISSUER_URI: https://issuer.example.test
 ENTRA_JWK_SET_URI: https://jwks.example.test/.well-known/jwks.json
 ENTRA_AUD: api://data-access-api-test
 
-# Secure Document Storage is an external dependency. No in-scope interaction calls it; the client
-# only needs configuration present to start.
+# Secure Document Storage is an external dependency. Its client is replaced by a Mockito bean in
+# AbstractProviderPactTests, as in the integration tests; these values only let the context start.
 SDS_API_URL: http://sds-stub.test
 SDS_API_BUCKET: pact-bucket
 SDS_API_CLIENT_REGISTRATION_ID: moj-identity

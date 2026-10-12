@@ -2,11 +2,12 @@ package uk.gov.justice.laa.dstew.access.command.application.priorauthority.docum
 
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Optional;
 import org.springframework.web.multipart.MultipartFile;
 import uk.gov.justice.laa.dstew.access.validation.DocumentFileValidator;
 
 /** Accepted file formats for prior-authority document uploads. */
-enum PriorAuthorityDocumentFormat {
+public enum PriorAuthorityDocumentFormat {
   PDF("PDF", "application/pdf", ".pdf", "%PDF-");
 
   private final String fileType;
@@ -22,7 +23,8 @@ enum PriorAuthorityDocumentFormat {
     this.signature = signature.getBytes(StandardCharsets.US_ASCII);
   }
 
-  String fileType() {
+  /** Returns the API file type, for example {@code PDF}. */
+  public String fileType() {
     return fileType;
   }
 
@@ -30,23 +32,22 @@ enum PriorAuthorityDocumentFormat {
     return contentType;
   }
 
-  String fileExtension() {
+  /** Returns the extension used for the stored SDS object. */
+  public String fileExtension() {
     return fileExtension;
   }
 
-  static PriorAuthorityDocumentFormat fromFileType(String fileType) {
+  /** Returns the accepted format for a recorded content type, if any. */
+  public static Optional<PriorAuthorityDocumentFormat> fromContentType(String contentType) {
     return Arrays.stream(values())
-        .filter(candidate -> candidate.fileType.equalsIgnoreCase(fileType))
-        .findFirst()
-        .orElseThrow(() -> new IllegalArgumentException("Unsupported document file type"));
+        .filter(candidate -> candidate.contentType.equalsIgnoreCase(contentType))
+        .findFirst();
   }
 
   static PriorAuthorityDocumentFormat validate(MultipartFile file) {
     DocumentFileValidator.validateFileName(file);
     PriorAuthorityDocumentFormat format =
-        Arrays.stream(values())
-            .filter(candidate -> candidate.contentType.equalsIgnoreCase(file.getContentType()))
-            .findFirst()
+        fromContentType(file.getContentType())
             .orElseThrow(() -> new IllegalArgumentException("Unsupported document content type"));
     DocumentFileValidator.validateSignature(file, format.signature, format.fileType);
     return format;

@@ -115,6 +115,14 @@ class PriorAuthorityDataStoreTest {
   }
 
   @Test
+  void givenStoredInitialVersion_whenExists_thenReturnsTrue() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    when(repository.existsById(new PriorAuthorityDataId(priorAuthorityId, 0L))).thenReturn(true);
+
+    assertThat(store.exists(priorAuthorityId)).isTrue();
+  }
+
+  @Test
   void givenStoredVersion_whenFindPayload_thenReturnsThatVersion() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();

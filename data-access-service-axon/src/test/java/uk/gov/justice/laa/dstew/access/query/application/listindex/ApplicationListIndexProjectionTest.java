@@ -2,7 +2,6 @@ package uk.gov.justice.laa.dstew.access.query.application.listindex;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -20,7 +19,10 @@ import org.axonframework.messaging.eventhandling.EventMessage;
 import org.axonframework.messaging.eventhandling.GenericEventMessage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
@@ -30,20 +32,22 @@ import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataP
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupDissolvedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupLeadChangedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberRemovedFromGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
 
+@ExtendWith(MockitoExtension.class)
 class ApplicationListIndexProjectionTest {
 
-  private ApplicationListIndexReadRepository listIndexRepository;
-  private ApplicationDataStore applicationDataStore;
+  @Mock private ApplicationListIndexReadRepository listIndexRepository;
+  @Mock private ApplicationDataStore applicationDataStore;
   private ApplicationListIndexProjection projection;
 
   @BeforeEach
   void setUp() {
-    listIndexRepository = mock(ApplicationListIndexReadRepository.class);
-    applicationDataStore = mock(ApplicationDataStore.class);
     projection = new ApplicationListIndexProjection(listIndexRepository, applicationDataStore);
   }
 
@@ -243,6 +247,96 @@ class ApplicationListIndexProjectionTest {
         anyMessage());
 
     verify(listIndexRepository, never()).save(any());
+  }
+
+  @Test
+  void givenLeadChangedEvent_whenHandled_thenUpdatesLeadAndAllAssociateIndexRows() {
+    UUID groupId = UUID.randomUUID();
+    UUID previousLeadId = UUID.randomUUID();
+    UUID newLeadId = UUID.randomUUID();
+    UUID otherMemberId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-15T10:00:00Z");
+    EventMessage message = anyMessage();
+    ApplicationListIndexReadModel previousLead =
+        ApplicationListIndexReadModel.builder().applicationId(previousLeadId).build();
+    ApplicationListIndexReadModel newLead =
+        ApplicationListIndexReadModel.builder()
+            .applicationId(newLeadId)
+            .leadApplicationId(previousLeadId)
+            .build();
+    ApplicationListIndexReadModel otherMember =
+        ApplicationListIndexReadModel.builder()
+            .applicationId(otherMemberId)
+            .leadApplicationId(previousLeadId)
+            .build();
+    when(listIndexRepository.findAllByLeadApplicationId(previousLeadId))
+        .thenReturn(List.of(newLead, otherMember));
+    when(listIndexRepository.findById(previousLeadId)).thenReturn(Optional.of(previousLead));
+
+    projection.on(
+        new LinkedApplicationGroupLeadChangedEvent(
+            groupId, previousLeadId, newLeadId, 2L, occurredAt),
+        message);
+
+    assertThat(previousLead.getLeadApplicationId()).isEqualTo(newLeadId);
+    assertThat(newLead.getLeadApplicationId()).isNull();
+    assertThat(otherMember.getLeadApplicationId()).isEqualTo(newLeadId);
+    assertThat(List.of(previousLead, newLead, otherMember))
+        .allSatisfy(
+            row -> {
+              assertThat(row.getModifiedAt()).isEqualTo(occurredAt);
+              assertThat(row.getProjectionPosition()).isEqualTo(message.identifier().hashCode());
+            });
+    verify(listIndexRepository).save(previousLead);
+    verify(listIndexRepository).save(newLead);
+    verify(listIndexRepository).save(otherMember);
+  }
+
+  @Test
+  void givenMemberRemovedEvent_whenHandled_thenClearsItsLeadIndex() {
+    UUID memberId = UUID.randomUUID();
+    ApplicationListIndexReadModel member =
+        ApplicationListIndexReadModel.builder()
+            .applicationId(memberId)
+            .leadApplicationId(UUID.randomUUID())
+            .build();
+    when(listIndexRepository.findById(memberId)).thenReturn(Optional.of(member));
+    Instant occurredAt = Instant.parse("2026-07-15T11:00:00Z");
+
+    projection.on(
+        new MemberRemovedFromGroupEvent(
+            UUID.randomUUID(), UUID.randomUUID(), memberId, 2L, occurredAt),
+        anyMessage());
+
+    assertThat(member.getLeadApplicationId()).isNull();
+    assertThat(member.getModifiedAt()).isEqualTo(occurredAt);
+    verify(listIndexRepository).save(member);
+  }
+
+  @Test
+  void givenDissolvedEvent_whenHandled_thenClearsEveryMemberLeadIndex() {
+    UUID leadId = UUID.randomUUID();
+    UUID removedId = UUID.randomUUID();
+    ApplicationListIndexReadModel lead =
+        ApplicationListIndexReadModel.builder().applicationId(leadId).build();
+    ApplicationListIndexReadModel removed =
+        ApplicationListIndexReadModel.builder()
+            .applicationId(removedId)
+            .leadApplicationId(leadId)
+            .build();
+    when(listIndexRepository.findById(leadId)).thenReturn(Optional.of(lead));
+    when(listIndexRepository.findById(removedId)).thenReturn(Optional.of(removed));
+    Instant occurredAt = Instant.parse("2026-07-15T11:00:00Z");
+
+    projection.on(
+        new LinkedApplicationGroupDissolvedEvent(
+            UUID.randomUUID(), leadId, removedId, List.of(leadId, removedId), 2L, occurredAt),
+        anyMessage());
+
+    assertThat(lead.getLeadApplicationId()).isNull();
+    assertThat(removed.getLeadApplicationId()).isNull();
+    verify(listIndexRepository).save(lead);
+    verify(listIndexRepository).save(removed);
   }
 
   // -------------------------------------------------------------------------

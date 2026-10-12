@@ -33,6 +33,9 @@ public class LinkApplicationCommandMapper {
         sourceApplicationId,
         request.getApplicationId(),
         toDomain(request.getLinkType()),
+        request.getLinkedGroupVersion() == null
+            ? null
+            : LinkedGroupVersionTokens.decode(request.getLinkedGroupVersion()),
         Instant.now(clock));
   }
 

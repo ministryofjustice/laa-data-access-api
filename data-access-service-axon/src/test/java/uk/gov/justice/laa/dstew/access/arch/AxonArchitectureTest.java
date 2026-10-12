@@ -92,6 +92,48 @@ class AxonArchitectureTest {
   }
 
   @Test
+  void documentApplicationCodeMustNotDependOnGeneratedApiModels() {
+    noClasses()
+        .that()
+        .resideInAnyPackage(
+            "uk.gov.justice.laa.dstew.access.document..",
+            "..command.application.document..",
+            "..command.application.priorauthority.document..")
+        .or()
+        .haveSimpleName("PriorAuthorityAggregate")
+        .or()
+        .haveSimpleName("PriorAuthorityDocumentUploadCommandHandler")
+        .or()
+        .haveSimpleName("PriorAuthorityDocumentDeleteCommandHandler")
+        .or()
+        .haveSimpleName("PriorAuthorityDocumentTypeUpdateCommandHandler")
+        .or()
+        .haveNameMatching(".*\\.(Application|PriorAuthority)Document.*(Command|Event)")
+        .should()
+        .dependOnClassesThat()
+        .resideInAPackage("uk.gov.justice.laa.dstew.access.model..")
+        .check(classes);
+  }
+
+  @Test
+  void sdsDocumentHandlingMustNotDependOnGeneratedDocumentModels() {
+    DescribedPredicate<JavaClass> generatedDocumentModel =
+        new DescribedPredicate<>("be a generated document API model") {
+          @Override
+          public boolean test(JavaClass javaClass) {
+            return javaClass.getPackageName().equals("uk.gov.justice.laa.dstew.access.model")
+                && javaClass.getSimpleName().startsWith("Document");
+          }
+        };
+    noClasses()
+        .that()
+        .resideInAPackage("..service.sds..")
+        .should()
+        .dependOnClassesThat(generatedDocumentModel)
+        .check(classes);
+  }
+
+  @Test
   void commandAndEventMessagesInCommandPackagesMustBeRecords() {
     DescribedPredicate<JavaClass> commandOrEvent =
         new DescribedPredicate<>("have a simple name ending with Command or Event") {

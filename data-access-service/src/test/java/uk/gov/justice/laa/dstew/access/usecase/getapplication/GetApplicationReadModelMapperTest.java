@@ -39,7 +39,8 @@ class GetApplicationReadModelMapperTest {
     InvolvedChild child =
         InvolvedChild.builder()
             .id(UUID.randomUUID())
-            .fullName("John Smith")
+            .firstName("John")
+            .lastName("Smith")
             .dateOfBirth(LocalDate.of(2020, 1, 1))
             .build();
 
@@ -131,8 +132,10 @@ class GetApplicationReadModelMapperTest {
 
     // Involved children mapped from proceeding projection
     assertThat(actual.proceedings().getFirst().involvedChildren()).hasSize(1);
-    assertThat(actual.proceedings().getFirst().involvedChildren().getFirst().fullName())
-        .isEqualTo("John Smith");
+    assertThat(actual.proceedings().getFirst().involvedChildren().getFirst().firstName())
+        .isEqualTo("John");
+    assertThat(actual.proceedings().getFirst().involvedChildren().getFirst().lastName())
+        .isEqualTo("Smith");
     assertThat(actual.proceedings().getFirst().involvedChildren().getFirst().dateOfBirth())
         .isEqualTo(LocalDate.of(2020, 1, 1));
 

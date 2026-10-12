@@ -71,9 +71,9 @@ public final class ApplicationCreateRequestFixture {
         Map.entry("usedDelegatedFunctions", false),
         Map.entry("delegatedFunctionsCostLimitation", "0"),
         Map.entry("substantiveCostLimitation", "2500"),
-        Map.entry("substantiveLevelOfService", 3),
+        Map.entry("substantiveLevelOfServiceCode", 3),
         Map.entry("substantiveLevelOfServiceName", "Full Representation"),
-        Map.entry("emergencyLevelOfService", 3),
+        Map.entry("emergencyLevelOfServiceCode", 3),
         Map.entry("emergencyLevelOfServiceName", "Full Representation"),
         Map.entry("scopeLimitations", List.of(validScopeLimitationContent())));
   }
@@ -146,7 +146,8 @@ public final class ApplicationCreateRequestFixture {
         .build();
   }
 
-  private static Map<String, Object> validAddressContent() {
+  /** Creates valid address content containing only the required and common fields. */
+  public static Map<String, Object> validAddressContent() {
     return Map.ofEntries(
         Map.entry("location", "home"),
         Map.entry("addressLineOne", "1 Analytical Engine Way"),
