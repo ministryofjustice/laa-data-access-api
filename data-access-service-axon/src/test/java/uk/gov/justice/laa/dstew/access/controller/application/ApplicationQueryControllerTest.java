@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -51,18 +52,21 @@ class ApplicationQueryControllerTest {
     ApplicationReadModel application = new ApplicationReadModel();
     LinkedApplicationGroupReadModel linkedGroup = new LinkedApplicationGroupReadModel();
     List<PriorAuthorityReadModel> priorAuthorities = List.of(new PriorAuthorityReadModel());
+    Map<UUID, String> linkedLaaReferences = Map.of(UUID.randomUUID(), "LAA-LINKED");
     ApplicationDetailResult detail =
-        new ApplicationDetailResult(application, linkedGroup, priorAuthorities);
+        new ApplicationDetailResult(
+            application, linkedGroup, priorAuthorities, linkedLaaReferences);
     ApplicationResponse expectedResponse = new ApplicationResponse();
     when(applicationQueryUseCase.getApplicationDetail(applicationId)).thenReturn(detail);
-    when(responseMapper.toResponse(application, linkedGroup, priorAuthorities))
+    when(responseMapper.toResponse(application, linkedGroup, priorAuthorities, linkedLaaReferences))
         .thenReturn(expectedResponse);
 
     var response = controller.getApplicationById(ServiceName.CIVIL_APPLY, applicationId);
 
     assertThat(response.getBody()).isSameAs(expectedResponse);
     verify(applicationQueryUseCase).getApplicationDetail(applicationId);
-    verify(responseMapper).toResponse(application, linkedGroup, priorAuthorities);
+    verify(responseMapper)
+        .toResponse(application, linkedGroup, priorAuthorities, linkedLaaReferences);
   }
 
   @Test

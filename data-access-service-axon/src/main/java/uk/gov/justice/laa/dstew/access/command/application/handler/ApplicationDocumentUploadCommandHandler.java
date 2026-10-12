@@ -9,8 +9,9 @@ import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadCommand;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftStore;
+import uk.gov.justice.laa.dstew.access.document.DocumentFileSuffix;
+import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /** Handles application draft document uploads. */
@@ -32,7 +33,7 @@ public class ApplicationDocumentUploadCommandHandler {
         ApplicationCommandHandlerSupport.requireDraft(command.applicationId(), draftStore);
     boolean existing =
         application.getState().getUploadedDocuments().stream()
-            .map(UploadDocument::documentId)
+            .map(DocumentMetadata::documentId)
             .anyMatch(id -> id.equals(command.documentId()));
     if (existing) {
       throw new ValidationException(List.of("Document ID already records a different upload"));
@@ -52,7 +53,9 @@ public class ApplicationDocumentUploadCommandHandler {
             command.size(),
             command.contentType(),
             command.checksum(),
-            command.sourceService()));
+            command.sourceService(),
+            null,
+            DocumentFileSuffix.fromFilename(command.originalFilename())));
     return command.documentId();
   }
 }

@@ -409,8 +409,10 @@ public class GetApplicationTest extends BaseHarnessTest {
     ApplicationProceedingResponse proceedingResponse = response.getProceedings().getFirst();
     assertThat(proceedingResponse.getInvolvedChildren()).isNotNull().hasSize(1);
     InvolvedChildResponse involvedChild = proceedingResponse.getInvolvedChildren().getFirst();
-    assertThat(involvedChild.getFullName())
-        .isEqualTo(ApplicationMeritsGenerator.DEFAULT_INVOLVED_CHILD_FULL_NAME);
+    assertThat(involvedChild.getFirstName())
+        .isEqualTo(ApplicationMeritsGenerator.DEFAULT_INVOLVED_CHILD_FIRST_NAME);
+    assertThat(involvedChild.getLastName())
+        .isEqualTo(ApplicationMeritsGenerator.DEFAULT_INVOLVED_CHILD_LAST_NAME);
     assertThat(involvedChild.getDateOfBirth())
         .isEqualTo(ApplicationMeritsGenerator.DEFAULT_INVOLVED_CHILD_DATE_OF_BIRTH);
   }
@@ -644,7 +646,8 @@ public class GetApplicationTest extends BaseHarnessTest {
                   .map(
                       c ->
                           new InvolvedChildResponse()
-                              .fullName(c.getFullName())
+                              .firstName(c.getFirstName())
+                              .lastName(c.getLastName())
                               .dateOfBirth(c.getDateOfBirth()))
                   .toList();
             })

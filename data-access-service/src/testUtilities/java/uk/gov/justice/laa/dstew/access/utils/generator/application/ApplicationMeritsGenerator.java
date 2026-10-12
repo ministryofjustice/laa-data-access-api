@@ -15,7 +15,8 @@ public class ApplicationMeritsGenerator
 
   public static final UUID DEFAULT_INVOLVED_CHILD_ID =
       UUID.fromString("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
-  public static final String DEFAULT_INVOLVED_CHILD_FULL_NAME = "John Smith";
+  public static final String DEFAULT_INVOLVED_CHILD_FIRST_NAME = "John";
+  public static final String DEFAULT_INVOLVED_CHILD_LAST_NAME = "Smith";
   public static final LocalDate DEFAULT_INVOLVED_CHILD_DATE_OF_BIRTH = LocalDate.of(2022, 8, 20);
 
   public ApplicationMeritsGenerator() {
@@ -31,7 +32,8 @@ public class ApplicationMeritsGenerator
             List.of(
                 InvolvedChild.builder()
                     .id(DEFAULT_INVOLVED_CHILD_ID)
-                    .fullName(DEFAULT_INVOLVED_CHILD_FULL_NAME)
+                    .firstName(DEFAULT_INVOLVED_CHILD_FIRST_NAME)
+                    .lastName(DEFAULT_INVOLVED_CHILD_LAST_NAME)
                     .dateOfBirth(DEFAULT_INVOLVED_CHILD_DATE_OF_BIRTH)
                     .build()))
         .build();

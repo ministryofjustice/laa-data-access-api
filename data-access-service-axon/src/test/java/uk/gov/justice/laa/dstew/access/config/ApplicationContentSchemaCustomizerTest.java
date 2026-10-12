@@ -111,7 +111,7 @@ class ApplicationContentSchemaCustomizerTest {
     "Client, appliedPreviously, boolean",
     "Client, firstName, string",
     "Client, addresses, array",
-    "Proceeding, substantiveLevelOfService, integer"
+    "Proceeding, substantiveLevelOfServiceCode, integer"
   })
   void givenSchemaWithScalarType_whenCustomise_thenOpenApiTypeSetIsPopulated(
       String componentName, String propertyName, String propertyType) {

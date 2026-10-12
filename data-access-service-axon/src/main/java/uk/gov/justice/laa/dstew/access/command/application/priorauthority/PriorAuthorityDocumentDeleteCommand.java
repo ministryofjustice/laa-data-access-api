@@ -8,7 +8,4 @@ import org.axonframework.modelling.annotation.TargetEntityId;
 /** Command that removes a document from a prior-authority draft. */
 @Command(routingKey = "priorAuthorityId")
 public record PriorAuthorityDocumentDeleteCommand(
-    @TargetEntityId UUID priorAuthorityId,
-    UUID documentId,
-    String serialisedRequest,
-    Instant occurredAt) {}
+    @TargetEntityId UUID priorAuthorityId, UUID documentId, Instant occurredAt) {}

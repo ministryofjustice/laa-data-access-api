@@ -24,6 +24,17 @@ public interface ApplicationGroupRouteRepository
       """)
   List<ApplicationGroupRoute> findAllByApplicationIdInForUpdate(Collection<UUID> applicationIds);
 
+  /** Locks every route in the supplied group in ascending application identifier order. */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query(
+      """
+      select route
+      from ApplicationGroupRoute route
+      where route.groupId = :groupId
+      order by route.applicationId
+      """)
+  List<ApplicationGroupRoute> findAllByGroupIdForUpdate(UUID groupId);
+
   /** Locks a single application route for exclusive membership updates. */
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query(
@@ -33,4 +44,7 @@ public interface ApplicationGroupRouteRepository
       where route.applicationId = :applicationId
       """)
   Optional<ApplicationGroupRoute> findByApplicationIdForUpdate(UUID applicationId);
+
+  /** Reads membership without attaching the route entity to the persistence context. */
+  Optional<ApplicationGroupRouteMembership> findMembershipByApplicationId(UUID applicationId);
 }

@@ -54,7 +54,8 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
         new PriorAuthorityContent(
             PriorAuthorityType.EXPERT, "Need urgent review", null, null, null);
     PriorAuthorityDataPayload payload =
-        new PriorAuthorityDataPayload(priorAuthorityId, applicationId, content, "{}", OCCURRED_AT);
+        new PriorAuthorityDataPayload(
+            priorAuthorityId, applicationId, content, "{}", Instant.parse("2026-08-31T09:00:00Z"));
     SubmitPriorAuthorityDraftCommand command =
         new SubmitPriorAuthorityDraftCommand(priorAuthorityId, OCCURRED_AT);
     PriorAuthorityState state =
@@ -84,7 +85,7 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
             payloadCaptor.capture(),
             eq("{}"),
             eq(OCCURRED_AT));
-    assertThat(payloadCaptor.getValue()).isEqualTo(payload);
+    assertThat(payloadCaptor.getValue()).isEqualTo(payload.withSubmittedAt(OCCURRED_AT));
     verify(eventAppender)
         .append(
             new PriorAuthoritySubmittedEvent(

@@ -96,7 +96,8 @@ public class PriorAuthorityDraftCommandController implements PriorAuthorityDraft
             .buildAndExpand(priorAuthorityId)
             .toUri();
     SubmitPriorAuthorityDraftResponse response =
-        new SubmitPriorAuthorityDraftResponse(priorAuthorityId, OffsetDateTime.now(ZoneOffset.UTC));
+        new SubmitPriorAuthorityDraftResponse(
+            priorAuthorityId, command.occurredAt().atOffset(ZoneOffset.UTC));
     boolean projected = submitUseCase.submit(command);
     return projected
         ? ResponseEntity.ok().location(location).body(response)

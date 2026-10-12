@@ -9,8 +9,8 @@ import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 
 /**
- * Event-sourced consistency boundary that owns group identity, the "exactly one lead" invariant,
- * and membership for a set of linked Applications.
+ * Event-sourced consistency boundary that owns group identity, lead assignment, and membership for
+ * a set of linked Applications.
  *
  * <p>The aggregate identifier is always the routed {@code groupId}; it does not depend on the lead
  * or member application identifiers carried by the command payload.
@@ -35,6 +35,19 @@ public class LinkedApplicationGroupAggregate {
         .ifPresent(eventAppender::append);
   }
 
+  /** Changes the lead of an established group. */
+  @CommandHandler
+  void handle(ChangeLinkedGroupLeadCommand command, EventAppender eventAppender) {
+    LinkedApplicationGroupDecider.decideChangeLead(state, command).ifPresent(eventAppender::append);
+  }
+
+  /** Removes a non-lead member from an established group. */
+  @CommandHandler
+  void handle(RemoveApplicationFromLinkedGroupCommand command, EventAppender eventAppender) {
+    LinkedApplicationGroupDecider.decideRemoveApplication(state, command)
+        .ifPresent(eventAppender::append);
+  }
+
   @EventSourcingHandler
   void on(LinkedApplicationGroupCreatedEvent event) {
     LinkedApplicationGroupEvolve.apply(state, event);
@@ -43,6 +56,21 @@ public class LinkedApplicationGroupAggregate {
 
   @EventSourcingHandler
   void on(MemberAddedToGroupEvent event) {
+    LinkedApplicationGroupEvolve.apply(state, event);
+  }
+
+  @EventSourcingHandler
+  void on(LinkedApplicationGroupLeadChangedEvent event) {
+    LinkedApplicationGroupEvolve.apply(state, event);
+  }
+
+  @EventSourcingHandler
+  void on(MemberRemovedFromGroupEvent event) {
+    LinkedApplicationGroupEvolve.apply(state, event);
+  }
+
+  @EventSourcingHandler
+  void on(LinkedApplicationGroupDissolvedEvent event) {
     LinkedApplicationGroupEvolve.apply(state, event);
   }
 
