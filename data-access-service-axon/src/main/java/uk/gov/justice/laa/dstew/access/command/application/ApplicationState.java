@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 
 /** State object reconstructed by folding an aggregate's event stream. */
 @Getter
@@ -22,5 +23,5 @@ public class ApplicationState {
   long applicationVersion;
   UUID caseworkerId;
   long assignmentVersion;
-  List<UploadDocument> uploadedDocuments = new ArrayList<>();
+  List<DocumentMetadata> uploadedDocuments = new ArrayList<>();
 }

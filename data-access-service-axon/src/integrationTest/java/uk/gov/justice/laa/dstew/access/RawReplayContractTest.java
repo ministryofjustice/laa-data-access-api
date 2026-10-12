@@ -31,11 +31,11 @@ import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUp
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationEvolve;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationState;
-import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftStartedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.draft.SubmitApplicationDraftCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
+import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 import uk.gov.justice.laa.dstew.access.model.CreateApplicationDraftRequest;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 
@@ -104,7 +104,7 @@ class RawReplayContractTest {
     assertThat(state.getApplicationDataVersion()).isZero();
     assertThat(state.getApplicationVersion()).isZero();
     assertThat(state.getUploadedDocuments())
-        .extracting(UploadDocument::documentId)
+        .extracting(DocumentMetadata::documentId)
         .containsExactly(documentId);
     assertThat(
             new String(

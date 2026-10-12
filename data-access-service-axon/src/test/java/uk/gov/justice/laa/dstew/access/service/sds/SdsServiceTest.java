@@ -4,9 +4,10 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.endsWith;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -18,6 +19,10 @@ import java.util.function.Predicate;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -36,10 +41,6 @@ import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.exception.FileConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
-import uk.gov.justice.laa.dstew.access.model.DocumentDeleteResponse;
-import uk.gov.justice.laa.dstew.access.model.DocumentDownloadResponse;
-import uk.gov.justice.laa.dstew.access.model.DocumentUpdateResponse;
-import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
 import uk.gov.justice.laa.dstew.access.model.SdsHealthResponse;
 
 @ExtendWith(MockitoExtension.class)
@@ -57,12 +58,36 @@ class SdsServiceTest {
   }
 
   @Test
+  void givenSdsWireResponses_whenDeserialised_thenPreservesDocumentFields() {
+    var upload =
+        objectMapper.readValue(
+            "{\"detail\":\"Uploaded\",\"success\":\"true\",\"checksum\":\"checksum\"}",
+            SdsUploadResult.class);
+    var update =
+        objectMapper.readValue(
+            "{\"success\":\"true\",\"checksum\":\"checksum\"}", SdsUpdateResult.class);
+    var download =
+        objectMapper.readValue(
+            "{\"fileURL\":\"https://signed.example/evidence.pdf\"}", SdsDownloadResult.class);
+
+    assertThat(upload).isEqualTo(new SdsUploadResult("Uploaded", "true", "checksum"));
+    assertThat(update).isEqualTo(new SdsUpdateResult("true", "checksum"));
+    assertThat(download.fileUrl()).isEqualTo("https://signed.example/evidence.pdf");
+    assertThat(
+            objectMapper
+                .readTree(objectMapper.writeValueAsString(download))
+                .get("fileURL")
+                .asString())
+        .isEqualTo(download.fileUrl());
+  }
+
+  @Test
   void givenValidFileAndApplicationId_whenSaveFile_thenReturnDocumentUploadResponse() {
     UUID applicationId = UUID.randomUUID();
     MockMultipartFile file =
         new MockMultipartFile(
             "file", "test-file.pdf", "application/pdf", "test content".getBytes());
-    DocumentUploadResponse expectedResponse = mock(DocumentUploadResponse.class);
+    SdsUploadResult expectedResponse = mock(SdsUploadResult.class);
 
     RestClient.RequestBodyUriSpec requestBodyUriSpec = mock(RestClient.RequestBodyUriSpec.class);
     RestClient.RequestBodySpec requestBodySpec = mock(RestClient.RequestBodySpec.class);
@@ -75,9 +100,9 @@ class SdsServiceTest {
     when(requestBodySpec.retrieve()).thenReturn(responseSpec);
     when(responseSpec.onStatus(any(Predicate.class), any())).thenReturn(responseSpec);
     when(sdsUploadResponseHandler.handle(responseSpec)).thenReturn(responseSpec);
-    when(responseSpec.body(DocumentUploadResponse.class)).thenReturn(expectedResponse);
+    when(responseSpec.body(SdsUploadResult.class)).thenReturn(expectedResponse);
 
-    DocumentUploadResponse actualResponse = sdsService.saveFile(applicationId, file);
+    SdsUploadResult actualResponse = sdsService.saveFile(applicationId, file);
 
     assertThat(actualResponse).isEqualTo(expectedResponse);
     verify(sdsRestClient).post();
@@ -102,7 +127,7 @@ class SdsServiceTest {
     when(requestBodySpec.retrieve()).thenReturn(responseSpec);
     when(responseSpec.onStatus(any(Predicate.class), any())).thenReturn(responseSpec);
     when(sdsUploadResponseHandler.handle(responseSpec)).thenReturn(responseSpec);
-    when(responseSpec.body(DocumentUploadResponse.class))
+    when(responseSpec.body(SdsUploadResult.class))
         .thenThrow(new FileConflictException("File already exists"));
 
     assertThatExceptionOfType(FileConflictException.class)
@@ -111,14 +136,15 @@ class SdsServiceTest {
   }
 
   @SuppressWarnings({"unchecked", "rawtypes"})
-  @Test
-  void givenValidPriorAuthorityUpload_whenSaveEvidenceFile_thenReturnsResponse() {
+  @ParameterizedTest
+  @CsvSource({"test-file.pdf,.pdf", "test-file.PDF,.PDF", "test-file.png,.png", "test-file,''"})
+  void givenValidPriorAuthorityUpload_whenSaveEvidenceFile_thenReturnsResponse(
+      String filename, String suffix) {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
     MockMultipartFile file =
-        new MockMultipartFile(
-            "file", "test-file.pdf", "application/pdf", "test content".getBytes());
-    DocumentUploadResponse expectedResponse = mock(DocumentUploadResponse.class);
+        new MockMultipartFile("file", filename, "application/pdf", "test content".getBytes());
+    SdsUploadResult expectedResponse = mock(SdsUploadResult.class);
 
     RestClient.RequestBodyUriSpec requestBodyUriSpec = mock(RestClient.RequestBodyUriSpec.class);
     RestClient.RequestBodySpec requestBodySpec = mock(RestClient.RequestBodySpec.class);
@@ -131,28 +157,53 @@ class SdsServiceTest {
     when(requestBodySpec.retrieve()).thenReturn(responseSpec);
     when(responseSpec.onStatus(any(Predicate.class), any())).thenReturn(responseSpec);
     when(sdsUploadResponseHandler.handle(responseSpec)).thenReturn(responseSpec);
-    when(responseSpec.body(DocumentUploadResponse.class)).thenReturn(expectedResponse);
+    when(responseSpec.body(SdsUploadResult.class)).thenReturn(expectedResponse);
 
-    DocumentUploadResponse actualResponse =
+    SdsUploadResult actualResponse =
         sdsService.saveEvidenceFile(priorAuthorityId, documentId, file);
-    MockMultipartFile fileWithoutExtension =
-        new MockMultipartFile(
-            "file", "test-file", "application/octet-stream", "test content".getBytes());
-    DocumentUploadResponse responseWithoutExtension =
-        sdsService.saveEvidenceFile(priorAuthorityId, documentId, fileWithoutExtension);
 
     assertThat(actualResponse).isEqualTo(expectedResponse);
-    assertThat(responseWithoutExtension).isEqualTo(expectedResponse);
 
     ArgumentCaptor<MultiValueMap<String, HttpEntity<?>>> bodyCaptor =
         (ArgumentCaptor) ArgumentCaptor.forClass(MultiValueMap.class);
-    verify(requestBodySpec, times(2)).body(bodyCaptor.capture());
-    HttpEntity<?> filePartWithExtension = bodyCaptor.getAllValues().get(0).getFirst("file");
-    HttpEntity<?> filePartWithoutExtension = bodyCaptor.getAllValues().get(1).getFirst("file");
-    assertThat(filePartWithExtension.getHeaders().getContentDisposition().getFilename())
-        .isEqualTo(documentId + ".pdf");
-    assertThat(filePartWithoutExtension.getHeaders().getContentDisposition().getFilename())
-        .isEqualTo(documentId.toString());
+    verify(requestBodySpec).body(bodyCaptor.capture());
+    HttpEntity<?> filePart = bodyCaptor.getValue().getFirst("file");
+    assertThat(filePart.getHeaders().getContentDisposition().getFilename())
+        .isEqualTo(documentId + suffix);
+  }
+
+  @ParameterizedTest
+  @CsvSource(
+      value = {
+        "NULL,''",
+        "'',''",
+        "' ',''",
+        "evidence,''",
+        "evidence.pdf,.pdf",
+        "evidence.PDF,.PDF",
+        "image.png,.png",
+        "report.docx,.docx"
+      },
+      nullValues = "NULL")
+  void givenFilename_whenDownloadedAndDeleted_thenUsesExactSameSdsKey(
+      String filename, String suffix) throws Exception {
+    UUID folderId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    String storedName = documentId + suffix;
+    SdsService service = spy(sdsService);
+    doReturn(new SdsDownloadResult("https://signed.example/document"))
+        .when(service)
+        .getFile(folderId, storedName);
+    doReturn(new SdsDeleteResult(List.of()))
+        .when(service)
+        .deleteFiles(folderId, List.of(storedName));
+
+    var resource = service.getEvidenceFile(folderId, documentId, filename);
+    service.deleteEvidenceFile(folderId, documentId, filename);
+
+    assertThat(resource.getURL().toString()).isEqualTo("https://signed.example/document");
+    verify(service).getFile(folderId, storedName);
+    verify(service).deleteFiles(folderId, List.of(storedName));
   }
 
   @SuppressWarnings("unchecked")
@@ -183,8 +234,7 @@ class SdsServiceTest {
     when(responseSpec.onStatus(predicateCaptor.capture(), handlerCaptor.capture()))
         .thenReturn(responseSpec);
     when(sdsUploadResponseHandler.handle(responseSpec)).thenReturn(responseSpec);
-    when(responseSpec.body(DocumentUploadResponse.class))
-        .thenReturn(mock(DocumentUploadResponse.class));
+    when(responseSpec.body(SdsUploadResult.class)).thenReturn(mock(SdsUploadResult.class));
 
     sdsService.saveEvidenceFile(priorAuthorityId, documentId, file);
 
@@ -203,7 +253,7 @@ class SdsServiceTest {
     MockMultipartFile file =
         new MockMultipartFile(
             "file", "test-file.pdf", "application/pdf", "test content".getBytes());
-    DocumentUpdateResponse expectedResponse = mock(DocumentUpdateResponse.class);
+    SdsUpdateResult expectedResponse = mock(SdsUpdateResult.class);
 
     RestClient.RequestBodyUriSpec requestBodyUriSpec = mock(RestClient.RequestBodyUriSpec.class);
     RestClient.RequestBodySpec requestBodySpec = mock(RestClient.RequestBodySpec.class);
@@ -215,9 +265,9 @@ class SdsServiceTest {
     when(requestBodySpec.body(any(MultiValueMap.class))).thenReturn(requestBodySpec);
     when(requestBodySpec.retrieve()).thenReturn(responseSpec);
     when(sdsUploadResponseHandler.handle(responseSpec)).thenReturn(responseSpec);
-    when(responseSpec.body(DocumentUpdateResponse.class)).thenReturn(expectedResponse);
+    when(responseSpec.body(SdsUpdateResult.class)).thenReturn(expectedResponse);
 
-    DocumentUpdateResponse actualResponse = sdsService.saveOrUpdateFile(applicationId, file);
+    SdsUpdateResult actualResponse = sdsService.saveOrUpdateFile(applicationId, file);
 
     assertThat(actualResponse).isEqualTo(expectedResponse);
     verify(sdsRestClient).put();
@@ -228,7 +278,7 @@ class SdsServiceTest {
   void givenValidApplicationIdAndDocumentId_whenGetFile_thenReturnDocumentDownloadResponse() {
     UUID applicationId = UUID.randomUUID();
     String documentId = "test-file.pdf";
-    DocumentDownloadResponse expectedResponse = mock(DocumentDownloadResponse.class);
+    SdsDownloadResult expectedResponse = mock(SdsDownloadResult.class);
 
     RestClient.RequestHeadersUriSpec requestHeadersUriSpec =
         mock(RestClient.RequestHeadersUriSpec.class);
@@ -242,9 +292,9 @@ class SdsServiceTest {
     when(responseSpec.onStatus(
             any(Predicate.class), any(RestClient.ResponseSpec.ErrorHandler.class)))
         .thenReturn(responseSpec);
-    when(responseSpec.body(DocumentDownloadResponse.class)).thenReturn(expectedResponse);
+    when(responseSpec.body(SdsDownloadResult.class)).thenReturn(expectedResponse);
 
-    DocumentDownloadResponse actualResponse = sdsService.getFile(applicationId, documentId);
+    SdsDownloadResult actualResponse = sdsService.getFile(applicationId, documentId);
 
     assertThat(actualResponse).isEqualTo(expectedResponse);
     verify(sdsRestClient).get();
@@ -267,7 +317,7 @@ class SdsServiceTest {
     when(responseSpec.onStatus(
             any(Predicate.class), any(RestClient.ResponseSpec.ErrorHandler.class)))
         .thenReturn(responseSpec);
-    when(responseSpec.body(DocumentDownloadResponse.class))
+    when(responseSpec.body(SdsDownloadResult.class))
         .thenThrow(new ResourceNotFoundException("File not found"));
 
     assertThatExceptionOfType(ResourceNotFoundException.class)
@@ -280,8 +330,7 @@ class SdsServiceTest {
       throws Exception {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
-    DocumentDownloadResponse sdsResponse =
-        new DocumentDownloadResponse().fileURL("https://signed.example/evidence.pdf");
+    SdsDownloadResult sdsResponse = new SdsDownloadResult("https://signed.example/evidence.pdf");
     RestClient.RequestHeadersUriSpec requestHeadersUriSpec =
         mock(RestClient.RequestHeadersUriSpec.class);
     RestClient.RequestHeadersSpec requestHeadersSpec = mock(RestClient.RequestHeadersSpec.class);
@@ -293,7 +342,7 @@ class SdsServiceTest {
     when(responseSpec.onStatus(
             any(Predicate.class), any(RestClient.ResponseSpec.ErrorHandler.class)))
         .thenReturn(responseSpec);
-    when(responseSpec.body(DocumentDownloadResponse.class)).thenReturn(sdsResponse);
+    when(responseSpec.body(SdsDownloadResult.class)).thenReturn(sdsResponse);
 
     var resource =
         sdsService.getEvidenceFile(priorAuthorityId, documentId, "original evidence.pdf");
@@ -312,11 +361,23 @@ class SdsServiceTest {
         .withMessage("File not found");
   }
 
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {" "})
+  void givenMissingFilename_whenGetEvidenceFile_thenRetrievesResource(String filename)
+      throws Exception {
+    stubSdsDownloadResponse(new SdsDownloadResult("https://signed.example/document"));
+
+    var resource = sdsService.getEvidenceFile(UUID.randomUUID(), UUID.randomUUID(), filename);
+
+    assertThat(resource.getURL().toString()).isEqualTo("https://signed.example/document");
+  }
+
   @Test
   void givenBlankSdsDownloadUrl_whenGetEvidenceFile_thenThrowsNotFound() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
-    stubSdsDownloadResponse(new DocumentDownloadResponse().fileURL(" "));
+    stubSdsDownloadResponse(new SdsDownloadResult(" "));
 
     assertThatExceptionOfType(ResourceNotFoundException.class)
         .isThrownBy(() -> sdsService.getEvidenceFile(priorAuthorityId, documentId, "evidence.pdf"))
@@ -327,14 +388,14 @@ class SdsServiceTest {
   void givenInvalidSdsDownloadUrl_whenGetEvidenceFile_thenThrowsIllegalStateException() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
-    stubSdsDownloadResponse(new DocumentDownloadResponse().fileURL("not a URL"));
+    stubSdsDownloadResponse(new SdsDownloadResult("not a URL"));
 
     assertThatExceptionOfType(IllegalStateException.class)
         .isThrownBy(() -> sdsService.getEvidenceFile(priorAuthorityId, documentId, "evidence.pdf"))
         .withMessage("SDS returned an invalid document URL");
   }
 
-  private void stubSdsDownloadResponse(DocumentDownloadResponse response) {
+  private void stubSdsDownloadResponse(SdsDownloadResult response) {
     RestClient.RequestHeadersUriSpec requestHeadersUriSpec =
         mock(RestClient.RequestHeadersUriSpec.class);
     RestClient.RequestHeadersSpec requestHeadersSpec = mock(RestClient.RequestHeadersSpec.class);
@@ -346,7 +407,7 @@ class SdsServiceTest {
     when(responseSpec.onStatus(
             any(Predicate.class), any(RestClient.ResponseSpec.ErrorHandler.class)))
         .thenReturn(responseSpec);
-    when(responseSpec.body(DocumentDownloadResponse.class)).thenReturn(response);
+    when(responseSpec.body(SdsDownloadResult.class)).thenReturn(response);
   }
 
   @Test
@@ -368,11 +429,11 @@ class SdsServiceTest {
     when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
     when(responseSpec.body(any(ParameterizedTypeReference.class))).thenReturn(sdsResults);
 
-    DocumentDeleteResponse response = sdsService.deleteFiles(applicationId, fileIds);
+    SdsDeleteResult response = sdsService.deleteFiles(applicationId, fileIds);
 
-    assertThat(response.getResults()).isNotNull();
-    assertThat(response.getResults().size()).isEqualTo(2);
-    assertThat(response.getResults().stream().allMatch(r -> r.getStatus() == 204)).isTrue();
+    assertThat(response.results()).isNotNull();
+    assertThat(response.results().size()).isEqualTo(2);
+    assertThat(response.results().stream().allMatch(r -> r.status() == 204)).isTrue();
     verify(sdsRestClient).delete();
   }
 
@@ -391,10 +452,10 @@ class SdsServiceTest {
     when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
     when(responseSpec.body(any(ParameterizedTypeReference.class))).thenReturn(null);
 
-    DocumentDeleteResponse response = sdsService.deleteFiles(applicationId, fileIds);
+    SdsDeleteResult response = sdsService.deleteFiles(applicationId, fileIds);
 
-    assertThat(response.getResults()).isNotNull();
-    assertThat(response.getResults().isEmpty()).isTrue();
+    assertThat(response.results()).isNotNull();
+    assertThat(response.results().isEmpty()).isTrue();
   }
 
   @Test
@@ -445,8 +506,7 @@ class SdsServiceTest {
     when(responseSpec.onStatus(predicateCaptor.capture(), handlerCaptor.capture()))
         .thenReturn(responseSpec);
     when(sdsUploadResponseHandler.handle(responseSpec)).thenReturn(responseSpec);
-    when(responseSpec.body(DocumentUploadResponse.class))
-        .thenReturn(mock(DocumentUploadResponse.class));
+    when(responseSpec.body(SdsUploadResult.class)).thenReturn(mock(SdsUploadResult.class));
 
     sdsService.saveFile(applicationId, file);
 
@@ -493,8 +553,7 @@ class SdsServiceTest {
     when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
     when(responseSpec.onStatus(predicateCaptor.capture(), handlerCaptor.capture()))
         .thenReturn(responseSpec);
-    when(responseSpec.body(DocumentDownloadResponse.class))
-        .thenReturn(mock(DocumentDownloadResponse.class));
+    when(responseSpec.body(SdsDownloadResult.class)).thenReturn(mock(SdsDownloadResult.class));
 
     UUID applicationId = UUID.randomUUID();
     String documentId = "test-file.pdf";

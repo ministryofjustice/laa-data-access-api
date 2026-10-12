@@ -1,10 +1,10 @@
-package uk.gov.justice.laa.dstew.access.command.application.priorauthority.document;
+package uk.gov.justice.laa.dstew.access.document;
 
 import java.time.Instant;
 import java.util.UUID;
 
-/** Internal result of a completed prior-authority document upload. */
-public record UploadPriorAuthorityDocumentResult(
+/** Internal result of a completed document upload, independent of application type. */
+public record DocumentUploadResult(
     UUID documentId,
     String fileName,
     String fileType,

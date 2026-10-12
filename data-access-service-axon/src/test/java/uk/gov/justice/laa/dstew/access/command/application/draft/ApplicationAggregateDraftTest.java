@@ -116,7 +116,9 @@ class ApplicationAggregateDraftTest {
                 12L,
                 "application/pdf",
                 "checksum",
-                "CIVIL_APPLY"));
+                "CIVIL_APPLY",
+                null,
+                ".pdf"));
 
     ArgumentCaptor<ApplicationDraftPayload> payload =
         ArgumentCaptor.forClass(ApplicationDraftPayload.class);

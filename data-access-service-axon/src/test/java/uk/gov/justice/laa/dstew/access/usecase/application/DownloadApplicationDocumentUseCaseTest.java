@@ -12,6 +12,9 @@ import java.util.concurrent.CompletableFuture;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -71,5 +74,53 @@ class DownloadApplicationDocumentUseCaseTest {
     when(queryGateway.query(
             new FindApplicationDocumentQuery(APPLICATION_ID, DOCUMENT_ID), EvidenceDocument.class))
         .thenReturn(CompletableFuture.completedFuture(document));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {".pdf", ".PDF", ".png", ""})
+  void givenSuffixWithoutFilename_whenDownloaded_thenUsesPersistedKey(String suffix) {
+    EvidenceDocument document =
+        new EvidenceDocument(
+            DOCUMENT_ID,
+            null,
+            null,
+            null,
+            "application/pdf",
+            12L,
+            Instant.now(),
+            "CIVIL_APPLY",
+            null,
+            suffix);
+    givenQueryReturns(document);
+    Resource resource = mock(Resource.class);
+    when(sdsService.getEvidenceFile(APPLICATION_ID, DOCUMENT_ID, DOCUMENT_ID + suffix))
+        .thenReturn(resource);
+
+    assertThat(useCase.downloadDocument(APPLICATION_ID, DOCUMENT_ID).resource()).isSameAs(resource);
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {" "})
+  void givenDocumentWithoutFilename_whenDownloaded_thenRetrievesFromSds(String filename) {
+    EvidenceDocument document =
+        new EvidenceDocument(
+            DOCUMENT_ID,
+            null,
+            filename,
+            null,
+            "application/pdf",
+            12L,
+            Instant.now(),
+            "CIVIL_APPLY",
+            null);
+    givenQueryReturns(document);
+    Resource resource = mock(Resource.class);
+    when(sdsService.getEvidenceFile(APPLICATION_ID, DOCUMENT_ID, filename)).thenReturn(resource);
+
+    EvidenceDocumentDownload download = useCase.downloadDocument(APPLICATION_ID, DOCUMENT_ID);
+
+    assertThat(download.document()).isSameAs(document);
+    assertThat(download.resource()).isSameAs(resource);
   }
 }

@@ -20,30 +20,6 @@ components:
         - AUTOGRANTED
         - MANUAL
 
-    ApplicationDocumentType:
-      type: string
-      enum:
-        - GATEWAY_EVIDENCE
-        - MERITS_REPORT
-        - STATEMENT_OF_CASE
-        - COURT_APPLICATION
-        - COURT_ORDER
-        - EXPERT_REPORT
-        - COURT_APPLICATION_OR_ORDER
-        - PARENTAL_RESPONSIBILITY
-        - LOCAL_AUTHORITY_ASSESSMENT
-        - GROUNDS_OF_APPEAL
-        - COUNSEL_OPINION
-        - JUDGEMENT
-        - PLF_COURT_ORDER
-        - LETTER_OF_INSTRUCTION
-        - ESTIMATE_OF_COSTS
-        - ALTERNATIVE_QUOTE
-        - OTHER_PARTY_CERTIFICATE_REFERENCE
-        - OTHER_SUPPORTING_DOCUMENT
-        - PRIMARY_QUOTE
-        - ADDITIONAL_QUOTE
-
     OpponentResponse:
       type: object
       properties:
@@ -725,7 +701,7 @@ components:
           type: string
           format: uuid
         documentType:
-          type: string
+          $ref: "../open-api-common/components.yml#/components/schemas/DocumentType"
         fileName:
           type: string
           description: Original filename, absent for legacy uploads where it was not recorded

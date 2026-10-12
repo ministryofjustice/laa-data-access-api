@@ -29,7 +29,6 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
-import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
@@ -49,6 +48,7 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.EvidenceDocument;
+import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexAccessPolicy;
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadModel;
@@ -87,7 +87,7 @@ public class ApplicationProjection {
     return applicationReadRepository.existsById(query.applicationId());
   }
 
-  /** Returns a live document with its filename hydrated, or {@code null} if either is absent. */
+  /** Returns a live document with its filename hydrated when available, or null if absent. */
   @QueryHandler
   public @Nullable EvidenceDocument handle(FindApplicationDocumentQuery query) {
     return applicationReadRepository
@@ -98,10 +98,11 @@ public class ApplicationProjection {
                     .filter(document -> document.documentId().equals(query.documentId()))
                     .filter(document -> !document.deleted())
                     .findFirst()
-                    .flatMap(
+                    .map(
                         document ->
-                            documentFilename(application, document.documentId())
-                                .map(fileName -> evidenceDocument(document, fileName))))
+                            evidenceDocument(
+                                document,
+                                documentFilename(application, document.documentId()).orElse(null))))
         .orElse(null);
   }
 
@@ -389,12 +390,12 @@ public class ApplicationProjection {
                 () ->
                     new IllegalStateException(
                         "Application not found for document upload: " + event.applicationId()));
-    List<UploadDocument> documents = new ArrayList<>(application.getUploadedDocuments());
+    List<DocumentMetadata> documents = new ArrayList<>(application.getUploadedDocuments());
     if (documents.stream().anyMatch(document -> document.documentId().equals(event.documentId()))) {
       return;
     }
     documents.add(
-        new UploadDocument(
+        new DocumentMetadata(
             event.documentId(),
             event.documentType(),
             event.uploadedAt(),
@@ -402,7 +403,8 @@ public class ApplicationProjection {
             event.contentType(),
             event.checksum(),
             event.sourceService(),
-            false));
+            false,
+            event.fileSuffix()));
     application.setUploadedDocuments(List.copyOf(documents));
     if (event.applicationDataVersion() != null) {
       application.setApplicationDataVersion(event.applicationDataVersion());
@@ -520,7 +522,7 @@ public class ApplicationProjection {
     return java.util.Optional.ofNullable(filenames.get(documentId));
   }
 
-  private EvidenceDocument evidenceDocument(UploadDocument document, String fileName) {
+  private EvidenceDocument evidenceDocument(DocumentMetadata document, String fileName) {
     return new EvidenceDocument(
         document.documentId(),
         document.documentType(),
@@ -530,7 +532,8 @@ public class ApplicationProjection {
         document.size(),
         document.uploadedAt(),
         document.sourceService(),
-        document.checksum());
+        document.checksum(),
+        document.fileSuffix());
   }
 
   /** Clears the disposable current-state table before replay. */

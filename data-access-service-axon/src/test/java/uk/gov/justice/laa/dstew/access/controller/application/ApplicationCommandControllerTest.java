@@ -26,7 +26,6 @@ import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationComm
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionUseCase;
-import uk.gov.justice.laa.dstew.access.command.application.document.UploadApplicationDocumentResult;
 import uk.gov.justice.laa.dstew.access.command.application.document.UploadDocumentUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.ExpectedLinkedGroup;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkApplicationCommand;
@@ -43,13 +42,16 @@ import uk.gov.justice.laa.dstew.access.command.application.ready.ReadyApplicatio
 import uk.gov.justice.laa.dstew.access.command.application.ready.RecordAutoGrantOutcomeUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationUseCase;
+import uk.gov.justice.laa.dstew.access.document.DocumentUploadResult;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkType;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
+import uk.gov.justice.laa.dstew.access.model.DocumentType;
 import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
 import uk.gov.justice.laa.dstew.access.model.LinkedGroupChangeRequest;
 import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedUserId;
+import uk.gov.justice.laa.dstew.access.service.sds.SdsUploadResult;
 import uk.gov.justice.laa.dstew.access.version.VersionToken;
 
 /** Verifies that each controller endpoint delegates to the appropriate use case. */
@@ -251,14 +253,25 @@ class ApplicationCommandControllerTest {
     UUID id = UUID.randomUUID();
     MockMultipartFile file =
         new MockMultipartFile("file", "test.pdf", "application/pdf", "content".getBytes());
-    DocumentUploadResponse expected = mock(DocumentUploadResponse.class);
+    SdsUploadResult expected = new SdsUploadResult("Uploaded", "true", "checksum");
     when(uploadDocumentUseCase.execute(id, file)).thenReturn(expected);
 
     ResponseEntity<DocumentUploadResponse> response = controller.uploadDocument(null, id, file);
 
     verify(uploadDocumentUseCase).execute(id, file);
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-    assertThat(response.getBody()).isEqualTo(expected);
+    assertThat(response.getBody()).isNotNull();
+    assertThat(response.getBody().getDetail()).isEqualTo(expected.detail());
+    assertThat(response.getBody().getSuccess()).isEqualTo(expected.success());
+    assertThat(response.getBody().getChecksum()).isEqualTo(expected.checksum());
+  }
+
+  @Test
+  void givenNullSdsUploadResult_whenUploadDocument_thenPreservesEmptyResponse() {
+    var response = controller.uploadDocument(null, UUID.randomUUID(), null);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    assertThat(response.getBody()).isNull();
   }
 
   @Test
@@ -268,8 +281,8 @@ class ApplicationCommandControllerTest {
     Instant uploadedAt = Instant.parse("2026-09-28T15:10:27.430Z");
     MockMultipartFile file =
         new MockMultipartFile("file", "test.pdf", "application/pdf", "content".getBytes());
-    UploadApplicationDocumentResult expected =
-        new UploadApplicationDocumentResult(
+    DocumentUploadResult expected =
+        new DocumentUploadResult(
             documentId,
             "test.pdf",
             "PDF",
@@ -287,7 +300,7 @@ class ApplicationCommandControllerTest {
                 uk.gov.justice.laa.dstew.access.model.ServiceName.CIVIL_APPLY,
                 id,
                 file,
-                uk.gov.justice.laa.dstew.access.model.ApplicationDocumentType.GATEWAY_EVIDENCE);
+                DocumentType.GATEWAY_EVIDENCE);
 
     verify(uploadDocumentUseCase).execute(id, file, "GATEWAY_EVIDENCE", "CIVIL_APPLY");
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);

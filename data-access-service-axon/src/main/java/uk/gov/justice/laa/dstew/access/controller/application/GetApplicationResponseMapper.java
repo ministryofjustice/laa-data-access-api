@@ -11,8 +11,8 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationProvider;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Opponent;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ScopeLimitation;
-import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationMeritsDecision;
+import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 import uk.gov.justice.laa.dstew.access.model.ApplicationDocumentResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
@@ -20,6 +20,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.AutoGranted;
 import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
+import uk.gov.justice.laa.dstew.access.model.DocumentType;
 import uk.gov.justice.laa.dstew.access.model.InvolvedChildResponse;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.MatterType;
@@ -88,13 +89,13 @@ public class GetApplicationResponseMapper {
     return application.getUploadedDocuments().stream()
         .filter(document -> !document.deleted())
         .sorted(
-            Comparator.comparing(UploadDocument::uploadedAt)
-                .thenComparing(UploadDocument::documentId))
+            Comparator.comparing(DocumentMetadata::uploadedAt)
+                .thenComparing(DocumentMetadata::documentId))
         .map(
             document ->
                 new ApplicationDocumentResponse()
                     .documentId(document.documentId())
-                    .documentType(document.documentType())
+                    .documentType(DocumentType.fromValue(document.documentType()))
                     .fileName(filenames.get(document.documentId()))
                     .uploadedAt(document.uploadedAt().atOffset(ZoneOffset.UTC))
                     .size(document.size())

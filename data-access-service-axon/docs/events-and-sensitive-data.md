@@ -55,6 +55,13 @@ metadata projection contains the filename. Submission copies the map into versio
 `application_data` before emitting `ApplicationCreatedEvent` and deleting the draft row. Subsequent
 immutable content updates preserve the filename map.
 
+The exact file suffix, such as `.PDF`, is non-sensitive storage metadata. Application and Prior
+Authority upload events persist it as optional `fileSuffix`; aggregate state and projected
+`DocumentMetadata` retain it independently of the original filename. New extensionless uploads
+record an empty string. Historical events without this field retain null (unknown), with filename
+fallback when available. No MIME-based inference is used. This allows SDS retrieval and deletion
+without retaining or hydrating the sensitive filename. See [Document lifecycle](document-lifecycle.md).
+
 Both upload entry points look up the draft directly in `ApplicationDraftStore` before SDS is called.
 An absent draft returns a not-found error without calling SDS or dispatching an upload command.
 This is an existence check against authoritative draft storage, not a projection lookup or a guarantee
