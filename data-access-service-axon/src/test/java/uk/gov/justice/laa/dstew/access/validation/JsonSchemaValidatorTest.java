@@ -19,6 +19,32 @@ class JsonSchemaValidatorTest {
 
   private final JsonSchemaValidator validator = new JsonSchemaValidator();
 
+  @ParameterizedTest
+  @ValueSource(strings = {"fullName", "substantiveLevelOfService", "emergencyLevelOfService"})
+  void givenLegacyFieldInNewCreate_whenValidated_thenCurrentContractRemainsStrict(String field) {
+    var payload = new HashMap<>(validApplicationContent(UUID.randomUUID(), UUID.randomUUID()));
+    var proceeding = new HashMap<>(validProceedingContent(UUID.randomUUID()));
+    if ("fullName".equals(field)) {
+      proceeding.put(
+          "involvedChildren",
+          List.of(
+              Map.of(
+                  "id",
+                  UUID.randomUUID().toString(),
+                  "fullName",
+                  "Mary Jane Smith",
+                  "dateOfBirth",
+                  "2020-01-01")));
+    } else {
+      proceeding.put(field, 3);
+      proceeding.remove(field + "Code");
+    }
+    payload.put("proceedings", List.of(proceeding));
+
+    assertThatThrownBy(() -> validator.validate(payload, "BaseCivilApplication.json", 1))
+        .isInstanceOf(ValidationException.class);
+  }
+
   @Test
   void givenApplyPayloadAndVersionOneSchema_whenValidate_thenAcceptsPayload() {
     validator.validate(

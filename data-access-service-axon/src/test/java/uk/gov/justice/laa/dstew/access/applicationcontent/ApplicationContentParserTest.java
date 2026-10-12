@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
@@ -17,6 +19,33 @@ class ApplicationContentParserTest {
       new ApplicationContentParser(
           new PayloadValidator(
               new ObjectMapper(), Validation.buildDefaultValidatorFactory().getValidator()));
+
+  @ParameterizedTest
+  @ValueSource(strings = {"substantiveLevelOfService", "emergencyLevelOfService"})
+  void givenLegacyAndCurrentServiceCodes_whenParsed_thenPreservesBothWithoutResolution(
+      String field) {
+    var proceeding = new java.util.HashMap<String, Object>();
+    proceeding.put("id", UUID.randomUUID().toString());
+    proceeding.put("leadProceeding", true);
+    proceeding.put("code", "SE003");
+    proceeding.put("description", "Care order");
+    proceeding.put(field, 3);
+    proceeding.put(field + "Code", 4);
+    proceeding.putIfAbsent("substantiveLevelOfService", 3);
+    var content =
+        Map.<String, Object>of(
+            "submittedAt", "2026-01-15T10:20:30Z", "proceedings", List.of(proceeding));
+
+    var parsed = parser.parse(content);
+    var parsedProceeding = parsed.proceedings().getFirst();
+    if (field.startsWith("substantive")) {
+      assertThat(parsedProceeding.getSubstantiveLevelOfService()).isEqualTo(3);
+      assertThat(parsedProceeding.getSubstantiveLevelOfServiceCode()).isEqualTo(4);
+    } else {
+      assertThat(parsedProceeding.getEmergencyLevelOfService()).isEqualTo(3);
+      assertThat(parsedProceeding.getEmergencyLevelOfServiceCode()).isEqualTo(4);
+    }
+  }
 
   @Test
   void givenProceedingsWithoutLead_whenParse_thenThrowsProductionValidationFailure() {
@@ -33,6 +62,8 @@ class ApplicationContentParserTest {
                     false,
                     "code",
                     "SE003",
+                    "substantiveLevelOfServiceCode",
+                    3,
                     "description",
                     "Test proceeding")));
 
@@ -67,6 +98,8 @@ class ApplicationContentParserTest {
                     true,
                     "code",
                     "SE003",
+                    "substantiveLevelOfServiceCode",
+                    3,
                     "description",
                     "Test proceeding")));
 

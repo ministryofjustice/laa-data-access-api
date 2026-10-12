@@ -93,6 +93,25 @@ historical sensitive-data versions. Application-level retention removes those ve
 identifiers, including application and caseworker IDs, may still be personal data depending on how
 they can be linked elsewhere. New event fields should be reviewed rather than assumed safe.
 
+## Historical application-content fields
+
+The stored child contract retains optional `fullName` alongside `firstName` and `lastName`.
+Proceedings retain optional `substantiveLevelOfService` and `emergencyLevelOfService` alongside
+the corresponding `...Code` fields. These properties allow Hibernate to read versions written
+before the v0.69.0 contract changes without discarding values when another version is appended.
+
+Child responses keep the current split-name API contract and return the stored `firstName` and
+`lastName` values as-is. A legacy-only `fullName` remains preserved in stored content and does
+not populate either response field. Legacy and current service-level integer fields are also
+preserved independently; the legacy integers are not copied into current code fields or used to
+derive response values.
+
+New application and draft creation continue to use the current strict JSON Schemas. The added
+nullable typed fields only affect deserialization of stored JSON and do not relax those schemas.
+Historical payload reads do not pass through request-schema validation. Do not infer the content's
+era from schema version 1: both historical and current content used it. No global unknown-property
+setting, event rewrite, or migration of immutable rows is required.
+
 ## Immutability and retention
 
 `application_data` has a primary key of `(application_id, version)`. PostgreSQL triggers reject:

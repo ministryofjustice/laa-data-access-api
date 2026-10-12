@@ -16,12 +16,17 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import tools.jackson.databind.json.JsonMapper;
+import uk.gov.justice.laa.dstew.access.entity.ProceedingEntity;
+import uk.gov.justice.laa.dstew.access.mapper.ProceedingMapper;
 import uk.gov.justice.laa.dstew.access.usecase.getapplication.dto.ApplicationDbProjection;
 import uk.gov.justice.laa.dstew.access.usecase.getapplication.dto.ProceedingDbProjection;
 import uk.gov.justice.laa.dstew.access.usecase.getapplication.model.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.usecase.shared.parser.InvolvedChild;
 import uk.gov.justice.laa.dstew.access.usecase.shared.parser.OpponentDetails;
 import uk.gov.justice.laa.dstew.access.usecase.shared.parser.Opposable;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ProceedingLinkedChild;
+import uk.gov.justice.laa.dstew.access.usecase.shared.parser.ProceedingMerits;
 
 class GetApplicationReadModelMapperTest {
 
@@ -30,6 +35,116 @@ class GetApplicationReadModelMapperTest {
   @BeforeEach
   void setUp() {
     mapper = new GetApplicationReadModelMapper();
+  }
+
+  @Test
+  void givenLegacyLinkedChild_whenOldProceedingMapperUsed_thenReturnsNullSplitNames() {
+    UUID childId = UUID.randomUUID();
+    UUID proceedingId = UUID.randomUUID();
+    var child = InvolvedChild.builder().id(childId).fullName("Mary Jane Smith").build();
+    var entity =
+        ProceedingEntity.builder()
+            .applyProceedingId(proceedingId)
+            .proceedingContent(Map.of())
+            .build();
+    var merits =
+        ProceedingMerits.builder()
+            .proceedingId(proceedingId)
+            .proceedingLinkedChildren(
+                List.of(ProceedingLinkedChild.builder().involvedChildId(childId).build()))
+            .build();
+
+    var response =
+        new ProceedingMapper() {}.toApplicationProceeding(entity, List.of(merits), List.of(child))
+            .getInvolvedChildren()
+            .getFirst();
+
+    assertThat(response.getFirstName()).isNull();
+    assertThat(response.getLastName()).isNull();
+    assertThat(child.getFullName()).isEqualTo("Mary Jane Smith");
+    assertThat(child.getFirstName()).isNull();
+  }
+
+  @Test
+  void givenHistoricalRawChild_whenDeserializedMappedAndSerialized_thenPreservesOriginalContent() {
+    var jsonMapper = JsonMapper.builder().build();
+    String json =
+        """
+                {"id":"00000000-0000-0000-0000-000000000123","fullName":"Mary Jane Smith",
+                 "dateOfBirth":"2020-01-01","legacyExtra":"preserved"}
+                """;
+    InvolvedChild child = jsonMapper.readValue(json, InvolvedChild.class);
+    var projection =
+        minimalProjection().toBuilder()
+            .proceedings(
+                List.of(ProceedingDbProjection.builder().involvedChildren(List.of(child)).build()))
+            .build();
+
+    var response =
+        mapper
+            .toApplicationReadModel(projection)
+            .proceedings()
+            .getFirst()
+            .involvedChildren()
+            .getFirst();
+    var stored = jsonMapper.readTree(jsonMapper.writeValueAsString(child));
+
+    assertThat(response.firstName()).isNull();
+    assertThat(response.lastName()).isNull();
+    assertThat(response.dateOfBirth()).isEqualTo(LocalDate.of(2020, 1, 1));
+    assertThat(stored.get("fullName").asString()).isEqualTo("Mary Jane Smith");
+    assertThat(stored.get("legacyExtra").asString()).isEqualTo("preserved");
+    assertThat(child.getFirstName()).isNull();
+    assertThat(child.getLastName()).isNull();
+  }
+
+  @ParameterizedTest
+  @MethodSource("legacyChildNames")
+  void givenLegacyChild_whenMapped_thenUsesSplitFieldsAsStoredWithoutChangingContent(
+      String fullName,
+      String firstName,
+      String lastName,
+      String expectedFirst,
+      String expectedLast) {
+    InvolvedChild child =
+        InvolvedChild.builder().fullName(fullName).firstName(firstName).lastName(lastName).build();
+    var projection =
+        minimalProjection().toBuilder()
+            .proceedings(
+                List.of(ProceedingDbProjection.builder().involvedChildren(List.of(child)).build()))
+            .build();
+
+    var response =
+        mapper
+            .toApplicationReadModel(projection)
+            .proceedings()
+            .getFirst()
+            .involvedChildren()
+            .getFirst();
+
+    assertThat(response.firstName()).isEqualTo(expectedFirst);
+    assertThat(response.lastName()).isEqualTo(expectedLast);
+    assertThat(child.getFullName()).isEqualTo(fullName);
+    assertThat(child.getFirstName()).isEqualTo(firstName);
+    assertThat(child.getLastName()).isEqualTo(lastName);
+  }
+
+  static Stream<Arguments> legacyChildNames() {
+    return Stream.of(
+        arguments("Mary Jane Smith", null, null, null, null),
+        arguments("  Mary Jane Smith  ", null, null, null, null),
+        arguments("Mary  Jane Smith", null, null, null, null),
+        arguments("Mary  Smith", null, null, null, null),
+        arguments("Smith", null, null, null, null),
+        arguments(" \t ", null, null, null, null),
+        arguments(null, null, null, null, null),
+        arguments("", null, null, null, null),
+        arguments("Mary\tSmith", null, null, null, null),
+        arguments("Mary van der Berg", null, null, null, null),
+        arguments("Mary Jane Smith", "Explicit", null, "Explicit", null),
+        arguments("Mary Jane Smith", null, "Explicit", null, "Explicit"),
+        arguments("Mary Jane Smith", "", "", "", ""),
+        arguments("Legacy Name", "Current", "Surname", "Current", "Surname"));
   }
 
   @Test

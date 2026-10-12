@@ -22,11 +22,107 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
+import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 
 class ApplicationDataStoreTest {
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "{\"substantiveLevelOfService\":3,\"substantiveLevelOfServiceCode\":4,\"emergencyLevelOfService\":2,\"emergencyLevelOfServiceCode\":9}",
+        "{\"emergencyLevelOfServiceCode\":9,\"emergencyLevelOfService\":2,\"substantiveLevelOfServiceCode\":4,\"substantiveLevelOfService\":3}"
+      })
+  void givenMixedCodesInEitherFieldOrder_whenRead_thenBothStoredValuesArePreserved(String json)
+      throws Exception {
+    ObjectMapper mapper = new ObjectMapper().findAndRegisterModules();
+    Proceeding proceeding = mapper.readValue(json, Proceeding.class);
+
+    assertThat(proceeding.getSubstantiveLevelOfServiceCode()).isEqualTo(4);
+    assertThat(proceeding.getEmergencyLevelOfServiceCode()).isEqualTo(9);
+    assertThat(proceeding.getSubstantiveLevelOfService()).isEqualTo(3);
+    assertThat(proceeding.getEmergencyLevelOfService()).isEqualTo(2);
+    assertThat(mapper.valueToTree(proceeding).has("resolvedSubstantiveLevelOfServiceCode"))
+        .isFalse();
+  }
+
+  @Test
+  void givenPreEnhancementPayload_whenReadAndCopied_thenPreservesLegacyContracts()
+      throws Exception {
+    ObjectMapper mapper = new ObjectMapper().findAndRegisterModules();
+    String json =
+        """
+        {"serialisedRequest":"legacy-request","proceedings":[{
+          "substantiveLevelOfService":3,"emergencyLevelOfService":2,
+          "involvedChildren":[{"fullName":"Mary Jane Smith","dateOfBirth":"2020-01-01"}]
+        }]}
+        """;
+
+    ApplicationDataPayload payload = mapper.readValue(json, ApplicationDataPayload.class);
+    ApplicationDataPayload updated = payload.withNote("note", Instant.EPOCH);
+    var stored = mapper.valueToTree(updated);
+
+    assertThat(stored.at("/proceedings/0/substantiveLevelOfService").asInt()).isEqualTo(3);
+    assertThat(stored.at("/proceedings/0/emergencyLevelOfService").asInt()).isEqualTo(2);
+    assertThat(stored.at("/proceedings/0/involvedChildren/0/fullName").asText())
+        .isEqualTo("Mary Jane Smith");
+    assertThat(stored.at("/proceedings/0/involvedChildren/0/firstName").isNull()).isTrue();
+    assertThat(updated.serialisedRequest()).isEqualTo("legacy-request");
+    assertThat(payload.notes()).isEmpty();
+    List<ApplicationDataPayload> copies =
+        List.of(
+            updated,
+            payload.withAssignment("Assigned"),
+            payload.withManualAssessmentRequired(),
+            payload.withDecision(
+                "GRANTED",
+                uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState.MANUAL,
+                Map.of(),
+                null,
+                "{}",
+                "decision"),
+            payload.withApplicationUpdate(
+                payload.client(),
+                payload.provider(),
+                payload.opponents(),
+                payload.submittedAt(),
+                payload.usedDelegatedFunctions(),
+                payload.categoryOfLaw(),
+                payload.matterType(),
+                payload.proceedings(),
+                "{}",
+                true));
+    assertThat(copies)
+        .allSatisfy(
+            copy -> {
+              var roundTrip =
+                  mapper.readValue(mapper.writeValueAsString(copy), ApplicationDataPayload.class);
+              assertThat(roundTrip.proceedings().getFirst().getSubstantiveLevelOfService())
+                  .isEqualTo(3);
+              assertThat(roundTrip.proceedings().getFirst().getEmergencyLevelOfService())
+                  .isEqualTo(2);
+              assertThat(
+                      roundTrip
+                          .proceedings()
+                          .getFirst()
+                          .getInvolvedChildren()
+                          .getFirst()
+                          .getFullName())
+                  .isEqualTo("Mary Jane Smith");
+              assertThat(
+                      roundTrip
+                          .proceedings()
+                          .getFirst()
+                          .getInvolvedChildren()
+                          .getFirst()
+                          .getFirstName())
+                  .isNull();
+            });
+  }
 
   @Test
   void givenFilename_whenContentUpdated_thenEveryUpdatePreservesImmutableFilenameMap() {

@@ -72,9 +72,13 @@ public class Proceeding implements Serializable {
   @JsonDeserialize(using = StringToBigDecimalDeserializer.class)
   private BigDecimal substantiveCostLimitation;
 
+  @Deprecated @Nullable private Integer substantiveLevelOfService;
+
   @Nullable private Integer substantiveLevelOfServiceCode;
 
   @Nullable private String substantiveLevelOfServiceName;
+
+  @Deprecated @Nullable private Integer emergencyLevelOfService;
 
   @Nullable private Integer emergencyLevelOfServiceCode;
 

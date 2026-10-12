@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationProvider;
 import uk.gov.justice.laa.dstew.access.applicationcontent.InvolvedChild;
@@ -36,6 +37,70 @@ import uk.gov.justice.laa.dstew.access.version.VersionToken;
 class GetApplicationResponseMapperTest {
 
   private final GetApplicationResponseMapper mapper = new GetApplicationResponseMapper();
+
+  @ParameterizedTest
+  @CsvSource(
+      value = {
+        "Mary  Jane Smith|NULL|NULL|NULL|NULL",
+        "Mary  Smith|NULL|NULL|NULL|NULL",
+        "Smith|NULL|NULL|NULL|NULL",
+        "NULL|NULL|NULL|NULL|NULL",
+        "Mary van der Berg|NULL|NULL|NULL|NULL",
+        "Mary Jane Smith|Explicit|NULL|Explicit|NULL",
+        "Mary Jane Smith|NULL|Explicit|NULL|Explicit",
+        "Mary Jane Smith|''|''|''|''",
+        "Legacy Name|Current|Surname|Current|Surname"
+      },
+      delimiter = '|',
+      nullValues = "NULL")
+  void givenLegacyOrMixedChild_whenMapped_thenUsesOnlySplitFields(
+      String fullName,
+      String firstName,
+      String lastName,
+      String expectedFirst,
+      String expectedLast) {
+    InvolvedChild child =
+        InvolvedChild.builder().fullName(fullName).firstName(firstName).lastName(lastName).build();
+    var application =
+        baseReadModel()
+            .proceedings(
+                List.of(
+                    minimalProceeding(UUID.randomUUID()).toBuilder()
+                        .involvedChildren(List.of(child))
+                        .build()))
+            .build();
+
+    var response =
+        mapper.toResponse(application).getProceedings().getFirst().getInvolvedChildren().getFirst();
+
+    assertThat(response.getFirstName()).isEqualTo(expectedFirst);
+    assertThat(response.getLastName()).isEqualTo(expectedLast);
+    assertThat(child.getFullName()).isEqualTo(fullName);
+    assertThat(child.getFirstName()).isEqualTo(firstName);
+    assertThat(child.getLastName()).isEqualTo(lastName);
+  }
+
+  @Test
+  void givenLegacyChildName_whenMapped_thenReturnsNullSplitNamesWithoutChangingStoredName() {
+    InvolvedChild child = InvolvedChild.builder().fullName("  Mary Jane Smith  ").build();
+    ApplicationReadModel application =
+        baseReadModel()
+            .proceedings(
+                List.of(
+                    minimalProceeding(UUID.randomUUID()).toBuilder()
+                        .involvedChildren(List.of(child))
+                        .build()))
+            .build();
+
+    var response =
+        mapper.toResponse(application).getProceedings().getFirst().getInvolvedChildren().getFirst();
+
+    assertThat(response.getFirstName()).isNull();
+    assertThat(response.getLastName()).isNull();
+    assertThat(child.getFullName()).isEqualTo("  Mary Jane Smith  ");
+    assertThat(child.getFirstName()).isNull();
+    assertThat(child.getLastName()).isNull();
+  }
 
   @Test
   void givenActiveDeletedAndLegacyDocuments_whenMapped_thenReturnsOrderedActiveDocuments() {

@@ -55,6 +55,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadCommand;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.draft.CreateApplicationDraftCommand;
 import uk.gov.justice.laa.dstew.access.command.application.draft.SubmitApplicationDraftCommand;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
@@ -62,6 +63,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationProceedingResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.AutoGranted;
@@ -129,11 +131,100 @@ class PostgresAxonIntegrationTest {
 
   @Autowired private Environment environment;
 
+  @Autowired private ApplicationDataStore applicationDataStore;
+
   private ProjectionAwaiter projectionAwaiter;
 
   @PostConstruct
   void initialiseProjectionAwaiter() {
     projectionAwaiter = new ProjectionAwaiter(queryGateway);
+  }
+
+  @Test
+  void givenLegacyJsonbAndCurrentApplication_whenListedAndCopied_thenPreservesBothContracts() {
+    UUID legacyId = UUID.randomUUID();
+    UUID currentId = UUID.randomUUID();
+    String reference = "COMPAT-" + legacyId;
+    String legacyJson =
+        """
+        {"laaReference":"%s","client":{"firstName":"Alice","lastName":"Anderson"},
+         "provider":{"officeCode":"1A001B"},"autoGranted":"PENDING",
+         "serialisedRequest":"legacy-request","proceedings":[{
+           "id":"%s","leadProceeding":true,"code":"SE003","description":"Care order",
+           "substantiveLevelOfService":3,"emergencyLevelOfService":2,
+           "involvedChildren":[{"id":"%s","fullName":"Mary Jane Smith","dateOfBirth":"2020-01-01"}]
+         }]}
+        """
+            .formatted(reference, UUID.randomUUID(), UUID.randomUUID());
+    jdbcTemplate.update(
+        """
+        INSERT INTO axon.application_data(application_id, version, payload, payload_hash, created_at)
+        VALUES (?, 0, CAST(? AS jsonb), ?, CURRENT_TIMESTAMP)
+        """,
+        legacyId,
+        legacyJson,
+        ApplicationDataStore.fingerprint("legacy-request"));
+    jdbcTemplate.update(
+        """
+        INSERT INTO axon.application_current_state(application_id, status, application_data_version,
+            application_version, schema_version, office_code, created_at, modified_at)
+        VALUES (?, 'APPLICATION_SUBMITTED', 0, 0, 1, '1A001B', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        """,
+        legacyId);
+    jdbcTemplate.update(
+        """
+        INSERT INTO axon.application_list_index(application_id, status, laa_reference, office_code, modified_at)
+        VALUES (?, 'APPLICATION_SUBMITTED', ?, '1A001B', CURRENT_TIMESTAMP)
+        """,
+        legacyId,
+        reference);
+    var current = validCreateApplicationRequest(currentId, UUID.randomUUID());
+    current.setLaaReference(reference);
+    applicationId(post(current, headers()));
+    projectionAwaiter.awaitApplication(currentId);
+
+    var page =
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/applications?laaReference=" + reference,
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            ApplicationSummaryResponse.class);
+
+    assertThat(page.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(page.getBody().getApplications())
+        .extracting(summary -> summary.getApplicationId())
+        .containsExactlyInAnyOrder(legacyId, currentId);
+    assertThat(page.getBody().getPaging().getTotalRecords()).isEqualTo(2);
+    var child =
+        awaitGetApplication(legacyId)
+            .getBody()
+            .getProceedings()
+            .getFirst()
+            .getInvolvedChildren()
+            .getFirst();
+    assertThat(child.getFirstName()).isNull();
+    assertThat(child.getLastName()).isNull();
+    String original =
+        jdbcTemplate.queryForObject(
+            "SELECT payload::text FROM axon.application_data WHERE application_id = ? AND version = 0",
+            String.class,
+            legacyId);
+    var payload = applicationDataStore.get(legacyId, 0);
+    applicationDataStore.append(
+        legacyId, 1, payload.withNote("note", Instant.EPOCH), "note-request", Instant.EPOCH);
+    var copied = applicationDataStore.get(legacyId, 1);
+    assertThat(copied.proceedings().getFirst().getSubstantiveLevelOfService()).isEqualTo(3);
+    assertThat(copied.proceedings().getFirst().getEmergencyLevelOfService()).isEqualTo(2);
+    assertThat(copied.proceedings().getFirst().getInvolvedChildren().getFirst().getFullName())
+        .isEqualTo("Mary Jane Smith");
+    assertThat(copied.proceedings().getFirst().getInvolvedChildren().getFirst().getFirstName())
+        .isNull();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT payload::text FROM axon.application_data WHERE application_id = ? AND version = 0",
+                String.class,
+                legacyId))
+        .isEqualTo(original);
   }
 
   @Test
@@ -162,6 +253,96 @@ class PostgresAxonIntegrationTest {
         .isFalse();
     assertThat(eventStorageEngine).isInstanceOf(AggregateBasedJpaEventStorageEngine.class);
     assertThat(axonTables).containsExactly("domain_event_entry", "token_entry");
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void givenLegacyDraft_whenSubmittedAndNoted_thenRetainsNamesCodesAndHistory() {
+    UUID applicationId = UUID.randomUUID();
+    createDocumentDraft(applicationId);
+    String draftJson =
+        jdbcTemplate.queryForObject(
+            "SELECT payload::text FROM axon.application_draft WHERE application_id = ?",
+            String.class,
+            applicationId);
+    Map<String, Object> draft = objectMapper.readValue(draftJson, Map.class);
+    Map<String, Object> content = (Map<String, Object>) draft.get("applicationContent");
+    Map<String, Object> proceeding = firstProceeding(content);
+    proceeding.put("substantiveLevelOfService", proceeding.remove("substantiveLevelOfServiceCode"));
+    proceeding.put("emergencyLevelOfService", proceeding.remove("emergencyLevelOfServiceCode"));
+    proceeding.put(
+        "involvedChildren",
+        List.of(
+            Map.of(
+                "id",
+                UUID.randomUUID().toString(),
+                "fullName",
+                "Mary Jane Smith",
+                "dateOfBirth",
+                "2020-01-01")));
+    content.put("proceedings", List.of(proceeding));
+    draft.put(
+        "serialisedRequest",
+        objectMapper.writeValueAsString(
+            Map.of("id", applicationId, "applicationContent", content)));
+    jdbcTemplate.update(
+        "UPDATE axon.application_draft SET payload = CAST(? AS jsonb) WHERE application_id = ?",
+        objectMapper.writeValueAsString(draft),
+        applicationId);
+
+    commandGateway.sendAndWait(new SubmitApplicationDraftCommand(applicationId, Instant.now()));
+    projectionAwaiter.awaitApplication(applicationId);
+    String original =
+        jdbcTemplate.queryForObject(
+            "SELECT payload::text FROM axon.application_data WHERE application_id = ? AND version = 0",
+            String.class,
+            applicationId);
+    var note =
+        restTemplate.postForEntity(
+            "http://localhost:" + port + "/api/v0/applications/" + applicationId + "/notes",
+            new HttpEntity<>(new CreateNoteRequest("Compatibility note"), headers()),
+            String.class);
+    assertThat(note.getStatusCode().is2xxSuccessful()).isTrue();
+    var history =
+        restTemplate.exchange(
+            "http://localhost:"
+                + port
+                + "/api/v0/applications/"
+                + applicationId
+                + "/history-search",
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            ApplicationHistoryResponse.class);
+    assertThat(history.getStatusCode()).isEqualTo(HttpStatus.OK);
+    var child =
+        awaitGetApplication(applicationId)
+            .getBody()
+            .getProceedings()
+            .getFirst()
+            .getInvolvedChildren()
+            .getFirst();
+    assertThat(child.getFirstName()).isNull();
+    assertThat(child.getLastName()).isNull();
+    var updated = applicationDataStore.get(applicationId, 1);
+    assertThat(updated.proceedings().getFirst().getSubstantiveLevelOfService()).isEqualTo(3);
+    assertThat(updated.proceedings().getFirst().getInvolvedChildren().getFirst().getFullName())
+        .isEqualTo("Mary Jane Smith");
+    assertThat(updated.proceedings().getFirst().getInvolvedChildren().getFirst().getFirstName())
+        .isNull();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT payload::text FROM axon.application_data WHERE application_id = ? AND version = 0",
+                String.class,
+                applicationId))
+        .isEqualTo(original);
+    assertThat(
+            jdbcTemplate.queryForList(
+                "SELECT convert_from(payload, 'UTF8') FROM axon.domain_event_entry"
+                    + " WHERE aggregate_identifier = ?",
+                String.class,
+                applicationId.toString()))
+        .allSatisfy(
+            event -> assertThat(event).doesNotContain("Mary Jane Smith", "Compatibility note"));
   }
 
   @Test
