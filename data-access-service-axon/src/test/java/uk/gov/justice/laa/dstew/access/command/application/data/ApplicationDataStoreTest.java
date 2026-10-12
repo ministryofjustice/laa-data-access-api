@@ -8,7 +8,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationCreationDetails;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.time.Instant;
 import java.util.List;
@@ -18,6 +23,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 
 class ApplicationDataStoreTest {
@@ -188,6 +194,46 @@ class ApplicationDataStoreTest {
     var result = store.getAll(List.of(firstId, secondId));
 
     assertThat(result).containsEntry(firstId, first).containsEntry(secondId, second);
+  }
+
+  @Test
+  void
+      givenWrappedJacksonFailure_whenPayloadsRetrieved_thenLogsIdentifiersAndRethrowsOriginalException() {
+    ApplicationDataId dataId = new ApplicationDataId(UUID.randomUUID(), 4L);
+    UnrecognizedPropertyException jacksonException =
+        UnrecognizedPropertyException.from(
+            mock(JsonParser.class),
+            ApplicationDataPayload.class,
+            "emergencyLevelOfService",
+            List.of());
+    jacksonException.prependPath(ApplicationDataPayload.class, "proceedings");
+    RuntimeException failure = new RuntimeException("Could not deserialize JSON", jacksonException);
+    when(repository.findAllById(List.of(dataId))).thenThrow(failure);
+    Logger logger = (Logger) LoggerFactory.getLogger(ApplicationDataStore.class);
+    ListAppender<ILoggingEvent> logEvents = new ListAppender<>();
+    logEvents.start();
+    logger.addAppender(logEvents);
+
+    try {
+      assertThatThrownBy(() -> store.getAll(List.of(dataId))).isSameAs(failure);
+
+      assertThat(logEvents.list)
+          .singleElement()
+          .satisfies(
+              event -> {
+                assertThat(event.getLevel().toString()).isEqualTo("ERROR");
+                assertThat(event.getFormattedMessage())
+                    .contains("application_data JSON deserialization failed")
+                    .contains(dataId.toString())
+                    .contains("emergencyLevelOfService")
+                    .contains("proceedings.emergencyLevelOfService");
+                assertThat(event.getThrowableProxy().getClassName())
+                    .isEqualTo(RuntimeException.class.getName());
+              });
+    } finally {
+      logger.detachAppender(logEvents);
+      logEvents.stop();
+    }
   }
 
   @Test
