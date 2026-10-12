@@ -36,8 +36,11 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
+import uk.gov.justice.laa.dstew.access.command.worklist.assign.DirectGroupWorkItemAssignmentCommand;
 import uk.gov.justice.laa.dstew.access.command.worklist.assign.DirectWorkItemAssignmentCommand;
 import uk.gov.justice.laa.dstew.access.command.worklist.unassign.DirectWorkItemUnassignmentCommand;
+import uk.gov.justice.laa.dstew.access.document.DocumentFileSuffix;
+import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
@@ -241,6 +244,40 @@ public class ApplicationAggregate {
             command.occurredAt()));
   }
 
+  /**
+   * Applies a linked-group assignment to this application, replacing its current assignee.
+   *
+   * <p>Skips applications that are not manual and undecided, or are already assigned to the
+   * requested caseworker. This allows the group assignment to continue when some members cannot
+   * accept the assignment. When {@code expectedAssignmentVersion} is supplied - which only happens
+   * for the single item the caseworker was actually looking at - a stale version is rejected.
+   */
+  @CommandHandler
+  void handle(DirectGroupWorkItemAssignmentCommand command, EventAppender eventAppender) {
+    if (applicationId == null
+        || state.autoGranted != AutoGrantedState.MANUAL
+        || state.overallDecision != null) {
+      return;
+    }
+    if (command.expectedAssignmentVersion() != null
+        && command.expectedAssignmentVersion() != state.assignmentVersion) {
+      throw new WorkItemAssignmentConflictException(
+          command.workItemId(), "the assignment version is stale");
+    }
+    if (Objects.equals(state.caseworkerId, command.caseworkerId())) {
+      return;
+    }
+    long nextAssignmentVersion = state.assignmentVersion + 1;
+    eventAppender.append(
+        new WorkItemAssigned(
+            command.workItemId(),
+            WorkItemType.APPLICATION,
+            state.applicationVersion,
+            nextAssignmentVersion,
+            command.caseworkerId(),
+            command.occurredAt()));
+  }
+
   /** Handles explicit generic direct unassignment; an already-open item is a conflict. */
   @CommandHandler
   void handle(DirectWorkItemUnassignmentCommand command, EventAppender eventAppender) {
@@ -341,7 +378,7 @@ public class ApplicationAggregate {
     var current = requireDraft(command.applicationId(), draftStore);
     var existing =
         state.uploadedDocuments.stream()
-            .map(UploadDocument::documentId)
+            .map(DocumentMetadata::documentId)
             .anyMatch(id -> id.equals(command.documentId()));
     if (existing) {
       throw new ValidationException(List.of("Document ID already records a different upload"));
@@ -361,7 +398,9 @@ public class ApplicationAggregate {
             command.size(),
             command.contentType(),
             command.checksum(),
-            command.sourceService()));
+            command.sourceService(),
+            null,
+            DocumentFileSuffix.fromFilename(command.originalFilename())));
     return command.documentId();
   }
 

@@ -9,6 +9,9 @@ import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -121,5 +124,35 @@ class EvidenceDocumentQueryControllerTest {
         Instant.now(),
         "civil-apply",
         null);
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {" "})
+  void givenMissingFilename_whenDownloaded_thenUsesDocumentIdAsAttachmentName(String filename) {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    Resource resource = mock(Resource.class);
+    EvidenceDocument document =
+        new EvidenceDocument(
+            documentId,
+            null,
+            filename,
+            null,
+            "application/pdf",
+            12L,
+            Instant.now(),
+            "CIVIL_APPLY",
+            null);
+    when(downloadPriorAuthorityDocumentUseCase.downloadDocument(priorAuthorityId, documentId))
+        .thenReturn(new EvidenceDocumentDownload(document, resource));
+
+    ResponseEntity<Resource> response =
+        controller.downloadPriorAuthorityDocument(null, priorAuthorityId, documentId);
+
+    assertThat(response.getStatusCode().value()).isEqualTo(200);
+    assertThat(response.getBody()).isSameAs(resource);
+    assertThat(response.getHeaders().getContentDisposition().getFilename())
+        .isEqualTo(documentId.toString());
   }
 }

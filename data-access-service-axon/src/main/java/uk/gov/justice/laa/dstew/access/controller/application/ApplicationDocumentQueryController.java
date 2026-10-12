@@ -38,6 +38,10 @@ public class ApplicationDocumentQueryController implements ApplicationDocumentQu
       @PathVariable UUID documentId) {
     EvidenceDocumentDownload download =
         downloadApplicationDocumentUseCase.downloadDocument(applicationId, documentId);
+    String fileName = download.document().fileName();
+    if (fileName == null || fileName.isBlank()) {
+      fileName = documentId.toString();
+    }
 
     ResponseEntity.BodyBuilder response =
         ResponseEntity.ok()
@@ -45,7 +49,7 @@ public class ApplicationDocumentQueryController implements ApplicationDocumentQu
             .header(
                 HttpHeaders.CONTENT_DISPOSITION,
                 ContentDisposition.attachment()
-                    .filename(download.document().fileName(), StandardCharsets.UTF_8)
+                    .filename(fileName, StandardCharsets.UTF_8)
                     .build()
                     .toString());
     if (download.document().size() != null) {

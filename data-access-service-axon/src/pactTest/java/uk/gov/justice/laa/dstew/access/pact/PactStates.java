@@ -51,6 +51,8 @@ final class PactStates {
       "a prior authority draft 00000000-0000-0000-0000-00000000a005 has an uploaded document";
   static final String NO_PRIOR_AUTHORITY_WITH_ID =
       "no prior authority exists with id 00000000-0000-0000-0000-0000000adead";
+  static final String APPLICATION_WITH_PRIOR_AUTHORITIES =
+      "application 00000000-0000-0000-0000-000000000009 has prior authorities";
 
   private PactStates() {}
 }

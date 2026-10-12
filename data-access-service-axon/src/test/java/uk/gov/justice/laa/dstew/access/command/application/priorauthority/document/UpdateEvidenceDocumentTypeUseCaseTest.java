@@ -9,11 +9,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentTypeUpdateCommand;
-import uk.gov.justice.laa.dstew.access.model.PriorAuthorityDocumentType;
-import uk.gov.justice.laa.dstew.access.model.UpdatePriorAuthorityDocumentTypeRequest;
 
 @ExtendWith(MockitoExtension.class)
 class UpdateEvidenceDocumentTypeUseCaseTest {
@@ -21,16 +18,15 @@ class UpdateEvidenceDocumentTypeUseCaseTest {
   @Mock private RetryingCommandDispatcher dispatcher;
 
   @Test
-  void givenDocumentTypeRequest_whenExecute_thenSerialisesAndDispatchesUpdateCommand() {
+  void givenDocumentType_whenExecute_thenDispatchesUpdateCommand() {
     UpdatePriorAuthorityDocumentTypeUseCase useCase =
-        new UpdatePriorAuthorityDocumentTypeUseCase(dispatcher, new ObjectMapper());
+        new UpdatePriorAuthorityDocumentTypeUseCase(dispatcher);
     UUID priorAuthorityId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
-    UpdatePriorAuthorityDocumentTypeRequest request =
-        new UpdatePriorAuthorityDocumentTypeRequest(PriorAuthorityDocumentType.GATEWAY_EVIDENCE);
+    String serialisedRequest = "{\"documentType\":\"GATEWAY_EVIDENCE\"}";
 
     UpdatePriorAuthorityDocumentTypeResult result =
-        useCase.execute(priorAuthorityId, documentId, request);
+        useCase.execute(priorAuthorityId, documentId, "GATEWAY_EVIDENCE", serialisedRequest);
 
     ArgumentCaptor<PriorAuthorityDocumentTypeUpdateCommand> commandCaptor =
         ArgumentCaptor.forClass(PriorAuthorityDocumentTypeUpdateCommand.class);
@@ -39,7 +35,7 @@ class UpdateEvidenceDocumentTypeUseCaseTest {
     assertThat(command.priorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(command.documentId()).isEqualTo(documentId);
     assertThat(command.documentType()).isEqualTo("GATEWAY_EVIDENCE");
-    assertThat(command.serialisedRequest()).contains("GATEWAY_EVIDENCE");
+    assertThat(command.serialisedRequest()).isEqualTo(serialisedRequest);
     assertThat(command.occurredAt()).isEqualTo(result.updatedAt());
     assertThat(result.documentId()).isEqualTo(documentId);
   }

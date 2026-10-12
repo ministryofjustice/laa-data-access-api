@@ -12,6 +12,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationAddress;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationProvider;
@@ -20,10 +22,11 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.Opponent;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ScopeLimitation;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
-import uk.gov.justice.laa.dstew.access.command.application.UploadDocument;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationMeritsDecision;
+import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatusResponse;
+import uk.gov.justice.laa.dstew.access.model.DocumentType;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatusResponse;
 import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthoritySummary;
@@ -46,7 +49,7 @@ class GetApplicationResponseMapperTest {
         baseReadModel()
             .uploadedDocuments(
                 List.of(
-                    new UploadDocument(
+                    new DocumentMetadata(
                         activeId,
                         "GATEWAY_EVIDENCE",
                         uploadedAt.plusSeconds(1),
@@ -55,7 +58,7 @@ class GetApplicationResponseMapperTest {
                         "checksum",
                         "CIVIL_APPLY",
                         false),
-                    new UploadDocument(
+                    new DocumentMetadata(
                         UUID.randomUUID(),
                         "GATEWAY_EVIDENCE",
                         uploadedAt,
@@ -64,7 +67,7 @@ class GetApplicationResponseMapperTest {
                         "deleted-checksum",
                         "CIVIL_APPLY",
                         true),
-                    new UploadDocument(
+                    new DocumentMetadata(
                         legacyId,
                         "EXPERT_REPORT",
                         uploadedAt,
@@ -83,7 +86,7 @@ class GetApplicationResponseMapperTest {
         .containsExactly(legacyId, activeId);
     assertThat(documents.getFirst().getFileName()).isNull();
     assertThat(documents.getLast().getFileName()).isEqualTo("client-report.pdf");
-    assertThat(documents.getLast().getDocumentType()).isEqualTo("GATEWAY_EVIDENCE");
+    assertThat(documents.getLast().getDocumentType()).isEqualTo(DocumentType.GATEWAY_EVIDENCE);
     assertThat(documents.getLast().getSize()).isEqualTo(12L);
     assertThat(documents.getLast().getContentType()).isEqualTo("application/pdf");
     assertThat(documents.getLast().getChecksum()).isEqualTo("checksum");
@@ -95,6 +98,32 @@ class GetApplicationResponseMapperTest {
   @Test
   void givenNoDocuments_whenMapped_thenReturnsEmptyArray() {
     assertThat(mapper.toResponse(baseReadModel().build()).getUploadedDocuments()).isEmpty();
+  }
+
+  @ParameterizedTest
+  @EnumSource(DocumentType.class)
+  void givenDocumentType_whenMapped_thenUsesSharedApiEnum(DocumentType documentType) {
+    var application =
+        baseReadModel().uploadedDocuments(List.of(document(documentType.getValue()))).build();
+
+    assertThat(mapper.toResponse(application).getUploadedDocuments())
+        .singleElement()
+        .satisfies(response -> assertThat(response.getDocumentType()).isEqualTo(documentType));
+  }
+
+  @Test
+  void givenUnknownHistoricalDocumentType_whenMapped_thenRejectsWithoutCoercion() {
+    var application =
+        baseReadModel().uploadedDocuments(List.of(document("UNKNOWN_HISTORICAL_TYPE"))).build();
+
+    assertThatThrownBy(() -> mapper.toResponse(application))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("UNKNOWN_HISTORICAL_TYPE");
+  }
+
+  private DocumentMetadata document(String documentType) {
+    return new DocumentMetadata(
+        UUID.randomUUID(), documentType, Instant.EPOCH, 1L, "application/pdf", null, null, false);
   }
 
   private ApplicationReadModel.ApplicationReadModelBuilder baseReadModel() {

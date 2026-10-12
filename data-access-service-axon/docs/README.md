@@ -33,6 +33,7 @@ experience should follow the learning path below before using the documents as a
 | [Application list projection — `ApplicationListIndexSpecification`](application-list-projection.md#applicationlistindexspecification) | Exact `matterTypeCode` filtering, raw lead-proceeding names and codes, and event-time sorting |
 | [Projection ownership and catch-up](projections-and-replay.md#processing-groups) | Which processor owns each new response field and why read fields require replay catch-up |
 | [Storage model](storage-model.md) | Which tables are authoritative or disposable and how their identifiers and versions relate |
+| [Document lifecycle](document-lifecycle.md) | Application and Prior Authority upload, document queries, type updates, deletion, and SDS key decisions |
 | [Failure behaviour](failure-behaviour.md) | Expected API, transaction, projection, and recovery outcomes for common failures |
 | [Running and operating](running-and-operating.md) | Local startup, tests, store inspection, processor recovery, and retention operations |
 | [Pact provider states](pact-provider-states.md) | The state strings consumers use in contract tests, the identifiers each guarantees, and how verification runs |

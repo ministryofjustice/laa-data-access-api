@@ -5,18 +5,20 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.api.PriorAuthorityDocumentCommandApi;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.document.DeletePriorAuthorityDocumentUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.document.UpdatePriorAuthorityDocumentTypeResult;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.document.UpdatePriorAuthorityDocumentTypeUseCase;
-import uk.gov.justice.laa.dstew.access.command.application.priorauthority.document.UploadPriorAuthorityDocumentResult;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.document.UploadPriorAuthorityDocumentUseCase;
+import uk.gov.justice.laa.dstew.access.document.DocumentUploadResult;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityDocumentTypeUpdateResponse;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.model.UpdatePriorAuthorityDocumentTypeRequest;
 import uk.gov.justice.laa.dstew.access.model.UploadPriorAuthorityDocumentResponse;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
+import uk.gov.justice.laa.dstew.access.util.RequestSerialiser;
 
 /** HTTP command adapter for prior-authority document commands. */
 @RestController
@@ -25,15 +27,18 @@ public class PriorAuthorityDocumentCommandController implements PriorAuthorityDo
   private final UploadPriorAuthorityDocumentUseCase uploadUseCase;
   private final UpdatePriorAuthorityDocumentTypeUseCase updateTypeUseCase;
   private final DeletePriorAuthorityDocumentUseCase deleteUseCase;
+  private final ObjectMapper objectMapper;
 
   /** Creates the controller with prior-authority document command use cases. */
   public PriorAuthorityDocumentCommandController(
       UploadPriorAuthorityDocumentUseCase uploadUseCase,
       UpdatePriorAuthorityDocumentTypeUseCase updateTypeUseCase,
-      DeletePriorAuthorityDocumentUseCase deleteUseCase) {
+      DeletePriorAuthorityDocumentUseCase deleteUseCase,
+      ObjectMapper objectMapper) {
     this.uploadUseCase = uploadUseCase;
     this.updateTypeUseCase = updateTypeUseCase;
     this.deleteUseCase = deleteUseCase;
+    this.objectMapper = objectMapper;
   }
 
   @Override
@@ -41,7 +46,7 @@ public class PriorAuthorityDocumentCommandController implements PriorAuthorityDo
   @LogMethodResponse
   public ResponseEntity<UploadPriorAuthorityDocumentResponse> uploadPriorAuthorityDocument(
       ServiceName serviceName, UUID priorAuthorityId, MultipartFile file) {
-    UploadPriorAuthorityDocumentResult result =
+    DocumentUploadResult result =
         uploadUseCase.execute(priorAuthorityId, file, serviceName.getValue());
     UploadPriorAuthorityDocumentResponse response =
         new UploadPriorAuthorityDocumentResponse()
@@ -65,7 +70,11 @@ public class PriorAuthorityDocumentCommandController implements PriorAuthorityDo
       UUID documentId,
       UpdatePriorAuthorityDocumentTypeRequest request) {
     UpdatePriorAuthorityDocumentTypeResult result =
-        updateTypeUseCase.execute(priorAuthorityId, documentId, request);
+        updateTypeUseCase.execute(
+            priorAuthorityId,
+            documentId,
+            request.getDocumentType().getValue(),
+            RequestSerialiser.serialise(objectMapper, request));
     return ResponseEntity.ok()
         .body(
             new PriorAuthorityDocumentTypeUpdateResponse(
