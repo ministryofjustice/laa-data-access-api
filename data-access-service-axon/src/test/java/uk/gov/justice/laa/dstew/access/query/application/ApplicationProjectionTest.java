@@ -322,6 +322,35 @@ class ApplicationProjectionTest {
   }
 
   @Test
+  void givenDraftThenCreate_whenProjected_thenRetainsDraftCreatedAtAndEventSubmittedAt() {
+    UUID applicationId = UUID.randomUUID();
+    Instant draftStartedAt = Instant.parse("2026-07-14T10:00:00Z");
+    ApplicationCreatedEvent event = applicationCreatedEvent(applicationId);
+    ApplicationReadModel[] draft = new ApplicationReadModel[1];
+    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.empty());
+    when(applicationReadRepository.save(any()))
+        .thenAnswer(
+            invocation -> {
+              draft[0] = invocation.getArgument(0);
+              return draft[0];
+            });
+    ApplicationDataPayload data =
+        ApplicationDataPayload.from(applicationCreationDetails(applicationId));
+    when(applicationDataStore.get(applicationId, event.applicationDataVersion())).thenReturn(data);
+
+    projection.on(
+        new ApplicationDraftStartedEvent(applicationId, 1, "fingerprint", draftStartedAt),
+        queryUpdateEmitter);
+    ApplicationReadModel savedDraft = draft[0];
+    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(savedDraft));
+
+    projection.on(event, queryUpdateEmitter);
+
+    assertThat(draft[0].getCreatedAt()).isEqualTo(draftStartedAt);
+    assertThat(draft[0].getSubmittedAt()).isEqualTo(event.occurredAt());
+  }
+
+  @Test
   void givenLegacyDocumentUpload_whenProjected_thenRetainsDataVersionAndUnknownFilename() {
     UUID applicationId = UUID.randomUUID();
     ApplicationReadModel application =
@@ -497,16 +526,16 @@ class ApplicationProjectionTest {
     UUID stalledId = UUID.randomUUID();
     UUID assessedId = UUID.randomUUID();
     UUID recentId = UUID.randomUUID();
-    ApplicationReadModel stalled = reconciliationReadModel(stalledId);
-    ApplicationReadModel assessed = reconciliationReadModel(assessedId);
-    ApplicationReadModel recent = reconciliationReadModel(recentId);
+    Instant stalledSubmittedAt = threshold.minus(15, ChronoUnit.MINUTES);
+    ApplicationReadModel stalled = reconciliationReadModel(stalledId, stalledSubmittedAt);
+    ApplicationReadModel assessed =
+        reconciliationReadModel(assessedId, threshold.minus(20, ChronoUnit.MINUTES));
+    ApplicationReadModel recent = reconciliationReadModel(recentId, threshold.plusSeconds(1));
     when(applicationReadRepository.findAllByStatus("APPLICATION_SUBMITTED"))
         .thenReturn(List.of(stalled, assessed, recent));
-    ApplicationDataPayload stalledData =
-        reconciliationData(threshold.minus(15, ChronoUnit.MINUTES), null);
-    ApplicationDataPayload assessedData =
-        reconciliationData(threshold.minus(20, ChronoUnit.MINUTES), false);
-    ApplicationDataPayload recentData = reconciliationData(threshold.plusSeconds(1), null);
+    ApplicationDataPayload stalledData = reconciliationData(null);
+    ApplicationDataPayload assessedData = reconciliationData(false);
+    ApplicationDataPayload recentData = reconciliationData(null);
     when(applicationDataStore.getAll(any()))
         .thenReturn(
             Map.of(
@@ -947,12 +976,13 @@ class ApplicationProjectionTest {
         .build();
   }
 
-  private ApplicationReadModel reconciliationReadModel(UUID applicationId) {
+  private ApplicationReadModel reconciliationReadModel(UUID applicationId, Instant submittedAt) {
     return ApplicationReadModel.builder()
         .applicationId(applicationId)
         .status("APPLICATION_SUBMITTED")
         .applicationDataVersion(2L)
         .applicationVersion(3L)
+        .submittedAt(submittedAt)
         .build();
   }
 
@@ -961,9 +991,8 @@ class ApplicationProjectionTest {
         application.getApplicationId(), application.getApplicationDataVersion());
   }
 
-  private ApplicationDataPayload reconciliationData(Instant submittedAt, Boolean autoGranted) {
+  private ApplicationDataPayload reconciliationData(Boolean autoGranted) {
     ApplicationDataPayload data = mock(ApplicationDataPayload.class);
-    when(data.submittedAt()).thenReturn(submittedAt);
     when(data.autoGranted()).thenReturn(AutoGrantedState.fromDecisionFlag(autoGranted));
     return data;
   }
@@ -989,11 +1018,11 @@ class ApplicationProjectionTest {
   void givenApplicationWithNullSubmittedAt_whenStalledAssessmentQuery_thenExcluded() {
     Instant threshold = Instant.parse("2026-08-04T09:45:00Z");
     UUID appId = UUID.randomUUID();
-    ApplicationReadModel app = reconciliationReadModel(appId);
+    ApplicationReadModel app = reconciliationReadModel(appId, null);
     when(applicationReadRepository.findAllByStatus("APPLICATION_SUBMITTED"))
         .thenReturn(List.of(app));
     // PENDING auto-grant but null submittedAt — must be excluded by the submittedAt != null filter
-    ApplicationDataPayload data = reconciliationData(null, null);
+    ApplicationDataPayload data = reconciliationData(null);
     when(applicationDataStore.getAll(any())).thenReturn(Map.of(dataId(app), data));
 
     StalledAssessments result = projection.handle(new FindStalledAssessmentsQuery(threshold));
@@ -1021,7 +1050,23 @@ class ApplicationProjectionTest {
 
   @Test
   @SuppressWarnings("unchecked")
-  void givenApplicationWithGroupId_whenFindAllQuery_thenFetchesGroupAndLaaReferences() {
+  void givenSubmittedDateSort_whenFindAllQuery_thenUsesSubmittedAtIndexColumn() {
+    ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+    when(applicationReadQueryGateway.findApplicationIndexPage(
+            any(), pageableCaptor.capture(), any()))
+        .thenReturn(new PageImpl<>(List.of()));
+    when(groupReadRepository.findAllById(any())).thenReturn(List.of());
+
+    projection.handle(
+        new FindAllApplicationsQuery(
+            null, null, null, null, null, null, "SUBMITTED_DATE", "ASC", 1, 20));
+
+    assertThat(pageableCaptor.getValue().getSort().getOrderFor("submittedAt")).isNotNull();
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void givenApplicationWithGroupId_whenFindAllQuery_thenFetchesGroupAndMemberDetails() {
     UUID appId = UUID.randomUUID();
     UUID groupId = UUID.randomUUID();
     ApplicationListIndexReadModel indexRow =
@@ -1057,6 +1102,9 @@ class ApplicationProjectionTest {
                 ApplicationListIndexReadModel.builder()
                     .applicationId(appId)
                     .laaReference("LAA-123")
+                    .status("APPLICATION_SUBMITTED")
+                    .clientFirstName("Ada")
+                    .clientLastName("Lovelace")
                     .build()));
 
     FindAllApplicationsResult result =
@@ -1065,7 +1113,12 @@ class ApplicationProjectionTest {
 
     assertThat(groupIdsCaptor.getValue()).containsExactly(groupId);
     assertThat(result.groupsByGroupId()).containsEntry(groupId, group);
-    assertThat(result.linkedLaaReferences()).containsExactly(entry(appId, "LAA-123"));
+    assertThat(result.linkedMemberDetails())
+        .containsExactly(
+            entry(
+                appId,
+                new LinkedApplicationMemberDetails(
+                    "LAA-123", "APPLICATION_SUBMITTED", "Ada", "Lovelace")));
   }
 
   @Test
@@ -1115,6 +1168,7 @@ class ApplicationProjectionTest {
   @Test
   void givenLeadApplication_whenFindingDetail_thenReturnsHydratedApplicationAndRelatedData() {
     UUID applicationId = UUID.randomUUID();
+    UUID linkedApplicationId = UUID.randomUUID();
     ApplicationReadModel application =
         ApplicationReadModel.builder()
             .applicationId(applicationId)
@@ -1127,7 +1181,7 @@ class ApplicationProjectionTest {
     LinkedApplicationGroupReadModel group =
         LinkedApplicationGroupReadModel.builder()
             .leadApplicationId(applicationId)
-            .memberIds(List.of(applicationId, UUID.randomUUID()))
+            .memberIds(List.of(applicationId, linkedApplicationId))
             .build();
     PriorAuthorityReadModel priorAuthority =
         PriorAuthorityReadModel.builder()
@@ -1142,6 +1196,23 @@ class ApplicationProjectionTest {
     UUID groupId = application.getLinkedGroupId();
     group.setGroupId(groupId);
     when(groupReadRepository.findById(groupId)).thenReturn(Optional.of(group));
+    when(listIndexRepository.findAllById(List.of(applicationId, linkedApplicationId)))
+        .thenReturn(
+            List.of(
+                ApplicationListIndexReadModel.builder()
+                    .applicationId(applicationId)
+                    .laaReference("LAA-APPLICATION")
+                    .status("APPLICATION_SUBMITTED")
+                    .clientFirstName("Ada")
+                    .clientLastName("Lovelace")
+                    .build(),
+                ApplicationListIndexReadModel.builder()
+                    .applicationId(linkedApplicationId)
+                    .laaReference("LAA-LINKED")
+                    .status("APPLICATION_SUBMITTED")
+                    .clientFirstName("Grace")
+                    .clientLastName("Hopper")
+                    .build()));
     when(priorAuthorityReadRepository.findAllByApplicationIdIn(List.of(applicationId)))
         .thenReturn(List.of(priorAuthority));
 
@@ -1178,6 +1249,23 @@ class ApplicationProjectionTest {
     group.setGroupId(application.getLinkedGroupId());
     when(groupReadRepository.findById(application.getLinkedGroupId()))
         .thenReturn(Optional.of(group));
+    when(listIndexRepository.findAllById(List.of(leadApplicationId, applicationId)))
+        .thenReturn(
+            List.of(
+                ApplicationListIndexReadModel.builder()
+                    .applicationId(leadApplicationId)
+                    .laaReference("LAA-LEAD")
+                    .status("APPLICATION_SUBMITTED")
+                    .clientFirstName("Ada")
+                    .clientLastName("Lovelace")
+                    .build(),
+                ApplicationListIndexReadModel.builder()
+                    .applicationId(applicationId)
+                    .laaReference("LAA-MEMBER")
+                    .status("APPLICATION_SUBMITTED")
+                    .clientFirstName("Grace")
+                    .clientLastName("Hopper")
+                    .build()));
     when(priorAuthorityReadRepository.findAllByApplicationIdIn(List.of(applicationId)))
         .thenReturn(List.of());
 
@@ -1250,7 +1338,7 @@ class ApplicationProjectionTest {
   void givenApplicationWithMissingData_whenStalledQuery_thenExcluded() {
     Instant threshold = Instant.parse("2026-08-04T09:45:00Z");
     UUID appId = UUID.randomUUID();
-    ApplicationReadModel app = reconciliationReadModel(appId);
+    ApplicationReadModel app = reconciliationReadModel(appId, null);
     when(applicationReadRepository.findAllByStatus("APPLICATION_SUBMITTED"))
         .thenReturn(List.of(app));
     // getAll returns empty map — data not found for this application
