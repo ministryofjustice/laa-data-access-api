@@ -68,10 +68,10 @@ import uk.gov.justice.laa.dstew.access.model.AutoGranted;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantedOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.BillingType;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
-import uk.gov.justice.laa.dstew.access.model.CategoryOfLaw;
 import uk.gov.justice.laa.dstew.access.model.CreateNoteRequest;
 import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityDraftRequest;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
+import uk.gov.justice.laa.dstew.access.model.DecisionStatusResponse;
 import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
 import uk.gov.justice.laa.dstew.access.model.ExpertCosts;
 import uk.gov.justice.laa.dstew.access.model.ExpertDetails;
@@ -79,9 +79,9 @@ import uk.gov.justice.laa.dstew.access.model.InvolvedChildResponse;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceedingRequest;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
-import uk.gov.justice.laa.dstew.access.model.MatterType;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetailsRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
+import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatusResponse;
 import uk.gov.justice.laa.dstew.access.model.OpponentResponse;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityHistoryGroup;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityType;
@@ -512,8 +512,7 @@ class PostgresAxonIntegrationTest {
             String.class);
     assertThat(currentStateColumns)
         .contains("application_data_version")
-        .doesNotContain(
-            "laa_reference", "application_content", "individuals", "submitted_at", "proceedings");
+        .doesNotContain("laa_reference", "application_content", "individuals", "proceedings");
   }
 
   @Test
@@ -541,11 +540,12 @@ class PostgresAxonIntegrationTest {
     assertThat(projected.getStatus()).isEqualTo("APPLICATION_SUBMITTED");
     assertThat(projected.getLaaReference()).isEqualTo("LAA-123");
     assertThat(projected.getSchemaVersion()).isEqualTo(1);
-    assertThat(projected.getSubmittedAt()).isEqualTo(Instant.parse("2026-07-14T12:30:00Z"));
+    assertThat(projected.getSubmittedAt()).isEqualTo(projected.getModifiedAt());
+    assertThat(projected.getSubmittedAt()).isNotEqualTo(Instant.parse("2026-07-14T12:30:00Z"));
     assertThat(projected.getOfficeCode()).isEqualTo("1A001B");
     assertThat(projected.getUsedDelegatedFunctions()).isFalse();
     assertThat(projected.getCategoryOfLaw()).isEqualTo("Family");
-    assertThat(projected.getMatterType()).isEqualTo("SPECIAL_CHILDREN_ACT");
+    assertThat(projected.getMatterType()).isEqualTo("special children act (SCA)");
     assertThat(projected.getCreatedAt()).isNotNull().isEqualTo(projected.getModifiedAt());
     assertThat(projected.getProvider()).isNotNull();
     assertThat(projected.getProvider().getOfficeCode()).isEqualTo("1A001B");
@@ -766,11 +766,11 @@ class PostgresAxonIntegrationTest {
         .singleElement()
         .satisfies(event -> assertThat(event.getEventDescription()).isEqualTo("Decision recorded"));
     ApplicationResponse application = awaitGetApplication(applicationId).getBody();
-    assertThat(application.getDecisionStatus()).isEqualTo(DecisionStatus.REFUSED);
+    assertThat(application.getDecisionStatus()).isEqualTo(DecisionStatusResponse.REFUSED);
     assertThat(application.getAutoGranted()).isEqualTo(AutoGranted.MANUAL);
     assertThat(application.getVersion()).isEqualTo(2L);
     assertThat(application.getProceedings().getFirst().getMeritsDecision())
-        .isEqualTo(MeritsDecisionStatus.REFUSED);
+        .isEqualTo(MeritsDecisionStatusResponse.REFUSED);
 
     ResponseEntity<Void> staleResponse =
         restTemplate.exchange(
@@ -1011,11 +1011,14 @@ class PostgresAxonIntegrationTest {
             .applicationId(createdApplicationId)
             .status(ApplicationStatus.APPLICATION_SUBMITTED)
             .laaReference("LAA-123")
+            .createdAt(actual.getCreatedAt())
             .lastUpdated(actual.getLastUpdated())
-            .submittedAt(OffsetDateTime.parse("2026-07-14T12:30:00Z"))
+            .submittedAt(actual.getLastUpdated())
             .isLead(false)
             .usedDelegatedFunctions(false)
             .autoGranted(AutoGranted.PENDING)
+            .decisionStatus(DecisionStatusResponse.PENDING)
+            .client(actual.getClient())
             .version(0L)
             .provider(
                 ProviderResponse.builder()
@@ -1032,17 +1035,31 @@ class PostgresAxonIntegrationTest {
                 List.of(
                     new ApplicationProceedingResponse()
                         .proceedingId(actual.getProceedings().getFirst().getProceedingId())
-                        .proceedingDescription("Care order")
-                        .proceedingType("Care proceedings")
-                        .categoryOfLaw(CategoryOfLaw.FAMILY)
-                        .matterType(MatterType.SPECIAL_CHILDREN_ACT)
-                        .levelOfService("FULL_REPRESENTATION")
-                        .substantiveCostLimitation(2_500.0)
+                        .leadProceeding(true)
+                        .code("SE003")
+                        .meaning("Care proceedings")
+                        .description("Care order")
+                        .matterType("special children act (SCA)")
+                        .matterTypeCode("KPBLW")
+                        .categoryOfLaw("Family")
+                        .categoryOfLawCode("MAT")
+                        .clientInvolvementType("Respondent")
+                        .clientInvolvementTypeCode("A")
+                        .usedDelegatedFunctions(false)
+                        .delegatedFunctionsCostLimitation(BigDecimal.ZERO)
+                        .substantiveLevelOfServiceCode(3)
+                        .substantiveLevelOfServiceName("FULL_REPRESENTATION")
+                        .emergencyLevelOfServiceCode(3)
+                        .emergencyLevelOfServiceName("Full Representation")
+                        .substantiveCostLimitation(new BigDecimal("2500.0"))
+                        .meritsDecision(MeritsDecisionStatusResponse.PENDING)
                         .scopeLimitations(
                             List.of(
                                 new ScopeLimitationResponse()
-                                    .scopeLimitation("LIMITED")
-                                    .scopeDescription("Limited scope")))
+                                    .code("CV117")
+                                    .type("LIMITATION")
+                                    .meaning("LIMITED")
+                                    .description("Limited scope")))
                         .involvedChildren(
                             List.of(
                                 new InvolvedChildResponse()

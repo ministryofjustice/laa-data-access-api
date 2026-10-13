@@ -41,11 +41,11 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantedOutcomeRequest;
-import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
+import uk.gov.justice.laa.dstew.access.model.DecisionStatusResponse;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.IndividualsResponse;
 import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
-import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
+import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatusResponse;
 import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 import uk.gov.justice.laa.dstew.access.model.WorkListResponse;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
@@ -489,12 +489,13 @@ class CreateApplicationInMemoryTest {
     assertThat(granted).isNotNull();
     assertThat(granted.getAutoGranted())
         .isEqualTo(uk.gov.justice.laa.dstew.access.model.AutoGranted.AUTOGRANTED);
-    assertThat(granted.getDecisionStatus()).isEqualTo(DecisionStatus.GRANTED);
+    assertThat(granted.getDecisionStatus()).isEqualTo(DecisionStatusResponse.GRANTED);
     assertThat(granted.getProceedings())
         .singleElement()
         .satisfies(
             proceeding ->
-                assertThat(proceeding.getMeritsDecision()).isEqualTo(MeritsDecisionStatus.GRANTED));
+                assertThat(proceeding.getMeritsDecision())
+                    .isEqualTo(MeritsDecisionStatusResponse.GRANTED));
     assertThat(applicationDataRepository.findById(new ApplicationDataId(applicationId, 1L)))
         .get()
         .extracting(data -> data.getPayload().certificate())

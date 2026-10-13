@@ -19,11 +19,13 @@ import org.springframework.http.ResponseEntity;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthoritySummary;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsResult;
+import uk.gov.justice.laa.dstew.access.query.application.LinkedApplicationMemberDetails;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
 import uk.gov.justice.laa.dstew.access.version.VersionToken;
@@ -68,7 +70,7 @@ class GetAllApplicationsResponseMapperTest {
                 uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationProvider.builder()
                     .officeCode("2B002C")
                     .build())
-            .matterType("SPECIAL_CHILDREN_ACT")
+            .matterType("special children act (SCA)")
             .categoryOfLaw("FAMILY")
             .usedDelegatedFunctions(true)
             .submittedAt(Instant.parse("2026-07-01T10:00:00Z"))
@@ -227,7 +229,10 @@ class GetAllApplicationsResponseMapperTest {
                 new FindAllApplicationsResult(
                     List.of(leadApp),
                     Map.of(groupId, group),
-                    Map.of(memberId, "LAA-MEMBER"),
+                    Map.of(
+                        memberId,
+                        new LinkedApplicationMemberDetails(
+                            "LAA-MEMBER", "APPLICATION_SUBMITTED", "Grace", "Hopper")),
                     Map.of(),
                     1L,
                     1,
@@ -242,7 +247,106 @@ class GetAllApplicationsResponseMapperTest {
     assertThat(summary.getLinkedApplications()).hasSize(1);
     assertThat(summary.getLinkedApplications().get(0).getApplicationId()).isEqualTo(memberId);
     assertThat(summary.getLinkedApplications().get(0).getLaaReference()).isEqualTo("LAA-MEMBER");
+    assertThat(summary.getLinkedApplications().get(0).getStatus())
+        .isEqualTo(ApplicationStatus.APPLICATION_SUBMITTED);
+    assertThat(summary.getLinkedApplications().get(0).getClientFirstName()).isEqualTo("Grace");
+    assertThat(summary.getLinkedApplications().get(0).getClientLastName()).isEqualTo("Hopper");
     assertThat(summary.getLinkedApplications().get(0).getIsLead()).isFalse();
+  }
+
+  @Test
+  void givenLeadProceeding_whenMapped_thenReturnsNamesAndCodes() {
+    ApplicationReadModel application =
+        ApplicationReadModel.builder()
+            .applicationId(UUID.randomUUID())
+            .status("APPLICATION_SUBMITTED")
+            .laaReference("LAA-123")
+            .autoGranted(AutoGrantedState.PENDING)
+            .categoryOfLaw("Unlisted category")
+            .categoryOfLawCode("CAT-123")
+            .matterType("Unlisted matter")
+            .matterTypeCode("MAT-123")
+            .submittedAt(Instant.parse("2026-10-01T10:00:00Z"))
+            .modifiedAt(Instant.parse("2026-10-02T10:00:00Z"))
+            .build();
+    FindAllApplicationsResult result =
+        new FindAllApplicationsResult(List.of(application), Map.of(), Map.of(), Map.of(), 1, 1, 20);
+
+    ApplicationSummary summary = mapper.toResponse(result).getBody().getApplications().getFirst();
+
+    assertThat(summary.getCategoryOfLaw()).isEqualTo("Unlisted category");
+    assertThat(summary.getCategoryOfLawCode()).isEqualTo("CAT-123");
+    assertThat(summary.getMatterType()).isEqualTo("Unlisted matter");
+    assertThat(summary.getMatterTypeCode()).isEqualTo("MAT-123");
+  }
+
+  @Test
+  void givenUnassignedApplication_whenMapped_thenAssignedToIsNull() {
+    ApplicationReadModel application =
+        ApplicationReadModel.builder()
+            .applicationId(UUID.randomUUID())
+            .status("APPLICATION_SUBMITTED")
+            .autoGranted(AutoGrantedState.PENDING)
+            .modifiedAt(Instant.parse("2026-10-02T10:00:00Z"))
+            .caseworkerId(null)
+            .build();
+
+    ApplicationSummary summary =
+        mapper
+            .toResponse(
+                new FindAllApplicationsResult(
+                    List.of(application), Map.of(), Map.of(), Map.of(), 1, 1, 20))
+            .getBody()
+            .getApplications()
+            .getFirst();
+
+    assertThat(summary.getAssignedTo()).isNull();
+  }
+
+  @Test
+  void givenLinkedMembers_whenMapped_thenReturnsRequiredClientNames() {
+    UUID leadId = UUID.randomUUID();
+    UUID memberId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    ApplicationReadModel lead =
+        ApplicationReadModel.builder()
+            .applicationId(leadId)
+            .linkedGroupId(groupId)
+            .autoGranted(AutoGrantedState.PENDING)
+            .modifiedAt(Instant.parse("2026-10-02T10:00:00Z"))
+            .build();
+    LinkedApplicationGroupReadModel group =
+        LinkedApplicationGroupReadModel.builder()
+            .groupId(groupId)
+            .leadApplicationId(leadId)
+            .memberIds(List.of(leadId, memberId))
+            .build();
+    FindAllApplicationsResult result =
+        new FindAllApplicationsResult(
+            List.of(lead),
+            Map.of(groupId, group),
+            Map.of(
+                memberId,
+                new LinkedApplicationMemberDetails(
+                    "LAA-MEMBER", "APPLICATION_SUBMITTED", "Grace", "Hopper")),
+            Map.of(),
+            1,
+            1,
+            20);
+
+    ApplicationSummary summary = mapper.toResponse(result).getBody().getApplications().getFirst();
+
+    assertThat(summary.getLinkedApplications())
+        .singleElement()
+        .satisfies(
+            linked -> {
+              assertThat(linked.getApplicationId()).isEqualTo(memberId);
+              assertThat(linked.getLaaReference()).isEqualTo("LAA-MEMBER");
+              assertThat(linked.getStatus()).isEqualTo(ApplicationStatus.APPLICATION_SUBMITTED);
+              assertThat(linked.getClientFirstName()).isEqualTo("Grace");
+              assertThat(linked.getClientLastName()).isEqualTo("Hopper");
+              assertThat(linked.getIsLead()).isFalse();
+            });
   }
 
   @Test
@@ -271,7 +375,16 @@ class GetAllApplicationsResponseMapperTest {
         mapper
             .toResponse(
                 new FindAllApplicationsResult(
-                    List.of(memberApp), Map.of(groupId, group), Map.of(), Map.of(), 1L, 1, 20))
+                    List.of(memberApp),
+                    Map.of(groupId, group),
+                    Map.of(
+                        leadId,
+                        new LinkedApplicationMemberDetails(
+                            "LAA-LEAD", "APPLICATION_SUBMITTED", "Ada", "Lovelace")),
+                    Map.of(),
+                    1L,
+                    1,
+                    20))
             .getBody()
             .getApplications()
             .get(0);
