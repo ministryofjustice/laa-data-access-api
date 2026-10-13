@@ -43,25 +43,21 @@ public class LinkedGroupAssignmentRulesService {
     UUID leadCaseworkerId = getApplicationCaseworker(leadApplicationId);
     UUID memberCaseworkerId = getApplicationCaseworker(newMemberApplicationId);
 
-    // AC1: Lead is assigned, member is not assigned so Assign member to lead's caseworker
     if (leadCaseworkerId != null && memberCaseworkerId == null) {
       return LinkedGroupAssignmentDecision.assignMemberToLead(
           newMemberApplicationId, leadCaseworkerId);
     }
 
-    // AC2: Both are assigned but to different caseworkers so Reassign member to lead's caseworker
     if (leadCaseworkerId != null && !leadCaseworkerId.equals(memberCaseworkerId)) {
       return LinkedGroupAssignmentDecision.assignMemberToLead(
           newMemberApplicationId, leadCaseworkerId);
     }
 
-    // AC3: Member is assigned, lead is not assigned so Assign lead to member's caseworker
     if (memberCaseworkerId != null && leadCaseworkerId == null) {
       return LinkedGroupAssignmentDecision.assignLeadToMember(
           leadApplicationId, memberCaseworkerId);
     }
 
-    // AC4: Neither assigned or both assigned to same caseworker so No change needed
     return LinkedGroupAssignmentDecision.none();
   }
 
