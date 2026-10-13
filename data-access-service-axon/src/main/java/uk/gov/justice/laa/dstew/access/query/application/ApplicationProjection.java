@@ -178,7 +178,7 @@ public class ApplicationProjection {
     return new FindAllApplicationsResult(
         content,
         groupsByGroupId,
-        assembler.fetchLinkedLaaReferences(groupsByGroupId.values()),
+        assembler.fetchLinkedMemberDetails(groupsByGroupId.values()),
         assembler.fetchPriorAuthorities(content),
         indexPage.getTotalElements(),
         query.page(),
@@ -209,6 +209,8 @@ public class ApplicationProjection {
   public void on(ApplicationCreatedEvent event, QueryUpdateEmitter queryUpdateEmitter) {
     ApplicationDataPayload data =
         applicationDataStore.get(event.applicationId(), event.applicationDataVersion());
+    ApplicationReadModel existing =
+        applicationReadRepository.findById(event.applicationId()).orElse(null);
     String officeCode =
         event.officeCode() != null
             ? event.officeCode()
@@ -221,17 +223,14 @@ public class ApplicationProjection {
                 .applicationDataVersion(event.applicationDataVersion())
                 .applicationVersion(0L)
                 .schemaVersion(event.schemaVersion())
-                .createdAt(event.occurredAt())
+                .createdAt(existing == null ? event.occurredAt() : existing.getCreatedAt())
+                .submittedAt(event.occurredAt())
                 .modifiedAt(event.occurredAt())
                 .leadApplicationId(null)
                 .linkedGroupId(null)
                 .potentialDuplicates(event.potentialDuplicates())
                 .officeCode(officeCode)
-                .uploadedDocuments(
-                    applicationReadRepository
-                        .findById(event.applicationId())
-                        .map(ApplicationReadModel::getUploadedDocuments)
-                        .orElse(List.of()))
+                .uploadedDocuments(existing == null ? List.of() : existing.getUploadedDocuments())
                 .build());
     queryUpdateEmitter.emit(
         FindApplicationByIdQuery.class,

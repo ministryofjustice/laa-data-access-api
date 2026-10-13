@@ -26,6 +26,8 @@ public class ApplicationUpdateDetailsFactory {
         parsed.usedDelegatedFunctions(),
         parsed.categoryOfLaw(),
         parsed.matterType(),
+        parsed.categoryOfLawCode(),
+        parsed.matterTypeCode(),
         parsed.proceedings(),
         command.serialisedRequest(),
         resetAssessment);

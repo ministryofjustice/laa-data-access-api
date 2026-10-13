@@ -473,6 +473,8 @@ class ApplicationDeciderTest {
         false,
         null,
         null,
+        null,
+        null,
         List.of(),
         "{}",
         Instant.parse("2026-07-15T08:00:00Z"),
@@ -495,12 +497,16 @@ class ApplicationDeciderTest {
             false,
             null,
             null,
+            "MAT",
+            "KPBLW",
             List.of(
                 uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding.builder()
                     .id(proceedingId)
                     .leadProceeding(true)
                     .description("Care order")
                     .code("SE003")
+                    .categoryOfLawCode("MAT")
+                    .matterTypeCode("KPBLW")
                     .build()),
             "{}",
             Instant.parse("2026-07-15T08:00:00Z"),

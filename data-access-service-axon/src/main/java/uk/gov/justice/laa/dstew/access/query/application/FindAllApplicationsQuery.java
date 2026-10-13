@@ -17,7 +17,7 @@ import uk.gov.justice.laa.dstew.access.query.utils.security.UnrestrictedReadAcce
 public record FindAllApplicationsQuery(
     String status,
     String laaReference,
-    String matterType,
+    String matterTypeCode,
     String clientFirstName,
     String clientLastName,
     LocalDate clientDateOfBirth,
@@ -32,7 +32,7 @@ public record FindAllApplicationsQuery(
   public FindAllApplicationsQuery(
       String status,
       String laaReference,
-      String matterType,
+      String matterTypeCode,
       String clientFirstName,
       String clientLastName,
       LocalDate clientDateOfBirth,
@@ -43,7 +43,7 @@ public record FindAllApplicationsQuery(
     this(
         status,
         laaReference,
-        matterType,
+        matterTypeCode,
         clientFirstName,
         clientLastName,
         clientDateOfBirth,
@@ -59,7 +59,7 @@ public record FindAllApplicationsQuery(
   public FindAllApplicationsQuery(
       String status,
       String laaReference,
-      String matterType,
+      String matterTypeCode,
       String clientFirstName,
       String clientLastName,
       LocalDate clientDateOfBirth,
@@ -71,7 +71,7 @@ public record FindAllApplicationsQuery(
     this(
         status,
         laaReference,
-        matterType,
+        matterTypeCode,
         clientFirstName,
         clientLastName,
         clientDateOfBirth,

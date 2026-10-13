@@ -159,6 +159,8 @@ class MakeApplicationDecisionCommandHandlerTest {
         base.usedDelegatedFunctions(),
         base.categoryOfLaw(),
         base.matterType(),
+        base.categoryOfLawCode(),
+        base.matterTypeCode(),
         List.of(
             Proceeding.builder()
                 .id(proceedingId)

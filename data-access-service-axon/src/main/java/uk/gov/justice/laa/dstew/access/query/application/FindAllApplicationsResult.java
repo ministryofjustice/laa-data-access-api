@@ -8,14 +8,13 @@ import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAut
 
 /**
  * Result returned by {@link FindAllApplicationsQuery}, carrying the page of application read
- * models, batch-fetched group data keyed by group ID, linked member LAA references keyed by
- * application ID, batch-fetched prior authorities keyed by application ID, and validated pagination
- * metadata.
+ * models, batch-fetched group data keyed by group ID, linked member details keyed by application
+ * ID, batch-fetched prior authorities keyed by application ID, and validated pagination metadata.
  */
 public record FindAllApplicationsResult(
     List<ApplicationReadModel> applications,
     Map<UUID, LinkedApplicationGroupReadModel> groupsByGroupId,
-    Map<UUID, String> linkedLaaReferences,
+    Map<UUID, LinkedApplicationMemberDetails> linkedMemberDetails,
     Map<UUID, List<PriorAuthorityReadModel>> priorAuthoritiesByApplicationId,
     long totalElements,
     int requestedPage,
