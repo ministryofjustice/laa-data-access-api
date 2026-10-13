@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.query.application;
 
+import static java.time.Instant.parse;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.entry;
@@ -81,7 +82,7 @@ class ApplicationReadModelAssemblerTest {
             base.client(),
             base.provider(),
             base.opponents(),
-            java.time.Instant.parse("2026-07-14T12:30:00Z"),
+            parse("2026-07-14T12:30:00Z"),
             base.usedDelegatedFunctions(),
             "Family",
             "special children act (SCA)",

@@ -129,25 +129,27 @@ public class ApplicationReadModelAssembler {
                 Collectors.toMap(
                     ApplicationListIndexReadModel::getApplicationId, Function.identity()));
     return memberIds.stream()
-        .map(
-            memberId -> {
-              ApplicationListIndexReadModel member = membersById.get(memberId);
-              if (member == null
-                  || member.getLaaReference() == null
-                  || member.getClientFirstName() == null
-                  || member.getClientLastName() == null) {
-                throw new IllegalStateException(
-                    "Linked application list-index details are incomplete for " + memberId);
-              }
-              return Map.entry(
-                  memberId,
-                  new LinkedApplicationMemberDetails(
-                      member.getLaaReference(),
-                      member.getStatus(),
-                      member.getClientFirstName(),
-                      member.getClientLastName()));
-            })
+        .map(memberId -> toMemberDetailsEntry(memberId, membersById))
         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+  }
+
+  private Map.Entry<UUID, LinkedApplicationMemberDetails> toMemberDetailsEntry(
+      UUID memberId, Map<UUID, ApplicationListIndexReadModel> membersById) {
+    ApplicationListIndexReadModel member = membersById.get(memberId);
+    if (member == null
+        || member.getLaaReference() == null
+        || member.getClientFirstName() == null
+        || member.getClientLastName() == null) {
+      throw new IllegalStateException(
+          "Linked application list-index details are incomplete for " + memberId);
+    }
+    return Map.entry(
+        memberId,
+        new LinkedApplicationMemberDetails(
+            member.getLaaReference(),
+            member.getStatus(),
+            member.getClientFirstName(),
+            member.getClientLastName()));
   }
 
   static String officeCode(ApplicationDataPayload data) {

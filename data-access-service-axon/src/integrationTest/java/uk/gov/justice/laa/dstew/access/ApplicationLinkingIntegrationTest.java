@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
+import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.defaultClientFirstName;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
 
 import jakarta.annotation.PostConstruct;
@@ -154,7 +155,8 @@ public class ApplicationLinkingIntegrationTest {
               assertThat(linkedApplication.getIsLead()).isFalse();
               assertThat(linkedApplication.getStatus())
                   .isEqualTo(ApplicationStatus.APPLICATION_SUBMITTED);
-              assertThat(linkedApplication.getClientFirstName()).isEqualTo("Ada");
+              assertThat(linkedApplication.getClientFirstName())
+                  .isEqualTo(defaultClientFirstName());
               assertThat(linkedApplication.getClientLastName()).isEqualTo(clientLastName);
             });
     assertThat(sourceResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -167,7 +169,8 @@ public class ApplicationLinkingIntegrationTest {
               assertThat(linkedApplication.getIsLead()).isTrue();
               assertThat(linkedApplication.getStatus())
                   .isEqualTo(ApplicationStatus.APPLICATION_SUBMITTED);
-              assertThat(linkedApplication.getClientFirstName()).isEqualTo("Ada");
+              assertThat(linkedApplication.getClientFirstName())
+                  .isEqualTo(defaultClientFirstName());
               assertThat(linkedApplication.getClientLastName()).isEqualTo(clientLastName);
             });
   }
@@ -931,7 +934,8 @@ public class ApplicationLinkingIntegrationTest {
                                       linkedApplication.getIsLead(),
                                       Objects.equals(
                                           linkedApplication.getApplicationId(), leadApplicationId))
-                                  && "Ada".equals(linkedApplication.getClientFirstName())
+                                  && defaultClientFirstName()
+                                      .equals(linkedApplication.getClientFirstName())
                                   && Objects.equals(
                                       linkedApplication.getClientLastName(),
                                       summary.getClientLastName()));
@@ -965,7 +969,8 @@ public class ApplicationLinkingIntegrationTest {
                                 linkedApplication.getApplicationId(), leadApplicationId));
                     assertThat(linkedApplication.getStatus())
                         .isEqualTo(ApplicationStatus.APPLICATION_SUBMITTED);
-                    assertThat(linkedApplication.getClientFirstName()).isEqualTo("Ada");
+                    assertThat(linkedApplication.getClientFirstName())
+                        .isEqualTo(defaultClientFirstName());
                     assertThat(linkedApplication.getClientLastName())
                         .isEqualTo(summary.getClientLastName());
                   });

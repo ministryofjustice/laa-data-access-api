@@ -14,6 +14,11 @@ public final class ApplicationCreateRequestFixture {
 
   private ApplicationCreateRequestFixture() {}
 
+  /** Returns the fixed client first name used by {@link #validApplicationContent}. */
+  public static String defaultClientFirstName() {
+    return "Ada";
+  }
+
   /** Creates valid application content using the supplied identifiers. */
   public static Map<String, Object> validApplicationContent(
       UUID applicationId, UUID applyProceedingId) {
@@ -25,7 +30,7 @@ public final class ApplicationCreateRequestFixture {
         Map.entry(
             "client",
             Map.ofEntries(
-                Map.entry("firstName", "Ada"),
+                Map.entry("firstName", defaultClientFirstName()),
                 Map.entry("lastName", "Lovelace"),
                 Map.entry("dateOfBirth", "1815-12-10"),
                 Map.entry("appliedPreviously", false),
