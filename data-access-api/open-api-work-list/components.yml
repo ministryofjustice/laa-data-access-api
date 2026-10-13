@@ -30,7 +30,7 @@ components:
           enum:
             - DIRECT
             - LINKED_GROUP
-        readyAt:
+        submittedAt:
           type: string
           format: date-time
           description: When this work item became ready for assessment (application readiness, or prior authority submission)

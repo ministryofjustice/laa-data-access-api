@@ -92,7 +92,7 @@ class WorkListProjectionTest {
     assertThat(row.getAssignmentBoundaryType()).isEqualTo("DIRECT");
     assertThat(row.getAssignmentVersion()).isZero();
     assertThat(row.getItemVersion()).isEqualTo(3L);
-    assertThat(row.getReadyAt()).isEqualTo(occurredAt);
+    assertThat(row.getSubmittedAt()).isEqualTo(occurredAt);
   }
 
   @Test
@@ -138,7 +138,7 @@ class WorkListProjectionTest {
     assertThat(captor.getValue().getParentApplicationId()).isEqualTo(applicationId);
     assertThat(captor.getValue().getAssignmentBoundaryId()).isEqualTo(priorAuthorityId);
     assertThat(captor.getValue().getAssignmentVersion()).isZero();
-    assertThat(captor.getValue().getReadyAt()).isEqualTo(Instant.parse("2026-08-28T10:00:00Z"));
+    assertThat(captor.getValue().getSubmittedAt()).isEqualTo(Instant.parse("2026-08-28T10:00:00Z"));
     assertThat(captor.getValue().getLaaReference()).isEqualTo("LAA-654321");
     assertThat(captor.getValue().getCategoryOfLaw()).isEqualTo("FAMILY");
     assertThat(captor.getValue().getMatterTypes()).containsExactly("special children act (SCA)");
@@ -278,7 +278,7 @@ class WorkListProjectionTest {
     assertThat(result.items()).containsExactly(item);
     assertThat(result.requestedPage()).isEqualTo(1);
     assertThat(result.requestedPageSize()).isEqualTo(20);
-    assertThat(pageable.getValue().getSort().getOrderFor("readyAt").getDirection())
+    assertThat(pageable.getValue().getSort().getOrderFor("submittedAt").getDirection())
         .isEqualTo(Sort.Direction.ASC);
   }
 

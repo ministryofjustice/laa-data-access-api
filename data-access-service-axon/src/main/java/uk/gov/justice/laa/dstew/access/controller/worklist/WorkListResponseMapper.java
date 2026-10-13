@@ -40,7 +40,7 @@ public class WorkListResponseMapper {
     response.setAssignmentVersion(item.getAssignmentVersion());
     response.setAssignmentBoundaryType(
         WorkListItem.AssignmentBoundaryTypeEnum.valueOf(item.getAssignmentBoundaryType()));
-    response.setReadyAt(item.getReadyAt().atOffset(ZoneOffset.UTC));
+    response.setSubmittedAt(item.getSubmittedAt().atOffset(ZoneOffset.UTC));
     response.setLaaReference(item.getLaaReference());
     response.setUsedDelegatedFunctions(item.getUsedDelegatedFunctions());
     boolean priorAuthority = item.getItemType() == WorkItemType.PRIOR_AUTHORITY;

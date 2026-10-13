@@ -202,9 +202,10 @@ Only reset a projection when its event handlers can replay every retained event 
 required `application_data` rows remain available.
 
 For the application read-code and submission-time migration, the affected processors are
-`application-projection`, `application-list-index-projection`, and `work-list-projection`. There is
-no repository admin CLI that runs this operation. Use the established Axon processor-lifecycle
-procedure, without manually editing tokens or inventing a shell reset command:
+`application-projection`, `application-list-index-projection`, and `work-list-projection`; this
+replay is not yet in place. There is no repository admin CLI that runs this operation. Use the
+established Axon processor-lifecycle procedure, without manually editing tokens or inventing a
+shell reset command:
 
 1. Stop the three named tracking processors.
 2. For each processor, invoke its own `@ResetHandler` and reset only its own tokens using Axon's
@@ -214,7 +215,7 @@ procedure, without manually editing tokens or inventing a shell reset command:
 5. Compare their row counts and representative values against creation events and the
    event-versioned proceedings. Verify `application_current_state.submitted_at` and
    `application_list_index.submitted_at` against creation-event times, the list-index codes against
-   the referenced proceedings, and `work_list_item.ready_at` against application-readiness or
+   the referenced proceedings, and `work_list_item.submitted_at` against application-readiness or
    prior-authority-submission times. Ensure historical draft creation times remain earlier than
    their creation-event submission times.
 6. Do not declare the replay complete until all old rows have been rebuilt and checked.

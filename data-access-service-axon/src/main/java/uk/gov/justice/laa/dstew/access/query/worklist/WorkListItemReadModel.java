@@ -63,8 +63,8 @@ public class WorkListItemReadModel {
   @Column(name = "expert_type")
   private String expertType;
 
-  @Column(name = "ready_at")
-  private Instant readyAt;
+  @Column(name = "submitted_at")
+  private Instant submittedAt;
 
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
@@ -101,7 +101,7 @@ public class WorkListItemReadModel {
     this.id = itemId;
     this.itemType = itemType;
     this.parentApplicationId = parentApplicationId;
-    this.readyAt = updatedAt;
+    this.submittedAt = updatedAt;
     this.updatedAt = updatedAt;
     this.assignmentBoundaryType = "DIRECT";
     this.assignmentBoundaryId = itemId;

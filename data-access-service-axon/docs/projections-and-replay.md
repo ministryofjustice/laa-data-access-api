@@ -17,15 +17,17 @@ rebuilt without changing aggregate event streams or immutable application-data v
 `application-projection` owns the event-derived `application_current_state.submitted_at`.
 `application-list-index-projection` owns the lead-proceeding name/code columns and the
 event-derived `application_list_index.submitted_at` used for submitted-date sorting.
-`work-list-projection` owns `work_list_item`, including `ready_at`, which records when an
-application became ready or a prior authority was submitted.
+`work-list-projection` owns `work_list_item`, including `submitted_at`, which records when an
+application became ready or a prior authority was submitted (named `submittedAt` to match consumer
+expectations, even though it is readiness/PA-submission time, not the true application submission
+time recorded elsewhere).
 
-Migration V25 adds event-derived `submitted_at` to `application_current_state`, code columns to
-`application_list_index` and `work_list_item`, and renames the work-list timestamp to `ready_at`.
-Existing rows are not backfilled by the migration; their new values are rebuilt only by replaying
-the owning processors. Required detail/list response fields must not be relied on until the
-application and list-index processors have caught up and their event times and codes have been
-checked against the creation events and event-versioned proceedings.
+Migration V25 adds event-derived `submitted_at` to `application_current_state` and code columns to
+`application_list_index` and `work_list_item`. Existing rows are not backfilled by the migration;
+their new values are rebuilt only by replaying the owning processors. Required detail/list response
+fields must not be relied on until the application and list-index processors have caught up and
+their event times and codes have been checked against the creation events and event-versioned
+proceedings.
 
 Tracking processors maintain tokens and run independently of the command thread. A failure stops
 token progress past the failing event, allowing recovery without silently skipping it. The
@@ -179,11 +181,13 @@ each processor only through its Axon lifecycle API so its reset handler clears o
 and its tokens restart from the beginning; then resume all three processors. Wait for each processor
 to catch up before relying on the rebuilt values. Compare table counts and representative
 `submitted_at` values with their creation events, compare stored legal codes with the proceedings in
-the event-pinned `application_data` versions, and compare `ready_at` with the readiness or
-prior-authority submission events. Historical drafts must replay their draft-start event before
-their creation event so `created_at` retains the original draft time. Do not mark the replay complete
-until all old rows have been rebuilt. No repository admin CLI executes this reset; follow the
-processor-lifecycle operation in [Running and operating](running-and-operating.md#projection-reset-and-replay).
+the event-pinned `application_data` versions, and compare `work_list_item.submitted_at` with the
+readiness or prior-authority submission events. Historical drafts must replay their draft-start
+event before their creation event so `created_at` retains the original draft time. Do not mark the
+replay complete until all old rows have been rebuilt. No repository admin CLI executes this reset;
+follow the processor-lifecycle operation in
+[Running and operating](running-and-operating.md#projection-reset-and-replay). The process for
+performing this reset still needs to be established.
 
 ## Development checklist
 

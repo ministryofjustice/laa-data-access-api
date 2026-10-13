@@ -328,7 +328,7 @@ class WorkListIntegrationTest {
     assertThat(item.getMatterTypes())
         .containsExactly("Matter outside the old enum", "Second matter");
     assertThat(item.getMatterTypeCodes()).containsExactly("MATTER-999", "MATTER-998");
-    assertThat(item.getReadyAt().toInstant()).isEqualTo(workListReadyAt(request.getId()));
+    assertThat(item.getSubmittedAt().toInstant()).isEqualTo(workListSubmittedAt(request.getId()));
   }
 
   @Test
@@ -372,7 +372,7 @@ class WorkListIntegrationTest {
     assertThat(item.getCategoryOfLawCode()).isNull();
     assertThat(item.getMatterTypes()).containsExactly("Parent matter", "Second");
     assertThat(item.getMatterTypeCodes()).containsExactly("PARENT-1", "PARENT-2");
-    assertThat(item.getReadyAt().toInstant()).isEqualTo(workListReadyAt(priorAuthorityId));
+    assertThat(item.getSubmittedAt().toInstant()).isEqualTo(workListSubmittedAt(priorAuthorityId));
   }
 
   @Test
@@ -1084,9 +1084,9 @@ class WorkListIntegrationTest {
         .orElseThrow();
   }
 
-  private Instant workListReadyAt(UUID itemId) {
+  private Instant workListSubmittedAt(UUID itemId) {
     return jdbcTemplate.queryForObject(
-        "SELECT ready_at FROM axon.work_list_item WHERE item_id = ?", Instant.class, itemId);
+        "SELECT submitted_at FROM axon.work_list_item WHERE item_id = ?", Instant.class, itemId);
   }
 
   private String assignmentUrl(UUID itemId, String operation) {

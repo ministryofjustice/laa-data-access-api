@@ -33,7 +33,7 @@ class WorkListResponseMapperTest {
     assertThat(item.getAssignmentVersion()).isZero();
     item.setAssignmentVersion(3L);
     item.setLaaReference("LAA-123");
-    item.setReadyAt(Instant.parse("2026-08-28T09:00:00Z"));
+    item.setSubmittedAt(Instant.parse("2026-08-28T09:00:00Z"));
     item.setPriorAuthorityType("EXPERT");
     item.setExpertType("Pathologist");
 
@@ -54,7 +54,7 @@ class WorkListResponseMapperTest {
               assertThat(mapped.getAssignedTo()).isEqualTo(caseworkerId);
               assertThat(mapped.getAssignmentVersion()).isEqualTo(3L);
               assertThat(mapped.getAssignmentBoundaryType().getValue()).isEqualTo("DIRECT");
-              assertThat(mapped.getReadyAt())
+              assertThat(mapped.getSubmittedAt())
                   .isEqualTo(Instant.parse("2026-08-28T09:00:00Z").atOffset(ZoneOffset.UTC));
               assertThat(mapped.getLaaReference()).isEqualTo("LAA-123");
               assertThat(mapped.getPriorAuthorityType()).isEqualTo(PriorAuthorityType.EXPERT);
@@ -92,7 +92,7 @@ class WorkListResponseMapperTest {
               assertThat(mapped.getCategoryOfLawCode()).isEqualTo("FAM");
               assertThat(mapped.getMatterTypes()).containsExactly("Special Children Act");
               assertThat(mapped.getMatterTypeCodes()).containsExactly("SCA");
-              assertThat(mapped.getReadyAt())
+              assertThat(mapped.getSubmittedAt())
                   .isEqualTo(Instant.parse("2026-09-01T10:00:00Z").atOffset(ZoneOffset.UTC));
               assertThat(mapped.getApplicationStatus())
                   .isEqualTo(ApplicationStatus.APPLICATION_SUBMITTED);

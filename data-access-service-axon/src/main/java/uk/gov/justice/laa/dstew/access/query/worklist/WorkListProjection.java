@@ -46,7 +46,7 @@ public class WorkListProjection {
     this.priorAuthorityDataStore = priorAuthorityDataStore;
   }
 
-  /** Returns a database-filtered page of active work, oldest ready item first. */
+  /** Returns a database-filtered page of active work, oldest submission first. */
   @QueryHandler
   public FindWorkListItemsResult handle(FindWorkListItemsQuery query) {
     Page<WorkListItemReadModel> page =
@@ -55,7 +55,7 @@ public class WorkListProjection {
             PageRequest.of(
                 query.page() - 1,
                 query.pageSize(),
-                Sort.by(Sort.Direction.ASC, "readyAt")
+                Sort.by(Sort.Direction.ASC, "submittedAt")
                     .and(Sort.by(Sort.Direction.ASC, "itemType"))
                     .and(Sort.by(Sort.Direction.ASC, "id"))));
     return new FindWorkListItemsResult(
