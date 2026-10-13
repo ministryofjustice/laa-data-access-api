@@ -8,6 +8,7 @@ import org.axonframework.modelling.annotation.InjectEntity;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationAggregate;
+import uk.gov.justice.laa.dstew.access.command.application.ApplicationDecider;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationState;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
@@ -29,8 +30,7 @@ public class MakeApplicationDecisionCommandHandler {
       EventAppender eventAppender) {
     ApplicationCommandHandlerSupport.requireApplicationExists(application, command.applicationId());
     ApplicationState state = application.getState();
-    uk.gov.justice.laa.dstew.access.command.application.ApplicationDecider
-        .validateManualDecisionAssignment(state, command);
+    ApplicationDecider.validateManualDecisionAssignment(state, command);
     var current =
         applicationDataStore.get(command.applicationId(), state.getApplicationDataVersion());
     recordDecision(
@@ -51,8 +51,7 @@ public class MakeApplicationDecisionCommandHandler {
       EventAppender eventAppender) {
     ApplicationState state = application.getState();
     ApplicationDecisionMadeEvent decision =
-        uk.gov.justice.laa.dstew.access.command.application.ApplicationDecider.decideDecision(
-            state, command, current, autoGranted);
+        ApplicationDecider.decideDecision(state, command, current, autoGranted);
     long nextVersion = state.getApplicationDataVersion() + 1;
     var updated =
         current.withDecision(

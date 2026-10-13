@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.command.application.handler;
 
+import java.util.Objects;
 import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import org.axonframework.modelling.annotation.InjectEntity;
@@ -58,8 +59,7 @@ public class RecordAutoGrantedOutcomeCommandHandler {
     }
     var recorded =
         applicationDataStore.get(command.applicationId(), state.getApplicationDataVersion());
-    if (!java.util.Objects.equals(
-        recorded.decisionSerialisedRequest(), command.serialisedRequest())) {
+    if (!Objects.equals(recorded.decisionSerialisedRequest(), command.serialisedRequest())) {
       throw new ApplicationAutoGrantOutcomeConflictException(command.applicationId());
     }
   }
