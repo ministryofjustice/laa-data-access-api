@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.command.application.linkedgroup;
 
 import lombok.RequiredArgsConstructor;
+import org.axonframework.messaging.core.annotation.Namespace;
 import org.axonframework.messaging.eventhandling.annotation.EventHandler;
 import org.springframework.stereotype.Component;
 
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Component;
  * and applications.
  */
 @Component
+@Namespace("linkedGroupAssignment")
 @RequiredArgsConstructor
 public class LinkedGroupAssignmentEventHandler {
 
@@ -25,7 +27,7 @@ public class LinkedGroupAssignmentEventHandler {
   public void on(LinkedApplicationGroupCreatedEvent event) {
     if (event.memberApplicationIds().size() >= 2) {
       linkedGroupAssignmentDispatcher.applyAssignmentRules(
-          event.groupId(), event.memberApplicationIds().get(1), event.occurredAt());
+          event.leadApplicationId(), event.memberApplicationIds().get(1), event.occurredAt());
     }
   }
 
@@ -37,6 +39,6 @@ public class LinkedGroupAssignmentEventHandler {
   @EventHandler
   public void on(MemberAddedToGroupEvent event) {
     linkedGroupAssignmentDispatcher.applyAssignmentRules(
-        event.groupId(), event.memberId(), event.occurredAt());
+        event.leadApplicationId(), event.memberId(), event.occurredAt());
   }
 }

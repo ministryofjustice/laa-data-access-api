@@ -1,14 +1,11 @@
 package uk.gov.justice.laa.dstew.access.command.application.linkedgroup;
 
-import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadRepository;
-import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
-import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
 
 /**
  * Applies assignment rules when an application is added to a linked family group.
@@ -30,25 +27,19 @@ import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedAppli
 public class LinkedGroupAssignmentRulesService {
 
   private final ApplicationReadRepository applicationReadRepository;
-  private final LinkedApplicationGroupReadRepository groupReadRepository;
 
   /**
    * Determines the assignment decision when adding an application to a linked group.
    *
-   * <p>Queries the current state of the group and applications, then applies the assignment rules.
+   * <p>Queries the current state of the applications and applies the assignment rules.
    *
-   * @param groupId the linked group ID
+   * @param leadApplicationId the lead application ID of the linked group
    * @param newMemberApplicationId the application being added to the group
    * @return the assignment decision, or {@link LinkedGroupAssignmentDecision#none()} if no action
    *     is needed
    */
-  public LinkedGroupAssignmentDecision applyRules(UUID groupId, UUID newMemberApplicationId) {
-    Optional<LinkedApplicationGroupReadModel> group = groupReadRepository.findById(groupId);
-    if (group.isEmpty()) {
-      return LinkedGroupAssignmentDecision.none();
-    }
-
-    UUID leadApplicationId = group.get().getLeadApplicationId();
+  public LinkedGroupAssignmentDecision applyRules(
+      UUID leadApplicationId, UUID newMemberApplicationId) {
     UUID leadCaseworkerId = getApplicationCaseworker(leadApplicationId);
     UUID memberCaseworkerId = getApplicationCaseworker(newMemberApplicationId);
 
