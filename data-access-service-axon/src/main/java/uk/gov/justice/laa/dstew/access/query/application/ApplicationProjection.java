@@ -209,6 +209,10 @@ public class ApplicationProjection {
   public void on(ApplicationCreatedEvent event, QueryUpdateEmitter queryUpdateEmitter) {
     ApplicationDataPayload data =
         applicationDataStore.get(event.applicationId(), event.applicationDataVersion());
+    String officeCode =
+        event.officeCode() != null
+            ? event.officeCode()
+            : ApplicationReadModelAssembler.officeCode(data);
     ApplicationReadModel saved =
         applicationReadRepository.save(
             ApplicationReadModel.builder()
@@ -222,7 +226,7 @@ public class ApplicationProjection {
                 .leadApplicationId(null)
                 .linkedGroupId(null)
                 .potentialDuplicates(event.potentialDuplicates())
-                .officeCode(ApplicationReadModelAssembler.officeCode(data))
+                .officeCode(officeCode)
                 .uploadedDocuments(
                     applicationReadRepository
                         .findById(event.applicationId())
@@ -430,6 +434,9 @@ public class ApplicationProjection {
                         .createdAt(event.occurredAt())
                         .modifiedAt(event.occurredAt())
                         .build());
+    if (event.officeCode() != null) {
+      application.setOfficeCode(event.officeCode());
+    }
     applicationReadRepository.save(application);
     queryUpdateEmitter.emit(
         ApplicationProjectionExistsQuery.class,

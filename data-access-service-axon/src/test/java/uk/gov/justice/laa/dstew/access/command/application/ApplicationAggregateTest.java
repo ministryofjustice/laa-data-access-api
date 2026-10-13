@@ -72,6 +72,19 @@ import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 class ApplicationAggregateTest {
 
+  @Test
+  void givenDraftStartedEvent_whenApplied_thenRestoresOfficeCode() {
+    UUID applicationId = UUID.randomUUID();
+    String officeCode = "1A001B";
+
+    ApplicationAggregate aggregate = new ApplicationAggregate();
+    aggregate.on(
+        new ApplicationDraftStartedEvent(applicationId, 1, "hash", Instant.now(), officeCode));
+
+    assertThat(aggregate.getApplicationId()).isEqualTo(applicationId);
+    assertThat(aggregate.getOfficeCode()).isEqualTo(officeCode);
+  }
+
   @ParameterizedTest
   @ValueSource(
       strings = {
