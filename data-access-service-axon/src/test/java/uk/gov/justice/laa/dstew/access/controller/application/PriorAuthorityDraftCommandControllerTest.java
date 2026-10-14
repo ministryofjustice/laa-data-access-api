@@ -1,11 +1,16 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,6 +34,8 @@ import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityDraftRequest;
 import uk.gov.justice.laa.dstew.access.model.SavePriorAuthorityDraftRequest;
 import uk.gov.justice.laa.dstew.access.model.SavePriorAuthorityDraftResponse;
 import uk.gov.justice.laa.dstew.access.model.SubmitPriorAuthorityDraftResponse;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedCallerFactory;
 
 /** Verifies that each controller endpoint delegates to the appropriate use case. */
 @ExtendWith(MockitoExtension.class)
@@ -39,6 +46,7 @@ class PriorAuthorityDraftCommandControllerTest {
   @Mock private SubmitPriorAuthorityDraftUseCase submitUseCase;
   @Mock private SavePriorAuthorityDraftCommandMapper saveCommandMapper;
   @Mock private SubmitPriorAuthorityDraftCommandMapper submitCommandMapper;
+  @Mock private AuthenticatedCallerFactory authenticatedCallerFactory;
 
   @InjectMocks private PriorAuthorityDraftCommandController controller;
 
@@ -46,6 +54,9 @@ class PriorAuthorityDraftCommandControllerTest {
   void setUp() {
     RequestContextHolder.setRequestAttributes(
         new ServletRequestAttributes(new MockHttpServletRequest()));
+    lenient()
+        .when(authenticatedCallerFactory.currentCaller())
+        .thenReturn(new AuthenticatedCaller(Optional.empty(), Set.of(), Set.of(), Set.of()));
   }
 
   @AfterEach
@@ -62,7 +73,7 @@ class PriorAuthorityDraftCommandControllerTest {
     CreatePriorAuthorityDraftCommand command =
         new CreatePriorAuthorityDraftCommand(
             priorAuthorityId, applicationId, null, "{}", 1, "PriorAuthority.json", Instant.now());
-    when(saveCommandMapper.toCreateCommand(request)).thenReturn(command);
+    when(saveCommandMapper.toCreateCommand(any(), any())).thenReturn(command);
     when(createUseCase.execute(command)).thenReturn(true);
 
     ResponseEntity<SavePriorAuthorityDraftResponse> response =
@@ -87,7 +98,7 @@ class PriorAuthorityDraftCommandControllerTest {
     CreatePriorAuthorityDraftCommand command =
         new CreatePriorAuthorityDraftCommand(
             priorAuthorityId, applicationId, null, "{}", 1, "PriorAuthority.json", Instant.now());
-    when(saveCommandMapper.toCreateCommand(request)).thenReturn(command);
+    when(saveCommandMapper.toCreateCommand(any(), any())).thenReturn(command);
     when(createUseCase.execute(command)).thenReturn(false);
 
     ResponseEntity<SavePriorAuthorityDraftResponse> response =
@@ -104,7 +115,8 @@ class PriorAuthorityDraftCommandControllerTest {
     UpdatePriorAuthorityDraftCommand command =
         new UpdatePriorAuthorityDraftCommand(
             priorAuthorityId, null, "{}", 1, "PriorAuthority.json", Instant.now());
-    when(saveCommandMapper.toUpdateCommand(priorAuthorityId, request)).thenReturn(command);
+    when(saveCommandMapper.toUpdateCommand(eq(priorAuthorityId), eq(request), any()))
+        .thenReturn(command);
 
     ResponseEntity<Void> response =
         controller.updatePriorAuthorityDraft(null, priorAuthorityId, request);
@@ -119,7 +131,7 @@ class PriorAuthorityDraftCommandControllerTest {
     Instant submittedAt = Instant.parse("2026-09-01T10:00:00Z");
     SubmitPriorAuthorityDraftCommand command =
         new SubmitPriorAuthorityDraftCommand(priorAuthorityId, submittedAt);
-    when(submitCommandMapper.toSubmitCommand(priorAuthorityId)).thenReturn(command);
+    when(submitCommandMapper.toSubmitCommand(eq(priorAuthorityId), any())).thenReturn(command);
     when(submitUseCase.submit(command)).thenReturn(true);
 
     ResponseEntity<SubmitPriorAuthorityDraftResponse> response =
@@ -140,7 +152,7 @@ class PriorAuthorityDraftCommandControllerTest {
     UUID priorAuthorityId = UUID.randomUUID();
     SubmitPriorAuthorityDraftCommand command =
         new SubmitPriorAuthorityDraftCommand(priorAuthorityId, Instant.now());
-    when(submitCommandMapper.toSubmitCommand(priorAuthorityId)).thenReturn(command);
+    when(submitCommandMapper.toSubmitCommand(eq(priorAuthorityId), any())).thenReturn(command);
     when(submitUseCase.submit(command)).thenReturn(false);
 
     ResponseEntity<SubmitPriorAuthorityDraftResponse> response =

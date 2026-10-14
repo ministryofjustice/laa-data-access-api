@@ -11,6 +11,7 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.document.DocumentUploadResult;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsUploadResult;
 
@@ -34,7 +35,7 @@ public class UploadPriorAuthorityDocumentUseCase {
   /** Uploads a file and finalises it via a single aggregate command. */
   @AllowApiCaseworker
   public DocumentUploadResult execute(
-      UUID priorAuthorityId, MultipartFile file, String sourceService) {
+      UUID priorAuthorityId, MultipartFile file, String sourceService, AuthenticatedCaller caller) {
     PriorAuthorityDocumentFormat format = PriorAuthorityDocumentFormat.validate(file);
     var draft =
         draftStore
@@ -59,7 +60,8 @@ public class UploadPriorAuthorityDocumentUseCase {
             uploadedAt,
             file.getOriginalFilename(),
             file.getSize(),
-            format.contentType()));
+            format.contentType(),
+            caller));
 
     return new DocumentUploadResult(
         documentId,
@@ -70,5 +72,12 @@ public class UploadPriorAuthorityDocumentUseCase {
         uploadedAt,
         sourceService,
         checksum);
+  }
+
+  /** Temporary source-compatible overload for non-HTTP fixtures. */
+  @Deprecated(forRemoval = true)
+  public DocumentUploadResult execute(
+      UUID priorAuthorityId, MultipartFile file, String sourceService) {
+    return execute(priorAuthorityId, file, sourceService, null);
   }
 }

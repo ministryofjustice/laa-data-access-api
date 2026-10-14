@@ -13,6 +13,7 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedCallerResource;
 import uk.gov.justice.laa.dstew.access.security.OfficeCodeResource;
 import uk.gov.justice.laa.dstew.access.security.RequireOfficeCodeWriteAccess;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
@@ -25,7 +26,7 @@ public class PriorAuthorityDocumentDeleteCommandHandler {
   @CommandHandler
   @RequireOfficeCodeWriteAccess
   public DocumentMetadata handle(
-      PriorAuthorityDocumentDeleteCommand command,
+      @AuthenticatedCallerResource PriorAuthorityDocumentDeleteCommand command,
       PriorAuthorityDraftStore draftStore,
       @InjectEntity(idProperty = "priorAuthorityId") @OfficeCodeResource
           PriorAuthorityAggregate priorAuthority,

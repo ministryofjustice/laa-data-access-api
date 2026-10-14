@@ -12,6 +12,7 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorA
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedCallerResource;
 import uk.gov.justice.laa.dstew.access.security.OfficeCodeResource;
 import uk.gov.justice.laa.dstew.access.security.RequireOfficeCodeWriteAccess;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
@@ -24,7 +25,7 @@ public class PriorAuthorityDocumentUploadCommandHandler {
   @CommandHandler
   @RequireOfficeCodeWriteAccess
   public UUID handle(
-      PriorAuthorityDocumentUploadCommand command,
+      @AuthenticatedCallerResource PriorAuthorityDocumentUploadCommand command,
       PriorAuthorityDraftStore draftStore,
       @InjectEntity(idProperty = "priorAuthorityId") @OfficeCodeResource
           PriorAuthorityAggregate priorAuthority,

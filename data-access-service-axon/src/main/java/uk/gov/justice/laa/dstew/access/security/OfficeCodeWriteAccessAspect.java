@@ -26,7 +26,7 @@ public class OfficeCodeWriteAccessAspect {
   /** Authorizes the explicitly marked aggregate argument before invoking the command handler. */
   @Around("@annotation(uk.gov.justice.laa.dstew.access.security.RequireOfficeCodeWriteAccess)")
   public Object requireWriteAccess(ProceedingJoinPoint joinPoint) throws Throwable {
-    writeAccessPolicy.requireWriteAccess(officeCode(joinPoint));
+    writeAccessPolicy.requireWriteAccess(officeCode(joinPoint), caller(joinPoint));
     return joinPoint.proceed();
   }
 
@@ -64,5 +64,42 @@ public class OfficeCodeWriteAccessAspect {
           "@OfficeCodeResource officeCode property must be a String: " + method);
     }
     return (String) officeCode;
+  }
+
+  private AuthenticatedCaller caller(ProceedingJoinPoint joinPoint) {
+    Method method = ((MethodSignature) joinPoint.getSignature()).getMethod();
+    Parameter[] parameters = method.getParameters();
+    Object[] arguments = joinPoint.getArgs();
+    AuthenticatedCaller caller = null;
+
+    for (int index = 0; index < parameters.length; index++) {
+      if (parameters[index].isAnnotationPresent(AuthenticatedCallerResource.class)) {
+        if (caller != null) {
+          throw new IllegalStateException(
+              "Only one @AuthenticatedCallerResource parameter is permitted on " + method);
+        }
+        Object argument = arguments[index];
+        if (argument instanceof AuthenticatedCaller authenticatedCaller) {
+          caller = authenticatedCaller;
+          continue;
+        }
+        BeanWrapper beanWrapper = new BeanWrapperImpl(argument);
+        if (!beanWrapper.isReadableProperty("caller")
+            || !(beanWrapper.getPropertyValue("caller")
+                instanceof AuthenticatedCaller authenticatedCaller)) {
+          throw new IllegalStateException(
+              "@AuthenticatedCallerResource parameter must be an AuthenticatedCaller or expose a caller property: "
+                  + method);
+        }
+        caller = authenticatedCaller;
+      }
+    }
+
+    if (caller == null) {
+      throw new IllegalStateException(
+          "@RequireOfficeCodeWriteAccess method must declare an @AuthenticatedCallerResource parameter: "
+              + method);
+    }
+    return caller;
   }
 }

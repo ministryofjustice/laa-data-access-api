@@ -36,6 +36,7 @@ import uk.gov.justice.laa.dstew.access.controller.application.CreateNoteCommandM
 import uk.gov.justice.laa.dstew.access.controller.application.MakeDecisionCommandMapper;
 import uk.gov.justice.laa.dstew.access.controller.application.SavePriorAuthorityDraftCommandMapper;
 import uk.gov.justice.laa.dstew.access.query.worklist.WorkListItemReadRepository;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedCallerFactory;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsDownloadResult;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsUploadResult;
@@ -82,6 +83,7 @@ public abstract class AbstractProviderPactTests {
   @Autowired private MakeDecisionCommandMapper makeDecisionCommandMapper;
   @Autowired private CreateNoteCommandMapper createNoteCommandMapper;
   @Autowired private SavePriorAuthorityDraftCommandMapper savePriorAuthorityDraftCommandMapper;
+  @Autowired private AuthenticatedCallerFactory authenticatedCallerFactory;
 
   /**
    * Secure Document Storage is an external system. Replaced at the client boundary, as the
@@ -124,7 +126,8 @@ public abstract class AbstractProviderPactTests {
             makePriorAuthorityDecisionUseCase,
             uploadPriorAuthorityDocumentUseCase,
             assignWorkItemUseCase,
-            savePriorAuthorityDraftCommandMapper);
+            savePriorAuthorityDraftCommandMapper,
+            authenticatedCallerFactory);
     states = new ProviderStates(applications, priorAuthorities, axonConfiguration);
   }
 

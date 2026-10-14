@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -113,7 +114,7 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
     assertThat(payloadCaptor.getValue().serialisedRequest()).isEqualTo("{}");
     assertThat(payloadCaptor.getValue().submittedAt()).isEqualTo(OCCURRED_AT);
     assertThat(payloadCaptor.getValue().officeCode()).isEqualTo("1A001B");
-    verify(writeAccessPolicy).requireWriteAccess("1A001B");
+    verify(writeAccessPolicy).requireWriteAccess(eq("1A001B"), isNull());
     verify(eventAppender)
         .append(
             new PriorAuthorityDraftStartedEvent(
@@ -221,7 +222,7 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
             eq("{}"),
             eq(OCCURRED_AT));
     assertThat(payloadCaptor.getValue().officeCode()).isNull();
-    verify(writeAccessPolicy).requireWriteAccess(null);
+    verify(writeAccessPolicy).requireWriteAccess(isNull(), isNull());
     verify(eventAppender)
         .append(
             new PriorAuthorityDraftStartedEvent(
@@ -340,7 +341,7 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
     when(applicationDataStore.get(applicationId, 3L)).thenReturn(applicationData);
     doThrow(new AccessDeniedException("Caller is not authorised to write this resource"))
         .when(writeAccessPolicy)
-        .requireWriteAccess("1A001B");
+        .requireWriteAccess(eq("1A001B"), isNull());
 
     assertThatThrownBy(
             () ->

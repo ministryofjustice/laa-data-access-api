@@ -3,40 +3,28 @@ package uk.gov.justice.laa.dstew.access.security;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.time.Instant;
-import java.util.List;
-import java.util.Map;
-import org.junit.jupiter.api.AfterEach;
+import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.springframework.aop.aspectj.annotation.AspectJProxyFactory;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 
 class OfficeCodeWriteAccessAspectTest {
 
-  @AfterEach
-  void clearSecurityContext() {
-    SecurityContextHolder.clearContext();
-  }
-
   @Test
   void givenProviderDoesNotOwnAggregateOffice_whenCallingAnnotatedMethod_thenDeniesBeforeBody() {
-    authenticate("access_as_provider", List.of("1A001B"));
     ProtectedHandler handler = proxiedHandler();
 
-    assertThatThrownBy(() -> handler.handle(new Resource("2B002C")))
+    assertThatThrownBy(() -> handler.handle(new Resource("2B002C"), providerCaller("1A001B")))
         .isInstanceOf(AccessDeniedException.class);
     assertThat(handler.wasHandled()).isFalse();
   }
 
   @Test
   void givenProviderOwnsAggregateOffice_whenCallingAnnotatedMethod_thenExecutesBody() {
-    authenticate("access_as_provider", List.of("1A001B"));
     ProtectedHandler handler = proxiedHandler();
 
-    handler.handle(new Resource("1A001B"));
+    handler.handle(new Resource("1A001B"), providerCaller("1A001B"));
 
     assertThat(handler.wasHandled()).isTrue();
   }
@@ -78,6 +66,46 @@ class OfficeCodeWriteAccessAspectTest {
         .hasMessageContaining("officeCode property must be a String");
   }
 
+  @Test
+  void givenCommandExposingCaller_whenCallingAnnotatedMethod_thenExecutesBody() {
+    CallerPropertyHandler handler = proxiedHandler(new CallerPropertyHandler());
+
+    handler.handle(new Resource("1A001B"), new CommandWithCaller(providerCaller("1A001B")));
+
+    assertThat(handler.wasHandled()).isTrue();
+  }
+
+  @Test
+  void givenCallerResourceWithoutCaller_whenCallingAnnotatedMethod_thenRejectsInvalidResource() {
+    InvalidCallerPropertyHandler handler = proxiedHandler(new InvalidCallerPropertyHandler());
+
+    assertThatThrownBy(() -> handler.handle(new Resource("1A001B"), new Object()))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("must be an AuthenticatedCaller or expose a caller property");
+  }
+
+  @Test
+  void
+      givenTwoAnnotatedCallerResources_whenCallingAnnotatedMethod_thenRejectsInvalidHandlerShape() {
+    TwoCallerResourcesHandler handler = proxiedHandler(new TwoCallerResourcesHandler());
+
+    assertThatThrownBy(
+            () ->
+                handler.handle(
+                    new Resource("1A001B"), providerCaller("1A001B"), providerCaller("1A001B")))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("Only one @AuthenticatedCallerResource parameter is permitted");
+  }
+
+  @Test
+  void givenNoAnnotatedCallerResource_whenCallingAnnotatedMethod_thenRejectsInvalidHandlerShape() {
+    NoCallerResourceHandler handler = proxiedHandler(new NoCallerResourceHandler());
+
+    assertThatThrownBy(() -> handler.handle(new Resource("1A001B"), providerCaller("1A001B")))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("must declare an @AuthenticatedCallerResource parameter");
+  }
+
   private ProtectedHandler proxiedHandler() {
     return proxiedHandler(new ProtectedHandler());
   }
@@ -88,22 +116,18 @@ class OfficeCodeWriteAccessAspectTest {
     return factory.getProxy();
   }
 
-  private void authenticate(String scopes, List<String> officeCodes) {
-    Jwt jwt =
-        new Jwt(
-            "token",
-            Instant.now(),
-            Instant.now().plusSeconds(60),
-            Map.of("alg", "none"),
-            Map.of("scp", scopes, "LAA_ACCOUNTS", officeCodes));
-    SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt));
+  private AuthenticatedCaller providerCaller(String officeCode) {
+    return new AuthenticatedCaller(
+        Optional.empty(), Set.of("access_as_provider"), Set.of(officeCode), Set.of());
   }
 
   static class ProtectedHandler {
     private boolean handled;
 
     @RequireOfficeCodeWriteAccess
-    void handle(@OfficeCodeResource Resource resource) {
+    void handle(
+        @OfficeCodeResource Resource resource,
+        @AuthenticatedCallerResource AuthenticatedCaller caller) {
       handled = true;
     }
 
@@ -134,7 +158,43 @@ class OfficeCodeWriteAccessAspectTest {
     void handle(@OfficeCodeResource ResourceWithNonStringOfficeCode resource) {}
   }
 
+  static class CallerPropertyHandler {
+    private boolean handled;
+
+    @RequireOfficeCodeWriteAccess
+    void handle(
+        @OfficeCodeResource Resource resource,
+        @AuthenticatedCallerResource CommandWithCaller command) {
+      handled = true;
+    }
+
+    boolean wasHandled() {
+      return handled;
+    }
+  }
+
+  static class InvalidCallerPropertyHandler {
+    @RequireOfficeCodeWriteAccess
+    void handle(
+        @OfficeCodeResource Resource resource, @AuthenticatedCallerResource Object caller) {}
+  }
+
+  static class TwoCallerResourcesHandler {
+    @RequireOfficeCodeWriteAccess
+    void handle(
+        @OfficeCodeResource Resource resource,
+        @AuthenticatedCallerResource AuthenticatedCaller first,
+        @AuthenticatedCallerResource AuthenticatedCaller second) {}
+  }
+
+  static class NoCallerResourceHandler {
+    @RequireOfficeCodeWriteAccess
+    void handle(@OfficeCodeResource Resource resource, AuthenticatedCaller caller) {}
+  }
+
   record ResourceWithoutOfficeCode() {}
 
   record ResourceWithNonStringOfficeCode(Integer officeCode) {}
+
+  record CommandWithCaller(AuthenticatedCaller caller) {}
 }

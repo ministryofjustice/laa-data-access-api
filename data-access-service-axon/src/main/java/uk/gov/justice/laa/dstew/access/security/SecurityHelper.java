@@ -14,6 +14,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 public final class SecurityHelper {
 
   private static final String LAA_ACCOUNTS_CLAIM = "LAA_ACCOUNTS";
+  private static final String LAA_APP_ROLES_CLAIM = "LAA_APP_ROLES";
   private static final String ENTRA_OID_CLAIM = "oid";
   private static final String ENTRA_SCOPES_CLAIM = "scp";
 
@@ -31,6 +32,20 @@ public final class SecurityHelper {
             .map(jwt -> jwt.getClaimAsStringList(LAA_ACCOUNTS_CLAIM))
             .orElse(null);
     return accounts == null ? List.of() : List.copyOf(accounts);
+  }
+
+  /**
+   * Gets the validated {@code LAA_APP_ROLES} claim from the current JWT authentication.
+   *
+   * @return an immutable list of application roles, or an empty list when unavailable
+   */
+  public static List<String> getLaaAppRoles() {
+    List<String> appRoles =
+        getJwtAuthentication()
+            .map(JwtAuthenticationToken::getToken)
+            .map(jwt -> jwt.getClaimAsStringList(LAA_APP_ROLES_CLAIM))
+            .orElse(null);
+    return appRoles == null ? List.of() : List.copyOf(appRoles);
   }
 
   /**

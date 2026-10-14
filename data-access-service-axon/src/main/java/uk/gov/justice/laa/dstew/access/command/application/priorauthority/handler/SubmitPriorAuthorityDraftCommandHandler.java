@@ -12,6 +12,7 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedCallerResource;
 import uk.gov.justice.laa.dstew.access.security.OfficeCodeResource;
 import uk.gov.justice.laa.dstew.access.security.RequireOfficeCodeWriteAccess;
 import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
@@ -24,7 +25,7 @@ public class SubmitPriorAuthorityDraftCommandHandler {
   @CommandHandler
   @RequireOfficeCodeWriteAccess
   public void handle(
-      SubmitPriorAuthorityDraftCommand command,
+      @AuthenticatedCallerResource SubmitPriorAuthorityDraftCommand command,
       PriorAuthorityDraftStore draftStore,
       PriorAuthorityDataStore dataStore,
       ApplicationDataStore applicationDataStore,

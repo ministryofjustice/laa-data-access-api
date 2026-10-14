@@ -5,6 +5,7 @@ import java.util.UUID;
 import org.axonframework.messaging.commandhandling.annotation.Command;
 import org.axonframework.modelling.annotation.TargetEntityId;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
 
 /** Command that updates an existing Prior Authority draft in progress. */
 @Command(routingKey = "priorAuthorityId")
@@ -14,4 +15,18 @@ public record UpdatePriorAuthorityDraftCommand(
     String serialisedRequest,
     int schemaVersion,
     String schemaName,
-    Instant occurredAt) {}
+    Instant occurredAt,
+    AuthenticatedCaller caller) {
+
+  /** Temporary source-compatible constructor for non-HTTP command fixtures. */
+  @Deprecated(forRemoval = true)
+  public UpdatePriorAuthorityDraftCommand(
+      UUID priorAuthorityId,
+      PriorAuthorityContent content,
+      String serialisedRequest,
+      int schemaVersion,
+      String schemaName,
+      Instant occurredAt) {
+    this(priorAuthorityId, content, serialisedRequest, schemaVersion, schemaName, occurredAt, null);
+  }
+}

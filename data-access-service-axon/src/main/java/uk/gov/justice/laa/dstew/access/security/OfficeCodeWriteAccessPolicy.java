@@ -3,7 +3,6 @@ package uk.gov.justice.laa.dstew.access.security;
 import static uk.gov.justice.laa.dstew.access.security.ApplicationReadScopeAuthorizationManager.ACCESS_AS_PROVIDER;
 import static uk.gov.justice.laa.dstew.access.security.ApplicationReadScopeAuthorizationManager.ACCESS_AS_USER;
 
-import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.Set;
 import org.springframework.security.access.AccessDeniedException;
@@ -13,11 +12,12 @@ import org.springframework.stereotype.Component;
 @Component
 public class OfficeCodeWriteAccessPolicy {
 
-  /** Requires the current caller to be able to write a resource with the supplied office code. */
-  public void requireWriteAccess(String resourceOfficeCode) {
-    Set<String> scopes = SecurityHelper.getScopes();
+  /** Requires the supplied caller to be able to write a resource with the supplied office code. */
+  public void requireWriteAccess(String resourceOfficeCode, AuthenticatedCaller caller) {
+    Objects.requireNonNull(caller, "caller must not be null");
+    Set<String> scopes = caller.delegatedScopes();
     if (scopes.contains(ACCESS_AS_PROVIDER)) {
-      requireProviderOfficeAccess(resourceOfficeCode);
+      requireProviderOfficeAccess(resourceOfficeCode, caller.providerOfficeCodes());
       return;
     }
     if (scopes.contains(ACCESS_AS_USER)) {
@@ -26,13 +26,9 @@ public class OfficeCodeWriteAccessPolicy {
     throw new AccessDeniedException("Token does not contain a supported write access scope");
   }
 
-  private void requireProviderOfficeAccess(String resourceOfficeCode) {
+  private void requireProviderOfficeAccess(
+      String resourceOfficeCode, Set<String> permittedOfficeCodes) {
     String normalisedResourceOfficeCode = normalise(resourceOfficeCode);
-    Set<String> permittedOfficeCodes = new LinkedHashSet<>();
-    SecurityHelper.getLaaAccounts().stream()
-        .map(this::normalise)
-        .filter(Objects::nonNull)
-        .forEach(permittedOfficeCodes::add);
 
     if (normalisedResourceOfficeCode == null
         || !permittedOfficeCodes.contains(normalisedResourceOfficeCode)) {
