@@ -7,7 +7,6 @@ import lombok.RequiredArgsConstructor;
 import org.axonframework.messaging.commandhandling.gateway.CommandGateway;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
-import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedGroupAssignmentDecision.Action;
 import uk.gov.justice.laa.dstew.access.command.worklist.assign.DirectGroupWorkItemAssignmentCommand;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadRepository;
@@ -38,6 +37,16 @@ public class LinkedGroupAssignmentDispatcher {
   private final CommandGateway commandGateway;
 
   /**
+   * Internal record encapsulating an assignment decision.
+   *
+   * <p>Contains the action to take, target application ID, and caseworker ID.
+   */
+  private record AssignmentDecision(
+      LinkedGroupAssignmentDecisionAction action,
+      UUID targetApplicationId,
+      @Nullable UUID caseworkerId) {}
+
+  /**
    * Applies assignment rules for a member added to a group and dispatches assignment commands if
    * needed.
    *
@@ -47,11 +56,11 @@ public class LinkedGroupAssignmentDispatcher {
    */
   public void applyAssignmentRules(
       UUID leadApplicationId, UUID memberApplicationId, Instant occurredAt) {
-    LinkedGroupAssignmentDecision decision =
+    AssignmentDecision decision =
         determineAssignmentDecision(leadApplicationId, memberApplicationId);
 
-    if (decision.action() == Action.ASSIGN_MEMBER_TO_LEAD
-        || decision.action() == Action.ASSIGN_LEAD_TO_MEMBER) {
+    if (decision.action() == LinkedGroupAssignmentDecisionAction.ASSIGN_MEMBER_TO_LEAD
+        || decision.action() == LinkedGroupAssignmentDecisionAction.ASSIGN_LEAD_TO_MEMBER) {
       commandGateway.sendAndWait(
           new DirectGroupWorkItemAssignmentCommand(
               decision.targetApplicationId(),
@@ -70,14 +79,13 @@ public class LinkedGroupAssignmentDispatcher {
    *
    * @param groupId the linked group ID
    * @param newMemberApplicationId the application being added to the group
-   * @return the assignment decision, or {@link LinkedGroupAssignmentDecision#none()} if no action
-   *     is needed
+   * @return the assignment decision with the action to take
    */
-  private LinkedGroupAssignmentDecision determineAssignmentDecision(
+  private AssignmentDecision determineAssignmentDecision(
       UUID groupId, UUID newMemberApplicationId) {
     Optional<LinkedApplicationGroupReadModel> group = groupReadRepository.findById(groupId);
     if (group.isEmpty()) {
-      return LinkedGroupAssignmentDecision.none();
+      return noAction();
     }
 
     UUID leadApplicationId = group.get().getLeadApplicationId();
@@ -86,24 +94,21 @@ public class LinkedGroupAssignmentDispatcher {
 
     // AC1: Lead is assigned, member is not assigned so Assign member to lead's caseworker
     if (leadCaseworkerId != null && memberCaseworkerId == null) {
-      return LinkedGroupAssignmentDecision.assignMemberToLead(
-          newMemberApplicationId, leadCaseworkerId);
+      return assignMemberToLead(newMemberApplicationId, leadCaseworkerId);
     }
 
     // AC2: Both are assigned but to different caseworkers so Reassign member to lead's caseworker
     if (leadCaseworkerId != null && !leadCaseworkerId.equals(memberCaseworkerId)) {
-      return LinkedGroupAssignmentDecision.assignMemberToLead(
-          newMemberApplicationId, leadCaseworkerId);
+      return assignMemberToLead(newMemberApplicationId, leadCaseworkerId);
     }
 
     // AC3: Member is assigned, lead is not assigned so Assign lead to member's caseworker
     if (memberCaseworkerId != null && leadCaseworkerId == null) {
-      return LinkedGroupAssignmentDecision.assignLeadToMember(
-          leadApplicationId, memberCaseworkerId);
+      return assignLeadToMember(leadApplicationId, memberCaseworkerId);
     }
 
     // AC4: Neither assigned or both assigned to same caseworker so No change needed
-    return LinkedGroupAssignmentDecision.none();
+    return noAction();
   }
 
   /**
@@ -117,5 +122,24 @@ public class LinkedGroupAssignmentDispatcher {
         .findById(applicationId)
         .map(ApplicationReadModel::getCaseworkerId)
         .orElse(null);
+  }
+
+  /** Creates an assignment decision to assign member to lead's caseworker. */
+  private AssignmentDecision assignMemberToLead(UUID memberApplicationId, UUID caseworkerId) {
+    return new AssignmentDecision(
+        LinkedGroupAssignmentDecisionAction.ASSIGN_MEMBER_TO_LEAD,
+        memberApplicationId,
+        caseworkerId);
+  }
+
+  /** Creates an assignment decision to assign lead to member's caseworker. */
+  private AssignmentDecision assignLeadToMember(UUID leadApplicationId, UUID caseworkerId) {
+    return new AssignmentDecision(
+        LinkedGroupAssignmentDecisionAction.ASSIGN_LEAD_TO_MEMBER, leadApplicationId, caseworkerId);
+  }
+
+  /** Creates an assignment decision with no action needed. */
+  private AssignmentDecision noAction() {
+    return new AssignmentDecision(LinkedGroupAssignmentDecisionAction.NONE, null, null);
   }
 }
