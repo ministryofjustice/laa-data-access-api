@@ -16,11 +16,12 @@ import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
  * Integration tests for {@link LinkedGroupAssignmentEventHandler}.
  *
  * <p>Verifies that:
+ *
  * <ul>
- *   <li>Spring context loads successfully with all beans configured</li>
- *   <li>LinkedGroupAssignmentEventHandler is properly registered</li>
- *   <li>LinkedGroupAssignmentRulesService is available and wired</li>
- *   <li>LinkedGroupAssignmentDispatcher is available and wired</li>
+ *   <li>Spring context loads successfully with all beans configured
+ *   <li>LinkedGroupAssignmentEventHandler is properly registered
+ *   <li>LinkedGroupAssignmentRulesService is available and wired
+ *   <li>LinkedGroupAssignmentDispatcher is available and wired
  * </ul>
  *
  * <p>Uses in-memory H2 database. Note: Full command execution tests are covered by comprehensive
