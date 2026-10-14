@@ -8,6 +8,7 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationLinkConflictException;
 import uk.gov.justice.laa.dstew.access.exception.LinkedApplicationGroupVersionConflictException;
+import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /** Decision functions for linked-group commands. */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
@@ -155,6 +156,22 @@ public final class LinkedApplicationGroupDecider {
             command.applicationId(),
             nextVersion,
             command.occurredAt()));
+  }
+
+  /** Validates that an application may create a Prior Authority against the current group state. */
+  public static void validatePriorAuthorityGroupEligibility(
+      LinkedApplicationGroupState state, ValidatePriorAuthorityGroupEligibilityCommand command) {
+    if (state.groupId == null
+        || state.dissolved
+        || !state.memberApplicationIds.contains(command.applicationId())) {
+      throw LinkedApplicationGroupVersionConflictException.groupChanged(command.applicationId());
+    }
+    if (!state.leadApplicationId.equals(command.applicationId())) {
+      throw new ValidationException(
+          List.of(
+              "Prior Authority applications can only be created against a lead or standalone"
+                  + " application"));
+    }
   }
 
   private static ApplicationLinkConflictException dissolvedConflict(UUID groupId) {

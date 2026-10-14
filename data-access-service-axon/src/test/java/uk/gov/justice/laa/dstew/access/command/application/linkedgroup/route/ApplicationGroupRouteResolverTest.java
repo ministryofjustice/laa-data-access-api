@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -186,6 +187,86 @@ class ApplicationGroupRouteResolverTest {
     assertThatThrownBy(() -> resolver.resolveGroupForMutation(applicationId, groupId))
         .isInstanceOf(ApplicationLinkConflictException.class)
         .hasMessage("Application " + applicationId + " is not in a linked group");
+  }
+
+  @Test
+  void givenStandaloneRoute_whenResolvingPriorAuthorityCreation_thenReturnsNoGroup() {
+    UUID applicationId = UUID.randomUUID();
+    when(routes.findMembershipByApplicationId(applicationId))
+        .thenReturn(Optional.of(new RouteMembership(ApplicationGroupRouteKind.STANDALONE, null)));
+    when(routes.findByApplicationIdForUpdate(applicationId))
+        .thenReturn(Optional.of(route(applicationId, ApplicationGroupRouteKind.STANDALONE, null)));
+
+    assertThat(resolver.resolveGroupForPriorAuthorityCreation(applicationId)).isEmpty();
+  }
+
+  @Test
+  void givenLinkedRoute_whenResolvingPriorAuthorityCreation_thenLocksGroupAndReturnsItsId() {
+    UUID applicationId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    var applicationRoute = route(applicationId, ApplicationGroupRouteKind.LINKED_GROUP, groupId);
+    when(routes.findMembershipByApplicationId(applicationId))
+        .thenReturn(
+            Optional.of(new RouteMembership(ApplicationGroupRouteKind.LINKED_GROUP, groupId)));
+    when(routes.findAllByGroupIdForUpdate(groupId)).thenReturn(List.of(applicationRoute));
+
+    assertThat(resolver.resolveGroupForPriorAuthorityCreation(applicationId)).contains(groupId);
+
+    verify(routes).findAllByGroupIdForUpdate(groupId);
+    verify(routes, never()).findByApplicationIdForUpdate(applicationId);
+  }
+
+  @Test
+  void givenApplicationRemovedDuringPriorAuthorityResolution_thenThrowsGroupChangedConflict() {
+    UUID applicationId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    when(routes.findMembershipByApplicationId(applicationId))
+        .thenReturn(
+            Optional.of(new RouteMembership(ApplicationGroupRouteKind.LINKED_GROUP, groupId)));
+    when(routes.findAllByGroupIdForUpdate(groupId))
+        .thenReturn(
+            List.of(route(UUID.randomUUID(), ApplicationGroupRouteKind.LINKED_GROUP, groupId)));
+
+    assertThatThrownBy(() -> resolver.resolveGroupForPriorAuthorityCreation(applicationId))
+        .isInstanceOf(LinkedApplicationGroupVersionConflictException.class)
+        .hasMessage(
+            "Application "
+                + applicationId
+                + " is no longer in the linked group identified by linkedGroupVersion;"
+                + " re-read before retrying");
+  }
+
+  @Test
+  void givenStandaloneApplicationLinkedDuringCreationResolution_thenThrowsConflict() {
+    UUID applicationId = UUID.randomUUID();
+    when(routes.findMembershipByApplicationId(applicationId))
+        .thenReturn(Optional.of(new RouteMembership(ApplicationGroupRouteKind.STANDALONE, null)));
+    when(routes.findByApplicationIdForUpdate(applicationId))
+        .thenReturn(
+            Optional.of(
+                route(applicationId, ApplicationGroupRouteKind.LINKED_GROUP, UUID.randomUUID())));
+
+    assertThatThrownBy(() -> resolver.resolveGroupForPriorAuthorityCreation(applicationId))
+        .isInstanceOf(LinkedApplicationGroupVersionConflictException.class);
+  }
+
+  @Test
+  void givenMissingCreationMembership_thenThrowsNotFound() {
+    UUID applicationId = UUID.randomUUID();
+    when(routes.findMembershipByApplicationId(applicationId)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> resolver.resolveGroupForPriorAuthorityCreation(applicationId))
+        .isInstanceOf(ResourceNotFoundException.class);
+  }
+
+  @Test
+  void givenLinkedCreationMembershipWithoutGroup_thenThrowsConflict() {
+    UUID applicationId = UUID.randomUUID();
+    when(routes.findMembershipByApplicationId(applicationId))
+        .thenReturn(Optional.of(new RouteMembership(ApplicationGroupRouteKind.LINKED_GROUP, null)));
+
+    assertThatThrownBy(() -> resolver.resolveGroupForPriorAuthorityCreation(applicationId))
+        .isInstanceOf(LinkedApplicationGroupVersionConflictException.class);
   }
 
   @Test
