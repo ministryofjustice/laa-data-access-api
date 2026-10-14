@@ -5,15 +5,20 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Collection;
 import java.util.HexFormat;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import uk.gov.justice.laa.dstew.access.applicationcontent.JacksonExceptionMessageBuilder;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreationDetails;
 
 /** Writes and retrieves immutable application-data versions. */
 @Component
+@Slf4j
 public class ApplicationDataStore {
 
   private final ApplicationDataRepository repository;
@@ -78,13 +83,21 @@ public class ApplicationDataStore {
    * @throws IllegalStateException when the referenced version does not exist
    */
   public ApplicationDataPayload get(UUID applicationId, long version) {
-    return repository
-        .findById(new ApplicationDataId(applicationId, version))
-        .orElseThrow(
-            () ->
-                new IllegalStateException(
-                    "Application data not found for " + applicationId + " version " + version))
-        .getPayload();
+    ApplicationDataId id = new ApplicationDataId(applicationId, version);
+    return retrieve(
+        "applicationDataIds",
+        List.of(id),
+        () ->
+            repository
+                .findById(id)
+                .orElseThrow(
+                    () ->
+                        new IllegalStateException(
+                            "Application data not found for "
+                                + applicationId
+                                + " version "
+                                + version))
+                .getPayload());
   }
 
   /**
@@ -95,9 +108,11 @@ public class ApplicationDataStore {
    * @return the stored payload, or empty if that version is not present
    */
   public Optional<ApplicationDataPayload> findPayload(UUID applicationId, long version) {
-    return repository
-        .findById(new ApplicationDataId(applicationId, version))
-        .map(ApplicationData::getPayload);
+    ApplicationDataId id = new ApplicationDataId(applicationId, version);
+    return retrieve(
+        "applicationDataIds",
+        List.of(id),
+        () -> repository.findById(id).map(ApplicationData::getPayload));
   }
 
   /**
@@ -127,8 +142,37 @@ public class ApplicationDataStore {
    * @return payloads keyed by application-data identifier
    */
   public Map<ApplicationDataId, ApplicationDataPayload> getAll(Collection<ApplicationDataId> ids) {
-    return repository.findAllById(ids).stream()
-        .collect(Collectors.toMap(ApplicationData::getId, ApplicationData::getPayload));
+    return retrieve(
+        "applicationDataIds",
+        ids,
+        () ->
+            repository.findAllById(ids).stream()
+                .collect(Collectors.toMap(ApplicationData::getId, ApplicationData::getPayload)));
+  }
+
+  private <T> T retrieve(String identifierName, Object identifiers, Supplier<T> operation) {
+    try {
+      return operation.get();
+    } catch (RuntimeException exception) {
+      JacksonExceptionMessageBuilder.findJacksonException(exception)
+          .ifPresentOrElse(
+              jacksonException ->
+                  log.error(
+                      "application_data JSON deserialization failed: {}={}, "
+                          + "jacksonExceptionType={}, jacksonMessage={}",
+                      identifierName,
+                      identifiers,
+                      jacksonException.getClass().getSimpleName(),
+                      JacksonExceptionMessageBuilder.buildMessage(jacksonException),
+                      exception),
+              () ->
+                  log.error(
+                      "application_data load failed: {}={}",
+                      identifierName,
+                      identifiers,
+                      exception));
+      throw exception;
+    }
   }
 
   /**

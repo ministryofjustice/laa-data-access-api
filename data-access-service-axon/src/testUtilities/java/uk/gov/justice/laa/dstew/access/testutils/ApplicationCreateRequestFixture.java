@@ -14,6 +14,11 @@ public final class ApplicationCreateRequestFixture {
 
   private ApplicationCreateRequestFixture() {}
 
+  /** Returns the fixed client first name used by {@link #validApplicationContent}. */
+  public static String defaultClientFirstName() {
+    return "Ada";
+  }
+
   /** Creates valid application content using the supplied identifiers. */
   public static Map<String, Object> validApplicationContent(
       UUID applicationId, UUID applyProceedingId) {
@@ -25,7 +30,7 @@ public final class ApplicationCreateRequestFixture {
         Map.entry(
             "client",
             Map.ofEntries(
-                Map.entry("firstName", "Ada"),
+                Map.entry("firstName", defaultClientFirstName()),
                 Map.entry("lastName", "Lovelace"),
                 Map.entry("dateOfBirth", "1815-12-10"),
                 Map.entry("appliedPreviously", false),
@@ -62,7 +67,7 @@ public final class ApplicationCreateRequestFixture {
         Map.entry("code", "SE003"),
         Map.entry("meaning", "Care order"),
         Map.entry("description", "Care order"),
-        Map.entry("matterType", "SPECIAL_CHILDREN_ACT"),
+        Map.entry("matterType", "special children act (SCA)"),
         Map.entry("matterTypeCode", "KPBLW"),
         Map.entry("categoryOfLaw", "Family"),
         Map.entry("categoryOfLawCode", "MAT"),
@@ -85,6 +90,40 @@ public final class ApplicationCreateRequestFixture {
         .id(applicationId)
         .status(ApplicationStatus.APPLICATION_SUBMITTED)
         .applicationContent(validApplicationContent(applicationId, applyProceedingId))
+        .laaReference("LAA-123")
+        .build();
+  }
+
+  /** Creates valid application content with two separately identifiable matter type/code pairs. */
+  public static ApplicationCreateRequest applicationWithMatterPairs(
+      String category,
+      String categoryCode,
+      String firstMatter,
+      String firstCode,
+      String secondMatter,
+      String secondCode) {
+    UUID applicationId = UUID.randomUUID();
+    UUID firstProceedingId = UUID.randomUUID();
+    UUID secondProceedingId = UUID.randomUUID();
+    Map<String, Object> firstProceeding = new HashMap<>(validProceedingContent(firstProceedingId));
+    firstProceeding.put("categoryOfLaw", category);
+    firstProceeding.put("categoryOfLawCode", categoryCode);
+    firstProceeding.put("matterType", firstMatter);
+    firstProceeding.put("matterTypeCode", firstCode);
+    Map<String, Object> secondProceeding =
+        new HashMap<>(validProceedingContent(secondProceedingId));
+    secondProceeding.put("categoryOfLaw", category);
+    secondProceeding.put("categoryOfLawCode", categoryCode);
+    secondProceeding.put("matterType", secondMatter);
+    secondProceeding.put("matterTypeCode", secondCode);
+    Map<String, Object> content =
+        new HashMap<>(validApplicationContent(applicationId, firstProceedingId));
+    content.put("proceedings", List.of(firstProceeding, secondProceeding));
+
+    return ApplicationCreateRequest.builder()
+        .id(applicationId)
+        .status(ApplicationStatus.APPLICATION_SUBMITTED)
+        .applicationContent(content)
         .laaReference("LAA-123")
         .build();
   }

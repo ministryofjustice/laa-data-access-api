@@ -8,6 +8,8 @@ import static org.mockito.Mockito.when;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationCreatedEvent;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationCreationDetails;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -25,6 +27,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
@@ -54,6 +57,24 @@ class ApplicationListIndexProjectionTest {
   private static EventMessage anyMessage() {
     return new GenericEventMessage(
         "test-id", new MessageType(String.class), "test", Map.of(), Instant.now());
+  }
+
+  private static ApplicationDataPayload payloadWithoutMatterType(UUID applicationId) {
+    ApplicationDataPayload payload =
+        ApplicationDataPayload.from(applicationCreationDetails(applicationId));
+    return payload.withApplicationUpdate(
+        payload.client(),
+        payload.provider(),
+        payload.opponents(),
+        payload.submittedAt(),
+        payload.usedDelegatedFunctions(),
+        payload.categoryOfLaw(),
+        null,
+        payload.categoryOfLawCode(),
+        payload.matterTypeCode(),
+        List.of(),
+        "{}",
+        false);
   }
 
   @Test
@@ -94,8 +115,7 @@ class ApplicationListIndexProjectionTest {
   void givenCreatedEvent_whenHandled_thenInsertsIndexRowWithStatusAndLaaReference() {
     UUID applicationId = UUID.randomUUID();
     ApplicationCreatedEvent event = applicationCreatedEvent(applicationId);
-    ApplicationDataPayload payload =
-        ApplicationDataPayload.from(applicationCreationDetails(applicationId));
+    ApplicationDataPayload payload = payloadWithoutMatterType(applicationId);
     when(applicationDataStore.get(applicationId, event.applicationDataVersion()))
         .thenReturn(payload);
 
@@ -110,7 +130,57 @@ class ApplicationListIndexProjectionTest {
     assertThat(saved.getStatus()).isEqualTo(event.status());
     assertThat(saved.getLaaReference()).isEqualTo(payload.laaReference());
     assertThat(saved.getCaseworkerId()).isNull();
+    assertThat(saved.getMatterType()).isNull();
     assertThat(saved.getStreamVersion()).isZero();
+  }
+
+  @Test
+  void givenContentSubmittedAtDiffersFromEvent_whenProjected_thenUsesEventTimestamp() {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationCreatedEvent event = applicationCreatedEvent(applicationId);
+    ApplicationDataPayload payload = payloadWithoutMatterType(applicationId);
+    when(applicationDataStore.get(applicationId, event.applicationDataVersion()))
+        .thenReturn(payload);
+
+    projection.on(event, anyMessage());
+
+    ArgumentCaptor<ApplicationListIndexReadModel> captor =
+        ArgumentCaptor.forClass(ApplicationListIndexReadModel.class);
+    verify(listIndexRepository).save(captor.capture());
+    assertThat(captor.getValue().getSubmittedAt()).isEqualTo(event.occurredAt());
+    assertThat(payload.submittedAt()).isNotEqualTo(event.occurredAt());
+  }
+
+  @Test
+  void givenLegacyPayload_whenReplayed_thenRestoresLeadCodes() throws Exception {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationCreatedEvent event = applicationCreatedEvent(applicationId);
+    ObjectMapper mapper = new ObjectMapper().findAndRegisterModules();
+    ObjectNode json =
+        mapper.valueToTree(ApplicationDataPayload.from(applicationCreationDetails(applicationId)));
+    json.set(
+        "proceedings",
+        mapper.valueToTree(
+            List.of(
+                Proceeding.builder()
+                    .id(UUID.randomUUID())
+                    .leadProceeding(true)
+                    .code("SE003")
+                    .description("Care order")
+                    .categoryOfLawCode("MAT")
+                    .matterTypeCode("KPBLW")
+                    .build())));
+    ApplicationDataPayload payload = mapper.treeToValue(json, ApplicationDataPayload.class);
+    when(applicationDataStore.get(applicationId, event.applicationDataVersion()))
+        .thenReturn(payload);
+
+    projection.on(event, anyMessage());
+
+    ArgumentCaptor<ApplicationListIndexReadModel> captor =
+        ArgumentCaptor.forClass(ApplicationListIndexReadModel.class);
+    verify(listIndexRepository).save(captor.capture());
+    assertThat(captor.getValue().getCategoryOfLawCode()).isEqualTo("MAT");
+    assertThat(captor.getValue().getMatterTypeCode()).isEqualTo("KPBLW");
   }
 
   @Test
@@ -138,6 +208,8 @@ class ApplicationListIndexProjectionTest {
             basePayload.usedDelegatedFunctions(),
             basePayload.categoryOfLaw(),
             basePayload.matterType(),
+            basePayload.categoryOfLawCode(),
+            basePayload.matterTypeCode(),
             basePayload.proceedings(),
             basePayload.serialisedRequest(),
             basePayload.overallDecision(),
@@ -147,7 +219,8 @@ class ApplicationListIndexProjectionTest {
             basePayload.decisionSerialisedRequest(),
             basePayload.decisionEventDescription(),
             basePayload.assignmentEventDescription(),
-            basePayload.notes());
+            basePayload.notes(),
+            basePayload.documentFilenames());
 
     when(applicationDataStore.get(applicationId, event.applicationDataVersion()))
         .thenReturn(payloadWithClient);
@@ -435,6 +508,31 @@ class ApplicationListIndexProjectionTest {
             .streamVersion(1L)
             .build();
     when(listIndexRepository.findById(applicationId)).thenReturn(Optional.of(existing));
+    ApplicationDataPayload payload = payloadWithoutMatterType(applicationId);
+    when(applicationDataStore.get(applicationId, 3L)).thenReturn(payload);
+
+    projection.on(
+        new ApplicationUpdatedEvent(
+            applicationId, 2L, 3L, "APPLICATION_SUBMITTED", "APPLICATION_UPDATED", Instant.now()),
+        anyMessage());
+
+    assertThat(existing.getStatus()).isEqualTo("APPLICATION_UPDATED");
+    assertThat(existing.getMatterType()).isNull();
+    assertThat(existing.getStreamVersion()).isEqualTo(2L);
+    verify(listIndexRepository).save(existing);
+  }
+
+  @Test
+  void givenUpdatedContent_whenProjected_thenKeepsOriginalSubmittedAt() {
+    UUID applicationId = UUID.randomUUID();
+    Instant originalSubmittedAt = Instant.parse("2026-07-15T08:00:00Z");
+    ApplicationListIndexReadModel existing =
+        ApplicationListIndexReadModel.builder()
+            .applicationId(applicationId)
+            .submittedAt(originalSubmittedAt)
+            .streamVersion(1L)
+            .build();
+    when(listIndexRepository.findById(applicationId)).thenReturn(Optional.of(existing));
     ApplicationDataPayload payload =
         ApplicationDataPayload.from(applicationCreationDetails(applicationId));
     when(applicationDataStore.get(applicationId, 3L)).thenReturn(payload);
@@ -444,9 +542,8 @@ class ApplicationListIndexProjectionTest {
             applicationId, 2L, 3L, "APPLICATION_SUBMITTED", "APPLICATION_UPDATED", Instant.now()),
         anyMessage());
 
-    assertThat(existing.getStatus()).isEqualTo("APPLICATION_UPDATED");
-    assertThat(existing.getStreamVersion()).isEqualTo(2L);
-    verify(listIndexRepository).save(existing);
+    assertThat(existing.getSubmittedAt()).isEqualTo(originalSubmittedAt);
+    assertThat(payload.submittedAt()).isNotEqualTo(originalSubmittedAt);
   }
 
   @Test

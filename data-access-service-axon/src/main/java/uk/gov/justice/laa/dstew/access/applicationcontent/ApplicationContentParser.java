@@ -82,6 +82,8 @@ public class ApplicationContentParser {
         .opponents(opponents)
         .categoryOfLaw(getCategoryOfLaw(leadProceeding))
         .matterType(getMatterType(leadProceeding))
+        .categoryOfLawCode(leadProceeding == null ? null : leadProceeding.getCategoryOfLawCode())
+        .matterTypeCode(leadProceeding == null ? null : leadProceeding.getMatterTypeCode())
         .submittedAt(parseSubmittedAt(applicationContent.getSubmittedAt()))
         .usedDelegatedFunctions(usedDelegatedFunction)
         .proceedings(proceedings)

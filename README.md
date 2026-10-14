@@ -242,6 +242,12 @@ Application read endpoints apply row-level visibility using the caller's delegat
 
 When using `swagger-provider-token` for testing, the `LAA_ACCOUNTS` claim is set to `["0Z123A", "1A987X"]`. Use these values in your test data to ensure the provider-scoped queries return results.
 
+The application detail, application list and work-list response contracts now return
+`categoryOfLaw` and `matterType` display names as strings, paired with their codes. Filter application
+lists with the exact lead-proceeding `matterTypeCode` query parameter; the former enum-valued
+`matterType` filter is no longer supported. Involved-child responses return the `firstName` and
+`lastName` supplied in the create content.
+
 #### Adding a new read endpoint or query
 
 Any request-facing endpoint that requires an Application access policy must use the access-aware query pipeline:

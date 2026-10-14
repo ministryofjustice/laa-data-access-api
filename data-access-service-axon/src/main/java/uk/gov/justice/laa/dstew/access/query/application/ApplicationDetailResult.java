@@ -11,4 +11,4 @@ public record ApplicationDetailResult(
     ApplicationReadModel application,
     LinkedApplicationGroupReadModel linkedGroup,
     List<PriorAuthorityReadModel> priorAuthorities,
-    Map<UUID, String> linkedLaaReferences) {}
+    Map<UUID, LinkedApplicationMemberDetails> linkedMemberDetails) {}

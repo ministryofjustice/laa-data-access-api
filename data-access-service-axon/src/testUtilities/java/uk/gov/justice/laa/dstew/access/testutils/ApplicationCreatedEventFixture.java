@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationProvider;
+import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreationDetails;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
@@ -28,7 +29,8 @@ public final class ApplicationCreatedEventFixture {
         details.status(),
         details.schemaVersion(),
         details.occurredAt(),
-        details.potentialDuplicates());
+        details.potentialDuplicates(),
+        details.provider() == null ? null : details.provider().getOfficeCode());
   }
 
   /** Creates minimal creation details with stable values for the supplied identifier. */
@@ -42,9 +44,21 @@ public final class ApplicationCreatedEventFixture {
         1,
         Instant.parse("2026-07-14T12:30:00Z"),
         false,
-        null,
-        null,
-        List.of(),
+        "Family",
+        "special children act (SCA)",
+        "MAT",
+        "KPBLW",
+        List.of(
+            Proceeding.builder()
+                .id(UUID.nameUUIDFromBytes(("proceeding-" + applicationId).getBytes()))
+                .leadProceeding(true)
+                .code("SE003")
+                .description("Care order")
+                .categoryOfLaw("Family")
+                .categoryOfLawCode("MAT")
+                .matterType("special children act (SCA)")
+                .matterTypeCode("KPBLW")
+                .build()),
         "{}",
         Instant.parse("2026-07-15T08:00:00Z"),
         List.of());
