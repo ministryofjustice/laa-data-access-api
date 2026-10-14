@@ -48,6 +48,7 @@ class ApplicationDeciderTest {
     assertThat(event.requestFingerprint()).isEqualTo(fingerprint);
     assertThat(event.schemaVersion()).isEqualTo(1);
     assertThat(event.applicationDataVersion()).isEqualTo(0L);
+    assertThat(event.officeCode()).isEqualTo("1A001B");
   }
 
   @Test
@@ -109,7 +110,8 @@ class ApplicationDeciderTest {
             "status",
             "schemaVersion",
             "occurredAt",
-            "potentialDuplicates");
+            "potentialDuplicates",
+            "officeCode");
   }
 
   // ── decideStartDraft / decideSubmitDraft ─────────────────────
@@ -128,6 +130,7 @@ class ApplicationDeciderTest {
     ApplicationDraftStartedEvent event = (ApplicationDraftStartedEvent) events.getFirst();
     assertThat(event.applicationId()).isEqualTo(applicationId);
     assertThat(event.schemaVersion()).isEqualTo(1);
+    assertThat(event.officeCode()).isNull();
     assertThat(event.requestFingerprint()).isEqualTo(fingerprint);
     assertThat(event.occurredAt()).isEqualTo(TIMESTAMP);
   }

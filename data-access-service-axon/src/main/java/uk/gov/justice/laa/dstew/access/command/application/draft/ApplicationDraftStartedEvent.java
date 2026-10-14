@@ -11,4 +11,11 @@ public record ApplicationDraftStartedEvent(
     @EventTag(key = "ApplicationAggregate") UUID applicationId,
     int schemaVersion,
     String requestFingerprint,
-    Instant occurredAt) {}
+    Instant occurredAt,
+    String officeCode) {
+
+  public ApplicationDraftStartedEvent(
+      UUID applicationId, int schemaVersion, String requestFingerprint, Instant occurredAt) {
+    this(applicationId, schemaVersion, requestFingerprint, occurredAt, null);
+  }
+}

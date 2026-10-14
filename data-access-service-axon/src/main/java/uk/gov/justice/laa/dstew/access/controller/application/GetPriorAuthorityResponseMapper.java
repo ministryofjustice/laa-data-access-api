@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -29,14 +30,12 @@ public class GetPriorAuthorityResponseMapper {
     response.setPriorAuthorityId(result.priorAuthorityId());
     response.setApplicationId(result.applicationId());
     response.setJustification(result.justification());
-    response.setSubmittedAt(
-        result.submittedAt() == null
-            ? null
-            : result.submittedAt().atOffset(java.time.ZoneOffset.UTC));
     response.setStatus(
         result.status() == null
             ? null
             : PriorAuthorityResponse.StatusEnum.fromValue(result.status()));
+    response.setSubmittedAt(
+        result.submittedAt() == null ? null : result.submittedAt().atOffset(ZoneOffset.UTC));
     response.setDecision(
         result.decisionDetails() == null ? null : toDecision(result.decisionDetails().decision()));
     response.setDecisionJustification(
@@ -54,9 +53,11 @@ public class GetPriorAuthorityResponseMapper {
     return response;
   }
 
-  // Never-uploaded maps to null and all-deleted to empty, matching the former content list.
   private List<UploadedDocument> toUploadedDocuments(PriorAuthorityResult result) {
-    if (result.uploadedDocuments() == null || result.uploadedDocuments().isEmpty()) {
+    if (result.uploadedDocuments() == null) {
+      return null;
+    }
+    if (result.uploadedDocuments().isEmpty()) {
       return null;
     }
     Map<UUID, String> filenames =
@@ -71,17 +72,17 @@ public class GetPriorAuthorityResponseMapper {
                         document.documentType() == null
                             ? null
                             : DocumentType.fromValue(document.documentType()))
-                    .fileName(filenames.get(document.documentId()))
                     .fileType(
                         PriorAuthorityDocumentFormat.fromContentType(document.contentType())
                             .map(PriorAuthorityDocumentFormat::fileType)
                             .orElse(null))
+                    .fileName(filenames.get(document.documentId()))
                     .mediaType(document.contentType())
                     .size(document.size())
                     .uploadedAt(
                         document.uploadedAt() == null
                             ? null
-                            : document.uploadedAt().atOffset(java.time.ZoneOffset.UTC))
+                            : document.uploadedAt().atOffset(ZoneOffset.UTC))
                     .sourceService(document.sourceService())
                     .checksum(document.checksum()))
         .toList();
