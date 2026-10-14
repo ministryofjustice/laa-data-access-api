@@ -259,11 +259,12 @@ class ApplicationProjectionTest {
   void givenDraftStarted_whenProjected_thenCreatesReadableDraftAndEmitsUpdate() {
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-10-05T10:00:00Z");
+    String officeCode = "1A001B";
     when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.empty());
     when(applicationReadRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
     projection.on(
-        new ApplicationDraftStartedEvent(applicationId, 3, "fingerprint", occurredAt),
+        new ApplicationDraftStartedEvent(applicationId, 3, "fingerprint", occurredAt, officeCode),
         queryUpdateEmitter);
 
     ArgumentCaptor<ApplicationReadModel> saved =
@@ -275,6 +276,7 @@ class ApplicationProjectionTest {
     assertThat(saved.getValue().getSchemaVersion()).isEqualTo(3);
     assertThat(saved.getValue().getCreatedAt()).isEqualTo(occurredAt);
     assertThat(saved.getValue().getModifiedAt()).isEqualTo(occurredAt);
+    assertThat(saved.getValue().getOfficeCode()).isEqualTo(officeCode);
     verify(queryUpdateEmitter)
         .emit(
             ArgumentMatchers.eq(ApplicationProjectionExistsQuery.class),
@@ -290,7 +292,7 @@ class ApplicationProjectionTest {
     when(applicationReadRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
     projection.on(
-        new ApplicationDraftStartedEvent(applicationId, 1, "fingerprint", Instant.now()),
+        new ApplicationDraftStartedEvent(applicationId, 1, "fingerprint", Instant.now(), "1A001B"),
         queryUpdateEmitter);
     ArgumentCaptor<ApplicationReadModel> draft =
         ArgumentCaptor.forClass(ApplicationReadModel.class);
