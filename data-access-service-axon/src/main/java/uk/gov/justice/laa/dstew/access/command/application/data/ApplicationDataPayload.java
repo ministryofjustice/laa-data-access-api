@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
@@ -25,6 +26,8 @@ public record ApplicationDataPayload(
     Boolean usedDelegatedFunctions,
     String categoryOfLaw,
     String matterType,
+    String categoryOfLawCode,
+    String matterTypeCode,
     List<Proceeding> proceedings,
     String serialisedRequest,
     String overallDecision,
@@ -47,6 +50,22 @@ public record ApplicationDataPayload(
     opponents = opponents == null ? List.of() : List.copyOf(opponents);
     autoGranted = autoGranted == null ? AutoGrantedState.PENDING : autoGranted;
     documentFilenames = documentFilenames == null ? Map.of() : Map.copyOf(documentFilenames);
+    Proceeding leadProceeding =
+        proceedings == null
+            ? null
+            : proceedings.stream()
+                .filter(Objects::nonNull)
+                .filter(proceeding -> Boolean.TRUE.equals(proceeding.getLeadProceeding()))
+                .findFirst()
+                .orElse(null);
+    categoryOfLawCode =
+        categoryOfLawCode == null && leadProceeding != null
+            ? leadProceeding.getCategoryOfLawCode()
+            : categoryOfLawCode;
+    matterTypeCode =
+        matterTypeCode == null && leadProceeding != null
+            ? leadProceeding.getMatterTypeCode()
+            : matterTypeCode;
   }
 
   /** Creates content without document filenames for existing callers. */
@@ -78,6 +97,8 @@ public record ApplicationDataPayload(
         usedDelegatedFunctions,
         categoryOfLaw,
         matterType,
+        null,
+        null,
         proceedings,
         serialisedRequest,
         overallDecision,
@@ -107,6 +128,8 @@ public record ApplicationDataPayload(
         details.usedDelegatedFunctions(),
         details.categoryOfLaw(),
         details.matterType(),
+        details.categoryOfLawCode(),
+        details.matterTypeCode(),
         details.proceedings(),
         details.serialisedRequest(),
         null,
@@ -116,7 +139,8 @@ public record ApplicationDataPayload(
         null,
         null,
         null,
-        List.of());
+        List.of(),
+        Map.of());
   }
 
   /** Returns a complete new data version containing the supplied decision state. */
@@ -136,6 +160,8 @@ public record ApplicationDataPayload(
         usedDelegatedFunctions,
         categoryOfLaw,
         matterType,
+        categoryOfLawCode,
+        matterTypeCode,
         proceedings,
         serialisedRequest,
         newOverallDecision,
@@ -160,6 +186,8 @@ public record ApplicationDataPayload(
         usedDelegatedFunctions,
         categoryOfLaw,
         matterType,
+        categoryOfLawCode,
+        matterTypeCode,
         proceedings,
         serialisedRequest,
         overallDecision,
@@ -184,6 +212,8 @@ public record ApplicationDataPayload(
         usedDelegatedFunctions,
         categoryOfLaw,
         matterType,
+        categoryOfLawCode,
+        matterTypeCode,
         proceedings,
         serialisedRequest,
         overallDecision,
@@ -206,6 +236,8 @@ public record ApplicationDataPayload(
       Boolean newUsedDelegatedFunctions,
       String newCategoryOfLaw,
       String newMatterType,
+      String newCategoryOfLawCode,
+      String newMatterTypeCode,
       List<Proceeding> newProceedings,
       String newSerialisedRequest,
       boolean resetAssessment) {
@@ -218,6 +250,8 @@ public record ApplicationDataPayload(
         newUsedDelegatedFunctions,
         newCategoryOfLaw,
         newMatterType,
+        newCategoryOfLawCode,
+        newMatterTypeCode,
         List.copyOf(newProceedings),
         newSerialisedRequest,
         resetAssessment ? null : overallDecision,
@@ -244,6 +278,8 @@ public record ApplicationDataPayload(
         usedDelegatedFunctions,
         categoryOfLaw,
         matterType,
+        categoryOfLawCode,
+        matterTypeCode,
         proceedings,
         serialisedRequest,
         overallDecision,
@@ -270,6 +306,8 @@ public record ApplicationDataPayload(
         usedDelegatedFunctions,
         categoryOfLaw,
         matterType,
+        categoryOfLawCode,
+        matterTypeCode,
         proceedings,
         serialisedRequest,
         overallDecision,

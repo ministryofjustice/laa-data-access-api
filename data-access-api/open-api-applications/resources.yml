@@ -45,10 +45,10 @@ paths:
           schema:
             $ref: "./components.yml#/components/schemas/AutoGranted"
         - in: query
-          name: matterType
-          description: The matter type of the application
+          name: matterTypeCode
+          description: Filter by the matter type code of the lead proceeding
           schema:
-            $ref: "../open-api-common/components.yml#/components/schemas/MatterType"
+            type: string
         - in: query
           name: sortBy
           description: The field name to sort by if sorting required (defaults to SUBMITTED_DATE)

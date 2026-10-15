@@ -20,6 +20,8 @@ public record ApplicationCreationDetails(
     Boolean usedDelegatedFunctions,
     String categoryOfLaw,
     String matterType,
+    String categoryOfLawCode,
+    String matterTypeCode,
     List<Proceeding> proceedings,
     String serialisedRequest,
     Instant occurredAt,

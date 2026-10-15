@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -88,14 +89,15 @@ class ApplicationListIndexSpecificationTest {
   }
 
   @Test
-  void givenMatterTypeFilter_whenBuilt_thenAddsEqualPredicate() {
+  void givenMatterTypeCode_whenFiltering_thenMatchesExactCode() {
     FindAllApplicationsQuery query =
-        new FindAllApplicationsQuery(null, null, "MEDIATION", null, null, null, null, null, 1, 20);
+        new FindAllApplicationsQuery(null, null, "MAT-123", null, null, null, null, null, 1, 20);
 
     ApplicationListIndexSpecification.from(query).toPredicate(root, criteriaQuery, cb);
 
-    verify(root).get("matterType");
-    verify(cb).equal(any(), eq("MEDIATION"));
+    verify(root).get("matterTypeCode");
+    verify(root, never()).get("matterType");
+    verify(cb).equal(any(), eq("MAT-123"));
   }
 
   @Test

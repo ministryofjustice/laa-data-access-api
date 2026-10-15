@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
+import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.defaultClientFirstName;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
 
 import jakarta.annotation.PostConstruct;
@@ -58,6 +59,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkType;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
+import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryResponse;
@@ -151,6 +153,11 @@ public class ApplicationLinkingIntegrationTest {
             linkedApplication -> {
               assertThat(linkedApplication.getApplicationId()).isEqualTo(sourceApplicationId);
               assertThat(linkedApplication.getIsLead()).isFalse();
+              assertThat(linkedApplication.getStatus())
+                  .isEqualTo(ApplicationStatus.APPLICATION_SUBMITTED);
+              assertThat(linkedApplication.getClientFirstName())
+                  .isEqualTo(defaultClientFirstName());
+              assertThat(linkedApplication.getClientLastName()).isEqualTo(clientLastName);
             });
     assertThat(sourceResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(sourceResponse.getBody().getIsLead()).isFalse();
@@ -160,6 +167,11 @@ public class ApplicationLinkingIntegrationTest {
             linkedApplication -> {
               assertThat(linkedApplication.getApplicationId()).isEqualTo(targetApplicationId);
               assertThat(linkedApplication.getIsLead()).isTrue();
+              assertThat(linkedApplication.getStatus())
+                  .isEqualTo(ApplicationStatus.APPLICATION_SUBMITTED);
+              assertThat(linkedApplication.getClientFirstName())
+                  .isEqualTo(defaultClientFirstName());
+              assertThat(linkedApplication.getClientLastName()).isEqualTo(clientLastName);
             });
   }
 
@@ -919,9 +931,14 @@ public class ApplicationLinkingIntegrationTest {
                       .allMatch(
                           linkedApplication ->
                               Objects.equals(
-                                  linkedApplication.getIsLead(),
-                                  Objects.equals(
-                                      linkedApplication.getApplicationId(), leadApplicationId)));
+                                      linkedApplication.getIsLead(),
+                                      Objects.equals(
+                                          linkedApplication.getApplicationId(), leadApplicationId))
+                                  && defaultClientFirstName()
+                                      .equals(linkedApplication.getClientFirstName())
+                                  && Objects.equals(
+                                      linkedApplication.getClientLastName(),
+                                      summary.getClientLastName()));
             });
   }
 
@@ -945,11 +962,18 @@ public class ApplicationLinkingIntegrationTest {
               .containsExactlyInAnyOrderElementsOf(expectedLinkedApplicationIds);
           assertThat(summary.getLinkedApplications())
               .allSatisfy(
-                  linkedApplication ->
-                      assertThat(linkedApplication.getIsLead())
-                          .isEqualTo(
-                              Objects.equals(
-                                  linkedApplication.getApplicationId(), leadApplicationId)));
+                  linkedApplication -> {
+                    assertThat(linkedApplication.getIsLead())
+                        .isEqualTo(
+                            Objects.equals(
+                                linkedApplication.getApplicationId(), leadApplicationId));
+                    assertThat(linkedApplication.getStatus())
+                        .isEqualTo(ApplicationStatus.APPLICATION_SUBMITTED);
+                    assertThat(linkedApplication.getClientFirstName())
+                        .isEqualTo(defaultClientFirstName());
+                    assertThat(linkedApplication.getClientLastName())
+                        .isEqualTo(summary.getClientLastName());
+                  });
         });
   }
 

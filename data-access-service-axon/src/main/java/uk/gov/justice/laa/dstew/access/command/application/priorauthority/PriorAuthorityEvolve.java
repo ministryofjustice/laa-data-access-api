@@ -1,7 +1,5 @@
 package uk.gov.justice.laa.dstew.access.command.application.priorauthority;
 
-import java.util.UUID;
-import java.util.function.UnaryOperator;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
@@ -74,19 +72,20 @@ public final class PriorAuthorityEvolve {
 
   /** Applies a {@link PriorAuthorityDocumentDeletedEvent} to the given state. */
   public static void apply(PriorAuthorityState state, PriorAuthorityDocumentDeletedEvent event) {
-    replaceDocument(state, event.documentId(), document -> document.withDeleted(true));
+    state.uploadedDocuments.replaceAll(
+        document ->
+            document.documentId().equals(event.documentId())
+                ? document.withDeleted(true)
+                : document);
   }
 
   /** Applies a {@link PriorAuthorityDocumentTypeUpdatedEvent} to the given state. */
   public static void apply(
       PriorAuthorityState state, PriorAuthorityDocumentTypeUpdatedEvent event) {
-    replaceDocument(
-        state, event.documentId(), document -> document.withDocumentType(event.documentType()));
-  }
-
-  private static void replaceDocument(
-      PriorAuthorityState state, UUID documentId, UnaryOperator<DocumentMetadata> update) {
     state.uploadedDocuments.replaceAll(
-        document -> document.documentId().equals(documentId) ? update.apply(document) : document);
+        document ->
+            document.documentId().equals(event.documentId())
+                ? document.withDocumentType(event.documentType())
+                : document);
   }
 }
