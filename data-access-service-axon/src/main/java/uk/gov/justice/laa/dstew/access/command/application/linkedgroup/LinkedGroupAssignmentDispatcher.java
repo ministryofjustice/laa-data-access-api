@@ -50,14 +50,14 @@ public class LinkedGroupAssignmentDispatcher {
    * Applies assignment rules for a member added to a group and dispatches assignment commands if
    * needed.
    *
-   * @param leadApplicationId the lead application ID from the linked group
+   * @param groupId the linked group ID
    * @param memberApplicationId the application being added to the group
    * @param occurredAt timestamp of when the membership change occurred
    */
   public void applyAssignmentRules(
-      UUID leadApplicationId, UUID memberApplicationId, Instant occurredAt) {
+      UUID groupId, UUID memberApplicationId, Instant occurredAt) {
     AssignmentDecision decision =
-        determineAssignmentDecision(leadApplicationId, memberApplicationId);
+        determineAssignmentDecision(groupId, memberApplicationId);
 
     if (decision.action() == LinkedGroupAssignmentDecisionAction.ASSIGN_MEMBER_TO_LEAD
         || decision.action() == LinkedGroupAssignmentDecisionAction.ASSIGN_LEAD_TO_MEMBER) {
