@@ -30,10 +30,10 @@ public class LinkedGroupAssignmentEventHandler {
   public void on(LinkedApplicationGroupCreatedEvent event) {
     var groupMemberApplicationIds = event.memberApplicationIds();
     if (groupMemberApplicationIds.size() >= 2) {
-      for (int i = 1; i < groupMemberApplicationIds.size(); i++) {
-        linkedGroupAssignmentDispatcher.applyAssignmentRules(
-            event.groupId(), groupMemberApplicationIds.get(i), event.occurredAt());
-      }
+      groupMemberApplicationIds.stream().skip(1).forEach(memberId ->
+          linkedGroupAssignmentDispatcher.applyAssignmentRules(
+              event.groupId(), memberId, event.occurredAt())
+      );
     }
   }
 
