@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.command.application.linkedgroup;
 
 import java.time.Instant;
+import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.axonframework.messaging.commandhandling.gateway.CommandGateway;
@@ -9,6 +10,8 @@ import org.springframework.stereotype.Service;
 import uk.gov.justice.laa.dstew.access.command.worklist.assign.DirectGroupWorkItemAssignmentCommand;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadRepository;
+import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
+import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
 
 /**
  * Applies assignment rules for linked group membership changes and dispatches assignment commands.
@@ -30,6 +33,7 @@ import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadReposito
 public class LinkedGroupAssignmentDispatcher {
 
   private final ApplicationReadRepository applicationReadRepository;
+  private final LinkedApplicationGroupReadRepository groupReadRepository;
   private final CommandGateway commandGateway;
 
   /**
@@ -71,15 +75,20 @@ public class LinkedGroupAssignmentDispatcher {
   /**
    * Determines the assignment decision when adding an application to a linked group.
    *
-   * <p>Applies the assignment rules based on current caseworker assignments of the lead and new
-   * member applications.
+   * <p>Queries the current state of the group and applications, then applies the assignment rules.
    *
-   * @param leadApplicationId the lead application ID from the linked group
+   * @param groupId the linked group ID
    * @param newMemberApplicationId the application being added to the group
    * @return the assignment decision with the action to take
    */
   private AssignmentDecision determineAssignmentDecision(
-      UUID leadApplicationId, UUID newMemberApplicationId) {
+      UUID groupId, UUID newMemberApplicationId) {
+    Optional<LinkedApplicationGroupReadModel> group = groupReadRepository.findById(groupId);
+    if (group.isEmpty()) {
+      return noAction();
+    }
+
+    UUID leadApplicationId = group.get().getLeadApplicationId();
     UUID leadCaseworkerId = getApplicationCaseworker(leadApplicationId);
     UUID memberCaseworkerId = getApplicationCaseworker(newMemberApplicationId);
 
