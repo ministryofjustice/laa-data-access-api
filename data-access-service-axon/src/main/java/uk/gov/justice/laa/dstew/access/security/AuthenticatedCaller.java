@@ -1,13 +1,14 @@
 package uk.gov.justice.laa.dstew.access.security;
 
-import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 /** Immutable, minimum-necessary projection of the authenticated caller's validated token claims. */
 public record AuthenticatedCaller(
-    Optional<java.util.UUID> actorId,
+    Optional<UUID> actorId,
     Set<String> delegatedScopes,
     Set<String> providerOfficeCodes,
     Set<String> applicationRoles) {
@@ -24,11 +25,9 @@ public record AuthenticatedCaller(
     if (values == null) {
       return Set.of();
     }
-    Set<String> normalised = new LinkedHashSet<>();
-    values.stream()
+    return values.stream()
         .filter(value -> value != null && !value.isBlank())
         .map(String::trim)
-        .forEach(normalised::add);
-    return Set.copyOf(normalised);
+        .collect(Collectors.toUnmodifiableSet());
   }
 }
