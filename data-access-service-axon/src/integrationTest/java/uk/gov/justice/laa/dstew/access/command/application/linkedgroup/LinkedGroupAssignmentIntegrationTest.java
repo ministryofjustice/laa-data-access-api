@@ -156,6 +156,77 @@ class LinkedGroupAssignmentIntegrationTest {
     }
   }
 
+  @Test
+  @DisplayName(
+      "Scenario: Linked group assigned from application - "
+          + "When group is unassigned and member is assigned, group gets member's caseworker")
+  void givenUnassignedLinkedGroup_whenMemberIsAssigned_thenGroupIsAssignedToMembersCaseworker() {
+    List<UUID> memberIds = createLinkedGroup(3);
+
+    // Verify all members start unassigned
+    for (UUID memberId : memberIds) {
+      assertMemberIsUnassigned(memberId);
+    }
+
+    // Assign the second member (first non-lead member)
+    ResponseEntity<Void> assignResponse =
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/work-list/" + memberIds.get(1) + "/assign",
+            HttpMethod.POST,
+            new HttpEntity<>(new WorkListAssignRequest(0L), headers()),
+            Void.class);
+
+    assertThat(assignResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+    // Verify lead (index 0) is now assigned to the caseworker (AC3)
+    awaitWorkListAssignee(memberIds.get(0), TestJwtDecoderConfig.CASEWORKER_ID, 1L);
+
+    // Verify all members are assigned to the same caseworker
+    for (UUID memberId : memberIds) {
+      awaitWorkListAssignee(memberId, TestJwtDecoderConfig.CASEWORKER_ID, 1L);
+    }
+  }
+
+  @Test
+  @DisplayName(
+      "Scenario: Linked group assigned from application - "
+          + "When group created with multiple members and each member assigned, "
+          + "all members including lead get assigned")
+  void givenUnassignedLinkedGroupWithMultipleMembers_whenEachMemberAssignedSequentially_thenLeadAndAllMembersAssigned() {
+    List<UUID> memberIds = createLinkedGroup(4);
+
+    // Assign second member (first non-lead)
+    restTemplate.exchange(
+        "http://localhost:" + port + "/api/v0/work-list/" + memberIds.get(1) + "/assign",
+        HttpMethod.POST,
+        new HttpEntity<>(new WorkListAssignRequest(0L), headers()),
+        Void.class);
+
+    // Verify lead and all members are assigned
+    for (UUID memberId : memberIds) {
+      awaitWorkListAssignee(memberId, TestJwtDecoderConfig.CASEWORKER_ID, 1L);
+    }
+  }
+
+  @Test
+  @DisplayName(
+      "Scenario: No assignment change - "
+          + "When group and member are both unassigned, no assignment changes occur")
+  void givenUnassignedLinkedGroupWithUnassignedMembers_whenNoAssignmentOccurs_thenRemainsUnassigned() {
+    List<UUID> memberIds = createLinkedGroup(2);
+
+    // Verify all members remain unassigned
+    await()
+        .atMost(5, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              for (UUID memberId : memberIds) {
+                assertMemberIsUnassigned(memberId);
+              }
+            });
+  }
+
+
   /**
    * Creates a linked group with the specified number of members. The first application is the lead,
    * and subsequent applications are linked to it.
@@ -278,6 +349,16 @@ class LinkedGroupAssignmentIntegrationTest {
                   .as("Assignment version should match for item " + itemId)
                   .isEqualTo(expectedAssignmentVersion);
             });
+  }
+
+  /** Asserts that a work list item is unassigned (no assignee). */
+  private void assertMemberIsUnassigned(UUID itemId) {
+    Map<String, Object> row =
+        jdbcTemplate.queryForMap(
+            "SELECT assignee_id FROM axon.work_list_item WHERE item_id = ?", itemId);
+    assertThat(row.get("assignee_id"))
+        .as("Member " + itemId + " should be unassigned")
+        .isNull();
   }
 
   /** Counts the domain events of a specific type for an aggregate. */
