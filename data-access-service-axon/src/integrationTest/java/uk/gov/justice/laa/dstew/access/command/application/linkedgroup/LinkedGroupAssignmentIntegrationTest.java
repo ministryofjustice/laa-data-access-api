@@ -192,7 +192,8 @@ class LinkedGroupAssignmentIntegrationTest {
       "Scenario: Linked group assigned from application - "
           + "When group created with multiple members and each member assigned, "
           + "all members including lead get assigned")
-  void givenUnassignedLinkedGroupWithMultipleMembers_whenEachMemberAssignedSequentially_thenLeadAndAllMembersAssigned() {
+  void
+      givenUnassignedLinkedGroupWithMultipleMembers_whenEachMemberAssignedSequentially_thenLeadAndAllMembersAssigned() {
     List<UUID> memberIds = createLinkedGroup(4);
 
     // Assign second member (first non-lead)
@@ -212,7 +213,8 @@ class LinkedGroupAssignmentIntegrationTest {
   @DisplayName(
       "Scenario: No assignment change - "
           + "When group and member are both unassigned, no assignment changes occur")
-  void givenUnassignedLinkedGroupWithUnassignedMembers_whenNoAssignmentOccurs_thenRemainsUnassigned() {
+  void
+      givenUnassignedLinkedGroupWithUnassignedMembers_whenNoAssignmentOccurs_thenRemainsUnassigned() {
     List<UUID> memberIds = createLinkedGroup(2);
 
     // Verify all members remain unassigned
@@ -225,7 +227,6 @@ class LinkedGroupAssignmentIntegrationTest {
               }
             });
   }
-
 
   /**
    * Creates a linked group with the specified number of members. The first application is the lead,
@@ -356,9 +357,7 @@ class LinkedGroupAssignmentIntegrationTest {
     Map<String, Object> row =
         jdbcTemplate.queryForMap(
             "SELECT assignee_id FROM axon.work_list_item WHERE item_id = ?", itemId);
-    assertThat(row.get("assignee_id"))
-        .as("Member " + itemId + " should be unassigned")
-        .isNull();
+    assertThat(row.get("assignee_id")).as("Member " + itemId + " should be unassigned").isNull();
   }
 
   /** Counts the domain events of a specific type for an aggregate. */
