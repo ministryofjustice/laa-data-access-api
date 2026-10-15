@@ -21,8 +21,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.command.worklist.assign.DirectGroupWorkItemAssignmentCommand;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadRepository;
-import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
-import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
 
 /** Unit tests for {@link LinkedGroupAssignmentDispatcher}. */
 @ExtendWith(MockitoExtension.class)
@@ -32,14 +30,12 @@ class LinkedGroupAssignmentDispatcherTest {
   private static final Instant OCCURRED_AT = Instant.parse("2026-10-13T15:00:00Z");
 
   @Mock private ApplicationReadRepository applicationReadRepository;
-  @Mock private LinkedApplicationGroupReadRepository groupReadRepository;
   @Mock private CommandGateway commandGateway;
 
   @InjectMocks private LinkedGroupAssignmentDispatcher dispatcher;
 
   @Captor private ArgumentCaptor<DirectGroupWorkItemAssignmentCommand> commandCaptor;
 
-  private UUID groupId;
   private UUID leadApplicationId;
   private UUID memberApplicationId;
   private UUID caseworkerId1;
@@ -47,7 +43,6 @@ class LinkedGroupAssignmentDispatcherTest {
 
   @BeforeEach
   void setUp() {
-    groupId = UUID.fromString("00000000-0000-0000-0000-000000000000");
     leadApplicationId = UUID.fromString("00000000-0000-0000-0000-000000000001");
     memberApplicationId = UUID.fromString("00000000-0000-0000-0000-000000000002");
     caseworkerId1 = UUID.fromString("10000000-0000-0000-0000-000000000001");
@@ -61,12 +56,11 @@ class LinkedGroupAssignmentDispatcherTest {
   void
       givenLeadAssignedAndMemberUnassigned_whenApplyAssignmentRules_thenDispatchesAssignmentCommand() {
     // Setup: Lead has caseworker, member does not
-    mockGroup(groupId, leadApplicationId);
     mockApplicationCaseworker(leadApplicationId, caseworkerId1);
     mockApplicationCaseworker(memberApplicationId, null);
 
     // Execute
-    dispatcher.applyAssignmentRules(groupId, memberApplicationId, OCCURRED_AT);
+    dispatcher.applyAssignmentRules(leadApplicationId, memberApplicationId, OCCURRED_AT);
 
     // Assert: Command dispatched with member as target
     verify(commandGateway).sendAndWait(commandCaptor.capture());
@@ -83,12 +77,11 @@ class LinkedGroupAssignmentDispatcherTest {
   void
       givenBothAssignedToDifferentCaseworkers_whenApplyAssignmentRules_thenDispatchesAssignmentCommand() {
     // Setup: Both assigned, but to different caseworkers
-    mockGroup(groupId, leadApplicationId);
     mockApplicationCaseworker(leadApplicationId, caseworkerId1);
     mockApplicationCaseworker(memberApplicationId, caseworkerId2);
 
     // Execute
-    dispatcher.applyAssignmentRules(groupId, memberApplicationId, OCCURRED_AT);
+    dispatcher.applyAssignmentRules(leadApplicationId, memberApplicationId, OCCURRED_AT);
 
     // Assert: Command dispatched with member as target
     verify(commandGateway).sendAndWait(commandCaptor.capture());
@@ -104,12 +97,11 @@ class LinkedGroupAssignmentDispatcherTest {
   void
       givenMemberAssignedAndLeadUnassigned_whenApplyAssignmentRules_thenDispatchesAssignmentCommand() {
     // Setup: Member has caseworker, lead does not
-    mockGroup(groupId, leadApplicationId);
     mockApplicationCaseworker(leadApplicationId, null);
     mockApplicationCaseworker(memberApplicationId, caseworkerId1);
 
     // Execute
-    dispatcher.applyAssignmentRules(groupId, memberApplicationId, OCCURRED_AT);
+    dispatcher.applyAssignmentRules(leadApplicationId, memberApplicationId, OCCURRED_AT);
 
     // Assert: Command dispatched with lead as target
     verify(commandGateway).sendAndWait(commandCaptor.capture());
@@ -124,12 +116,11 @@ class LinkedGroupAssignmentDispatcherTest {
   @DisplayName("AC4: Neither assigned → does not dispatch command")
   void givenNeitherAssigned_whenApplyAssignmentRules_thenDoesNotDispatchCommand() {
     // Setup: Neither application has a caseworker
-    mockGroup(groupId, leadApplicationId);
     mockApplicationCaseworker(leadApplicationId, null);
     mockApplicationCaseworker(memberApplicationId, null);
 
     // Execute
-    dispatcher.applyAssignmentRules(groupId, memberApplicationId, OCCURRED_AT);
+    dispatcher.applyAssignmentRules(leadApplicationId, memberApplicationId, OCCURRED_AT);
 
     // Assert: No command dispatched
     verifyNoInteractions(commandGateway);
@@ -139,12 +130,11 @@ class LinkedGroupAssignmentDispatcherTest {
   @DisplayName("AC4: Both assigned to same caseworker → does not dispatch command")
   void givenBothAssignedToSameCaseworker_whenApplyAssignmentRules_thenDoesNotDispatchCommand() {
     // Setup: Both assigned to the same caseworker
-    mockGroup(groupId, leadApplicationId);
     mockApplicationCaseworker(leadApplicationId, caseworkerId1);
     mockApplicationCaseworker(memberApplicationId, caseworkerId1);
 
     // Execute
-    dispatcher.applyAssignmentRules(groupId, memberApplicationId, OCCURRED_AT);
+    dispatcher.applyAssignmentRules(leadApplicationId, memberApplicationId, OCCURRED_AT);
 
     // Assert: No command dispatched
     verifyNoInteractions(commandGateway);
@@ -154,12 +144,11 @@ class LinkedGroupAssignmentDispatcherTest {
   @DisplayName("Command includes proper metadata")
   void whenDispatchingCommand_thenIncludesProperMetadata() {
     // Setup
-    mockGroup(groupId, leadApplicationId);
     mockApplicationCaseworker(leadApplicationId, caseworkerId1);
     mockApplicationCaseworker(memberApplicationId, null);
 
     // Execute
-    dispatcher.applyAssignmentRules(groupId, memberApplicationId, OCCURRED_AT);
+    dispatcher.applyAssignmentRules(leadApplicationId, memberApplicationId, OCCURRED_AT);
 
     // Assert: Command has proper metadata
     verify(commandGateway).sendAndWait(commandCaptor.capture());
@@ -167,25 +156,6 @@ class LinkedGroupAssignmentDispatcherTest {
     Assertions.assertThat(command.eventDescription())
         .isEqualTo("Assignments for application and linked groups synchronized");
     Assertions.assertThat(command.occurredAt()).isEqualTo(OCCURRED_AT);
-  }
-
-  @Test
-  @DisplayName("When group does not exist → does not dispatch command")
-  void givenGroupDoesNotExist_whenApplyAssignmentRules_thenDoesNotDispatchCommand() {
-    // Setup: Group not found
-    when(groupReadRepository.findById(groupId)).thenReturn(Optional.empty());
-
-    // Execute
-    dispatcher.applyAssignmentRules(groupId, memberApplicationId, OCCURRED_AT);
-
-    // Assert: No command dispatched
-    verifyNoInteractions(commandGateway);
-  }
-
-  private void mockGroup(UUID groupId, UUID leadApplicationId) {
-    LinkedApplicationGroupReadModel group = new LinkedApplicationGroupReadModel();
-    group.setLeadApplicationId(leadApplicationId);
-    when(groupReadRepository.findById(groupId)).thenReturn(Optional.of(group));
   }
 
   private void mockApplicationCaseworker(UUID applicationId, UUID caseworkerId) {
