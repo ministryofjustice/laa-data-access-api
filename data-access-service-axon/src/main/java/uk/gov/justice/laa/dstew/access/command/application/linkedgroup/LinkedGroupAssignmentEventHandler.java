@@ -27,7 +27,7 @@ public class LinkedGroupAssignmentEventHandler {
   public void on(LinkedApplicationGroupCreatedEvent event) {
     if (event.memberApplicationIds().size() >= 2) {
       linkedGroupAssignmentDispatcher.applyAssignmentRules(
-          event.leadApplicationId(), event.memberApplicationIds().get(1), event.occurredAt());
+          event.groupId(), event.memberApplicationIds().get(1), event.occurredAt());
     }
   }
 
@@ -39,6 +39,6 @@ public class LinkedGroupAssignmentEventHandler {
   @EventHandler
   public void on(MemberAddedToGroupEvent event) {
     linkedGroupAssignmentDispatcher.applyAssignmentRules(
-        event.leadApplicationId(), event.memberId(), event.occurredAt());
+        event.groupId(), event.memberId(), event.occurredAt());
   }
 }

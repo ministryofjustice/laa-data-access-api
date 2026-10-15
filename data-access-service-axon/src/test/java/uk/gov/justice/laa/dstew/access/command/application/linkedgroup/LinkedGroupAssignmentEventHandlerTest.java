@@ -60,8 +60,8 @@ class LinkedGroupAssignmentEventHandlerTest {
     // Execute
     eventHandler.on(event);
 
-    // Assert: Dispatcher called with leadApplicationId (not groupId), member, and timestamp
-    verify(dispatcher).applyAssignmentRules(leadApplicationId, memberApplicationId1, OCCURRED_AT);
+    // Assert: Dispatcher called with groupId, member, and timestamp
+    verify(dispatcher).applyAssignmentRules(groupId, memberApplicationId1, OCCURRED_AT);
   }
 
   @Test
@@ -79,7 +79,7 @@ class LinkedGroupAssignmentEventHandlerTest {
     eventHandler.on(event);
 
     // Assert: Dispatcher called with first member (index 1)
-    verify(dispatcher).applyAssignmentRules(leadApplicationId, memberApplicationId1, OCCURRED_AT);
+    verify(dispatcher).applyAssignmentRules(groupId, memberApplicationId1, OCCURRED_AT);
   }
 
   @Test
@@ -123,8 +123,8 @@ class LinkedGroupAssignmentEventHandlerTest {
     // Execute
     eventHandler.on(event);
 
-    // Assert: Dispatcher called with leadApplicationId (from event), memberId, and timestamp
-    verify(dispatcher).applyAssignmentRules(leadApplicationId, memberApplicationId1, OCCURRED_AT);
+    // Assert: Dispatcher called with groupId, memberId, and timestamp
+    verify(dispatcher).applyAssignmentRules(groupId, memberApplicationId1, OCCURRED_AT);
   }
 
   @Test
@@ -137,8 +137,8 @@ class LinkedGroupAssignmentEventHandlerTest {
     // Execute
     eventHandler.on(event);
 
-    // Assert: Correct IDs passed (lead != member)
-    verify(dispatcher).applyAssignmentRules(leadApplicationId, memberApplicationId2, OCCURRED_AT);
+    // Assert: Correct IDs passed (group and member)
+    verify(dispatcher).applyAssignmentRules(groupId, memberApplicationId2, OCCURRED_AT);
   }
 
   @Test
@@ -155,7 +155,7 @@ class LinkedGroupAssignmentEventHandlerTest {
 
     // Assert: Exact timestamp propagated
     verify(dispatcher)
-        .applyAssignmentRules(leadApplicationId, memberApplicationId1, customTimestamp);
+        .applyAssignmentRules(groupId, memberApplicationId1, customTimestamp);
   }
 
   // ===== Integration tests: Event flow =====
@@ -171,7 +171,7 @@ class LinkedGroupAssignmentEventHandlerTest {
     eventHandler.on(event1);
 
     // Assert: First call made
-    verify(dispatcher).applyAssignmentRules(leadApplicationId, memberApplicationId1, OCCURRED_AT);
+    verify(dispatcher).applyAssignmentRules(groupId, memberApplicationId1, OCCURRED_AT);
 
     // Setup: Add second member
     MemberAddedToGroupEvent event2 =
@@ -181,6 +181,6 @@ class LinkedGroupAssignmentEventHandlerTest {
     eventHandler.on(event2);
 
     // Assert: Second call made (separate transaction)
-    verify(dispatcher).applyAssignmentRules(leadApplicationId, memberApplicationId2, OCCURRED_AT);
+    verify(dispatcher).applyAssignmentRules(groupId, memberApplicationId2, OCCURRED_AT);
   }
 }
