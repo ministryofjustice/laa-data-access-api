@@ -154,8 +154,7 @@ class LinkedGroupAssignmentEventHandlerTest {
     eventHandler.on(event);
 
     // Assert: Exact timestamp propagated
-    verify(dispatcher)
-        .applyAssignmentRules(groupId, memberApplicationId1, customTimestamp);
+    verify(dispatcher).applyAssignmentRules(groupId, memberApplicationId1, customTimestamp);
   }
 
   // ===== Integration tests: Event flow =====
