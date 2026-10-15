@@ -21,13 +21,19 @@ public class LinkedGroupAssignmentEventHandler {
   /**
    * Applies assignment rules when a new linked group is created with initial members.
    *
+   * <p>Processes all non-lead members (indices 1+) to ensure consistent assignment behavior
+   * regardless of whether members are added during group creation or individually.
+   *
    * @param event the group creation event
    */
   @EventHandler
   public void on(LinkedApplicationGroupCreatedEvent event) {
-    if (event.memberApplicationIds().size() >= 2) {
-      linkedGroupAssignmentDispatcher.applyAssignmentRules(
-          event.groupId(), event.memberApplicationIds().get(1), event.occurredAt());
+    var groupMemberApplicationIds = event.memberApplicationIds();
+    if (groupMemberApplicationIds.size() >= 2) {
+      for (int i = 1; i < groupMemberApplicationIds.size(); i++) {
+        linkedGroupAssignmentDispatcher.applyAssignmentRules(
+            event.groupId(), groupMemberApplicationIds.get(i), event.occurredAt());
+      }
     }
   }
 

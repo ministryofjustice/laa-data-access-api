@@ -65,8 +65,8 @@ class LinkedGroupAssignmentEventHandlerTest {
   }
 
   @Test
-  @DisplayName("LinkedApplicationGroupCreatedEvent with 3+ members triggers for first member")
-  void givenGroupCreatedWithThreeMembers_whenEventFired_thenTriggersWithFirstMember() {
+  @DisplayName("LinkedApplicationGroupCreatedEvent with 3+ members triggers for all members")
+  void givenGroupCreatedWithThreeMembers_whenEventFired_thenTriggersForAllMembers() {
     // Setup: Group created with lead + 2 members
     LinkedApplicationGroupCreatedEvent event =
         new LinkedApplicationGroupCreatedEvent(
@@ -78,8 +78,9 @@ class LinkedGroupAssignmentEventHandlerTest {
     // Execute
     eventHandler.on(event);
 
-    // Assert: Dispatcher called with first member (index 1)
+    // Assert: Dispatcher called for each member (all non-lead members)
     verify(dispatcher).applyAssignmentRules(groupId, memberApplicationId1, OCCURRED_AT);
+    verify(dispatcher).applyAssignmentRules(groupId, memberApplicationId2, OCCURRED_AT);
   }
 
   @Test
