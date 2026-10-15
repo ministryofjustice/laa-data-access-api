@@ -12,7 +12,6 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
-import java.util.Map;
 import java.util.UUID;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import org.junit.jupiter.api.Test;
@@ -22,10 +21,7 @@ import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.access.AccessDeniedException;
-import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationProvider;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationAggregate;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.CreatePriorAuthorityDraftCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDraftStartedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
@@ -45,7 +41,6 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
   @Mock private PriorAuthorityDraftStore draftStore;
   @Mock private PriorAuthorityDataStore dataStore;
   @Mock private ApplicationAggregate application;
-  @Mock private ApplicationDataStore applicationDataStore;
   @Mock private OfficeCodeWriteAccessPolicy writeAccessPolicy;
   @Mock private EventAppender eventAppender;
 
@@ -61,45 +56,14 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
     CreatePriorAuthorityDraftCommand command =
         new CreatePriorAuthorityDraftCommand(
             priorAuthorityId, applicationId, content, "{}", 1, "PriorAuthority.json", OCCURRED_AT);
-    ApplicationDataPayload applicationData =
-        new ApplicationDataPayload(
-            null,
-            null,
-            ApplicationProvider.builder().officeCode("1A001B").build(),
-            null,
-            OCCURRED_AT,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            "{}",
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            Map.of());
 
     when(application.isGranted()).thenReturn(true);
+    when(application.getOfficeCode()).thenReturn("1A001B");
     when(draftStore.exists(priorAuthorityId)).thenReturn(false);
     when(dataStore.exists(priorAuthorityId)).thenReturn(false);
-    when(applicationDataStore.latestVersion(applicationId)).thenReturn(3L);
-    when(applicationDataStore.get(applicationId, 3L)).thenReturn(applicationData);
 
     new CreatePriorAuthorityDraftCommandHandler()
-        .handle(
-            command,
-            draftStore,
-            dataStore,
-            application,
-            applicationDataStore,
-            writeAccessPolicy,
-            eventAppender);
+        .handle(command, draftStore, dataStore, application, writeAccessPolicy, eventAppender);
 
     verify(draftStore)
         .upsert(
@@ -149,7 +113,6 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
                         draftStore,
                         dataStore,
                         application,
-                        applicationDataStore,
                         writeAccessPolicy,
                         eventAppender))
         .isInstanceOf(ValidationException.class)
@@ -165,7 +128,7 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
   }
 
   @Test
-  void givenGrantedApplicationWithoutProvider_whenHandle_thenCreatesDraftWithNullOfficeCode() {
+  void givenGrantedApplicationWithoutOfficeCode_whenHandle_thenCreatesDraftWithNullOfficeCode() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     PriorAuthorityContent content =
@@ -174,45 +137,13 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
     CreatePriorAuthorityDraftCommand command =
         new CreatePriorAuthorityDraftCommand(
             priorAuthorityId, applicationId, content, "{}", 1, "PriorAuthority.json", OCCURRED_AT);
-    ApplicationDataPayload applicationData =
-        new ApplicationDataPayload(
-            null,
-            null,
-            null,
-            null,
-            OCCURRED_AT,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            "{}",
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            Map.of());
 
     when(application.isGranted()).thenReturn(true);
     when(draftStore.exists(priorAuthorityId)).thenReturn(false);
     when(dataStore.exists(priorAuthorityId)).thenReturn(false);
-    when(applicationDataStore.latestVersion(applicationId)).thenReturn(7L);
-    when(applicationDataStore.get(applicationId, 7L)).thenReturn(applicationData);
 
     new CreatePriorAuthorityDraftCommandHandler()
-        .handle(
-            command,
-            draftStore,
-            dataStore,
-            application,
-            applicationDataStore,
-            writeAccessPolicy,
-            eventAppender);
+        .handle(command, draftStore, dataStore, application, writeAccessPolicy, eventAppender);
 
     verify(draftStore)
         .upsert(
@@ -254,13 +185,12 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
                         draftStore,
                         dataStore,
                         application,
-                        applicationDataStore,
                         writeAccessPolicy,
                         eventAppender))
         .isInstanceOf(PriorAuthorityCreationConflictException.class)
         .hasMessage("Prior authority already exists for submission: " + priorAuthorityId);
 
-    verifyNoInteractions(dataStore, application, applicationDataStore, eventAppender);
+    verifyNoInteractions(dataStore, application, eventAppender);
   }
 
   @Test
@@ -290,13 +220,12 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
                         draftStore,
                         dataStore,
                         application,
-                        applicationDataStore,
                         writeAccessPolicy,
                         eventAppender))
         .isInstanceOf(PriorAuthorityCreationConflictException.class)
         .hasMessage("Prior authority already exists for submission: " + priorAuthorityId);
 
-    verifyNoInteractions(application, applicationDataStore, eventAppender);
+    verifyNoInteractions(application, eventAppender);
   }
 
   @Test
@@ -313,32 +242,11 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
             1,
             "PriorAuthority.json",
             OCCURRED_AT);
-    ApplicationDataPayload applicationData =
-        new ApplicationDataPayload(
-            null,
-            null,
-            ApplicationProvider.builder().officeCode("1A001B").build(),
-            null,
-            OCCURRED_AT,
-            null,
-            null,
-            null,
-            null,
-            "{}",
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null);
 
     when(application.isGranted()).thenReturn(true);
+    when(application.getOfficeCode()).thenReturn("1A001B");
     when(draftStore.exists(priorAuthorityId)).thenReturn(false);
     when(dataStore.exists(priorAuthorityId)).thenReturn(false);
-    when(applicationDataStore.latestVersion(applicationId)).thenReturn(3L);
-    when(applicationDataStore.get(applicationId, 3L)).thenReturn(applicationData);
     doThrow(new AccessDeniedException("Caller is not authorised to write this resource"))
         .when(writeAccessPolicy)
         .requireWriteAccess(eq("1A001B"), isNull());
@@ -351,7 +259,6 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
                         draftStore,
                         dataStore,
                         application,
-                        applicationDataStore,
                         writeAccessPolicy,
                         eventAppender))
         .isInstanceOf(AccessDeniedException.class);
