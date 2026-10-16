@@ -1,21 +1,18 @@
 package uk.gov.justice.laa.dstew.access.command.application.priorauthority.handler;
 
 import java.util.List;
-import java.util.UUID;
 import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import org.axonframework.modelling.annotation.InjectEntity;
 import org.springframework.stereotype.Component;
-import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationProvider;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationAggregate;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.CreatePriorAuthorityDraftCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDecider;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityCreationConflictException;
+import uk.gov.justice.laa.dstew.access.security.OfficeCodeWriteAccessPolicy;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /** Handles creation of prior-authority drafts. */
@@ -29,7 +26,7 @@ public class CreatePriorAuthorityDraftCommandHandler {
       PriorAuthorityDraftStore draftStore,
       PriorAuthorityDataStore dataStore,
       @InjectEntity(idProperty = "applicationId") ApplicationAggregate application,
-      ApplicationDataStore applicationDataStore,
+      OfficeCodeWriteAccessPolicy writeAccessPolicy,
       EventAppender eventAppender) {
 
     if (draftStore.exists(command.priorAuthorityId())
@@ -43,7 +40,8 @@ public class CreatePriorAuthorityDraftCommandHandler {
               "Prior authority requires the application to have an overall decision of GRANTED"));
     }
 
-    String officeCode = applicationOfficeCode(applicationDataStore, command.applicationId());
+    String officeCode = application.getOfficeCode();
+    writeAccessPolicy.requireWriteAccess(officeCode, command.caller());
     PriorAuthorityDataPayload payload =
         new PriorAuthorityDataPayload(
             command.priorAuthorityId(),
@@ -61,13 +59,5 @@ public class CreatePriorAuthorityDraftCommandHandler {
         command.serialisedRequest(),
         command.occurredAt());
     eventAppender.append(PriorAuthorityDecider.decideStartDraft(command, officeCode));
-  }
-
-  private static String applicationOfficeCode(
-      ApplicationDataStore applicationDataStore, UUID applicationId) {
-    long latestVersion = applicationDataStore.latestVersion(applicationId);
-    ApplicationDataPayload applicationData = applicationDataStore.get(applicationId, latestVersion);
-    ApplicationProvider provider = applicationData.provider();
-    return provider == null ? null : provider.getOfficeCode();
   }
 }

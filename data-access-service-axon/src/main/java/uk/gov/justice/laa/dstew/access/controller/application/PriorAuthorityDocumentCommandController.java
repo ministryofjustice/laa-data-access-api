@@ -16,6 +16,7 @@ import uk.gov.justice.laa.dstew.access.model.PriorAuthorityDocumentTypeUpdateRes
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.model.UpdatePriorAuthorityDocumentTypeRequest;
 import uk.gov.justice.laa.dstew.access.model.UploadPriorAuthorityDocumentResponse;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedCallerFactory;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
 import uk.gov.justice.laa.dstew.access.util.RequestSerialiser;
@@ -28,17 +29,20 @@ public class PriorAuthorityDocumentCommandController implements PriorAuthorityDo
   private final UpdatePriorAuthorityDocumentTypeUseCase updateTypeUseCase;
   private final DeletePriorAuthorityDocumentUseCase deleteUseCase;
   private final ObjectMapper objectMapper;
+  private final AuthenticatedCallerFactory authenticatedCallerFactory;
 
   /** Creates the controller with prior-authority document command use cases. */
   public PriorAuthorityDocumentCommandController(
       UploadPriorAuthorityDocumentUseCase uploadUseCase,
       UpdatePriorAuthorityDocumentTypeUseCase updateTypeUseCase,
       DeletePriorAuthorityDocumentUseCase deleteUseCase,
-      ObjectMapper objectMapper) {
+      ObjectMapper objectMapper,
+      AuthenticatedCallerFactory authenticatedCallerFactory) {
     this.uploadUseCase = uploadUseCase;
     this.updateTypeUseCase = updateTypeUseCase;
     this.deleteUseCase = deleteUseCase;
     this.objectMapper = objectMapper;
+    this.authenticatedCallerFactory = authenticatedCallerFactory;
   }
 
   @Override
@@ -47,7 +51,11 @@ public class PriorAuthorityDocumentCommandController implements PriorAuthorityDo
   public ResponseEntity<UploadPriorAuthorityDocumentResponse> uploadPriorAuthorityDocument(
       ServiceName serviceName, UUID priorAuthorityId, MultipartFile file) {
     DocumentUploadResult result =
-        uploadUseCase.execute(priorAuthorityId, file, serviceName.getValue());
+        uploadUseCase.execute(
+            priorAuthorityId,
+            file,
+            serviceName.getValue(),
+            authenticatedCallerFactory.currentCaller());
     UploadPriorAuthorityDocumentResponse response =
         new UploadPriorAuthorityDocumentResponse()
             .documentId(result.documentId())
@@ -74,7 +82,8 @@ public class PriorAuthorityDocumentCommandController implements PriorAuthorityDo
             priorAuthorityId,
             documentId,
             request.getDocumentType().getValue(),
-            RequestSerialiser.serialise(objectMapper, request));
+            RequestSerialiser.serialise(objectMapper, request),
+            authenticatedCallerFactory.currentCaller());
     return ResponseEntity.ok()
         .body(
             new PriorAuthorityDocumentTypeUpdateResponse(
@@ -86,7 +95,7 @@ public class PriorAuthorityDocumentCommandController implements PriorAuthorityDo
   @LogMethodResponse
   public ResponseEntity<Void> deletePriorAuthorityDocument(
       ServiceName serviceName, UUID priorAuthorityId, UUID documentId) {
-    deleteUseCase.execute(priorAuthorityId, documentId);
+    deleteUseCase.execute(priorAuthorityId, documentId, authenticatedCallerFactory.currentCaller());
     return ResponseEntity.noContent().build();
   }
 }
