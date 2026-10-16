@@ -1,11 +1,16 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
+import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -25,6 +30,8 @@ import uk.gov.justice.laa.dstew.access.model.DocumentType;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityDocumentTypeUpdateResponse;
 import uk.gov.justice.laa.dstew.access.model.UpdatePriorAuthorityDocumentTypeRequest;
 import uk.gov.justice.laa.dstew.access.model.UploadPriorAuthorityDocumentResponse;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedCallerFactory;
 
 @ExtendWith(MockitoExtension.class)
 class EvidenceDocumentCommandControllerTest {
@@ -32,9 +39,16 @@ class EvidenceDocumentCommandControllerTest {
   @Mock private UploadPriorAuthorityDocumentUseCase uploadUseCase;
   @Mock private UpdatePriorAuthorityDocumentTypeUseCase updateTypeUseCase;
   @Mock private DeletePriorAuthorityDocumentUseCase deleteUseCase;
+  @Mock private AuthenticatedCallerFactory authenticatedCallerFactory;
   @Spy private ObjectMapper objectMapper = new ObjectMapper();
 
   @InjectMocks private PriorAuthorityDocumentCommandController controller;
+
+  @BeforeEach
+  void setUp() {
+    when(authenticatedCallerFactory.currentCaller())
+        .thenReturn(new AuthenticatedCaller(Optional.empty(), Set.of(), Set.of(), Set.of()));
+  }
 
   @Test
   void givenRequest_whenUploadPriorAuthorityDocument_thenReturnsCreatedAndBody() {
@@ -53,7 +67,8 @@ class EvidenceDocumentCommandControllerTest {
             Instant.parse("2026-09-10T12:30:00Z"),
             sourceService,
             "checksum");
-    when(uploadUseCase.execute(priorAuthorityId, file, sourceService)).thenReturn(useCaseResponse);
+    when(uploadUseCase.execute(eq(priorAuthorityId), eq(file), eq(sourceService), any()))
+        .thenReturn(useCaseResponse);
 
     ResponseEntity<UploadPriorAuthorityDocumentResponse> response =
         controller.uploadPriorAuthorityDocument(
@@ -62,7 +77,7 @@ class EvidenceDocumentCommandControllerTest {
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
     assertThat(response.getBody()).isNotNull();
     assertThat(response.getBody().getDocumentId()).isEqualTo(documentId);
-    verify(uploadUseCase).execute(priorAuthorityId, file, sourceService);
+    verify(uploadUseCase).execute(eq(priorAuthorityId), eq(file), eq(sourceService), any());
   }
 
   @Test
@@ -74,7 +89,11 @@ class EvidenceDocumentCommandControllerTest {
         new UpdatePriorAuthorityDocumentTypeRequest(DocumentType.GATEWAY_EVIDENCE);
     String serialisedRequest = "{\"documentType\":\"GATEWAY_EVIDENCE\"}";
     when(updateTypeUseCase.execute(
-            priorAuthorityId, documentId, "GATEWAY_EVIDENCE", serialisedRequest))
+            eq(priorAuthorityId),
+            eq(documentId),
+            eq("GATEWAY_EVIDENCE"),
+            eq(serialisedRequest),
+            any()))
         .thenReturn(new UpdatePriorAuthorityDocumentTypeResult(documentId, updatedAt));
 
     ResponseEntity<PriorAuthorityDocumentTypeUpdateResponse> response =
@@ -90,7 +109,12 @@ class EvidenceDocumentCommandControllerTest {
     assertThat(response.getBody().getUpdatedAt())
         .isEqualTo(updatedAt.atOffset(java.time.ZoneOffset.UTC));
     verify(updateTypeUseCase)
-        .execute(priorAuthorityId, documentId, "GATEWAY_EVIDENCE", serialisedRequest);
+        .execute(
+            eq(priorAuthorityId),
+            eq(documentId),
+            eq("GATEWAY_EVIDENCE"),
+            eq(serialisedRequest),
+            any());
   }
 
   @Test
@@ -105,6 +129,6 @@ class EvidenceDocumentCommandControllerTest {
             documentId);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-    verify(deleteUseCase).execute(priorAuthorityId, documentId);
+    verify(deleteUseCase).execute(eq(priorAuthorityId), eq(documentId), any());
   }
 }

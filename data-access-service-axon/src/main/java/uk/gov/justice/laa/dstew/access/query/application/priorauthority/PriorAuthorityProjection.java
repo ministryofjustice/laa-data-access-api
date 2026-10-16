@@ -34,6 +34,8 @@ import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 public class PriorAuthorityProjection {
 
   private final PriorAuthorityReadRepository repository;
+  private final PriorAuthorityReadQueryGateway readQueryGateway;
+  private final PriorAuthorityCurrentStateAccessPolicy accessPolicy;
   private final PriorAuthorityDataStore priorAuthorityDataStore;
   private final PriorAuthorityDraftStore priorAuthorityDraftStore;
 
@@ -46,9 +48,13 @@ public class PriorAuthorityProjection {
    */
   public PriorAuthorityProjection(
       PriorAuthorityReadRepository repository,
+      PriorAuthorityReadQueryGateway readQueryGateway,
+      PriorAuthorityCurrentStateAccessPolicy accessPolicy,
       PriorAuthorityDataStore priorAuthorityDataStore,
       PriorAuthorityDraftStore priorAuthorityDraftStore) {
     this.repository = repository;
+    this.readQueryGateway = readQueryGateway;
+    this.accessPolicy = accessPolicy;
     this.priorAuthorityDataStore = priorAuthorityDataStore;
     this.priorAuthorityDraftStore = priorAuthorityDraftStore;
   }
@@ -58,8 +64,10 @@ public class PriorAuthorityProjection {
   @QueryHandler
   public PriorAuthorityResult handle(FindPriorAuthorityByPriorAuthorityIdQuery query) {
     UUID priorAuthorityId = query.priorAuthorityId();
-    return repository
-        .findById(priorAuthorityId)
+    return readQueryGateway
+        .findPriorAuthority(
+            (root, criteriaQuery, cb) -> cb.equal(root.get("priorAuthorityId"), priorAuthorityId),
+            accessPolicy.restrictionFor(query.accessScope()))
         .flatMap(result -> hydrate(result, priorAuthorityId))
         .orElse(null);
   }
@@ -131,6 +139,7 @@ public class PriorAuthorityProjection {
             .priorAuthorityId(event.priorAuthorityId())
             .priorAuthorityType(event.priorAuthorityType())
             .applicationId(event.applicationId())
+            .officeCode(event.officeCode())
             .dataVersion(0L)
             .status(PriorAuthorityStatus.DRAFT.name())
             .createdAt(event.occurredAt())
