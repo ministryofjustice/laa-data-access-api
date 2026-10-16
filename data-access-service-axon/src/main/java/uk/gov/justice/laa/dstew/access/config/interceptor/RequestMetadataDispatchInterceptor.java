@@ -16,6 +16,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.config.ServiceNameContext;
+import uk.gov.justice.laa.dstew.access.logging.LoggingContext;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.security.SecurityHelper;
 
@@ -50,15 +51,16 @@ public class RequestMetadataDispatchInterceptor
   }
 
   private Map<String, String> currentRequestMetadata() {
+    Map<String, String> metadata = new HashMap<>();
+    String correlationId = LoggingContext.getCorrelationId();
+    if (correlationId != null && !correlationId.isBlank()) {
+      metadata.put(CORRELATION_ID_METADATA_KEY, correlationId);
+    }
+
     try {
-      Map<String, String> metadata = new HashMap<>();
       ServiceName serviceName = serviceNameContext.getServiceName();
       if (serviceName != null) {
         metadata.put(SERVICE_NAME_METADATA_KEY, serviceName.getValue());
-      }
-      String correlationId = serviceNameContext.getCorrelationId();
-      if (correlationId != null && !correlationId.isBlank()) {
-        metadata.put(CORRELATION_ID_METADATA_KEY, correlationId);
       }
 
       String oid =
@@ -69,7 +71,7 @@ public class RequestMetadataDispatchInterceptor
 
       return Map.copyOf(metadata);
     } catch (ScopeNotActiveException exception) {
-      return Map.of();
+      return Map.copyOf(metadata);
     }
   }
 

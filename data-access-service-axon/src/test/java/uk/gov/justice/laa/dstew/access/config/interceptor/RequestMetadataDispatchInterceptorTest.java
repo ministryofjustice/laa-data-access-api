@@ -28,6 +28,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import uk.gov.justice.laa.dstew.access.config.ServiceNameContext;
+import uk.gov.justice.laa.dstew.access.logging.LoggingContext;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 
 class RequestMetadataDispatchInterceptorTest {
@@ -41,13 +42,14 @@ class RequestMetadataDispatchInterceptorTest {
   @AfterEach
   void clearSecurityContext() {
     SecurityContextHolder.clearContext();
+    LoggingContext.clear();
   }
 
   @Test
   void givenServiceNameContextAndEntraOid_whenCommandIsDispatched_thenAddsServiceNameMetadata() {
     ServiceNameContext context = new ServiceNameContext();
     context.setServiceName(ServiceName.fromValue("CIVIL_APPLY"));
-    context.setCorrelationId("corr-2096");
+    LoggingContext.set("correlationId", "corr-2096");
 
     RequestMetadataDispatchInterceptor interceptor =
         new RequestMetadataDispatchInterceptor(context);
