@@ -14,8 +14,6 @@ import uk.gov.justice.laa.dstew.access.model.ServiceName;
 @ExcludeFromGeneratedCodeCoverage
 public class ServiceNameInterceptor implements HandlerInterceptor {
 
-  //  public static final String CORRELATION_ID_HEADER = "X-Correlation-ID";
-
   private final ServiceNameContext serviceNameContext;
 
   public ServiceNameInterceptor(ServiceNameContext serviceNameContext) {
@@ -29,12 +27,6 @@ public class ServiceNameInterceptor implements HandlerInterceptor {
     if (serviceNameHeader != null) {
       serviceNameContext.setServiceName(ServiceName.fromValue(serviceNameHeader));
     }
-    //    String correlationId = request.getHeader(CORRELATION_ID_HEADER);
-    //    if (correlationId == null || correlationId.isBlank()) {
-    //      correlationId = UUID.randomUUID().toString();
-    //    }
-    //    serviceNameContext.setCorrelationId(correlationId);
-    //    response.setHeader(CORRELATION_ID_HEADER, correlationId);
     return true;
   }
 }
