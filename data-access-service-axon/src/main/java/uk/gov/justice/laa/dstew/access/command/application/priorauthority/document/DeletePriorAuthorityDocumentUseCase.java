@@ -11,6 +11,7 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
 
 /** Marks a prior-authority draft document deleted and then attempts SDS file deletion. */
@@ -35,7 +36,7 @@ public class DeletePriorAuthorityDocumentUseCase {
 
   /** Records the deletion durably before attempting best-effort SDS deletion. */
   @AllowApiCaseworker
-  public void execute(UUID priorAuthorityId, UUID documentId) {
+  public void execute(UUID priorAuthorityId, UUID documentId, AuthenticatedCaller caller) {
     var draft =
         draftStore
             .find(priorAuthorityId)
@@ -46,7 +47,8 @@ public class DeletePriorAuthorityDocumentUseCase {
     String originalFileName = draft.documentFilenames().get(documentId);
     DocumentMetadata document =
         dispatcher.dispatch(
-            new PriorAuthorityDocumentDeleteCommand(priorAuthorityId, documentId, Instant.now()),
+            new PriorAuthorityDocumentDeleteCommand(
+                priorAuthorityId, documentId, Instant.now(), caller),
             DocumentMetadata.class);
     String storageFilename =
         document.fileSuffix() == null ? originalFileName : documentId + document.fileSuffix();
@@ -60,5 +62,11 @@ public class DeletePriorAuthorityDocumentUseCase {
           documentId,
           exception);
     }
+  }
+
+  /** Temporary source-compatible overload for non-HTTP fixtures. */
+  @Deprecated(forRemoval = true)
+  public void execute(UUID priorAuthorityId, UUID documentId) {
+    execute(priorAuthorityId, documentId, null);
   }
 }

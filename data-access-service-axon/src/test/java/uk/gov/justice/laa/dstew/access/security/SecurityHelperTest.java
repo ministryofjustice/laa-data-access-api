@@ -28,6 +28,21 @@ class SecurityHelperTest {
   }
 
   @Test
+  void givenJwtAuthenticationWithApplicationRoles_whenRequested_thenReturnsRoles() {
+    Jwt jwt = jwt().claim("LAA_APP_ROLES", List.of("LAA_PROVIDER", "LAA_CASEWORKER")).build();
+    SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt));
+
+    assertThat(SecurityHelper.getLaaAppRoles()).containsExactly("LAA_PROVIDER", "LAA_CASEWORKER");
+  }
+
+  @Test
+  void givenJwtAuthenticationWithoutApplicationRoles_whenRequested_thenReturnsEmptyList() {
+    SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt().build()));
+
+    assertThat(SecurityHelper.getLaaAppRoles()).isEmpty();
+  }
+
+  @Test
   void givenNoJwtAuthentication_whenRequested_thenReturnsEmptyList() {
     SecurityContextHolder.getContext()
         .setAuthentication(new TestingAuthenticationToken("user", "credentials"));
