@@ -332,6 +332,7 @@ class ApplicationGroupRouteProjectionTest {
         "APPLICATION_SUBMITTED",
         1,
         occurredAt,
+        null,
         null);
   }
 
