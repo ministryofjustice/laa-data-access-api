@@ -940,7 +940,7 @@ class ApplicationAggregateTest {
 
   private ApplicationDraftStartedEvent draftStartedEvent(UUID applicationId) {
     return new ApplicationDraftStartedEvent(
-        applicationId, 1, "hash", Instant.parse("2026-10-02T09:00:00Z"));
+        applicationId, 1, "hash", Instant.parse("2026-10-02T09:00:00Z"), null);
   }
 
   private ApplicationDraftPayload draftPayload() {

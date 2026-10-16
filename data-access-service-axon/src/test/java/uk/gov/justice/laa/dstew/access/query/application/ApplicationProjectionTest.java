@@ -341,7 +341,7 @@ class ApplicationProjectionTest {
     when(applicationDataStore.get(applicationId, event.applicationDataVersion())).thenReturn(data);
 
     projection.on(
-        new ApplicationDraftStartedEvent(applicationId, 1, "fingerprint", draftStartedAt),
+        new ApplicationDraftStartedEvent(applicationId, 1, "fingerprint", draftStartedAt, null),
         queryUpdateEmitter);
     ApplicationReadModel savedDraft = draft[0];
     when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(savedDraft));

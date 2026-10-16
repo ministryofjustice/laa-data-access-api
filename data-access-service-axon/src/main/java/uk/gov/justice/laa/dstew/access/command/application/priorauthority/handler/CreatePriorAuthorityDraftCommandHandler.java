@@ -52,7 +52,8 @@ public class CreatePriorAuthorityDraftCommandHandler {
             command.serialisedRequest(),
             command.occurredAt(),
             null,
-            officeCode);
+            officeCode,
+            null);
 
     draftStore.upsert(
         command.priorAuthorityId(),

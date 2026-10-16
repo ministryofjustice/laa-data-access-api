@@ -100,7 +100,7 @@ class ApplicationProjectionSequencingIntegrationTest {
 
     applicationProjection.reset();
     applicationProjection.on(
-        new ApplicationDraftStartedEvent(applicationId, 1, "fingerprint", draftStartedAt),
+        new ApplicationDraftStartedEvent(applicationId, 1, "fingerprint", draftStartedAt, null),
         queryUpdateEmitter);
     applicationProjection.on(event, queryUpdateEmitter);
 

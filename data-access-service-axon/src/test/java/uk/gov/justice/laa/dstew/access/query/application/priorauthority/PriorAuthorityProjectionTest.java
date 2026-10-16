@@ -603,6 +603,7 @@ class PriorAuthorityProjectionTest {
                     DisbursementInformation.builder().build(),
                     null,
                     "{\"decision\":\"GRANTED\"}"),
+                null,
                 null));
 
     PriorAuthorityResult result =
