@@ -81,7 +81,7 @@ public class ApplicationGroupRouteResolver {
     if (!stillMember) {
       throw notInGroup(applicationId);
     }
-    if (!groupId.equals(expectedGroupId)) {
+    if (!Objects.equals(groupId, expectedGroupId)) {
       throw LinkedApplicationGroupVersionConflictException.groupChanged(applicationId);
     }
     return groupId;
@@ -113,6 +113,51 @@ public class ApplicationGroupRouteResolver {
       return Optional.empty();
     }
     return Optional.of(memberApplicationIds);
+  }
+
+  /**
+   * Locks the application's current route and, when linked, all routes in its group before Prior
+   * Authority creation. The caller retains these locks for its surrounding transaction.
+   */
+  @Transactional
+  public Optional<UUID> resolveGroupForPriorAuthorityCreation(UUID applicationId) {
+    var membership =
+        routes
+            .findMembershipByApplicationId(applicationId)
+            .orElseThrow(
+                () ->
+                    new ResourceNotFoundException(
+                        "No application group route found for application " + applicationId));
+    if (membership.getRouteKind() == ApplicationGroupRouteKind.STANDALONE) {
+      var lockedRoute =
+          routes
+              .findByApplicationIdForUpdate(applicationId)
+              .orElseThrow(
+                  () ->
+                      new ResourceNotFoundException(
+                          "No application group route found for application " + applicationId));
+      if (lockedRoute.getRouteKind() != ApplicationGroupRouteKind.STANDALONE
+          || lockedRoute.getGroupId() != null) {
+        throw LinkedApplicationGroupVersionConflictException.groupChanged(applicationId);
+      }
+      return Optional.empty();
+    }
+    var groupId = membership.getGroupId();
+    if (groupId == null) {
+      throw LinkedApplicationGroupVersionConflictException.groupChanged(applicationId);
+    }
+    var lockedRoutes = routes.findAllByGroupIdForUpdate(groupId);
+    var stillMember =
+        lockedRoutes.stream()
+            .anyMatch(
+                lockedRoute ->
+                    lockedRoute.getApplicationId().equals(applicationId)
+                        && lockedRoute.getRouteKind() == ApplicationGroupRouteKind.LINKED_GROUP
+                        && groupId.equals(lockedRoute.getGroupId()));
+    if (!stillMember) {
+      throw LinkedApplicationGroupVersionConflictException.groupChanged(applicationId);
+    }
+    return Optional.of(groupId);
   }
 
   private ApplicationGroupRoute requiredRoute(

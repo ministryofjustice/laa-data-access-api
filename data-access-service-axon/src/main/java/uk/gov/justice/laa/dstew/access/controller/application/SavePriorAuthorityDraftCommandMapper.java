@@ -18,6 +18,7 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType
 import uk.gov.justice.laa.dstew.access.content.priorauthority.TimeRequested;
 import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityDraftRequest;
 import uk.gov.justice.laa.dstew.access.model.SavePriorAuthorityDraftRequest;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
 import uk.gov.justice.laa.dstew.access.util.EnumMapping;
 import uk.gov.justice.laa.dstew.access.util.RequestSerialiser;
 
@@ -35,7 +36,7 @@ public class SavePriorAuthorityDraftCommandMapper {
 
   /** Creates a save-draft command for a new draft, with a server-generated submission ID. */
   public CreatePriorAuthorityDraftCommand toCreateCommand(
-      CreatePriorAuthorityDraftRequest request) {
+      CreatePriorAuthorityDraftRequest request, AuthenticatedCaller caller) {
     PriorAuthorityContent content =
         toContent(
             request.getPriorAuthorityType(),
@@ -50,12 +51,18 @@ public class SavePriorAuthorityDraftCommandMapper {
         serialise(request),
         1,
         SCHEMA_VERSION_NAME,
-        Instant.now());
+        Instant.now(),
+        caller);
+  }
+
+  @Deprecated(forRemoval = true)
+  CreatePriorAuthorityDraftCommand toCreateCommand(CreatePriorAuthorityDraftRequest request) {
+    return toCreateCommand(request, null);
   }
 
   /** Creates a save-draft command for an existing draft identified by the given submission ID. */
   public UpdatePriorAuthorityDraftCommand toUpdateCommand(
-      UUID priorAuthorityId, SavePriorAuthorityDraftRequest request) {
+      UUID priorAuthorityId, SavePriorAuthorityDraftRequest request, AuthenticatedCaller caller) {
     PriorAuthorityContent content =
         toContent(
             null,
@@ -64,7 +71,19 @@ public class SavePriorAuthorityDraftCommandMapper {
             request.getCounselDetails(),
             request.getDisbursementDetails());
     return new UpdatePriorAuthorityDraftCommand(
-        priorAuthorityId, content, serialise(request), 1, SCHEMA_VERSION_NAME, Instant.now());
+        priorAuthorityId,
+        content,
+        serialise(request),
+        1,
+        SCHEMA_VERSION_NAME,
+        Instant.now(),
+        caller);
+  }
+
+  @Deprecated(forRemoval = true)
+  UpdatePriorAuthorityDraftCommand toUpdateCommand(
+      UUID priorAuthorityId, SavePriorAuthorityDraftRequest request) {
+    return toUpdateCommand(priorAuthorityId, request, null);
   }
 
   private PriorAuthorityContent toContent(

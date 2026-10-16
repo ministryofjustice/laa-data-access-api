@@ -48,6 +48,14 @@ public class LinkedApplicationGroupAggregate {
         .ifPresent(eventAppender::append);
   }
 
+  /**
+   * Validates that the requested application remains the current lead without appending an event.
+   */
+  @CommandHandler
+  void handle(ValidatePriorAuthorityGroupEligibilityCommand command) {
+    LinkedApplicationGroupDecider.validatePriorAuthorityGroupEligibility(state, command);
+  }
+
   @EventSourcingHandler
   void on(LinkedApplicationGroupCreatedEvent event) {
     LinkedApplicationGroupEvolve.apply(state, event);

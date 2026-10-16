@@ -19,6 +19,7 @@ import uk.gov.justice.laa.dstew.access.model.SavePriorAuthorityDraftRequest;
 import uk.gov.justice.laa.dstew.access.model.SavePriorAuthorityDraftResponse;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.model.SubmitPriorAuthorityDraftResponse;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedCallerFactory;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
 
@@ -31,6 +32,7 @@ public class PriorAuthorityDraftCommandController implements PriorAuthorityDraft
   private final SubmitPriorAuthorityDraftUseCase submitUseCase;
   private final SavePriorAuthorityDraftCommandMapper saveCommandMapper;
   private final SubmitPriorAuthorityDraftCommandMapper submitCommandMapper;
+  private final AuthenticatedCallerFactory authenticatedCallerFactory;
 
   /** Creates the command adapter. */
   public PriorAuthorityDraftCommandController(
@@ -38,12 +40,14 @@ public class PriorAuthorityDraftCommandController implements PriorAuthorityDraft
       UpdatePriorAuthorityDraftUseCase updateUseCase,
       SubmitPriorAuthorityDraftUseCase submitUseCase,
       SavePriorAuthorityDraftCommandMapper saveCommandMapper,
-      SubmitPriorAuthorityDraftCommandMapper submitCommandMapper) {
+      SubmitPriorAuthorityDraftCommandMapper submitCommandMapper,
+      AuthenticatedCallerFactory authenticatedCallerFactory) {
     this.createUseCase = createUseCase;
     this.updateUseCase = updateUseCase;
     this.submitUseCase = submitUseCase;
     this.saveCommandMapper = saveCommandMapper;
     this.submitCommandMapper = submitCommandMapper;
+    this.authenticatedCallerFactory = authenticatedCallerFactory;
   }
 
   /** Creates a new Prior Authority draft and returns 201 once the projection is readable. */
@@ -53,7 +57,8 @@ public class PriorAuthorityDraftCommandController implements PriorAuthorityDraft
   public ResponseEntity<SavePriorAuthorityDraftResponse> savePriorAuthorityDraft(
       ServiceName serviceName, CreatePriorAuthorityDraftRequest createPriorAuthorityDraftRequest) {
     CreatePriorAuthorityDraftCommand command =
-        saveCommandMapper.toCreateCommand(createPriorAuthorityDraftRequest);
+        saveCommandMapper.toCreateCommand(
+            createPriorAuthorityDraftRequest, authenticatedCallerFactory.currentCaller());
     URI location =
         ServletUriComponentsBuilder.fromCurrentContextPath()
             .path("/api/v0/prior-authorities/{priorAuthorityId}")
@@ -77,7 +82,10 @@ public class PriorAuthorityDraftCommandController implements PriorAuthorityDraft
       UUID priorAuthorityId,
       SavePriorAuthorityDraftRequest savePriorAuthorityDraftRequest) {
     UpdatePriorAuthorityDraftCommand command =
-        saveCommandMapper.toUpdateCommand(priorAuthorityId, savePriorAuthorityDraftRequest);
+        saveCommandMapper.toUpdateCommand(
+            priorAuthorityId,
+            savePriorAuthorityDraftRequest,
+            authenticatedCallerFactory.currentCaller());
     updateUseCase.execute(command);
     return ResponseEntity.noContent().build();
   }
@@ -89,7 +97,8 @@ public class PriorAuthorityDraftCommandController implements PriorAuthorityDraft
   public ResponseEntity<SubmitPriorAuthorityDraftResponse> submitPriorAuthorityDraft(
       ServiceName serviceName, UUID priorAuthorityId) {
     SubmitPriorAuthorityDraftCommand command =
-        submitCommandMapper.toSubmitCommand(priorAuthorityId);
+        submitCommandMapper.toSubmitCommand(
+            priorAuthorityId, authenticatedCallerFactory.currentCaller());
     URI location =
         ServletUriComponentsBuilder.fromCurrentContextPath()
             .path("/api/v0/prior-authorities/{priorAuthorityId}")

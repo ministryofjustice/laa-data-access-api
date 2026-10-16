@@ -12,6 +12,8 @@ import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequest
 
 import jakarta.annotation.PostConstruct;
 import java.math.BigDecimal;
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -25,6 +27,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
+import javax.sql.DataSource;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,12 +54,18 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.ObjectMapper;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRoute;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteKind;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteRepository;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
+import uk.gov.justice.laa.dstew.access.model.ApplicationLinkRequest;
+import uk.gov.justice.laa.dstew.access.model.ApplicationLinkType;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantedOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityDraftRequest;
 import uk.gov.justice.laa.dstew.access.model.DisbursementDetails;
 import uk.gov.justice.laa.dstew.access.model.DocumentType;
+import uk.gov.justice.laa.dstew.access.model.LinkedGroupChangeRequest;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityResponse;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.model.SavePriorAuthorityDraftRequest;
@@ -67,6 +76,7 @@ import uk.gov.justice.laa.dstew.access.model.UploadPriorAuthorityDocumentRespons
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsUploadResult;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
+import uk.gov.justice.laa.dstew.access.version.VersionToken;
 import util.ProjectionAwaiter;
 
 /** Full HTTP/Postgres/Axon integration tests for the Prior Authority draft/submit lifecycle. */
@@ -90,6 +100,10 @@ class PriorAuthorityDraftIntegrationTest {
 
   @Autowired private JdbcTemplate jdbcTemplate;
 
+  @Autowired private DataSource dataSource;
+
+  @Autowired private ApplicationGroupRouteRepository applicationGroupRouteRepository;
+
   @Autowired private QueryGateway queryGateway;
 
   @MockitoBean private SdsService sdsService;
@@ -104,7 +118,8 @@ class PriorAuthorityDraftIntegrationTest {
   }
 
   @Test
-  void givenGrantedApplication_whenSavePriorAuthorityDraft_thenPersistsDraftAndProjects() {
+  void
+      givenAccessAsUserAndGrantedApplication_whenSavePriorAuthorityDraft_thenPersistsDraftAndProjects() {
     UUID applicationId = grantedApplication();
     CreatePriorAuthorityDraftRequest request =
         CreatePriorAuthorityDraftRequest.builder()
@@ -136,6 +151,12 @@ class PriorAuthorityDraftIntegrationTest {
                 Integer.class,
                 priorAuthorityId))
         .isEqualTo(1);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT office_code FROM axon.prior_authority_current_state WHERE prior_authority_id = ?",
+                String.class,
+                priorAuthorityId))
+        .isEqualTo("1A001B");
 
     ResponseEntity<String> draftResponse =
         restTemplate.exchange(
@@ -152,6 +173,282 @@ class PriorAuthorityDraftIntegrationTest {
     assertThat(draft.getSubmittedAt()).isNull();
     assertThat(draft.getPriorAuthorityType())
         .isEqualTo(PriorAuthorityResponse.PriorAuthorityTypeEnum.EXPERT);
+  }
+
+  @Test
+  void
+      givenProviderWithoutTheParentApplicationOffice_whenSavePriorAuthorityDraft_thenReturns403AndDoesNotCreateDraft() {
+    UUID applicationId = grantedApplication();
+    CreatePriorAuthorityDraftRequest request =
+        CreatePriorAuthorityDraftRequest.builder()
+            .applicationId(applicationId)
+            .priorAuthorityType(PriorAuthorityType.EXPERT)
+            .build();
+
+    ResponseEntity<String> response =
+        restTemplate.postForEntity(
+            saveDraftUrl(),
+            new HttpEntity<>(request, headers(TestJwtDecoderConfig.OFFICE_C_BEARER_TOKEN)),
+            String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM axon.prior_authority_draft WHERE application_id = ?",
+                Integer.class,
+                applicationId))
+        .isZero();
+  }
+
+  @Test
+  void givenGrantedStandaloneApplication_whenSavePriorAuthorityDraft_thenCreatesDraft() {
+    UUID applicationId = grantedApplication();
+    assertThat(awaitRoute(applicationId, ApplicationGroupRouteKind.STANDALONE).getGroupId())
+        .isNull();
+
+    UUID priorAuthorityId = saveDraft(applicationId, PriorAuthorityType.EXPERT, null, null);
+
+    assertThat(priorAuthorityId).isNotNull();
+  }
+
+  @Test
+  void givenGrantedLinkedLead_whenSavePriorAuthorityDraft_thenCreatesDraft() {
+    LinkedApplications linkedApplications = grantedLinkedApplications();
+
+    UUID priorAuthorityId =
+        saveDraft(linkedApplications.leadApplicationId(), PriorAuthorityType.EXPERT, null, null);
+
+    assertThat(priorAuthorityId).isNotNull();
+  }
+
+  @Test
+  void
+      givenGrantedLinkedAssociate_whenSavePriorAuthorityDraft_thenReturnsBadRequestWithoutDraftOrEvent() {
+    LinkedApplications linkedApplications = grantedLinkedApplications();
+    CreatePriorAuthorityDraftRequest request =
+        CreatePriorAuthorityDraftRequest.builder()
+            .applicationId(linkedApplications.associateApplicationId())
+            .priorAuthorityType(PriorAuthorityType.EXPERT)
+            .build();
+
+    ResponseEntity<String> response =
+        restTemplate.postForEntity(
+            saveDraftUrl(), new HttpEntity<>(request, headers()), String.class);
+
+    assertAssociateRejection(response);
+    assertNoPriorAuthorityWrites(linkedApplications.associateApplicationId());
+  }
+
+  @Test
+  void givenLeadChanges_whenSavePriorAuthorityDraft_thenOnlyNewLeadIsEligible() {
+    LinkedApplications linkedApplications = grantedLinkedApplications();
+    String groupVersion = VersionToken.linkedGroup(linkedApplications.groupId(), 0).encode();
+    ResponseEntity<Void> changeLeadResponse =
+        restTemplate.exchange(
+            "/api/v0/applications/" + linkedApplications.associateApplicationId() + "/make-lead",
+            HttpMethod.POST,
+            new HttpEntity<>(new LinkedGroupChangeRequest(groupVersion), headers()),
+            Void.class);
+    assertThat(changeLeadResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    awaitLead(linkedApplications.groupId(), linkedApplications.associateApplicationId());
+
+    CreatePriorAuthorityDraftRequest previousLeadRequest =
+        CreatePriorAuthorityDraftRequest.builder()
+            .applicationId(linkedApplications.leadApplicationId())
+            .priorAuthorityType(PriorAuthorityType.EXPERT)
+            .build();
+    ResponseEntity<String> previousLeadResponse =
+        restTemplate.postForEntity(
+            saveDraftUrl(), new HttpEntity<>(previousLeadRequest, headers()), String.class);
+
+    assertThat(previousLeadResponse.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(
+            saveDraft(
+                linkedApplications.associateApplicationId(), PriorAuthorityType.EXPERT, null, null))
+        .isNotNull();
+  }
+
+  @org.junit.jupiter.params.ParameterizedTest
+  @org.junit.jupiter.params.provider.ValueSource(ints = {2, 3})
+  void givenAssociateUnlinked_whenSavePriorAuthorityDraft_thenReleasedMembersAreEligible(
+      int memberCount) {
+    LinkedApplications linked = grantedLinkedApplications();
+    long version = 0;
+    if (memberCount == 3) {
+      UUID additionalAssociate = grantedApplication();
+      ApplicationLinkRequest link =
+          new ApplicationLinkRequest(linked.leadApplicationId(), ApplicationLinkType.FAMILY);
+      link.setLinkedGroupVersion(VersionToken.linkedGroup(linked.groupId(), 0).encode());
+      assertThat(
+              restTemplate
+                  .exchange(
+                      "/api/v0/applications/" + additionalAssociate + "/link",
+                      HttpMethod.POST,
+                      new HttpEntity<>(link, headers()),
+                      Void.class)
+                  .getStatusCode())
+          .isEqualTo(HttpStatus.NO_CONTENT);
+      version = 1;
+    }
+
+    assertThat(
+            changeGroup(linked.associateApplicationId(), "unlink", linked.groupId(), version)
+                .getStatusCode())
+        .isEqualTo(HttpStatus.NO_CONTENT);
+
+    assertThat(saveDraft(linked.associateApplicationId(), PriorAuthorityType.EXPERT, null, null))
+        .isNotNull();
+    assertThat(
+            awaitRoute(linked.associateApplicationId(), ApplicationGroupRouteKind.STANDALONE)
+                .getGroupId())
+        .isNull();
+    if (memberCount == 2) {
+      assertThat(saveDraft(linked.leadApplicationId(), PriorAuthorityType.EXPERT, null, null))
+          .isNotNull();
+      assertThat(
+              awaitRoute(linked.leadApplicationId(), ApplicationGroupRouteKind.STANDALONE)
+                  .getGroupId())
+          .isNull();
+    } else {
+      assertThat(
+              awaitRoute(linked.leadApplicationId(), ApplicationGroupRouteKind.LINKED_GROUP)
+                  .getGroupId())
+          .isEqualTo(linked.groupId());
+    }
+  }
+
+  @org.junit.jupiter.params.ParameterizedTest
+  @org.junit.jupiter.params.provider.ValueSource(strings = {"LEAD", "LINK", "UNLINK", "DISSOLVE"})
+  void givenGroupMutationCommitsFirst_whenCreationWaitsOnRoutes_thenRejectsWithoutBusinessWrites(
+      String operation) throws Exception {
+    CreationRace scenario = creationRace(operation, false);
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+    try (EventGate gate = pauseEvent(scenario.eventType(), false)) {
+      CompletableFuture<ResponseEntity<String>> mutation =
+          CompletableFuture.supplyAsync(scenario.mutation(), executor);
+      int mutationPid = awaitBlockedBy(gate.backendPid());
+      CompletableFuture<ResponseEntity<String>> creation =
+          CompletableFuture.supplyAsync(() -> createDraft(scenario.applicationId()), executor);
+      awaitBlockedBy(mutationPid);
+      assertThat(creation).isNotDone();
+
+      gate.release();
+      assertThat(mutation.get(20, TimeUnit.SECONDS).getStatusCode())
+          .isEqualTo(HttpStatus.NO_CONTENT);
+      ResponseEntity<String> response = creation.get(20, TimeUnit.SECONDS);
+      if ("LEAD".equals(operation)) {
+        assertAssociateRejection(response);
+      } else {
+        assertThat(response.getStatusCode())
+            .withFailMessage("Creation response: %s", response.getBody())
+            .isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getBody()).contains("re-read before retrying");
+      }
+      assertNoPriorAuthorityWrites(scenario.applicationId());
+
+      ResponseEntity<String> retry = createDraft(scenario.applicationId());
+      if ("LEAD".equals(operation) || "LINK".equals(operation)) {
+        assertAssociateRejection(retry);
+        assertNoPriorAuthorityWrites(scenario.applicationId());
+      } else {
+        assertCreatedDraft(retry, scenario.applicationId());
+      }
+    } finally {
+      executor.shutdownNow();
+      assertThat(executor.awaitTermination(10, TimeUnit.SECONDS)).isTrue();
+    }
+  }
+
+  @org.junit.jupiter.params.ParameterizedTest
+  @org.junit.jupiter.params.provider.CsvSource({
+    "LEAD,false", "LINK,false", "UNLINK,false", "DISSOLVE,false",
+    "LEAD,true", "LINK,true", "UNLINK,true", "DISSOLVE,true"
+  })
+  void givenCreationHoldsRoutes_whenGroupMutationStarts_thenWaitsForCreationCommitOrRollback(
+      String operation, boolean failInsert) throws Exception {
+    CreationRace scenario = creationRace(operation, true);
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+    try (EventGate gate = pauseEvent("PriorAuthorityDraftStartedEvent", failInsert)) {
+      CompletableFuture<ResponseEntity<String>> creation =
+          CompletableFuture.supplyAsync(() -> createDraft(scenario.applicationId()), executor);
+      int creationPid = awaitBlockedBy(gate.backendPid());
+      CompletableFuture<ResponseEntity<String>> mutation =
+          CompletableFuture.supplyAsync(scenario.mutation(), executor);
+      awaitBlockedBy(creationPid);
+      assertThat(creation).isNotDone();
+      assertThat(mutation).isNotDone();
+      assertNoPriorAuthorityWrites(scenario.applicationId());
+
+      gate.release();
+      ResponseEntity<String> response = creation.get(20, TimeUnit.SECONDS);
+      assertThat(mutation.get(20, TimeUnit.SECONDS).getStatusCode())
+          .isEqualTo(HttpStatus.NO_CONTENT);
+      if (failInsert) {
+        assertThat(response.getStatusCode().is5xxServerError()).isTrue();
+        assertNoPriorAuthorityWrites(scenario.applicationId());
+      } else {
+        UUID priorAuthorityId = assertCreatedDraft(response, scenario.applicationId());
+        projectionAwaiter.awaitPriorAuthority(priorAuthorityId);
+        PriorAuthorityResponse draft = getPriorAuthority(priorAuthorityId);
+        assertThat(draft.getApplicationId()).isEqualTo(scenario.applicationId());
+        assertThat(draft.getStatus()).isEqualTo(PriorAuthorityResponse.StatusEnum.DRAFT);
+      }
+      if ("LEAD".equals(operation) || "LINK".equals(operation)) {
+        assertAssociateRejection(createDraft(scenario.applicationId()));
+        assertThat(countPriorAuthorityDrafts(scenario.applicationId()))
+            .isEqualTo(failInsert ? 0 : 1);
+        assertThat(countPriorAuthorityCreationEvents(scenario.applicationId()))
+            .isEqualTo(failInsert ? 0 : 1);
+      }
+    } finally {
+      executor.shutdownNow();
+      assertThat(executor.awaitTermination(10, TimeUnit.SECONDS)).isTrue();
+    }
+  }
+
+  @Test
+  void givenHigherIdentifierLead_whenCreationRacesLeadChange_thenLocksInGroupOrderWithoutDeadlock()
+      throws Exception {
+    UUID associateId = grantedApplication(new UUID(0, UUID.randomUUID().getLeastSignificantBits()));
+    UUID leadId = grantedApplication(new UUID(1, UUID.randomUUID().getLeastSignificantBits()));
+    assertThat(linkApplication(associateId, leadId, null).getStatusCode())
+        .isEqualTo(HttpStatus.NO_CONTENT);
+    UUID groupId = awaitRoute(leadId, ApplicationGroupRouteKind.LINKED_GROUP).getGroupId();
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+    try (Connection connection = dataSource.getConnection()) {
+      connection.setAutoCommit(false);
+      int backendPid;
+      try (var statement = connection.createStatement();
+          var result = statement.executeQuery("SELECT pg_backend_pid()")) {
+        assertThat(result.next()).isTrue();
+        backendPid = result.getInt(1);
+      }
+      try (var statement =
+          connection.prepareStatement(
+              "SELECT application_id FROM axon.application_group_route WHERE application_id = ? FOR UPDATE")) {
+        statement.setObject(1, associateId);
+        try (var result = statement.executeQuery()) {
+          assertThat(result.next()).isTrue();
+        }
+      }
+      CompletableFuture<ResponseEntity<String>> mutation =
+          CompletableFuture.supplyAsync(
+              () -> changeGroup(associateId, "make-lead", groupId, 0), executor);
+      int mutationPid = awaitBlockedBy(backendPid);
+      CompletableFuture<ResponseEntity<String>> creation =
+          CompletableFuture.supplyAsync(() -> createDraft(leadId), executor);
+      awaitBlockedBy(mutationPid);
+      assertThat(creation).isNotDone();
+
+      connection.commit();
+      assertThat(mutation.get(20, TimeUnit.SECONDS).getStatusCode())
+          .isEqualTo(HttpStatus.NO_CONTENT);
+      assertAssociateRejection(creation.get(20, TimeUnit.SECONDS));
+      assertNoPriorAuthorityWrites(leadId);
+    } finally {
+      executor.shutdownNow();
+      assertThat(executor.awaitTermination(10, TimeUnit.SECONDS)).isTrue();
+    }
   }
 
   @Test
@@ -202,7 +499,8 @@ class PriorAuthorityDraftIntegrationTest {
   }
 
   @Test
-  void givenExistingDraft_whenUpdatePriorAuthorityDraft_thenReturns204AndPersistsUpdatedContent() {
+  void
+      givenAccessAsUserAndExistingDraft_whenUpdatePriorAuthorityDraft_thenReturns204AndPersistsUpdatedContent() {
     UUID applicationId = grantedApplication();
     UUID priorAuthorityId = saveDraft(applicationId, PriorAuthorityType.EXPERT, null, null);
 
@@ -229,6 +527,34 @@ class PriorAuthorityDraftIntegrationTest {
   }
 
   @Test
+  void
+      givenProviderWithoutThePriorAuthorityOffice_whenUpdatePriorAuthorityDraft_thenReturns403AndDoesNotChangeContent() {
+    UUID applicationId = grantedApplication();
+    UUID priorAuthorityId = saveDraft(applicationId, PriorAuthorityType.EXPERT, null, null);
+    SavePriorAuthorityDraftRequest updateRequest =
+        SavePriorAuthorityDraftRequest.builder().justification("Unauthorised update").build();
+
+    ResponseEntity<Void> updateResponse =
+        restTemplate.exchange(
+            priorAuthorityUrl(priorAuthorityId),
+            HttpMethod.PUT,
+            new HttpEntity<>(updateRequest, headers(TestJwtDecoderConfig.OFFICE_C_BEARER_TOKEN)),
+            Void.class);
+
+    assertThat(updateResponse.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+
+    ResponseEntity<String> draftResponse =
+        restTemplate.exchange(
+            priorAuthorityUrl(priorAuthorityId),
+            HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            String.class);
+    PriorAuthorityResponse draft =
+        objectMapper.readValue(draftResponse.getBody(), PriorAuthorityResponse.class);
+    assertThat(draft.getJustification()).isNull();
+  }
+
+  @Test
   void givenDraftPayloadWithNullNestedFields_whenSavePriorAuthorityDraft_thenAcceptsDraft() {
     UUID applicationId = grantedApplication();
     CreatePriorAuthorityDraftRequest request =
@@ -249,7 +575,8 @@ class PriorAuthorityDraftIntegrationTest {
   }
 
   @Test
-  void givenDraft_whenSubmitPriorAuthorityDraft_thenTransitionsToSubmittedAndDeletesDraft() {
+  void
+      givenAccessAsUserAndDraft_whenSubmitPriorAuthorityDraft_thenTransitionsToSubmittedAndDeletesDraft() {
     UUID applicationId = grantedApplication();
     UUID priorAuthorityId =
         saveDraft(
@@ -304,7 +631,41 @@ class PriorAuthorityDraftIntegrationTest {
   }
 
   @Test
-  void givenDraftWithUploadedDocument_whenSubmitPriorAuthorityDraft_thenPreservesDocument() {
+  void
+      givenProviderWithoutThePriorAuthorityOffice_whenSubmitPriorAuthorityDraft_thenReturns403AndKeepsDraft() {
+    UUID priorAuthorityId =
+        saveDraft(
+            grantedApplication(),
+            PriorAuthorityType.DISBURSEMENT,
+            "Interpreter costs for proceedings",
+            validDisbursementRequest());
+    int eventsBefore = eventCount(priorAuthorityId);
+
+    ResponseEntity<String> response =
+        restTemplate.postForEntity(
+            submitUrl(priorAuthorityId),
+            new HttpEntity<>(null, headers(TestJwtDecoderConfig.OFFICE_C_BEARER_TOKEN)),
+            String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    assertThat(eventCount(priorAuthorityId)).isEqualTo(eventsBefore);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM axon.prior_authority_draft WHERE prior_authority_id = ?",
+                Integer.class,
+                priorAuthorityId))
+        .isEqualTo(1);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM axon.prior_authority_data WHERE prior_authority_id = ?",
+                Integer.class,
+                priorAuthorityId))
+        .isZero();
+  }
+
+  @Test
+  void
+      givenAccessAsUserAndDraftWithUploadedDocument_whenSubmitPriorAuthorityDraft_thenPreservesDocument() {
     UUID applicationId = grantedApplication();
     UUID priorAuthorityId =
         saveDraft(
@@ -364,6 +725,49 @@ class PriorAuthorityDraftIntegrationTest {
               assertThat(document.getDocumentType()).isEqualTo(DocumentType.GATEWAY_EVIDENCE);
               assertThat(document.getFileName()).isEqualTo("evidence.pdf");
             });
+  }
+
+  @Test
+  void
+      givenProviderWithoutThePriorAuthorityOffice_whenUploadDocument_thenReturns403AndDoesNotAppendEvent() {
+    UUID priorAuthorityId = saveDraft(grantedApplication(), PriorAuthorityType.EXPERT, null, null);
+    int eventsBefore = eventCount(priorAuthorityId);
+
+    ResponseEntity<String> response =
+        restTemplate.postForEntity(
+            uploadUrl(priorAuthorityId),
+            uploadRequest("evidence.pdf", TestJwtDecoderConfig.OFFICE_C_BEARER_TOKEN),
+            String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    assertThat(eventCount(priorAuthorityId)).isEqualTo(eventsBefore);
+    assertThat(getPriorAuthority(priorAuthorityId).getUploadedDocuments()).isNull();
+  }
+
+  @Test
+  void
+      givenProviderWithoutThePriorAuthorityOffice_whenUpdateDocumentType_thenReturns403AndDoesNotAppendEvent() {
+    UUID priorAuthorityId = saveDraft(grantedApplication(), PriorAuthorityType.EXPERT, null, null);
+    when(sdsService.saveEvidenceFile(any(), any(), any()))
+        .thenReturn(new SdsUploadResult(null, null, "checksum"));
+    UUID documentId = uploadDocument(priorAuthorityId, "evidence.pdf");
+    awaitDocument(priorAuthorityId, documentId);
+    int eventsBefore = eventCount(priorAuthorityId);
+
+    ResponseEntity<String> response =
+        restTemplate.exchange(
+            documentUrl(priorAuthorityId, documentId),
+            HttpMethod.PATCH,
+            new HttpEntity<>(
+                new UpdatePriorAuthorityDocumentTypeRequest(DocumentType.GATEWAY_EVIDENCE),
+                headers(TestJwtDecoderConfig.OFFICE_C_BEARER_TOKEN)),
+            String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    assertThat(eventCount(priorAuthorityId)).isEqualTo(eventsBefore);
+    assertThat(getPriorAuthority(priorAuthorityId).getUploadedDocuments())
+        .singleElement()
+        .satisfies(document -> assertThat(document.getDocumentType()).isNull());
   }
 
   @Test
@@ -460,7 +864,7 @@ class PriorAuthorityDraftIntegrationTest {
   @org.junit.jupiter.params.provider.ValueSource(
       strings = {"evidence.pdf", "evidence.PDF", "evidence"})
   void
-      givenDraftWithUploadedDocument_whenDeletePriorAuthorityDocument_thenReturnsNoContentAndRemovesDocument(
+      givenAccessAsUserAndDraftWithUploadedDocument_whenDeletePriorAuthorityDocument_thenReturnsNoContentAndRemovesDocument(
           String filename) {
     UUID applicationId = grantedApplication();
     UUID priorAuthorityId = saveDraft(applicationId, PriorAuthorityType.EXPERT, null, null);
@@ -524,6 +928,31 @@ class PriorAuthorityDraftIntegrationTest {
             String.class);
     assertThat(downloadResponse.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     verify(sdsService, never()).getEvidenceFile(any(), any(), any());
+  }
+
+  @Test
+  void
+      givenProviderWithoutThePriorAuthorityOffice_whenDeleteDocument_thenReturns403AndDoesNotDeleteDocument() {
+    UUID priorAuthorityId = saveDraft(grantedApplication(), PriorAuthorityType.EXPERT, null, null);
+    when(sdsService.saveEvidenceFile(any(), any(), any()))
+        .thenReturn(new SdsUploadResult(null, null, "checksum"));
+    UUID documentId = uploadDocument(priorAuthorityId, "evidence.pdf");
+    awaitDocument(priorAuthorityId, documentId);
+    int eventsBefore = eventCount(priorAuthorityId);
+
+    ResponseEntity<String> response =
+        restTemplate.exchange(
+            deleteDocumentUrl(priorAuthorityId, documentId),
+            HttpMethod.DELETE,
+            new HttpEntity<>(headers(TestJwtDecoderConfig.OFFICE_C_BEARER_TOKEN)),
+            String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    assertThat(eventCount(priorAuthorityId)).isEqualTo(eventsBefore);
+    assertThat(getPriorAuthority(priorAuthorityId).getUploadedDocuments())
+        .singleElement()
+        .satisfies(document -> assertThat(document.getDocumentId()).isEqualTo(documentId));
+    verify(sdsService, never()).deleteEvidenceFile(any(), any(), any());
   }
 
   @org.junit.jupiter.params.ParameterizedTest
@@ -1296,13 +1725,270 @@ class PriorAuthorityDraftIntegrationTest {
   }
 
   private UUID grantedApplication() {
-    UUID applicationId = UUID.randomUUID();
+    return grantedApplication(UUID.randomUUID());
+  }
+
+  private UUID grantedApplication(UUID applicationId) {
     createApplication(applicationId, UUID.randomUUID());
     projectionAwaiter.awaitApplication(applicationId);
     grantApplication(applicationId);
     projectionAwaiter.awaitApplicationVersion(applicationId, 1L);
     return applicationId;
   }
+
+  private LinkedApplications grantedLinkedApplications() {
+    UUID leadApplicationId = grantedApplication();
+    UUID associateApplicationId = grantedApplication();
+    var request = new ApplicationLinkRequest(leadApplicationId, ApplicationLinkType.FAMILY);
+    ResponseEntity<Void> response =
+        restTemplate.exchange(
+            "/api/v0/applications/" + associateApplicationId + "/link",
+            HttpMethod.POST,
+            new HttpEntity<>(request, headers()),
+            Void.class);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    ApplicationGroupRoute leadRoute =
+        awaitRoute(leadApplicationId, ApplicationGroupRouteKind.LINKED_GROUP);
+    awaitRoute(associateApplicationId, ApplicationGroupRouteKind.LINKED_GROUP);
+    return new LinkedApplications(
+        leadApplicationId, associateApplicationId, leadRoute.getGroupId());
+  }
+
+  private ApplicationGroupRoute awaitRoute(
+      UUID applicationId, ApplicationGroupRouteKind expectedKind) {
+    return await()
+        .atMost(Duration.ofSeconds(15))
+        .until(
+            () -> applicationGroupRouteRepository.findById(applicationId).orElse(null),
+            route -> route != null && route.getRouteKind() == expectedKind);
+  }
+
+  private ResponseEntity<String> changeGroup(
+      UUID applicationId, String operation, UUID groupId, long version) {
+    return restTemplate.exchange(
+        "/api/v0/applications/" + applicationId + "/" + operation,
+        HttpMethod.POST,
+        new HttpEntity<>(
+            new LinkedGroupChangeRequest(VersionToken.linkedGroup(groupId, version).encode()),
+            headers()),
+        String.class);
+  }
+
+  private void awaitLead(UUID groupId, UUID leadApplicationId) {
+    await()
+        .atMost(Duration.ofSeconds(15))
+        .untilAsserted(
+            () ->
+                assertThat(
+                        jdbcTemplate.queryForObject(
+                            "SELECT lead_application_id FROM axon.linked_application_group_current_state"
+                                + " WHERE group_id = ?",
+                            UUID.class,
+                            groupId))
+                    .isEqualTo(leadApplicationId));
+  }
+
+  private long countPriorAuthorityDrafts(UUID applicationId) {
+    return jdbcTemplate.queryForObject(
+        "SELECT COUNT(*) FROM axon.prior_authority_draft WHERE application_id = ?",
+        Long.class,
+        applicationId);
+  }
+
+  private long countPriorAuthorityCreationEvents(UUID applicationId) {
+    return jdbcTemplate.queryForObject(
+        """
+                SELECT COUNT(*) FROM axon.domain_event_entry
+                                WHERE payload_type LIKE '%PriorAuthorityDraftStartedEvent'
+                    AND convert_from(payload, 'UTF8')::jsonb ->> 'applicationId' = ?
+                """,
+        Long.class, applicationId.toString());
+  }
+
+  private ResponseEntity<String> createDraft(UUID applicationId) {
+    return restTemplate.postForEntity(
+        saveDraftUrl(),
+        new HttpEntity<>(
+            CreatePriorAuthorityDraftRequest.builder()
+                .applicationId(applicationId)
+                .priorAuthorityType(PriorAuthorityType.EXPERT)
+                .justification("Concurrency test content")
+                .build(),
+            headers()),
+        String.class);
+  }
+
+  private void assertAssociateRejection(ResponseEntity<String> response) {
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(objectMapper.readTree(response.getBody()).get("errors").toString())
+        .isEqualTo(
+            "[\"Prior Authority applications can only be created against a lead or standalone application\"]");
+  }
+
+  private void assertNoPriorAuthorityWrites(UUID applicationId) {
+    assertThat(countPriorAuthorityDrafts(applicationId)).isZero();
+    assertThat(countPriorAuthorityCreationEvents(applicationId)).isZero();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM axon.prior_authority_data WHERE application_id = ?",
+                Long.class,
+                applicationId))
+        .isZero();
+  }
+
+  private UUID assertCreatedDraft(ResponseEntity<String> response, UUID applicationId) {
+    assertThat(response.getStatusCode())
+        .withFailMessage("Creation response: %s", response.getBody())
+        .isIn(HttpStatus.CREATED, HttpStatus.ACCEPTED);
+    UUID priorAuthorityId =
+        objectMapper
+            .readValue(response.getBody(), SavePriorAuthorityDraftResponse.class)
+            .getPriorAuthorityId();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT application_id FROM axon.prior_authority_draft WHERE prior_authority_id = ?",
+                UUID.class,
+                priorAuthorityId))
+        .isEqualTo(applicationId);
+    assertThat(eventCount(priorAuthorityId)).isEqualTo(1);
+    assertThat(countPriorAuthorityCreationEvents(applicationId)).isEqualTo(1);
+    assertThat(draftRow(priorAuthorityId).get("payload").toString())
+        .contains("Concurrency test content");
+    return priorAuthorityId;
+  }
+
+  private CreationRace creationRace(String operation, boolean creationFirst) {
+    if ("LINK".equals(operation)) {
+      UUID sourceId = grantedApplication();
+      UUID targetId = grantedApplication();
+      return new CreationRace(
+          sourceId,
+          "LinkedApplicationGroupCreatedEvent",
+          () -> linkApplication(sourceId, targetId, null));
+    }
+    LinkedApplications linked = grantedLinkedApplications();
+    long version;
+    if ("UNLINK".equals(operation)) {
+      assertThat(
+              linkApplication(
+                      grantedApplication(),
+                      linked.leadApplicationId(),
+                      VersionToken.linkedGroup(linked.groupId(), 0).encode())
+                  .getStatusCode())
+          .isEqualTo(HttpStatus.NO_CONTENT);
+      version = 1;
+    } else {
+      version = 0;
+    }
+    String eventType =
+        switch (operation) {
+          case "LEAD" -> "LinkedApplicationGroupLeadChangedEvent";
+          case "UNLINK" -> "MemberRemovedFromGroupEvent";
+          default -> "LinkedApplicationGroupDissolvedEvent";
+        };
+    UUID applicationId =
+        creationFirst || "LEAD".equals(operation)
+            ? linked.leadApplicationId()
+            : linked.associateApplicationId();
+    return new CreationRace(
+        applicationId,
+        eventType,
+        () ->
+            changeGroup(
+                linked.associateApplicationId(),
+                "LEAD".equals(operation) ? "make-lead" : "unlink",
+                linked.groupId(),
+                version));
+  }
+
+  private ResponseEntity<String> linkApplication(UUID sourceId, UUID targetId, String token) {
+    ApplicationLinkRequest request =
+        new ApplicationLinkRequest(targetId, ApplicationLinkType.FAMILY);
+    request.setLinkedGroupVersion(token);
+    return restTemplate.exchange(
+        "/api/v0/applications/" + sourceId + "/link",
+        HttpMethod.POST,
+        new HttpEntity<>(request, headers()),
+        String.class);
+  }
+
+  private EventGate pauseEvent(String eventType, boolean failInsert) throws SQLException {
+    Connection connection = dataSource.getConnection();
+    try {
+      int backendPid;
+      try (var statement = connection.createStatement();
+          var result =
+              statement.executeQuery("SELECT pg_backend_pid(), pg_advisory_lock(847133)")) {
+        assertThat(result.next()).isTrue();
+        backendPid = result.getInt(1);
+      }
+      jdbcTemplate.execute(
+          """
+                    CREATE OR REPLACE FUNCTION axon.gate_test_group_event()
+                    RETURNS trigger AS $$
+                    BEGIN
+                            IF NEW.payload_type LIKE '%%%s' THEN
+                                    PERFORM pg_advisory_xact_lock(847133);
+                                    IF %s THEN
+                                            RAISE EXCEPTION 'forced group creation rollback';
+                                    END IF;
+                            END IF;
+                            RETURN NEW;
+                    END;
+                    $$ LANGUAGE plpgsql
+                    """
+              .formatted(eventType, failInsert));
+      jdbcTemplate.execute(
+          """
+                    CREATE TRIGGER gate_test_group_event
+                    BEFORE INSERT ON axon.domain_event_entry
+                    FOR EACH ROW EXECUTE FUNCTION axon.gate_test_group_event()
+                    """);
+      return new EventGate(connection, backendPid);
+    } catch (RuntimeException | SQLException failure) {
+      connection.close();
+      throw failure;
+    }
+  }
+
+  private int awaitBlockedBy(int backendPid) {
+    return await()
+        .alias("PostgreSQL transaction blocked by backend " + backendPid)
+        .atMost(Duration.ofSeconds(10))
+        .until(
+            () ->
+                jdbcTemplate.queryForList(
+                    "SELECT pid FROM pg_stat_activity WHERE ? = ANY(pg_blocking_pids(pid))",
+                    Integer.class,
+                    backendPid),
+            blocked -> !blocked.isEmpty())
+        .getFirst();
+  }
+
+  private record EventGate(Connection connection, int backendPid) implements AutoCloseable {
+    void release() throws SQLException {
+      try (var statement = connection.createStatement()) {
+        statement.execute("SELECT pg_advisory_unlock(847133)");
+      }
+    }
+
+    @Override
+    public void close() throws SQLException {
+      try {
+        release();
+        try (var statement = connection.createStatement()) {
+          statement.execute(
+              "DROP TRIGGER IF EXISTS gate_test_group_event ON axon.domain_event_entry");
+          statement.execute("DROP FUNCTION IF EXISTS axon.gate_test_group_event()");
+        }
+      } finally {
+        connection.close();
+      }
+    }
+  }
+
+  private record CreationRace(
+      UUID applicationId, String eventType, Supplier<ResponseEntity<String>> mutation) {}
 
   private void grantApplication(UUID applicationId) {
     ResponseEntity<Void> response =
@@ -1360,6 +2046,11 @@ class PriorAuthorityDraftIntegrationTest {
   }
 
   private HttpEntity<MultiValueMap<String, Object>> uploadRequest(String filename) {
+    return uploadRequest(filename, TestJwtDecoderConfig.BEARER_TOKEN);
+  }
+
+  private HttpEntity<MultiValueMap<String, Object>> uploadRequest(
+      String filename, String bearerToken) {
     MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
     HttpHeaders fileHeaders = new HttpHeaders();
     fileHeaders.setContentType(MediaType.APPLICATION_PDF);
@@ -1377,15 +2068,22 @@ class PriorAuthorityDraftIntegrationTest {
     HttpHeaders multipartHeaders = new HttpHeaders();
     multipartHeaders.set("X-Service-Name", "CIVIL_APPLY");
     multipartHeaders.setContentType(MediaType.MULTIPART_FORM_DATA);
-    multipartHeaders.setBearerAuth(TestJwtDecoderConfig.BEARER_TOKEN);
+    multipartHeaders.setBearerAuth(bearerToken);
     return new HttpEntity<>(body, multipartHeaders);
   }
 
   private HttpHeaders headers() {
+    return headers(TestJwtDecoderConfig.BEARER_TOKEN);
+  }
+
+  private HttpHeaders headers(String bearerToken) {
     HttpHeaders headers = new HttpHeaders();
     headers.set("X-Service-Name", "CIVIL_APPLY");
     headers.setContentType(MediaType.APPLICATION_JSON);
-    headers.setBearerAuth(TestJwtDecoderConfig.BEARER_TOKEN);
+    headers.setBearerAuth(bearerToken);
     return headers;
   }
+
+  private record LinkedApplications(
+      UUID leadApplicationId, UUID associateApplicationId, UUID groupId) {}
 }

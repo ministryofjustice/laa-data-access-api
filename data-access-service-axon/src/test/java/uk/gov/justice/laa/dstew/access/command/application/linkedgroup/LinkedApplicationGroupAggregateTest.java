@@ -16,6 +16,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationLinkConflictException;
 import uk.gov.justice.laa.dstew.access.exception.LinkedApplicationGroupVersionConflictException;
+import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 class LinkedApplicationGroupAggregateTest {
 
@@ -504,6 +505,72 @@ class LinkedApplicationGroupAggregateTest {
         .events(
             new LinkedApplicationGroupLeadChangedEvent(
                 groupId, leadId, associateId, 2, occurredAt));
+  }
+
+  @Test
+  void givenCurrentLead_whenValidatingPriorAuthorityGroupEligibility_thenAcceptsWithoutEvents() {
+    UUID groupId = UUID.randomUUID();
+    UUID leadApplicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-15T08:00:00Z");
+
+    fixture
+        .given()
+        .events(
+            new LinkedApplicationGroupCreatedEvent(
+                groupId,
+                leadApplicationId,
+                List.of(leadApplicationId, UUID.randomUUID()),
+                occurredAt))
+        .when()
+        .command(new ValidatePriorAuthorityGroupEligibilityCommand(groupId, leadApplicationId))
+        .then()
+        .noEvents();
+  }
+
+  @Test
+  void givenAssociate_whenValidatingPriorAuthorityGroupEligibility_thenRejectsWithoutEvents() {
+    UUID groupId = UUID.randomUUID();
+    UUID leadApplicationId = UUID.randomUUID();
+    UUID associateApplicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-15T08:00:00Z");
+
+    fixture
+        .given()
+        .events(
+            new LinkedApplicationGroupCreatedEvent(
+                groupId,
+                leadApplicationId,
+                List.of(leadApplicationId, associateApplicationId),
+                occurredAt))
+        .when()
+        .command(new ValidatePriorAuthorityGroupEligibilityCommand(groupId, associateApplicationId))
+        .then()
+        .exception(ValidationException.class)
+        .noEvents();
+  }
+
+  @Test
+  void
+      givenLeadChanged_whenValidatingNewLeadPriorAuthorityGroupEligibility_thenAcceptsWithoutEvents() {
+    UUID groupId = UUID.randomUUID();
+    UUID previousLeadApplicationId = UUID.randomUUID();
+    UUID newLeadApplicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-15T08:00:00Z");
+
+    fixture
+        .given()
+        .events(
+            new LinkedApplicationGroupCreatedEvent(
+                groupId,
+                previousLeadApplicationId,
+                List.of(previousLeadApplicationId, newLeadApplicationId),
+                occurredAt),
+            new LinkedApplicationGroupLeadChangedEvent(
+                groupId, previousLeadApplicationId, newLeadApplicationId, 1, occurredAt))
+        .when()
+        .command(new ValidatePriorAuthorityGroupEligibilityCommand(groupId, newLeadApplicationId))
+        .then()
+        .noEvents();
   }
 
   private static List<Arguments> invalidEstablishMemberLists() {
