@@ -12,7 +12,6 @@ import uk.gov.justice.laa.dstew.access.model.ServiceName;
 public class ServiceNameContext {
 
   private ServiceName serviceName;
-  private String correlationId;
 
   public void setServiceName(ServiceName serviceName) {
     this.serviceName = serviceName;
@@ -20,13 +19,5 @@ public class ServiceNameContext {
 
   public ServiceName getServiceName() {
     return serviceName;
-  }
-
-  public void setCorrelationId(String correlationId) {
-    this.correlationId = correlationId;
-  }
-
-  public String getCorrelationId() {
-    return correlationId;
   }
 }
