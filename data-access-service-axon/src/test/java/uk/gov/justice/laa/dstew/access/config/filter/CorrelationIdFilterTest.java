@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.logging;
+package uk.gov.justice.laa.dstew.access.config.filter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -11,7 +11,6 @@ import io.micrometer.tracing.Tracer;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
-import uk.gov.justice.laa.dstew.access.config.filter.CorrelationIdFilter;
 import uk.gov.justice.laa.dstew.access.config.LoggingContext;
 
 class CorrelationIdFilterTest {
