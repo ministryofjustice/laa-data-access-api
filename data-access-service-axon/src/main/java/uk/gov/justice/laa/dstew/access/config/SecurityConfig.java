@@ -119,7 +119,10 @@ public class SecurityConfig {
             auth -> {
               auth.requestMatchers(endpointAccessManager.getUnprotectedUris()).permitAll();
               auth.requestMatchers(
-                      HttpMethod.GET, "/api/v0/applications", "/api/v0/applications/**")
+                      HttpMethod.GET,
+                      "/api/v0/applications",
+                      "/api/v0/applications/**",
+                      "/api/v0/prior-authorities/*/events")
                   .access(applicationReadScopeAuthorizationManager);
               auth.anyRequest()
                   .access(

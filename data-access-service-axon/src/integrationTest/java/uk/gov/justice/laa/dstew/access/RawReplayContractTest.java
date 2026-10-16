@@ -64,6 +64,96 @@ class RawReplayContractTest {
   @Autowired private CommandGateway commandGateway;
 
   @Test
+  void readsCompleteThinDraftAndSubmittedHistoryFromPostgres() {
+    UUID applicationId = UUID.randomUUID();
+    var request = validCreateApplicationRequest(applicationId, UUID.randomUUID());
+    var draft =
+        new CreateApplicationDraftRequest()
+            .id(applicationId)
+            .status(request.getStatus())
+            .laaReference(request.getLaaReference())
+            .applicationContent(request.getApplicationContent());
+    var created =
+        restTemplate.postForEntity(
+            "http://localhost:" + port + "/api/v0/application-drafts",
+            new HttpEntity<>(draft, headers()),
+            Void.class);
+    assertThat(created.getStatusCode()).isIn(HttpStatus.CREATED, HttpStatus.ACCEPTED);
+    String url = "http://localhost:" + port + "/api/v0/applications/" + applicationId + "/events";
+    var draftEvents =
+        restTemplate.exchange(
+            url,
+            org.springframework.http.HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            uk.gov.justice.laa.dstew.access.model.AggregateEventResponse[].class);
+    assertThat(draftEvents.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(draftEvents.getBody()).isNotEmpty();
+    assertThat(draftEvents.getBody()[0].getEventType()).contains("ApplicationDraftStartedEvent");
+
+    HttpHeaders providerHeaders = headers();
+    providerHeaders.setBearerAuth(TestJwtDecoderConfig.OFFICE_C_BEARER_TOKEN);
+    var providerDraft =
+        restTemplate.exchange(
+            url,
+            org.springframework.http.HttpMethod.GET,
+            new HttpEntity<>(providerHeaders),
+            String.class);
+    assertThat(providerDraft.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+
+    commandGateway.sendAndWait(new SubmitApplicationDraftCommand(applicationId, Instant.now()));
+    var events =
+        restTemplate.exchange(
+            url,
+            org.springframework.http.HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            uk.gov.justice.laa.dstew.access.model.AggregateEventResponse[].class);
+    assertThat(events.getStatusCode()).isEqualTo(HttpStatus.OK);
+    var storedIds =
+        jdbcTemplate.queryForList(
+            "SELECT event_identifier FROM axon.domain_event_entry "
+                + "WHERE aggregate_identifier = ? ORDER BY sequence_number",
+            String.class,
+            applicationId.toString());
+    assertThat(events.getBody())
+        .extracting(uk.gov.justice.laa.dstew.access.model.AggregateEventResponse::getEventId)
+        .containsExactlyElementsOf(storedIds);
+    assertThat(events.getBody())
+        .allSatisfy(
+            event -> assertThat(event.getPayload()).doesNotContainKey("applicationContent"));
+    var separateStream =
+        restTemplate.exchange(
+            "http://localhost:" + port + "/api/v0/prior-authorities/" + applicationId + "/events",
+            org.springframework.http.HttpMethod.GET,
+            new HttpEntity<>(headers()),
+            String.class);
+    assertThat(separateStream.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    for (String path :
+        List.of(
+            "/api/v0/applications/" + UUID.randomUUID() + "/events",
+            "/api/v0/prior-authorities/" + UUID.randomUUID() + "/events")) {
+      String missingUrl = "http://localhost:" + port + path;
+      var missing =
+          restTemplate.exchange(
+              missingUrl,
+              org.springframework.http.HttpMethod.GET,
+              new HttpEntity<>(headers()),
+              String.class);
+      assertThat(missing.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+      var unauthenticated = restTemplate.getForEntity(missingUrl, String.class);
+      assertThat(unauthenticated.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+      HttpHeaders unscopedHeaders = headers();
+      unscopedHeaders.setBearerAuth(TestJwtDecoderConfig.UNSCOPED_BEARER_TOKEN);
+      var unscoped =
+          restTemplate.exchange(
+              missingUrl,
+              org.springframework.http.HttpMethod.GET,
+              new HttpEntity<>(unscopedHeaders),
+              String.class);
+      assertThat(unscoped.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    }
+  }
+
+  @Test
   void givenUploadedDocument_whenReplayedFromPostgres_thenRestoresMetadataAndDataVersion()
       throws Exception {
     UUID applicationId = UUID.randomUUID();

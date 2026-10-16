@@ -10,6 +10,28 @@ piece of application data.
 The architectural rationale and alternatives are recorded in
 [ADR 0002](adr/0002-separate-sensitive-data-from-domain-events.md).
 
+## Stored event endpoints
+
+`GET /api/v0/applications/{id}/events` and
+`GET /api/v0/prior-authorities/{priorAuthorityId}/events` return a JSON array with
+`eventId`, `eventType`, `timestamp`, `metadata`, and `payload`. These endpoints do not
+change the existing history-search API. They expose thin stored event payloads without reading
+versioned application or prior-authority content. Event types are not restricted to a handler list.
+
+Events include draft activity and retain event-store order. Metadata includes every stored Axon
+metadata key and value without an allowlist; it can contain sensitive or internal values. Responses
+must therefore be treated as sensitive. These routes require the existing caseworker role and
+supported delegated scope. Provider-scoped callers must also have a matching office in the current
+ownership projection. Providers receive 404 until ownership is projected, including for drafts
+without a current-state row. Unrestricted callers can read draft-only streams. Unknown and
+inaccessible resources return 404.
+
+The shared reader uses the existing aggregate-tag `EventCriteria` with Axon's finite historical
+sourcing API and consumes through completion. Any stream error fails the request, not just the
+remaining events; partial arrays are never returned. The stream is closed on success and failure.
+The aggregate-based JPA engine sources by identifier only, so the reader also verifies each entry's
+stored aggregate-type context to keep application and prior-authority streams separate.
+
 ## How the records are connected
 
 ```mermaid
