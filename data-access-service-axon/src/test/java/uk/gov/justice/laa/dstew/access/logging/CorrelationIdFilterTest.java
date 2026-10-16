@@ -11,6 +11,8 @@ import io.micrometer.tracing.Tracer;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import uk.gov.justice.laa.dstew.access.config.filter.CorrelationIdFilter;
+import uk.gov.justice.laa.dstew.access.config.LoggingContext;
 
 class CorrelationIdFilterTest {
 

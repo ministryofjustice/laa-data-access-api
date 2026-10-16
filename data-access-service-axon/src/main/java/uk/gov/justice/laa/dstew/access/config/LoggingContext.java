@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.logging;
+package uk.gov.justice.laa.dstew.access.config;
 
 import java.util.HashMap;
 import java.util.Map;

@@ -28,7 +28,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import uk.gov.justice.laa.dstew.access.config.ServiceNameContext;
-import uk.gov.justice.laa.dstew.access.logging.LoggingContext;
+import uk.gov.justice.laa.dstew.access.config.LoggingContext;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 
 class RequestMetadataDispatchInterceptorTest {

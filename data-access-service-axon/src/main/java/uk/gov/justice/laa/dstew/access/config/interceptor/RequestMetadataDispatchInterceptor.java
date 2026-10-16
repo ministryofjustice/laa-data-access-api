@@ -16,7 +16,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.config.ServiceNameContext;
-import uk.gov.justice.laa.dstew.access.logging.LoggingContext;
+import uk.gov.justice.laa.dstew.access.config.LoggingContext;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.security.SecurityHelper;
 

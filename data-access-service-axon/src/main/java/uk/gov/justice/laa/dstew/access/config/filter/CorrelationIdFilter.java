@@ -1,6 +1,6 @@
-package uk.gov.justice.laa.dstew.access.logging;
+package uk.gov.justice.laa.dstew.access.config.filter;
 
-import static uk.gov.justice.laa.dstew.access.logging.LoggingContext.CORRELATION_ID_HEADER;
+import static uk.gov.justice.laa.dstew.access.config.LoggingContext.CORRELATION_ID_HEADER;
 
 import com.fasterxml.uuid.Generators;
 import io.micrometer.tracing.BaggageInScope;
@@ -17,6 +17,7 @@ import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
+import uk.gov.justice.laa.dstew.access.config.LoggingContext;
 
 /** Servlet filter for correlation ID management using Micrometer baggage. */
 @Component
@@ -50,11 +51,7 @@ public class CorrelationIdFilter extends OncePerRequestFilter {
 
         LoggingContext.set("correlationId", correlationId);
         response.setHeader(CORRELATION_ID_HEADER, correlationId);
-
-        log.atInfo()
-            .addKeyValue("http.request.method", request.getMethod())
-            .addKeyValue("url.path", request.getRequestURI())
-            .log("Incoming request");
+        long requestStartedAt = System.nanoTime();
 
         filterChain.doFilter(request, response);
 
@@ -62,7 +59,8 @@ public class CorrelationIdFilter extends OncePerRequestFilter {
             .addKeyValue("http.request.method", request.getMethod())
             .addKeyValue("url.path", request.getRequestURI())
             .addKeyValue("http.response.status_code", response.getStatus())
-            .log("Outgoing response");
+            .addKeyValue("event.duration", System.nanoTime() - requestStartedAt)
+            .log("Request completed");
       }
     } finally {
       LoggingContext.clear();
