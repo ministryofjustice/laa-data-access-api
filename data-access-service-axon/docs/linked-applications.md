@@ -66,6 +66,9 @@ The resulting behaviour is:
 - A standalone source can join an existing target group.
 - A source application already in another group cannot be moved by this command.
 - Existing members do not produce duplicate group events.
+- Prior Authority drafts can be created for a standalone application or the current group lead, but
+  never for an associated application. The create-draft coordinator locks the write-side route and
+  validates the current lead in the linked-group aggregate before it persists the draft.
 - The lead can change, but the current lead cannot be removed. Make another member the lead first.
 - Removing an associate from a group of more than two members leaves the group intact. Removing an
   associate from a two-member group dissolves it instead of leaving a one-member group.

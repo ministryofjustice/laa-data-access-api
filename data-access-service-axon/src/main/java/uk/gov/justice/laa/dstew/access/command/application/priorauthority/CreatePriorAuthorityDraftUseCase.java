@@ -1,7 +1,10 @@
 package uk.gov.justice.laa.dstew.access.command.application.priorauthority;
 
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.ValidatePriorAuthorityGroupEligibilityCommand;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteResolver;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 
 /**
@@ -12,9 +15,12 @@ import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 public class CreatePriorAuthorityDraftUseCase {
 
   private final RetryingCommandDispatcher dispatcher;
+  private final ApplicationGroupRouteResolver routeResolver;
 
-  public CreatePriorAuthorityDraftUseCase(RetryingCommandDispatcher dispatcher) {
+  public CreatePriorAuthorityDraftUseCase(
+      RetryingCommandDispatcher dispatcher, ApplicationGroupRouteResolver routeResolver) {
     this.dispatcher = dispatcher;
+    this.routeResolver = routeResolver;
   }
 
   /**
@@ -26,8 +32,16 @@ public class CreatePriorAuthorityDraftUseCase {
    * @throws RuntimeException propagated from validation if the application is not granted
    */
   @AllowApiCaseworker
+  @Transactional
   public boolean execute(CreatePriorAuthorityDraftCommand command) {
     dispatcher.dispatch(new ValidateApplicationGrantedCommand(command.applicationId()));
+    routeResolver
+        .resolveGroupForPriorAuthorityCreation(command.applicationId())
+        .ifPresent(
+            groupId ->
+                dispatcher.dispatch(
+                    new ValidatePriorAuthorityGroupEligibilityCommand(
+                        groupId, command.applicationId())));
     dispatcher.dispatch(command);
     return true;
   }

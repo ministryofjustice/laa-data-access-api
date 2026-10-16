@@ -17,12 +17,15 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.ValidatePriorAuthorityGroupEligibilityCommand;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteResolver;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 @ExtendWith(MockitoExtension.class)
 class CreatePriorAuthorityDraftUseCaseTest {
 
   @Mock private RetryingCommandDispatcher dispatcher;
+  @Mock private ApplicationGroupRouteResolver routeResolver;
 
   @InjectMocks private CreatePriorAuthorityDraftUseCase useCase;
 
@@ -46,6 +49,26 @@ class CreatePriorAuthorityDraftUseCaseTest {
     order
         .verify(dispatcher)
         .dispatch(new ValidateApplicationGrantedCommand(command.applicationId()));
+    order.verify(dispatcher).dispatch(command);
+  }
+
+  @Test
+  void givenLinkedApplication_whenExecute_thenValidatesItsGroupEligibilityBeforeCreatingDraft() {
+    CreatePriorAuthorityDraftCommand command = stubCommand();
+    UUID groupId = UUID.randomUUID();
+    Mockito.when(routeResolver.resolveGroupForPriorAuthorityCreation(command.applicationId()))
+        .thenReturn(java.util.Optional.of(groupId));
+
+    useCase.execute(command);
+
+    InOrder order = Mockito.inOrder(dispatcher);
+    order
+        .verify(dispatcher)
+        .dispatch(new ValidateApplicationGrantedCommand(command.applicationId()));
+    order
+        .verify(dispatcher)
+        .dispatch(
+            new ValidatePriorAuthorityGroupEligibilityCommand(groupId, command.applicationId()));
     order.verify(dispatcher).dispatch(command);
   }
 
