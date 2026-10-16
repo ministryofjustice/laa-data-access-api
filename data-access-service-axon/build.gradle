@@ -9,12 +9,12 @@ plugins {
 
 def versions = [
         sentry                  : '8.60.0',
-        axonFramework           : '5.3.3',
+        axonFramework           : '5.2.0',
         jsonSchemaValidator     : '3.0.8',
         swaggerAnnotations      : '2.2.55',
         springdocOpenapi        : '3.1.1',
         springCloudAws          : '4.2.0',
-        awsSdkSts               : '2.55.12',
+        awsSdkSts               : '2.33.7',
         lombok                  : '1.18.48',
         datafaker               : '2.7.0',
         archunit                : '1.5.1',
