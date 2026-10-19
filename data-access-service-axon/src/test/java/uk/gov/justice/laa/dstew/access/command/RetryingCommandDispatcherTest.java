@@ -104,6 +104,20 @@ class RetryingCommandDispatcherTest {
   }
 
   @Test
+  void givenOptimisticLockingRetryAlsoFails_whenDispatch_thenRethrowsSecondWithFirstSuppressed() {
+    OptimisticLockingFailureException first =
+        new OptimisticLockingFailureException("first stale draft version");
+    OptimisticLockingFailureException retry =
+        new OptimisticLockingFailureException("second stale draft version");
+    when(commandGateway.sendAndWait(command)).thenThrow(first).thenThrow(retry);
+
+    assertThatThrownBy(() -> dispatcher.dispatch(command))
+        .isSameAs(retry)
+        .satisfies(failure -> assertThat(failure.getSuppressed()).containsExactly(first));
+    verify(commandGateway, times(2)).sendAndWait(command);
+  }
+
+  @Test
   void givenRetryAlsoFails_whenDispatch_thenRethrowsWithOriginalSuppressed() {
     ConcurrencyException first = new ConcurrencyException("first");
     ResourceNotFoundException retry = new ResourceNotFoundException("retry failure");

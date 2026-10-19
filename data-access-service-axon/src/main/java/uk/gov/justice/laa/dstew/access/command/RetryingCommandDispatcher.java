@@ -15,8 +15,9 @@ import org.springframework.stereotype.Component;
  * <p>Retries once when a {@link ConcurrencyException}, {@link
  * AppendEventsTransactionRejectedException}, {@link OptimisticLockingFailureException}, or a
  * unique-constraint {@link DataIntegrityViolationException} (SQL state {@code 23505}) is thrown.
- * These failures are also recognised when nested in a runtime exception. All other exceptions are
- * propagated immediately.
+ * The first three failures are also recognised when nested in a runtime exception.
+ * Unique-constraint failures require a top-level {@code DataIntegrityViolationException}. All other
+ * exceptions are propagated immediately.
  */
 @Component
 public class RetryingCommandDispatcher {
