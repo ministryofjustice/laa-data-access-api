@@ -11,6 +11,7 @@ targets:
 dependencies:
   apm:
     - ministryofjustice/ai-toolkit/toolkits/legal-aid-agency/software-development/data-stewardship#feat/data-stewardship-toolkit
+    - ministryofjustice/ai-toolkit/toolkits/legal-aid-agency/software-development/java#feat/laa-software-development-java
   mcp: []
 includes: auto
 scripts: {}
