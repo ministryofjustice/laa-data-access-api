@@ -1,8 +1,9 @@
 # Document Lifecycle
 
 Application and Prior Authority documents share SDS storage and HTTP download behaviour. They keep
-their own commands, aggregates, and dedicated document queries. This guide describes the UUID-keyed
-document endpoints, not the legacy Application upload endpoint that uses the original filename.
+their own commands, aggregates, and dedicated document queries. The legacy filename-keyed Application
+upload, update, and delete routes have been removed. Axon Application uploads use
+`POST /api/v0/applications/{id}/documents`; Prior Authority document operations remain separate.
 
 ## Storage and identity decisions
 
