@@ -4,13 +4,15 @@ import java.time.Instant;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.SubmitPriorAuthorityDraftCommand;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
 
 /** Maps the generated HTTP request model to the Axon submit-prior-authority-draft command. */
 @Component
 public class SubmitPriorAuthorityDraftCommandMapper {
 
   /** Creates a submit command for the given submission ID. */
-  public SubmitPriorAuthorityDraftCommand toSubmitCommand(UUID priorAuthorityId) {
-    return new SubmitPriorAuthorityDraftCommand(priorAuthorityId, Instant.now());
+  public SubmitPriorAuthorityDraftCommand toSubmitCommand(
+      UUID priorAuthorityId, AuthenticatedCaller caller) {
+    return new SubmitPriorAuthorityDraftCommand(priorAuthorityId, Instant.now(), caller);
   }
 }
