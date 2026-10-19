@@ -1,0 +1,16 @@
+name: laa-data-access-api
+version: 1.0.0
+description: APM project for laa-data-access-api
+author: timpeat
+# Which agent platforms to deploy to.
+# Resolution order: --target flag > this field > auto-detect from filesystem.
+# Accepted values: agent-skills, antigravity, claude, codex, copilot, cursor, gemini, grok-build, hermes, kiro, opencode, vscode, windsurf
+targets:
+  - claude
+  - copilot
+dependencies:
+  apm:
+    - ministryofjustice/ai-toolkit/toolkits/legal-aid-agency/software-development/data-stewardship#feat/data-stewardship-toolkit
+  mcp: []
+includes: auto
+scripts: {}

@@ -1,0 +1,38 @@
+lockfile_version: '1'
+apm_version: 0.33.0
+dependencies:
+- repo_url: ministryofjustice/ai-toolkit
+  name: legal-aid-agency-software-development-data-stewardship
+  host: github.com
+  resolved_commit: 52b404c5e612790a8ec58a8b0a50a89ae23c6a82
+  resolved_ref: feat/data-stewardship-toolkit
+  version: 1.0.0
+  virtual_path: toolkits/legal-aid-agency/software-development/data-stewardship
+  is_virtual: true
+  package_type: apm_package
+  deployed_files:
+  - .github/instructions/data-stewardship.instructions.md
+  - .github/instructions/event-sourcing.instructions.md
+  deployed_file_hashes:
+    .github/instructions/data-stewardship.instructions.md: sha256:696948be6796563f01d38a9ce88c3f4f380e9146fde7b03989d24ccfab0962ac
+    .github/instructions/event-sourcing.instructions.md: sha256:f626fbd4270bf04fefca472bef876c6da616fe198a487fc0de89daffbae54f21
+  content_hash: sha256:a330521db7827ae7b3897333ebbaf151b8a435c6128ffdbea1f7af2306d8ce44
+deployments:
+- kind: project-relative
+  target: copilot
+  value: .github/instructions/data-stewardship.instructions.md
+  runtime: null
+  scope: project
+  owners:
+  - ministryofjustice/ai-toolkit/toolkits/legal-aid-agency/software-development/data-stewardship
+  active_owner: ministryofjustice/ai-toolkit/toolkits/legal-aid-agency/software-development/data-stewardship
+  content_hash: sha256:696948be6796563f01d38a9ce88c3f4f380e9146fde7b03989d24ccfab0962ac
+- kind: project-relative
+  target: copilot
+  value: .github/instructions/event-sourcing.instructions.md
+  runtime: null
+  scope: project
+  owners:
+  - ministryofjustice/ai-toolkit/toolkits/legal-aid-agency/software-development/data-stewardship
+  active_owner: ministryofjustice/ai-toolkit/toolkits/legal-aid-agency/software-development/data-stewardship
+  content_hash: sha256:f626fbd4270bf04fefca472bef876c6da616fe198a487fc0de89daffbae54f21
