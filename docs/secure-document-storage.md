@@ -1,6 +1,6 @@
 # Document Storage (SDS)
 
-The API integrates with SDS (Secure Document Storage) to handle document operations. Four endpoints are available under the applications resource; they are excluded from Swagger UI but accessible via HTTP. Authentication with SDS is handled automatically by the service via OAuth2 client credentials.
+The API integrates with SDS (Secure Document Storage) for document operations. The legacy filename-keyed Application upload, update, and delete endpoints have been removed. Authentication with SDS is handled automatically by the service via OAuth2 client credentials.
 
 ## Configuration
 
@@ -13,43 +13,7 @@ SDS connectivity is controlled by the following environment variables:
 | `SDS_API_CLIENT_REGISTRATION_ID` | OAuth2 client registration ID for SDS |
 | `SDS_API_PRINCIPAL_NAME` | OAuth2 principal name for SDS |
 
-## Endpoints
-
-### Upload a document
-
-The file is stored in a folder named after the application ID, e.g. `{applicationId}/document.pdf`.
-
-```
-POST /api/v0/applications/{id}/upload-document
-Content-Type: multipart/form-data
-X-Service-Name: <service>
-```
-
-```bash
-curl -X POST "http://localhost:8080/api/v0/applications/123e4567-e89b-12d3-a456-426614174000/upload-document" \
-  -H "accept: application/json" \
-  -H "Authorization: <token>" \
-  -H "X-Service-Name: <service>" \
-  -F "file=@/path/to/document.pdf"
-```
-
-Response `201 Created`:
-```json
-{
-  "detail": "<bucket>/<applicationId>/document.pdf",
-  "success": "File uploaded successfully",
-  "checksum": "<checksum>"
-}
-```
-
-| Status | Meaning |
-|---|---|
-| `201` | File uploaded successfully |
-| `409` | A file with the same name already exists |
-
----
-
-### Download a document
+## Download a document
 
 The `documentId` path parameter is the file key in the format `{applicationId}/{filename}`, i.e. the path the file was stored under when uploaded.
 
@@ -78,60 +42,6 @@ The `fileURL` is a pre-signed URL. Callers should redirect the user or download 
 |---|---|
 | `200` | Returns a pre-signed download URL |
 | `404` | Document not found |
-
----
-
-### Update a document
-
-Replaces an existing document. The file name is used to match the existing document.
-
-```
-PUT /api/v0/applications/{id}/update-document
-Content-Type: multipart/form-data
-X-Service-Name: <service>
-```
-
-```bash
-curl -X PUT "http://localhost:8080/api/v0/applications/123e4567-e89b-12d3-a456-426614174000/update-document" \
-  -H "accept: application/json" \
-  -H "Authorization: <token>" \
-  -H "X-Service-Name: <service>" \
-  -F "file=@/path/to/document.pdf"
-```
-
-Response `200 OK`:
-```json
-{
-  "fileURL": "https://..."
-}
-```
-
-| Status | Meaning |
-|---|---|
-| `200` | File updated; returns a pre-signed URL for the updated file |
-
----
-
-### Delete documents
-
-Accepts one or more document IDs as query parameters. Each ID is the file key in the format `{applicationId}/{filename}`.
-
-```
-DELETE /api/v0/applications/{id}/delete-document?documentIds=<id1>&documentIds=<id2>
-X-Service-Name: <service>
-```
-
-```bash
-curl -X DELETE "http://localhost:8080/api/v0/applications/123e4567-e89b-12d3-a456-426614174000/delete-document?documentIds=123e4567-e89b-12d3-a456-426614174000/document.pdf" \
-  -H "accept: application/json" \
-  -H "Authorization: <token>" \
-  -H "X-Service-Name: <service>"
-```
-
-| Status | Meaning |
-|---|---|
-| `204` | All documents deleted |
-| `400` | `documentIds` query parameter is empty |
 
 ---
 

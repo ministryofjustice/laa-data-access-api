@@ -13,6 +13,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
@@ -34,6 +36,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationUseCase;
@@ -75,6 +79,7 @@ class ApplicationCommandControllerSecurityTest {
   @LocalServerPort private int port;
 
   @Autowired private TestRestTemplate restTemplate;
+  @Autowired private RequestMappingHandlerMapping requestMappingHandlerMapping;
 
   @MockitoBean private RetryingCommandDispatcher dispatcher;
   @MockitoBean private SubscriptionProjectionGateway projectionGateway;
@@ -208,6 +213,23 @@ class ApplicationCommandControllerSecurityTest {
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
     verify(linkApplicationUseCase).execute(command);
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "POST, /api/v0/applications/{id}/upload-document",
+    "PUT, /api/v0/applications/{id}/update-document",
+    "DELETE, /api/v0/applications/{id}/delete-document"
+  })
+  void givenRetiredDocumentRoute_whenInspectingMappings_thenNoHandlerIsRegistered(
+      String method, String path) {
+    RequestMethod requestMethod = RequestMethod.valueOf(method);
+
+    assertThat(requestMappingHandlerMapping.getHandlerMethods().keySet())
+        .noneMatch(
+            mapping ->
+                mapping.getMethodsCondition().getMethods().contains(requestMethod)
+                    && mapping.getPatternValues().contains(path));
   }
 
   private CreateApplicationCommand validCommand() {
