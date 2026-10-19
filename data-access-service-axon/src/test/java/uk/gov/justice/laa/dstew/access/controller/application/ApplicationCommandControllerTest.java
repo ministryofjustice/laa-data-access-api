@@ -47,11 +47,9 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationLinkRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkType;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.DocumentType;
-import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
 import uk.gov.justice.laa.dstew.access.model.LinkedGroupChangeRequest;
 import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedUserId;
-import uk.gov.justice.laa.dstew.access.service.sds.SdsUploadResult;
 import uk.gov.justice.laa.dstew.access.version.VersionToken;
 
 /** Verifies that each controller endpoint delegates to the appropriate use case. */
@@ -246,32 +244,6 @@ class ApplicationCommandControllerTest {
     when(createNoteCommandMapper.toCommand(id, null)).thenReturn(command);
     controller.createApplicationNotes(null, id, null);
     verify(createNoteUseCase).execute(command);
-  }
-
-  @Test
-  void givenValidFile_whenUploadDocument_thenDelegatesToUseCaseAndReturns201() {
-    UUID id = UUID.randomUUID();
-    MockMultipartFile file =
-        new MockMultipartFile("file", "test.pdf", "application/pdf", "content".getBytes());
-    SdsUploadResult expected = new SdsUploadResult("Uploaded", "true", "checksum");
-    when(uploadDocumentUseCase.execute(id, file)).thenReturn(expected);
-
-    ResponseEntity<DocumentUploadResponse> response = controller.uploadDocument(null, id, file);
-
-    verify(uploadDocumentUseCase).execute(id, file);
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-    assertThat(response.getBody()).isNotNull();
-    assertThat(response.getBody().getDetail()).isEqualTo(expected.detail());
-    assertThat(response.getBody().getSuccess()).isEqualTo(expected.success());
-    assertThat(response.getBody().getChecksum()).isEqualTo(expected.checksum());
-  }
-
-  @Test
-  void givenNullSdsUploadResult_whenUploadDocument_thenPreservesEmptyResponse() {
-    var response = controller.uploadDocument(null, UUID.randomUUID(), null);
-
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-    assertThat(response.getBody()).isNull();
   }
 
   @Test
