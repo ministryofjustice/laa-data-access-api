@@ -67,7 +67,7 @@ portForward:
 # Mock OAuth2 Server - Use shared instance for all UAT deployments
 mockOAuth2:
   sharedInstance:
-    enabled: true  # Use the shared instance deployed by CI/CD
+    enabled: false  # Use the shared instance deployed by CI/CD
     serviceName: laa-data-access-mock-oauth2-shared
     namespace: laa-data-access-api-uat
 

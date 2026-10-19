@@ -106,6 +106,15 @@ coverage when changing:
 Inspect stored event JSON in these tests to prove that newly separated sensitive fields have not
 leaked into the event payload.
 
+`PriorAuthorityDraftIntegrationTest` covers creation against current group roles, unlinking and
+dissolution. Its concurrent HTTP tests gate event inserts with PostgreSQL advisory locks and inspect
+`pg_blocking_pids` before releasing the gate. They prove that route locks protect creation through
+commit or rollback against linking, lead changes, unlinking and dissolution. Membership changes
+during resolution return 409; a committed lead change returns the associate validation error.
+Rejected requests leave no draft, sensitive content or draft-started event. A separate queued-route
+test checks ascending group lock order with a higher-identifier lead. These tests do not use sleeps
+or wait for query projections to make the eligibility decision.
+
 ## Processor recovery tests
 
 Tracking processors must neither skip a failing event nor corrupt their read model during reset.

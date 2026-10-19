@@ -18,12 +18,15 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadAccessPolicyProvider;
+import uk.gov.justice.laa.dstew.access.query.utils.security.OfficeCodeReadAccessScope;
 import uk.gov.justice.laa.dstew.access.usecase.application.priorauthority.GetPriorAuthorityUseCase;
 
 @ExtendWith(MockitoExtension.class)
 class GetPriorAuthorityUseCaseTest {
 
   @Mock private QueryGateway queryGateway;
+  @Mock private ApplicationReadAccessPolicyProvider accessPolicyProvider;
 
   @InjectMocks private GetPriorAuthorityUseCase useCase;
 
@@ -31,6 +34,8 @@ class GetPriorAuthorityUseCaseTest {
   void givenProjectedPriorAuthority_whenRetrieved_thenReturnsProjectionResult() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
+    OfficeCodeReadAccessScope accessScope =
+        new OfficeCodeReadAccessScope(java.util.Set.of("OFFICE-1"));
     PriorAuthorityResult projectedResult =
         PriorAuthorityResult.builder()
             .priorAuthorityId(priorAuthorityId)
@@ -46,13 +51,14 @@ class GetPriorAuthorityUseCaseTest {
     when(queryGateway.query(
             any(FindPriorAuthorityByPriorAuthorityIdQuery.class), eq(PriorAuthorityResult.class)))
         .thenReturn(CompletableFuture.completedFuture(projectedResult));
+    when(accessPolicyProvider.resolve()).thenReturn(accessScope);
 
     PriorAuthorityResult response = useCase.getPriorAuthority(priorAuthorityId);
 
     assertThat(response).isSameAs(projectedResult);
     verify(queryGateway)
         .query(
-            eq(new FindPriorAuthorityByPriorAuthorityIdQuery(priorAuthorityId)),
+            eq(new FindPriorAuthorityByPriorAuthorityIdQuery(priorAuthorityId, accessScope)),
             eq(PriorAuthorityResult.class));
   }
 

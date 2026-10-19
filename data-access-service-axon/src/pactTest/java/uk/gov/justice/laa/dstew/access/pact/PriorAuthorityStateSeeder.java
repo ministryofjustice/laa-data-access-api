@@ -31,6 +31,7 @@ import uk.gov.justice.laa.dstew.access.model.ExpertDetails;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.FindPriorAuthorityByPriorAuthorityIdQuery;
 import uk.gov.justice.laa.dstew.access.query.worklist.WorkListItemReadModel;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedCallerFactory;
 
 /**
  * Puts prior authorities into known lifecycle states through the real use cases.
@@ -57,6 +58,7 @@ class PriorAuthorityStateSeeder {
   private final UploadPriorAuthorityDocumentUseCase uploadDocumentUseCase;
   private final AssignWorkItemUseCase assignWorkItemUseCase;
   private final SavePriorAuthorityDraftCommandMapper draftCommandMapper;
+  private final AuthenticatedCallerFactory authenticatedCallerFactory;
 
   PriorAuthorityStateSeeder(
       QueryGateway queryGateway,
@@ -66,7 +68,8 @@ class PriorAuthorityStateSeeder {
       MakePriorAuthorityDecisionUseCase makeDecisionUseCase,
       UploadPriorAuthorityDocumentUseCase uploadDocumentUseCase,
       AssignWorkItemUseCase assignWorkItemUseCase,
-      SavePriorAuthorityDraftCommandMapper draftCommandMapper) {
+      SavePriorAuthorityDraftCommandMapper draftCommandMapper,
+      AuthenticatedCallerFactory authenticatedCallerFactory) {
     this.queryGateway = queryGateway;
     this.applications = applications;
     this.createDraftUseCase = createDraftUseCase;
@@ -75,6 +78,7 @@ class PriorAuthorityStateSeeder {
     this.uploadDocumentUseCase = uploadDocumentUseCase;
     this.assignWorkItemUseCase = assignWorkItemUseCase;
     this.draftCommandMapper = draftCommandMapper;
+    this.authenticatedCallerFactory = authenticatedCallerFactory;
   }
 
   /** An EXPERT draft, complete enough to submit, on a granted parent application. */
@@ -85,7 +89,8 @@ class PriorAuthorityStateSeeder {
     }
     applications.ensureAutoGranted(parent);
     CreatePriorAuthorityDraftCommand generated =
-        draftCommandMapper.toCreateCommand(expertDraftRequest(parent.getId()));
+        draftCommandMapper.toCreateCommand(
+            expertDraftRequest(parent.getId()), authenticatedCallerFactory.currentCaller());
     createDraftUseCase.execute(
         new CreatePriorAuthorityDraftCommand(
             priorAuthorityId,
@@ -94,7 +99,8 @@ class PriorAuthorityStateSeeder {
             generated.serialisedRequest(),
             generated.schemaVersion(),
             generated.schemaName(),
-            generated.occurredAt()));
+            generated.occurredAt(),
+            generated.caller()));
     return awaitPriorAuthority(priorAuthorityId, Objects::nonNull);
   }
 
@@ -106,7 +112,8 @@ class PriorAuthorityStateSeeder {
     }
     boolean projected =
         submitDraftUseCase.submit(
-            new SubmitPriorAuthorityDraftCommand(priorAuthorityId, Instant.now()));
+            new SubmitPriorAuthorityDraftCommand(
+                priorAuthorityId, Instant.now(), authenticatedCallerFactory.currentCaller()));
     if (!projected) {
       throw new IllegalStateException(
           "Projection for prior authority "
@@ -183,7 +190,13 @@ class PriorAuthorityStateSeeder {
             "application/pdf",
             "%PDF-1.4\nPact provider state evidence".getBytes(StandardCharsets.US_ASCII));
     UUID documentId =
-        uploadDocumentUseCase.execute(priorAuthorityId, evidence, "CIVIL_APPLY").documentId();
+        uploadDocumentUseCase
+            .execute(
+                priorAuthorityId,
+                evidence,
+                "CIVIL_APPLY",
+                authenticatedCallerFactory.currentCaller())
+            .documentId();
     awaitPriorAuthority(
         priorAuthorityId,
         pa ->

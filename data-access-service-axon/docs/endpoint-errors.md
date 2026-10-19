@@ -45,3 +45,14 @@ application's current group, even when the supplied version is stale.
 
 Because query projections are asynchronous, re-fetch the application after a 409 and use the latest
 `linkedGroupVersion` for a retry.
+
+## `POST /api/v0/prior-authorities`
+
+| Status | Detail |
+|---|---|
+| 400 | `Prior Authority applications can only be created against a lead or standalone application` |
+
+Prior Authority draft creation first validates that the application is granted. It then uses the
+current write-side linked-group state: standalone applications and the current lead are eligible;
+associated applications are rejected. A concurrent membership or lead change is serialized with
+draft creation by the group-route locks.
