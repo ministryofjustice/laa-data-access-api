@@ -52,9 +52,11 @@ The deterministic PostgreSQL tests verify that upload, type update, and deletion
 draft save retain both accepted changes after one rolled-back/retried attempt.
 
 The dispatcher recognises `ConcurrencyException`, `AppendEventsTransactionRejectedException`,
-and `DataIntegrityViolationException` caused by a unique-constraint violation (SQL state `23505`).
-Other failures propagate without this retry. A failed second attempt also propagates; bounded
-retry does not promise that every concurrent request succeeds. Internal command retry does not
+Spring's `OptimisticLockingFailureException`, and `DataIntegrityViolationException` caused by a
+unique-constraint violation (SQL state `23505`), including these failures when nested in a runtime
+exception. Other failures propagate without this retry. If the single retry also fails, the
+existing generic HTTP response is `500 Internal Server Error`. This persistence-only version does
+not add a client version parameter or a `409 Conflict` mapping. Internal command retry does not
 repeat SDS upload or make SDS cleanup transactional.
 
 This fix does not make queries immediately consistent, wait for deletion projection, or make
