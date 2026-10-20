@@ -3,7 +3,7 @@
 This directory explains the design of `data-access-service-axon`. Start here when changing command
 handling, application linking, projections, or the storage of sensitive application data.
 
-The module currently uses **Axon Framework 5.2.0**. Developers with only introductory Axon
+The module currently uses **Axon Framework 5.3.3**. Developers with only introductory Axon
 experience should follow the learning path below before using the documents as a reference.
 
 ## Suggested learning path

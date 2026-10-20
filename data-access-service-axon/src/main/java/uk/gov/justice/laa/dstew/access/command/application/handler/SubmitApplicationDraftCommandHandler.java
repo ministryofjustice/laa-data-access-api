@@ -4,6 +4,7 @@ import java.util.UUID;
 import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import org.axonframework.modelling.annotation.InjectEntity;
+import org.axonframework.modelling.repository.ManagedEntity;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreationDetails;
@@ -23,13 +24,15 @@ public class SubmitApplicationDraftCommandHandler {
   @CommandHandler
   public UUID handle(
       SubmitApplicationDraftCommand command,
-      @InjectEntity(idProperty = "applicationId") ApplicationAggregate application,
+      @InjectEntity(idProperty = "applicationId")
+          ManagedEntity<UUID, ApplicationAggregate> managedApplication,
       ApplicationDraftStore draftStore,
       ApplicationCreationDetailsFactory detailsFactory,
       ApplicationDataStore applicationDataStore,
       EventAppender eventAppender) {
     ApplicationDraftPayload draft =
         ApplicationCommandHandlerSupport.requireDraft(command.applicationId(), draftStore);
+    ApplicationAggregate application = managedApplication.entity();
     ApplicationCreationDetails details =
         detailsFactory.prepare(
             draft.status(),

@@ -22,14 +22,17 @@ distinguish a rejected command from a successfully committed command whose proje
 
 ## Missing aggregate handling
 
-Decision, assignment, and unassignment commands target an existing aggregate. Axon fails while
-loading a missing event stream. `ApplicationExceptionHandler` converts the resulting
-`AggregateNotFoundException`, including when found in the command failure chain by Spring's
-exception resolution, into a stable application 404 response.
+Most decision, assignment, and unassignment commands target an existing aggregate via a bare
+`@InjectEntity` parameter. Axon fails while loading a missing event stream, before the handler body
+runs. `ApplicationExceptionHandler` converts the resulting
+`EntityMissingForInstanceCommandHandlerException` into a stable application 404 response.
 
-Creation and linking commands that use `CREATE_IF_MISSING` are different. They can receive a new
-empty aggregate, so their handlers explicitly distinguish missing state and raise the appropriate
-public exception.
+Creation and linking commands, and a small number of existing-aggregate commands with a
+domain-specific missing-resource contract (for example note creation, application update, and
+prior-authority grant validation), inject `ManagedEntity<ID, Aggregate>` instead. Its `entity()` is
+`null` when the stream does not exist, so the handler runs and can explicitly raise
+`ResourceNotFoundException` or distinguish new/existing state as required.
+
 
 ## Command failure versus projection delay
 

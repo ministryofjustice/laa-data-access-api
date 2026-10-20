@@ -1,8 +1,10 @@
 package uk.gov.justice.laa.dstew.access.command.application.priorauthority.handler;
 
+import java.util.UUID;
 import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import org.axonframework.modelling.annotation.InjectEntity;
+import org.axonframework.modelling.repository.ManagedEntity;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityAggregate;
@@ -31,8 +33,14 @@ public class SubmitPriorAuthorityDraftCommandHandler {
       ApplicationDataStore applicationDataStore,
       JsonSchemaValidator jsonSchemaValidator,
       @InjectEntity(idProperty = "priorAuthorityId") @OfficeCodeResource
-          PriorAuthorityAggregate priorAuthority,
+          ManagedEntity<UUID, PriorAuthorityAggregate> managedPriorAuthority,
       EventAppender eventAppender) {
+
+    PriorAuthorityAggregate priorAuthority = managedPriorAuthority.entity();
+    if (priorAuthority == null) {
+      throw new ResourceNotFoundException(
+          "No prior authority found with ID: " + command.priorAuthorityId());
+    }
 
     PriorAuthorityDataPayload payload =
         draftStore

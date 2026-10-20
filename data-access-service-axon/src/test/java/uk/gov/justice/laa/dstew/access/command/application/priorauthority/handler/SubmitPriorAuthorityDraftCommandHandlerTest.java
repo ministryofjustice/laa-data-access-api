@@ -11,6 +11,7 @@ import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
+import org.axonframework.modelling.repository.ManagedEntity;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -42,6 +43,7 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
   @Mock private ApplicationDataStore applicationDataStore;
   @Mock private JsonSchemaValidator jsonSchemaValidator;
   @Mock private PriorAuthorityAggregate priorAuthority;
+  @Mock private ManagedEntity<UUID, PriorAuthorityAggregate> managedPriorAuthority;
   @Mock private EventAppender eventAppender;
 
   @Captor private ArgumentCaptor<PriorAuthorityDataPayload> payloadCaptor;
@@ -65,6 +67,7 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
     when(priorAuthority.getApplicationId()).thenReturn(applicationId);
     when(priorAuthority.getState()).thenReturn(state);
     when(applicationDataStore.latestVersion(applicationId)).thenReturn(3L);
+    when(managedPriorAuthority.entity()).thenReturn(priorAuthority);
 
     new SubmitPriorAuthorityDraftCommandHandler()
         .handle(
@@ -73,7 +76,7 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
             dataStore,
             applicationDataStore,
             jsonSchemaValidator,
-            priorAuthority,
+            managedPriorAuthority,
             eventAppender);
 
     verify(jsonSchemaValidator).validate(content, "PriorAuthority.json", 1);
@@ -100,12 +103,12 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
   }
 
   @Test
-  void givenMissingDraft_whenHandle_thenThrowsResourceNotFoundException() {
+  void givenMissingPriorAuthority_whenHandle_thenThrowsResourceNotFoundException() {
     UUID priorAuthorityId = UUID.randomUUID();
     SubmitPriorAuthorityDraftCommand command =
         new SubmitPriorAuthorityDraftCommand(priorAuthorityId, OCCURRED_AT);
 
-    when(draftStore.find(priorAuthorityId)).thenReturn(Optional.empty());
+    when(managedPriorAuthority.entity()).thenReturn(null);
 
     assertThatThrownBy(
             () ->
@@ -116,7 +119,34 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
                         dataStore,
                         applicationDataStore,
                         jsonSchemaValidator,
-                        priorAuthority,
+                        managedPriorAuthority,
+                        eventAppender))
+        .isInstanceOf(ResourceNotFoundException.class)
+        .hasMessage("No prior authority found with ID: " + priorAuthorityId);
+
+    verifyNoInteractions(
+        draftStore, dataStore, applicationDataStore, jsonSchemaValidator, eventAppender);
+  }
+
+  @Test
+  void givenMissingDraft_whenHandle_thenThrowsResourceNotFoundException() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    SubmitPriorAuthorityDraftCommand command =
+        new SubmitPriorAuthorityDraftCommand(priorAuthorityId, OCCURRED_AT);
+
+    when(draftStore.find(priorAuthorityId)).thenReturn(Optional.empty());
+    when(managedPriorAuthority.entity()).thenReturn(priorAuthority);
+
+    assertThatThrownBy(
+            () ->
+                new SubmitPriorAuthorityDraftCommandHandler()
+                    .handle(
+                        command,
+                        draftStore,
+                        dataStore,
+                        applicationDataStore,
+                        jsonSchemaValidator,
+                        managedPriorAuthority,
                         eventAppender))
         .isInstanceOf(ResourceNotFoundException.class)
         .hasMessage("Prior Authority draft not found: " + priorAuthorityId);
@@ -142,6 +172,7 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
     when(priorAuthority.getApplicationId()).thenReturn(applicationId);
     when(priorAuthority.getState()).thenReturn(state);
     when(applicationDataStore.latestVersion(applicationId)).thenReturn(4L);
+    when(managedPriorAuthority.entity()).thenReturn(priorAuthority);
 
     new SubmitPriorAuthorityDraftCommandHandler()
         .handle(
@@ -150,7 +181,7 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
             dataStore,
             applicationDataStore,
             jsonSchemaValidator,
-            priorAuthority,
+            managedPriorAuthority,
             eventAppender);
 
     verify(eventAppender)

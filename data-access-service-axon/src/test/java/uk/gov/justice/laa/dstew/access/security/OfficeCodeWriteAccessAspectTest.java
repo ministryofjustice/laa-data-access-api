@@ -5,9 +5,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.UnaryOperator;
+import org.axonframework.modelling.repository.ManagedEntity;
 import org.junit.jupiter.api.Test;
 import org.springframework.aop.aspectj.annotation.AspectJProxyFactory;
 import org.springframework.security.access.AccessDeniedException;
+import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 
 class OfficeCodeWriteAccessAspectTest {
 
@@ -106,6 +109,26 @@ class OfficeCodeWriteAccessAspectTest {
         .hasMessageContaining("must declare an @AuthenticatedCallerResource parameter");
   }
 
+  @Test
+  void
+      givenManagedEntityWithMissingEntity_whenCallingAnnotatedMethod_thenThrowsNotFoundBeforeBody() {
+    ManagedEntityResourceHandler handler = proxiedHandler(new ManagedEntityResourceHandler());
+
+    assertThatThrownBy(
+            () -> handler.handle(new FakeManagedEntity("id-1", null), providerCaller("1A001B")))
+        .isInstanceOf(ResourceNotFoundException.class);
+    assertThat(handler.wasHandled()).isFalse();
+  }
+
+  @Test
+  void givenManagedEntityWithPresentEntity_whenCallingAnnotatedMethod_thenExecutesBody() {
+    ManagedEntityResourceHandler handler = proxiedHandler(new ManagedEntityResourceHandler());
+
+    handler.handle(new FakeManagedEntity("id-1", new Resource("1A001B")), providerCaller("1A001B"));
+
+    assertThat(handler.wasHandled()).isTrue();
+  }
+
   private ProtectedHandler proxiedHandler() {
     return proxiedHandler(new ProtectedHandler());
   }
@@ -197,4 +220,28 @@ class OfficeCodeWriteAccessAspectTest {
   record ResourceWithNonStringOfficeCode(Integer officeCode) {}
 
   record CommandWithCaller(AuthenticatedCaller caller) {}
+
+  static class ManagedEntityResourceHandler {
+    private boolean handled;
+
+    @RequireOfficeCodeWriteAccess
+    void handle(
+        @OfficeCodeResource FakeManagedEntity resource,
+        @AuthenticatedCallerResource AuthenticatedCaller caller) {
+      handled = true;
+    }
+
+    boolean wasHandled() {
+      return handled;
+    }
+  }
+
+  record FakeManagedEntity(String identifier, Resource entity)
+      implements ManagedEntity<String, Resource> {
+
+    @Override
+    public Resource applyStateChange(UnaryOperator<Resource> change) {
+      throw new UnsupportedOperationException();
+    }
+  }
 }
