@@ -21,8 +21,8 @@ public class LinkedGroupAssignmentEventHandler {
   /**
    * Applies assignment rules when a new linked group is created with initial members.
    *
-   * <p>Processes all non-lead members (indices 1+) to ensure consistent assignment behavior
-   * regardless of whether members are added during group creation or individually.
+   * <p>Processes all non-lead members to ensure consistent assignment behavior regardless of
+   * whether members are added during group creation or individually.
    *
    * @param event the group creation event
    */
@@ -31,7 +31,7 @@ public class LinkedGroupAssignmentEventHandler {
     var groupMemberApplicationIds = event.memberApplicationIds();
     if (groupMemberApplicationIds.size() >= 2) {
       groupMemberApplicationIds.stream()
-          .skip(1)
+          .filter(memberId -> !memberId.equals(event.leadApplicationId()))
           .forEach(
               memberApplicationId ->
                   linkedGroupAssignmentDispatcher.applyAssignmentRules(
