@@ -1,8 +1,6 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
-import io.swagger.v3.oas.annotations.Hidden;
 import java.net.URI;
-import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -31,16 +29,12 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
 import uk.gov.justice.laa.dstew.access.model.CreateNoteRequest;
-import uk.gov.justice.laa.dstew.access.model.DocumentDeleteResponse;
 import uk.gov.justice.laa.dstew.access.model.DocumentType;
-import uk.gov.justice.laa.dstew.access.model.DocumentUpdateResponse;
-import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
 import uk.gov.justice.laa.dstew.access.model.LinkedGroupChangeRequest;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.model.UploadApplicationDocumentResponse;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedUserId;
-import uk.gov.justice.laa.dstew.access.service.sds.SdsUploadResult;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
 
@@ -218,22 +212,6 @@ public class ApplicationCommandController
   @Override
   @LogMethodArguments
   @LogMethodResponse
-  public ResponseEntity<DocumentUploadResponse> uploadDocument(
-      ServiceName serviceName, UUID applicationId, MultipartFile file) {
-    SdsUploadResult result = uploadDocumentUseCase.execute(applicationId, file);
-    DocumentUploadResponse response =
-        result == null
-            ? null
-            : new DocumentUploadResponse()
-                .detail(result.detail())
-                .success(result.success())
-                .checksum(result.checksum());
-    return ResponseEntity.status(HttpStatus.CREATED).body(response);
-  }
-
-  @Override
-  @LogMethodArguments
-  @LogMethodResponse
   public ResponseEntity<UploadApplicationDocumentResponse> uploadApplicationDocument(
       ServiceName serviceName, UUID id, MultipartFile file, DocumentType documentType) {
     DocumentUploadResult result =
@@ -249,23 +227,5 @@ public class ApplicationCommandController
             .sourceService(result.sourceService())
             .checksum(result.checksum());
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
-  }
-
-  @Hidden
-  @Override
-  @LogMethodArguments
-  @LogMethodResponse
-  public ResponseEntity<DocumentUpdateResponse> updateDocument(
-      ServiceName serviceName, UUID id, MultipartFile file) {
-    return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
-  }
-
-  @Hidden
-  @Override
-  @LogMethodArguments
-  @LogMethodResponse
-  public ResponseEntity<DocumentDeleteResponse> deleteDocument(
-      ServiceName serviceName, UUID id, List<String> documentIds) {
-    return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
   }
 }
