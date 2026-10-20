@@ -139,7 +139,7 @@ public class DataAccessApiProviderTests extends AbstractProviderPactTests {
 
   // ─── Prior authorities ───────────────────────────────────────────────────────
 
-  /** GET draft, PUT draft, POST submit, POST documents. */
+  /** GET draft. Requests that change a draft use {@link #newPriorAuthorityDraftExists()}. */
   @State(PactStates.PRIOR_AUTHORITY_DRAFT_EXISTS)
   public void priorAuthorityDraftExists() {
     states.priorAuthorityDraftExists();
@@ -164,12 +164,32 @@ public class DataAccessApiProviderTests extends AbstractProviderPactTests {
   }
 
   /**
-   * GET, PATCH and DELETE a document. Returns {@code documentId} for Pact to inject into the
-   * consumer's request path, since the service generates document identifiers.
+   * GET a document. Returns {@code documentId} for Pact to inject into the consumer's request path,
+   * since the service generates document identifiers. Requests that change or delete a document use
+   * {@link #newPriorAuthorityDraftWithDocumentExists()}.
    */
   @State(PactStates.PRIOR_AUTHORITY_WITH_DOCUMENT_EXISTS)
   public Map<String, Object> priorAuthorityWithDocumentExists() {
     return states.priorAuthorityWithDocumentExists();
+  }
+
+  /**
+   * PUT draft, POST submit, POST documents. Creates a fresh draft for this interaction and returns
+   * {@code priorAuthorityId} and {@code applicationId} for Pact to inject, so the request cannot
+   * disturb the fixed-ID states or any other interaction.
+   */
+  @State(PactStates.NEW_PRIOR_AUTHORITY_DRAFT_EXISTS)
+  public Map<String, Object> newPriorAuthorityDraftExists() {
+    return states.newPriorAuthorityDraftExists();
+  }
+
+  /**
+   * PATCH and DELETE a document. Creates a fresh draft with one uploaded document and returns
+   * {@code priorAuthorityId}, {@code applicationId} and {@code documentId} for Pact to inject.
+   */
+  @State(PactStates.NEW_PRIOR_AUTHORITY_DRAFT_WITH_DOCUMENT_EXISTS)
+  public Map<String, Object> newPriorAuthorityDraftWithDocumentExists() {
+    return states.newPriorAuthorityDraftWithDocumentExists();
   }
 
   /** Any prior authority endpoint expecting 404. */
