@@ -341,7 +341,7 @@ class ApplicationProjectionTest {
     when(applicationDataStore.get(applicationId, event.applicationDataVersion())).thenReturn(data);
 
     projection.on(
-        new ApplicationDraftStartedEvent(applicationId, 1, "fingerprint", draftStartedAt),
+        new ApplicationDraftStartedEvent(applicationId, 1, "fingerprint", draftStartedAt, null),
         queryUpdateEmitter);
     ApplicationReadModel savedDraft = draft[0];
     when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(savedDraft));
@@ -489,7 +489,8 @@ class ApplicationProjectionTest {
             "APPLICATION_SUBMITTED",
             1,
             Instant.parse("2026-07-15T08:00:00Z"),
-            duplicates);
+            duplicates,
+            null);
     ApplicationReadModel[] savedCapture = new ApplicationReadModel[1];
     when(applicationReadRepository.save(any()))
         .thenAnswer(

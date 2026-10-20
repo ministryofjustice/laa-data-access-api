@@ -95,11 +95,12 @@ class ApplicationProjectionSequencingIntegrationTest {
             details.status(),
             details.schemaVersion(),
             createdAt,
-            List.of());
+            List.of(),
+            details.provider().getOfficeCode());
 
     applicationProjection.reset();
     applicationProjection.on(
-        new ApplicationDraftStartedEvent(applicationId, 1, "fingerprint", draftStartedAt),
+        new ApplicationDraftStartedEvent(applicationId, 1, "fingerprint", draftStartedAt, null),
         queryUpdateEmitter);
     applicationProjection.on(event, queryUpdateEmitter);
 
@@ -136,7 +137,8 @@ class ApplicationProjectionSequencingIntegrationTest {
             details.status(),
             details.schemaVersion(),
             createdAt,
-            List.of());
+            List.of(),
+            details.provider().getOfficeCode());
 
     applicationProjection.reset();
     applicationProjection.on(event, queryUpdateEmitter);

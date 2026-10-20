@@ -186,6 +186,6 @@ class DirectGroupWorkItemAssignmentTest {
 
   private ApplicationCreatedEvent created(UUID id, Instant occurredAt) {
     return new ApplicationCreatedEvent(
-        id, 0L, "hash", "APPLICATION_SUBMITTED", 1, occurredAt, null);
+        id, 0L, "hash", "APPLICATION_SUBMITTED", 1, occurredAt, null, null);
   }
 }

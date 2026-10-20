@@ -58,7 +58,8 @@ class PriorAuthorityDataPayloadTest {
   }
 
   @Test
-  void givenSixArgumentConstructor_whenCreated_thenRetainsDecisionDetailsAndDefaultsOfficeCode() {
+  void
+      givenFullConstructorWithoutOfficeCode_whenCreated_thenRetainsDecisionDetailsAndDefaultsOfficeCode() {
     PriorAuthorityDataPayload.DecisionDetails decisionDetails = decisionDetails();
 
     PriorAuthorityDataPayload payload =
@@ -68,7 +69,9 @@ class PriorAuthorityDataPayloadTest {
             new PriorAuthorityContent(PriorAuthorityType.EXPERT, "Need expert", null, null, null),
             "{}",
             SUBMITTED_AT,
-            decisionDetails);
+            decisionDetails,
+            null,
+            null);
 
     assertThat(payload.decisionDetails()).isEqualTo(decisionDetails);
     assertThat(payload.officeCode()).isNull();

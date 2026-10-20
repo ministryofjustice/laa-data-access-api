@@ -108,7 +108,7 @@ class ApplicationAggregateDraftTest {
 
     fixture
         .given()
-        .events(new ApplicationDraftStartedEvent(applicationId, 1, "hash", uploadedAt))
+        .events(new ApplicationDraftStartedEvent(applicationId, 1, "hash", uploadedAt, null))
         .when()
         .command(
             new ApplicationDocumentUploadCommand(
@@ -172,7 +172,7 @@ class ApplicationAggregateDraftTest {
     fixture
         .given()
         .events(
-            new ApplicationDraftStartedEvent(applicationId, 1, "hash", occurredAt),
+            new ApplicationDraftStartedEvent(applicationId, 1, "hash", occurredAt, null),
             new ApplicationDocumentUploadedEvent(
                 applicationId,
                 documentId,
@@ -237,7 +237,7 @@ class ApplicationAggregateDraftTest {
 
     fixture
         .given()
-        .events(new ApplicationDraftStartedEvent(applicationId, 1, "hash", Instant.now()))
+        .events(new ApplicationDraftStartedEvent(applicationId, 1, "hash", Instant.now(), null))
         .when()
         .command(
             new ApplicationDocumentUploadCommand(
@@ -305,7 +305,7 @@ class ApplicationAggregateDraftTest {
     Instant occurredAt = Instant.parse("2026-08-01T10:00:00Z");
     ApplicationDraftStartedEvent existingEvent =
         new ApplicationDraftStartedEvent(
-            applicationId, 1, PayloadFingerprint.compute("{\"original\":true}"), occurredAt);
+            applicationId, 1, PayloadFingerprint.compute("{\"original\":true}"), occurredAt, null);
 
     CreateApplicationDraftCommand duplicateCommand =
         new CreateApplicationDraftCommand(
@@ -339,7 +339,7 @@ class ApplicationAggregateDraftTest {
     String serialisedRequest = "{}";
     String fingerprint = PayloadFingerprint.compute(serialisedRequest);
     ApplicationDraftStartedEvent existingEvent =
-        new ApplicationDraftStartedEvent(applicationId, 1, fingerprint, occurredAt);
+        new ApplicationDraftStartedEvent(applicationId, 1, fingerprint, occurredAt, null);
 
     CreateApplicationDraftCommand retryWithDifferentSchemaVersion =
         new CreateApplicationDraftCommand(
@@ -372,7 +372,7 @@ class ApplicationAggregateDraftTest {
     String serialisedRequest = "{}";
     String fingerprint = PayloadFingerprint.compute(serialisedRequest);
     ApplicationDraftStartedEvent existingEvent =
-        new ApplicationDraftStartedEvent(applicationId, 1, fingerprint, occurredAt);
+        new ApplicationDraftStartedEvent(applicationId, 1, fingerprint, occurredAt, null);
 
     CreateApplicationDraftCommand retryCommand =
         new CreateApplicationDraftCommand(
@@ -441,7 +441,7 @@ class ApplicationAggregateDraftTest {
             "APPLICATION_SUBMITTED", "LAA-123", applicationContent, serialisedRequest, List.of());
     ApplicationDraftStartedEvent existingEvent =
         new ApplicationDraftStartedEvent(
-            applicationId, 1, PayloadFingerprint.compute(serialisedRequest), startedAt);
+            applicationId, 1, PayloadFingerprint.compute(serialisedRequest), startedAt, null);
     ApplicationCreationDetails details = applicationCreationDetails(applicationId);
     String fingerprint = PayloadFingerprint.compute(details.serialisedRequest());
 
