@@ -1,8 +1,10 @@
 package uk.gov.justice.laa.dstew.access.command.application.handler;
 
+import java.util.UUID;
 import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import org.axonframework.modelling.annotation.InjectEntity;
+import org.axonframework.modelling.repository.ManagedEntity;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDecider;
@@ -17,10 +19,13 @@ public class CreateNoteCommandHandler {
   @CommandHandler
   public void handle(
       CreateNoteCommand command,
-      @InjectEntity(idProperty = "applicationId") ApplicationAggregate application,
+      @InjectEntity(idProperty = "applicationId")
+          ManagedEntity<UUID, ApplicationAggregate> managedApplication,
       ApplicationDataStore applicationDataStore,
       EventAppender eventAppender) {
-    ApplicationCommandHandlerSupport.requireApplicationExists(application, command.applicationId());
+    ApplicationAggregate application =
+        ApplicationCommandHandlerSupport.requireApplicationExists(
+            managedApplication, command.applicationId());
     var event = ApplicationDecider.decideNote(application.getState(), command);
     var current =
         applicationDataStore.get(

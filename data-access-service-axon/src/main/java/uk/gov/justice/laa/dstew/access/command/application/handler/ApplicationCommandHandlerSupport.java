@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.command.application.handler;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.axonframework.modelling.repository.ManagedEntity;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftPayload;
@@ -21,6 +22,17 @@ final class ApplicationCommandHandlerSupport {
       throw new ResourceNotFoundException(
           "No application found with Application ID: " + requestedApplicationId);
     }
+  }
+
+  /** Unwraps a managed entity whose stream may not exist yet, raising the public 404 contract. */
+  static ApplicationAggregate requireApplicationExists(
+      ManagedEntity<UUID, ApplicationAggregate> managedApplication, UUID requestedApplicationId) {
+    ApplicationAggregate application = managedApplication.entity();
+    if (application == null) {
+      throw new ResourceNotFoundException(
+          "No application found with Application ID: " + requestedApplicationId);
+    }
+    return application;
   }
 
   static void requireApplicationDraft(

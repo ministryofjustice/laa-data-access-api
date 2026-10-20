@@ -6,9 +6,11 @@ import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
+import org.axonframework.modelling.repository.ManagedEntity;
 import org.springframework.beans.BeanWrapper;
 import org.springframework.beans.BeanWrapperImpl;
 import org.springframework.stereotype.Component;
+import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 
 /** Enforces office-code write access for annotated command handlers. */
 @Aspect
@@ -50,6 +52,15 @@ public class OfficeCodeWriteAccessAspect {
       throw new IllegalStateException(
           "@RequireOfficeCodeWriteAccess method must declare an @OfficeCodeResource parameter: "
               + method);
+    }
+
+    if (resource instanceof ManagedEntity<?, ?> managedEntity) {
+      Object entity = managedEntity.entity();
+      if (entity == null) {
+        throw new ResourceNotFoundException(
+            "No resource found for identifier: " + managedEntity.identifier());
+      }
+      resource = entity;
     }
 
     BeanWrapper beanWrapper = new BeanWrapperImpl(resource);
