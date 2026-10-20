@@ -9,6 +9,7 @@ import org.axonframework.common.configuration.AxonConfiguration;
 import org.axonframework.messaging.eventhandling.processing.streaming.StreamingEventProcessor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 
@@ -134,7 +135,10 @@ class ProviderStates {
 
   // ─── Prior authorities ───────────────────────────────────────────────────────
 
-  /** Prior authority a001: an EXPERT draft on the granted parent application 009. */
+  /**
+   * Prior authority a001: an EXPERT draft on the granted parent application 009, for reads only.
+   * Requests that change a draft use {@link #newPriorAuthorityDraftExists()}.
+   */
   void priorAuthorityDraftExists() {
     log.info("State: {}", PactStates.PRIOR_AUTHORITY_DRAFT_EXISTS);
     priorAuthorities.ensureDraft(PactIds.PRIOR_AUTHORITY_DRAFT, priorAuthorityParent());
@@ -159,13 +163,44 @@ class ProviderStates {
     priorAuthorities.ensureGranted(PactIds.PRIOR_AUTHORITY_DECIDED, priorAuthorityParent());
   }
 
-  /** Prior authority a005: a draft with one uploaded PDF. Returns the generated document ID. */
+  /**
+   * Prior authority a005: a draft with one uploaded PDF, for reads only. Returns the generated
+   * document ID. Requests that change or delete a document use {@link
+   * #newPriorAuthorityDraftWithDocumentExists()}.
+   */
   Map<String, Object> priorAuthorityWithDocumentExists() {
     log.info("State: {}", PactStates.PRIOR_AUTHORITY_WITH_DOCUMENT_EXISTS);
     UUID documentId =
         priorAuthorities.ensureUploadedDocument(
             PactIds.PRIOR_AUTHORITY_WITH_DOCUMENT, priorAuthorityParent());
     return Map.of("documentId", documentId.toString());
+  }
+
+  /**
+   * A draft created fresh for this one interaction on the granted parent application 009, so
+   * submitting, updating or uploading to it cannot affect any other interaction in the run. Returns
+   * the generated {@code priorAuthorityId} and the parent {@code applicationId} for injection.
+   */
+  Map<String, Object> newPriorAuthorityDraftExists() {
+    log.info("State: {}", PactStates.NEW_PRIOR_AUTHORITY_DRAFT_EXISTS);
+    PriorAuthorityResult draft = priorAuthorities.newDraft(priorAuthorityParent());
+    return Map.of(
+        "priorAuthorityId", draft.priorAuthorityId().toString(),
+        "applicationId", draft.applicationId().toString());
+  }
+
+  /**
+   * A fresh draft with one uploaded PDF, for interactions that change or delete the document.
+   * Returns {@code priorAuthorityId}, {@code applicationId} and {@code documentId} for injection.
+   */
+  Map<String, Object> newPriorAuthorityDraftWithDocumentExists() {
+    log.info("State: {}", PactStates.NEW_PRIOR_AUTHORITY_DRAFT_WITH_DOCUMENT_EXISTS);
+    PriorAuthorityResult draft = priorAuthorities.newDraft(priorAuthorityParent());
+    UUID documentId = priorAuthorities.uploadDocument(draft.priorAuthorityId());
+    return Map.of(
+        "priorAuthorityId", draft.priorAuthorityId().toString(),
+        "applicationId", draft.applicationId().toString(),
+        "documentId", documentId.toString());
   }
 
   /** Nothing to set up: the ID is reserved and never created. */
