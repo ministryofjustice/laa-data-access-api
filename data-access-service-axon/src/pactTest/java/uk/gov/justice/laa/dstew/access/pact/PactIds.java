@@ -31,7 +31,9 @@ final class PactIds {
   static final UUID APPLICATION_MISSING = UUID.fromString("00000000-0000-0000-0000-00000000dead");
 
   // Prior authorities. The API generates these, but a state handler may fix them when seeding, so
-  // consumers get stable IDs for reads. Only uploaded document IDs remain server-generated.
+  // consumers get stable IDs for reads. A prior authority cannot be reset once submitted and a
+  // deleted document stays deleted, so the states for requests that change one ("a new prior
+  // authority draft ...") generate a fresh ID per interaction and inject it instead.
   static final UUID PRIOR_AUTHORITY_DRAFT = UUID.fromString("00000000-0000-0000-0000-00000000a001");
   static final UUID PRIOR_AUTHORITY_SUBMITTED =
       UUID.fromString("00000000-0000-0000-0000-00000000a002");
