@@ -12,9 +12,11 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorA
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.security.AggregateResource;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedCallerResource;
-import uk.gov.justice.laa.dstew.access.security.OfficeCodeResource;
-import uk.gov.justice.laa.dstew.access.security.RequireOfficeCodeWriteAccess;
+import uk.gov.justice.laa.dstew.access.security.OfficeCodeResourceWriteAccessResolver;
+import uk.gov.justice.laa.dstew.access.security.OfficeCodeWriteAccessAuthorizer;
+import uk.gov.justice.laa.dstew.access.security.RequireWriteAccess;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /** Handles uploads of documents to a prior-authority draft. */
@@ -23,11 +25,16 @@ public class PriorAuthorityDocumentUploadCommandHandler {
 
   /** Uploads a document to the prior-authority draft and emits the corresponding event. */
   @CommandHandler
-  @RequireOfficeCodeWriteAccess
+  @RequireWriteAccess(
+      resolver = OfficeCodeResourceWriteAccessResolver.class,
+      authorizer = OfficeCodeWriteAccessAuthorizer.class)
   public UUID handle(
       @AuthenticatedCallerResource PriorAuthorityDocumentUploadCommand command,
       PriorAuthorityDraftStore draftStore,
-      @InjectEntity(idProperty = "priorAuthorityId") @OfficeCodeResource
+      @InjectEntity(idProperty = "priorAuthorityId")
+          @AggregateResource(
+              resourceType = "prior-authority",
+              resourceIdProperty = "priorAuthorityId")
           PriorAuthorityAggregate priorAuthority,
       EventAppender eventAppender) {
 

@@ -24,6 +24,24 @@ public interface ApplicationGroupRouteRepository
       """)
   List<ApplicationGroupRoute> findAllByApplicationIdInForUpdate(Collection<UUID> applicationIds);
 
+  /**
+   * Locks both link endpoints and every route in the target's current group in identifier order.
+   */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query(
+      """
+      select route
+      from ApplicationGroupRoute route
+      where route.applicationId in :applicationIds
+         or route.groupId = (
+             select targetRoute.groupId
+             from ApplicationGroupRoute targetRoute
+             where targetRoute.applicationId = :targetApplicationId)
+      order by route.applicationId
+      """)
+  List<ApplicationGroupRoute> findLinkRoutesForUpdate(
+      Collection<UUID> applicationIds, UUID targetApplicationId);
+
   /** Locks every route in the supplied group in ascending application identifier order. */
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query(
