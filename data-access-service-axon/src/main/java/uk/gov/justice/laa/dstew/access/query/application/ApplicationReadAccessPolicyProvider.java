@@ -1,7 +1,8 @@
 package uk.gov.justice.laa.dstew.access.query.application;
 
-import static uk.gov.justice.laa.dstew.access.security.ApplicationReadScopeAuthorizationManager.ACCESS_AS_PROVIDER;
-import static uk.gov.justice.laa.dstew.access.security.ApplicationReadScopeAuthorizationManager.ACCESS_AS_USER;
+import static uk.gov.justice.laa.dstew.access.security.SecurityHelper.ACCESS_AS_PROVIDER;
+import static uk.gov.justice.laa.dstew.access.security.SecurityHelper.ACCESS_AS_USER;
+import static uk.gov.justice.laa.dstew.access.security.SecurityHelper.DECIDE_AUTO_GRANT_ROLE;
 
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -15,6 +16,14 @@ import uk.gov.justice.laa.dstew.access.security.SecurityHelper;
 /** Resolves Application row visibility from authenticated request data. */
 @Component
 public class ApplicationReadAccessPolicyProvider {
+
+  /** Allows the dedicated service to look up an Application across provider offices. */
+  public ReadAccessScope resolveForApplicationLookup() {
+    return SecurityHelper.getScopes().isEmpty()
+            && SecurityHelper.getEntraAppRoles().contains(DECIDE_AUTO_GRANT_ROLE)
+        ? new UnrestrictedReadAccessScope()
+        : resolve();
+  }
 
   /** Resolves the row-visibility restriction from the caller's delegated application scope. */
   public ReadAccessScope resolve() {
