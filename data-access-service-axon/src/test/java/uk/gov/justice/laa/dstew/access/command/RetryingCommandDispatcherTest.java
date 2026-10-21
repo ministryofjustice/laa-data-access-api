@@ -13,6 +13,7 @@ import org.axonframework.modelling.ConcurrencyException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 
 class RetryingCommandDispatcherTest {
@@ -38,6 +39,30 @@ class RetryingCommandDispatcherTest {
   void givenConcurrencyException_whenDispatch_thenRetriesOnce() {
     when(commandGateway.sendAndWait(command))
         .thenThrow(new ConcurrencyException("concurrent write"))
+        .thenReturn(null);
+
+    dispatcher.dispatch(command);
+
+    verify(commandGateway, times(2)).sendAndWait(command);
+  }
+
+  @Test
+  void givenOptimisticLockingFailure_whenDispatch_thenRetriesOnce() {
+    OptimisticLockingFailureException failure =
+        new OptimisticLockingFailureException("stale draft version");
+    when(commandGateway.sendAndWait(command)).thenThrow(failure).thenReturn(null);
+
+    dispatcher.dispatch(command);
+
+    verify(commandGateway, times(2)).sendAndWait(command);
+  }
+
+  @Test
+  void givenNestedOptimisticLockingFailure_whenDispatch_thenRetriesOnce() {
+    OptimisticLockingFailureException failure =
+        new OptimisticLockingFailureException("stale draft version");
+    when(commandGateway.sendAndWait(command))
+        .thenThrow(new RuntimeException("command failed", failure))
         .thenReturn(null);
 
     dispatcher.dispatch(command);
@@ -76,6 +101,20 @@ class RetryingCommandDispatcherTest {
 
     assertThatThrownBy(() -> dispatcher.dispatch(command)).isSameAs(failure);
     verify(commandGateway, times(1)).sendAndWait(command);
+  }
+
+  @Test
+  void givenOptimisticLockingRetryAlsoFails_whenDispatch_thenRethrowsSecondWithFirstSuppressed() {
+    OptimisticLockingFailureException first =
+        new OptimisticLockingFailureException("first stale draft version");
+    OptimisticLockingFailureException retry =
+        new OptimisticLockingFailureException("second stale draft version");
+    when(commandGateway.sendAndWait(command)).thenThrow(first).thenThrow(retry);
+
+    assertThatThrownBy(() -> dispatcher.dispatch(command))
+        .isSameAs(retry)
+        .satisfies(failure -> assertThat(failure.getSuppressed()).containsExactly(first));
+    verify(commandGateway, times(2)).sendAndWait(command);
   }
 
   @Test

@@ -72,12 +72,14 @@ class PriorAuthorityDraftStoreTest {
 
     when(repository.findById(priorAuthorityId)).thenReturn(Optional.of(existing));
 
-    store.upsert(priorAuthorityId, applicationId, payload, "second-request", secondOccurredAt);
+    String fingerprint =
+        store.upsert(priorAuthorityId, applicationId, payload, "second-request", secondOccurredAt);
 
-    ArgumentCaptor<PriorAuthorityDraft> captor = ArgumentCaptor.forClass(PriorAuthorityDraft.class);
-    verify(repository).saveAndFlush(captor.capture());
-    assertThat(captor.getValue().getCreatedAt()).isEqualTo(originalCreatedAt);
-    assertThat(captor.getValue().getUpdatedAt()).isEqualTo(secondOccurredAt);
+    verify(repository).flush();
+    assertThat(existing.getCreatedAt()).isEqualTo(originalCreatedAt);
+    assertThat(existing.getPayload()).isEqualTo(payload);
+    assertThat(existing.getPayloadHash()).isEqualTo(fingerprint);
+    assertThat(existing.getUpdatedAt()).isEqualTo(secondOccurredAt);
   }
 
   @Test
