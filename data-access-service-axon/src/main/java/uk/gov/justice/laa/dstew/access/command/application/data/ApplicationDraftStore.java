@@ -31,16 +31,20 @@ public class ApplicationDraftStore {
       String serialisedRequest,
       Instant occurredAt) {
     String fingerprint = PayloadFingerprint.compute(serialisedRequest);
-    Instant createdAt =
-        repository.findById(applicationId).map(ApplicationDraft::getCreatedAt).orElse(occurredAt);
-    repository.saveAndFlush(
-        ApplicationDraft.builder()
-            .applicationId(applicationId)
-            .payload(payload)
-            .payloadHash(fingerprint)
-            .createdAt(createdAt)
-            .updatedAt(occurredAt)
-            .build());
+    var existing = repository.findById(applicationId);
+    if (existing.isPresent()) {
+      existing.get().update(payload, fingerprint, occurredAt);
+      repository.flush();
+    } else {
+      repository.saveAndFlush(
+          ApplicationDraft.builder()
+              .applicationId(applicationId)
+              .payload(payload)
+              .payloadHash(fingerprint)
+              .createdAt(occurredAt)
+              .updatedAt(occurredAt)
+              .build());
+    }
     return fingerprint;
   }
 
