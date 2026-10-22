@@ -1,18 +1,15 @@
 package uk.gov.justice.laa.dstew.access.controller.application;
 
-import io.swagger.v3.oas.annotations.Hidden;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import java.net.URI;
-import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.api.ApplicationCommandApi;
@@ -22,12 +19,8 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationUpdateRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.CaseworkerUnassignRequest;
 import uk.gov.justice.laa.dstew.access.model.CreateNoteRequest;
-import uk.gov.justice.laa.dstew.access.model.DocumentDeleteResponse;
-import uk.gov.justice.laa.dstew.access.model.DocumentUpdateResponse;
-import uk.gov.justice.laa.dstew.access.model.DocumentUploadResponse;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
-import uk.gov.justice.laa.dstew.access.service.applications.SdsService;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
 import uk.gov.justice.laa.dstew.access.usecase.assigncaseworker.AssignCaseworkerUseCase;
@@ -57,7 +50,6 @@ public class ApplicationCommandController implements ApplicationCommandApi {
 
   private final CreateNoteUseCase createNoteUseCase;
   private final CreateNoteCommandMapper createNoteCommandMapper;
-  private final SdsService sdsService;
 
   @LogMethodArguments
   @LogMethodResponse
@@ -136,33 +128,4 @@ public class ApplicationCommandController implements ApplicationCommandApi {
     return ResponseEntity.noContent().build();
   }
 
-  @Hidden
-  @LogMethodArguments
-  @LogMethodResponse
-  @Override
-  public ResponseEntity<DocumentUploadResponse> uploadDocument(
-      @NotNull ServiceName serviceName, UUID id, MultipartFile file) {
-    DocumentUploadResponse response = sdsService.saveFile(id, file);
-    return ResponseEntity.status(HttpStatus.CREATED).body(response);
-  }
-
-  @Hidden
-  @LogMethodArguments
-  @LogMethodResponse
-  @Override
-  public ResponseEntity<DocumentUpdateResponse> updateDocument(
-      @NotNull ServiceName serviceName, UUID id, MultipartFile file) {
-    DocumentUpdateResponse response = sdsService.saveOrUpdateFile(id, file);
-    return ResponseEntity.ok(response);
-  }
-
-  @Hidden
-  @LogMethodArguments
-  @LogMethodResponse
-  @Override
-  public ResponseEntity<DocumentDeleteResponse> deleteDocument(
-      ServiceName serviceName, UUID id, List<String> fileKeys) {
-    DocumentDeleteResponse response = sdsService.deleteFiles(id, fileKeys);
-    return ResponseEntity.ok(response);
-  }
 }

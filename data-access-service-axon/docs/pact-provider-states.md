@@ -31,9 +31,17 @@ each state through the real use cases, and `DataAccessApiProviderTests` replays 
 5. **There are no "nothing exists" states.** The database is shared across the run, so emptiness
    cannot be guaranteed. Express an empty result with a filter nothing matches, or use a reserved
    missing ID for 404 cases.
-6. **Document identifiers are injected.** The service generates them, so the document state returns
-   `documentId` and your pact uses Pact's provider-state injected value for it (see below).
-7. **Agree a new state before publishing a pact that needs it.** A state with no handler fails
+6. **Generated identifiers are injected.** The service generates document identifiers, and the
+   "new prior authority" states generate the prior authority identifier too. The handler returns
+   them and your pact uses Pact's provider-state injected value for each (see below).
+7. **Fixed-ID prior authority states are for reads only.** A request that changes a prior authority
+   (PUT draft, POST submit, POST documents, PATCH or DELETE a document) must use one of the
+   `a new prior authority draft ...` states, which create a fresh prior authority for that one
+   interaction and inject its identifier. The database is shared across the run and a prior
+   authority cannot be put back: once `…a001` is submitted, its draft is gone for the rest of the
+   run and the identifier can never be created again, so every later interaction on it fails. A
+   deleted document stays deleted in the same way.
+8. **Agree a new state before publishing a pact that needs it.** A state with no handler fails
    verification with "missing state". Raise it with the Data Access team and the handler lands with
    your pact.
 
@@ -64,20 +72,28 @@ each state through the real use cases, and `DataAccessApiProviderTests` replays 
 All prior authorities below belong to parent application `…0009`, which is auto-granted. They are
 EXPERT type with a complete, submittable content.
 
+The fixed-ID states are for requests that only read. The two `a new prior authority draft ...`
+states create a fresh prior authority every time they run and inject its identifier, so they are the
+ones to use for any request that changes a prior authority (see rule 7).
+
 | State string | Guarantees | Typical endpoints |
 | --- | --- | --- |
-| `a prior authority draft 00000000-0000-0000-0000-00000000a001 exists` | Status DRAFT, no documents | GET, PUT draft, POST submit, POST documents |
+| `a prior authority draft 00000000-0000-0000-0000-00000000a001 exists` | Status DRAFT, no documents | GET |
 | `a submitted prior authority 00000000-0000-0000-0000-00000000a002 exists` | Status SUBMITTED, unassigned, version 0 | GET, POST work-list assign |
 | `a submitted prior authority 00000000-0000-0000-0000-00000000a003 is assigned to the caseworker` | Status SUBMITTED, assigned to the dev caseworker, version 0 | PATCH decision, POST work-list unassign |
 | `a decided prior authority 00000000-0000-0000-0000-00000000a004 exists` | Status DECIDED, granted | GET, PATCH decision expecting 409 |
-| `a prior authority draft 00000000-0000-0000-0000-00000000a005 has an uploaded document` | Status DRAFT with one PDF named `evidence.pdf`. Returns `documentId` as an injected value | GET, PATCH, DELETE a document |
+| `a prior authority draft 00000000-0000-0000-0000-00000000a005 has an uploaded document` | Status DRAFT with one PDF named `evidence.pdf`. Returns `documentId` as an injected value | GET a document |
+| `a new prior authority draft exists` | A prior authority created for this interaction only: status DRAFT, no documents, EXPERT, submittable, parent `…0009`. Returns `priorAuthorityId` and `applicationId` as injected values | PUT draft, POST submit, POST documents |
+| `a new prior authority draft has an uploaded document` | As above, with one PDF named `evidence.pdf`. Returns `priorAuthorityId`, `applicationId` and `documentId` as injected values | PATCH a document, DELETE a document |
 | `no prior authority exists with id 00000000-0000-0000-0000-0000000adead` | That ID is never created | Any prior authority endpoint expecting 404 |
 | `application 00000000-0000-0000-0000-000000000009 has prior authorities` | Application `…0009` is granted and has at least one DRAFT and one SUBMITTED prior authority attached | GET application by id, asserting on the prior authorities list by type |
 
-### Using the injected document id
+### Using injected identifiers
 
-The handler for the document state returns `{"documentId": "<uuid>"}`. In a Pact JVM consumer test
-the request path takes it from the provider state:
+A handler that generates identifiers returns them as a map, for example `{"documentId": "<uuid>"}`
+for the `…a005` document state, or `{"priorAuthorityId": "<uuid>", "applicationId": "<uuid>",
+"documentId": "<uuid>"}` for `a new prior authority draft has an uploaded document`. In a Pact JVM
+consumer test the request path takes them from the provider state:
 
 ```java
 builder
@@ -91,7 +107,31 @@ builder
 ```
 
 The second argument is the example used by the consumer's own mock; verification replaces it with
-the real identifier.
+the real identifier. Submitting and deleting work the same way, with the prior authority identifier
+coming from the state as well:
+
+```java
+builder
+    .given("a new prior authority draft exists")
+    .uponReceiving("submit a prior authority draft")
+    .pathFromProviderState(
+        "/api/v0/prior-authorities/${priorAuthorityId}/submit",
+        "/api/v0/prior-authorities/00000000-0000-0000-0000-00000000a001/submit")
+    .method("POST")
+
+builder
+    .given("a new prior authority draft has an uploaded document")
+    .uponReceiving("delete a prior authority document")
+    .pathFromProviderState(
+        "/api/v0/prior-authorities/${priorAuthorityId}/documents/${documentId}",
+        "/api/v0/prior-authorities/00000000-0000-0000-0000-00000000a001/documents/"
+            + "11111111-1111-1111-1111-111111111111")
+    .method("DELETE")
+```
+
+Assert on the response by type for these, not by the example identifier, because every
+verification sees a different one. A request body that needs the parent application can use the
+fixed `00000000-0000-0000-0000-000000000009`, which is also returned as `applicationId`.
 
 ## Running verification
 

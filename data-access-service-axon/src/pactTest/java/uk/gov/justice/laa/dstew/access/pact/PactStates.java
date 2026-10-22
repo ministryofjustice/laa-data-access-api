@@ -49,6 +49,10 @@ final class PactStates {
       "a decided prior authority 00000000-0000-0000-0000-00000000a004 exists";
   static final String PRIOR_AUTHORITY_WITH_DOCUMENT_EXISTS =
       "a prior authority draft 00000000-0000-0000-0000-00000000a005 has an uploaded document";
+  // Fresh prior authority per interaction, identifiers injected: for requests that change one.
+  static final String NEW_PRIOR_AUTHORITY_DRAFT_EXISTS = "a new prior authority draft exists";
+  static final String NEW_PRIOR_AUTHORITY_DRAFT_WITH_DOCUMENT_EXISTS =
+      "a new prior authority draft has an uploaded document";
   static final String NO_PRIOR_AUTHORITY_WITH_ID =
       "no prior authority exists with id 00000000-0000-0000-0000-0000000adead";
   static final String APPLICATION_WITH_PRIOR_AUTHORITIES =

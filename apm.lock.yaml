@@ -1,0 +1,116 @@
+lockfile_version: '1'
+apm_version: 0.33.0
+dependencies:
+- repo_url: ministryofjustice/ai-toolkit
+  name: legal-aid-agency-software-development-data-stewardship
+  host: github.com
+  resolved_commit: 37b1ef778612892a986a01a02f6cb1ec081d4186
+  resolved_ref: feat/data-stewardship-toolkit
+  version: 1.0.0
+  virtual_path: toolkits/legal-aid-agency/software-development/data-stewardship
+  is_virtual: true
+  package_type: apm_package
+  deployed_files:
+  - .github/instructions/data-stewardship.instructions.md
+  - .github/instructions/event-sourcing.instructions.md
+  deployed_file_hashes:
+    .github/instructions/data-stewardship.instructions.md: sha256:8afa0e0d8fe78edfe159d205911338fcdaaf3e9e2e87d1b557bae9b17fa5e31d
+    .github/instructions/event-sourcing.instructions.md: sha256:9ebe9a6d7d5da26ff790e1bbb8fb92f9a0614ac9402307c239e67b9cb58e2be7
+  content_hash: sha256:7ffe0e8fcd795774fef0f15545d2a5a9b326b63a4750991ef10730f68cbc169b
+- repo_url: ministryofjustice/ai-toolkit
+  name: legal-aid-agency-software-development-java
+  host: github.com
+  resolved_commit: 37d8df7a8776cc44947ca8e1f4eb62d98dccaab5
+  resolved_ref: feat/laa-software-development-java
+  version: 1.0.0
+  virtual_path: toolkits/legal-aid-agency/software-development/java
+  is_virtual: true
+  package_type: apm_package
+  deployed_files:
+  - .github/instructions/api.instructions.md
+  - .github/instructions/copilot-working.instructions.md
+  - .github/instructions/java.instructions.md
+  - .github/instructions/persistence.instructions.md
+  - .github/instructions/spring-boot.instructions.md
+  - .github/instructions/testing.instructions.md
+  deployed_file_hashes:
+    .github/instructions/api.instructions.md: sha256:df8d6bcb9b20aaaee530c330f3d176fec3a02ea29ef9a917a4d1ee4d16be8aa0
+    .github/instructions/copilot-working.instructions.md: sha256:4870e457293aa692e298b218a514bf7f974b72dca5ef62d93317393253375a79
+    .github/instructions/java.instructions.md: sha256:037ff47ade5e9ab10c3c130bcdbb414b83b14bc4e1be02e2697c9f05597fa410
+    .github/instructions/persistence.instructions.md: sha256:82fbeec2dda5d748fa64a388abf382bf76cb644e810fd5c67e425ab6133b8b1a
+    .github/instructions/spring-boot.instructions.md: sha256:c3517d7b00e490ace6a847efc62410b6844d757ec8bf9b00f4dc511430945e9e
+    .github/instructions/testing.instructions.md: sha256:51887ce5af0d1dcbdf21e966af1a9e114664946644fe8ca87a407e119e233256
+  content_hash: sha256:d6f09a9b19cc0cb509569fce7cfdf14f1ec10f343d774c3959db1940b3066171
+deployments:
+- kind: project-relative
+  target: copilot
+  value: .github/instructions/api.instructions.md
+  runtime: null
+  scope: project
+  owners:
+  - ministryofjustice/ai-toolkit/toolkits/legal-aid-agency/software-development/java
+  active_owner: ministryofjustice/ai-toolkit/toolkits/legal-aid-agency/software-development/java
+  content_hash: sha256:df8d6bcb9b20aaaee530c330f3d176fec3a02ea29ef9a917a4d1ee4d16be8aa0
+- kind: project-relative
+  target: copilot
+  value: .github/instructions/copilot-working.instructions.md
+  runtime: null
+  scope: project
+  owners:
+  - ministryofjustice/ai-toolkit/toolkits/legal-aid-agency/software-development/java
+  active_owner: ministryofjustice/ai-toolkit/toolkits/legal-aid-agency/software-development/java
+  content_hash: sha256:4870e457293aa692e298b218a514bf7f974b72dca5ef62d93317393253375a79
+- kind: project-relative
+  target: copilot
+  value: .github/instructions/data-stewardship.instructions.md
+  runtime: null
+  scope: project
+  owners:
+  - ministryofjustice/ai-toolkit/toolkits/legal-aid-agency/software-development/data-stewardship
+  active_owner: ministryofjustice/ai-toolkit/toolkits/legal-aid-agency/software-development/data-stewardship
+  content_hash: sha256:8afa0e0d8fe78edfe159d205911338fcdaaf3e9e2e87d1b557bae9b17fa5e31d
+- kind: project-relative
+  target: copilot
+  value: .github/instructions/event-sourcing.instructions.md
+  runtime: null
+  scope: project
+  owners:
+  - ministryofjustice/ai-toolkit/toolkits/legal-aid-agency/software-development/data-stewardship
+  active_owner: ministryofjustice/ai-toolkit/toolkits/legal-aid-agency/software-development/data-stewardship
+  content_hash: sha256:9ebe9a6d7d5da26ff790e1bbb8fb92f9a0614ac9402307c239e67b9cb58e2be7
+- kind: project-relative
+  target: copilot
+  value: .github/instructions/java.instructions.md
+  runtime: null
+  scope: project
+  owners:
+  - ministryofjustice/ai-toolkit/toolkits/legal-aid-agency/software-development/java
+  active_owner: ministryofjustice/ai-toolkit/toolkits/legal-aid-agency/software-development/java
+  content_hash: sha256:037ff47ade5e9ab10c3c130bcdbb414b83b14bc4e1be02e2697c9f05597fa410
+- kind: project-relative
+  target: copilot
+  value: .github/instructions/persistence.instructions.md
+  runtime: null
+  scope: project
+  owners:
+  - ministryofjustice/ai-toolkit/toolkits/legal-aid-agency/software-development/java
+  active_owner: ministryofjustice/ai-toolkit/toolkits/legal-aid-agency/software-development/java
+  content_hash: sha256:82fbeec2dda5d748fa64a388abf382bf76cb644e810fd5c67e425ab6133b8b1a
+- kind: project-relative
+  target: copilot
+  value: .github/instructions/spring-boot.instructions.md
+  runtime: null
+  scope: project
+  owners:
+  - ministryofjustice/ai-toolkit/toolkits/legal-aid-agency/software-development/java
+  active_owner: ministryofjustice/ai-toolkit/toolkits/legal-aid-agency/software-development/java
+  content_hash: sha256:c3517d7b00e490ace6a847efc62410b6844d757ec8bf9b00f4dc511430945e9e
+- kind: project-relative
+  target: copilot
+  value: .github/instructions/testing.instructions.md
+  runtime: null
+  scope: project
+  owners:
+  - ministryofjustice/ai-toolkit/toolkits/legal-aid-agency/software-development/java
+  active_owner: ministryofjustice/ai-toolkit/toolkits/legal-aid-agency/software-development/java
+  content_hash: sha256:51887ce5af0d1dcbdf21e966af1a9e114664946644fe8ca87a407e119e233256

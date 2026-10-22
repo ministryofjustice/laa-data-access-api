@@ -50,45 +50,6 @@ public record PriorAuthorityDataPayload(
         priorAuthorityId, applicationId, content, serialisedRequest, submittedAt, null, null, null);
   }
 
-  /** Backward-compatible constructor for existing branches/tests using the older 6-arg shape. */
-  public PriorAuthorityDataPayload(
-      UUID priorAuthorityId,
-      UUID applicationId,
-      PriorAuthorityContent content,
-      String serialisedRequest,
-      Instant submittedAt,
-      DecisionDetails decisionDetails) {
-    this(
-        priorAuthorityId,
-        applicationId,
-        content,
-        serialisedRequest,
-        submittedAt,
-        decisionDetails,
-        null,
-        null);
-  }
-
-  /** Backward-compatible constructor for payloads with office code but no filename map. */
-  public PriorAuthorityDataPayload(
-      UUID priorAuthorityId,
-      UUID applicationId,
-      PriorAuthorityContent content,
-      String serialisedRequest,
-      Instant submittedAt,
-      DecisionDetails decisionDetails,
-      String officeCode) {
-    this(
-        priorAuthorityId,
-        applicationId,
-        content,
-        serialisedRequest,
-        submittedAt,
-        decisionDetails,
-        officeCode,
-        null);
-  }
-
   /** Returns a complete new data version containing the supplied decision details. */
   public PriorAuthorityDataPayload withDecision(DecisionDetails newDecision) {
     return withDecisionDetails(newDecision);

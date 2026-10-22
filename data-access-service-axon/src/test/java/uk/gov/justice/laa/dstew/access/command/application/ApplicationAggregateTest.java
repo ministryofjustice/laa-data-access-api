@@ -107,7 +107,8 @@ class ApplicationAggregateTest {
                 status,
                 created.schemaVersion(),
                 created.occurredAt(),
-                created.potentialDuplicates()))
+                created.potentialDuplicates(),
+                created.officeCode()))
         .when()
         .command(
             new ApplicationDocumentUploadCommand(
@@ -485,6 +486,7 @@ class ApplicationAggregateTest {
             "APPLICATION_IN_PROGRESS",
             1,
             Instant.parse("2026-07-21T09:00:00Z"),
+            null,
             null);
 
     fixture
@@ -938,7 +940,7 @@ class ApplicationAggregateTest {
 
   private ApplicationDraftStartedEvent draftStartedEvent(UUID applicationId) {
     return new ApplicationDraftStartedEvent(
-        applicationId, 1, "hash", Instant.parse("2026-10-02T09:00:00Z"));
+        applicationId, 1, "hash", Instant.parse("2026-10-02T09:00:00Z"), null);
   }
 
   private ApplicationDraftPayload draftPayload() {
@@ -1224,7 +1226,14 @@ class ApplicationAggregateTest {
     Instant occurredAt = Instant.parse("2026-07-20T10:00:00Z");
     ApplicationCreatedEvent submitted =
         new ApplicationCreatedEvent(
-            applicationId, 0L, "fingerprint", "APPLICATION_SUBMITTED", 1, Instant.now(), null);
+            applicationId,
+            0L,
+            "fingerprint",
+            "APPLICATION_SUBMITTED",
+            1,
+            Instant.now(),
+            null,
+            null);
     ApplicationDataPayload currentPayload = mock(ApplicationDataPayload.class);
     ApplicationDataPayload updatedPayload = mock(ApplicationDataPayload.class);
     when(applicationDataStore.get(applicationId, 0L)).thenReturn(currentPayload);

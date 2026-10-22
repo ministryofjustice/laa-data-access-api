@@ -33,20 +33,21 @@ public class PriorAuthorityDraftStore {
       String serialisedRequest,
       Instant occurredAt) {
     String fingerprint = PayloadFingerprint.compute(serialisedRequest);
-    Instant createdAt =
-        repository
-            .findById(priorAuthorityId)
-            .map(PriorAuthorityDraft::getCreatedAt)
-            .orElse(occurredAt);
-    repository.saveAndFlush(
-        PriorAuthorityDraft.builder()
-            .priorAuthorityId(priorAuthorityId)
-            .applicationId(applicationId)
-            .payload(payload)
-            .payloadHash(fingerprint)
-            .createdAt(createdAt)
-            .updatedAt(occurredAt)
-            .build());
+    var existing = repository.findById(priorAuthorityId);
+    if (existing.isPresent()) {
+      existing.get().update(payload, fingerprint, occurredAt);
+      repository.flush();
+    } else {
+      repository.saveAndFlush(
+          PriorAuthorityDraft.builder()
+              .priorAuthorityId(priorAuthorityId)
+              .applicationId(applicationId)
+              .payload(payload)
+              .payloadHash(fingerprint)
+              .createdAt(occurredAt)
+              .updatedAt(occurredAt)
+              .build());
+    }
     return fingerprint;
   }
 

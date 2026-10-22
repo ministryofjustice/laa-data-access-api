@@ -10,8 +10,16 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
+import org.awaitility.Awaitility;
+import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import uk.gov.justice.laa.dstew.access.command.application.priorauthority.document.DeletePriorAuthorityDocumentUseCase;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
+import uk.gov.justice.laa.dstew.access.query.application.priorauthority.FindPriorAuthorityByPriorAuthorityIdQuery;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedCallerFactory;
 
 /**
  * Runs on every build without the broker (Gradle task {@code pactBootCheck}, wired into {@code
@@ -23,6 +31,10 @@ import org.junit.jupiter.api.Test;
  * does, with the broker.
  */
 class PactProviderBootCheckTest extends AbstractProviderPactTests {
+
+  @Autowired private QueryGateway queryGateway;
+  @Autowired private DeletePriorAuthorityDocumentUseCase deleteDocumentUseCase;
+  @Autowired private AuthenticatedCallerFactory authenticatedCallerFactory;
 
   @Test
   void everyApplicationStateCanBeSeeded() {
@@ -49,6 +61,10 @@ class PactProviderBootCheckTest extends AbstractProviderPactTests {
     assertThat(injected).containsKey("documentId");
     states.noPriorAuthorityWithId();
     states.applicationWithPriorAuthorities();
+    assertThat(states.newPriorAuthorityDraftExists())
+        .containsKeys("priorAuthorityId", "applicationId");
+    assertThat(states.newPriorAuthorityDraftWithDocumentExists())
+        .containsKeys("priorAuthorityId", "applicationId", "documentId");
   }
 
   @Test
@@ -58,6 +74,70 @@ class PactProviderBootCheckTest extends AbstractProviderPactTests {
     states.applicationGrantedExists();
     states.priorAuthorityDecidedExists();
     states.priorAuthorityDecidedExists();
+    assertThat(states.priorAuthorityWithDocumentExists())
+        .isEqualTo(states.priorAuthorityWithDocumentExists());
+  }
+
+  @Test
+  void freshPriorAuthorityStatesCreateAnotherDraftEveryTime() {
+    // Consumers submit, update and upload against these, so no two interactions may share one.
+    Map<String, Object> first = states.newPriorAuthorityDraftExists();
+    Map<String, Object> second = states.newPriorAuthorityDraftExists();
+    Map<String, Object> withDocument = states.newPriorAuthorityDraftWithDocumentExists();
+
+    assertThat(first.get("priorAuthorityId")).isNotEqualTo(second.get("priorAuthorityId"));
+    assertThat(withDocument.get("priorAuthorityId")).isNotEqualTo(second.get("priorAuthorityId"));
+    assertThat(first.get("applicationId")).isEqualTo(PactIds.APPLICATION_PA_PARENT.toString());
+    assertThat(priorAuthority(second).status()).isEqualTo(PriorAuthorityStateSeeder.DRAFT_STATUS);
+    assertThat(priorAuthority(withDocument).uploadedDocuments())
+        .singleElement()
+        .satisfies(
+            document -> {
+              assertThat(document.documentId().toString())
+                  .isEqualTo(withDocument.get("documentId"));
+              assertThat(document.deleted()).isFalse();
+            });
+  }
+
+  @Test
+  void documentStateHandsOutAnActiveDocumentAfterDeletion() {
+    // A consumer that deletes a005's document must not leave the state injecting a dead ID.
+    UUID priorAuthorityId = PactIds.PRIOR_AUTHORITY_WITH_DOCUMENT;
+    UUID before =
+        UUID.fromString((String) states.priorAuthorityWithDocumentExists().get("documentId"));
+
+    deleteDocumentUseCase.execute(
+        priorAuthorityId, before, authenticatedCallerFactory.currentCaller());
+    Awaitility.await()
+        .atMost(ApplicationStateSeeder.PROJECTION_WAIT)
+        .pollInterval(ApplicationStateSeeder.POLL_INTERVAL)
+        .until(
+            () ->
+                find(priorAuthorityId).uploadedDocuments().stream()
+                    .anyMatch(
+                        document -> before.equals(document.documentId()) && document.deleted()));
+
+    UUID after =
+        UUID.fromString((String) states.priorAuthorityWithDocumentExists().get("documentId"));
+    assertThat(after).isNotEqualTo(before);
+    assertThat(find(priorAuthorityId).uploadedDocuments())
+        .anySatisfy(
+            document -> {
+              assertThat(document.documentId()).isEqualTo(after);
+              assertThat(document.deleted()).isFalse();
+            });
+  }
+
+  private PriorAuthorityResult priorAuthority(Map<String, Object> injected) {
+    return find(UUID.fromString((String) injected.get("priorAuthorityId")));
+  }
+
+  private PriorAuthorityResult find(UUID priorAuthorityId) {
+    return queryGateway
+        .query(
+            new FindPriorAuthorityByPriorAuthorityIdQuery(priorAuthorityId),
+            PriorAuthorityResult.class)
+        .join();
   }
 
   @Test

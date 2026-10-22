@@ -1,8 +1,9 @@
 # Document Lifecycle
 
 Application and Prior Authority documents share SDS storage and HTTP download behaviour. They keep
-their own commands, aggregates, and dedicated document queries. This guide describes the UUID-keyed
-document endpoints, not the legacy Application upload endpoint that uses the original filename.
+their own commands, aggregates, and dedicated document queries. The legacy filename-keyed Application
+upload, update, and delete routes have been removed. Axon Application uploads use
+`POST /api/v0/applications/{id}/documents`; Prior Authority document operations remain separate.
 
 ## Storage and identity decisions
 
@@ -51,10 +52,12 @@ The deterministic PostgreSQL tests verify that upload, type update, and deletion
 draft save retain both accepted changes after one rolled-back/retried attempt.
 
 The dispatcher recognises `ConcurrencyException`, `AppendEventsTransactionRejectedException`,
-and `DataIntegrityViolationException` caused by a unique-constraint violation (SQL state `23505`).
-Other failures propagate without this retry. A failed second attempt also propagates; bounded
-retry does not promise that every concurrent request succeeds. Internal command retry does not
-repeat SDS upload or make SDS cleanup transactional.
+and Spring's `OptimisticLockingFailureException`, including these failures when nested in a runtime
+exception. It also recognises a top-level `DataIntegrityViolationException` caused by a
+unique-constraint violation (SQL state `23505`). Other failures propagate without this retry. If the
+single retry also fails, the existing generic HTTP response is `500 Internal Server Error`. This
+persistence-only version does not add a client version parameter or a `409 Conflict` mapping.
+Internal command retry does not repeat SDS upload or make SDS cleanup transactional.
 
 This fix does not make queries immediately consistent, wait for deletion projection, or make
 repeated DELETE idempotent. It leaves the event JSON unchanged and does not retag historical stored

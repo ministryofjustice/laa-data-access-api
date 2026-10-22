@@ -12,10 +12,4 @@ public record ApplicationDraftStartedEvent(
     int schemaVersion,
     String requestFingerprint,
     Instant occurredAt,
-    String officeCode) {
-
-  public ApplicationDraftStartedEvent(
-      UUID applicationId, int schemaVersion, String requestFingerprint, Instant occurredAt) {
-    this(applicationId, schemaVersion, requestFingerprint, occurredAt, null);
-  }
-}
+    String officeCode) {}

@@ -17,25 +17,4 @@ public record ApplicationCreatedEvent(
     int schemaVersion,
     Instant occurredAt,
     List<PotentialDuplicate> potentialDuplicates,
-    String officeCode) {
-
-  /** Backward-compatible constructor for older events that do not contain `officeCode`. */
-  public ApplicationCreatedEvent(
-      UUID applicationId,
-      long applicationDataVersion,
-      String requestFingerprint,
-      String status,
-      int schemaVersion,
-      Instant occurredAt,
-      List<PotentialDuplicate> potentialDuplicates) {
-    this(
-        applicationId,
-        applicationDataVersion,
-        requestFingerprint,
-        status,
-        schemaVersion,
-        occurredAt,
-        potentialDuplicates,
-        null);
-  }
-}
+    String officeCode) {}
