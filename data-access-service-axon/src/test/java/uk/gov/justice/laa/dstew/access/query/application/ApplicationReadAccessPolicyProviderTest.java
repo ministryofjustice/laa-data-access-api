@@ -87,7 +87,7 @@ class ApplicationReadAccessPolicyProviderTest {
   }
 
   @Test
-  void givenAutoGrantService_whenLookingUpApplication_thenAllowsAllOfficesButNotGeneralReads() {
+  void givenAutoGrantServiceWithoutScopes_whenResolved_thenAccessIsUnrestricted() {
     Jwt jwt =
         Jwt.withTokenValue("service-token")
             .header("alg", "none")
@@ -96,13 +96,11 @@ class ApplicationReadAccessPolicyProviderTest {
     SecurityContextHolder.getContext()
         .setAuthentication(new JwtAuthenticationToken(jwt, List.of()));
 
-    assertThat(policy.resolveForApplicationLookup())
-        .isInstanceOf(UnrestrictedReadAccessScope.class);
-    assertThatExceptionOfType(AccessDeniedException.class).isThrownBy(policy::resolve);
+    assertThat(policy.resolve()).isInstanceOf(UnrestrictedReadAccessScope.class);
   }
 
   @Test
-  void givenOtherServiceWithoutScopes_whenLookingUpApplication_thenDeniesAccess() {
+  void givenOtherServiceWithoutScopes_whenResolved_thenDeniesAccess() {
     Jwt jwt =
         Jwt.withTokenValue("service-token")
             .header("alg", "none")
@@ -111,12 +109,11 @@ class ApplicationReadAccessPolicyProviderTest {
     SecurityContextHolder.getContext()
         .setAuthentication(new JwtAuthenticationToken(jwt, List.of()));
 
-    assertThatExceptionOfType(AccessDeniedException.class)
-        .isThrownBy(policy::resolveForApplicationLookup);
+    assertThatExceptionOfType(AccessDeniedException.class).isThrownBy(policy::resolve);
   }
 
   @Test
-  void givenProviderWithAutoGrantRole_whenLookingUpApplication_thenRetainsOfficeRestriction() {
+  void givenProviderWithAutoGrantRole_whenResolved_thenRetainsOfficeRestriction() {
     Jwt jwt =
         Jwt.withTokenValue("provider-token")
             .header("alg", "none")
@@ -127,8 +124,21 @@ class ApplicationReadAccessPolicyProviderTest {
     SecurityContextHolder.getContext()
         .setAuthentication(new JwtAuthenticationToken(jwt, List.of()));
 
-    assertThat(policy.resolveForApplicationLookup())
-        .isEqualTo(new OfficeCodeReadAccessScope(Set.of("1A001B")));
+    assertThat(policy.resolve()).isEqualTo(new OfficeCodeReadAccessScope(Set.of("1A001B")));
+  }
+
+  @Test
+  void givenAutoGrantRoleWithUnsupportedScope_whenResolved_thenDeniesAccess() {
+    Jwt jwt =
+        Jwt.withTokenValue("delegated-token")
+            .header("alg", "none")
+            .claim("scp", "unrelated_scope")
+            .claim("roles", List.of(SecurityHelper.DECIDE_AUTO_GRANT_ROLE))
+            .build();
+    SecurityContextHolder.getContext()
+        .setAuthentication(new JwtAuthenticationToken(jwt, List.of()));
+
+    assertThatExceptionOfType(AccessDeniedException.class).isThrownBy(policy::resolve);
   }
 
   private static void authenticate(String scopes, List<String> accounts) {

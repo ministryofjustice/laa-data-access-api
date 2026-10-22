@@ -17,15 +17,7 @@ import uk.gov.justice.laa.dstew.access.security.SecurityHelper;
 @Component
 public class ApplicationReadAccessPolicyProvider {
 
-  /** Allows the dedicated service to look up an Application across provider offices. */
-  public ReadAccessScope resolveForApplicationLookup() {
-    return SecurityHelper.getScopes().isEmpty()
-            && SecurityHelper.getEntraAppRoles().contains(DECIDE_AUTO_GRANT_ROLE)
-        ? new UnrestrictedReadAccessScope()
-        : resolve();
-  }
-
-  /** Resolves the row-visibility restriction from the caller's delegated application scope. */
+  /** Resolves row visibility from delegated scopes or the dedicated service role. */
   public ReadAccessScope resolve() {
     Set<String> scopes = SecurityHelper.getScopes();
     if (scopes.contains(ACCESS_AS_PROVIDER)) {
@@ -37,6 +29,9 @@ public class ApplicationReadAccessPolicyProvider {
       return new OfficeCodeReadAccessScope(officeCodes);
     }
     if (scopes.contains(ACCESS_AS_USER)) {
+      return new UnrestrictedReadAccessScope();
+    }
+    if (scopes.isEmpty() && SecurityHelper.getEntraAppRoles().contains(DECIDE_AUTO_GRANT_ROLE)) {
       return new UnrestrictedReadAccessScope();
     }
     throw new AccessDeniedException("Token does not contain a supported application access scope");

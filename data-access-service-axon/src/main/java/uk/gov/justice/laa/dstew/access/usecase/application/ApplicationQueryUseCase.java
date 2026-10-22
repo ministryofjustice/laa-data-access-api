@@ -76,8 +76,7 @@ public class ApplicationQueryUseCase {
     ApplicationDetailResult detail =
         queryGateway
             .query(
-                new FindApplicationDetailQuery(
-                    id, accessPolicyProvider.resolveForApplicationLookup()),
+                new FindApplicationDetailQuery(id, accessPolicyProvider.resolve()),
                 ApplicationDetailResult.class)
             .join();
     if (detail == null) {
