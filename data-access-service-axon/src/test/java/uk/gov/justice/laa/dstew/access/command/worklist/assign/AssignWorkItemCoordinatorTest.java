@@ -21,14 +21,13 @@ import uk.gov.justice.laa.dstew.access.command.worklist.route.WorkItemRouteKind;
 import uk.gov.justice.laa.dstew.access.command.worklist.route.WorkItemRouteResolver;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 
-class AssignWorkItemCommandHandlerTest {
+class AssignWorkItemCoordinatorTest {
   @Test
   void dispatchesAnApplicationAssignmentToItsDirectAggregate() {
     WorkItemRouteResolver routes = mock(WorkItemRouteResolver.class);
     ApplicationGroupRouteResolver groupRoutes = mock(ApplicationGroupRouteResolver.class);
     CommandGateway gateway = mock(CommandGateway.class);
-    AssignWorkItemCommandHandler handler =
-        new AssignWorkItemCommandHandler(routes, groupRoutes, gateway);
+    AssignWorkItemCoordinator handler = new AssignWorkItemCoordinator(routes, groupRoutes, gateway);
     UUID id = UUID.randomUUID();
     UUID caseworkerId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-09-01T10:00:00Z");
@@ -50,8 +49,7 @@ class AssignWorkItemCommandHandlerTest {
     WorkItemRouteResolver routes = mock(WorkItemRouteResolver.class);
     ApplicationGroupRouteResolver groupRoutes = mock(ApplicationGroupRouteResolver.class);
     CommandGateway gateway = mock(CommandGateway.class);
-    AssignWorkItemCommandHandler handler =
-        new AssignWorkItemCommandHandler(routes, groupRoutes, gateway);
+    AssignWorkItemCoordinator handler = new AssignWorkItemCoordinator(routes, groupRoutes, gateway);
     UUID id = UUID.randomUUID();
     UUID caseworkerId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-09-01T10:00:00Z");
@@ -73,8 +71,7 @@ class AssignWorkItemCommandHandlerTest {
     WorkItemRouteResolver routes = mock(WorkItemRouteResolver.class);
     ApplicationGroupRouteResolver groupRoutes = mock(ApplicationGroupRouteResolver.class);
     CommandGateway gateway = mock(CommandGateway.class);
-    AssignWorkItemCommandHandler handler =
-        new AssignWorkItemCommandHandler(routes, groupRoutes, gateway);
+    AssignWorkItemCoordinator handler = new AssignWorkItemCoordinator(routes, groupRoutes, gateway);
     UUID id = UUID.randomUUID();
     UUID caseworkerId = UUID.randomUUID();
     when(routes.resolveDirectRoute(id))
@@ -96,8 +93,7 @@ class AssignWorkItemCommandHandlerTest {
     WorkItemRouteResolver routes = mock(WorkItemRouteResolver.class);
     ApplicationGroupRouteResolver groupRoutes = mock(ApplicationGroupRouteResolver.class);
     CommandGateway gateway = mock(CommandGateway.class);
-    AssignWorkItemCommandHandler handler =
-        new AssignWorkItemCommandHandler(routes, groupRoutes, gateway);
+    AssignWorkItemCoordinator handler = new AssignWorkItemCoordinator(routes, groupRoutes, gateway);
     UUID id = UUID.randomUUID();
     UUID siblingId = UUID.randomUUID();
     UUID caseworkerId = UUID.randomUUID();

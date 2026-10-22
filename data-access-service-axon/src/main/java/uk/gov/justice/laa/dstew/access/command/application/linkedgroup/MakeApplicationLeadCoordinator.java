@@ -7,22 +7,22 @@ import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteResolver;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 
-/** Secured transactional coordinator for removing an application from its linked group. */
+/** Secured transactional coordinator for making an application the lead of its linked group. */
 @Service
 @RequiredArgsConstructor
-public class UnlinkApplicationCommandHandler {
+public class MakeApplicationLeadCoordinator {
   private final ApplicationGroupRouteResolver routeResolver;
   private final RetryingCommandDispatcher dispatcher;
 
-  /** Resolves and locks the linked group before dispatching its removal command. */
+  /** Resolves and locks the linked group before dispatching its lead-change command. */
   @Transactional
   @AllowApiCaseworker
-  public void handle(UnlinkApplicationCommand command) {
+  public void handle(MakeApplicationLeadCommand command) {
     var expectedGroup = command.expectedGroup();
     var groupId =
         routeResolver.resolveGroupForMutation(command.applicationId(), expectedGroup.groupId());
     dispatcher.dispatch(
-        new RemoveApplicationFromLinkedGroupCommand(
+        new ChangeLinkedGroupLeadCommand(
             groupId, command.applicationId(), expectedGroup.version(), command.occurredAt()));
   }
 }

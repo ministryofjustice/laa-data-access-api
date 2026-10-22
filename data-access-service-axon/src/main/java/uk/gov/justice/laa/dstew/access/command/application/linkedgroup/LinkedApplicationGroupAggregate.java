@@ -16,6 +16,9 @@ import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
  *
  * <p>The aggregate identifier is always the routed {@code groupId}; it does not depend on the lead
  * or member application identifiers carried by the command payload.
+ *
+ * <p>Command handlers live in {@code command.application.linkedgroup.handler}; this class only
+ * folds events.
  */
 @EventSourced(tagKey = "LinkedApplicationGroupAggregate", idType = UUID.class)
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
@@ -162,5 +165,10 @@ public class LinkedApplicationGroupAggregate {
   @EntityCreator
   protected LinkedApplicationGroupAggregate() {
     // Required by Axon when rebuilding the aggregate from its event stream.
+  }
+
+  /** Returns the folded state for the dedicated command handlers; handlers must not mutate it. */
+  public LinkedApplicationGroupState getState() {
+    return state;
   }
 }

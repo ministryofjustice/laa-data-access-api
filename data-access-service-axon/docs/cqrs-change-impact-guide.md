@@ -12,9 +12,9 @@ Base package: `uk.gov.justice.laa.dstew.access` (Axon Framework 5.2.0, PostgreSQ
 |---|---|---|---|
 | **Command** | Immutable record carrying intent. Has a `@TargetAggregateIdentifier`-style id (the aggregate id). Built by an HTTP mapper, never the OpenAPI type. | `command/**` (`*Command`) | `MakeApplicationDecisionCommand` |
 | **Use case** | Thin Spring bean: security annotation (`@AllowApiCaseworker`) + dispatch via `RetryingCommandDispatcher` (one retry on concurrency/unique-key failure). | `command/**/*UseCase` | `MakeApplicationDecisionUseCase` |
-| **Command handler** | `@CommandHandler` method. Loads the aggregate, calls the decider, appends to `application_data`, appends events. | `command/application/handler/`, `command/application/priorauthority/handler/`, `command/worklist/**`, or on the aggregate itself | `MakeApplicationDecisionCommandHandler` |
+| **Command handler** | `@CommandHandler` method that handles a command, typically by validating aggregate state and appending events; application-detail handlers may also append to `application_data`. | `command/application/handler/`, `command/application/priorauthority/handler/`, `command/application/linkedgroup/handler/`, `command/worklist/**` | `MakeApplicationDecisionCommandHandler` |
 | **Decider** | Pure static functions: `(state, command[, data]) → event(s)` or exception. All business rules live here. | `*Decider` | `ApplicationDecider`, `LinkedApplicationGroupDecider`, `PriorAuthorityDecider` |
-| **Aggregate** | Event-sourced consistency boundary (`@EventSourced`). Holds a `*State` object and only `@EventSourcingHandler`s (plus a few `@CommandHandler`s for the linked group). | `*Aggregate` | `ApplicationAggregate`, `LinkedApplicationGroupAggregate`, `PriorAuthorityAggregate` |
+| **Aggregate** | Event-sourced consistency boundary (`@EventSourced`). Holds a `*State` object; events are folded by `@EventSourcingHandler`s. | `*Aggregate` | `ApplicationAggregate`, `LinkedApplicationGroupAggregate`, `PriorAuthorityAggregate` |
 | **Evolve** | Pure static functions: `(state, event) → state`. The aggregate's `@EventSourcingHandler`s delegate to these. | `*Evolve` | `ApplicationEvolve` |
 | **Event** | Immutable, thin record annotated `@Event`, with `@EventTag(key = "<Aggregate>")` on the owning id. Persisted forever. | beside the command/feature | `ApplicationDecisionMadeEvent` |
 | **Command-side data** | Append-only versioned JSON (`application_data`, `prior_authority_data`) plus drafts. Holds all sensitive/detail content; events only point at a version. | `command/application/data/` | `ApplicationDataStore`, `ApplicationDataPayload` |
@@ -34,9 +34,9 @@ Base package: `uk.gov.justice.laa.dstew.access` (Axon Framework 5.2.0, PostgreSQ
 Aggregates are rebuilt on every command by replaying that stream's events through
 `@EventSourcingHandler` → `*Evolve`.
 
-## 2. Two command-handler styles (important)
+## 2. Command-handler components
 
-1. **External handler component (dominant for Application and Prior Authority).**
+1. **Application and Prior Authority handlers.**
    A `@Component` with a `@CommandHandler` that receives the aggregate as a parameter:
    ```java
    @CommandHandler
@@ -46,10 +46,12 @@ Aggregates are rebuilt on every command by replaying that stream's events throug
    ```
    Because it is a Spring bean it may inject stores, factories and validators. The aggregate class
    itself therefore has almost no `@CommandHandler`s (only `DirectGroupWorkItemAssignmentCommand`).
-2. **Handler on the aggregate (linked group).** `LinkedApplicationGroupAggregate` handles its four
-   commands directly and delegates to `LinkedApplicationGroupDecider`; no external I/O is needed.
+2. **Linked-group handler component.** Each linked-group command is handled by a dedicated
+   `@Component` in `command/application/linkedgroup/handler/`. Its `@CommandHandler` receives the
+   group through `@InjectEntity(idProperty = "groupId")` and delegates to
+   `LinkedApplicationGroupDecider`.
 
-Either way the flow is the same:
+The flow is the same:
 
 ```
 Controller → mapper → Command → UseCase → RetryingCommandDispatcher → CommandGateway
@@ -112,7 +114,7 @@ Legend: **A** = aggregate state/Evolve (+ `@EventSourcingHandler`), **D** = Deci
 | Change who may perform an action / access scope | **UC** security annotation, `query/utils/security/*`, `SecurityConfig` | A, D, E, P (unless read filtering) | Authorisation sits outside the aggregate. Actor identity arrives as the authenticated Entra `oid`, mapped in the controller. |
 | New optimistic-locking requirement | **C** (expected version), **D** (compare), **E**/**A** if a new version counter | — | Follow `applicationVersion` / `assignmentVersion` / group version-token precedent. Map conflict exception in `ApplicationExceptionHandler`. |
 | Change HTTP error/status mapping | `ApplicationExceptionHandler`, exception class | Everything else | Aggregate/Axon wording must not leak to clients. |
-| Cross-aggregate rule (e.g. group assignment sync, "PA requires GRANTED application") | **H** (coordinator) + routes **R**, or reaction handler that dispatches commands | — | No aggregate may read another's state. Options in use: route tables + locks (`LinkApplicationCommandHandler`, `AssignWorkItemCommandHandler`), `ValidateApplicationGrantedCommand`, synchronous reaction handler. A genuinely new multi-aggregate invariant likely needs a design decision/ADR. |
+| Cross-aggregate rule (e.g. group assignment sync, "PA requires GRANTED application") | **H** (coordinator) + routes **R**, or reaction handler that dispatches commands | — | No aggregate may read another's state. Options in use: route tables + locks (`LinkApplicationCoordinator`, `AssignWorkItemCoordinator`), `ValidateApplicationGrantedCommand`, synchronous reaction handler. A genuinely new multi-aggregate invariant likely needs a design decision/ADR. |
 | New aggregate (new lifecycle with its own invariant) | Aggregate + State + Evolve + Decider, events with `@EventTag`, handlers, projections, route if it is a work item, `AxonArchitectureTest` rules apply | — | Large change. Prefer extending an existing aggregate only if the invariant genuinely belongs in the same consistency boundary. |
 | Publish a new integration event (SNS) | New subscribing router on `AFTER_COMMIT` + processor bean + publisher | A, P | Never from aggregate folds or tracking projections (replay would re-publish). |
 | Retention / deletion of `application_data` | `ApplicationDataStore`, projection hydrators, history assembler; ADR 0003 | Events (they are not rewritten) | Hydration must treat a missing version deliberately, not as an accident. |
@@ -225,8 +227,8 @@ deviations or inconsistencies, ordered by risk.
 | 1 | `LinkedGroupAssignmentDispatcher` (called from `LinkedGroupAssignmentEventHandler`) decides using `ApplicationReadRepository` and `LinkedApplicationGroupReadRepository`. | These are eventually consistent read models, so assignment-sync decisions can use stale data. This breaks the "decide from command-side state" rule. | Decide from command-side state (aggregate state or `application_group_route`) or guard with a version check. At minimum document the race and add a test for it. |
 | 2 | The decider is used inconsistently. `ApplicationDecider` covers create, decision, note, ready and update, but assignment/unassignment rules sit in `ApplicationCommandHandlerSupport` and the handlers; `MarkApplicationReadyCommandHandler` computes versions and builds its event inline; draft document-upload rules are in `ApplicationDocumentUploadCommandHandler`; `ApplicationAggregate.handle(DirectGroupWorkItemAssignmentCommand)` holds rules inline. | Rules are harder to find and cannot be unit-tested without Axon. New contributors cannot rely on "rules live in the decider". | Move these decisions and event construction into `ApplicationDecider` so handlers only load data, call the decider and append. |
 | 3 | `RecordAutoGrantedOutcomeCommandHandler` calls the static `MakeApplicationDecisionCommandHandler.recordDecision`. | Couples one handler to another's internals. | Move the shared logic to the decider or a shared support class. |
-| 4 | Retry policy is inconsistent: `AssignWorkItemCommandHandler`, `UnassignWorkItemCommandHandler` and `LinkedGroupAssignmentDispatcher` use `CommandGateway` directly rather than `RetryingCommandDispatcher`. | Concurrent-write failures are not retried there. | Use the dispatcher, or document why retry is unsafe or unnecessary. |
-| 5 | `AssignWorkItemCommandHandler.assignGroup` sends one command per member inside one `@Transactional` method. | One request changes several aggregates; consistency relies on route locks, not on an aggregate boundary. | Document this as an accepted exception and add partial-failure tests. Revisit the boundary if group rules grow. |
+| 4 | Retry policy is inconsistent: `AssignWorkItemCoordinator`, `UnassignWorkItemCoordinator` and `LinkedGroupAssignmentDispatcher` use `CommandGateway` directly rather than `RetryingCommandDispatcher`. | Concurrent-write failures are not retried there. | Use the dispatcher, or document why retry is unsafe or unnecessary. |
+| 5 | `AssignWorkItemCoordinator.assignGroup` sends one command per member inside one `@Transactional` method. | One request changes several aggregates; consistency relies on route locks, not on an aggregate boundary. | Document this as an accepted exception and add partial-failure tests. Revisit the boundary if group rules grow. |
 | 6 | About 17 classes under `query` import `command.*` types (`ApplicationDataStore`, `ApplicationDataPayload`, event classes). `AxonArchitectureTest` only forbids `CommandGateway` in query. | Read and write sides are coupled through shared persistence classes, so a command-side refactor can break projections. | Move the data store and payload to a neutral shared package. Add an ArchUnit rule that `query` must not use aggregates, deciders or command handlers. |
 | 7 | `ApplicationGroupRouteProjection` and `WorkItemRouteProjection` are write-side routing tables maintained by subscribing handlers. `WorkItemRouteProjection` has no reset handler. | A missing or corrupt route cannot be rebuilt by replay. | Document this clearly and consider a repair or rebuild procedure. |
 | 8 | `PriorAuthorityDraftUpdatedEvent` has an empty `@EventSourcingHandler`. | Intentional (stream concurrency only) but easy to mistake for a bug. | Keep it, and keep the explanatory comment. |

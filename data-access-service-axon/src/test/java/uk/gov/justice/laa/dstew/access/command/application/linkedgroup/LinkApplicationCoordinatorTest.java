@@ -26,14 +26,14 @@ import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 @ExtendWith(MockitoExtension.class)
-class LinkApplicationCommandHandlerTest {
+class LinkApplicationCoordinatorTest {
 
   private static final Instant OCCURRED_AT = Instant.parse("2026-09-14T15:00:00Z");
 
   @Mock private ApplicationGroupRouteResolver routeResolver;
   @Mock private RetryingCommandDispatcher dispatcher;
 
-  @InjectMocks private LinkApplicationCommandHandler handler;
+  @InjectMocks private LinkApplicationCoordinator handler;
 
   @Captor private ArgumentCaptor<Object> dispatchedCommandCaptor;
 

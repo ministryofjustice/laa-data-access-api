@@ -11,15 +11,15 @@ import uk.gov.justice.laa.dstew.access.command.worklist.route.WorkItemRoute;
 import uk.gov.justice.laa.dstew.access.command.worklist.route.WorkItemRouteResolver;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 
-/** Validates and dispatches assignment commands to their authoritative aggregate(s). */
+/** Transactional coordinator that dispatches assignments to their authoritative aggregate(s). */
 @Service
-public class AssignWorkItemCommandHandler {
+public class AssignWorkItemCoordinator {
   private final WorkItemRouteResolver routeResolver;
   private final ApplicationGroupRouteResolver groupRouteResolver;
   private final CommandGateway commandGateway;
 
-  /** Creates the command handler with assignment validation, route resolution, and dispatch. */
-  public AssignWorkItemCommandHandler(
+  /** Creates the coordinator with assignment validation, route resolution, and dispatch. */
+  public AssignWorkItemCoordinator(
       WorkItemRouteResolver routeResolver,
       ApplicationGroupRouteResolver groupRouteResolver,
       CommandGateway commandGateway) {

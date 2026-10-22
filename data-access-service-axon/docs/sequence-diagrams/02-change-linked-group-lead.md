@@ -9,7 +9,7 @@ sequenceDiagram
     actor Client
     participant Controller as ApplicationCommandController
     participant UseCase as MakeApplicationLeadUseCase
-    participant Handler as MakeApplicationLeadCommandHandler
+    participant Handler as MakeApplicationLeadCoordinator
     participant Resolver as ApplicationGroupRouteResolver
     participant Dispatcher as RetryingCommandDispatcher
     participant Aggregate as LinkedApplicationGroupAggregate

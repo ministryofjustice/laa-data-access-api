@@ -24,7 +24,7 @@ Application creation does not create or extend linked groups.
 1. Create each application normally with `POST /api/v0/applications`.
 2. Call the explicit application-link endpoint for the source application with an
    `ApplicationLinkRequest`.
-3. `LinkApplicationCommandHandler` validates the request and asks
+3. `LinkApplicationCoordinator` validates the request and asks
    `ApplicationGroupRouteResolver` to lock the source and target routes. When the target is already
    linked, include its `linkedGroupVersion` token as last read; omit that value when the target is
    standalone.

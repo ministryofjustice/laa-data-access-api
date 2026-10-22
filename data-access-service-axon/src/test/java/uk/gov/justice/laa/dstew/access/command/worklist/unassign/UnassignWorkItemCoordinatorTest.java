@@ -13,12 +13,12 @@ import uk.gov.justice.laa.dstew.access.command.worklist.route.WorkItemRoute;
 import uk.gov.justice.laa.dstew.access.command.worklist.route.WorkItemRouteKind;
 import uk.gov.justice.laa.dstew.access.command.worklist.route.WorkItemRouteResolver;
 
-class UnassignWorkItemCommandHandlerTest {
+class UnassignWorkItemCoordinatorTest {
   @Test
   void dispatchesAnApplicationUnassignmentToItsDirectAggregate() {
     WorkItemRouteResolver routes = mock(WorkItemRouteResolver.class);
     CommandGateway gateway = mock(CommandGateway.class);
-    UnassignWorkItemCommandHandler handler = new UnassignWorkItemCommandHandler(routes, gateway);
+    UnassignWorkItemCoordinator handler = new UnassignWorkItemCoordinator(routes, gateway);
     UUID id = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-09-01T10:00:00Z");
     when(routes.resolveDirectRoute(id)).thenReturn(route(WorkItemType.APPLICATION, id, occurredAt));
@@ -33,7 +33,7 @@ class UnassignWorkItemCommandHandlerTest {
   void dispatchesPriorAuthorityUnassignmentToItsDirectAggregate() {
     WorkItemRouteResolver routes = mock(WorkItemRouteResolver.class);
     CommandGateway gateway = mock(CommandGateway.class);
-    UnassignWorkItemCommandHandler handler = new UnassignWorkItemCommandHandler(routes, gateway);
+    UnassignWorkItemCoordinator handler = new UnassignWorkItemCoordinator(routes, gateway);
     UUID id = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-09-01T10:00:00Z");
     when(routes.resolveDirectRoute(id))

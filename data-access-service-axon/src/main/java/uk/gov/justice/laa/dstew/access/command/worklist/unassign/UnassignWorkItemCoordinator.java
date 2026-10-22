@@ -8,13 +8,14 @@ import uk.gov.justice.laa.dstew.access.command.worklist.route.WorkItemRoute;
 import uk.gov.justice.laa.dstew.access.command.worklist.route.WorkItemRouteResolver;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 
-/** Dispatches unassignment commands to their authoritative aggregate without retrying conflicts. */
+/** Transactional coordinator that dispatches unassignments without retrying conflicts. */
 @Service
-public class UnassignWorkItemCommandHandler {
+public class UnassignWorkItemCoordinator {
   private final WorkItemRouteResolver routeResolver;
   private final CommandGateway commandGateway;
 
-  public UnassignWorkItemCommandHandler(
+  /** Creates the coordinator with work-item route resolution and command dispatch. */
+  public UnassignWorkItemCoordinator(
       WorkItemRouteResolver routeResolver, CommandGateway commandGateway) {
     this.routeResolver = routeResolver;
     this.commandGateway = commandGateway;

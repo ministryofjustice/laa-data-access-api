@@ -16,23 +16,10 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.resttestclient.TestRestTemplate;
-import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.annotation.DirtiesContext;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
@@ -60,23 +47,7 @@ import uk.gov.justice.laa.dstew.access.model.WorkListUnassignRequest;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 
 /** Full HTTP/Postgres/Axon integration tests for delivered work-list behaviour. */
-@Testcontainers
-@SpringBootTest(
-    webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-    properties = {"feature.enable-dev-token=true"})
-@AutoConfigureTestRestTemplate
-@Import(TestJwtDecoderConfig.class)
-@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
-class WorkListIntegrationTest {
-
-  @Container @ServiceConnection
-  static PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine");
-
-  @LocalServerPort private int port;
-
-  @Autowired private TestRestTemplate restTemplate;
-
-  @Autowired private JdbcTemplate jdbcTemplate;
+class WorkListIntegrationTest extends BaseIntegrationTest {
 
   @Autowired private ObjectMapper objectMapper;
 
@@ -1099,21 +1070,5 @@ class WorkListIntegrationTest {
         HttpMethod.POST,
         new HttpEntity<>(new WorkListAssignRequest(0L), headersFor(caseworkerId)),
         Void.class);
-  }
-
-  private HttpHeaders headers() {
-    return headersFor(TestJwtDecoderConfig.CASEWORKER_ID);
-  }
-
-  private HttpHeaders headersFor(UUID caseworkerId) {
-    HttpHeaders headers = new HttpHeaders();
-    headers.set("X-Service-Name", "CIVIL_APPLY");
-    headers.set("X-Schema-Version", "1");
-    headers.setContentType(MediaType.APPLICATION_JSON);
-    headers.setBearerAuth(
-        caseworkerId.equals(TestJwtDecoderConfig.OTHER_CASEWORKER_ID)
-            ? TestJwtDecoderConfig.OTHER_BEARER_TOKEN
-            : TestJwtDecoderConfig.BEARER_TOKEN);
-    return headers;
   }
 }
