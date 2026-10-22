@@ -1,11 +1,10 @@
 package uk.gov.justice.laa.dstew.access.command.worklist.route;
 
 /**
- * Command authority for a work item; pending and transitioning routes are intentionally blocked.
+ * Command authority for a work item: its own aggregate ({@code STANDALONE}) or the linked group
+ * that owns its assignment ({@code LINKED_GROUP}).
  */
 public enum WorkItemRouteKind {
   STANDALONE,
-  PENDING_LINKED_GROUP,
-  LINKED_GROUP,
-  TRANSITIONING
+  LINKED_GROUP
 }

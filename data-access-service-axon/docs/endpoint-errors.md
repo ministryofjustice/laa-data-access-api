@@ -1,4 +1,4 @@
-# Endpoint Errors: Linked Applications
+# Endpoint Errors: Linked Applications and Assignment
 
 Linked-application command failures use the service's standard Problem Detail response. A linked
 group or version conflict is HTTP 409; a missing application route is HTTP 404; malformed or
@@ -56,3 +56,54 @@ Prior Authority draft creation first validates that the application is granted. 
 current write-side linked-group state: standalone applications and the current lead are eligible;
 associated applications are rejected. A concurrent membership or lead change is serialized with
 draft creation by the group-route locks.
+
+## `POST /api/v0/work-list/{itemId}/assign`
+
+| Status | Detail |
+|---|---|
+| 400 | `expectedAssignmentVersion: must be a valid assignment version token` |
+| 404 | `No work-item route found for <itemId>` |
+| 409 | `Work item <itemId> cannot be updated: the assignment version is stale` |
+| 409 | `Work item <itemId> cannot be updated: it is already assigned` |
+| 409 | `Work item <itemId> cannot be updated: it is no longer a member of its linked group` |
+| 409 | `Work item <itemId> cannot be updated: its linked group membership changed; re-read before retrying` |
+
+## `POST /api/v0/work-list/{itemId}/unassign`
+
+| Status | Detail |
+|---|---|
+| 400 | `expectedAssignmentVersion: must be a valid assignment version token` |
+| 404 | `No work-item route found for <itemId>` |
+| 409 | `Work item <itemId> cannot be updated: the assignment version is stale` |
+| 409 | `Work item <itemId> cannot be updated: it is already unassigned` |
+| 409 | `Work item <itemId> cannot be updated: it is no longer a member of its linked group` |
+| 409 | `Work item <itemId> cannot be updated: its linked group membership changed; re-read before retrying` |
+
+### Assignment tokens
+
+`assignmentVersion` is an opaque token naming who owns the item's assignment (the item, or the
+linked group that owns it) and its version. Pass it back unchanged as
+`expectedAssignmentVersion`; do not parse it. For an active member of a linked group, the work list
+shows `assignmentBoundaryType = LINKED_GROUP` and the group's token; assigning or unassigning any
+member changes the whole group. When an application joins or leaves a group, tokens read before
+the change name the old owner and receive 409 `the assignment version is stale`; re-read the work
+list.
+
+## `PATCH /api/v0/applications/{id}/decision` (linked groups)
+
+| Status | Detail |
+|---|---|
+| 409 | `Work item <id> cannot be updated: it is unassigned` |
+| 409 | `Work item <id> cannot be updated: the supplied caseworker is not its current assignee` |
+| 409 | `Work item <id> cannot be updated: it is no longer a member of its linked group` |
+| 409 | `Work item <id> cannot be updated: its linked-group assignee was not validated` |
+| 409 | `Work item <id> cannot be updated: its linked group membership changed; re-read before retrying` |
+
+## `PATCH /api/v0/applications/{id}/auto-grant-outcome`
+
+| Status | Detail |
+|---|---|
+| 409 | `Linked group membership of application <id> changed; retry the request` |
+
+The auto-grant-outcome endpoint continues to accept its existing service-role caller as well as a
+named caseworker; linked-group assignment coordination does not change that authorization.
