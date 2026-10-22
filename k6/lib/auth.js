@@ -1,27 +1,12 @@
 import http from 'k6/http';
 
-/**
- * Fetches an OAuth2 client_credentials token from the mock-oauth2-server (or any compatible
- * OAuth2 token endpoint).
- *
- * Intended to be called once in the k6 `setup()` function and passed to VUs via the data object.
- *
- * @param {string} oauthBaseUrl  Base URL of the OAuth server, e.g. "http://localhost:9999".
- *                               The token endpoint is assumed to be at `{oauthBaseUrl}/entra/token`.
- * @param {string} [clientId]    OAuth client_id (default: "test")
- * @param {string} [clientSecret] OAuth client_secret (default: "test")
- * @param {string} [scope]       OAuth scope (default: "api://laa-data-access-api/.default")
- * @returns {string} Raw JWT access token string
- * @throws if the token endpoint returns a non-200 or the response has no access_token
- */
-export function fetchToken(
-  oauthBaseUrl,
-  clientId = 'test',
-  clientSecret = 'test',
+export function fetchToken({
+  tokenUrl,
+  clientId,
+  clientSecret,
   scope = 'api://laa-data-access-api/.default',
-) {
-  const tokenUrl = `${oauthBaseUrl}/entra/token`;
-
+  actor,
+}) {
   const res = http.post(
     tokenUrl,
     {
@@ -37,17 +22,26 @@ export function fetchToken(
   );
 
   if (res.status !== 200) {
-    throw new Error(
-      `Failed to fetch OAuth token from ${tokenUrl}: HTTP ${res.status}\n${res.body}`,
-    );
+    throw new Error(`OAuth token request failed for ${actor}: HTTP ${res.status}`);
   }
 
   const body = res.json();
   if (!body || !body.access_token) {
-    throw new Error(
-      `Token response from ${tokenUrl} did not contain access_token. Body: ${res.body}`,
-    );
+    throw new Error(`OAuth token response was invalid for ${actor}: access_token is missing`);
   }
 
   return body.access_token;
+}
+
+export function fetchTokens(config, actors) {
+  return actors.reduce((tokens, actor) => {
+    const credentials = config.actors[actor];
+    tokens[actor] = fetchToken({
+      tokenUrl: config.oauthTokenUrl,
+      clientId: credentials.clientId,
+      clientSecret: credentials.clientSecret,
+      actor,
+    });
+    return tokens;
+  }, {});
 }

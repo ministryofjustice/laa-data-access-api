@@ -34,6 +34,7 @@ prompts/
 ### Generated local monitoring dashboard (source of truth is the Helm template) ###
 infra/grafana/provisioning/dashboards/laa-data-access-api.json
 plans/k6-perf.md
+k6/.env
 
 ### LocalStack local state ###
 volume/
