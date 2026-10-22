@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.DelegatedAssignment;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationLinkConflictException;
 import uk.gov.justice.laa.dstew.access.exception.LinkedApplicationGroupVersionConflictException;
 import uk.gov.justice.laa.dstew.access.testutils.LinkedGroupTestFixture;
@@ -40,7 +41,11 @@ class LinkedApplicationGroupAggregateTest {
         .when()
         .command(
             new EstablishLinkedApplicationGroupCommand(
-                groupId, leadApplicationId, members, occurredAt))
+                groupId,
+                leadApplicationId,
+                members,
+                LinkedGroupTestFixture.unassignedDelegations(members),
+                occurredAt))
         .then()
         .events(
             new LinkedApplicationGroupCreatedEvent(
@@ -66,6 +71,8 @@ class LinkedApplicationGroupAggregateTest {
                 groupId,
                 leadApplicationId,
                 List.of(sourceApplicationId, leadApplicationId),
+                LinkedGroupTestFixture.unassignedDelegations(
+                    List.of(sourceApplicationId, leadApplicationId)),
                 occurredAt))
         .then()
         .noEvents();
@@ -88,7 +95,11 @@ class LinkedApplicationGroupAggregateTest {
         .when()
         .command(
             new EstablishLinkedApplicationGroupCommand(
-                groupId, leadId, List.of(leadId, sourceApplicationId), occurredAt))
+                groupId,
+                leadId,
+                List.of(leadId, sourceApplicationId),
+                LinkedGroupTestFixture.unassignedDelegations(List.of(leadId, sourceApplicationId)),
+                occurredAt))
         .then()
         .noEvents();
   }
@@ -113,6 +124,8 @@ class LinkedApplicationGroupAggregateTest {
                 groupId,
                 differentLeadId,
                 List.of(differentLeadId, sourceApplicationId),
+                LinkedGroupTestFixture.unassignedDelegations(
+                    List.of(differentLeadId, sourceApplicationId)),
                 occurredAt))
         .then()
         .exception(ApplicationLinkConflictException.class)
@@ -137,7 +150,12 @@ class LinkedApplicationGroupAggregateTest {
         .when()
         .command(
             new EstablishLinkedApplicationGroupCommand(
-                groupId, leadId, List.of(leadId, sourceApplicationId, newMemberId), occurredAt))
+                groupId,
+                leadId,
+                List.of(leadId, sourceApplicationId, newMemberId),
+                LinkedGroupTestFixture.unassignedDelegations(
+                    List.of(leadId, sourceApplicationId, newMemberId)),
+                occurredAt))
         .then()
         .exception(ApplicationLinkConflictException.class)
         .noEvents();
@@ -153,6 +171,7 @@ class LinkedApplicationGroupAggregateTest {
                     UUID.randomUUID(),
                     leadApplicationId,
                     memberApplicationIds,
+                    LinkedGroupTestFixture.unassignedDelegations(memberApplicationIds),
                     Instant.parse("2026-07-15T08:00:00Z")))
         .as(scenario)
         .isInstanceOf(IllegalArgumentException.class);
@@ -172,7 +191,9 @@ class LinkedApplicationGroupAggregateTest {
             new LinkedApplicationGroupCreatedEvent(
                 groupId, leadId, List.of(leadId, existingMemberId), occurredAt))
         .when()
-        .command(new AddApplicationToLinkedGroupCommand(groupId, newMemberId, 0, occurredAt))
+        .command(
+            new AddApplicationToLinkedGroupCommand(
+                groupId, newMemberId, 0, new DelegatedAssignment(null), occurredAt))
         .then()
         .events(new MemberAddedToGroupEvent(groupId, leadId, newMemberId, occurredAt));
   }
@@ -190,7 +211,9 @@ class LinkedApplicationGroupAggregateTest {
             new LinkedApplicationGroupCreatedEvent(
                 groupId, leadId, List.of(leadId, existingMemberId), occurredAt))
         .when()
-        .command(new AddApplicationToLinkedGroupCommand(groupId, existingMemberId, 1, occurredAt))
+        .command(
+            new AddApplicationToLinkedGroupCommand(
+                groupId, existingMemberId, 1, new DelegatedAssignment(null), occurredAt))
         .then()
         .noEvents();
   }
@@ -203,7 +226,11 @@ class LinkedApplicationGroupAggregateTest {
         .when()
         .command(
             new AddApplicationToLinkedGroupCommand(
-                UUID.randomUUID(), UUID.randomUUID(), 0, Instant.parse("2026-07-15T08:00:00Z")))
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                0,
+                new DelegatedAssignment(null),
+                Instant.parse("2026-07-15T08:00:00Z")))
         .then()
         .exception(IllegalStateException.class)
         .noEvents();
@@ -262,7 +289,9 @@ class LinkedApplicationGroupAggregateTest {
             new LinkedApplicationGroupCreatedEvent(
                 groupId, leadId, List.of(leadId, UUID.randomUUID()), occurredAt))
         .when()
-        .command(new AddApplicationToLinkedGroupCommand(groupId, UUID.randomUUID(), 1, occurredAt))
+        .command(
+            new AddApplicationToLinkedGroupCommand(
+                groupId, UUID.randomUUID(), 1, new DelegatedAssignment(null), occurredAt))
         .then()
         .exception(LinkedApplicationGroupVersionConflictException.class)
         .noEvents();
@@ -320,7 +349,8 @@ class LinkedApplicationGroupAggregateTest {
         .when()
         .command(new RemoveApplicationFromLinkedGroupCommand(groupId, removedId, 0, occurredAt))
         .then()
-        .events(new MemberRemovedFromGroupEvent(groupId, leadId, removedId, 1, occurredAt));
+        .events(
+            new MemberRemovedFromGroupEvent(groupId, leadId, removedId, 1, null, 0, occurredAt));
   }
 
   @Test
@@ -339,7 +369,7 @@ class LinkedApplicationGroupAggregateTest {
         .then()
         .events(
             new LinkedApplicationGroupDissolvedEvent(
-                groupId, leadId, removedId, members, 1, occurredAt));
+                groupId, leadId, removedId, members, 1, null, 0, occurredAt));
   }
 
   @Test
@@ -398,7 +428,9 @@ class LinkedApplicationGroupAggregateTest {
         .command(
             new RemoveApplicationFromLinkedGroupCommand(groupId, previousLeadId, 2, occurredAt))
         .then()
-        .events(new MemberRemovedFromGroupEvent(groupId, newLeadId, previousLeadId, 3, occurredAt));
+        .events(
+            new MemberRemovedFromGroupEvent(
+                groupId, newLeadId, previousLeadId, 3, null, 0, occurredAt));
   }
 
   @Test
@@ -421,7 +453,7 @@ class LinkedApplicationGroupAggregateTest {
         .then()
         .events(
             new LinkedApplicationGroupDissolvedEvent(
-                groupId, newLeadId, previousLeadId, members, 2, occurredAt));
+                groupId, newLeadId, previousLeadId, members, 2, null, 0, occurredAt));
   }
 
   @Test
@@ -437,9 +469,11 @@ class LinkedApplicationGroupAggregateTest {
         .events(
             new LinkedApplicationGroupCreatedEvent(groupId, leadId, members, occurredAt),
             new LinkedApplicationGroupDissolvedEvent(
-                groupId, leadId, removedId, members, 1, occurredAt))
+                groupId, leadId, removedId, members, 1, null, 0, occurredAt))
         .when()
-        .command(new AddApplicationToLinkedGroupCommand(groupId, UUID.randomUUID(), 0, occurredAt))
+        .command(
+            new AddApplicationToLinkedGroupCommand(
+                groupId, UUID.randomUUID(), 0, new DelegatedAssignment(null), occurredAt))
         .then()
         .exception(ApplicationLinkConflictException.class)
         .noEvents();
@@ -457,7 +491,7 @@ class LinkedApplicationGroupAggregateTest {
         .events(
             new LinkedApplicationGroupCreatedEvent(
                 groupId, leadId, List.of(leadId, removedId, UUID.randomUUID()), occurredAt),
-            new MemberRemovedFromGroupEvent(groupId, leadId, removedId, 1, occurredAt))
+            new MemberRemovedFromGroupEvent(groupId, leadId, removedId, 1, null, 0, occurredAt))
         .when()
         .command(new RemoveApplicationFromLinkedGroupCommand(groupId, removedId, 1, occurredAt))
         .then()

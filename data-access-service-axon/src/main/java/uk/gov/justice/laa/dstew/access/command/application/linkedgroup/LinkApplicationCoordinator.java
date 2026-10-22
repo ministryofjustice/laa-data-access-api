@@ -1,12 +1,14 @@
 package uk.gov.justice.laa.dstew.access.command.application.linkedgroup;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.DelegatedAssignment;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteResolver;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationLinkPlan;
 import uk.gov.justice.laa.dstew.access.exception.LinkedApplicationGroupVersionConflictException;
@@ -58,6 +60,9 @@ public class LinkApplicationCoordinator {
                     UUID.randomUUID(),
                     command.targetApplicationId(),
                     List.of(command.targetApplicationId(), command.sourceApplicationId()),
+                    Map.of(
+                        command.targetApplicationId(), new DelegatedAssignment(null),
+                        command.sourceApplicationId(), new DelegatedAssignment(null)),
                     command.occurredAt()));
       }
       case ADD_TO_EXISTING_GROUP -> {
@@ -76,6 +81,7 @@ public class LinkApplicationCoordinator {
                     plan.groupId(),
                     command.sourceApplicationId(),
                     expectedTargetGroup.version(),
+                    new DelegatedAssignment(null),
                     command.occurredAt()));
       }
       case ALREADY_LINKED ->

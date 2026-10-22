@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.UUID;
 import org.axonframework.eventsourcing.annotation.EventTag;
 import org.axonframework.messaging.eventhandling.annotation.Event;
+import org.jspecify.annotations.Nullable;
 
 /** Emitted when removing a member leaves a linked group with no active membership. */
 @Event
@@ -14,5 +15,7 @@ public record LinkedApplicationGroupDissolvedEvent(
     UUID removedApplicationId,
     List<UUID> memberApplicationIds,
     long groupVersion,
+    @Nullable UUID caseworkerId,
+    long assignmentVersion,
     Instant occurredAt)
     implements LinkedGroupMemberRemoval {}

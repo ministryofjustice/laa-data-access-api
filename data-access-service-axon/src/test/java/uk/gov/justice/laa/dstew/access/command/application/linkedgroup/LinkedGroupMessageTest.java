@@ -61,7 +61,8 @@ class LinkedGroupMessageTest {
     var groupId = UUID.randomUUID();
     var leadId = UUID.randomUUID();
     var memberId = UUID.randomUUID();
-    var event = new MemberRemovedFromGroupEvent(groupId, leadId, memberId, 7L, OCCURRED_AT);
+    var event =
+        new MemberRemovedFromGroupEvent(groupId, leadId, memberId, 7L, null, 0L, OCCURRED_AT);
 
     assertThat(event.groupId()).isEqualTo(groupId);
     assertThat(event.leadApplicationId()).isEqualTo(leadId);
@@ -79,7 +80,7 @@ class LinkedGroupMessageTest {
     var memberIds = List.of(leadId, removedId);
     var event =
         new LinkedApplicationGroupDissolvedEvent(
-            groupId, leadId, removedId, memberIds, 8L, OCCURRED_AT);
+            groupId, leadId, removedId, memberIds, 8L, null, 0L, OCCURRED_AT);
 
     assertThat(event.groupId()).isEqualTo(groupId);
     assertThat(event.formerLeadApplicationId()).isEqualTo(leadId);

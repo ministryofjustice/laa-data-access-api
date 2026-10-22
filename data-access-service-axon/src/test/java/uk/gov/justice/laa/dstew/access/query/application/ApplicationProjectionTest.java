@@ -644,7 +644,8 @@ class ApplicationProjectionTest {
     Instant occurredAt = Instant.parse("2026-07-15T11:00:00Z");
 
     projection.on(
-        new MemberRemovedFromGroupEvent(groupId, UUID.randomUUID(), memberId, 2L, occurredAt));
+        new MemberRemovedFromGroupEvent(
+            groupId, UUID.randomUUID(), memberId, 2L, null, 0L, occurredAt));
 
     assertThat(member.getLinkedGroupId()).isNull();
     assertThat(member.getLeadApplicationId()).isNull();
@@ -667,7 +668,7 @@ class ApplicationProjectionTest {
 
     projection.on(
         new LinkedApplicationGroupDissolvedEvent(
-            groupId, leadId, removedId, List.of(leadId, removedId), 2L, occurredAt));
+            groupId, leadId, removedId, List.of(leadId, removedId), 2L, null, 0L, occurredAt));
 
     assertThat(lead.getLinkedGroupId()).isNull();
     assertThat(lead.getLeadApplicationId()).isNull();

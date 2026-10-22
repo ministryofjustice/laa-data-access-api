@@ -378,7 +378,7 @@ class ApplicationListIndexProjectionTest {
 
     projection.on(
         new MemberRemovedFromGroupEvent(
-            UUID.randomUUID(), UUID.randomUUID(), memberId, 2L, occurredAt),
+            UUID.randomUUID(), UUID.randomUUID(), memberId, 2L, null, 0L, occurredAt),
         anyMessage());
 
     assertThat(member.getLeadApplicationId()).isNull();
@@ -403,7 +403,14 @@ class ApplicationListIndexProjectionTest {
 
     projection.on(
         new LinkedApplicationGroupDissolvedEvent(
-            UUID.randomUUID(), leadId, removedId, List.of(leadId, removedId), 2L, occurredAt),
+            UUID.randomUUID(),
+            leadId,
+            removedId,
+            List.of(leadId, removedId),
+            2L,
+            null,
+            0L,
+            occurredAt),
         anyMessage());
 
     assertThat(lead.getLeadApplicationId()).isNull();

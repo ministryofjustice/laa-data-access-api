@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,6 +18,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.DelegatedAssignment;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteResolver;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationLinkAction;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationLinkConflictException;
@@ -109,6 +111,11 @@ class LinkApplicationCoordinatorTest {
               assertThat(dispatchedCommand.leadApplicationId()).isEqualTo(targetApplicationId);
               assertThat(dispatchedCommand.memberApplicationIds())
                   .containsExactly(targetApplicationId, sourceApplicationId);
+              assertThat(dispatchedCommand.joiningAssignments())
+                  .containsExactlyInAnyOrderEntriesOf(
+                      Map.of(
+                          targetApplicationId, new DelegatedAssignment(null),
+                          sourceApplicationId, new DelegatedAssignment(null)));
               assertThat(dispatchedCommand.occurredAt()).isEqualTo(OCCURRED_AT);
             });
   }
@@ -147,7 +154,11 @@ class LinkApplicationCoordinatorTest {
     assertThat(dispatchedCommandCaptor.getValue())
         .isEqualTo(
             new AddApplicationToLinkedGroupCommand(
-                existingGroupId, sourceApplicationId, GROUP_VERSION, OCCURRED_AT));
+                existingGroupId,
+                sourceApplicationId,
+                GROUP_VERSION,
+                new DelegatedAssignment(null),
+                OCCURRED_AT));
   }
 
   @Test

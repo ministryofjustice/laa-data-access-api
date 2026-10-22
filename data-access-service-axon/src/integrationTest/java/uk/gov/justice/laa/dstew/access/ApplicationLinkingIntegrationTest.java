@@ -66,6 +66,7 @@ import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
+import uk.gov.justice.laa.dstew.access.testutils.LinkedGroupTestFixture;
 import uk.gov.justice.laa.dstew.access.version.VersionToken;
 import util.ProjectionAwaiter;
 
@@ -639,7 +640,11 @@ public class ApplicationLinkingIntegrationTest {
     createApplication(memberApplicationId, clientLastName);
     var command =
         new EstablishLinkedApplicationGroupCommand(
-            groupId, leadApplicationId, memberApplicationIds, Instant.now());
+            groupId,
+            leadApplicationId,
+            memberApplicationIds,
+            LinkedGroupTestFixture.unassignedDelegations(memberApplicationIds),
+            Instant.now());
 
     try {
       jdbcTemplate.execute(
@@ -687,7 +692,11 @@ public class ApplicationLinkingIntegrationTest {
 
     var command =
         new EstablishLinkedApplicationGroupCommand(
-            groupId, leadApplicationId, memberApplicationIds, Instant.now());
+            groupId,
+            leadApplicationId,
+            memberApplicationIds,
+            LinkedGroupTestFixture.unassignedDelegations(memberApplicationIds),
+            Instant.now());
 
     assertThatThrownBy(() -> commandGateway.sendAndWait(command))
         .satisfies(

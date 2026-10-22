@@ -164,7 +164,7 @@ class ApplicationHistoryProjectionTest {
     UUID memberId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-07-15T08:00:00Z");
     MemberRemovedFromGroupEvent event =
-        new MemberRemovedFromGroupEvent(groupId, leadId, memberId, 1L, occurredAt);
+        new MemberRemovedFromGroupEvent(groupId, leadId, memberId, 1L, null, 0L, occurredAt);
 
     projection.on(event, message(event, "member-removed-event-id"));
 
@@ -189,6 +189,8 @@ class ApplicationHistoryProjectionTest {
             removedApplicationId,
             List.of(formerLeadId, removedApplicationId),
             1L,
+            null,
+            0L,
             occurredAt);
     EventMessage message = message(event, "group-dissolved-event-id");
 
