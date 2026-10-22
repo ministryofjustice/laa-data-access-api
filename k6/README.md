@@ -83,3 +83,16 @@ values are omitted.
 The k6 console summary and JSON summary are both written at the end of a run. The default JSON
 path is `k6/results/summary.json`. Diagnostics report only method, path, status, safe record IDs,
 and a correlation ID; tokens, secrets, authorization headers, and HTTP bodies are never printed.
+
+## Fixtures and step catalogue
+
+The synthetic fixture templates in `k6/fixtures/` contain no personal or case data. Apply a
+run context to them before use so each virtual user and iteration receives distinct identifiers.
+The registry in `k6/lib/step-registry.js` is the source of truth for the generated catalogue and
+feature-step validation:
+
+```bash
+npm --prefix k6 run generate-step-catalogue
+npm --prefix k6 test
+npm --prefix k6 run validate-documentation
+```
