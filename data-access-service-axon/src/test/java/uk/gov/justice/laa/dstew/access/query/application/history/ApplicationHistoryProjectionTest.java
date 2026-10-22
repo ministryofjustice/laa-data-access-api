@@ -81,10 +81,11 @@ class ApplicationHistoryProjectionTest {
   void givenGroupCreatedEvent_whenHandled_thenStoresDistinctHistoryForEveryMember() {
     UUID leadId = UUID.randomUUID();
     UUID memberId = UUID.randomUUID();
+    List<UUID> memberIds = List.of(leadId, memberId);
     Instant occurredAt = Instant.parse("2026-07-15T08:00:00Z");
     LinkedApplicationGroupCreatedEvent event =
-        new LinkedApplicationGroupCreatedEvent(
-            leadId, leadId, List.of(leadId, memberId), occurredAt);
+        new LinkedApplicationGroupCreatedEvent(leadId, leadId, memberIds, occurredAt);
+    when(assignmentTracker.groupCreated(assignmentStore, leadId, memberIds)).thenReturn(List.of());
 
     projection.on(event, message(event, "group-event-id"));
 
@@ -114,14 +115,17 @@ class ApplicationHistoryProjectionTest {
     assertThat(captor.getAllValues())
         .extracting(ApplicationHistoryReadModel::getOccurredAt)
         .containsOnly(occurredAt);
+    verify(assignmentTracker).groupCreated(assignmentStore, leadId, memberIds);
   }
 
   @Test
   void givenMemberAddedEvent_whenHandled_thenStoresJoinedHistoryWithoutDataVersion() {
     UUID memberId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
     MemberAddedToGroupEvent event =
         new MemberAddedToGroupEvent(
-            UUID.randomUUID(), UUID.randomUUID(), memberId, Instant.parse("2026-07-15T08:00:00Z"));
+            groupId, UUID.randomUUID(), memberId, Instant.parse("2026-07-15T08:00:00Z"));
+    when(assignmentTracker.memberAdded(assignmentStore, groupId, memberId)).thenReturn(List.of());
 
     projection.on(event, message(event, "member-event-id"));
 
@@ -134,6 +138,37 @@ class ApplicationHistoryProjectionTest {
     assertThat(history.getEventType()).isEqualTo("APPLICATION_GROUP_JOINED");
     assertThat(history.getDataVersion()).isNull();
     assertThat(history.getOccurredAt()).isEqualTo(event.occurredAt());
+    verify(assignmentTracker).memberAdded(assignmentStore, groupId, memberId);
+  }
+
+  @Test
+  void givenMemberJoinsAssignedGroup_whenProjected_thenAssignRowAppended() {
+    UUID memberId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-15T08:00:00Z");
+    MemberAddedToGroupEvent event =
+        new MemberAddedToGroupEvent(groupId, UUID.randomUUID(), memberId, occurredAt);
+    when(assignmentTracker.memberAdded(assignmentStore, groupId, memberId))
+        .thenReturn(List.of(new AssignmentChange(memberId, groupId, null, caseworkerId, 3L)));
+    EventMessage message = message(event, "member-join-event");
+
+    projection.on(event, message);
+
+    ArgumentCaptor<ApplicationHistoryReadModel> captor =
+        ArgumentCaptor.forClass(ApplicationHistoryReadModel.class);
+    verify(repository, times(2)).save(captor.capture());
+    assertThat(captor.getAllValues())
+        .extracting(
+            ApplicationHistoryReadModel::getEventId,
+            ApplicationHistoryReadModel::getApplicationId,
+            ApplicationHistoryReadModel::getEventType)
+        .containsExactlyInAnyOrder(
+            Tuple.tuple("member-join-event:" + memberId, memberId, "APPLICATION_GROUP_JOINED"),
+            Tuple.tuple(
+                "member-join-event:" + memberId + ":assignment",
+                memberId,
+                "ASSIGN_APPLICATION_TO_CASEWORKER"));
   }
 
   @Test
@@ -189,6 +224,7 @@ class ApplicationHistoryProjectionTest {
     assertThat(captor.getValue().getEventId()).isEqualTo("member-removed-event-id:" + memberId);
     assertThat(captor.getValue().getApplicationId()).isEqualTo(memberId);
     assertThat(captor.getValue().getEventType()).isEqualTo("APPLICATION_GROUP_LEFT");
+    verify(assignmentTracker).membersLeft(assignmentStore, groupId, List.of(memberId), false);
   }
 
   @Test
@@ -228,6 +264,8 @@ class ApplicationHistoryProjectionTest {
                 "group-dissolved-event-id:" + formerLeadId,
                 formerLeadId,
                 "APPLICATION_GROUP_DISSOLVED"));
+    verify(assignmentTracker)
+        .membersLeft(assignmentStore, groupId, List.of(formerLeadId, removedApplicationId), true);
   }
 
   @Test

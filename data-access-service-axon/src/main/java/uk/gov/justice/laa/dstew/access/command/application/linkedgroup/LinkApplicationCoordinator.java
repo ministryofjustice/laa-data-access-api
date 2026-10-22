@@ -1,16 +1,20 @@
 package uk.gov.justice.laa.dstew.access.command.application.linkedgroup;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.DelegateAssignmentToGroupCommand;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.DelegatedAssignment;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteResolver;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationLinkPlan;
+import uk.gov.justice.laa.dstew.access.command.worklist.route.WorkItemRouteResolver;
 import uk.gov.justice.laa.dstew.access.exception.LinkedApplicationGroupVersionConflictException;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
@@ -20,6 +24,7 @@ import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 @RequiredArgsConstructor
 public class LinkApplicationCoordinator {
   private final ApplicationGroupRouteResolver routeResolver;
+  private final WorkItemRouteResolver workItemRouteResolver;
   private final RetryingCommandDispatcher dispatcher;
 
   /** Validates, routes, and dispatches the explicit link command inside one transaction. */
@@ -54,16 +59,30 @@ public class LinkApplicationCoordinator {
           throw LinkedApplicationGroupVersionConflictException.targetNoLongerLinked(
               command.targetApplicationId());
         }
-        yield () ->
-            dispatcher.dispatch(
-                new EstablishLinkedApplicationGroupCommand(
-                    UUID.randomUUID(),
-                    command.targetApplicationId(),
-                    List.of(command.targetApplicationId(), command.sourceApplicationId()),
-                    Map.of(
-                        command.targetApplicationId(), new DelegatedAssignment(null),
-                        command.sourceApplicationId(), new DelegatedAssignment(null)),
-                    command.occurredAt()));
+        yield () -> {
+          var groupId = UUID.randomUUID();
+          var joiningApplicationIds =
+              Stream.of(command.sourceApplicationId(), command.targetApplicationId())
+                  .sorted()
+                  .toList();
+          workItemRouteResolver.lockApplicationRoutes(joiningApplicationIds);
+          Map<UUID, DelegatedAssignment> joiningAssignments = new LinkedHashMap<>();
+          joiningApplicationIds.forEach(
+              applicationId ->
+                  joiningAssignments.put(
+                      applicationId,
+                      dispatcher.dispatch(
+                          new DelegateAssignmentToGroupCommand(
+                              applicationId, groupId, command.occurredAt()),
+                          DelegatedAssignment.class)));
+          dispatcher.dispatch(
+              new EstablishLinkedApplicationGroupCommand(
+                  groupId,
+                  command.targetApplicationId(),
+                  List.of(command.targetApplicationId(), command.sourceApplicationId()),
+                  joiningAssignments,
+                  command.occurredAt()));
+        };
       }
       case ADD_TO_EXISTING_GROUP -> {
         var expectedTargetGroup = command.expectedTargetGroup();
@@ -75,14 +94,21 @@ public class LinkApplicationCoordinator {
           throw LinkedApplicationGroupVersionConflictException.groupChanged(
               command.targetApplicationId());
         }
-        yield () ->
-            dispatcher.dispatch(
-                new AddApplicationToLinkedGroupCommand(
-                    plan.groupId(),
-                    command.sourceApplicationId(),
-                    expectedTargetGroup.version(),
-                    new DelegatedAssignment(null),
-                    command.occurredAt()));
+        yield () -> {
+          workItemRouteResolver.lockApplicationRoutes(List.of(command.sourceApplicationId()));
+          var memberAssignment =
+              dispatcher.dispatch(
+                  new DelegateAssignmentToGroupCommand(
+                      command.sourceApplicationId(), plan.groupId(), command.occurredAt()),
+                  DelegatedAssignment.class);
+          dispatcher.dispatch(
+              new AddApplicationToLinkedGroupCommand(
+                  plan.groupId(),
+                  command.sourceApplicationId(),
+                  expectedTargetGroup.version(),
+                  memberAssignment,
+                  command.occurredAt()));
+        };
       }
       case ALREADY_LINKED ->
           () -> {

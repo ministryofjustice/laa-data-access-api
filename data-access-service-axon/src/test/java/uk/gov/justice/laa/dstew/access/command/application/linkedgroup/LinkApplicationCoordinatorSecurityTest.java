@@ -15,6 +15,7 @@ import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteResolver;
+import uk.gov.justice.laa.dstew.access.command.worklist.route.WorkItemRouteResolver;
 import uk.gov.justice.laa.dstew.access.utils.BaseSecuredUseCaseTest;
 import uk.gov.justice.laa.dstew.access.utils.TestSecurityConfig;
 
@@ -26,6 +27,7 @@ class LinkApplicationCoordinatorSecurityTest extends BaseSecuredUseCaseTest {
   @Autowired private LinkApplicationCoordinator handler;
 
   @MockitoBean private ApplicationGroupRouteResolver routeResolver;
+  @MockitoBean private WorkItemRouteResolver workItemRouteResolver;
   @MockitoBean private RetryingCommandDispatcher dispatcher;
 
   @Test
@@ -34,7 +36,7 @@ class LinkApplicationCoordinatorSecurityTest extends BaseSecuredUseCaseTest {
 
     assertDenied();
 
-    verifyNoInteractions(routeResolver, dispatcher);
+    verifyNoInteractions(routeResolver, workItemRouteResolver, dispatcher);
   }
 
   @Test
@@ -43,7 +45,7 @@ class LinkApplicationCoordinatorSecurityTest extends BaseSecuredUseCaseTest {
 
     assertDenied();
 
-    verifyNoInteractions(routeResolver, dispatcher);
+    verifyNoInteractions(routeResolver, workItemRouteResolver, dispatcher);
   }
 
   private void assertDenied() {

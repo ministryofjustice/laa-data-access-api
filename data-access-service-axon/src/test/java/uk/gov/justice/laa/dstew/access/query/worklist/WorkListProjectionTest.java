@@ -39,6 +39,10 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupDissolvedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberRemovedFromGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.ApplicationAssignmentReclaimedFromGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.LinkedGroupAssignedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.LinkedGroupMemberAssignmentInheritedEvent;
@@ -718,6 +722,79 @@ class WorkListProjectionTest {
     assertThat(row.getAssignmentBoundaryId()).isEqualTo(applicationId);
     assertThat(row.getGroupId()).isNull();
     verify(items).save(row);
+  }
+
+  @Test
+  void givenGroupCreated_whenProjected_thenActiveRowsJoinGroupBoundary() {
+    UUID applicationId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-09-30T12:00:00Z");
+    WorkListItemReadModel row =
+        new WorkListItemReadModel(
+            WorkItemType.APPLICATION, applicationId, null, occurredAt, 3L, 1L);
+    when(assignmentTracker.groupCreated(assignmentStore, groupId, List.of(applicationId)))
+        .thenReturn(List.of(new AssignmentChange(applicationId, groupId, null, null, 0L)));
+    when(items.findById(applicationId)).thenReturn(Optional.of(row));
+
+    projection.on(
+        new LinkedApplicationGroupCreatedEvent(
+            groupId, applicationId, List.of(applicationId), occurredAt),
+        message());
+
+    assertThat(row.getAssignmentBoundaryType()).isEqualTo("LINKED_GROUP");
+    assertThat(row.getAssignmentBoundaryId()).isEqualTo(groupId);
+    verify(items).save(row);
+  }
+
+  @Test
+  void givenMemberAdded_whenProjected_thenNewMemberTakesGroupAssignment() {
+    UUID applicationId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-09-30T12:00:00Z");
+    WorkListItemReadModel row =
+        new WorkListItemReadModel(
+            WorkItemType.APPLICATION, applicationId, null, occurredAt, 3L, 1L);
+    when(assignmentTracker.memberAdded(assignmentStore, groupId, applicationId))
+        .thenReturn(List.of(new AssignmentChange(applicationId, groupId, null, caseworkerId, 2L)));
+    when(items.findById(applicationId)).thenReturn(Optional.of(row));
+
+    projection.on(
+        new MemberAddedToGroupEvent(groupId, UUID.randomUUID(), applicationId, occurredAt),
+        message());
+
+    assertThat(row.getAssigneeId()).isEqualTo(caseworkerId);
+    assertThat(row.getAssignmentBoundaryId()).isEqualTo(groupId);
+    assertThat(row.getAssignmentVersion()).isEqualTo(2L);
+    verify(items).save(row);
+  }
+
+  @Test
+  void givenMemberRemoved_whenProjected_thenTrackerReleasesMember() {
+    UUID applicationId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-09-30T12:00:00Z");
+
+    projection.on(
+        new MemberRemovedFromGroupEvent(
+            groupId, UUID.randomUUID(), applicationId, 1L, null, 0L, occurredAt));
+
+    verify(assignmentTracker).membersLeft(assignmentStore, groupId, List.of(applicationId), false);
+  }
+
+  @Test
+  void givenGroupDissolved_whenProjected_thenTrackerReleasesAllMembers() {
+    UUID firstId = UUID.randomUUID();
+    UUID secondId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    List<UUID> memberIds = List.of(firstId, secondId);
+    Instant occurredAt = Instant.parse("2026-09-30T12:00:00Z");
+
+    projection.on(
+        new LinkedApplicationGroupDissolvedEvent(
+            groupId, firstId, secondId, memberIds, 1L, null, 0L, occurredAt));
+
+    verify(assignmentTracker).membersLeft(assignmentStore, groupId, memberIds, true);
   }
 
   private static EventMessage message() {

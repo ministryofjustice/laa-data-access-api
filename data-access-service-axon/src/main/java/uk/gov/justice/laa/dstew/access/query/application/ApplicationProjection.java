@@ -260,6 +260,10 @@ public class ApplicationProjection {
                         ? null
                         : event.leadApplicationId(),
                     event.occurredAt()));
+    applyAssignmentChanges(
+        assignmentTracker.groupCreated(
+            assignmentStore, event.groupId(), event.memberApplicationIds()),
+        event.occurredAt());
   }
 
   /** Updates the added member row when it joins an existing linked group explicitly. */
@@ -267,6 +271,9 @@ public class ApplicationProjection {
   public void on(MemberAddedToGroupEvent event) {
     updateGroupMembership(
         event.memberId(), event.groupId(), event.leadApplicationId(), event.occurredAt());
+    applyAssignmentChanges(
+        assignmentTracker.memberAdded(assignmentStore, event.groupId(), event.memberId()),
+        event.occurredAt());
   }
 
   /** Updates the lead reference for every application in the changed group. */
@@ -289,6 +296,8 @@ public class ApplicationProjection {
   @EventHandler
   public void on(MemberRemovedFromGroupEvent event) {
     updateGroupMembership(event.memberId(), null, null, event.occurredAt());
+    assignmentTracker.membersLeft(
+        assignmentStore, event.groupId(), List.of(event.memberId()), false);
   }
 
   /** Clears group membership from every application when its group is dissolved. */
@@ -297,6 +306,8 @@ public class ApplicationProjection {
     event
         .memberApplicationIds()
         .forEach(memberId -> updateGroupMembership(memberId, null, null, event.occurredAt()));
+    assignmentTracker.membersLeft(
+        assignmentStore, event.groupId(), event.memberApplicationIds(), true);
   }
 
   /** Advances the current-state row to the immutable data version containing the decision. */

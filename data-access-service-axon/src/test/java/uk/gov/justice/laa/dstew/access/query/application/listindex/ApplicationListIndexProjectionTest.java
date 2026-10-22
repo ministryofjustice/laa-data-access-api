@@ -280,6 +280,7 @@ class ApplicationListIndexProjectionTest {
   void givenGroupCreatedEvent_whenHandled_thenKeepsLeadUnlinkedAndLinksMembers() {
     UUID leadApplicationId = UUID.randomUUID();
     UUID memberApplicationId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-07-15T08:00:00Z");
     ApplicationListIndexReadModel lead =
         ApplicationListIndexReadModel.builder().applicationId(leadApplicationId).build();
@@ -287,10 +288,13 @@ class ApplicationListIndexProjectionTest {
         ApplicationListIndexReadModel.builder().applicationId(memberApplicationId).build();
     when(listIndexRepository.findById(leadApplicationId)).thenReturn(Optional.of(lead));
     when(listIndexRepository.findById(memberApplicationId)).thenReturn(Optional.of(member));
+    when(assignmentTracker.groupCreated(
+            assignmentStore, groupId, List.of(leadApplicationId, memberApplicationId)))
+        .thenReturn(List.of());
 
     projection.on(
         new LinkedApplicationGroupCreatedEvent(
-            UUID.randomUUID(),
+            groupId,
             leadApplicationId,
             List.of(leadApplicationId, memberApplicationId),
             occurredAt),
@@ -302,35 +306,42 @@ class ApplicationListIndexProjectionTest {
     assertThat(member.getModifiedAt()).isEqualTo(occurredAt);
     verify(listIndexRepository).save(lead);
     verify(listIndexRepository).save(member);
+    verify(assignmentTracker)
+        .groupCreated(assignmentStore, groupId, List.of(leadApplicationId, memberApplicationId));
   }
 
   @Test
   void givenMemberAddedToGroupEvent_whenHandled_thenLinksAddedMemberToLead() {
     UUID leadApplicationId = UUID.randomUUID();
     UUID memberApplicationId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-07-15T09:00:00Z");
     ApplicationListIndexReadModel member =
         ApplicationListIndexReadModel.builder().applicationId(memberApplicationId).build();
     when(listIndexRepository.findById(memberApplicationId)).thenReturn(Optional.of(member));
+    when(assignmentTracker.memberAdded(assignmentStore, groupId, memberApplicationId))
+        .thenReturn(List.of());
 
     projection.on(
-        new MemberAddedToGroupEvent(
-            UUID.randomUUID(), leadApplicationId, memberApplicationId, occurredAt),
+        new MemberAddedToGroupEvent(groupId, leadApplicationId, memberApplicationId, occurredAt),
         anyMessage());
 
     assertThat(member.getLeadApplicationId()).isEqualTo(leadApplicationId);
     assertThat(member.getModifiedAt()).isEqualTo(occurredAt);
     verify(listIndexRepository).save(member);
+    verify(assignmentTracker).memberAdded(assignmentStore, groupId, memberApplicationId);
   }
 
   @Test
   void givenMemberAddedToGroupEventForUnknownApplication_whenHandled_thenDoesNothing() {
     UUID memberApplicationId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
     when(listIndexRepository.findById(memberApplicationId)).thenReturn(Optional.empty());
+    when(assignmentTracker.memberAdded(assignmentStore, groupId, memberApplicationId))
+        .thenReturn(List.of());
 
     projection.on(
-        new MemberAddedToGroupEvent(
-            UUID.randomUUID(), UUID.randomUUID(), memberApplicationId, Instant.now()),
+        new MemberAddedToGroupEvent(groupId, UUID.randomUUID(), memberApplicationId, Instant.now()),
         anyMessage());
 
     verify(listIndexRepository, never()).save(any());
@@ -382,6 +393,7 @@ class ApplicationListIndexProjectionTest {
   @Test
   void givenMemberRemovedEvent_whenHandled_thenClearsItsLeadIndex() {
     UUID memberId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
     ApplicationListIndexReadModel member =
         ApplicationListIndexReadModel.builder()
             .applicationId(memberId)
@@ -392,18 +404,20 @@ class ApplicationListIndexProjectionTest {
 
     projection.on(
         new MemberRemovedFromGroupEvent(
-            UUID.randomUUID(), UUID.randomUUID(), memberId, 2L, null, 0L, occurredAt),
+            groupId, UUID.randomUUID(), memberId, 2L, null, 0L, occurredAt),
         anyMessage());
 
     assertThat(member.getLeadApplicationId()).isNull();
     assertThat(member.getModifiedAt()).isEqualTo(occurredAt);
     verify(listIndexRepository).save(member);
+    verify(assignmentTracker).membersLeft(assignmentStore, groupId, List.of(memberId), false);
   }
 
   @Test
   void givenDissolvedEvent_whenHandled_thenClearsEveryMemberLeadIndex() {
     UUID leadId = UUID.randomUUID();
     UUID removedId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
     ApplicationListIndexReadModel lead =
         ApplicationListIndexReadModel.builder().applicationId(leadId).build();
     ApplicationListIndexReadModel removed =
@@ -417,20 +431,15 @@ class ApplicationListIndexProjectionTest {
 
     projection.on(
         new LinkedApplicationGroupDissolvedEvent(
-            UUID.randomUUID(),
-            leadId,
-            removedId,
-            List.of(leadId, removedId),
-            2L,
-            null,
-            0L,
-            occurredAt),
+            groupId, leadId, removedId, List.of(leadId, removedId), 2L, null, 0L, occurredAt),
         anyMessage());
 
     assertThat(lead.getLeadApplicationId()).isNull();
     assertThat(removed.getLeadApplicationId()).isNull();
     verify(listIndexRepository).save(lead);
     verify(listIndexRepository).save(removed);
+    verify(assignmentTracker)
+        .membersLeft(assignmentStore, groupId, List.of(leadId, removedId), true);
   }
 
   // -------------------------------------------------------------------------

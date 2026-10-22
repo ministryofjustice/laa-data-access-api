@@ -102,6 +102,11 @@ public class ApplicationHistoryProjection {
                     null,
                     event.occurredAt(),
                     groupHistoryId(message, memberId)));
+    appendAssignmentChanges(
+        assignmentTracker.groupCreated(
+            assignmentStore, event.groupId(), event.memberApplicationIds()),
+        message,
+        event.occurredAt());
   }
 
   /** Appends an audit entry when an application joins an existing linked application group. */
@@ -114,6 +119,10 @@ public class ApplicationHistoryProjection {
         null,
         event.occurredAt(),
         groupHistoryId(message, event.memberId()));
+    appendAssignmentChanges(
+        assignmentTracker.memberAdded(assignmentStore, event.groupId(), event.memberId()),
+        message,
+        event.occurredAt());
   }
 
   /** Appends a history entry for both applications affected by a linked-group lead change. */
@@ -145,6 +154,8 @@ public class ApplicationHistoryProjection {
         null,
         event.occurredAt(),
         groupHistoryId(message, event.memberId()));
+    assignmentTracker.membersLeft(
+        assignmentStore, event.groupId(), List.of(event.memberId()), false);
   }
 
   /** Appends history entries for the member leaving and the dissolution of its former group. */
@@ -168,6 +179,8 @@ public class ApplicationHistoryProjection {
                     null,
                     event.occurredAt(),
                     groupHistoryId(message, applicationId)));
+    assignmentTracker.membersLeft(
+        assignmentStore, event.groupId(), event.memberApplicationIds(), true);
   }
 
   /** Appends a thin audit entry for an Application decision. */

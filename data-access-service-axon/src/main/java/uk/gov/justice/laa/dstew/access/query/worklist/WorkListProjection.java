@@ -22,6 +22,10 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupDissolvedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberRemovedFromGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.ApplicationAssignmentReclaimedFromGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.LinkedGroupAssignedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.LinkedGroupMemberAssignmentInheritedEvent;
@@ -251,6 +255,39 @@ public class WorkListProjection {
             .toList(),
         event.occurredAt(),
         message);
+  }
+
+  /** Tracks the members of a newly created group and applies any active assignment changes. */
+  @EventHandler
+  public void on(LinkedApplicationGroupCreatedEvent event, EventMessage message) {
+    applyAssignmentChanges(
+        assignmentTracker.groupCreated(
+            assignmentStore, event.groupId(), event.memberApplicationIds()),
+        event.occurredAt(),
+        message);
+  }
+
+  /** Tracks a newly joined member and applies its inherited group assignment if active. */
+  @EventHandler
+  public void on(MemberAddedToGroupEvent event, EventMessage message) {
+    applyAssignmentChanges(
+        assignmentTracker.memberAdded(assignmentStore, event.groupId(), event.memberId()),
+        event.occurredAt(),
+        message);
+  }
+
+  /** Releases membership tracking for a removed application. */
+  @EventHandler
+  public void on(MemberRemovedFromGroupEvent event) {
+    assignmentTracker.membersLeft(
+        assignmentStore, event.groupId(), List.of(event.memberId()), false);
+  }
+
+  /** Releases all membership tracking when the group dissolves. */
+  @EventHandler
+  public void on(LinkedApplicationGroupDissolvedEvent event) {
+    assignmentTracker.membersLeft(
+        assignmentStore, event.groupId(), event.memberApplicationIds(), true);
   }
 
   /** Applies tracker changes to existing application work-list rows only. */

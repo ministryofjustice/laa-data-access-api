@@ -1,87 +1,66 @@
 package uk.gov.justice.laa.dstew.access.command.worklist.assign;
 
-import java.util.List;
-import java.util.UUID;
-import org.axonframework.messaging.commandhandling.gateway.CommandGateway;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteResolver;
+import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.AssignLinkedGroupCommand;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.route.WorkItemRoute;
+import uk.gov.justice.laa.dstew.access.command.worklist.route.WorkItemRouteKind;
 import uk.gov.justice.laa.dstew.access.command.worklist.route.WorkItemRouteResolver;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 
-/** Transactional coordinator that dispatches assignments to their authoritative aggregate(s). */
+/** Coordinates assignment with the one aggregate that owns the work item's assignment. */
 @Service
+@RequiredArgsConstructor
 public class AssignWorkItemCoordinator {
   private final WorkItemRouteResolver routeResolver;
-  private final ApplicationGroupRouteResolver groupRouteResolver;
-  private final CommandGateway commandGateway;
-
-  /** Creates the coordinator with assignment validation, route resolution, and dispatch. */
-  public AssignWorkItemCoordinator(
-      WorkItemRouteResolver routeResolver,
-      ApplicationGroupRouteResolver groupRouteResolver,
-      CommandGateway commandGateway) {
-    this.routeResolver = routeResolver;
-    this.groupRouteResolver = groupRouteResolver;
-    this.commandGateway = commandGateway;
-  }
+  private final RetryingCommandDispatcher dispatcher;
 
   /**
-   * Dispatches the authenticated caseworker assignment to the direct authoritative aggregate.
-   *
-   * <p>For an Application that belongs to a linked group, the assignment is instead propagated to
-   * every member of the group so the group is handled by a single caseworker; the per-item expected
-   * assignment version is not checked in that case, since the pessimistic lock taken across the
-   * whole group is the concurrency guard.
+   * Locks the item's routes and dispatches one assignment command to its owning aggregate: the
+   * linked group for grouped applications, otherwise the item itself.
    */
   @Transactional
   @AllowApiCaseworker
   public void handle(AssignWorkItemCommand command) {
+    WorkItemRoute route = routeResolver.lockRoute(command.workItemId());
+    var ownerId =
+        route.getRouteKind() == WorkItemRouteKind.LINKED_GROUP
+            ? route.getGroupId()
+            : command.workItemId();
+    command.expectedAssignment().requireOwner(ownerId, command.workItemId());
+    long version = command.expectedAssignment().version();
 
-    WorkItemRoute route = routeResolver.resolveDirectRoute(command.workItemId());
-    command.expectedAssignment().requireOwner(command.workItemId(), command.workItemId());
     if (route.getWorkItemType() == WorkItemType.PRIOR_AUTHORITY) {
-      commandGateway.sendAndWait(
+      dispatcher.dispatch(
           new DirectPriorAuthorityWorkItemAssignmentCommand(
               command.workItemId(),
               command.caseworkerId(),
-              command.expectedAssignment().version(),
+              version,
               command.serialisedRequest(),
               command.eventDescription(),
               command.occurredAt()));
       return;
     }
-
-    var groupMemberApplicationIds =
-        groupRouteResolver.resolveGroupMembersForAssignment(command.workItemId());
-    if (groupMemberApplicationIds.isPresent()) {
-      assignGroup(groupMemberApplicationIds.get(), command);
+    if (route.getRouteKind() == WorkItemRouteKind.LINKED_GROUP) {
+      dispatcher.dispatch(
+          new AssignLinkedGroupCommand(
+              route.getGroupId(),
+              command.workItemId(),
+              command.caseworkerId(),
+              version,
+              command.occurredAt()));
       return;
     }
-
-    commandGateway.sendAndWait(
+    dispatcher.dispatch(
         new DirectWorkItemAssignmentCommand(
             command.workItemId(),
             command.caseworkerId(),
-            command.expectedAssignment().version(),
+            version,
             command.serialisedRequest(),
             command.eventDescription(),
             command.occurredAt()));
-  }
-
-  private void assignGroup(List<UUID> memberApplicationIds, AssignWorkItemCommand command) {
-    for (UUID memberApplicationId : memberApplicationIds) {
-      boolean isTargetedItem = memberApplicationId.equals(command.workItemId());
-      commandGateway.sendAndWait(
-          new DirectGroupWorkItemAssignmentCommand(
-              memberApplicationId,
-              command.caseworkerId(),
-              isTargetedItem ? command.expectedAssignment().version() : null,
-              command.serialisedRequest(),
-              command.eventDescription(),
-              command.occurredAt()));
-    }
   }
 }

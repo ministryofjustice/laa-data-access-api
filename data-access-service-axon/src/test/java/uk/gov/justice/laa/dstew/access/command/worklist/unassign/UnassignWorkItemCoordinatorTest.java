@@ -1,86 +1,129 @@
 package uk.gov.justice.laa.dstew.access.command.worklist.unassign;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
 import java.util.UUID;
-import org.axonframework.messaging.commandhandling.gateway.CommandGateway;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.UnassignLinkedGroupCommand;
 import uk.gov.justice.laa.dstew.access.command.worklist.ExpectedAssignment;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.route.WorkItemRoute;
 import uk.gov.justice.laa.dstew.access.command.worklist.route.WorkItemRouteKind;
 import uk.gov.justice.laa.dstew.access.command.worklist.route.WorkItemRouteResolver;
+import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 
+@ExtendWith(MockitoExtension.class)
 class UnassignWorkItemCoordinatorTest {
+  private static final Instant OCCURRED_AT = Instant.parse("2026-09-01T10:00:00Z");
+  private static final String SERIALISED_REQUEST = "{}";
+  private static final String EVENT_DESCRIPTION = "Unassigned";
+
+  @Mock private WorkItemRouteResolver routeResolver;
+  @Mock private RetryingCommandDispatcher dispatcher;
+  @InjectMocks private UnassignWorkItemCoordinator coordinator;
+
   @Test
-  void dispatchesAnApplicationUnassignmentToItsDirectAggregate() {
-    WorkItemRouteResolver routes = mock(WorkItemRouteResolver.class);
-    CommandGateway gateway = mock(CommandGateway.class);
-    UnassignWorkItemCoordinator handler = new UnassignWorkItemCoordinator(routes, gateway);
-    UUID id = UUID.randomUUID();
-    Instant occurredAt = Instant.parse("2026-09-01T10:00:00Z");
-    when(routes.resolveDirectRoute(id)).thenReturn(route(WorkItemType.APPLICATION, id, occurredAt));
+  void givenStandaloneApplication_whenUnassigned_thenDispatchesDirectUnassignment() {
+    UUID applicationId = UUID.randomUUID();
+    when(routeResolver.lockRoute(applicationId))
+        .thenReturn(
+            route(applicationId, WorkItemType.APPLICATION, WorkItemRouteKind.STANDALONE, null));
 
-    handler.handle(
-        new UnassignWorkItemCommand(
-            id, new ExpectedAssignment(id, 1L), "{}", "Unassigned", occurredAt));
+    coordinator.handle(command(applicationId, applicationId, 1L));
 
-    verify(gateway)
-        .sendAndWait(new DirectWorkItemUnassignmentCommand(id, 1L, "{}", "Unassigned", occurredAt));
+    verify(dispatcher)
+        .dispatch(
+            new DirectWorkItemUnassignmentCommand(
+                applicationId, 1L, SERIALISED_REQUEST, EVENT_DESCRIPTION, OCCURRED_AT));
   }
 
   @Test
-  void dispatchesPriorAuthorityUnassignmentToItsDirectAggregate() {
-    WorkItemRouteResolver routes = mock(WorkItemRouteResolver.class);
-    CommandGateway gateway = mock(CommandGateway.class);
-    UnassignWorkItemCoordinator handler = new UnassignWorkItemCoordinator(routes, gateway);
-    UUID id = UUID.randomUUID();
-    Instant occurredAt = Instant.parse("2026-09-01T10:00:00Z");
-    when(routes.resolveDirectRoute(id))
-        .thenReturn(route(WorkItemType.PRIOR_AUTHORITY, id, occurredAt));
+  void givenPriorAuthority_whenUnassigned_thenDispatchesPriorAuthorityUnassignment() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    when(routeResolver.lockRoute(priorAuthorityId))
+        .thenReturn(
+            route(
+                priorAuthorityId,
+                WorkItemType.PRIOR_AUTHORITY,
+                WorkItemRouteKind.STANDALONE,
+                null));
 
-    handler.handle(
-        new UnassignWorkItemCommand(
-            id, new ExpectedAssignment(id, 1L), "{}", "Unassigned", occurredAt));
+    coordinator.handle(command(priorAuthorityId, priorAuthorityId, 1L));
 
-    verify(gateway)
-        .sendAndWait(
+    verify(dispatcher)
+        .dispatch(
             new DirectPriorAuthorityWorkItemUnassignmentCommand(
-                id, 1L, "{}", "Unassigned", occurredAt));
+                priorAuthorityId, 1L, SERIALISED_REQUEST, EVENT_DESCRIPTION, OCCURRED_AT));
   }
 
   @Test
-  void givenTokenForAnotherOwner_whenHandled_thenStaleWithoutDispatch() {
-    WorkItemRouteResolver routes = mock(WorkItemRouteResolver.class);
-    CommandGateway gateway = mock(CommandGateway.class);
-    UnassignWorkItemCoordinator handler = new UnassignWorkItemCoordinator(routes, gateway);
-    UUID id = UUID.randomUUID();
-    UUID otherOwnerId = UUID.randomUUID();
-    Instant occurredAt = Instant.parse("2026-09-01T10:00:00Z");
-    when(routes.resolveDirectRoute(id)).thenReturn(route(WorkItemType.APPLICATION, id, occurredAt));
+  void givenGroupedApplication_whenUnassigned_thenDispatchesOneGroupCommand() {
+    UUID applicationId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    when(routeResolver.lockRoute(applicationId))
+        .thenReturn(
+            route(
+                applicationId, WorkItemType.APPLICATION, WorkItemRouteKind.LINKED_GROUP, groupId));
 
-    assertThatThrownBy(
-            () ->
-                handler.handle(
-                    new UnassignWorkItemCommand(
-                        id,
-                        new ExpectedAssignment(otherOwnerId, 1L),
-                        "{}",
-                        "Unassigned",
-                        occurredAt)))
-        .isInstanceOf(WorkItemAssignmentConflictException.class)
-        .hasMessage("Work item " + id + " cannot be updated: the assignment version is stale");
+    coordinator.handle(command(applicationId, groupId, 3L));
 
-    verify(gateway, never()).sendAndWait(org.mockito.ArgumentMatchers.any());
+    verify(dispatcher)
+        .dispatch(new UnassignLinkedGroupCommand(groupId, applicationId, 3L, OCCURRED_AT));
+    verifyNoMoreInteractions(dispatcher);
   }
 
-  private WorkItemRoute route(WorkItemType type, UUID id, Instant occurredAt) {
-    return new WorkItemRoute(type, id, WorkItemRouteKind.STANDALONE, null, 0L, occurredAt);
+  @Test
+  void givenItemTokenForGroupedApplication_whenUnassigned_thenStaleWithoutDispatch() {
+    UUID applicationId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    when(routeResolver.lockRoute(applicationId))
+        .thenReturn(
+            route(
+                applicationId, WorkItemType.APPLICATION, WorkItemRouteKind.LINKED_GROUP, groupId));
+
+    assertThatThrownBy(() -> coordinator.handle(command(applicationId, applicationId, 3L)))
+        .isInstanceOf(WorkItemAssignmentConflictException.class)
+        .hasMessage(
+            "Work item " + applicationId + " cannot be updated: the assignment version is stale");
+
+    verifyNoInteractions(dispatcher);
+  }
+
+  @Test
+  void givenUnknownWorkItem_whenUnassigned_thenNotFoundWithoutDispatch() {
+    UUID applicationId = UUID.randomUUID();
+    when(routeResolver.lockRoute(applicationId))
+        .thenThrow(new ResourceNotFoundException("No work-item route found for " + applicationId));
+
+    assertThatThrownBy(() -> coordinator.handle(command(applicationId, applicationId, 0L)))
+        .isInstanceOf(ResourceNotFoundException.class)
+        .hasMessage("No work-item route found for " + applicationId);
+
+    verifyNoInteractions(dispatcher);
+  }
+
+  private UnassignWorkItemCommand command(UUID workItemId, UUID ownerId, long version) {
+    return new UnassignWorkItemCommand(
+        workItemId,
+        new ExpectedAssignment(ownerId, version),
+        SERIALISED_REQUEST,
+        EVENT_DESCRIPTION,
+        OCCURRED_AT);
+  }
+
+  private WorkItemRoute route(
+      UUID workItemId, WorkItemType type, WorkItemRouteKind kind, UUID groupId) {
+    return new WorkItemRoute(type, workItemId, kind, groupId, 0L, OCCURRED_AT);
   }
 }

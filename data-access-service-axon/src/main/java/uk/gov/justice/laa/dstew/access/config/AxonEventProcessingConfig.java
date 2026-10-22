@@ -27,11 +27,6 @@ public class AxonEventProcessingConfig {
   }
 
   @Bean
-  EventProcessorDefinition linkedGroupWorkItemLifecycleProcessor() {
-    return pooledStreamingProcessor("linked-group-work-item-lifecycle");
-  }
-
-  @Bean
   EventProcessorDefinition priorAuthorityProjectionProcessor() {
     return pooledStreamingProcessor("prior-authority-projection");
   }
@@ -64,14 +59,6 @@ public class AxonEventProcessingConfig {
   @Bean
   EventProcessorDefinition applicationSubmittedPublisherProcessor() {
     return EventProcessorDefinition.subscribingMatching("application-submitted-publisher")
-        .customized(
-            configuration -> configuration.errorHandler(PropagatingErrorHandler.instance()));
-  }
-
-  /** Handles linked group assignment synchronization synchronously within the event transaction. */
-  @Bean
-  EventProcessorDefinition linkedGroupAssignmentProcessor() {
-    return EventProcessorDefinition.subscribingMatching("linkedGroupAssignment")
         .customized(
             configuration -> configuration.errorHandler(PropagatingErrorHandler.instance()));
   }

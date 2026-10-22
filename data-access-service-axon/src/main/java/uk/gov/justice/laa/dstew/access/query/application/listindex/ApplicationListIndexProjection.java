@@ -111,6 +111,11 @@ public class ApplicationListIndexProjection {
                         : event.leadApplicationId(),
                     event.occurredAt(),
                     message));
+    applyAssignmentChanges(
+        assignmentTracker.groupCreated(
+            assignmentStore, event.groupId(), event.memberApplicationIds()),
+        event.occurredAt(),
+        message);
   }
 
   /** Updates the added member index row when it joins an existing linked group explicitly. */
@@ -118,6 +123,10 @@ public class ApplicationListIndexProjection {
   public void on(MemberAddedToGroupEvent event, EventMessage message) {
     updateLeadApplicationId(
         event.memberId(), event.leadApplicationId(), event.occurredAt(), message);
+    applyAssignmentChanges(
+        assignmentTracker.memberAdded(assignmentStore, event.groupId(), event.memberId()),
+        event.occurredAt(),
+        message);
   }
 
   /** Updates every list-index row affected by a linked-group lead change. */
@@ -143,6 +152,8 @@ public class ApplicationListIndexProjection {
   @EventHandler
   public void on(MemberRemovedFromGroupEvent event, EventMessage message) {
     updateLeadApplicationId(event.memberId(), null, event.occurredAt(), message);
+    assignmentTracker.membersLeft(
+        assignmentStore, event.groupId(), List.of(event.memberId()), false);
   }
 
   /** Clears list-index lead references when a group is dissolved. */
@@ -151,6 +162,8 @@ public class ApplicationListIndexProjection {
     event
         .memberApplicationIds()
         .forEach(memberId -> updateLeadApplicationId(memberId, null, event.occurredAt(), message));
+    assignmentTracker.membersLeft(
+        assignmentStore, event.groupId(), event.memberApplicationIds(), true);
   }
 
   /**

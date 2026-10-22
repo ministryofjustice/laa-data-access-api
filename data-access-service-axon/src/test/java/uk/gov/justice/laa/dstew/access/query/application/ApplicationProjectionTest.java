@@ -672,6 +672,9 @@ class ApplicationProjectionTest {
         ApplicationReadModel.builder().applicationId(memberApplicationId).build();
     when(applicationReadRepository.findById(leadApplicationId)).thenReturn(Optional.of(lead));
     when(applicationReadRepository.findById(memberApplicationId)).thenReturn(Optional.of(member));
+    when(assignmentTracker.groupCreated(
+            assignmentStore, groupId, List.of(leadApplicationId, memberApplicationId)))
+        .thenReturn(List.of());
 
     projection.on(
         new LinkedApplicationGroupCreatedEvent(
@@ -688,6 +691,8 @@ class ApplicationProjectionTest {
     assertThat(member.getModifiedAt()).isEqualTo(occurredAt);
     verify(applicationReadRepository).save(lead);
     verify(applicationReadRepository).save(member);
+    verify(assignmentTracker)
+        .groupCreated(assignmentStore, groupId, List.of(leadApplicationId, memberApplicationId));
   }
 
   @Test
@@ -699,6 +704,8 @@ class ApplicationProjectionTest {
     ApplicationReadModel member =
         ApplicationReadModel.builder().applicationId(memberApplicationId).build();
     when(applicationReadRepository.findById(memberApplicationId)).thenReturn(Optional.of(member));
+    when(assignmentTracker.memberAdded(assignmentStore, groupId, memberApplicationId))
+        .thenReturn(List.of());
 
     projection.on(
         new MemberAddedToGroupEvent(groupId, leadApplicationId, memberApplicationId, occurredAt));
@@ -707,6 +714,7 @@ class ApplicationProjectionTest {
     assertThat(member.getLinkedGroupId()).isEqualTo(groupId);
     assertThat(member.getModifiedAt()).isEqualTo(occurredAt);
     verify(applicationReadRepository).save(member);
+    verify(assignmentTracker).memberAdded(assignmentStore, groupId, memberApplicationId);
   }
 
   @Test
@@ -758,6 +766,7 @@ class ApplicationProjectionTest {
     assertThat(member.getLeadApplicationId()).isNull();
     assertThat(member.getModifiedAt()).isEqualTo(occurredAt);
     verify(applicationReadRepository).save(member);
+    verify(assignmentTracker).membersLeft(assignmentStore, groupId, List.of(memberId), false);
   }
 
   @Test
@@ -783,6 +792,8 @@ class ApplicationProjectionTest {
     assertThat(removed.getLeadApplicationId()).isNull();
     verify(applicationReadRepository).save(lead);
     verify(applicationReadRepository).save(removed);
+    verify(assignmentTracker)
+        .membersLeft(assignmentStore, groupId, List.of(leadId, removedId), true);
   }
 
   @Test
