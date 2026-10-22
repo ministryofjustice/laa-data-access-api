@@ -16,7 +16,7 @@ import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 /** Secured transactional coordinator for explicit application-link commands. */
 @Service
 @RequiredArgsConstructor
-public class LinkApplicationCommandHandler {
+public class LinkApplicationCoordinator {
   private final ApplicationGroupRouteResolver routeResolver;
   private final RetryingCommandDispatcher dispatcher;
 

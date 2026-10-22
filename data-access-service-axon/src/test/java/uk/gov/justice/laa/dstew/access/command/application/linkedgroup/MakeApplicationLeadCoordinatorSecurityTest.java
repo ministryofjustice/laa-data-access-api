@@ -18,12 +18,12 @@ import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.App
 import uk.gov.justice.laa.dstew.access.utils.BaseSecuredUseCaseTest;
 import uk.gov.justice.laa.dstew.access.utils.TestSecurityConfig;
 
-@SpringBootTest(classes = {MakeApplicationLeadCommandHandler.class, TestSecurityConfig.class})
+@SpringBootTest(classes = {MakeApplicationLeadCoordinator.class, TestSecurityConfig.class})
 @ImportAutoConfiguration(
     exclude = {DataSourceAutoConfiguration.class, HibernateJpaAutoConfiguration.class})
-class MakeApplicationLeadCommandHandlerSecurityTest extends BaseSecuredUseCaseTest {
+class MakeApplicationLeadCoordinatorSecurityTest extends BaseSecuredUseCaseTest {
 
-  @Autowired private MakeApplicationLeadCommandHandler handler;
+  @Autowired private MakeApplicationLeadCoordinator handler;
 
   @MockitoBean private ApplicationGroupRouteResolver routeResolver;
   @MockitoBean private RetryingCommandDispatcher dispatcher;

@@ -5,8 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
-import org.axonframework.eventsourcing.configuration.EventSourcedEntityModule;
-import org.axonframework.eventsourcing.configuration.EventSourcingConfigurer;
 import org.axonframework.test.fixture.AxonTestFixture;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -16,6 +14,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationLinkConflictException;
 import uk.gov.justice.laa.dstew.access.exception.LinkedApplicationGroupVersionConflictException;
+import uk.gov.justice.laa.dstew.access.testutils.LinkedGroupTestFixture;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 class LinkedApplicationGroupAggregateTest {
@@ -24,12 +23,7 @@ class LinkedApplicationGroupAggregateTest {
 
   @BeforeEach
   void setUp() {
-    fixture =
-        AxonTestFixture.with(
-            EventSourcingConfigurer.create()
-                .registerEntity(
-                    EventSourcedEntityModule.autodetected(
-                        UUID.class, LinkedApplicationGroupAggregate.class)));
+    fixture = LinkedGroupTestFixture.linkedGroupFixture();
   }
 
   @Test

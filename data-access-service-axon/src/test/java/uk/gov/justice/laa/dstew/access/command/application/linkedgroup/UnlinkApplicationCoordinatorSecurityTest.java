@@ -18,18 +18,18 @@ import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.App
 import uk.gov.justice.laa.dstew.access.utils.BaseSecuredUseCaseTest;
 import uk.gov.justice.laa.dstew.access.utils.TestSecurityConfig;
 
-@SpringBootTest(classes = {LinkApplicationCommandHandler.class, TestSecurityConfig.class})
+@SpringBootTest(classes = {UnlinkApplicationCoordinator.class, TestSecurityConfig.class})
 @ImportAutoConfiguration(
     exclude = {DataSourceAutoConfiguration.class, HibernateJpaAutoConfiguration.class})
-class LinkApplicationCommandHandlerSecurityTest extends BaseSecuredUseCaseTest {
+class UnlinkApplicationCoordinatorSecurityTest extends BaseSecuredUseCaseTest {
 
-  @Autowired private LinkApplicationCommandHandler handler;
+  @Autowired private UnlinkApplicationCoordinator handler;
 
   @MockitoBean private ApplicationGroupRouteResolver routeResolver;
   @MockitoBean private RetryingCommandDispatcher dispatcher;
 
   @Test
-  void givenNoRole_whenHandle_thenThrowsAuthorizationDeniedException() {
+  void givenNoRole_whenHandled_thenThrowsAuthorizationDeniedException() {
     setSecurityContext(NO_ROLE);
 
     assertDenied();
@@ -38,7 +38,7 @@ class LinkApplicationCommandHandlerSecurityTest extends BaseSecuredUseCaseTest {
   }
 
   @Test
-  void givenBlankAuthenticatedName_whenHandle_thenThrowsAuthorizationDeniedException() {
+  void givenBlankAuthenticatedName_whenHandled_thenThrowsAuthorizationDeniedException() {
     setSecurityContextWithName(" ", CASEWORKER_ROLE);
 
     assertDenied();
@@ -48,12 +48,14 @@ class LinkApplicationCommandHandlerSecurityTest extends BaseSecuredUseCaseTest {
 
   private void assertDenied() {
     assertThatExceptionOfType(AuthorizationDeniedException.class)
-        .isThrownBy(() -> handler.handle(linkCommand()))
+        .isThrownBy(() -> handler.handle(command()))
         .withMessageContaining("Access Denied");
   }
 
-  private LinkApplicationCommand linkCommand() {
-    return new LinkApplicationCommand(
-        UUID.randomUUID(), UUID.randomUUID(), LinkType.FAMILY, null, Instant.now());
+  private UnlinkApplicationCommand command() {
+    return new UnlinkApplicationCommand(
+        UUID.randomUUID(),
+        new ExpectedLinkedGroup(UUID.randomUUID(), 0),
+        Instant.parse("2026-09-14T15:00:00Z"));
   }
 }

@@ -7,9 +7,10 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class MakeApplicationLeadUseCase {
-  private final MakeApplicationLeadCommandHandler commandHandler;
+  private final MakeApplicationLeadCoordinator coordinator;
 
+  /** Executes the command to make a linked-group member its lead. */
   public void execute(MakeApplicationLeadCommand command) {
-    commandHandler.handle(command);
+    coordinator.handle(command);
   }
 }

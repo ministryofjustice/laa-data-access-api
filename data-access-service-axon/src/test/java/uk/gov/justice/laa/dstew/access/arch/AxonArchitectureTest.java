@@ -13,6 +13,7 @@ import com.tngtech.archunit.lang.ArchRule;
 import com.tngtech.archunit.lang.ConditionEvents;
 import com.tngtech.archunit.lang.SimpleConditionEvent;
 import org.axonframework.extension.spring.stereotype.EventSourced;
+import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
 import org.axonframework.messaging.commandhandling.gateway.CommandGateway;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.junit.jupiter.api.Test;
@@ -177,13 +178,41 @@ class AxonArchitectureTest {
     ArchRule rule =
         noClasses()
             .that()
-            .haveSimpleName("LinkApplicationCommandHandler")
+            .haveSimpleName("LinkApplicationCoordinator")
             .or()
             .haveSimpleName("ApplicationGroupRouteResolver")
             .should()
             .dependOnClassesThat()
             .resideInAPackage("..query..")
             .allowEmptyShould(true);
+    rule.check(classes);
+  }
+
+  @Test
+  void givenCommandHandlerClasses_whenImported_thenEachDeclaresAxonHandler() {
+    ArchCondition<JavaClass> declareAxonCommandHandler =
+        new ArchCondition<>("declare a method annotated with @CommandHandler") {
+          @Override
+          public void check(JavaClass javaClass, ConditionEvents events) {
+            boolean declaresAxonHandler =
+                javaClass.getMethods().stream()
+                    .anyMatch(method -> method.isAnnotatedWith(CommandHandler.class));
+            events.add(
+                new SimpleConditionEvent(
+                    javaClass,
+                    declaresAxonHandler,
+                    declaresAxonHandler
+                        ? javaClass.getName() + " declares an Axon @CommandHandler"
+                        : javaClass.getName()
+                            + " does not declare a method annotated with @CommandHandler"));
+          }
+        };
+
+    ArchRule rule =
+        classes()
+            .that()
+            .haveSimpleNameEndingWith("CommandHandler")
+            .should(declareAxonCommandHandler);
     rule.check(classes);
   }
 }

@@ -5,14 +5,15 @@ import org.springframework.stereotype.Service;
 /** Controller-facing use case for assigning a work item. */
 @Service
 public class AssignWorkItemUseCase {
-  private final AssignWorkItemCommandHandler commandHandler;
+  private final AssignWorkItemCoordinator coordinator;
 
-  public AssignWorkItemUseCase(AssignWorkItemCommandHandler commandHandler) {
-    this.commandHandler = commandHandler;
+  /** Creates the use case with its transactional coordinator. */
+  public AssignWorkItemUseCase(AssignWorkItemCoordinator coordinator) {
+    this.coordinator = coordinator;
   }
 
   /** Assigns a work item using its authoritative aggregate route. */
   public void execute(AssignWorkItemCommand command) {
-    commandHandler.handle(command);
+    coordinator.handle(command);
   }
 }
