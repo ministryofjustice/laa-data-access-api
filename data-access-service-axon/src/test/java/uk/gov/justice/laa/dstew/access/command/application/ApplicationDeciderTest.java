@@ -229,7 +229,8 @@ class ApplicationDeciderTest {
                 null,
                 "{}",
                 "desc",
-                occurredAt),
+                occurredAt,
+                null),
             current);
 
     assertThat(event.applicationId()).isEqualTo(applicationId);
@@ -254,7 +255,8 @@ class ApplicationDeciderTest {
             null,
             "{}",
             null,
-            TIMESTAMP);
+            TIMESTAMP,
+            null);
     ApplicationDataPayload current = payloadWithProceeding(applicationId, UUID.randomUUID());
 
     assertThatThrownBy(() -> ApplicationDecider.decideDecision(state, command, current))
@@ -267,7 +269,7 @@ class ApplicationDeciderTest {
     ApplicationState state = stateAfterCreate(applicationId, "fp", 1);
     MakeApplicationDecisionCommand command =
         new MakeApplicationDecisionCommand(
-            applicationId, null, 0L, "REFUSED", List.of(), null, "{}", null, TIMESTAMP);
+            applicationId, null, 0L, "REFUSED", List.of(), null, "{}", null, TIMESTAMP, null);
     ApplicationDataPayload current = payloadWithProceeding(applicationId, UUID.randomUUID());
 
     assertThatThrownBy(() -> ApplicationDecider.decideDecision(state, command, current))
@@ -289,7 +291,8 @@ class ApplicationDeciderTest {
             null, // missing certificate
             "{}",
             null,
-            TIMESTAMP);
+            TIMESTAMP,
+            null);
     ApplicationDataPayload current = payloadWithProceeding(applicationId, proceedingId);
 
     assertThatThrownBy(() -> ApplicationDecider.decideDecision(state, command, current))
@@ -312,7 +315,8 @@ class ApplicationDeciderTest {
             null,
             "{}",
             null,
-            TIMESTAMP);
+            TIMESTAMP,
+            null);
     ApplicationDataPayload current = payloadWithProceeding(applicationId, knownProceedingId);
 
     assertThatThrownBy(() -> ApplicationDecider.decideDecision(state, command, current))
@@ -336,7 +340,8 @@ class ApplicationDeciderTest {
             null,
             "{}",
             null,
-            TIMESTAMP);
+            TIMESTAMP,
+            null);
     ApplicationDataPayload current = payloadWithProceeding(applicationId, proceedingId);
 
     assertThatThrownBy(() -> ApplicationDecider.decideDecision(state, command, current))
@@ -355,7 +360,16 @@ class ApplicationDeciderTest {
     ApplicationDecider.validateManualDecisionAssignment(
         state,
         new MakeApplicationDecisionCommand(
-            applicationId, caseworkerId, 0L, "REFUSED", List.of(), null, "{}", null, TIMESTAMP));
+            applicationId,
+            caseworkerId,
+            0L,
+            "REFUSED",
+            List.of(),
+            null,
+            "{}",
+            null,
+            TIMESTAMP,
+            null));
   }
 
   @Test
@@ -379,7 +393,8 @@ class ApplicationDeciderTest {
                         null,
                         "{}",
                         null,
-                        TIMESTAMP)))
+                        TIMESTAMP,
+                        null)))
         .isInstanceOf(WorkItemAssignmentConflictException.class);
   }
 

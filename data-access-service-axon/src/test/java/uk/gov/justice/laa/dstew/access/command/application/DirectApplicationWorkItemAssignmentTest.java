@@ -60,7 +60,8 @@ class DirectApplicationWorkItemAssignmentTest {
     Instant when = Instant.parse("2026-08-28T10:00:00Z");
     fixture
         .given()
-        .events(created(id, when), new ApplicationReadyForManualAssessmentEvent(id, 1L, 1L, when))
+        .events(
+            created(id, when), new ApplicationReadyForManualAssessmentEvent(id, 1L, 1L, 0L, when))
         .when()
         .command(new DirectWorkItemAssignmentCommand(id, caseworkerId, 0L, "{}", "Assigned", when))
         .then()
@@ -75,7 +76,8 @@ class DirectApplicationWorkItemAssignmentTest {
     Instant when = Instant.parse("2026-08-28T10:00:00Z");
     fixture
         .given()
-        .events(created(id, when), new ApplicationReadyForManualAssessmentEvent(id, 1L, 1L, when))
+        .events(
+            created(id, when), new ApplicationReadyForManualAssessmentEvent(id, 1L, 1L, 0L, when))
         .when()
         .command(new DirectWorkItemAssignmentCommand(id, caseworkerId, 1L, "{}", "", when))
         .then()
@@ -84,7 +86,8 @@ class DirectApplicationWorkItemAssignmentTest {
 
     fixture
         .given()
-        .events(created(id, when), new ApplicationReadyForManualAssessmentEvent(id, 1L, 1L, when))
+        .events(
+            created(id, when), new ApplicationReadyForManualAssessmentEvent(id, 1L, 1L, 0L, when))
         .when()
         .command(new DirectWorkItemUnassignmentCommand(id, 0L, "{}", "", when))
         .then()
@@ -100,7 +103,7 @@ class DirectApplicationWorkItemAssignmentTest {
 
     ApplicationAggregate active = new ApplicationAggregate();
     active.on(created(id, when));
-    active.on(new ApplicationReadyForManualAssessmentEvent(id, 1L, 1L, when));
+    active.on(new ApplicationReadyForManualAssessmentEvent(id, 1L, 1L, 0L, when));
     active.on(new WorkItemAssigned(id, WorkItemType.APPLICATION, 1L, 1L, caseworkerId, when));
     assertThatThrownBy(
             () ->

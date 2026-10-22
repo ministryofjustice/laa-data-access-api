@@ -74,7 +74,8 @@ class WorkListProjectionTest {
 
     Instant occurredAt = Instant.parse("2026-08-28T10:00:00Z");
     projection.on(
-        new ApplicationReadyForManualAssessmentEvent(applicationId, 3L, 5L, occurredAt), message());
+        new ApplicationReadyForManualAssessmentEvent(applicationId, 3L, 5L, 0L, occurredAt),
+        message());
 
     ArgumentCaptor<WorkListItemReadModel> captor =
         ArgumentCaptor.forClass(WorkListItemReadModel.class);
@@ -199,7 +200,7 @@ class WorkListProjectionTest {
 
     projection.on(
         new ApplicationReadyForManualAssessmentEvent(
-            applicationId, 3L, 5L, Instant.parse("2026-08-28T10:00:00Z")),
+            applicationId, 3L, 5L, 0L, Instant.parse("2026-08-28T10:00:00Z")),
         message());
 
     ArgumentCaptor<WorkListItemReadModel> captor =
@@ -246,7 +247,7 @@ class WorkListProjectionTest {
 
     projection.on(
         new ApplicationReadyForManualAssessmentEvent(
-            applicationId, 3L, 5L, Instant.parse("2026-08-28T10:00:00Z")),
+            applicationId, 3L, 5L, 0L, Instant.parse("2026-08-28T10:00:00Z")),
         message());
 
     ArgumentCaptor<WorkListItemReadModel> captor =

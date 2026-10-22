@@ -10,6 +10,8 @@ import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftStartedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.ApplicationAssignmentDelegatedToGroupEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.ApplicationAssignmentReclaimedFromGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
@@ -85,6 +87,16 @@ public class ApplicationAggregate {
 
   @EventSourcingHandler
   void on(ApplicationDecisionMadeEvent event) {
+    ApplicationEvolve.apply(state, event);
+  }
+
+  @EventSourcingHandler
+  void on(ApplicationAssignmentDelegatedToGroupEvent event) {
+    ApplicationEvolve.apply(state, event);
+  }
+
+  @EventSourcingHandler
+  void on(ApplicationAssignmentReclaimedFromGroupEvent event) {
     ApplicationEvolve.apply(state, event);
   }
 

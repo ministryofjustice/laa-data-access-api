@@ -43,6 +43,7 @@ public class MarkApplicationReadyCommandHandler {
             command.applicationId(),
             nextApplicationVersion,
             nextDataVersion,
+            application.getState().getAssignmentVersion(),
             command.occurredAt()));
     return result;
   }

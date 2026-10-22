@@ -49,7 +49,8 @@ class DirectGroupWorkItemAssignmentTest {
     Instant when = Instant.parse("2026-08-28T10:00:00Z");
     fixture
         .given()
-        .events(created(id, when), new ApplicationReadyForManualAssessmentEvent(id, 1L, 1L, when))
+        .events(
+            created(id, when), new ApplicationReadyForManualAssessmentEvent(id, 1L, 1L, 0L, when))
         .when()
         .command(
             new DirectGroupWorkItemAssignmentCommand(
@@ -67,7 +68,7 @@ class DirectGroupWorkItemAssignmentTest {
     Instant when = Instant.parse("2026-08-28T10:00:00Z");
     ApplicationAggregate aggregate = new ApplicationAggregate();
     aggregate.on(created(id, when));
-    aggregate.on(new ApplicationReadyForManualAssessmentEvent(id, 1L, 1L, when));
+    aggregate.on(new ApplicationReadyForManualAssessmentEvent(id, 1L, 1L, 0L, when));
     aggregate.on(
         new WorkItemAssigned(id, WorkItemType.APPLICATION, 1L, 1L, previousCaseworkerId, when));
 
@@ -91,7 +92,7 @@ class DirectGroupWorkItemAssignmentTest {
     Instant when = Instant.parse("2026-08-28T10:00:00Z");
     ApplicationAggregate aggregate = new ApplicationAggregate();
     aggregate.on(created(id, when));
-    aggregate.on(new ApplicationReadyForManualAssessmentEvent(id, 1L, 1L, when));
+    aggregate.on(new ApplicationReadyForManualAssessmentEvent(id, 1L, 1L, 0L, when));
     aggregate.on(new WorkItemAssigned(id, WorkItemType.APPLICATION, 1L, 1L, caseworkerId, when));
 
     EventAppender appender = mock(EventAppender.class);
@@ -110,7 +111,7 @@ class DirectGroupWorkItemAssignmentTest {
     Instant when = Instant.parse("2026-08-28T10:00:00Z");
     ApplicationAggregate aggregate = new ApplicationAggregate();
     aggregate.on(created(id, when));
-    aggregate.on(new ApplicationReadyForManualAssessmentEvent(id, 1L, 1L, when));
+    aggregate.on(new ApplicationReadyForManualAssessmentEvent(id, 1L, 1L, 0L, when));
     aggregate.on(
         new WorkItemAssigned(id, WorkItemType.APPLICATION, 1L, 1L, previousCaseworkerId, when));
 
@@ -133,7 +134,7 @@ class DirectGroupWorkItemAssignmentTest {
     Instant when = Instant.parse("2026-08-28T10:00:00Z");
     ApplicationAggregate aggregate = new ApplicationAggregate();
     aggregate.on(created(id, when));
-    aggregate.on(new ApplicationReadyForManualAssessmentEvent(id, 1L, 1L, when));
+    aggregate.on(new ApplicationReadyForManualAssessmentEvent(id, 1L, 1L, 0L, when));
     aggregate.on(
         new WorkItemAssigned(id, WorkItemType.APPLICATION, 1L, 1L, previousCaseworkerId, when));
 
@@ -157,7 +158,7 @@ class DirectGroupWorkItemAssignmentTest {
     UUID decidedId = UUID.randomUUID();
     ApplicationAggregate decided = new ApplicationAggregate();
     decided.on(created(decidedId, when));
-    decided.on(new ApplicationReadyForManualAssessmentEvent(decidedId, 1L, 1L, when));
+    decided.on(new ApplicationReadyForManualAssessmentEvent(decidedId, 1L, 1L, 0L, when));
     decided.on(
         new ApplicationDecisionMadeEvent(
             decidedId, 2L, 2L, "GRANTED", AutoGrantedState.MANUAL, when));

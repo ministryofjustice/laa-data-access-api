@@ -50,6 +50,7 @@ class MakeDecisionCommandMapperTest {
 
     assertThat(command.applicationId()).isEqualTo(applicationId);
     assertThat(command.caseworkerId()).isEqualTo(caseworkerId);
+    assertThat(command.groupAssigneeValidatedFor()).isNull();
     assertThat(command.expectedApplicationVersion()).isEqualTo(3L);
     assertThat(command.overallDecision()).isEqualTo("REFUSED");
     assertThat(command.certificate()).containsEntry("reference", "CERT-1");
@@ -82,6 +83,7 @@ class MakeDecisionCommandMapperTest {
 
     assertThat(command.proceedings()).isEmpty();
     assertThat(command.eventDescription()).isNull();
+    assertThat(command.groupAssigneeValidatedFor()).isNull();
   }
 
   @Test

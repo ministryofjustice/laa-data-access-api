@@ -40,6 +40,7 @@ class MakeApplicationDecisionUseCaseTest {
         null,
         "{}",
         "decision",
-        Instant.now());
+        Instant.now(),
+        null);
   }
 }

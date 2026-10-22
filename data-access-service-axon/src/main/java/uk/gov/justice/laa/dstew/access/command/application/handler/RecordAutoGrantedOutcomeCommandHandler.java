@@ -83,6 +83,7 @@ public class RecordAutoGrantedOutcomeCommandHandler {
         command.certificate(),
         command.serialisedRequest(),
         "Autogranted",
-        command.occurredAt());
+        command.occurredAt(),
+        null);
   }
 }

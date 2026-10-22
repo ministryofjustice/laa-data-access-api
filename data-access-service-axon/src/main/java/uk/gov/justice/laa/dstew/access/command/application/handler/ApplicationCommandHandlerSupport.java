@@ -50,6 +50,10 @@ final class ApplicationCommandHandlerSupport {
         || application.getState().getOverallDecision() != null) {
       throw new ResourceNotFoundException("Application work item is not active: " + workItemId);
     }
+    if (application.getState().getAssignmentGroupId() != null) {
+      throw new WorkItemAssignmentConflictException(
+          workItemId, "its assignment is owned by a linked group");
+    }
     if (expectedAssignmentVersion != application.getState().getAssignmentVersion()) {
       throw new WorkItemAssignmentConflictException(workItemId, "the assignment version is stale");
     }

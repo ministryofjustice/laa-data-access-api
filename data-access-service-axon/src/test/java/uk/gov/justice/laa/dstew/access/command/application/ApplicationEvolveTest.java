@@ -12,10 +12,44 @@ import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.ApplicationAssignmentDelegatedToGroupEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.ApplicationAssignmentReclaimedFromGroupEvent;
 import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 
 /** Unit tests for {@link ApplicationEvolve} decision-fold behaviour. */
 class ApplicationEvolveTest {
+
+  @Test
+  void givenDelegationEvent_whenEvolved_thenGroupOwnsAssignment() {
+    ApplicationState state = new ApplicationState();
+    UUID groupId = UUID.randomUUID();
+    state.assignmentVersion = 3L;
+    state.caseworkerId = UUID.randomUUID();
+
+    ApplicationEvolve.apply(
+        state,
+        new ApplicationAssignmentDelegatedToGroupEvent(UUID.randomUUID(), groupId, Instant.now()));
+
+    assertThat(state.assignmentGroupId).isEqualTo(groupId);
+    assertThat(state.caseworkerId).isNull();
+    assertThat(state.assignmentVersion).isEqualTo(3L);
+  }
+
+  @Test
+  void givenReclaimEvent_whenEvolved_thenApplicationOwnsAssignment() {
+    ApplicationState state = new ApplicationState();
+    state.assignmentGroupId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+
+    ApplicationEvolve.apply(
+        state,
+        new ApplicationAssignmentReclaimedFromGroupEvent(
+            UUID.randomUUID(), state.assignmentGroupId, caseworkerId, 7L, Instant.now()));
+
+    assertThat(state.assignmentGroupId).isNull();
+    assertThat(state.caseworkerId).isEqualTo(caseworkerId);
+    assertThat(state.assignmentVersion).isEqualTo(7L);
+  }
 
   @ParameterizedTest
   @NullSource

@@ -83,7 +83,8 @@ class MakeApplicationDecisionCommandTest {
             mutableCertificate,
             "{}",
             "desc",
-            OCCURRED_AT);
+            OCCURRED_AT,
+            null);
 
     mutableProceedings.add(
         new MakeDecisionProceeding(UUID.randomUUID(), "REFUSED", "reason2", "justification2"));
@@ -117,8 +118,42 @@ class MakeApplicationDecisionCommandTest {
             null,
             "{}",
             null,
-            OCCURRED_AT);
+            OCCURRED_AT,
+            null);
 
     assertThat(command.certificate()).isNull();
+  }
+
+  @Test
+  void givenCommand_whenMarkedForGroup_thenOnlyMarkerChanges() {
+    UUID applicationId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+    UUID proceedingId = UUID.randomUUID();
+    MakeApplicationDecisionCommand command =
+        new MakeApplicationDecisionCommand(
+            applicationId,
+            caseworkerId,
+            4L,
+            "REFUSED",
+            List.of(new MakeDecisionProceeding(proceedingId, "REFUSED", "reason", "justification")),
+            Map.of("reference", "CERT-123"),
+            "{}",
+            "decision",
+            OCCURRED_AT,
+            null);
+    UUID groupId = UUID.randomUUID();
+
+    MakeApplicationDecisionCommand marked = command.withGroupAssigneeValidatedFor(groupId);
+
+    assertThat(marked.groupAssigneeValidatedFor()).isEqualTo(groupId);
+    assertThat(marked.applicationId()).isEqualTo(command.applicationId());
+    assertThat(marked.caseworkerId()).isEqualTo(command.caseworkerId());
+    assertThat(marked.expectedApplicationVersion()).isEqualTo(command.expectedApplicationVersion());
+    assertThat(marked.overallDecision()).isEqualTo(command.overallDecision());
+    assertThat(marked.proceedings()).isEqualTo(command.proceedings());
+    assertThat(marked.certificate()).isEqualTo(command.certificate());
+    assertThat(marked.serialisedRequest()).isEqualTo(command.serialisedRequest());
+    assertThat(marked.eventDescription()).isEqualTo(command.eventDescription());
+    assertThat(marked.occurredAt()).isEqualTo(command.occurredAt());
   }
 }

@@ -58,7 +58,8 @@ class MakeApplicationDecisionCommandHandlerTest {
             certificate,
             "{}",
             "decision made",
-            OCCURRED_AT);
+            OCCURRED_AT,
+            null);
 
     when(application.getApplicationId()).thenReturn(applicationId);
     when(application.getState()).thenReturn(state);
@@ -104,7 +105,8 @@ class MakeApplicationDecisionCommandHandlerTest {
             Map.of("reference", "CERT-2"),
             "{}",
             "decision made",
-            OCCURRED_AT);
+            OCCURRED_AT,
+            null);
 
     MakeApplicationDecisionCommandHandler.recordDecision(
         command,

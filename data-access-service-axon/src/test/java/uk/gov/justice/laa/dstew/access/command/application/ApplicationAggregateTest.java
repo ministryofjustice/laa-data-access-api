@@ -54,6 +54,8 @@ import uk.gov.justice.laa.dstew.access.command.application.handler.RecordAutoGra
 import uk.gov.justice.laa.dstew.access.command.application.handler.SubmitApplicationDraftCommandHandler;
 import uk.gov.justice.laa.dstew.access.command.application.handler.UpdateApplicationCommandHandler;
 import uk.gov.justice.laa.dstew.access.command.application.handler.ValidateApplicationGrantedCommandHandler;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.ApplicationAssignmentDelegatedToGroupEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.ApplicationAssignmentReclaimedFromGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.ValidateApplicationGrantedCommand;
@@ -230,7 +232,8 @@ class ApplicationAggregateTest {
     fixture
         .given()
         .events(
-            created, new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, 1L, readyAt))
+            created,
+            new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, 1L, 0L, readyAt))
         .when()
         .command(
             new MakeApplicationDecisionCommand(
@@ -243,7 +246,8 @@ class ApplicationAggregateTest {
                 null,
                 "{\"overallDecision\":\"REFUSED\"}",
                 "Decision recorded",
-                occurredAt))
+                occurredAt,
+                null))
         .then()
         .events(
             new ApplicationDecisionMadeEvent(
@@ -272,7 +276,8 @@ class ApplicationAggregateTest {
                 null,
                 "{\"overallDecision\":\"REFUSED\"}",
                 "Decision recorded",
-                occurredAt))
+                occurredAt,
+                null))
         .then()
         .exception(ApplicationAutoGrantOutcomeConflictException.class)
         .noEvents();
@@ -317,7 +322,7 @@ class ApplicationAggregateTest {
         .events(
             applicationCreatedEvent(applicationId, details),
             new ApplicationReadyForManualAssessmentEvent(
-                applicationId, 1L, 1L, Instant.parse("2026-07-19T10:00:00Z")))
+                applicationId, 1L, 1L, 0L, Instant.parse("2026-07-19T10:00:00Z")))
         .when()
         .command(decisionCommand(applicationId, 1L, proceedingId, "REFUSED", "justification", null))
         .then()
@@ -354,7 +359,8 @@ class ApplicationAggregateTest {
                 null,
                 "{}",
                 null,
-                secondOccurredAt))
+                secondOccurredAt,
+                null))
         .then()
         .events(
             new ApplicationDecisionMadeEvent(
@@ -393,7 +399,32 @@ class ApplicationAggregateTest {
         .command(new MarkApplicationReadyCommand(applicationId, 0L, "{}", occurredAt))
         .then()
         .resultMessagePayload(ReadyApplicationResult.RECORDED)
-        .events(new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, 1L, occurredAt));
+        .events(
+            new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, 1L, 0L, occurredAt));
+  }
+
+  @Test
+  void givenReclaimedApplication_whenMarkedReady_thenEventCarriesAssignmentVersion() {
+    UUID applicationId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-21T09:30:00Z");
+    ApplicationCreationDetails details = applicationCreationDetails(applicationId);
+    when(applicationDataStore.get(applicationId, 0L))
+        .thenReturn(ApplicationDataPayload.from(details));
+    when(applicationDataStore.append(any(), anyLong(), any(), any(), any())).thenReturn("hash");
+
+    fixture
+        .given()
+        .events(
+            applicationCreatedEvent(applicationId, details),
+            new ApplicationAssignmentDelegatedToGroupEvent(applicationId, groupId, occurredAt),
+            new ApplicationAssignmentReclaimedFromGroupEvent(
+                applicationId, groupId, null, 4L, occurredAt))
+        .when()
+        .command(new MarkApplicationReadyCommand(applicationId, 0L, "{}", occurredAt))
+        .then()
+        .events(
+            new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, 1L, 4L, occurredAt));
   }
 
   @Test
@@ -425,7 +456,8 @@ class ApplicationAggregateTest {
         .given()
         .events(
             applicationCreatedEvent(applicationId),
-            new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, 1L, firstOccurredAt))
+            new ApplicationReadyForManualAssessmentEvent(
+                applicationId, 1L, 1L, 0L, firstOccurredAt))
         .when()
         .command(
             new MarkApplicationReadyCommand(
@@ -512,11 +544,20 @@ class ApplicationAggregateTest {
         .given()
         .events(
             applicationCreatedEvent(applicationId, details),
-            new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, 1L, Instant.now()))
+            new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, 1L, 0L, Instant.now()))
         .when()
         .command(
             new MakeApplicationDecisionCommand(
-                applicationId, null, 1L, "GRANTED", List.of(), null, "{}", null, Instant.now()))
+                applicationId,
+                null,
+                1L,
+                "GRANTED",
+                List.of(),
+                null,
+                "{}",
+                null,
+                Instant.now(),
+                null))
         .then()
         .exception(ValidationException.class)
         .noEvents();
@@ -534,7 +575,7 @@ class ApplicationAggregateTest {
         .given()
         .events(
             applicationCreatedEvent(applicationId, details),
-            new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, 1L, Instant.now()))
+            new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, 1L, 0L, Instant.now()))
         .when()
         .command(decisionCommand(applicationId, 1L, proceedingId, "REFUSED", null, null))
         .then()
@@ -556,7 +597,7 @@ class ApplicationAggregateTest {
         .given()
         .events(
             applicationCreatedEvent(applicationId, details),
-            new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, 1L, Instant.now()))
+            new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, 1L, 0L, Instant.now()))
         .when()
         .command(
             new MakeApplicationDecisionCommand(
@@ -568,7 +609,8 @@ class ApplicationAggregateTest {
                 null,
                 "{}",
                 null,
-                Instant.now()))
+                Instant.now(),
+                null))
         .then()
         .exception(ValidationException.class)
         .noEvents();
@@ -964,7 +1006,8 @@ class ApplicationAggregateTest {
         certificate,
         "{}",
         null,
-        Instant.now());
+        Instant.now(),
+        null);
   }
 
   private ApplicationCreationDetails detailsWithProceeding(UUID applicationId, UUID proceedingId) {
@@ -1110,7 +1153,7 @@ class ApplicationAggregateTest {
         .given()
         .events(
             applicationCreatedEvent(applicationId),
-            new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, 1L, occurredAt))
+            new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, 1L, 0L, occurredAt))
         .when()
         .command(new RecordAutoGrantedOutcomeCommand(applicationId, Map.of(), "{}", occurredAt))
         .then()
@@ -1158,7 +1201,8 @@ class ApplicationAggregateTest {
     fixture
         .given()
         .events(
-            created, new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, 1L, readyAt))
+            created,
+            new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, 1L, 0L, readyAt))
         .when()
         .command(
             new MakeApplicationDecisionCommand(
@@ -1171,7 +1215,8 @@ class ApplicationAggregateTest {
                 certificate,
                 "{\"overallDecision\":\"GRANTED\",\"certificate\":{\"reference\":\"CERT-REF-123\"}}",
                 "Decision recorded",
-                occurredAt))
+                occurredAt,
+                null))
         .then()
         .events(
             new ApplicationDecisionMadeEvent(

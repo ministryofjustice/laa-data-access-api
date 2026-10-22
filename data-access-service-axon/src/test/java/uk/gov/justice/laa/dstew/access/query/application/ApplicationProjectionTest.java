@@ -709,7 +709,7 @@ class ApplicationProjectionTest {
     when(applicationReadRepository.save(existing)).thenReturn(existing);
 
     projection.on(
-        new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, 1L, occurredAt),
+        new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, 1L, 0L, occurredAt),
         queryUpdateEmitter);
 
     assertThat(existing.getStatus()).isNull();

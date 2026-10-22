@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -18,6 +19,12 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationD
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeDecisionProceeding;
 import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftStartedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.ApplicationAssignmentDelegatedToGroupEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.ApplicationAssignmentReclaimedFromGroupEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.DelegateAssignmentToGroupCommand;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.DelegatedAssignment;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.ReclaimAssignmentFromGroupCommand;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationLinkConflictException;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand;
@@ -181,11 +188,21 @@ public final class ApplicationDecider {
     if (state.autoGranted != AutoGrantedState.MANUAL) {
       throw new ApplicationAutoGrantOutcomeConflictException(command.applicationId());
     }
+    if (state.assignmentGroupId != null) {
+      if (state.overallDecision != null) {
+        throw assignmentConflict(command, "it is not an active manual work item");
+      }
+      if (!state.assignmentGroupId.equals(command.groupAssigneeValidatedFor())) {
+        throw assignmentConflict(command, "its linked-group assignee was not validated");
+      }
+      return;
+    }
     // Deprecated constructors are retained for internal migration compatibility. The HTTP use case
     // rejects a missing caseworker before this aggregate is dispatched.
     if (command.caseworkerId() == null) {
       return;
     }
+
     if (state.overallDecision != null) {
       throw assignmentConflict(command, "it is not an active manual work item");
     }
@@ -195,6 +212,58 @@ public final class ApplicationDecider {
     if (!state.caseworkerId.equals(command.caseworkerId())) {
       throw assignmentConflict(command, "the supplied caseworker is not its current assignee");
     }
+  }
+
+  /** Returns whether the application is an active item in the manual-assessment work list. */
+  public static boolean isActiveManualWorkItem(ApplicationState state) {
+    return state.autoGranted == AutoGrantedState.MANUAL && state.overallDecision == null;
+  }
+
+  /** Returns the active manual assignee that should be handed over to a linked group. */
+  public static DelegatedAssignment delegatedAssignment(ApplicationState state) {
+    return new DelegatedAssignment(isActiveManualWorkItem(state) ? state.caseworkerId : null);
+  }
+
+  /** Decides whether a linked group may take ownership of this application's assignment. */
+  public static Optional<ApplicationAssignmentDelegatedToGroupEvent> decideDelegateToGroup(
+      ApplicationState state, DelegateAssignmentToGroupCommand command) {
+    if (command.groupId().equals(state.assignmentGroupId)) {
+      return Optional.empty();
+    }
+    if (state.assignmentGroupId != null) {
+      throw new ApplicationLinkConflictException(
+          "Application "
+              + command.applicationId()
+              + " already belongs to a different linked group");
+    }
+    return Optional.of(
+        new ApplicationAssignmentDelegatedToGroupEvent(
+            command.applicationId(), command.groupId(), command.occurredAt()));
+  }
+
+  /** Decides whether an application reclaims assignment ownership from its linked group. */
+  public static Optional<ApplicationAssignmentReclaimedFromGroupEvent> decideReclaimFromGroup(
+      ApplicationState state, ReclaimAssignmentFromGroupCommand command) {
+    if (state.assignmentGroupId == null) {
+      return Optional.empty();
+    }
+    if (!state.assignmentGroupId.equals(command.groupId())) {
+      throw new ApplicationLinkConflictException(
+          "Application "
+              + command.applicationId()
+              + " does not delegate its assignment to linked group "
+              + command.groupId());
+    }
+    UUID caseworkerId = isActiveManualWorkItem(state) ? command.groupCaseworkerId() : null;
+    long assignmentVersion =
+        Math.max(state.assignmentVersion, command.groupAssignmentVersion()) + 1;
+    return Optional.of(
+        new ApplicationAssignmentReclaimedFromGroupEvent(
+            command.applicationId(),
+            command.groupId(),
+            caseworkerId,
+            assignmentVersion,
+            command.occurredAt()));
   }
 
   private static WorkItemAssignmentConflictException assignmentConflict(

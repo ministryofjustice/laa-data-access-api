@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.axonframework.messaging.commandhandling.annotation.Command;
 import org.axonframework.modelling.annotation.TargetEntityId;
+import org.jspecify.annotations.Nullable;
 
 /** Requests a decision against the current version of an Application. */
 @Command(routingKey = "applicationId")
@@ -18,7 +19,8 @@ public record MakeApplicationDecisionCommand(
     Map<String, Object> certificate,
     String serialisedRequest,
     String eventDescription,
-    Instant occurredAt) {
+    Instant occurredAt,
+    @Nullable UUID groupAssigneeValidatedFor) {
 
   /**
    * Legacy constructor retained while callers migrate to the assignment-authorised decision
@@ -43,7 +45,8 @@ public record MakeApplicationDecisionCommand(
         certificate,
         serialisedRequest,
         eventDescription,
-        occurredAt);
+        occurredAt,
+        null);
   }
 
   /**
@@ -70,7 +73,26 @@ public record MakeApplicationDecisionCommand(
         certificate,
         serialisedRequest,
         eventDescription,
-        occurredAt);
+        occurredAt,
+        null);
+  }
+
+  /**
+   * Returns this decision marked as validated against the supplied linked group's assignee; only
+   * the decision coordinator calls this.
+   */
+  public MakeApplicationDecisionCommand withGroupAssigneeValidatedFor(UUID groupId) {
+    return new MakeApplicationDecisionCommand(
+        applicationId,
+        caseworkerId,
+        expectedApplicationVersion,
+        overallDecision,
+        proceedings,
+        certificate,
+        serialisedRequest,
+        eventDescription,
+        occurredAt,
+        groupId);
   }
 
   public MakeApplicationDecisionCommand {
