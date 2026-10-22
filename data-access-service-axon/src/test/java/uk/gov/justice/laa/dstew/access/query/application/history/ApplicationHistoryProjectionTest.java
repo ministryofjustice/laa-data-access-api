@@ -1,6 +1,9 @@
 package uk.gov.justice.laa.dstew.access.query.application.history;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -13,6 +16,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.assertj.core.groups.Tuple;
 import org.axonframework.messaging.core.MessageType;
+import org.axonframework.messaging.core.annotation.SequencingPolicy;
 import org.axonframework.messaging.eventhandling.EventMessage;
 import org.axonframework.messaging.eventhandling.GenericEventMessage;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,13 +34,20 @@ import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApp
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupLeadChangedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberRemovedFromGroupEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.ApplicationAssignmentReclaimedFromGroupEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.LinkedGroupAssignedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.LinkedGroupMemberAssignmentInheritedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.LinkedGroupUnassignedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataRepository;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
+import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.config.interceptor.RequestMetadataDispatchInterceptor;
+import uk.gov.justice.laa.dstew.access.query.groupassignment.AssignmentChange;
+import uk.gov.justice.laa.dstew.access.query.groupassignment.LinkedGroupAssignmentTracker;
 
 @ExtendWith(MockitoExtension.class)
 class ApplicationHistoryProjectionTest {
@@ -48,6 +59,8 @@ class ApplicationHistoryProjectionTest {
   @Mock private PriorAuthorityHistoryReadRepository paRepository;
 
   @Mock private PriorAuthorityDataRepository priorAuthorityDataRepository;
+  @Mock private ApplicationHistoryGroupAssignmentStore assignmentStore;
+  @Mock private LinkedGroupAssignmentTracker assignmentTracker;
 
   private ApplicationHistoryProjection projection;
 
@@ -59,7 +72,9 @@ class ApplicationHistoryProjectionTest {
             new ApplicationHistoryAssembler(applicationDataStore),
             paRepository,
             new PriorAuthorityHistoryAssembler(
-                new PriorAuthorityDataStore(priorAuthorityDataRepository)));
+                new PriorAuthorityDataStore(priorAuthorityDataRepository)),
+            assignmentTracker,
+            assignmentStore);
   }
 
   @Test
@@ -294,6 +309,22 @@ class ApplicationHistoryProjectionTest {
     verify(repository).save(captor.capture());
     assertThat(captor.getValue().getCaseworkerId()).isEqualTo(metadataCaseworkerId);
     assertThat(captor.getValue().getDataVersion()).isNull();
+    verify(assignmentTracker)
+        .directAssignmentChanged(assignmentStore, applicationId, eventCaseworkerId, 1L);
+  }
+
+  @Test
+  void givenPriorAuthorityAssignment_whenHandled_thenDoesNotTrackAsApplicationHistory() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-09-30T12:00:00Z");
+
+    projection.on(
+        new WorkItemAssigned(
+            priorAuthorityId, WorkItemType.PRIOR_AUTHORITY, 1L, 1L, UUID.randomUUID(), occurredAt),
+        message(new Object(), "prior-authority-assigned"));
+
+    verify(repository, never()).save(any());
+    verify(assignmentTracker, never()).directAssignmentChanged(any(), any(), any(), anyLong());
   }
 
   @Test
@@ -311,6 +342,20 @@ class ApplicationHistoryProjectionTest {
     verify(repository).save(captor.capture());
     assertThat(captor.getValue().getCaseworkerId()).isEqualTo(caseworkerId);
     assertThat(captor.getValue().getDataVersion()).isNull();
+    verify(assignmentTracker).directAssignmentChanged(assignmentStore, applicationId, null, 2L);
+  }
+
+  @Test
+  void givenPriorAuthorityUnassignment_whenHandled_thenDoesNotTrackAsApplicationHistory() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-09-30T12:00:00Z");
+
+    projection.on(
+        new WorkItemUnassigned(priorAuthorityId, WorkItemType.PRIOR_AUTHORITY, 1L, 1L, occurredAt),
+        message(new Object(), "prior-authority-unassigned"));
+
+    verify(repository, never()).save(any());
+    verify(assignmentTracker, never()).directAssignmentChanged(any(), any(), any(), anyLong());
   }
 
   @Test
@@ -325,6 +370,7 @@ class ApplicationHistoryProjectionTest {
             AutoGrantedState.MANUAL,
             Instant.parse("2026-07-20T10:00:00Z"));
     projection.on(event, message(event, "decision-event"));
+    verify(assignmentTracker).applicationDecided(assignmentStore, applicationId);
     ArgumentCaptor<ApplicationHistoryReadModel> captor =
         ArgumentCaptor.forClass(ApplicationHistoryReadModel.class);
     verify(repository).save(captor.capture());
@@ -455,6 +501,133 @@ class ApplicationHistoryProjectionTest {
 
     verify(repository).deleteAllInBatch();
     verify(paRepository).deleteAllInBatch();
+    verify(assignmentStore).deleteAll();
+  }
+
+  @Test
+  void givenProjection_whenInspected_thenProcessesInOneLane() {
+    assertThat(ApplicationHistoryProjection.class.isAnnotationPresent(SequencingPolicy.class))
+        .isTrue();
+  }
+
+  @Test
+  void givenReadyEvent_whenProjected_thenTrackerActivatesWithoutHistoryRow() {
+    UUID applicationId = UUID.randomUUID();
+
+    projection.on(
+        new ApplicationReadyForManualAssessmentEvent(
+            applicationId, 2L, 3L, 4L, Instant.parse("2026-09-30T12:00:00Z")));
+
+    verify(assignmentTracker).applicationReady(assignmentStore, applicationId, 4L);
+    verify(repository, never()).save(any());
+  }
+
+  @Test
+  void givenChangedAndUnchangedMembers_whenGroupAssigned_thenWritesOnlyChangedCaseworkerHistory() {
+    UUID groupId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    UUID unchangedId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+    UUID actorId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-09-30T12:00:00Z");
+    LinkedGroupAssignedEvent event =
+        new LinkedGroupAssignedEvent(groupId, caseworkerId, 2L, occurredAt);
+    when(assignmentTracker.groupAssignmentChanged(assignmentStore, groupId, caseworkerId, 2L))
+        .thenReturn(
+            List.of(
+                new AssignmentChange(applicationId, groupId, null, caseworkerId, 2L),
+                new AssignmentChange(unchangedId, groupId, caseworkerId, caseworkerId, 2L)));
+
+    projection.on(event, messageWithCaseworker(event, "assignment-event", actorId));
+
+    ArgumentCaptor<ApplicationHistoryReadModel> captor =
+        ArgumentCaptor.forClass(ApplicationHistoryReadModel.class);
+    verify(repository).save(captor.capture());
+    ApplicationHistoryReadModel row = captor.getValue();
+    assertThat(row.getEventId()).isEqualTo("assignment-event:" + applicationId + ":assignment");
+    assertThat(row.getApplicationId()).isEqualTo(applicationId);
+    assertThat(row.getEventType()).isEqualTo("ASSIGN_APPLICATION_TO_CASEWORKER");
+    assertThat(row.getDataVersion()).isNull();
+    assertThat(row.getServiceName()).isEqualTo("CIVIL_APPLY");
+    assertThat(row.getCaseworkerId()).isEqualTo(actorId);
+    assertThat(row.getOccurredAt()).isEqualTo(occurredAt);
+  }
+
+  @Test
+  void givenClearedCaseworker_whenGroupUnassigned_thenUnassignRowAppended() {
+    UUID applicationId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-09-30T12:00:00Z");
+    LinkedGroupUnassignedEvent event = new LinkedGroupUnassignedEvent(groupId, 3L, occurredAt);
+    when(assignmentTracker.groupAssignmentChanged(assignmentStore, groupId, null, 3L))
+        .thenReturn(List.of(new AssignmentChange(applicationId, groupId, caseworkerId, null, 3L)));
+
+    projection.on(event, message(event, "unassignment-event"));
+
+    ArgumentCaptor<ApplicationHistoryReadModel> captor =
+        ArgumentCaptor.forClass(ApplicationHistoryReadModel.class);
+    verify(repository).save(captor.capture());
+    assertThat(captor.getValue().getEventType()).isEqualTo("UNASSIGN_APPLICATION_TO_CASEWORKER");
+  }
+
+  @Test
+  void givenInheritedAssignment_whenProjected_thenAssignRowAppended() {
+    UUID applicationId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-09-30T12:00:00Z");
+    LinkedGroupMemberAssignmentInheritedEvent event =
+        new LinkedGroupMemberAssignmentInheritedEvent(
+            groupId, applicationId, caseworkerId, 2L, occurredAt);
+    when(assignmentTracker.memberInherited(
+            assignmentStore, groupId, applicationId, caseworkerId, 2L))
+        .thenReturn(
+            Optional.of(new AssignmentChange(applicationId, groupId, null, caseworkerId, 2L)));
+
+    projection.on(event, message(event, "inherited-event"));
+
+    ArgumentCaptor<ApplicationHistoryReadModel> captor =
+        ArgumentCaptor.forClass(ApplicationHistoryReadModel.class);
+    verify(repository).save(captor.capture());
+    assertThat(captor.getValue().getEventType()).isEqualTo("ASSIGN_APPLICATION_TO_CASEWORKER");
+    assertThat(captor.getValue().getApplicationId()).isEqualTo(applicationId);
+  }
+
+  @Test
+  void givenChangedCaseworker_whenReclaimed_thenAssignmentRowAppended() {
+    UUID applicationId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-09-30T12:00:00Z");
+    ApplicationAssignmentReclaimedFromGroupEvent event =
+        new ApplicationAssignmentReclaimedFromGroupEvent(
+            applicationId, UUID.randomUUID(), caseworkerId, 4L, occurredAt);
+    when(assignmentTracker.assignmentReclaimed(assignmentStore, applicationId, caseworkerId, 4L))
+        .thenReturn(Optional.of(new AssignmentChange(applicationId, null, null, caseworkerId, 4L)));
+
+    projection.on(event, message(event, "reclaimed-event"));
+
+    ArgumentCaptor<ApplicationHistoryReadModel> captor =
+        ArgumentCaptor.forClass(ApplicationHistoryReadModel.class);
+    verify(repository).save(captor.capture());
+    assertThat(captor.getValue().getEventType()).isEqualTo("ASSIGN_APPLICATION_TO_CASEWORKER");
+  }
+
+  @Test
+  void givenUnchangedCaseworker_whenReclaimed_thenNoRowAppended() {
+    UUID applicationId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-09-30T12:00:00Z");
+    ApplicationAssignmentReclaimedFromGroupEvent event =
+        new ApplicationAssignmentReclaimedFromGroupEvent(
+            applicationId, UUID.randomUUID(), caseworkerId, 4L, occurredAt);
+    when(assignmentTracker.assignmentReclaimed(assignmentStore, applicationId, caseworkerId, 4L))
+        .thenReturn(
+            Optional.of(new AssignmentChange(applicationId, null, caseworkerId, caseworkerId, 4L)));
+
+    projection.on(event, message(event, "unchanged-reclaimed-event"));
+
+    verify(repository, never()).save(any());
   }
 
   private PriorAuthorityHistoryReadModel paHistoryReadModel(

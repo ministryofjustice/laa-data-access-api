@@ -39,19 +39,33 @@ import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApp
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupLeadChangedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberRemovedFromGroupEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.ApplicationAssignmentReclaimedFromGroupEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.LinkedGroupAssignedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.LinkedGroupMemberAssignmentInheritedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.LinkedGroupUnassignedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
+import uk.gov.justice.laa.dstew.access.query.groupassignment.AssignmentChange;
+import uk.gov.justice.laa.dstew.access.query.groupassignment.LinkedGroupAssignmentTracker;
 
 @ExtendWith(MockitoExtension.class)
 class ApplicationListIndexProjectionTest {
 
   @Mock private ApplicationListIndexReadRepository listIndexRepository;
   @Mock private ApplicationDataStore applicationDataStore;
+  @Mock private ApplicationListIndexGroupAssignmentStore assignmentStore;
+  @Mock private LinkedGroupAssignmentTracker assignmentTracker;
   private ApplicationListIndexProjection projection;
 
   @BeforeEach
   void setUp() {
-    projection = new ApplicationListIndexProjection(listIndexRepository, applicationDataStore);
+    projection =
+        new ApplicationListIndexProjection(
+            listIndexRepository, applicationDataStore, assignmentTracker, assignmentStore);
   }
 
   private static EventMessage anyMessage() {
@@ -443,6 +457,7 @@ class ApplicationListIndexProjectionTest {
     assertThat(existing.getAutoGranted()).isEqualTo(AutoGrantedState.AUTOGRANTED);
     assertThat(existing.getStreamVersion()).isEqualTo(3L);
     verify(listIndexRepository).save(existing);
+    verify(assignmentTracker).applicationDecided(assignmentStore, applicationId);
   }
 
   @Test
@@ -499,6 +514,165 @@ class ApplicationListIndexProjectionTest {
     projection.reset();
 
     verify(listIndexRepository).deleteAllInBatch();
+    verify(assignmentStore).deleteAll();
+  }
+
+  @Test
+  void givenReadyEvent_whenProjected_thenTrackerActivatesApplication() {
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-09-30T12:00:00Z");
+    ApplicationListIndexReadModel existing =
+        ApplicationListIndexReadModel.builder().applicationId(applicationId).build();
+    when(listIndexRepository.findById(applicationId)).thenReturn(Optional.of(existing));
+
+    projection.on(
+        new ApplicationReadyForManualAssessmentEvent(applicationId, 2L, 3L, 4L, occurredAt),
+        anyMessage());
+
+    assertThat(existing.getAutoGranted()).isEqualTo(AutoGrantedState.MANUAL);
+    verify(assignmentTracker).applicationReady(assignmentStore, applicationId, 4L);
+    verify(listIndexRepository).save(existing);
+  }
+
+  @Test
+  void givenApplicationAssignment_whenProjected_thenTrackerUpdated() {
+    UUID applicationId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-09-30T12:00:00Z");
+    ApplicationListIndexReadModel existing =
+        ApplicationListIndexReadModel.builder().applicationId(applicationId).build();
+    when(listIndexRepository.findById(applicationId)).thenReturn(Optional.of(existing));
+
+    projection.on(
+        new WorkItemAssigned(
+            applicationId, WorkItemType.APPLICATION, 2L, 3L, caseworkerId, occurredAt),
+        anyMessage());
+
+    assertThat(existing.getCaseworkerId()).isEqualTo(caseworkerId);
+    verify(assignmentTracker)
+        .directAssignmentChanged(assignmentStore, applicationId, caseworkerId, 3L);
+    verify(listIndexRepository).save(existing);
+  }
+
+  @Test
+  void givenApplicationUnassignment_whenProjected_thenTrackerUpdatedWithNullCaseworker() {
+    UUID applicationId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-09-30T12:00:00Z");
+    ApplicationListIndexReadModel existing =
+        ApplicationListIndexReadModel.builder().applicationId(applicationId).build();
+    when(listIndexRepository.findById(applicationId)).thenReturn(Optional.of(existing));
+
+    projection.on(
+        new WorkItemUnassigned(applicationId, WorkItemType.APPLICATION, 2L, 3L, occurredAt),
+        anyMessage());
+
+    assertThat(existing.getCaseworkerId()).isNull();
+    verify(assignmentTracker).directAssignmentChanged(assignmentStore, applicationId, null, 3L);
+    verify(listIndexRepository).save(existing);
+  }
+
+  @Test
+  void givenCaseworkerChange_whenGroupAssigned_thenIndexShowsItWithoutChangingStreamVersion() {
+    UUID applicationId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-09-30T12:00:00Z");
+    ApplicationListIndexReadModel row =
+        ApplicationListIndexReadModel.builder()
+            .applicationId(applicationId)
+            .caseworkerId(null)
+            .streamVersion(9L)
+            .build();
+    when(assignmentTracker.groupAssignmentChanged(assignmentStore, groupId, caseworkerId, 2L))
+        .thenReturn(List.of(new AssignmentChange(applicationId, groupId, null, caseworkerId, 2L)));
+    when(listIndexRepository.findById(applicationId)).thenReturn(Optional.of(row));
+
+    projection.on(
+        new LinkedGroupAssignedEvent(groupId, caseworkerId, 2L, occurredAt), anyMessage());
+
+    assertThat(row.getCaseworkerId()).isEqualTo(caseworkerId);
+    assertThat(row.getModifiedAt()).isEqualTo(occurredAt);
+    assertThat(row.getStreamVersion()).isEqualTo(9L);
+    verify(listIndexRepository).save(row);
+  }
+
+  @Test
+  void givenVersionOnlyChange_whenGroupAssigned_thenIndexIsNotSaved() {
+    UUID applicationId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+    when(assignmentTracker.groupAssignmentChanged(assignmentStore, groupId, caseworkerId, 2L))
+        .thenReturn(
+            List.of(new AssignmentChange(applicationId, groupId, caseworkerId, caseworkerId, 2L)));
+
+    projection.on(
+        new LinkedGroupAssignedEvent(groupId, caseworkerId, 2L, Instant.now()), anyMessage());
+
+    verify(listIndexRepository, never()).findById(applicationId);
+  }
+
+  @Test
+  void givenCaseworkerChange_whenGroupUnassigned_thenIndexCaseworkerIsCleared() {
+    UUID applicationId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-09-30T12:00:00Z");
+    ApplicationListIndexReadModel row =
+        ApplicationListIndexReadModel.builder()
+            .applicationId(applicationId)
+            .caseworkerId(caseworkerId)
+            .build();
+    when(assignmentTracker.groupAssignmentChanged(assignmentStore, groupId, null, 3L))
+        .thenReturn(List.of(new AssignmentChange(applicationId, groupId, caseworkerId, null, 3L)));
+    when(listIndexRepository.findById(applicationId)).thenReturn(Optional.of(row));
+
+    projection.on(new LinkedGroupUnassignedEvent(groupId, 3L, occurredAt), anyMessage());
+
+    assertThat(row.getCaseworkerId()).isNull();
+    verify(listIndexRepository).save(row);
+  }
+
+  @Test
+  void givenInheritedAssignment_whenProjected_thenIndexShowsCaseworker() {
+    UUID applicationId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-09-30T12:00:00Z");
+    ApplicationListIndexReadModel row =
+        ApplicationListIndexReadModel.builder().applicationId(applicationId).build();
+    when(assignmentTracker.memberInherited(
+            assignmentStore, groupId, applicationId, caseworkerId, 2L))
+        .thenReturn(
+            Optional.of(new AssignmentChange(applicationId, groupId, null, caseworkerId, 2L)));
+    when(listIndexRepository.findById(applicationId)).thenReturn(Optional.of(row));
+
+    projection.on(
+        new LinkedGroupMemberAssignmentInheritedEvent(
+            groupId, applicationId, caseworkerId, 2L, occurredAt),
+        anyMessage());
+
+    assertThat(row.getCaseworkerId()).isEqualTo(caseworkerId);
+    verify(listIndexRepository).save(row);
+  }
+
+  @Test
+  void givenReclaimChange_whenProjected_thenIndexShowsDirectCaseworker() {
+    UUID applicationId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-09-30T12:00:00Z");
+    ApplicationListIndexReadModel row =
+        ApplicationListIndexReadModel.builder().applicationId(applicationId).build();
+    when(assignmentTracker.assignmentReclaimed(assignmentStore, applicationId, caseworkerId, 4L))
+        .thenReturn(Optional.of(new AssignmentChange(applicationId, null, null, caseworkerId, 4L)));
+    when(listIndexRepository.findById(applicationId)).thenReturn(Optional.of(row));
+
+    projection.on(
+        new ApplicationAssignmentReclaimedFromGroupEvent(
+            applicationId, UUID.randomUUID(), caseworkerId, 4L, occurredAt),
+        anyMessage());
+
+    assertThat(row.getCaseworkerId()).isEqualTo(caseworkerId);
+    verify(listIndexRepository).save(row);
   }
 
   // -------------------------------------------------------------------------

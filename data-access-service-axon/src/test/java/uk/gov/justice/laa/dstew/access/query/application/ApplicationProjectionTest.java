@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationCreatedEvent;
@@ -52,6 +53,10 @@ import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApp
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupLeadChangedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberRemovedFromGroupEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.ApplicationAssignmentReclaimedFromGroupEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.LinkedGroupAssignedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.LinkedGroupMemberAssignmentInheritedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.LinkedGroupUnassignedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
@@ -66,6 +71,8 @@ import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationLi
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadRepository;
+import uk.gov.justice.laa.dstew.access.query.groupassignment.AssignmentChange;
+import uk.gov.justice.laa.dstew.access.query.groupassignment.LinkedGroupAssignmentTracker;
 
 @ExtendWith(MockitoExtension.class)
 class ApplicationProjectionTest {
@@ -80,6 +87,8 @@ class ApplicationProjectionTest {
   @Mock private ApplicationReadQueryGateway applicationReadQueryGateway;
   @Mock private ApplicationCurrentStateAccessPolicy currentStateAccessPolicy;
   @Mock private ApplicationListIndexAccessPolicy listIndexAccessPolicy;
+  @Mock private ApplicationProjectionGroupAssignmentStore assignmentStore;
+  @Mock private LinkedGroupAssignmentTracker assignmentTracker;
   private ApplicationProjection projection;
 
   @BeforeEach
@@ -96,7 +105,9 @@ class ApplicationProjectionTest {
                 applicationDataStore,
                 groupReadRepository,
                 listIndexRepository,
-                priorAuthorityReadRepository));
+                priorAuthorityReadRepository),
+            assignmentTracker,
+            assignmentStore);
   }
 
   @Test
@@ -471,6 +482,102 @@ class ApplicationProjectionTest {
     projection.reset();
 
     verify(applicationReadRepository).deleteAllInBatch();
+    verify(assignmentStore).deleteAll();
+  }
+
+  @Test
+  void givenCaseworkerChange_whenGroupAssigned_thenCurrentStateShowsIt() {
+    UUID applicationId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-09-30T12:00:00Z");
+    ApplicationReadModel existing =
+        ApplicationReadModel.builder().applicationId(applicationId).build();
+    when(assignmentTracker.groupAssignmentChanged(assignmentStore, groupId, caseworkerId, 2L))
+        .thenReturn(List.of(new AssignmentChange(applicationId, groupId, null, caseworkerId, 2L)));
+    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(existing));
+
+    projection.on(new LinkedGroupAssignedEvent(groupId, caseworkerId, 2L, occurredAt));
+
+    assertThat(existing.getCaseworkerId()).isEqualTo(caseworkerId);
+    assertThat(existing.getModifiedAt()).isEqualTo(occurredAt);
+    verify(applicationReadRepository).save(existing);
+  }
+
+  @Test
+  void givenVersionOnlyChange_whenGroupAssigned_thenCurrentStateIsNotSaved() {
+    UUID applicationId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+    when(assignmentTracker.groupAssignmentChanged(assignmentStore, groupId, caseworkerId, 2L))
+        .thenReturn(
+            List.of(new AssignmentChange(applicationId, groupId, caseworkerId, caseworkerId, 2L)));
+
+    projection.on(new LinkedGroupAssignedEvent(groupId, caseworkerId, 2L, Instant.now()));
+
+    verify(applicationReadRepository, never()).findById(applicationId);
+  }
+
+  @Test
+  void givenCaseworkerChange_whenGroupUnassigned_thenCurrentStateIsCleared() {
+    UUID applicationId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-09-30T12:00:00Z");
+    ApplicationReadModel existing =
+        ApplicationReadModel.builder()
+            .applicationId(applicationId)
+            .caseworkerId(caseworkerId)
+            .build();
+    when(assignmentTracker.groupAssignmentChanged(assignmentStore, groupId, null, 3L))
+        .thenReturn(List.of(new AssignmentChange(applicationId, groupId, caseworkerId, null, 3L)));
+    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(existing));
+
+    projection.on(new LinkedGroupUnassignedEvent(groupId, 3L, occurredAt));
+
+    assertThat(existing.getCaseworkerId()).isNull();
+    verify(applicationReadRepository).save(existing);
+  }
+
+  @Test
+  void givenInheritedAssignment_whenProjected_thenCurrentStateShowsIt() {
+    UUID applicationId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-09-30T12:00:00Z");
+    ApplicationReadModel existing =
+        ApplicationReadModel.builder().applicationId(applicationId).build();
+    when(assignmentTracker.memberInherited(
+            assignmentStore, groupId, applicationId, caseworkerId, 2L))
+        .thenReturn(
+            Optional.of(new AssignmentChange(applicationId, groupId, null, caseworkerId, 2L)));
+    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(existing));
+
+    projection.on(
+        new LinkedGroupMemberAssignmentInheritedEvent(
+            groupId, applicationId, caseworkerId, 2L, occurredAt));
+
+    assertThat(existing.getCaseworkerId()).isEqualTo(caseworkerId);
+    verify(applicationReadRepository).save(existing);
+  }
+
+  @Test
+  void givenReclaimChange_whenProjected_thenCurrentStateShowsIt() {
+    UUID applicationId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-09-30T12:00:00Z");
+    ApplicationReadModel existing =
+        ApplicationReadModel.builder().applicationId(applicationId).build();
+    when(assignmentTracker.assignmentReclaimed(assignmentStore, applicationId, caseworkerId, 4L))
+        .thenReturn(Optional.of(new AssignmentChange(applicationId, null, null, caseworkerId, 4L)));
+    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(existing));
+
+    projection.on(
+        new ApplicationAssignmentReclaimedFromGroupEvent(
+            applicationId, UUID.randomUUID(), caseworkerId, 4L, occurredAt));
+
+    assertThat(existing.getCaseworkerId()).isEqualTo(caseworkerId);
+    verify(applicationReadRepository).save(existing);
   }
 
   @Test
@@ -695,6 +802,7 @@ class ApplicationProjectionTest {
     assertThat(existing.getApplicationVersion()).isEqualTo(3L);
     assertThat(existing.getApplicationDataVersion()).isEqualTo(4L);
     assertThat(existing.getModifiedAt()).isEqualTo(occurredAt);
+    verify(assignmentTracker).applicationDecided(assignmentStore, applicationId);
     verify(queryUpdateEmitter)
         .emit(any(Class.class), any(Predicate.class), any(ApplicationReadModel.class));
   }
@@ -716,6 +824,7 @@ class ApplicationProjectionTest {
     assertThat(existing.getApplicationVersion()).isEqualTo(1L);
     assertThat(existing.getApplicationDataVersion()).isEqualTo(1L);
     assertThat(existing.getModifiedAt()).isEqualTo(occurredAt);
+    verify(assignmentTracker).applicationReady(assignmentStore, applicationId, 0L);
   }
 
   @Test
@@ -741,6 +850,8 @@ class ApplicationProjectionTest {
     assertThat(existing.getApplicationDataVersion()).isEqualTo(1L);
     assertThat(existing.getModifiedAt()).isEqualTo(occurredAt);
     verify(applicationReadRepository).save(existing);
+    verify(assignmentTracker)
+        .directAssignmentChanged(assignmentStore, applicationId, caseworkerId, 1L);
   }
 
   @Test
@@ -765,6 +876,7 @@ class ApplicationProjectionTest {
     assertThat(existing.getApplicationDataVersion()).isEqualTo(1L);
     assertThat(existing.getModifiedAt()).isEqualTo(occurredAt);
     verify(applicationReadRepository).save(existing);
+    verify(assignmentTracker).directAssignmentChanged(assignmentStore, applicationId, null, 2L);
   }
 
   @Test

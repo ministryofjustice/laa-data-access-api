@@ -41,6 +41,10 @@ import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApp
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupLeadChangedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberRemovedFromGroupEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.ApplicationAssignmentReclaimedFromGroupEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.LinkedGroupAssignedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.LinkedGroupMemberAssignmentInheritedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.LinkedGroupUnassignedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
@@ -53,6 +57,8 @@ import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedAppli
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexAccessPolicy;
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexSpecification;
+import uk.gov.justice.laa.dstew.access.query.groupassignment.AssignmentChange;
+import uk.gov.justice.laa.dstew.access.query.groupassignment.LinkedGroupAssignmentTracker;
 
 /** Independently replayable projection of the current state of each Application. */
 @Component
@@ -68,6 +74,8 @@ public class ApplicationProjection {
   private final ApplicationCurrentStateAccessPolicy currentStateAccessPolicy;
   private final ApplicationListIndexAccessPolicy listIndexAccessPolicy;
   private final ApplicationReadModelAssembler assembler;
+  private final LinkedGroupAssignmentTracker assignmentTracker;
+  private final ApplicationProjectionGroupAssignmentStore assignmentStore;
 
   /** Returns the hydrated Application and its related data, or {@code null} if absent. */
   @QueryHandler
@@ -294,6 +302,7 @@ public class ApplicationProjection {
   /** Advances the current-state row to the immutable data version containing the decision. */
   @EventHandler
   public void on(ApplicationDecisionMadeEvent event, QueryUpdateEmitter queryUpdateEmitter) {
+    assignmentTracker.applicationDecided(assignmentStore, event.applicationId());
     advanceCurrentStateWithStatus(
         event.applicationId(),
         event.applicationVersion(),
@@ -307,6 +316,8 @@ public class ApplicationProjection {
   @EventHandler
   public void on(
       ApplicationReadyForManualAssessmentEvent event, QueryUpdateEmitter queryUpdateEmitter) {
+    assignmentTracker.applicationReady(
+        assignmentStore, event.applicationId(), event.assignmentVersion());
     advanceCurrentState(
         event.applicationId(),
         event.applicationVersion(),
@@ -344,6 +355,8 @@ public class ApplicationProjection {
     if (event.workItemType() != WorkItemType.APPLICATION) {
       return;
     }
+    assignmentTracker.directAssignmentChanged(
+        assignmentStore, event.workItemId(), event.caseworkerId(), event.assignmentVersion());
     applicationReadRepository
         .findById(event.workItemId())
         .ifPresent(
@@ -360,6 +373,8 @@ public class ApplicationProjection {
     if (event.workItemType() != WorkItemType.APPLICATION) {
       return;
     }
+    assignmentTracker.directAssignmentChanged(
+        assignmentStore, event.workItemId(), null, event.assignmentVersion());
     applicationReadRepository
         .findById(event.workItemId())
         .ifPresent(
@@ -368,6 +383,46 @@ public class ApplicationProjection {
               application.setModifiedAt(event.occurredAt());
               applicationReadRepository.save(application);
             });
+  }
+
+  /** Applies group assignment facts to current application rows. */
+  @EventHandler
+  public void on(LinkedGroupAssignedEvent event) {
+    applyAssignmentChanges(
+        assignmentTracker.groupAssignmentChanged(
+            assignmentStore, event.groupId(), event.caseworkerId(), event.assignmentVersion()),
+        event.occurredAt());
+  }
+
+  /** Applies group unassignment facts to current application rows. */
+  @EventHandler
+  public void on(LinkedGroupUnassignedEvent event) {
+    applyAssignmentChanges(
+        assignmentTracker.groupAssignmentChanged(
+            assignmentStore, event.groupId(), null, event.assignmentVersion()),
+        event.occurredAt());
+  }
+
+  /** Applies an inherited assignment to the current application row when its caseworker changes. */
+  @EventHandler
+  public void on(LinkedGroupMemberAssignmentInheritedEvent event) {
+    assignmentTracker
+        .memberInherited(
+            assignmentStore,
+            event.groupId(),
+            event.memberApplicationId(),
+            event.caseworkerId(),
+            event.assignmentVersion())
+        .ifPresent(change -> applyAssignmentChanges(List.of(change), event.occurredAt()));
+  }
+
+  /** Applies a reclaimed direct assignment to the current application row when it changes. */
+  @EventHandler
+  public void on(ApplicationAssignmentReclaimedFromGroupEvent event) {
+    assignmentTracker
+        .assignmentReclaimed(
+            assignmentStore, event.applicationId(), event.caseworkerId(), event.assignmentVersion())
+        .ifPresent(change -> applyAssignmentChanges(List.of(change), event.occurredAt()));
   }
 
   /** Advances the referenced application-data version when a note is created. */
@@ -441,6 +496,21 @@ public class ApplicationProjection {
         ApplicationProjectionExistsQuery.class,
         query -> query.applicationId().equals(event.applicationId()),
         true);
+  }
+
+  private void applyAssignmentChanges(List<AssignmentChange> changes, Instant occurredAt) {
+    changes.stream()
+        .filter(AssignmentChange::caseworkerChanged)
+        .forEach(
+            change ->
+                applicationReadRepository
+                    .findById(change.applicationId())
+                    .ifPresent(
+                        application -> {
+                          application.setCaseworkerId(change.caseworkerId());
+                          application.setModifiedAt(occurredAt);
+                          applicationReadRepository.save(application);
+                        }));
   }
 
   private void updateGroupMembership(
@@ -546,6 +616,7 @@ public class ApplicationProjection {
   @ResetHandler
   public void reset() {
     applicationReadRepository.deleteAllInBatch();
+    assignmentStore.deleteAll();
   }
 
   private Sort buildSort(String sortBy, String orderBy) {
