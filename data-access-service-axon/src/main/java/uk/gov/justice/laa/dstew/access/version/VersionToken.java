@@ -33,6 +33,14 @@ public record VersionToken(VersionedResourceType resourceType, UUID resourceId, 
     return new VersionToken(VersionedResourceType.LINKED_GROUP, groupId, version);
   }
 
+  /**
+   * Creates a token for a work item's assignment version; the owner is the work item for a direct
+   * assignment or the linked group that owns it.
+   */
+  public static VersionToken workItemAssignment(UUID ownerId, long version) {
+    return new VersionToken(VersionedResourceType.WORK_ITEM_ASSIGNMENT, ownerId, version);
+  }
+
   /** Encodes this token as an opaque URL-safe string. */
   public String encode() {
     var raw =

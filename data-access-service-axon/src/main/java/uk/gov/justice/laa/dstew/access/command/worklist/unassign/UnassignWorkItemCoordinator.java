@@ -26,11 +26,12 @@ public class UnassignWorkItemCoordinator {
   @AllowApiCaseworker
   public void handle(UnassignWorkItemCommand command) {
     WorkItemRoute route = routeResolver.resolveDirectRoute(command.workItemId());
+    command.expectedAssignment().requireOwner(command.workItemId(), command.workItemId());
     if (route.getWorkItemType() == WorkItemType.PRIOR_AUTHORITY) {
       commandGateway.sendAndWait(
           new DirectPriorAuthorityWorkItemUnassignmentCommand(
               command.workItemId(),
-              command.expectedAssignmentVersion(),
+              command.expectedAssignment().version(),
               command.serialisedRequest(),
               command.eventDescription(),
               command.occurredAt()));
@@ -40,7 +41,7 @@ public class UnassignWorkItemCoordinator {
     commandGateway.sendAndWait(
         new DirectWorkItemUnassignmentCommand(
             command.workItemId(),
-            command.expectedAssignmentVersion(),
+            command.expectedAssignment().version(),
             command.serialisedRequest(),
             command.eventDescription(),
             command.occurredAt()));

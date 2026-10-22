@@ -13,6 +13,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import uk.gov.justice.laa.dstew.dataaccesstools.utils.client.DataAccessApiClient;
+import uk.gov.justice.laa.dstew.dataaccesstools.utils.client.WorkItemAssignmentTokens;
 import uk.gov.justice.laa.dstew.dataaccesstools.utils.workflow.WorkflowResult;
 
 class ApplicationCreationWorkflowTest {
@@ -162,6 +163,7 @@ class ApplicationCreationWorkflowTest {
       record("draft");
       try {
         var body = new ObjectMapper().readTree(requestBody);
+        UUID applicationId = UUID.fromString(body.required("id").asText());
         assertEquals("APPLICATION_SUBMITTED", body.required("status").asText());
         assertTrue(
             body.required("applicationContent")
@@ -200,8 +202,8 @@ class ApplicationCreationWorkflowTest {
 
     @Override
     public void assignWorkListItem(
-        UUID itemId, long expectedAssignmentVersion, String eventDescription) {
-      assertEquals(0, expectedAssignmentVersion);
+        UUID itemId, String expectedAssignmentVersion, String eventDescription) {
+      assertEquals(WorkItemAssignmentTokens.initial(itemId), expectedAssignmentVersion);
       record("assign");
     }
 

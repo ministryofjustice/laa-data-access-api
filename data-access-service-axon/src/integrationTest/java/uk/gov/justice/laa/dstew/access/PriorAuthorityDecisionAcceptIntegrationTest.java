@@ -50,6 +50,7 @@ import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.FindPriorAuthorityByPriorAuthorityIdQuery;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
+import uk.gov.justice.laa.dstew.access.version.VersionToken;
 
 /** Full HTTP/Postgres/Axon integration tests for Prior Authority decision handling. */
 @Testcontainers
@@ -426,7 +427,10 @@ public class PriorAuthorityDecisionAcceptIntegrationTest {
         restTemplate.exchange(
             "http://localhost:" + port + "/api/v0/work-list/" + priorAuthorityId + "/assign",
             HttpMethod.POST,
-            new HttpEntity<>(new WorkListAssignRequest(0L), headers()),
+            new HttpEntity<>(
+                new WorkListAssignRequest(
+                    VersionToken.workItemAssignment(priorAuthorityId, 0L).encode()),
+                headers()),
             Void.class);
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
   }

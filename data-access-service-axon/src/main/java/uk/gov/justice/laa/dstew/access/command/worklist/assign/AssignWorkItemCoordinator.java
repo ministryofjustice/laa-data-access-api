@@ -41,12 +41,13 @@ public class AssignWorkItemCoordinator {
   public void handle(AssignWorkItemCommand command) {
 
     WorkItemRoute route = routeResolver.resolveDirectRoute(command.workItemId());
+    command.expectedAssignment().requireOwner(command.workItemId(), command.workItemId());
     if (route.getWorkItemType() == WorkItemType.PRIOR_AUTHORITY) {
       commandGateway.sendAndWait(
           new DirectPriorAuthorityWorkItemAssignmentCommand(
               command.workItemId(),
               command.caseworkerId(),
-              command.expectedAssignmentVersion(),
+              command.expectedAssignment().version(),
               command.serialisedRequest(),
               command.eventDescription(),
               command.occurredAt()));
@@ -64,7 +65,7 @@ public class AssignWorkItemCoordinator {
         new DirectWorkItemAssignmentCommand(
             command.workItemId(),
             command.caseworkerId(),
-            command.expectedAssignmentVersion(),
+            command.expectedAssignment().version(),
             command.serialisedRequest(),
             command.eventDescription(),
             command.occurredAt()));
@@ -77,7 +78,7 @@ public class AssignWorkItemCoordinator {
           new DirectGroupWorkItemAssignmentCommand(
               memberApplicationId,
               command.caseworkerId(),
-              isTargetedItem ? command.expectedAssignmentVersion() : null,
+              isTargetedItem ? command.expectedAssignment().version() : null,
               command.serialisedRequest(),
               command.eventDescription(),
               command.occurredAt()));

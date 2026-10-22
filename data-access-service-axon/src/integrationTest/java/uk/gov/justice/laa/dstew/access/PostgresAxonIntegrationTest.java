@@ -94,6 +94,7 @@ import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHist
 import uk.gov.justice.laa.dstew.access.query.application.history.PriorAuthorityHistoryReadRepository;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
+import uk.gov.justice.laa.dstew.access.version.VersionToken;
 import util.ProjectionAwaiter;
 
 @Testcontainers
@@ -1415,7 +1416,10 @@ class PostgresAxonIntegrationTest {
         restTemplate.exchange(
             "http://localhost:" + port + "/api/v0/work-list/" + applicationId + "/assign",
             HttpMethod.POST,
-            new HttpEntity<>(new WorkListAssignRequest(0L), headers()),
+            new HttpEntity<>(
+                new WorkListAssignRequest(
+                    VersionToken.workItemAssignment(applicationId, 0L).encode()),
+                headers()),
             Void.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -1657,7 +1661,10 @@ class PostgresAxonIntegrationTest {
         restTemplate.exchange(
             "http://localhost:" + port + "/api/v0/work-list/" + applicationId + "/assign",
             HttpMethod.POST,
-            new HttpEntity<>(new WorkListAssignRequest(0L), headers()),
+            new HttpEntity<>(
+                new WorkListAssignRequest(
+                    VersionToken.workItemAssignment(applicationId, 0L).encode()),
+                headers()),
             Void.class);
     assertThat(assignResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
 
@@ -1665,7 +1672,10 @@ class PostgresAxonIntegrationTest {
         restTemplate.exchange(
             "http://localhost:" + port + "/api/v0/work-list/" + applicationId + "/unassign",
             HttpMethod.POST,
-            new HttpEntity<>(new WorkListUnassignRequest(1L), headers()),
+            new HttpEntity<>(
+                new WorkListUnassignRequest(
+                    VersionToken.workItemAssignment(applicationId, 1L).encode()),
+                headers()),
             Void.class);
     assertThat(unassignResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
 
@@ -1862,7 +1872,10 @@ class PostgresAxonIntegrationTest {
         restTemplate.exchange(
             "http://localhost:" + port + "/api/v0/work-list/" + priorAuthorityId + "/assign",
             HttpMethod.POST,
-            new HttpEntity<>(new WorkListAssignRequest(0L), headers()),
+            new HttpEntity<>(
+                new WorkListAssignRequest(
+                    VersionToken.workItemAssignment(priorAuthorityId, 0L).encode()),
+                headers()),
             Void.class);
     assertThat(assignResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
 
@@ -1947,7 +1960,10 @@ class PostgresAxonIntegrationTest {
         restTemplate.exchange(
             "http://localhost:" + port + "/api/v0/work-list/" + priorAuthorityId + "/assign",
             HttpMethod.POST,
-            new HttpEntity<>(new WorkListAssignRequest(0L), headers()),
+            new HttpEntity<>(
+                new WorkListAssignRequest(
+                    VersionToken.workItemAssignment(priorAuthorityId, 0L).encode()),
+                headers()),
             Void.class);
     assertThat(assignResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
 
@@ -1955,7 +1971,10 @@ class PostgresAxonIntegrationTest {
         restTemplate.exchange(
             "http://localhost:" + port + "/api/v0/work-list/" + priorAuthorityId + "/unassign",
             HttpMethod.POST,
-            new HttpEntity<>(new WorkListUnassignRequest(1L), headers()),
+            new HttpEntity<>(
+                new WorkListUnassignRequest(
+                    VersionToken.workItemAssignment(priorAuthorityId, 1L).encode()),
+                headers()),
             Void.class);
     assertThat(unassignResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
 
@@ -2058,7 +2077,9 @@ class PostgresAxonIntegrationTest {
             "http://localhost:" + port + "/api/v0/work-list/" + priorAuthorityId + "/assign",
             HttpMethod.POST,
             new HttpEntity<>(
-                new WorkListAssignRequest(0L), headers(TestJwtDecoderConfig.BEARER_TOKEN)),
+                new WorkListAssignRequest(
+                    VersionToken.workItemAssignment(priorAuthorityId, 0L).encode()),
+                headers(TestJwtDecoderConfig.BEARER_TOKEN)),
             Void.class);
     assertThat(firstAssign.getStatusCode()).isEqualTo(HttpStatus.OK);
 
@@ -2066,7 +2087,10 @@ class PostgresAxonIntegrationTest {
         restTemplate.exchange(
             "http://localhost:" + port + "/api/v0/work-list/" + priorAuthorityId + "/unassign",
             HttpMethod.POST,
-            new HttpEntity<>(new WorkListUnassignRequest(1L), headers()),
+            new HttpEntity<>(
+                new WorkListUnassignRequest(
+                    VersionToken.workItemAssignment(priorAuthorityId, 1L).encode()),
+                headers()),
             Void.class);
     assertThat(unassign.getStatusCode()).isEqualTo(HttpStatus.OK);
 
@@ -2075,7 +2099,9 @@ class PostgresAxonIntegrationTest {
             "http://localhost:" + port + "/api/v0/work-list/" + priorAuthorityId + "/assign",
             HttpMethod.POST,
             new HttpEntity<>(
-                new WorkListAssignRequest(2L), headers(TestJwtDecoderConfig.OTHER_BEARER_TOKEN)),
+                new WorkListAssignRequest(
+                    VersionToken.workItemAssignment(priorAuthorityId, 2L).encode()),
+                headers(TestJwtDecoderConfig.OTHER_BEARER_TOKEN)),
             Void.class);
     assertThat(secondAssign.getStatusCode()).isEqualTo(HttpStatus.OK);
 
@@ -2192,7 +2218,10 @@ class PostgresAxonIntegrationTest {
         restTemplate.exchange(
             "http://localhost:" + port + "/api/v0/work-list/" + secondPriorAuthorityId + "/assign",
             HttpMethod.POST,
-            new HttpEntity<>(new WorkListAssignRequest(0L), headers()),
+            new HttpEntity<>(
+                new WorkListAssignRequest(
+                    VersionToken.workItemAssignment(secondPriorAuthorityId, 0L).encode()),
+                headers()),
             Void.class);
     assertThat(assignResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
 

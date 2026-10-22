@@ -6,6 +6,7 @@ import uk.gov.justice.laa.dstew.dataaccesstools.cli.applications.ApplicationRequ
 import uk.gov.justice.laa.dstew.dataaccesstools.cli.applications.DecisionRequestFactory;
 import uk.gov.justice.laa.dstew.dataaccesstools.cli.priorauthorities.PriorAuthorityRequestFactory.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.dataaccesstools.utils.client.DataAccessApiClient;
+import uk.gov.justice.laa.dstew.dataaccesstools.utils.client.WorkItemAssignmentTokens;
 import uk.gov.justice.laa.dstew.dataaccesstools.utils.workflow.WorkflowResult;
 
 public final class PriorAuthorityCreationWorkflow {
@@ -70,7 +71,7 @@ public final class PriorAuthorityCreationWorkflow {
       client.recordManualOutcome(application.applicationId());
       client.assignWorkListItem(
           application.applicationId(),
-          0,
+          WorkItemAssignmentTokens.initial(application.applicationId()),
           "Application assigned by data-access-tools for prior-authority submission");
       client.makeDecision(
           application.applicationId(),

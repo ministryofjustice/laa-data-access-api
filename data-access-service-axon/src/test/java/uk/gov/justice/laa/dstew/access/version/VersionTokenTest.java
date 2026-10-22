@@ -32,6 +32,23 @@ class VersionTokenTest {
   }
 
   @Test
+  void givenWorkItemAssignment_whenEncodedAndDecoded_thenRoundTrips() {
+    var token = VersionToken.workItemAssignment(RESOURCE_ID, 2);
+
+    assertThat(VersionToken.decode(token.encode(), VersionedResourceType.WORK_ITEM_ASSIGNMENT))
+        .isEqualTo(token);
+  }
+
+  @Test
+  void givenLinkedGroupToken_whenDecodedAsAssignment_thenRejected() {
+    var token = VersionToken.linkedGroup(RESOURCE_ID, 2).encode();
+
+    assertThatThrownBy(() -> VersionToken.decode(token, VersionedResourceType.WORK_ITEM_ASSIGNMENT))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Invalid version token");
+  }
+
+  @Test
   void givenEncodedToken_whenInspected_thenIsUrlSafeWithoutPadding() {
     var encoded = VersionToken.linkedGroup(RESOURCE_ID, 2).encode();
 

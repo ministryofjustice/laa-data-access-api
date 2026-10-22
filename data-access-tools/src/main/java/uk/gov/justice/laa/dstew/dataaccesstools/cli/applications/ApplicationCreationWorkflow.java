@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import uk.gov.justice.laa.dstew.dataaccesstools.utils.client.DataAccessApiClient;
+import uk.gov.justice.laa.dstew.dataaccesstools.utils.client.WorkItemAssignmentTokens;
 import uk.gov.justice.laa.dstew.dataaccesstools.utils.workflow.WorkflowResult;
 
 public final class ApplicationCreationWorkflow {
@@ -88,7 +89,7 @@ public final class ApplicationCreationWorkflow {
                 stage = "assign";
                 client.assignWorkListItem(
                     application.applicationId(),
-                    0,
+                    WorkItemAssignmentTokens.initial(application.applicationId()),
                     "Application assigned by data-access-tools for decision");
                 state = "APPLICATION_ASSIGNED";
                 stage = "make-decision";

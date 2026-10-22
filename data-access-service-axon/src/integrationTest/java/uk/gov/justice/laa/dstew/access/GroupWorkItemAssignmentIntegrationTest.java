@@ -164,7 +164,9 @@ class GroupWorkItemAssignmentIntegrationTest {
         "http://localhost:" + port + "/api/v0/work-list/" + itemId + "/assign",
         HttpMethod.POST,
         new HttpEntity<>(
-            new WorkListAssignRequest(expectedAssignmentVersion), headersFor(caseworkerId)),
+            new WorkListAssignRequest(
+                VersionToken.workItemAssignment(itemId, expectedAssignmentVersion).encode()),
+            headersFor(caseworkerId)),
         String.class);
   }
 

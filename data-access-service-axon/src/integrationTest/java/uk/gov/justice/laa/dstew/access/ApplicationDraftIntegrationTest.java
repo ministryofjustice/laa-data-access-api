@@ -78,6 +78,7 @@ import uk.gov.justice.laa.dstew.access.query.application.ApplicationProjection;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsUploadResult;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
+import uk.gov.justice.laa.dstew.access.version.VersionToken;
 import util.ProjectionAwaiter;
 
 /** Full HTTP/Postgres/Axon integration tests for the Application draft/submit lifecycle. */
@@ -1101,7 +1102,10 @@ class ApplicationDraftIntegrationTest {
         restTemplate.exchange(
             "http://localhost:" + port + "/api/v0/work-list/" + applicationId + "/assign",
             HttpMethod.POST,
-            new HttpEntity<>(new WorkListAssignRequest(0L), headers()),
+            new HttpEntity<>(
+                new WorkListAssignRequest(
+                    VersionToken.workItemAssignment(applicationId, 0L).encode()),
+                headers()),
             Void.class);
     assertThat(assigned.getStatusCode()).isEqualTo(HttpStatus.OK);
     MakeDecisionRequest decision =

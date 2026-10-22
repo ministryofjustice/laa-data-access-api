@@ -34,7 +34,7 @@ public interface DataAccessApiClient {
   UUID submitPriorAuthorityDraft(UUID priorAuthorityId);
 
   default void assignWorkListItem(
-      UUID itemId, long expectedAssignmentVersion, String eventDescription) {
+      UUID itemId, String expectedAssignmentVersion, String eventDescription) {
     throw new UnsupportedOperationException();
   }
 }

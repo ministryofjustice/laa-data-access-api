@@ -45,6 +45,7 @@ import uk.gov.justice.laa.dstew.access.model.WorkListItemType;
 import uk.gov.justice.laa.dstew.access.model.WorkListResponse;
 import uk.gov.justice.laa.dstew.access.model.WorkListUnassignRequest;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
+import uk.gov.justice.laa.dstew.access.version.VersionToken;
 
 /** Full HTTP/Postgres/Axon integration tests for delivered work-list behaviour. */
 class WorkListIntegrationTest extends BaseIntegrationTest {
@@ -63,7 +64,10 @@ class WorkListIntegrationTest extends BaseIntegrationTest {
         restTemplate.exchange(
             assignmentUrl(applicationId, "assign"),
             HttpMethod.POST,
-            new HttpEntity<>(new WorkListAssignRequest(0L), headers()),
+            new HttpEntity<>(
+                new WorkListAssignRequest(
+                    VersionToken.workItemAssignment(applicationId, 0L).encode()),
+                headers()),
             Void.class);
     assertThat(assigned.getStatusCode()).isEqualTo(HttpStatus.OK);
     awaitWorkListContains("?assignedToMe=true&unassigned=false", applicationId, caseworkerId, 1L);
@@ -79,7 +83,10 @@ class WorkListIntegrationTest extends BaseIntegrationTest {
         restTemplate.exchange(
             assignmentUrl(applicationId, "assign"),
             HttpMethod.POST,
-            new HttpEntity<>(new WorkListAssignRequest(0L), headers()),
+            new HttpEntity<>(
+                new WorkListAssignRequest(
+                    VersionToken.workItemAssignment(applicationId, 0L).encode()),
+                headers()),
             Void.class);
     assertThat(duplicate.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
 
@@ -87,10 +94,49 @@ class WorkListIntegrationTest extends BaseIntegrationTest {
         restTemplate.exchange(
             assignmentUrl(applicationId, "unassign"),
             HttpMethod.POST,
-            new HttpEntity<>(new WorkListUnassignRequest(1L), headers()),
+            new HttpEntity<>(
+                new WorkListUnassignRequest(
+                    VersionToken.workItemAssignment(applicationId, 1L).encode()),
+                headers()),
             Void.class);
     assertThat(unassigned.getStatusCode()).isEqualTo(HttpStatus.OK);
     awaitWorkListContains("", applicationId, null, 2L);
+  }
+
+  @Test
+  void givenInvalidToken_whenAssigned_thenBadRequest() {
+    UUID applicationId = UUID.randomUUID();
+    createManualApplication(applicationId);
+
+    ResponseEntity<String> response =
+        restTemplate.exchange(
+            assignmentUrl(applicationId, "assign"),
+            HttpMethod.POST,
+            new HttpEntity<>(new WorkListAssignRequest("not-a-token"), headers()),
+            String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(response.getBody())
+        .contains("expectedAssignmentVersion: must be a valid assignment version token");
+  }
+
+  @Test
+  void givenTokenForAnotherItem_whenAssigned_thenConflict() {
+    UUID applicationId = UUID.randomUUID();
+    createManualApplication(applicationId);
+
+    ResponseEntity<String> response =
+        restTemplate.exchange(
+            assignmentUrl(applicationId, "assign"),
+            HttpMethod.POST,
+            new HttpEntity<>(
+                new WorkListAssignRequest(
+                    VersionToken.workItemAssignment(UUID.randomUUID(), 0L).encode()),
+                headers()),
+            String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+    assertThat(response.getBody()).contains("the assignment version is stale");
   }
 
   @Test
@@ -476,7 +522,10 @@ class WorkListIntegrationTest extends BaseIntegrationTest {
         restTemplate.exchange(
             assignmentUrl(claimedPriorAuthorityId, "assign"),
             HttpMethod.POST,
-            new HttpEntity<>(new WorkListAssignRequest(0L), headers()),
+            new HttpEntity<>(
+                new WorkListAssignRequest(
+                    VersionToken.workItemAssignment(claimedPriorAuthorityId, 0L).encode()),
+                headers()),
             Void.class);
     assertThat(assigned.getStatusCode()).isEqualTo(HttpStatus.OK);
 
@@ -825,7 +874,8 @@ class WorkListIntegrationTest extends BaseIntegrationTest {
     UUID applicationId = UUID.randomUUID();
     UUID caseworkerId = TestJwtDecoderConfig.CASEWORKER_ID;
     createManualApplication(applicationId);
-    WorkListAssignRequest request = new WorkListAssignRequest(0L);
+    WorkListAssignRequest request =
+        new WorkListAssignRequest(VersionToken.workItemAssignment(applicationId, 0L).encode());
     request.setEventHistory(
         EventHistoryRequest.builder().eventDescription("Taken for assessment").build());
 
@@ -888,7 +938,10 @@ class WorkListIntegrationTest extends BaseIntegrationTest {
         restTemplate.exchange(
             assignmentUrl(priorAuthorityId, "assign"),
             HttpMethod.POST,
-            new HttpEntity<>(new WorkListAssignRequest(1L), headersFor(caseworkerId)),
+            new HttpEntity<>(
+                new WorkListAssignRequest(
+                    VersionToken.workItemAssignment(priorAuthorityId, 1L).encode()),
+                headersFor(caseworkerId)),
             Void.class);
     assertThat(reassigned.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
   }
@@ -1027,7 +1080,9 @@ class WorkListIntegrationTest extends BaseIntegrationTest {
                         assertThat(item.getItemType()).isEqualTo(expectedItemType);
                         assertThat(item.getAssignedTo()).isEqualTo(expectedAssignee);
                         assertThat(item.getAssignmentVersion())
-                            .isEqualTo(expectedAssignmentVersion);
+                            .isEqualTo(
+                                VersionToken.workItemAssignment(itemId, expectedAssignmentVersion)
+                                    .encode());
                       });
             });
   }
@@ -1068,7 +1123,9 @@ class WorkListIntegrationTest extends BaseIntegrationTest {
     return restTemplate.exchange(
         assignmentUrl(itemId, "assign"),
         HttpMethod.POST,
-        new HttpEntity<>(new WorkListAssignRequest(0L), headersFor(caseworkerId)),
+        new HttpEntity<>(
+            new WorkListAssignRequest(VersionToken.workItemAssignment(itemId, 0L).encode()),
+            headersFor(caseworkerId)),
         Void.class);
   }
 }

@@ -15,6 +15,8 @@ import org.axonframework.messaging.commandhandling.gateway.CommandGateway;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteResolver;
+import uk.gov.justice.laa.dstew.access.command.worklist.ExpectedAssignment;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.route.WorkItemRoute;
 import uk.gov.justice.laa.dstew.access.command.worklist.route.WorkItemRouteKind;
@@ -32,7 +34,8 @@ class AssignWorkItemCoordinatorTest {
     UUID caseworkerId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-09-01T10:00:00Z");
     AssignWorkItemCommand command =
-        new AssignWorkItemCommand(id, caseworkerId, 0L, "{}", "Assigned", occurredAt);
+        new AssignWorkItemCommand(
+            id, caseworkerId, new ExpectedAssignment(id, 0L), "{}", "Assigned", occurredAt);
     when(routes.resolveDirectRoute(id)).thenReturn(route(WorkItemType.APPLICATION, id, occurredAt));
     when(groupRoutes.resolveGroupMembersForAssignment(id)).thenReturn(Optional.empty());
 
@@ -56,7 +59,9 @@ class AssignWorkItemCoordinatorTest {
     when(routes.resolveDirectRoute(id))
         .thenReturn(route(WorkItemType.PRIOR_AUTHORITY, id, occurredAt));
 
-    handler.handle(new AssignWorkItemCommand(id, caseworkerId, 0L, "{}", "Assigned", occurredAt));
+    handler.handle(
+        new AssignWorkItemCommand(
+            id, caseworkerId, new ExpectedAssignment(id, 0L), "{}", "Assigned", occurredAt));
 
     verify(gateway)
         .sendAndWait(
@@ -81,7 +86,12 @@ class AssignWorkItemCoordinatorTest {
             () ->
                 handler.handle(
                     new AssignWorkItemCommand(
-                        id, caseworkerId, 0L, "{}", "Assigned", Instant.now())))
+                        id,
+                        caseworkerId,
+                        new ExpectedAssignment(id, 0L),
+                        "{}",
+                        "Assigned",
+                        Instant.now())))
         .isInstanceOf(ResourceNotFoundException.class)
         .hasMessage("No work item found with id: " + id);
 
@@ -99,7 +109,8 @@ class AssignWorkItemCoordinatorTest {
     UUID caseworkerId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-09-01T10:00:00Z");
     AssignWorkItemCommand command =
-        new AssignWorkItemCommand(id, caseworkerId, 0L, "{}", "Assigned", occurredAt);
+        new AssignWorkItemCommand(
+            id, caseworkerId, new ExpectedAssignment(id, 0L), "{}", "Assigned", occurredAt);
     when(routes.resolveDirectRoute(id)).thenReturn(route(WorkItemType.APPLICATION, id, occurredAt));
     when(groupRoutes.resolveGroupMembersForAssignment(id))
         .thenReturn(Optional.of(List.of(id, siblingId)));
@@ -119,6 +130,34 @@ class AssignWorkItemCoordinatorTest {
                 siblingId, caseworkerId, null, "{}", "Assigned", occurredAt));
     verify(gateway, never())
         .sendAndWait(org.mockito.ArgumentMatchers.isA(DirectWorkItemAssignmentCommand.class));
+  }
+
+  @Test
+  void givenTokenForAnotherOwner_whenHandled_thenStaleWithoutDispatch() {
+    WorkItemRouteResolver routes = mock(WorkItemRouteResolver.class);
+    ApplicationGroupRouteResolver groupRoutes = mock(ApplicationGroupRouteResolver.class);
+    CommandGateway gateway = mock(CommandGateway.class);
+    AssignWorkItemCoordinator handler = new AssignWorkItemCoordinator(routes, groupRoutes, gateway);
+    UUID id = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+    UUID otherOwnerId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-09-01T10:00:00Z");
+    when(routes.resolveDirectRoute(id)).thenReturn(route(WorkItemType.APPLICATION, id, occurredAt));
+
+    assertThatThrownBy(
+            () ->
+                handler.handle(
+                    new AssignWorkItemCommand(
+                        id,
+                        caseworkerId,
+                        new ExpectedAssignment(otherOwnerId, 0L),
+                        "{}",
+                        "Assigned",
+                        occurredAt)))
+        .isInstanceOf(WorkItemAssignmentConflictException.class)
+        .hasMessage("Work item " + id + " cannot be updated: the assignment version is stale");
+
+    verify(gateway, never()).sendAndWait(org.mockito.ArgumentMatchers.any());
   }
 
   private WorkItemRoute route(WorkItemType type, UUID id, Instant occurredAt) {

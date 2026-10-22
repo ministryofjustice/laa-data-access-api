@@ -88,7 +88,8 @@ class LinkedGroupAssignmentIntegrationTest {
         restTemplate.exchange(
             "http://localhost:" + port + "/api/v0/work-list/" + memberIds.get(1) + "/assign",
             HttpMethod.POST,
-            new HttpEntity<>(new WorkListAssignRequest(0L), headers()),
+            new HttpEntity<>(
+                new WorkListAssignRequest(assignmentToken(memberIds.get(1), 0L)), headers()),
             Void.class);
 
     assertThat(assignResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -108,7 +109,8 @@ class LinkedGroupAssignmentIntegrationTest {
     restTemplate.exchange(
         "http://localhost:" + port + "/api/v0/work-list/" + memberIds.get(0) + "/assign",
         HttpMethod.POST,
-        new HttpEntity<>(new WorkListAssignRequest(0L), headers()),
+        new HttpEntity<>(
+            new WorkListAssignRequest(assignmentToken(memberIds.get(0), 0L)), headers()),
         Void.class);
 
     // Verify all members have version 1
@@ -121,7 +123,8 @@ class LinkedGroupAssignmentIntegrationTest {
         "http://localhost:" + port + "/api/v0/work-list/" + memberIds.get(2) + "/assign",
         HttpMethod.POST,
         new HttpEntity<>(
-            new WorkListAssignRequest(1L), headersFor(TestJwtDecoderConfig.OTHER_CASEWORKER_ID)),
+            new WorkListAssignRequest(assignmentToken(memberIds.get(2), 1L)),
+            headersFor(TestJwtDecoderConfig.OTHER_CASEWORKER_ID)),
         Void.class);
 
     // Verify all members are reassigned to new caseworker with version 2
@@ -139,7 +142,8 @@ class LinkedGroupAssignmentIntegrationTest {
     restTemplate.exchange(
         "http://localhost:" + port + "/api/v0/work-list/" + memberIds.get(0) + "/assign",
         HttpMethod.POST,
-        new HttpEntity<>(new WorkListAssignRequest(0L), headers()),
+        new HttpEntity<>(
+            new WorkListAssignRequest(assignmentToken(memberIds.get(0), 0L)), headers()),
         Void.class);
 
     // Verify both members have WorkItemAssigned events
@@ -173,7 +177,8 @@ class LinkedGroupAssignmentIntegrationTest {
         restTemplate.exchange(
             "http://localhost:" + port + "/api/v0/work-list/" + memberIds.get(1) + "/assign",
             HttpMethod.POST,
-            new HttpEntity<>(new WorkListAssignRequest(0L), headers()),
+            new HttpEntity<>(
+                new WorkListAssignRequest(assignmentToken(memberIds.get(1), 0L)), headers()),
             Void.class);
 
     assertThat(assignResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -200,7 +205,8 @@ class LinkedGroupAssignmentIntegrationTest {
     restTemplate.exchange(
         "http://localhost:" + port + "/api/v0/work-list/" + memberIds.get(1) + "/assign",
         HttpMethod.POST,
-        new HttpEntity<>(new WorkListAssignRequest(0L), headers()),
+        new HttpEntity<>(
+            new WorkListAssignRequest(assignmentToken(memberIds.get(1), 0L)), headers()),
         Void.class);
 
     // Verify lead and all members are assigned
@@ -378,6 +384,10 @@ class LinkedGroupAssignmentIntegrationTest {
   /** Encodes a linked group version token. */
   private String token(UUID groupId, long version) {
     return VersionToken.linkedGroup(groupId, version).encode();
+  }
+
+  private String assignmentToken(UUID itemId, long version) {
+    return VersionToken.workItemAssignment(itemId, version).encode();
   }
 
   /** Creates HTTP headers with test JWT token for the default caseworker. */

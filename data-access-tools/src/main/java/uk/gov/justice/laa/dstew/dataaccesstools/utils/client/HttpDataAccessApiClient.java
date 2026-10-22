@@ -169,11 +169,11 @@ public final class HttpDataAccessApiClient implements DataAccessApiClient {
 
   @Override
   public void assignWorkListItem(
-      UUID itemId, long expectedAssignmentVersion, String eventDescription) {
+      UUID itemId, String expectedAssignmentVersion, String eventDescription) {
     String body =
-        "{\"expectedAssignmentVersion\":%d%s}"
+        "{\"expectedAssignmentVersion\":\"%s\"%s}"
             .formatted(
-                expectedAssignmentVersion,
+                escapeJson(expectedAssignmentVersion),
                 eventDescription == null
                     ? ""
                     : ",\"eventHistory\":{\"eventDescription\":\""

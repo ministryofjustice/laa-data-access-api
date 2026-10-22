@@ -8,8 +8,9 @@ public abstract class WorkListAssignmentCommand {
   @CommandLine.Option(
       names = "--expected-assignment-version",
       required = true,
-      description = "Current assignment version from the work-list API.")
-  private long expectedAssignmentVersion;
+      description =
+          "Current assignmentVersion token from the work-list API, passed back unchanged.")
+  private String expectedAssignmentVersion;
 
   @CommandLine.Option(
       names = "--event-description",
@@ -17,9 +18,9 @@ public abstract class WorkListAssignmentCommand {
   private String eventDescription;
 
   protected final int assign(DataAccessToolsCommand root, UUID itemId) {
-    if (expectedAssignmentVersion < 0) {
+    if (expectedAssignmentVersion == null || expectedAssignmentVersion.isBlank()) {
       throw new CommandLine.ParameterException(
-          new CommandLine(this), "--expected-assignment-version must not be negative");
+          new CommandLine(this), "--expected-assignment-version must not be blank");
     }
     root.client().assignWorkListItem(itemId, expectedAssignmentVersion, eventDescription);
     System.out.printf("%s: SUCCESS - assigned to authenticated user%n", itemId);
