@@ -48,13 +48,3 @@ ignore:
         expires: 2025-08-01T00:00:00.000Z
         created: 2025-07-11T00:00:00.000Z
 patch: {}
-exclude:
-  global:
-    - data-access-service/src/test
-    - data-access-service/src/integrationTest
-    - >-
-      data-access-service/src/main/java/uk/gov/justice/laa/dstew/access/config/NoSecurityConfig.java
-    - >-
-      data-access-service/src/main/java/uk/gov/justice/laa/dstew/access/config/SecurityConfig.java
-    - >-
-      data-access-service/src/main/java/uk/gov/justice/laa/dstew/access/controller/ApplicationV1Controller.java
