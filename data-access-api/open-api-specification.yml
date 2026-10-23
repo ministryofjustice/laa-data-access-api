@@ -101,8 +101,6 @@ components:
       $ref: "./open-api-applications/components.yml#/components/schemas/ApplicationNotesResponse"
     DocumentUploadResponse:
       $ref: "./open-api-applications/components.yml#/components/schemas/DocumentUploadResponse"
-    DocumentDownloadResponse:
-      $ref: "./open-api-applications/components.yml#/components/schemas/DocumentDownloadResponse"
     DocumentUpdateResponse:
       $ref: "./open-api-applications/components.yml#/components/schemas/DocumentUpdateResponse"
     SdsHealthResponse:
