@@ -1,6 +1,6 @@
 # Application and Prior Authority Document Conflicts and Retries
 
-Status: Proposed; remaining policy changes are deferred.
+Status: Implemented for draft filename concurrency; other policy changes remain deferred.
 Date: 2026-10-08
 
 ## Scope
@@ -10,6 +10,9 @@ and Prior Authority, plus Prior Authority-only document deletion and type-update
 completed Application verification and remaining Prior Authority integration-test gaps.
 
 DELETE readiness/idempotency, failed-upload compensation, and related OpenAPI changes remain deferred.
+Draft rows use JPA optimistic locking. A concurrent stale update is retried once through the
+existing command dispatcher. If that retry also fails, the existing generic `500 Internal Server
+Error` response remains; no client version parameter or `409 Conflict` mapping is introduced.
 
 The shared upload scope covers UUID-keyed document endpoints. Application document deletion and
 type updates remain unimplemented; the
@@ -64,9 +67,6 @@ Extend the existing HTTP/PostgreSQL/Axon tests, keeping SDS mocked:
 - Pause deletion projection and exercise GET during that interval, including filename removal
   and exact SDS suffix lookup. Do not assume immediate revocation under the current contract.
 - Download content after a Prior Authority decision to verify projected-version hydration.
-- Confirm the HTTP mapping when concurrency retries are exhausted. The desired error codes
-  were not fully settled in the design discussion.
-
 Use deterministic gates, bounded waits, and cleanup in `finally`. If a test exposes a production
 defect, report it separately rather than implementing a deferred policy to make the test pass.
 
@@ -82,7 +82,8 @@ and Axon with SDS mocked:
   events, and downloadable content after one rolled-back/retried registration.
 - Upload and submission transactions overlap in both commit orders. Upload-first submission
   retries and preserves the filename in immutable version zero. Submission-first registration
-  fails without recreating the draft, registering the document, or changing version zero.
+  retries against the submitted aggregate and returns `400` without recreating the draft,
+  registering the document, or changing version zero.
 - An upload paused in SDS while submission commits returns `400` on late registration. No
   document is registered and SDS cleanup is not attempted, demonstrating the existing orphan risk.
 - A paused upload projection leaves document GET at `404` without calling SDS, despite upload
@@ -91,11 +92,14 @@ and Axon with SDS mocked:
   missing-filename fallback, using the projected immutable data version.
 - Two forced concurrency failures exhaust registration retries and return `500`. Neither
   registration attempt persists a filename or event; SDS upload runs once, without compensation.
+- Concurrent uploads against stale draft reads retain both filenames after one optimistic-lock
+  retry. If the bounded retry is exhausted, registration continues to return `500`.
 
-### Observed submission-first response gap
+### Submission-first registration outcome
 
 When submission commits after the upload transaction has already read the draft, late registration
-currently returns `500`, rather than the `400` produced when submission finishes before registration
-starts. Persisted state remains correct in both cases. This is a separate concurrency/error-response
-finding, not an authorised response-policy change. The desired mapping and any retry-handling fix
-remain to be decided; these tests record current behaviour rather than requiring a new contract.
+retries against the submitted aggregate and returns `400` from the existing lifecycle validation.
+When submission finishes before registration starts, the upload preflight also rejects the request
+with `400`. Both paths leave the submitted content unchanged and do not recreate the draft or
+register the document. If an internal retry is exhausted by concurrent-write failures, the response
+remains `500`; this persistence-only version does not introduce a client version parameter.

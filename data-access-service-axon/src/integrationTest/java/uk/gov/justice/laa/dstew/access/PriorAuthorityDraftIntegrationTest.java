@@ -24,6 +24,7 @@ import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
@@ -1099,13 +1100,35 @@ class PriorAuthorityDraftIntegrationTest {
   void givenConcurrentUploads_whenRegistered_thenBothDocumentsAndFilenamesSurvive()
       throws Exception {
     UUID priorAuthorityId = saveDraft(grantedApplication(), PriorAuthorityType.EXPERT, null, null);
+    CyclicBarrier staleReads = new CyclicBarrier(2);
+    AtomicInteger writeAttempts = new AtomicInteger();
+    AtomicInteger staleReadCount = new AtomicInteger();
+    AtomicBoolean gateDraftReads = new AtomicBoolean();
     CyclicBarrier storedFiles = new CyclicBarrier(2);
     when(sdsService.saveEvidenceFile(any(), any(), any()))
         .thenAnswer(
             invocation -> {
               storedFiles.await(10, TimeUnit.SECONDS);
+              gateDraftReads.set(true);
               return new SdsUploadResult(null, null, "checksum");
             });
+    doAnswer(
+            invocation -> {
+              writeAttempts.incrementAndGet();
+              return invocation.callRealMethod();
+            })
+        .when(draftStore)
+        .upsert(any(), any(), any(), any(), any());
+    doAnswer(
+            invocation -> {
+              Object draft = invocation.callRealMethod();
+              if (gateDraftReads.get() && staleReadCount.incrementAndGet() <= 2) {
+                staleReads.await(10, TimeUnit.SECONDS);
+              }
+              return draft;
+            })
+        .when(draftStore)
+        .find(priorAuthorityId);
     int eventsBefore = eventCount(priorAuthorityId);
 
     List<ResponseEntity<String>> responses =
@@ -1129,6 +1152,13 @@ class PriorAuthorityDraftIntegrationTest {
             .toList();
     assertThat(documentIds).doesNotHaveDuplicates();
     assertThat(eventCount(priorAuthorityId)).isEqualTo(eventsBefore + 2);
+    assertThat(writeAttempts.get()).isEqualTo(3);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT version FROM axon.prior_authority_draft WHERE prior_authority_id = ?",
+                Long.class,
+                priorAuthorityId))
+        .isEqualTo(2L);
     for (int index = 0; index < documentIds.size(); index++) {
       assertThat(
               jdbcTemplate.queryForObject(

@@ -6,15 +6,18 @@ import org.axonframework.eventsourcing.eventstore.AppendEventsTransactionRejecte
 import org.axonframework.messaging.commandhandling.gateway.CommandGateway;
 import org.axonframework.modelling.ConcurrencyException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Component;
 
 /**
  * Wraps Axon's {@link CommandGateway} with a single retry on concurrent-write failures.
  *
  * <p>Retries once when a {@link ConcurrencyException}, {@link
- * AppendEventsTransactionRejectedException}, or a unique-constraint {@link
- * DataIntegrityViolationException} (SQL state {@code 23505}) is thrown. All other exceptions are
- * propagated immediately.
+ * AppendEventsTransactionRejectedException}, {@link OptimisticLockingFailureException}, or a
+ * unique-constraint {@link DataIntegrityViolationException} (SQL state {@code 23505}) is thrown.
+ * The first three failures are also recognised when nested in a runtime exception.
+ * Unique-constraint failures require a top-level {@code DataIntegrityViolationException}. All other
+ * exceptions are propagated immediately.
  */
 @Component
 public class RetryingCommandDispatcher {
@@ -56,10 +59,22 @@ public class RetryingCommandDispatcher {
   }
 
   private boolean isRetryableConcurrentWrite(RuntimeException exception) {
-    return exception instanceof ConcurrencyException
-        || exception instanceof AppendEventsTransactionRejectedException
+    return hasCause(exception, ConcurrencyException.class)
+        || hasCause(exception, AppendEventsTransactionRejectedException.class)
+        || hasCause(exception, OptimisticLockingFailureException.class)
         || exception instanceof DataIntegrityViolationException
             && hasUniqueConstraintViolation(exception);
+  }
+
+  private boolean hasCause(Throwable exception, Class<? extends Throwable> causeType) {
+    Throwable cause = exception;
+    while (cause != null) {
+      if (causeType.isInstance(cause)) {
+        return true;
+      }
+      cause = cause.getCause();
+    }
+    return false;
   }
 
   private boolean hasUniqueConstraintViolation(Throwable exception) {
