@@ -39,9 +39,7 @@ class ApplicationLifecycleTest {
 
   @Test
   void enforcesLifecycleInvariants() {
-    assertThatThrownBy(() -> new ApplicationLifecycle(true, true, false, false))
-        .isInstanceOf(IllegalArgumentException.class);
-    assertThatThrownBy(() -> new ApplicationLifecycle(false, false, false, true))
+    assertThatThrownBy(() -> new ApplicationLifecycle(true, true, false))
         .isInstanceOf(IllegalArgumentException.class);
   }
 }
