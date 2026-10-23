@@ -25,7 +25,13 @@ export function createProviderApplicationRuntime(config, token, context) {
       );
     },
     request(method, path, body, params) {
-      return request(config, token, method, path, body, params);
+      return request(config, token, method, path, body, {
+        ...params,
+        tags: {
+          ...params?.tags,
+          ...context.metricTags,
+        },
+      });
     },
     expectStatus(response, statuses) {
       return expectStatus(response, statuses, {

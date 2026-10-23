@@ -49,6 +49,26 @@ set -a && source k6/.env && set +a
 that the API health endpoint is reachable; it performs no mutations. Pass a scenario relative to
 `k6/` as the first argument, for example `./k6/run.sh scenarios/smoke-complete-journey.js`.
 
+## Journey scenarios
+
+All journeys tag HTTP metrics with their scenario and canonical step name. Every virtual-user
+iteration creates a unique run context, so performance scenarios do not share externally visible
+Application, Prior Authority, client, or LAA-reference identifiers.
+
+| Scenario | Command | Default execution |
+| --- | --- | --- |
+| Complete smoke journey | `./k6/run.sh scenarios/smoke-complete-journey.js` | One VU, one complete Application and PA grant |
+| Application assignment contention | `./k6/run.sh scenarios/contention-application-assignment.js` | `K6_CONTENTION_VUS=2`, one shared Application and one assignment attempt per contender |
+| Complete journey baseline | `./k6/run.sh scenarios/performance-complete-journey.js` | `K6_PERFORMANCE_VUS=5` for `K6_PERFORMANCE_DURATION=5m` |
+| Provider drafting baseline | `./k6/run.sh scenarios/performance-provider-drafting.js` | Application draft, document, and submission phase |
+| Work Queue baseline | `./k6/run.sh scenarios/performance-work-queue.js` | Application discovery, assignment, and decision phase |
+| PA lifecycle baseline | `./k6/run.sh scenarios/performance-prior-authority.js` | Granted parent setup followed by PA lifecycle and decision |
+
+The PA caseworker uses the Application Caseworker credentials when both `K6_PA_CASEWORKER_*`
+variables are omitted; supply PA credentials to run them as distinct identities. Contention
+records `assigned` and `conflict` metrics for its one attempt per configured contender. Set
+`K6_THRESHOLDS` to add optional correctness, latency, or error thresholds.
+
 ## Run against an ephemeral environment
 
 Port-forward the target API and its configured mock OAuth service, then override the URLs before
