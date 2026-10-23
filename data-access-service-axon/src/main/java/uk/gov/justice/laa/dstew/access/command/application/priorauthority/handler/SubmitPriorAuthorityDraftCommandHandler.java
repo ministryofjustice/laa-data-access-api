@@ -12,9 +12,11 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.security.AggregateResource;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedCallerResource;
-import uk.gov.justice.laa.dstew.access.security.OfficeCodeResource;
-import uk.gov.justice.laa.dstew.access.security.RequireOfficeCodeWriteAccess;
+import uk.gov.justice.laa.dstew.access.security.OfficeCodeResourceWriteAccessResolver;
+import uk.gov.justice.laa.dstew.access.security.OfficeCodeWriteAccessAuthorizer;
+import uk.gov.justice.laa.dstew.access.security.RequireWriteAccess;
 import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
 
 /** Handles submission of prior-authority drafts. */
@@ -23,14 +25,19 @@ public class SubmitPriorAuthorityDraftCommandHandler {
 
   /** Submits a prior-authority draft, validates its schema, and emits the submitted event. */
   @CommandHandler
-  @RequireOfficeCodeWriteAccess
+  @RequireWriteAccess(
+      resolver = OfficeCodeResourceWriteAccessResolver.class,
+      authorizer = OfficeCodeWriteAccessAuthorizer.class)
   public void handle(
       @AuthenticatedCallerResource SubmitPriorAuthorityDraftCommand command,
       PriorAuthorityDraftStore draftStore,
       PriorAuthorityDataStore dataStore,
       ApplicationDataStore applicationDataStore,
       JsonSchemaValidator jsonSchemaValidator,
-      @InjectEntity(idProperty = "priorAuthorityId") @OfficeCodeResource
+      @InjectEntity(idProperty = "priorAuthorityId")
+          @AggregateResource(
+              resourceType = "prior-authority",
+              resourceIdProperty = "priorAuthorityId")
           PriorAuthorityAggregate priorAuthority,
       EventAppender eventAppender) {
 

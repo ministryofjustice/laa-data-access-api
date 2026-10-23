@@ -14,9 +14,11 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.security.AggregateResource;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedCallerResource;
-import uk.gov.justice.laa.dstew.access.security.OfficeCodeResource;
-import uk.gov.justice.laa.dstew.access.security.RequireOfficeCodeWriteAccess;
+import uk.gov.justice.laa.dstew.access.security.OfficeCodeResourceWriteAccessResolver;
+import uk.gov.justice.laa.dstew.access.security.OfficeCodeWriteAccessAuthorizer;
+import uk.gov.justice.laa.dstew.access.security.RequireWriteAccess;
 
 /** Handles updates to prior-authority drafts. */
 @Component
@@ -24,11 +26,16 @@ public class UpdatePriorAuthorityDraftCommandHandler {
 
   /** Updates the prior-authority draft and emits the corresponding event. */
   @CommandHandler
-  @RequireOfficeCodeWriteAccess
+  @RequireWriteAccess(
+      resolver = OfficeCodeResourceWriteAccessResolver.class,
+      authorizer = OfficeCodeWriteAccessAuthorizer.class)
   void handle(
       @AuthenticatedCallerResource UpdatePriorAuthorityDraftCommand command,
       PriorAuthorityDraftStore draftStore,
-      @InjectEntity(idProperty = "priorAuthorityId") @OfficeCodeResource
+      @InjectEntity(idProperty = "priorAuthorityId")
+          @AggregateResource(
+              resourceType = "prior-authority",
+              resourceIdProperty = "priorAuthorityId")
           PriorAuthorityAggregate priorAuthority,
       EventAppender eventAppender) {
 

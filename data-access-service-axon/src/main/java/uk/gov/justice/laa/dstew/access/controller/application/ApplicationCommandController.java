@@ -33,6 +33,7 @@ import uk.gov.justice.laa.dstew.access.model.LinkedGroupChangeRequest;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
 import uk.gov.justice.laa.dstew.access.model.UploadApplicationDocumentResponse;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedCallerFactory;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedUserId;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
@@ -62,6 +63,7 @@ public class ApplicationCommandController
   private final MakeApplicationLeadCommandMapper makeApplicationLeadCommandMapper;
   private final UnlinkApplicationCommandMapper unlinkApplicationCommandMapper;
   private final AuthenticatedUserId authenticatedUserId;
+  private final AuthenticatedCallerFactory authenticatedCallerFactory;
 
   /** Creates the command adapter. */
   public ApplicationCommandController(
@@ -82,7 +84,8 @@ public class ApplicationCommandController
       LinkApplicationCommandMapper linkCommandMapper,
       MakeApplicationLeadCommandMapper makeApplicationLeadCommandMapper,
       UnlinkApplicationCommandMapper unlinkApplicationCommandMapper,
-      AuthenticatedUserId authenticatedUserId) {
+      AuthenticatedUserId authenticatedUserId,
+      AuthenticatedCallerFactory authenticatedCallerFactory) {
     this.createApplicationUseCase = createApplicationUseCase;
     this.makeDecisionUseCase = makeDecisionUseCase;
     this.createNoteUseCase = createNoteUseCase;
@@ -101,6 +104,7 @@ public class ApplicationCommandController
     this.makeApplicationLeadCommandMapper = makeApplicationLeadCommandMapper;
     this.unlinkApplicationCommandMapper = unlinkApplicationCommandMapper;
     this.authenticatedUserId = authenticatedUserId;
+    this.authenticatedCallerFactory = authenticatedCallerFactory;
   }
 
   /** Links an Application to an existing Application family group. */
@@ -109,7 +113,8 @@ public class ApplicationCommandController
   @LogMethodResponse
   public ResponseEntity<Void> linkApplication(
       ServiceName serviceName, UUID id, ApplicationLinkRequest request) {
-    linkApplicationUseCase.execute(linkCommandMapper.toCommand(id, request));
+    linkApplicationUseCase.execute(
+        linkCommandMapper.toCommand(id, request, authenticatedCallerFactory.currentCaller()));
     return ResponseEntity.noContent().build();
   }
 
@@ -119,7 +124,9 @@ public class ApplicationCommandController
   @LogMethodResponse
   public ResponseEntity<Void> makeApplicationLead(
       ServiceName serviceName, UUID id, LinkedGroupChangeRequest request) {
-    makeApplicationLeadUseCase.execute(makeApplicationLeadCommandMapper.toCommand(id, request));
+    makeApplicationLeadUseCase.execute(
+        makeApplicationLeadCommandMapper.toCommand(
+            id, request, authenticatedCallerFactory.currentCaller()));
     return ResponseEntity.noContent().build();
   }
 
@@ -129,7 +136,9 @@ public class ApplicationCommandController
   @LogMethodResponse
   public ResponseEntity<Void> unlinkApplication(
       ServiceName serviceName, UUID id, LinkedGroupChangeRequest request) {
-    unlinkApplicationUseCase.execute(unlinkApplicationCommandMapper.toCommand(id, request));
+    unlinkApplicationUseCase.execute(
+        unlinkApplicationCommandMapper.toCommand(
+            id, request, authenticatedCallerFactory.currentCaller()));
     return ResponseEntity.noContent().build();
   }
 

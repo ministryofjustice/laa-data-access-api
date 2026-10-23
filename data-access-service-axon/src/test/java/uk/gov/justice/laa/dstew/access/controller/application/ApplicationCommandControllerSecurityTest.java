@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.controller.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -54,6 +55,8 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationLinkRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkType;
 import uk.gov.justice.laa.dstew.access.model.LinkedGroupChangeRequest;
 import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedCallerFactory;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedUserId;
 import uk.gov.laa.springboot.oauth2.testsupport.StubJwtDecoder;
 import uk.gov.laa.springboot.oauth2.testsupport.StubJwtToken;
@@ -95,6 +98,7 @@ class ApplicationCommandControllerSecurityTest {
   @MockitoBean private MakeApplicationLeadCommandMapper makeApplicationLeadCommandMapper;
   @MockitoBean private UnlinkApplicationCommandMapper unlinkApplicationCommandMapper;
   @MockitoBean private AuthenticatedUserId authenticatedUserId;
+  @MockitoBean private AuthenticatedCallerFactory authenticatedCallerFactory;
 
   @Test
   void givenNoCredentials_whenCreateApplication_thenReturnsUnauthorized() {
@@ -192,7 +196,10 @@ class ApplicationCommandControllerSecurityTest {
     var command =
         new LinkApplicationCommand(
             sourceApplicationId, request.getApplicationId(), LinkType.FAMILY, null, Instant.now());
-    when(linkApplicationCommandMapper.toCommand(sourceApplicationId, request)).thenReturn(command);
+    AuthenticatedCaller caller = mock(AuthenticatedCaller.class);
+    when(authenticatedCallerFactory.currentCaller()).thenReturn(caller);
+    when(linkApplicationCommandMapper.toCommand(sourceApplicationId, request, caller))
+        .thenReturn(command);
 
     HttpHeaders headers = new HttpHeaders();
     headers.set("X-Service-Name", "CIVIL_APPLY");
