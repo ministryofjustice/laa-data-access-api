@@ -12,17 +12,13 @@ import {
 const config = loadConfig(__ENV, ['provider', 'applicationCaseworker', 'contender']);
 const scenario = 'contention-application-assignment';
 const setupSteps = [
-  'Start application draft',
-  ...Array.from(
-    { length: 15 },
-    (_, index) => `Update application draft: ${String(index + 1).padStart(2, '0')}`,
-  ),
-  'Upload application document',
-  'Submit application draft',
-  'Record manual-grant eligibility',
-  'Find application in Open Applications',
+  'start-application-draft',
+  'upload-application-document',
+  'submit-application-draft',
+  'record-manual-grant-eligibility',
+  'find-application-in-open-applications',
 ];
-const assignmentStep = ['Assign application from Work Queue'];
+const assignmentStep = ['assign-application-from-work-queue'];
 const assignmentAttempts = new Counter('work_queue_assignment_attempts');
 
 export const options = {

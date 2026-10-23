@@ -102,7 +102,8 @@ values are omitted.
 
 The k6 console summary and JSON summary are both written at the end of a run. The default JSON
 path is `k6/results/summary.json`. Diagnostics report only method, path, status, safe record IDs,
-and a correlation ID; tokens, secrets, authorization headers, and HTTP bodies are never printed.
+and a correlation ID; tokens, secrets, and authorization headers are never printed. Set
+`K6_DEBUG_RESPONSE_BODY=true` only for local debugging to include a capped failed-response preview.
 
 ## Fixtures and step catalogue
 

@@ -6,13 +6,9 @@ import { createScenarioContext, runScenarioSteps } from '../lib/scenario-runtime
 const config = loadConfig(__ENV, ['provider']);
 const scenario = 'performance-provider-drafting';
 const steps = [
-  'Start application draft',
-  ...Array.from(
-    { length: 15 },
-    (_, index) => `Update application draft: ${String(index + 1).padStart(2, '0')}`,
-  ),
-  'Upload application document',
-  'Submit application draft',
+  'start-application-draft',
+  'upload-application-document',
+  'submit-application-draft',
 ];
 
 export const options = {

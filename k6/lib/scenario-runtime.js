@@ -1,7 +1,7 @@
 import { createRunContext } from './run-context.js';
 import { executeSteps } from './journey-execution.js';
 import { stepRegistry } from './step-registry.js';
-import { createProviderApplicationRuntime } from './steps/provider/application-runtime.js';
+import { createProviderApplicationRuntime } from '../steps/application-runtime.js';
 
 export function createScenarioContext() {
   return { runContext: createRunContext() };

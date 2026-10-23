@@ -1,10 +1,10 @@
 export function executeSteps(stepNames, context, registry, runtimes, scenario) {
-  const steps = new Map(registry.map((step) => [step.canonicalName, step]));
+  const steps = new Map(registry.map((step) => [step.filename, step]));
 
-  stepNames.forEach((stepName) => {
-    const step = steps.get(stepName);
+  stepNames.forEach((filename) => {
+    const step = steps.get(filename);
     if (!step) {
-      throw new Error(`Scenario references an unregistered step: ${stepName}`);
+      throw new Error(`Scenario references an unregistered step file: ${filename}`);
     }
     const runtime = runtimes[step.actor] || runtimes.Provider;
     if (!runtime) {

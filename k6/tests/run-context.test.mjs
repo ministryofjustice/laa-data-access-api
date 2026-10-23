@@ -3,7 +3,6 @@ import test from 'node:test';
 
 import {
   applyRunContext,
-  composeApplicationContent,
   createRunContext,
 } from '../lib/run-context.js';
 
@@ -37,27 +36,4 @@ test('run contexts substitute every visible identifier in fixture templates', ()
       reference: context.laaReference,
     },
   );
-});
-
-test('application update fixtures compose into valid nested draft content', () => {
-  const context = createRunContext({ runId: 'catalogue', vu: 1, iteration: 2 });
-  const content = composeApplicationContent(
-    [
-      { createdAt: '2026-01-01T00:00:00Z' },
-      { submittedAt: '2026-01-01T00:00:00Z' },
-      { provider: { officeCode: '0Z123A' } },
-      { client: { firstName: 'K6', lastName: '{{clientId}}' } },
-      { client: { addresses: [{ postcode: 'TE1 1ST' }] } },
-      { proceedings: [{ id: '{{priorAuthorityId}}' }] },
-      { proceedings: [{ code: 'SE003' }] },
-    ],
-    context,
-  );
-
-  assert.deepEqual(content.client, {
-    firstName: 'K6',
-    lastName: context.clientId,
-    addresses: [{ postcode: 'TE1 1ST' }],
-  });
-  assert.deepEqual(content.proceedings, [{ id: context.priorAuthorityId, code: 'SE003' }]);
 });

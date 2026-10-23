@@ -6,18 +6,15 @@ import { createScenarioContext, runScenarioSteps } from '../lib/scenario-runtime
 const config = loadConfig(__ENV, ['provider', 'applicationCaseworker']);
 const scenario = 'performance-work-queue';
 const steps = [
-  'Start application draft',
-  ...Array.from(
-    { length: 15 },
-    (_, index) => `Update application draft: ${String(index + 1).padStart(2, '0')}`,
-  ),
-  'Upload application document',
-  'Submit application draft',
-  'Record manual-grant eligibility',
-  'Find application in Open Applications',
-  'Assign application from Work Queue',
-  'Find application in Personal Queue',
-  'Grant application',
+  'start-application-draft',
+  'upload-application-document',
+  'submit-application-draft',
+  'record-manual-grant-eligibility',
+  'find-application-in-open-applications',
+  'assign-application-from-work-queue',
+  'find-application-in-personal-queue',
+  'grant-application',
+  'verify-application-removed-from-open-applications',
 ];
 
 export const options = {

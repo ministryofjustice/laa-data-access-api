@@ -13,7 +13,8 @@ const fixtures = {
   'fixtures/work-list/assign.json': { expectedAssignmentVersion: 0 },
   'fixtures/application/grant-decision.json': {
     overallDecision: 'GRANTED',
-    applicationVersion: 0,
+    certificate: { reference: 'CERT-K6' },
+    applicationVersion: 1,
   },
   'fixtures/prior-authority/grant-decision.json': {
     decision: 'GRANTED',
@@ -55,7 +56,7 @@ function runtime(responses, requests) {
   };
 }
 
-test('application caseworker steps find, assign, verify, grant, and observe removal', () => {
+test('application caseworker steps find, assign, grant, and verify removal', () => {
   const requests = [];
   const context = {
     applicationId: 'application-123',
@@ -65,7 +66,7 @@ test('application caseworker steps find, assign, verify, grant, and observe remo
     response(200, { items: [{ itemId: 'application-123', itemType: 'APPLICATION', assignmentVersion: 3 }] }),
     response(200),
     response(200, { items: [{ itemId: 'application-123', itemType: 'APPLICATION', assignmentVersion: 4 }] }),
-    response(200),
+    response(204),
     response(200, { items: [] }),
   ], requests);
 
@@ -73,10 +74,12 @@ test('application caseworker steps find, assign, verify, grant, and observe remo
   steps['Assign application from Work Queue'].execute(context, dependencies);
   steps['Find application in Personal Queue'].execute(context, dependencies);
   steps['Grant application'].execute(context, dependencies);
+  steps['Verify application removed from Open Applications'].execute(context, dependencies);
 
   assert.equal(context.applicationWorkListItem.assignmentVersion, 3);
   assert.equal(context.assignedApplicationWorkListItem.assignmentVersion, 4);
   assert.equal(context.grantedApplicationId, 'application-123');
+  assert.equal(context.applicationRemovedFromOpenApplications, true);
   assert.deepEqual(requests.map(({ method, path, body }) => ({ method, path, body })), [
     { method: 'GET', path: '/api/v0/work-list?unassigned=true&itemType=APPLICATION', body: undefined },
     {
@@ -92,7 +95,11 @@ test('application caseworker steps find, assign, verify, grant, and observe remo
     {
       method: 'PATCH',
       path: '/api/v0/applications/application-123/decision',
-      body: { overallDecision: 'GRANTED', applicationVersion: 0 },
+      body: {
+        overallDecision: 'GRANTED',
+        certificate: { reference: 'CERT-K6' },
+        applicationVersion: 1,
+      },
     },
     { method: 'GET', path: '/api/v0/work-list?unassigned=true&itemType=APPLICATION', body: undefined },
   ]);
@@ -116,10 +123,12 @@ test('PA caseworker steps retain an independent Work Queue assignment', () => {
   steps['Assign PA from Work Queue'].execute(context, dependencies);
   steps['Find PA in Personal Queue'].execute(context, dependencies);
   steps['Grant PA'].execute(context, dependencies);
+  steps['Verify PA removed from Open Applications'].execute(context, dependencies);
 
   assert.equal(context.priorAuthorityWorkListItem.assignmentVersion, 2);
   assert.equal(context.assignedPriorAuthorityWorkListItem.assignmentVersion, 3);
   assert.equal(context.grantedPriorAuthorityId, 'prior-authority-123');
+  assert.equal(context.priorAuthorityRemovedFromOpenApplications, true);
   assert.deepEqual(requests.map(({ method, path, body }) => ({ method, path, body })), [
     { method: 'GET', path: '/api/v0/work-list?unassigned=true&itemType=PRIOR_AUTHORITY', body: undefined },
     {

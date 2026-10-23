@@ -63,22 +63,3 @@ export function applyRunContext(value, context) {
   }
   return value;
 }
-
-function merge(left, right) {
-  if (Array.isArray(left) && Array.isArray(right)) {
-    return right.map((item, index) => merge(left[index], item));
-  }
-  if (left && right && typeof left === 'object' && typeof right === 'object') {
-    return Object.keys({ ...left, ...right }).reduce(
-      (merged, key) => ({ ...merged, [key]: merge(left[key], right[key]) }),
-      {},
-    );
-  }
-  return right === undefined ? left : right;
-}
-
-export function composeApplicationContent(updates, context) {
-  return updates
-    .map((update) => applyRunContext(update, context))
-    .reduce((content, update) => merge(content, update), {});
-}

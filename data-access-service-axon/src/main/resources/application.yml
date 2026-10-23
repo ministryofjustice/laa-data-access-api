@@ -36,7 +36,7 @@ spring:
             authorization-grant-type: client_credentials
         provider:
           moj-identity:
-            token-uri: https://login.microsoftonline.com/${AUTH_TENANT_ID}/oauth2/v2.0/token
+            token-uri: ${AUTH_TOKEN_URI:https://login.microsoftonline.com/${AUTH_TENANT_ID}/oauth2/v2.0/token}
       resourceserver:
         jwt:
           issuer-uri: ${ENTRA_ISSUER_URI}

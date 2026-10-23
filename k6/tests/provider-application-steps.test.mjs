@@ -14,11 +14,11 @@ const fixtures = {
     id: '{{applicationId}}',
     status: 'APPLICATION_SUBMITTED',
     laaReference: '{{laaReference}}',
-    applicationContent: { createdAt: '2026-01-01T00:00:00Z' },
+    applicationContent: {
+      createdAt: '2026-01-01T00:00:00Z',
+      client: { lastName: '{{clientId}}' },
+    },
   },
-  'fixtures/application/update-01.json': { provider: { officeCode: '0Z123A' } },
-  'fixtures/application/update-02.json': { client: { lastName: '{{clientId}}' } },
-  'fixtures/application/update-03.json': { proceedings: [{ meaning: 'Final hearing' }] },
   'fixtures/application/manual-grant-outcome.json': { outcome: 'MANUAL' },
   'fixtures/prior-authority/create.json': {
     applicationId: '{{applicationId}}',
@@ -27,6 +27,7 @@ const fixtures = {
   'fixtures/prior-authority/update.json': {
     justification: 'A synthetic independent expert assessment is required for this test.',
   },
+  'fixtures/prior-authority/document-type.json': { documentType: 'GATEWAY_EVIDENCE' },
   'fixtures/prior-authority/submit.json': {},
 };
 
@@ -46,7 +47,9 @@ function runtime(requests) {
     request(method, path, body, params) {
       requests.push({ method, path, body, params });
       return {
-        status: path.endsWith('/submit') ? 200 : path.endsWith('/auto-grant-outcome') ? 204 : 201,
+        status: path.endsWith('/submit') || method === 'PATCH'
+          ? 200
+          : path.endsWith('/auto-grant-outcome') ? 204 : 201,
         json() {
           return path === '/api/v0/application-drafts' || path.endsWith('/submit')
             ? { applicationId: 'draft-123' }
@@ -64,7 +67,7 @@ function runtime(requests) {
   };
 }
 
-test('provider application steps compose versioned updates before saving a draft', () => {
+test('provider application steps save the full draft when it is created', () => {
   const requests = [];
   const context = {
     runContext: {
@@ -76,13 +79,6 @@ test('provider application steps compose versioned updates before saving a draft
   const dependencies = runtime(requests);
 
   applicationSteps['Start application draft'].execute(context, dependencies);
-  for (let sequence = 1; sequence <= 15; sequence += 1) {
-    applicationSteps[`Update application draft: ${String(sequence).padStart(2, '0')}`].execute(
-      context,
-      dependencies,
-    );
-  }
-
   assert.equal(requests.length, 1);
   assert.deepEqual(requests[0], {
     method: 'POST',
@@ -93,9 +89,7 @@ test('provider application steps compose versioned updates before saving a draft
       laaReference: 'LAA-K6-123',
       applicationContent: {
         createdAt: '2026-01-01T00:00:00Z',
-        provider: { officeCode: '0Z123A' },
         client: { lastName: 'k6-client-123' },
-        proceedings: [{ meaning: 'Final hearing' }],
       },
     },
     params: { headers: { 'Content-Type': 'application/json' } },
@@ -170,7 +164,7 @@ test('provider can create, update, upload, and submit a Prior Authority against 
         status: method === 'POST' && path === '/api/v0/prior-authorities' ? 201
           : method === 'PUT' ? 204
             : method === 'POST' && path.endsWith('/documents') ? 201
-              : 202,
+              : method === 'PATCH' ? 200 : 202,
         json() {
           return path === '/api/v0/prior-authorities'
             ? { priorAuthorityId: 'prior-authority-123' }
@@ -185,6 +179,7 @@ test('provider can create, update, upload, and submit a Prior Authority against 
   applicationSteps['Start Prior Authority draft'].execute(context, dependencies);
   applicationSteps['Update Prior Authority draft'].execute(context, dependencies);
   applicationSteps['Upload Prior Authority document'].execute(context, dependencies);
+  applicationSteps['Update Prior Authority document type'].execute(context, dependencies);
   applicationSteps['Submit Prior Authority'].execute(context, dependencies);
 
   assert.equal(context.priorAuthorityId, 'prior-authority-123');
@@ -210,6 +205,12 @@ test('provider can create, update, upload, and submit a Prior Authority against 
       path: '/api/v0/prior-authorities/prior-authority-123/documents',
       body: { file: 'pdf-bytes' },
       params: undefined,
+    },
+    {
+      method: 'PATCH',
+      path: '/api/v0/prior-authorities/prior-authority-123/documents/document-123',
+      body: { documentType: 'GATEWAY_EVIDENCE' },
+      params: { headers: { 'Content-Type': 'application/json' } },
     },
     {
       method: 'POST',
