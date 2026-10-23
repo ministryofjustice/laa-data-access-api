@@ -1,7 +1,7 @@
 # Axon in This Module
 
 This guide provides the minimum execution model needed to work safely in the Axon module. It uses
-Axon Framework 5.2.0 and the terminology defined in the [glossary](glossary.md).
+Axon Framework 5.3.3 and the terminology defined in the [glossary](glossary.md).
 
 ## The central idea
 
@@ -45,9 +45,9 @@ The field annotated with `@TargetAggregateIdentifier` tells Axon which event str
 Before invoking an ordinary command handler, Axon reads the target event stream and creates the
 aggregate by replaying its events in sequence. Each event invokes an `@EventSourcingHandler`.
 
-If the stream does not exist, the command fails with `AggregateNotFoundException`. Handlers using
-`@CreationPolicy(CREATE_IF_MISSING)` are the exception: Axon may provide a new empty aggregate, so
-those handlers must explicitly distinguish new and existing state.
+If the stream does not exist, the command fails with `AggregateNotFoundException`. A creation
+handler injects `ManagedEntity<ID, Aggregate>` instead. Its `entity()` is `null` until the first
+event is appended, so the handler must explicitly distinguish new and existing state.
 
 ### 3. The command handler decides
 

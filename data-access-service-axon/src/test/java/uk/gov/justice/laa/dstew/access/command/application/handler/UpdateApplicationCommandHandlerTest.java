@@ -9,6 +9,7 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
+import org.axonframework.modelling.repository.ManagedEntity;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -27,6 +28,7 @@ class UpdateApplicationCommandHandlerTest {
   private static final Instant OCCURRED_AT = Instant.parse("2026-09-02T11:00:00Z");
 
   @Mock private ApplicationAggregate application;
+  @Mock private ManagedEntity<UUID, ApplicationAggregate> managedApplication;
   @Mock private ApplicationDataStore applicationDataStore;
   @Mock private ApplicationUpdateDetailsFactory detailsFactory;
   @Mock private EventAppender eventAppender;
@@ -45,7 +47,7 @@ class UpdateApplicationCommandHandlerTest {
     when(detailsFactory.prepare(command, current, false)).thenReturn(updated);
 
     new UpdateApplicationCommandHandler()
-        .handle(command, application, applicationDataStore, detailsFactory, eventAppender);
+        .handle(command, managedApplication, applicationDataStore, detailsFactory, eventAppender);
 
     verify(detailsFactory).prepare(command, current, false);
     verify(applicationDataStore)
@@ -74,7 +76,7 @@ class UpdateApplicationCommandHandlerTest {
     when(detailsFactory.prepare(command, current, true)).thenReturn(updated);
 
     new UpdateApplicationCommandHandler()
-        .handle(command, application, applicationDataStore, detailsFactory, eventAppender);
+        .handle(command, managedApplication, applicationDataStore, detailsFactory, eventAppender);
 
     verify(detailsFactory).prepare(command, current, true);
     verify(applicationDataStore)
@@ -103,7 +105,7 @@ class UpdateApplicationCommandHandlerTest {
     when(detailsFactory.prepare(command, current, false)).thenReturn(updated);
 
     new UpdateApplicationCommandHandler()
-        .handle(command, application, applicationDataStore, detailsFactory, eventAppender);
+        .handle(command, managedApplication, applicationDataStore, detailsFactory, eventAppender);
 
     verify(detailsFactory).prepare(command, current, false);
     verify(applicationDataStore)
@@ -120,7 +122,7 @@ class UpdateApplicationCommandHandlerTest {
   }
 
   private void stubApplication(UUID applicationId, ApplicationState state) {
-    when(application.getApplicationId()).thenReturn(applicationId);
+    when(managedApplication.entity()).thenReturn(application);
     when(application.getState()).thenReturn(state);
   }
 

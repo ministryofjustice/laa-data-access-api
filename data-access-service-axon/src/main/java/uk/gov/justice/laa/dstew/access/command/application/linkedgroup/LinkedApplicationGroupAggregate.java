@@ -24,8 +24,15 @@ public class LinkedApplicationGroupAggregate {
 
   /** Establishes the group idempotently when the routed group stream is empty. */
   @CommandHandler
-  void handle(EstablishLinkedApplicationGroupCommand command, EventAppender eventAppender) {
-    LinkedApplicationGroupDecider.decideEstablish(state, command).ifPresent(eventAppender::append);
+  static void handle(EstablishLinkedApplicationGroupCommand command, EventAppender eventAppender) {
+    LinkedApplicationGroupDecider.decideEstablish(new LinkedApplicationGroupState(), command)
+        .ifPresent(eventAppender::append);
+  }
+
+  /** Handles an idempotent or conflicting establishment request for an existing group. */
+  @CommandHandler
+  void handle(EstablishLinkedApplicationGroupCommand command) {
+    LinkedApplicationGroupDecider.decideEstablish(state, command);
   }
 
   /** Adds one application to an already-established group idempotently. */
@@ -33,6 +40,12 @@ public class LinkedApplicationGroupAggregate {
   void handle(AddApplicationToLinkedGroupCommand command, EventAppender eventAppender) {
     LinkedApplicationGroupDecider.decideAddApplication(state, command)
         .ifPresent(eventAppender::append);
+  }
+
+  /** Rejects adding an application before a linked group has been established. */
+  @CommandHandler
+  static void handle(AddApplicationToLinkedGroupCommand command) {
+    throw new IllegalStateException("A linked application group must be established first");
   }
 
   /** Changes the lead of an established group. */

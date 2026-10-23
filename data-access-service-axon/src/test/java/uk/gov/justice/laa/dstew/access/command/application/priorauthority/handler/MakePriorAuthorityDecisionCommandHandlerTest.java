@@ -12,6 +12,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
+import org.axonframework.modelling.repository.ManagedEntity;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -35,6 +36,7 @@ class MakePriorAuthorityDecisionCommandHandlerTest {
 
   @Mock private PriorAuthorityDataStore dataStore;
   @Mock private PriorAuthorityAggregate priorAuthority;
+  @Mock private ManagedEntity<UUID, PriorAuthorityAggregate> managedPriorAuthority;
   @Mock private EventAppender eventAppender;
 
   @Captor private ArgumentCaptor<PriorAuthorityDataPayload> payloadCaptor;
@@ -76,9 +78,10 @@ class MakePriorAuthorityDecisionCommandHandlerTest {
     when(priorAuthority.getPriorAuthorityId()).thenReturn(priorAuthorityId);
     when(priorAuthority.getDataVersion()).thenReturn(dataVersion);
     when(dataStore.get(priorAuthorityId, dataVersion)).thenReturn(current);
+    when(managedPriorAuthority.entity()).thenReturn(priorAuthority);
 
     new MakePriorAuthorityDecisionCommandHandler()
-        .handle(command, dataStore, priorAuthority, eventAppender);
+        .handle(command, dataStore, managedPriorAuthority, eventAppender);
 
     verify(dataStore)
         .append(
@@ -125,13 +128,13 @@ class MakePriorAuthorityDecisionCommandHandlerTest {
             "{}",
             OCCURRED_AT);
 
-    when(priorAuthority.getPriorAuthorityId()).thenReturn(null);
+    when(managedPriorAuthority.entity()).thenReturn(null);
 
     assertThatExceptionOfType(ResourceNotFoundException.class)
         .isThrownBy(
             () ->
                 new MakePriorAuthorityDecisionCommandHandler()
-                    .handle(command, dataStore, priorAuthority, eventAppender))
+                    .handle(command, dataStore, managedPriorAuthority, eventAppender))
         .withMessage("No prior authority found with ID: " + priorAuthorityId);
 
     verifyNoInteractions(dataStore, eventAppender);
@@ -158,12 +161,13 @@ class MakePriorAuthorityDecisionCommandHandlerTest {
             OCCURRED_AT);
 
     when(priorAuthority.getPriorAuthorityId()).thenReturn(differentPriorAuthorityId);
+    when(managedPriorAuthority.entity()).thenReturn(priorAuthority);
 
     assertThatExceptionOfType(ResourceNotFoundException.class)
         .isThrownBy(
             () ->
                 new MakePriorAuthorityDecisionCommandHandler()
-                    .handle(command, dataStore, priorAuthority, eventAppender))
+                    .handle(command, dataStore, managedPriorAuthority, eventAppender))
         .withMessage("No prior authority found with ID: " + priorAuthorityId);
 
     verifyNoInteractions(dataStore, eventAppender);

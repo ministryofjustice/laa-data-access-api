@@ -1,8 +1,10 @@
 package uk.gov.justice.laa.dstew.access.command.application.priorauthority.handler;
 
+import java.util.UUID;
 import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import org.axonframework.modelling.annotation.InjectEntity;
+import org.axonframework.modelling.repository.ManagedEntity;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDecider;
@@ -20,10 +22,12 @@ public class MakePriorAuthorityDecisionCommandHandler {
   public void handle(
       MakePriorAuthorityDecisionCommand command,
       PriorAuthorityDataStore dataStore,
-      @InjectEntity(idProperty = "priorAuthorityId") PriorAuthorityAggregate priorAuthority,
+      @InjectEntity(idProperty = "priorAuthorityId")
+          ManagedEntity<UUID, PriorAuthorityAggregate> managedPriorAuthority,
       EventAppender eventAppender) {
 
-    requirePriorAuthorityExists(priorAuthority, command);
+    PriorAuthorityAggregate priorAuthority =
+        requirePriorAuthorityExists(managedPriorAuthority, command);
 
     PriorAuthorityDecider.decideDecision(priorAuthority.getState(), command)
         .ifPresent(
@@ -50,12 +54,15 @@ public class MakePriorAuthorityDecisionCommandHandler {
             });
   }
 
-  private static void requirePriorAuthorityExists(
-      PriorAuthorityAggregate priorAuthority, MakePriorAuthorityDecisionCommand command) {
-    if (priorAuthority.getPriorAuthorityId() == null
+  private static PriorAuthorityAggregate requirePriorAuthorityExists(
+      ManagedEntity<UUID, PriorAuthorityAggregate> managedPriorAuthority,
+      MakePriorAuthorityDecisionCommand command) {
+    PriorAuthorityAggregate priorAuthority = managedPriorAuthority.entity();
+    if (priorAuthority == null
         || !command.priorAuthorityId().equals(priorAuthority.getPriorAuthorityId())) {
       throw new ResourceNotFoundException(
           "No prior authority found with ID: " + command.priorAuthorityId());
     }
+    return priorAuthority;
   }
 }
