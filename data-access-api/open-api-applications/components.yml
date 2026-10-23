@@ -1038,12 +1038,6 @@ components:
         sourceService:
           type: string
 
-    DocumentDownloadResponse:
-      type: object
-      properties:
-        fileURL:
-          type: string
-
     DocumentUpdateResponse:
       type: object
       properties:

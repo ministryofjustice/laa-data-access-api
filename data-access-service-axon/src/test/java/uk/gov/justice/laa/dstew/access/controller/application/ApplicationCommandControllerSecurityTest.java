@@ -283,7 +283,9 @@ class ApplicationCommandControllerSecurityTest {
                   "iss",
                   "https://issuer.example.test",
                   "aud",
-                  List.of("api://data-access-api-test"))));
+                  List.of("api://data-access-api-test"),
+                  "scp",
+                  "access_as_user")));
     }
   }
 }
