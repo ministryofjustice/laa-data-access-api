@@ -1,0 +1,9 @@
+{
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate-step-catalogue": "node scripts/generate-step-catalogue.js",
+    "test": "node --test tests/*.test.mjs",
+    "validate-documentation": "node scripts/validate-documentation.js"
+  }
+}

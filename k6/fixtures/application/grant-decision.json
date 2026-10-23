@@ -1,0 +1,17 @@
+{
+  "overallDecision": "GRANTED",
+  "proceedings": [{
+    "proceedingId": "{{priorAuthorityId}}",
+    "meritsDecision": {
+      "decision": "GRANTED",
+      "justification": "Synthetic k6 grant decision."
+    }
+  }],
+  "eventHistory": {
+    "eventDescription": "Synthetic k6 grant decision."
+  },
+  "certificate": {
+    "reference": "CERT-K6"
+  },
+  "applicationVersion": 1
+}
