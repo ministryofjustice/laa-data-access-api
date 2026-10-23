@@ -23,6 +23,7 @@ import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
@@ -597,19 +598,35 @@ class ApplicationDraftIntegrationTest {
   void givenConcurrentUploads_whenRegistered_thenBothDocumentsAndFilenamesSurvive()
       throws Exception {
     UUID applicationId = saveValidDraft();
-    when(sdsService.saveEvidenceFile(any(), any(), any()))
-        .thenReturn(new SdsUploadResult(null, null, "checksum"));
     CyclicBarrier staleReads = new CyclicBarrier(2);
+    CyclicBarrier storedFiles = new CyclicBarrier(2);
     AtomicInteger writeAttempts = new AtomicInteger();
+    AtomicInteger staleReadCount = new AtomicInteger();
+    AtomicBoolean gateDraftReads = new AtomicBoolean();
+    when(sdsService.saveEvidenceFile(any(), any(), any()))
+        .thenAnswer(
+            invocation -> {
+              storedFiles.await(10, TimeUnit.SECONDS);
+              gateDraftReads.set(true);
+              return new SdsUploadResult(null, null, "checksum");
+            });
     doAnswer(
             invocation -> {
-              if (writeAttempts.incrementAndGet() <= 2) {
-                staleReads.await(10, TimeUnit.SECONDS);
-              }
+              writeAttempts.incrementAndGet();
               return invocation.callRealMethod();
             })
         .when(draftStore)
         .upsert(any(), any(), any(), any());
+    doAnswer(
+            invocation -> {
+              Object draft = invocation.callRealMethod();
+              if (gateDraftReads.get() && staleReadCount.incrementAndGet() <= 2) {
+                staleReads.await(10, TimeUnit.SECONDS);
+              }
+              return draft;
+            })
+        .when(draftStore)
+        .find(applicationId);
     int eventsBefore = eventCount(applicationId);
 
     List<ResponseEntity<String>> responses =
@@ -638,6 +655,12 @@ class ApplicationDraftIntegrationTest {
     assertThat(documentIds).doesNotHaveDuplicates();
     assertThat(eventCount(applicationId)).isEqualTo(eventsBefore + 2);
     assertThat(writeAttempts.get()).isEqualTo(3);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT version FROM axon.application_draft WHERE application_id = ?",
+                Long.class,
+                applicationId))
+        .isEqualTo(2L);
     for (int index = 0; index < documentIds.size(); index++) {
       assertThat(
               jdbcTemplate.queryForObject(
@@ -732,7 +755,7 @@ class ApplicationDraftIntegrationTest {
             .isIn(HttpStatus.OK, HttpStatus.ACCEPTED);
         assertThat(attempts.get()).isEqualTo(2);
       } else {
-        assertThat(losingResponse.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+        assertThat(losingResponse.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
       }
       assertThat(eventCount(applicationId)).isEqualTo(eventsBefore + (uploadCommitsFirst ? 2 : 1));
       assertThat(

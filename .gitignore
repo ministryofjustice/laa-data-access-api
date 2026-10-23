@@ -42,3 +42,7 @@ AGENTS.md
 CLAUDE.md
 
 graphify-out/
+
+
+# APM dependencies
+apm_modules/

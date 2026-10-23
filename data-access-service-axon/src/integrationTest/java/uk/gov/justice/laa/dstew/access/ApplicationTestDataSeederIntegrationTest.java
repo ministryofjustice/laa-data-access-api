@@ -35,7 +35,7 @@ class ApplicationTestDataSeederIntegrationTest
     seeder.seed(
         applicationId,
         new GeneratedRequestFactory("integration-test").application(applicationId, 1),
-        new ApplicationLifecycle(true, false, false, false));
+        new ApplicationLifecycle(true, false, false));
 
     Awaitility.await()
         .atMost(Duration.ofSeconds(10))

@@ -275,7 +275,7 @@ class SdsServiceTest {
   }
 
   @Test
-  void givenValidApplicationIdAndDocumentId_whenGetFile_thenReturnDocumentDownloadResponse() {
+  void givenValidApplicationIdAndDocumentId_whenGetFile_thenReturnSdsDownloadResult() {
     UUID applicationId = UUID.randomUUID();
     String documentId = "test-file.pdf";
     SdsDownloadResult expectedResponse = mock(SdsDownloadResult.class);
