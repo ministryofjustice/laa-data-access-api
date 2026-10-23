@@ -9,12 +9,12 @@ plugins {
 
 def versions = [
         sentry                  : '8.60.0',
-        axonFramework           : '5.2.0',
+        axonFramework           : '5.4.0',
         jsonSchemaValidator     : '3.0.8',
         swaggerAnnotations      : '2.2.55',
         springdocOpenapi        : '3.1.1',
         springCloudAws          : '4.2.0',
-        awsSdkSts               : '2.33.7',
+        awsSdkSts               : '2.55.16',
         lombok                  : '1.18.48',
         datafaker               : '2.7.0',
         archunit                : '1.5.1',
@@ -70,7 +70,7 @@ dependencies {
     implementation 'uk.gov.justice.service.laa:laa-spring-boot-starter-oauth2'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-web'
-    implementation 'com.fasterxml.uuid:java-uuid-generator:5.1.0'
+    implementation 'com.fasterxml.uuid:java-uuid-generator:5.2.0'
 
     implementation 'io.micrometer:micrometer-registry-prometheus'
     implementation 'io.micrometer:micrometer-tracing-bridge-brave'
