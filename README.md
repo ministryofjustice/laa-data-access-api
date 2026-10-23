@@ -28,7 +28,6 @@ Includes the following subprojects:
 - `data-access-shared` - common Java classes packaged into a library to avoid unexpected dependencies - can depend
   on Spring Web, but must not depend on Spring Data (nor any database code)
 - `data-access-api` - OpenAPI specification used for generating API stub interfaces and documentation.
-- `data-access-service` - example REST API service with CRUD operations interfacing a JPA repository with PostgreSQL.
 - `data-access-service-axon` - event-driven proof of concept using Axon aggregates and projections. See its
   [developer guide](data-access-service-axon/docs/README.md) for the architecture, linking logic, sensitive-data
   separation, and replay behaviour.
@@ -544,7 +543,7 @@ Prior to pushing code, it's useful to run the following commands to check code s
 To generate coverage reports locally:
 - `./gradlew jacocoAggregatedReport` - generates aggregate coverage report
 
-The report will be available in `data-access-service/build/reports/jacoco/jacocoAggregatedReport/html/index.html`
+The report will be available in `data-access-service-axon/build/reports/jacoco/jacocoAggregatedReport/html/index.html`
 
 ### Dropping database tables (may not be applicable)
 You may need to drop database tables manually prior to running app so Flyway can create the latest schema. To do this:

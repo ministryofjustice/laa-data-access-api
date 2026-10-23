@@ -1,1 +1,0 @@
-ALTER TABLE application_notes ALTER COLUMN created_by DROP NOT NULL;
