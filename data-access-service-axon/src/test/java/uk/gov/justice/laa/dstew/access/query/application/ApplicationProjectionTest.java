@@ -766,7 +766,7 @@ class ApplicationProjectionTest {
     assertThat(member.getLeadApplicationId()).isNull();
     assertThat(member.getModifiedAt()).isEqualTo(occurredAt);
     verify(applicationReadRepository).save(member);
-    verify(assignmentTracker).membersLeft(assignmentStore, groupId, List.of(memberId), false);
+    verify(assignmentTracker).membersLeft(assignmentStore, groupId, List.of(memberId));
   }
 
   @Test
@@ -792,8 +792,7 @@ class ApplicationProjectionTest {
     assertThat(removed.getLeadApplicationId()).isNull();
     verify(applicationReadRepository).save(lead);
     verify(applicationReadRepository).save(removed);
-    verify(assignmentTracker)
-        .membersLeft(assignmentStore, groupId, List.of(leadId, removedId), true);
+    verify(assignmentTracker).membersLeft(assignmentStore, groupId, List.of(leadId, removedId));
   }
 
   @Test

@@ -410,7 +410,7 @@ class ApplicationListIndexProjectionTest {
     assertThat(member.getLeadApplicationId()).isNull();
     assertThat(member.getModifiedAt()).isEqualTo(occurredAt);
     verify(listIndexRepository).save(member);
-    verify(assignmentTracker).membersLeft(assignmentStore, groupId, List.of(memberId), false);
+    verify(assignmentTracker).membersLeft(assignmentStore, groupId, List.of(memberId));
   }
 
   @Test
@@ -438,8 +438,7 @@ class ApplicationListIndexProjectionTest {
     assertThat(removed.getLeadApplicationId()).isNull();
     verify(listIndexRepository).save(lead);
     verify(listIndexRepository).save(removed);
-    verify(assignmentTracker)
-        .membersLeft(assignmentStore, groupId, List.of(leadId, removedId), true);
+    verify(assignmentTracker).membersLeft(assignmentStore, groupId, List.of(leadId, removedId));
   }
 
   // -------------------------------------------------------------------------

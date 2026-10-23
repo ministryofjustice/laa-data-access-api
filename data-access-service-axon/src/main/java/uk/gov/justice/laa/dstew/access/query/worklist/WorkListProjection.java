@@ -279,15 +279,13 @@ public class WorkListProjection {
   /** Releases membership tracking for a removed application. */
   @EventHandler
   public void on(MemberRemovedFromGroupEvent event) {
-    assignmentTracker.membersLeft(
-        assignmentStore, event.groupId(), List.of(event.memberId()), false);
+    assignmentTracker.membersLeft(assignmentStore, event.groupId(), List.of(event.memberId()));
   }
 
   /** Releases all membership tracking when the group dissolves. */
   @EventHandler
   public void on(LinkedApplicationGroupDissolvedEvent event) {
-    assignmentTracker.membersLeft(
-        assignmentStore, event.groupId(), event.memberApplicationIds(), true);
+    assignmentTracker.membersLeft(assignmentStore, event.groupId(), event.memberApplicationIds());
   }
 
   /** Applies tracker changes to existing application work-list rows only. */

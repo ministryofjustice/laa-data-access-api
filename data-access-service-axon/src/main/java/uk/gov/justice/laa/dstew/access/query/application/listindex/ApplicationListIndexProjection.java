@@ -152,8 +152,7 @@ public class ApplicationListIndexProjection {
   @EventHandler
   public void on(MemberRemovedFromGroupEvent event, EventMessage message) {
     updateLeadApplicationId(event.memberId(), null, event.occurredAt(), message);
-    assignmentTracker.membersLeft(
-        assignmentStore, event.groupId(), List.of(event.memberId()), false);
+    assignmentTracker.membersLeft(assignmentStore, event.groupId(), List.of(event.memberId()));
   }
 
   /** Clears list-index lead references when a group is dissolved. */
@@ -162,8 +161,7 @@ public class ApplicationListIndexProjection {
     event
         .memberApplicationIds()
         .forEach(memberId -> updateLeadApplicationId(memberId, null, event.occurredAt(), message));
-    assignmentTracker.membersLeft(
-        assignmentStore, event.groupId(), event.memberApplicationIds(), true);
+    assignmentTracker.membersLeft(assignmentStore, event.groupId(), event.memberApplicationIds());
   }
 
   /**

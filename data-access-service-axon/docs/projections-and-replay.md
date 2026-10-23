@@ -7,11 +7,11 @@ rebuilt without changing aggregate event streams or immutable application-data v
 
 | Processing group | Mode | Builds |
 |---|---|---|
-| `application-projection` | Pooled streaming | `application_current_state`, `application_projection_assignment_group`, `application_projection_assignment_application` |
-| `application-history-projection` | Pooled streaming | `application_history`, `application_history_assignment_group`, `application_history_assignment_application` |
+| `application-projection` | Pooled streaming | `application_current_state`, `application_projection_assignment_application` |
+| `application-history-projection` | Pooled streaming | `application_history`, `application_history_assignment_application` |
 | `linked-application-group-projection` | Pooled streaming | `linked_application_group_current_state` |
-| `application-list-index-projection` | Pooled streaming | `application_list_index`, `application_list_index_assignment_group`, `application_list_index_assignment_application` |
-| `work-list-projection` | Pooled streaming | `work_list_item`, `work_list_assignment_group`, `work_list_assignment_application` |
+| `application-list-index-projection` | Pooled streaming | `application_list_index`, `application_list_index_assignment_application` |
+| `work-list-projection` | Pooled streaming | `work_list_item`, `work_list_assignment_application` |
 | `application-group-route` | Subscribing | `application_group_route`, synchronously in the command transaction |
 | `work-item-route` | Subscribing | `work_item_route`, synchronously in the command transaction |
 
@@ -26,17 +26,18 @@ time recorded elsewhere).
 ### Linked-group assignment tracking
 
 Assignment tracking is private to the work-list, application, list-index, and history projections.
-Each projection owns one pair of tables: a group row records the group's caseworker and assignment
-version as that projection has processed them; an application row records its group, whether its
-work item is active, and the assignment shown for it. The shared `LinkedGroupAssignmentTracker`
-applies linked-group assignment facts to one projection's tables at a time.
+Each projection owns one tracking table. Every member row records its group ID and the group's
+caseworker and assignment version as that projection has processed them, alongside whether the
+work item is active and the assignment shown for that application. The shared
+`LinkedGroupAssignmentTracker` applies linked-group assignment facts to one projection's table at a
+time.
 
-| Projection | Group table | Application table |
-|---|---|---|
-| Work list | `work_list_assignment_group` | `work_list_assignment_application` |
-| Application | `application_projection_assignment_group` | `application_projection_assignment_application` |
-| List index | `application_list_index_assignment_group` | `application_list_index_assignment_application` |
-| History | `application_history_assignment_group` | `application_history_assignment_application` |
+| Projection | Assignment tracking table |
+|---|---|
+| Work list | `work_list_assignment_application` |
+| Application | `application_projection_assignment_application` |
+| List index | `application_list_index_assignment_application` |
+| History | `application_history_assignment_application` |
 
 Only active members (ready for manual assessment and not yet decided) follow a group assignment.
 Not-ready, auto-granted, and decided applications are not changed by group assignment events.
@@ -85,8 +86,8 @@ stale read safely; once this processor advances, the query model exposes the one
 For a single application, a missing referenced payload means no hydrated application is returned.
 For list queries, payloads are batch-loaded to avoid one lookup per row. Linked-group rows are also
 batch-loaded for the result page by the `linked_group_id` stored on each application row. The
-`isLead` value is derived by comparing the application ID with the lead ID on the group row; a
-group row is deleted when its group is dissolved.
+`isLead` value is derived by comparing the application ID with the lead ID on the linked-group
+read-model row; that row is deleted when its group is dissolved.
 
 ### Application projection sequencing
 

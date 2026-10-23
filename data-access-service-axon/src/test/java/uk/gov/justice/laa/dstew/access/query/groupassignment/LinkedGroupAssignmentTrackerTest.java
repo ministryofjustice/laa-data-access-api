@@ -36,7 +36,7 @@ class LinkedGroupAssignmentTrackerTest {
 
     assertThat(change).isEqualTo(new AssignmentChange(APPLICATION, null, null, null, 4L));
     assertThat(store.findApplication(APPLICATION))
-        .contains(new TrackedApplication(APPLICATION, null, true, null, 4L));
+        .contains(new TrackedApplication(APPLICATION, null, true, null, 4L, null, 0L));
   }
 
   @Test
@@ -48,7 +48,7 @@ class LinkedGroupAssignmentTrackerTest {
 
     assertThat(change).isEqualTo(new AssignmentChange(APPLICATION, GROUP, null, null, 1L));
     assertThat(store.findApplication(APPLICATION))
-        .contains(new TrackedApplication(APPLICATION, GROUP, true, null, 1L));
+        .contains(new TrackedApplication(APPLICATION, GROUP, true, null, 1L, CASEWORKER, 1L));
 
     assertThat(tracker.memberInherited(store, GROUP, APPLICATION, CASEWORKER, 1L))
         .contains(new AssignmentChange(APPLICATION, GROUP, null, CASEWORKER, 1L));
@@ -104,7 +104,13 @@ class LinkedGroupAssignmentTrackerTest {
     assertThat(store.findApplication(MEMBER))
         .contains(
             new TrackedApplication(
-                MEMBER, GROUP, true, expectedShownCaseworker, groupCaseworker == null ? 0L : 1L));
+                MEMBER,
+                GROUP,
+                true,
+                expectedShownCaseworker,
+                groupCaseworker == null ? 0L : 1L,
+                groupCaseworker,
+                groupCaseworker == null ? 0L : 1L));
   }
 
   private static Stream<Arguments> joinRules() {
@@ -132,6 +138,39 @@ class LinkedGroupAssignmentTrackerTest {
   }
 
   @Test
+  void givenNoActiveMember_whenMemberAdded_thenTakesGroupCaseworker() {
+    tracker.applicationReady(store, APPLICATION, 0L);
+    tracker.applicationReady(store, MEMBER, 0L);
+    tracker.groupCreated(store, GROUP, List.of(APPLICATION, MEMBER));
+    tracker.groupAssignmentChanged(store, GROUP, CASEWORKER, 1L);
+    tracker.applicationDecided(store, APPLICATION);
+    tracker.applicationDecided(store, MEMBER);
+
+    UUID newMember = UUID.fromString("00000000-0000-0000-0000-000000000003");
+    tracker.applicationReady(store, newMember, 0L);
+
+    assertThat(tracker.memberAdded(store, GROUP, newMember))
+        .containsExactly(new AssignmentChange(newMember, GROUP, null, CASEWORKER, 1L));
+  }
+
+  @Test
+  void givenInactiveMembers_whenGroupAssigned_thenOnlyGroupFieldsChange() {
+    tracker.groupCreated(store, GROUP, List.of(APPLICATION, MEMBER));
+
+    assertThat(tracker.groupAssignmentChanged(store, GROUP, CASEWORKER, 1L)).isEmpty();
+    assertThat(store.findApplication(MEMBER))
+        .hasValueSatisfying(
+            application -> {
+              assertThat(application.groupId()).isEqualTo(GROUP);
+              assertThat(application.active()).isFalse();
+              assertThat(application.caseworkerId()).isNull();
+              assertThat(application.assignmentVersion()).isZero();
+              assertThat(application.groupCaseworkerId()).isEqualTo(CASEWORKER);
+              assertThat(application.groupAssignmentVersion()).isEqualTo(1L);
+            });
+  }
+
+  @Test
   void givenDecidedMember_whenGroupUnassigned_thenKeepsShownCaseworker() {
     tracker.applicationReady(store, APPLICATION, 0L);
     tracker.groupCreated(store, GROUP, List.of(APPLICATION));
@@ -142,11 +181,11 @@ class LinkedGroupAssignmentTrackerTest {
 
     assertThat(changes).isEmpty();
     assertThat(store.findApplication(APPLICATION))
-        .contains(new TrackedApplication(APPLICATION, GROUP, false, CASEWORKER, 1L));
+        .contains(new TrackedApplication(APPLICATION, GROUP, false, CASEWORKER, 1L, null, 2L));
   }
 
   @Test
-  void givenGroup_whenAssigned_thenOnlyActiveMembersChange() {
+  void givenGroup_whenAssigned_thenOnlyActiveAssignmentsChange() {
     tracker.applicationReady(store, APPLICATION, 0L);
     tracker.groupCreated(store, GROUP, List.of(APPLICATION, MEMBER));
 
@@ -155,7 +194,7 @@ class LinkedGroupAssignmentTrackerTest {
     assertThat(changes)
         .containsExactly(new AssignmentChange(APPLICATION, GROUP, null, CASEWORKER, 1L));
     assertThat(store.findApplication(MEMBER))
-        .contains(new TrackedApplication(MEMBER, GROUP, false, null, 0L));
+        .contains(new TrackedApplication(MEMBER, GROUP, false, null, 0L, CASEWORKER, 1L));
   }
 
   @Test
@@ -169,7 +208,7 @@ class LinkedGroupAssignmentTrackerTest {
     assertThat(changes)
         .containsExactly(new AssignmentChange(APPLICATION, GROUP, CASEWORKER, null, 2L));
     assertThat(store.findApplication(APPLICATION))
-        .contains(new TrackedApplication(APPLICATION, GROUP, true, null, 2L));
+        .contains(new TrackedApplication(APPLICATION, GROUP, true, null, 2L, null, 2L));
   }
 
   @Test
@@ -200,7 +239,7 @@ class LinkedGroupAssignmentTrackerTest {
 
     assertThat(tracker.assignmentReclaimed(store, APPLICATION, null, 5L)).isEmpty();
     assertThat(store.findApplication(APPLICATION))
-        .contains(new TrackedApplication(APPLICATION, null, false, CASEWORKER, 1L));
+        .contains(new TrackedApplication(APPLICATION, null, false, CASEWORKER, 1L, null, 0L));
   }
 
   @Test
@@ -212,7 +251,7 @@ class LinkedGroupAssignmentTrackerTest {
     tracker.memberInherited(store, GROUP, MEMBER, CASEWORKER, 1L);
 
     assertThat(store.findApplication(MEMBER))
-        .contains(new TrackedApplication(MEMBER, GROUP, true, CASEWORKER, 1L));
+        .contains(new TrackedApplication(MEMBER, GROUP, true, CASEWORKER, 1L, CASEWORKER, 1L));
   }
 
   @Test
@@ -236,7 +275,8 @@ class LinkedGroupAssignmentTrackerTest {
     readyFirstChanges.add(tracker.applicationReady(readyFirst, MEMBER, 0L));
     readyFirstChanges.addAll(tracker.groupAssignmentChanged(readyFirst, GROUP, CASEWORKER, 1L));
 
-    TrackedApplication expected = new TrackedApplication(MEMBER, GROUP, true, CASEWORKER, 1L);
+    TrackedApplication expected =
+        new TrackedApplication(MEMBER, GROUP, true, CASEWORKER, 1L, CASEWORKER, 1L);
     assertThat(assignmentFirst.findApplication(MEMBER)).contains(expected);
     assertThat(readyFirst.findApplication(MEMBER)).contains(expected);
     assertThat(changedCaseworkerChangesFor(assignmentFirstChanges, MEMBER)).hasSize(1);
@@ -268,7 +308,8 @@ class LinkedGroupAssignmentTrackerTest {
     tracker.applicationReady(readinessFirst, MEMBER, 0L);
     tracker.memberAdded(readinessFirst, GROUP, MEMBER);
 
-    TrackedApplication expected = new TrackedApplication(MEMBER, GROUP, true, CASEWORKER, 1L);
+    TrackedApplication expected =
+        new TrackedApplication(MEMBER, GROUP, true, CASEWORKER, 1L, CASEWORKER, 1L);
     assertThat(joinFirst.findApplication(MEMBER)).contains(expected);
     assertThat(readinessFirst.findApplication(MEMBER)).contains(expected);
   }
@@ -284,10 +325,10 @@ class LinkedGroupAssignmentTrackerTest {
     }
 
     tracker.applicationDecided(decisionFirst, MEMBER);
-    tracker.membersLeft(decisionFirst, GROUP, List.of(MEMBER), false);
+    tracker.membersLeft(decisionFirst, GROUP, List.of(MEMBER));
     tracker.assignmentReclaimed(decisionFirst, MEMBER, null, 2L);
 
-    tracker.membersLeft(removalFirst, GROUP, List.of(MEMBER), false);
+    tracker.membersLeft(removalFirst, GROUP, List.of(MEMBER));
     tracker.assignmentReclaimed(removalFirst, MEMBER, CASEWORKER, 2L);
     tracker.applicationDecided(removalFirst, MEMBER);
 
@@ -316,40 +357,39 @@ class LinkedGroupAssignmentTrackerTest {
         .containsExactly(new AssignmentChange(APPLICATION, GROUP, null, null, 0L));
     assertThat(tracker.groupCreated(store, GROUP, List.of(APPLICATION))).isEmpty();
     assertThat(store.findApplication(APPLICATION))
-        .contains(new TrackedApplication(APPLICATION, GROUP, true, null, 0L));
+        .contains(new TrackedApplication(APPLICATION, GROUP, true, null, 0L, null, 0L));
   }
 
   @Test
   void givenInactiveMember_whenAddedToUnknownGroup_thenTracksWithoutReportedChange() {
     assertThat(tracker.memberAdded(store, GROUP, MEMBER)).isEmpty();
 
-    assertThat(store.findGroup(GROUP)).contains(new TrackedGroup(GROUP, null, 0L));
     assertThat(store.findApplication(MEMBER))
-        .contains(new TrackedApplication(MEMBER, GROUP, false, null, 0L));
+        .contains(new TrackedApplication(MEMBER, GROUP, false, null, 0L, null, 0L));
     assertThat(tracker.memberAdded(store, GROUP, MEMBER)).isEmpty();
   }
 
   @Test
-  void givenGroupAssignment_whenMissingOrStaleGroupEvent_thenSeedsOrIgnoresEvent() {
+  void givenGroupAssignment_whenNoMembers_thenIgnoresEvent() {
     assertThat(tracker.groupAssignmentChanged(store, GROUP, CASEWORKER, 1L)).isEmpty();
     assertThat(tracker.groupAssignmentChanged(store, GROUP, null, 1L)).isEmpty();
 
-    assertThat(store.findGroup(GROUP)).contains(new TrackedGroup(GROUP, CASEWORKER, 1L));
+    assertThat(store.findApplicationsInGroup(GROUP)).isEmpty();
   }
 
   @Test
-  void givenOtherGroupMember_whenLeaving_thenPreservedAndDissolvedGroupDeleted() {
+  void givenMembersLeft_whenTheyLeave_thenGroupFieldsCleared() {
     UUID otherGroup = UUID.fromString("00000000-0000-0000-0000-000000000011");
     tracker.groupCreated(store, otherGroup, List.of(APPLICATION));
+    tracker.groupAssignmentChanged(store, otherGroup, CASEWORKER, 1L);
 
-    tracker.membersLeft(store, GROUP, List.of(APPLICATION), false);
+    tracker.membersLeft(store, GROUP, List.of(APPLICATION));
 
     assertThat(store.findApplication(APPLICATION))
-        .contains(new TrackedApplication(APPLICATION, otherGroup, false, null, 0L));
-    tracker.membersLeft(store, otherGroup, List.of(APPLICATION), true);
-    assertThat(store.findGroup(otherGroup)).isEmpty();
+        .contains(new TrackedApplication(APPLICATION, otherGroup, false, null, 0L, CASEWORKER, 1L));
+    tracker.membersLeft(store, otherGroup, List.of(APPLICATION));
     assertThat(store.findApplication(APPLICATION))
-        .contains(new TrackedApplication(APPLICATION, null, false, null, 0L));
+        .contains(new TrackedApplication(APPLICATION, null, false, null, 0L, null, 0L));
   }
 
   @Test
@@ -358,12 +398,12 @@ class LinkedGroupAssignmentTrackerTest {
     tracker.groupCreated(store, GROUP, List.of(APPLICATION));
     tracker.directAssignmentChanged(store, APPLICATION, OTHER_CASEWORKER, 1L);
 
-    tracker.membersLeft(store, GROUP, List.of(APPLICATION), false);
+    tracker.membersLeft(store, GROUP, List.of(APPLICATION));
     List<AssignmentChange> changes = tracker.groupAssignmentChanged(store, GROUP, CASEWORKER, 2L);
 
     assertThat(changes).isEmpty();
     assertThat(store.findApplication(APPLICATION))
-        .contains(new TrackedApplication(APPLICATION, null, true, OTHER_CASEWORKER, 1L));
+        .contains(new TrackedApplication(APPLICATION, null, true, OTHER_CASEWORKER, 1L, null, 0L));
   }
 
   @Test
@@ -388,7 +428,7 @@ class LinkedGroupAssignmentTrackerTest {
 
     assertThat(tracker.assignmentReclaimed(store, APPLICATION, null, 5L)).isEmpty();
     assertThat(store.findApplication(APPLICATION))
-        .contains(new TrackedApplication(APPLICATION, null, false, null, 0L));
+        .contains(new TrackedApplication(APPLICATION, null, false, null, 0L, null, 0L));
     assertThat(tracker.applicationReady(store, APPLICATION, 5L))
         .isEqualTo(new AssignmentChange(APPLICATION, null, null, null, 5L));
   }

@@ -427,12 +427,9 @@ class PostgresAxonIntegrationTest {
             "application_group_route",
             "application_history",
             "application_history_assignment_application",
-            "application_history_assignment_group",
             "application_list_index",
             "application_list_index_assignment_application",
-            "application_list_index_assignment_group",
             "application_projection_assignment_application",
-            "application_projection_assignment_group",
             "domain_event_entry",
             "flyway_schema_history",
             "linked_application_group_current_state",
@@ -443,7 +440,6 @@ class PostgresAxonIntegrationTest {
             "token_entry",
             "work_item_route",
             "work_list_assignment_application",
-            "work_list_assignment_group",
             "work_list_item");
     assertThat(sequences).containsExactly("aggregate-event-global-index-sequence");
     assertThat(applicationHistoryColumns)

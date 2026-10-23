@@ -7,23 +7,7 @@ import java.util.UUID;
 
 /** In-memory tracking store for deterministic tracker unit tests. */
 final class InMemoryGroupAssignmentTrackingStore implements GroupAssignmentTrackingStore {
-  private final TreeMap<UUID, TrackedGroup> groups = new TreeMap<>();
   private final TreeMap<UUID, TrackedApplication> applications = new TreeMap<>();
-
-  @Override
-  public Optional<TrackedGroup> findGroup(UUID groupId) {
-    return Optional.ofNullable(groups.get(groupId));
-  }
-
-  @Override
-  public void saveGroup(TrackedGroup group) {
-    groups.put(group.groupId(), group);
-  }
-
-  @Override
-  public void deleteGroup(UUID groupId) {
-    groups.remove(groupId);
-  }
 
   @Override
   public Optional<TrackedApplication> findApplication(UUID applicationId) {
@@ -45,6 +29,5 @@ final class InMemoryGroupAssignmentTrackingStore implements GroupAssignmentTrack
   @Override
   public void deleteAll() {
     applications.clear();
-    groups.clear();
   }
 }

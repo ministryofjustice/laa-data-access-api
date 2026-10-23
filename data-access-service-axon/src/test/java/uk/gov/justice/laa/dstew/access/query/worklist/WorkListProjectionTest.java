@@ -779,7 +779,7 @@ class WorkListProjectionTest {
         new MemberRemovedFromGroupEvent(
             groupId, UUID.randomUUID(), applicationId, 1L, null, 0L, occurredAt));
 
-    verify(assignmentTracker).membersLeft(assignmentStore, groupId, List.of(applicationId), false);
+    verify(assignmentTracker).membersLeft(assignmentStore, groupId, List.of(applicationId));
   }
 
   @Test
@@ -794,7 +794,7 @@ class WorkListProjectionTest {
         new LinkedApplicationGroupDissolvedEvent(
             groupId, firstId, secondId, memberIds, 1L, null, 0L, occurredAt));
 
-    verify(assignmentTracker).membersLeft(assignmentStore, groupId, memberIds, true);
+    verify(assignmentTracker).membersLeft(assignmentStore, groupId, memberIds);
   }
 
   private static EventMessage message() {

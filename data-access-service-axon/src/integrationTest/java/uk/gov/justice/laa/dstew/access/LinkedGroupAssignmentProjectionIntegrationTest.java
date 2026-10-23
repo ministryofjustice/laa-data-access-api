@@ -145,13 +145,9 @@ class LinkedGroupAssignmentProjectionIntegrationTest extends BaseIntegrationTest
     for (String table :
         List.of(
             "application_projection_assignment_application",
-            "application_projection_assignment_group",
             "application_list_index_assignment_application",
-            "application_list_index_assignment_group",
             "work_list_assignment_application",
-            "work_list_assignment_group",
-            "application_history_assignment_application",
-            "application_history_assignment_group")) {
+            "application_history_assignment_application")) {
       assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM axon." + table, Integer.class))
           .as(table)
           .isZero();

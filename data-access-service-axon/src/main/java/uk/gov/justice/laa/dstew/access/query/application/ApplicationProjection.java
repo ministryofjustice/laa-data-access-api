@@ -296,8 +296,7 @@ public class ApplicationProjection {
   @EventHandler
   public void on(MemberRemovedFromGroupEvent event) {
     updateGroupMembership(event.memberId(), null, null, event.occurredAt());
-    assignmentTracker.membersLeft(
-        assignmentStore, event.groupId(), List.of(event.memberId()), false);
+    assignmentTracker.membersLeft(assignmentStore, event.groupId(), List.of(event.memberId()));
   }
 
   /** Clears group membership from every application when its group is dissolved. */
@@ -306,8 +305,7 @@ public class ApplicationProjection {
     event
         .memberApplicationIds()
         .forEach(memberId -> updateGroupMembership(memberId, null, null, event.occurredAt()));
-    assignmentTracker.membersLeft(
-        assignmentStore, event.groupId(), event.memberApplicationIds(), true);
+    assignmentTracker.membersLeft(assignmentStore, event.groupId(), event.memberApplicationIds());
   }
 
   /** Advances the current-state row to the immutable data version containing the decision. */

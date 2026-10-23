@@ -28,6 +28,12 @@ public abstract class GroupAssignmentApplicationRow {
   @Column(name = "assignment_version", nullable = false)
   private long assignmentVersion;
 
+  @Column(name = "group_caseworker_id")
+  private UUID groupCaseworkerId;
+
+  @Column(name = "group_assignment_version", nullable = false)
+  private long groupAssignmentVersion;
+
   /** Copies the tracked application values into this persistence row. */
   public void copyFrom(TrackedApplication application) {
     applicationId = application.applicationId();
@@ -35,10 +41,19 @@ public abstract class GroupAssignmentApplicationRow {
     active = application.active();
     caseworkerId = application.caseworkerId();
     assignmentVersion = application.assignmentVersion();
+    groupCaseworkerId = application.groupCaseworkerId();
+    groupAssignmentVersion = application.groupAssignmentVersion();
   }
 
   /** Converts this persistence row to its immutable tracker value. */
   public TrackedApplication toTrackedApplication() {
-    return new TrackedApplication(applicationId, groupId, active, caseworkerId, assignmentVersion);
+    return new TrackedApplication(
+        applicationId,
+        groupId,
+        active,
+        caseworkerId,
+        assignmentVersion,
+        groupCaseworkerId,
+        groupAssignmentVersion);
   }
 }

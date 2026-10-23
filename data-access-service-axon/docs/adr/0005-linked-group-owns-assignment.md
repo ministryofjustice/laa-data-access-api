@@ -50,9 +50,10 @@ also be an event in every member application's stream.
    may call the endpoint. Decision authorization remains for API caseworkers.
 7. `work_item_route` is the durable command-routing authority for work items. It records
    `STANDALONE` or `LINKED_GROUP` and, for the latter, the group ID.
-8. Each of the work-list, application, list-index, and history projections owns its linked-group
-   assignment tracking tables. These projections process their own events in one lane and are
-   rebuilt by replay.
+8. Each of the work-list, application, list-index, and history projections owns one linked-group
+   assignment tracking table. Every member row carries the group's caseworker and assignment
+   version as processed by that projection. These projections process their own events in one lane
+   and are rebuilt by replay.
 9. Requests that change a linked group, change the assignment of an active manual-assessment
    application in a group, record an application's readiness for manual assessment in a group, or
    decide an active manual-assessment application in a group lock that group's
@@ -134,7 +135,8 @@ A generic dispatcher cannot reliably infer all group rows that a command sequenc
 ### Negative
 
 - The assignment token is a breaking API change from an integer to an opaque string.
-- Four query projections must process in one lane and maintain their own tracking tables.
+- Four query projections must process in one lane and maintain their own tracking table, with group
+  assignment state repeated on each member row.
 - The route-lock rule depends on reviewers; it is not enforced at runtime.
 - An active manual-assessment member decided while grouped has no current assignee in its
   application aggregate; its query model retains the caseworker shown at decision time.

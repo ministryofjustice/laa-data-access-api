@@ -170,11 +170,13 @@ unaffected.
 ### Read side
 
 The subscribing `work-item-route` projection records each work item's command authority as
-`STANDALONE` or `LINKED_GROUP` (with `group_id`). Four independent query projections maintain
-private tracking tables for linked-group assignment: work list, application, list index, and
-history. Their processors each use one processing lane to order related events within that
-projection; this does not make the projections globally synchronous. The tracking stores are owned
-by their respective projections and are cleared when those projections reset.
+`STANDALONE` or `LINKED_GROUP` (with `group_id`). Four independent query projections each maintain
+one private tracking table for linked-group assignment: work list, application, list index, and
+history. Each member row carries the group's caseworker and assignment version as processed by
+that projection, along with the application's activity and shown assignment. Their processors each
+use one processing lane to order related events within that projection; this does not make the
+projections globally synchronous. The tracking stores are owned by their respective projections
+and are cleared when those projections reset.
 
 Assignment history is written per active member whose displayed caseworker changes. It records the
 request actor, not a separate assignment event per member on the command side.
@@ -249,9 +251,9 @@ authoritative backstop.
 - `application_group_route` is the durable write-side routing table for link commands.
 - `work_item_route` stores each work item's command authority (`STANDALONE` or `LINKED_GROUP`) and
   `group_id` when assignment belongs to a group.
-- The work-list, application, list-index, and history projections each own group and application
-  assignment-tracking tables. These eight tables are disposable and rebuilt by their projection's
-  replay.
+- The work-list, application, list-index, and history projections each own one disposable
+  assignment-tracking table, rebuilt by that projection's replay. Each member row stores the
+  group's caseworker and assignment version.
 - `application_current_state.linked_group_id` identifies the group for application queries;
   membership and lead lookups use the group ID, not `lead_application_id`.
 - `linked_application_group_current_state` is the disposable group read model and carries the

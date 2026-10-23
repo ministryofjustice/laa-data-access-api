@@ -224,7 +224,7 @@ class ApplicationHistoryProjectionTest {
     assertThat(captor.getValue().getEventId()).isEqualTo("member-removed-event-id:" + memberId);
     assertThat(captor.getValue().getApplicationId()).isEqualTo(memberId);
     assertThat(captor.getValue().getEventType()).isEqualTo("APPLICATION_GROUP_LEFT");
-    verify(assignmentTracker).membersLeft(assignmentStore, groupId, List.of(memberId), false);
+    verify(assignmentTracker).membersLeft(assignmentStore, groupId, List.of(memberId));
   }
 
   @Test
@@ -265,7 +265,7 @@ class ApplicationHistoryProjectionTest {
                 formerLeadId,
                 "APPLICATION_GROUP_DISSOLVED"));
     verify(assignmentTracker)
-        .membersLeft(assignmentStore, groupId, List.of(formerLeadId, removedApplicationId), true);
+        .membersLeft(assignmentStore, groupId, List.of(formerLeadId, removedApplicationId));
   }
 
   @Test

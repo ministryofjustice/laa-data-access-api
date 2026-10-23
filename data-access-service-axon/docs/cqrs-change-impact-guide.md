@@ -196,7 +196,8 @@ bean in `AxonEventProcessingConfig`. No change to aggregate or existing projecti
 
 * **Linked-group assignment.** `LinkedApplicationGroupAggregate` owns the shared assignment and
   `ApplicationState.assignmentGroupId` marks delegation. Assignment never fans out on the command
-  side; query projections apply group events to active members through their own tracking tables.
+  side; each query projection applies group events through its own tracking table, where every
+  member row carries the group's caseworker and assignment version.
   **Any request that changes a group, changes the assignment of an active manual-assessment
   application in a group, records an application's readiness for manual assessment in a group, or
   decides an active manual-assessment application in a group, must lock the group's

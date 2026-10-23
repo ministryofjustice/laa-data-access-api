@@ -17,17 +17,10 @@ public class LinkedGroupAssignmentTracker {
     if (application.active()) {
       return change(application, application.caseworkerId());
     }
-    Optional<TrackedGroup> group =
-        application.groupId() == null ? Optional.empty() : store.findGroup(application.groupId());
+    long currentVersion =
+        application.groupId() == null ? assignmentVersion : application.groupAssignmentVersion();
     TrackedApplication updated =
-        application
-            .withActive(true)
-            .withAssignment(
-                application.caseworkerId(),
-                group.map(TrackedGroup::assignmentVersion).orElse(assignmentVersion));
-    if (group.isEmpty()) {
-      updated = updated.withGroupId(null);
-    }
+        application.withActive(true).withAssignment(application.caseworkerId(), currentVersion);
     store.saveApplication(updated);
     return change(updated, application.caseworkerId());
   }
@@ -54,14 +47,13 @@ public class LinkedGroupAssignmentTracker {
   /** Tracks a newly created group and assigns each member to that new owner. */
   public List<AssignmentChange> groupCreated(
       GroupAssignmentTrackingStore store, UUID groupId, List<UUID> memberApplicationIds) {
-    if (store.findGroup(groupId).isPresent()) {
+    if (anyMember(store, groupId).isPresent()) {
       return List.of();
     }
-    store.saveGroup(new TrackedGroup(groupId, null, 0L));
     List<AssignmentChange> changes = new ArrayList<>();
     for (UUID memberApplicationId : memberApplicationIds) {
       TrackedApplication application = application(store, memberApplicationId);
-      TrackedApplication updated = application.withGroupId(groupId);
+      TrackedApplication updated = application.joinGroup(groupId, null, 0L);
       if (application.active()) {
         updated = updated.withAssignment(application.caseworkerId(), 0L);
         changes.add(change(updated, application.caseworkerId()));
@@ -78,33 +70,31 @@ public class LinkedGroupAssignmentTracker {
     if (groupId.equals(application.groupId())) {
       return List.of();
     }
-    TrackedGroup group = store.findGroup(groupId).orElse(new TrackedGroup(groupId, null, 0L));
-    store.saveGroup(group);
-    TrackedApplication joined = application.withGroupId(groupId);
+    Optional<TrackedApplication> existingMember = anyMember(store, groupId);
+    @Nullable UUID groupCaseworkerId =
+        existingMember.map(TrackedApplication::groupCaseworkerId).orElse(null);
+    long groupAssignmentVersion =
+        existingMember.map(TrackedApplication::groupAssignmentVersion).orElse(0L);
+    TrackedApplication joined =
+        application.joinGroup(groupId, groupCaseworkerId, groupAssignmentVersion);
     if (application.active()) {
       joined =
           joined.withAssignment(
-              group.caseworkerId() != null ? group.caseworkerId() : application.caseworkerId(),
-              group.assignmentVersion());
+              groupCaseworkerId != null ? groupCaseworkerId : application.caseworkerId(),
+              groupAssignmentVersion);
     }
     store.saveApplication(joined);
     return application.active() ? List.of(change(joined, application.caseworkerId())) : List.of();
   }
 
-  /** Removes group ownership from the specified members and optionally deletes the group. */
+  /** Removes group ownership from the specified members. */
   public void membersLeft(
-      GroupAssignmentTrackingStore store,
-      UUID groupId,
-      List<UUID> leavingApplicationIds,
-      boolean dissolved) {
+      GroupAssignmentTrackingStore store, UUID groupId, List<UUID> leavingApplicationIds) {
     for (UUID applicationId : leavingApplicationIds) {
       store
           .findApplication(applicationId)
           .filter(application -> groupId.equals(application.groupId()))
-          .ifPresent(application -> store.saveApplication(application.withGroupId(null)));
-    }
-    if (dissolved) {
-      store.deleteGroup(groupId);
+          .ifPresent(application -> store.saveApplication(application.leaveGroup()));
     }
   }
 
@@ -114,24 +104,21 @@ public class LinkedGroupAssignmentTracker {
       UUID groupId,
       @Nullable UUID caseworkerId,
       long assignmentVersion) {
-    Optional<TrackedGroup> existing = store.findGroup(groupId);
-    if (existing.isEmpty()) {
-      store.saveGroup(new TrackedGroup(groupId, caseworkerId, assignmentVersion));
+    List<TrackedApplication> members = store.findApplicationsInGroup(groupId);
+    if (members.isEmpty()) {
       return List.of();
     }
-    TrackedGroup group = existing.get();
-    if (group.assignmentVersion() >= assignmentVersion) {
+    if (members.getFirst().groupAssignmentVersion() >= assignmentVersion) {
       return List.of();
     }
-    store.saveGroup(group.withAssignment(caseworkerId, assignmentVersion));
     List<AssignmentChange> changes = new ArrayList<>();
-    for (TrackedApplication member : store.findApplicationsInGroup(groupId)) {
-      if (!member.active()) {
-        continue;
+    for (TrackedApplication member : members) {
+      TrackedApplication updated = member.withGroupAssignment(caseworkerId, assignmentVersion);
+      if (member.active()) {
+        updated = updated.withAssignment(caseworkerId, assignmentVersion);
+        changes.add(change(updated, member.caseworkerId()));
       }
-      TrackedApplication updated = member.withAssignment(caseworkerId, assignmentVersion);
       store.saveApplication(updated);
-      changes.add(change(updated, member.caseworkerId()));
     }
     return changes;
   }
@@ -164,17 +151,21 @@ public class LinkedGroupAssignmentTracker {
     }
     TrackedApplication application = found.get();
     if (!application.active()) {
-      store.saveApplication(application.withGroupId(null));
+      store.saveApplication(application.leaveGroup());
       return Optional.empty();
     }
     TrackedApplication updated =
-        application.withGroupId(null).withAssignment(caseworkerId, assignmentVersion);
+        application.leaveGroup().withAssignment(caseworkerId, assignmentVersion);
     store.saveApplication(updated);
     return Optional.of(change(updated, application.caseworkerId()));
   }
 
   private TrackedApplication application(GroupAssignmentTrackingStore store, UUID applicationId) {
     return store.findApplication(applicationId).orElse(TrackedApplication.untracked(applicationId));
+  }
+
+  private Optional<TrackedApplication> anyMember(GroupAssignmentTrackingStore store, UUID groupId) {
+    return store.findApplicationsInGroup(groupId).stream().findFirst();
   }
 
   private AssignmentChange change(

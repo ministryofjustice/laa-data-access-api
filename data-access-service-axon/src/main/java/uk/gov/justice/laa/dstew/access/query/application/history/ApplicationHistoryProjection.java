@@ -154,8 +154,7 @@ public class ApplicationHistoryProjection {
         null,
         event.occurredAt(),
         groupHistoryId(message, event.memberId()));
-    assignmentTracker.membersLeft(
-        assignmentStore, event.groupId(), List.of(event.memberId()), false);
+    assignmentTracker.membersLeft(assignmentStore, event.groupId(), List.of(event.memberId()));
   }
 
   /** Appends history entries for the member leaving and the dissolution of its former group. */
@@ -179,8 +178,7 @@ public class ApplicationHistoryProjection {
                     null,
                     event.occurredAt(),
                     groupHistoryId(message, applicationId)));
-    assignmentTracker.membersLeft(
-        assignmentStore, event.groupId(), event.memberApplicationIds(), true);
+    assignmentTracker.membersLeft(assignmentStore, event.groupId(), event.memberApplicationIds());
   }
 
   /** Appends a thin audit entry for an Application decision. */

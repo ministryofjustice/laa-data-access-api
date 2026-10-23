@@ -2,7 +2,8 @@
 
 These diagrams show how one aggregate owns a linked group's shared assignment, how ownership moves
 when applications join or leave, and how readiness and decisions use the group assignment. Query
-projections update asynchronously and each projection maintains its own assignment-tracking tables.
+projections update asynchronously; each projection has one assignment-tracking table, and each
+member row carries the group's caseworker and assignment version.
 
 ## 3.1 Assign a linked-group work item
 
@@ -96,7 +97,7 @@ sequenceDiagram
 
     par Independent query projections
         EventStore-->>Projections: group creation and assignment events
-        Projections->>Projections: track group assignment and update active-member views
+        Projections->>Projections: store group assignment on member rows and update active-member views
     end
     Note over Coordinator,EventStore: Delegation and group creation commit in the same transaction
 ```
