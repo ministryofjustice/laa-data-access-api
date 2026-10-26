@@ -9,12 +9,11 @@ plugins {
 
 def versions = [
         sentry                  : '8.60.0',
-        axonFramework           : '5.4.0',
+        axonFramework           : '5.2.0',
         jsonSchemaValidator     : '3.0.8',
         swaggerAnnotations      : '2.2.55',
         springdocOpenapi        : '3.1.1',
         springCloudAws          : '4.2.0',
-        awsSdkSts               : '2.55.16',
         lombok                  : '1.18.48',
         datafaker               : '2.7.0',
         archunit                : '1.5.1',
@@ -84,7 +83,7 @@ dependencies {
     implementation platform("io.awspring.cloud:spring-cloud-aws:$versions.springCloudAws")
     implementation 'io.awspring.cloud:spring-cloud-aws-starter'
     implementation 'software.amazon.awssdk:sns'
-    implementation "software.amazon.awssdk:sts:$versions.awsSdkSts"
+    implementation 'software.amazon.awssdk:sts'
     compileOnly "org.projectlombok:lombok:$versions.lombok"
     annotationProcessor "org.projectlombok:lombok:$versions.lombok"
     runtimeOnly 'org.postgresql:postgresql'
