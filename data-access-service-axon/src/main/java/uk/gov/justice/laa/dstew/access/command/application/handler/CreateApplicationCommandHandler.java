@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.command.application.handler;
 
+import jakarta.annotation.Nullable;
 import java.util.UUID;
 import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
@@ -9,6 +10,7 @@ import uk.gov.justice.laa.dstew.access.command.application.ApplicationAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreationDetails;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreationDetailsFactory;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDecider;
+import uk.gov.justice.laa.dstew.access.command.application.ApplicationState;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
@@ -21,20 +23,20 @@ public class CreateApplicationCommandHandler {
   @CommandHandler
   public UUID handle(
       CreateApplicationCommand command,
-      @InjectEntity(idProperty = "applicationId") ApplicationAggregate application,
+      @InjectEntity(idProperty = "applicationId") @Nullable ApplicationAggregate application,
       ApplicationCreationDetailsFactory factory,
       ApplicationDataStore applicationDataStore,
       JsonSchemaValidator jsonSchemaValidator,
       EventAppender eventAppender) {
     jsonSchemaValidator.validate(
         command.applicationContent(), command.schemaName(), command.schemaVersion());
-    if (application.getApplicationId() == null) {
+    if (application == null) {
       ApplicationCreationDetails details = factory.prepare(command);
       long applicationDataVersion = 0L;
       String fingerprint =
           applicationDataStore.append(command.applicationId(), applicationDataVersion, details);
       ApplicationDecider.decideCreate(
-              application.getState(),
+              new ApplicationState(),
               command.applicationId(),
               command.schemaVersion(),
               fingerprint,

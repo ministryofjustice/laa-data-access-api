@@ -49,7 +49,7 @@ class ApplicationCommandHandlerSupportTest {
     ApplicationAggregate application = mockApplicationWithIdAndStatus(applicationId, null);
 
     // Should not throw
-    ApplicationCommandHandlerSupport.requireApplicationDraft(application, applicationId);
+    ApplicationCommandHandlerSupport.requireApplicationDraft(application);
   }
 
   @Test
@@ -59,25 +59,9 @@ class ApplicationCommandHandlerSupportTest {
     ApplicationAggregate application =
         mockApplicationWithIdAndStatus(applicationId, "APPLICATION_SUBMITTED");
 
-    assertThatThrownBy(
-            () ->
-                ApplicationCommandHandlerSupport.requireApplicationDraft(
-                    application, applicationId))
+    assertThatThrownBy(() -> ApplicationCommandHandlerSupport.requireApplicationDraft(application))
         .isInstanceOf(ValidationException.class)
         .hasMessage("One or more validation rules were violated");
-  }
-
-  @Test
-  void
-      givenApplicationWithNullId_whenRequireApplicationDraft_thenThrowsResourceNotFoundException() {
-    UUID requestedId = UUID.randomUUID();
-    ApplicationAggregate application = mockApplicationWithId(null);
-
-    assertThatThrownBy(
-            () ->
-                ApplicationCommandHandlerSupport.requireApplicationDraft(application, requestedId))
-        .isInstanceOf(ResourceNotFoundException.class)
-        .hasMessageContaining("No application found with Application ID: " + requestedId);
   }
 
   @Test

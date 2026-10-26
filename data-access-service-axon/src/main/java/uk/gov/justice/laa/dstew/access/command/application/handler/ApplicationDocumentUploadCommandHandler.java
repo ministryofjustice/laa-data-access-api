@@ -25,7 +25,7 @@ public class ApplicationDocumentUploadCommandHandler {
       @InjectEntity(idProperty = "applicationId") ApplicationAggregate application,
       ApplicationDraftStore draftStore,
       EventAppender eventAppender) {
-    ApplicationCommandHandlerSupport.requireApplicationDraft(application, command.applicationId());
+    ApplicationCommandHandlerSupport.requireApplicationDraft(application);
     if (command.originalFilename() == null || command.originalFilename().isBlank()) {
       throw new ValidationException(List.of("Original filename is required"));
     }
