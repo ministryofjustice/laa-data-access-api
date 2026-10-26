@@ -4,6 +4,7 @@ import java.net.URI;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.axonframework.modelling.entity.EntityMissingForInstanceCommandHandlerException;
+import org.axonframework.modelling.repository.EntityNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
@@ -85,7 +86,10 @@ public class ApplicationExceptionHandler {
   }
 
   /** Returns Axon's missing entity failure as a stable Application not-found response. */
-  @ExceptionHandler(EntityMissingForInstanceCommandHandlerException.class)
+  @ExceptionHandler({
+    EntityMissingForInstanceCommandHandlerException.class,
+    EntityNotFoundException.class
+  })
   ResponseEntity<ProblemDetail> handleAggregateNotFoundException() {
     return ResponseEntity.status(HttpStatus.NOT_FOUND)
         .body(
