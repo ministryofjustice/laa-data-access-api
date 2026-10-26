@@ -1,2 +1,0 @@
-ALTER TABLE certificates ALTER COLUMN created_by DROP NOT NULL;
-ALTER TABLE certificates ALTER COLUMN updated_by DROP NOT NULL;
