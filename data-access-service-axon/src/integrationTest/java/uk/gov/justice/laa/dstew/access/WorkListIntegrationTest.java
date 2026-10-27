@@ -164,8 +164,7 @@ class WorkListIntegrationTest {
   }
 
   @Test
-  void
-      givenApplicationsCreatedBeforeManualOutcomes_whenListed_thenTheyRemainInSubmissionOrder() {
+  void givenApplicationsCreatedBeforeManualOutcomes_whenListed_thenTheyRemainInSubmissionOrder() {
     UUID firstApplicationId = UUID.randomUUID();
     UUID secondApplicationId = UUID.randomUUID();
     createSubmittedApplication(firstApplicationId);

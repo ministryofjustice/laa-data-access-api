@@ -71,7 +71,14 @@ class WorkListProjectionTest {
 
     projection.on(
         new ApplicationCreatedEvent(
-            applicationId, 5L, "fingerprint", "APPLICATION_SUBMITTED", 1, submittedAt, List.of(), "1A"),
+            applicationId,
+            5L,
+            "fingerprint",
+            "APPLICATION_SUBMITTED",
+            1,
+            submittedAt,
+            List.of(),
+            "1A"),
         message());
 
     ArgumentCaptor<WorkListItemReadModel> captor =
