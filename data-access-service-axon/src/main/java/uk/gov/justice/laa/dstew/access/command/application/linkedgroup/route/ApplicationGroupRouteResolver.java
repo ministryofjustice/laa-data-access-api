@@ -4,10 +4,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.TreeSet;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,9 +24,13 @@ public class ApplicationGroupRouteResolver {
   /** Locks both routes, then classifies whether linking creates, joins, or reuses a group. */
   @Transactional
   public ApplicationLinkPlan resolve(UUID sourceApplicationId, UUID targetApplicationId) {
-    var lockedRoutes =
-        routes.findAllByApplicationIdInForUpdate(
-            Stream.of(sourceApplicationId, targetApplicationId).sorted().toList());
+    var targetMembership = routes.findMembershipByApplicationId(targetApplicationId);
+    var applicationIds = new TreeSet<>(List.of(sourceApplicationId, targetApplicationId));
+    targetMembership
+        .filter(membership -> membership.getRouteKind() == ApplicationGroupRouteKind.LINKED_GROUP)
+        .map(ApplicationGroupRouteMembership::getGroupId)
+        .ifPresent(groupId -> applicationIds.addAll(routes.findApplicationIdsByGroupId(groupId)));
+    var lockedRoutes = routes.findAllByApplicationIdInForUpdate(List.copyOf(applicationIds));
     var routesByApplicationId =
         lockedRoutes.stream()
             .collect(
@@ -34,28 +38,89 @@ public class ApplicationGroupRouteResolver {
     var sourceRoute = requiredRoute(routesByApplicationId, sourceApplicationId, "source");
     var targetRoute = requiredRoute(routesByApplicationId, targetApplicationId, "target");
 
+    if (targetRoute.getRouteKind() == ApplicationGroupRouteKind.LINKED_GROUP) {
+      var groupId = targetRoute.getGroupId();
+      if (targetMembership.isEmpty()
+          || targetMembership.get().getRouteKind() != ApplicationGroupRouteKind.LINKED_GROUP
+          || !Objects.equals(targetMembership.get().getGroupId(), groupId)
+          || routes.findApplicationIdsByGroupId(groupId).stream()
+              .anyMatch(applicationId -> !applicationIds.contains(applicationId))) {
+        throw membershipChanged(targetApplicationId);
+      }
+    } else if (targetMembership
+        .filter(membership -> membership.getRouteKind() == ApplicationGroupRouteKind.LINKED_GROUP)
+        .isPresent()) {
+      throw membershipChanged(targetApplicationId);
+    }
+
     if (!sourceRoute.hasSameOfficeCodeAs(targetRoute)) {
       throw new ValidationException(List.of("Applications must have the same office code"));
     }
 
+    ApplicationLinkPlan plan;
     if (isSameLinkedGroup(sourceRoute, targetRoute)) {
-      return new ApplicationLinkPlan(
-          ApplicationLinkAction.ALREADY_LINKED, sourceRoute.getGroupId());
+      plan =
+          new ApplicationLinkPlan(ApplicationLinkAction.ALREADY_LINKED, sourceRoute.getGroupId());
+    } else if (sourceRoute.getRouteKind() == ApplicationGroupRouteKind.STANDALONE
+        && targetRoute.getRouteKind() == ApplicationGroupRouteKind.STANDALONE) {
+      plan = new ApplicationLinkPlan(ApplicationLinkAction.CREATE_GROUP, null);
+    } else if (sourceRoute.getRouteKind() == ApplicationGroupRouteKind.STANDALONE
+        && targetRoute.getRouteKind() == ApplicationGroupRouteKind.LINKED_GROUP) {
+      plan =
+          new ApplicationLinkPlan(
+              ApplicationLinkAction.ADD_TO_EXISTING_GROUP, targetRoute.getGroupId());
+    } else {
+      throw new ApplicationLinkConflictException(
+          "Application "
+              + sourceRoute.getApplicationId()
+              + " already belongs to a different linked group");
+    }
+    RouteLockRegistry.recordApplications(applicationIds);
+    if (targetRoute.getRouteKind() == ApplicationGroupRouteKind.LINKED_GROUP) {
+      RouteLockRegistry.recordGroup(targetRoute.getGroupId());
+    }
+    return plan;
+  }
+
+  /**
+   * Locks the routes that an assignment or readiness change of {@code applicationId} depends on and
+   * returns its linked group, or empty when it is standalone or has no route.
+   */
+  @Transactional
+  public Optional<UUID> lockForAssignment(UUID applicationId) {
+    var membership = routes.findMembershipByApplicationId(applicationId);
+    if (membership.isEmpty()) {
+      RouteLockRegistry.recordApplications(List.of(applicationId));
+      return Optional.empty();
+    }
+    if (membership.get().getRouteKind() == ApplicationGroupRouteKind.STANDALONE) {
+      var lockedRoute = routes.findByApplicationIdForUpdate(applicationId);
+      if (lockedRoute.isEmpty()
+          || lockedRoute.get().getRouteKind() != ApplicationGroupRouteKind.STANDALONE) {
+        throw membershipChanged(applicationId);
+      }
+      RouteLockRegistry.recordApplications(List.of(applicationId));
+      return Optional.empty();
     }
 
-    if (sourceRoute.getRouteKind() == ApplicationGroupRouteKind.STANDALONE
-        && targetRoute.getRouteKind() == ApplicationGroupRouteKind.STANDALONE) {
-      return new ApplicationLinkPlan(ApplicationLinkAction.CREATE_GROUP, null);
+    var groupId = membership.get().getGroupId();
+    var applicationIds = routes.findApplicationIdsByGroupId(groupId);
+    if (!applicationIds.contains(applicationId)) {
+      throw membershipChanged(applicationId);
     }
-    if (sourceRoute.getRouteKind() == ApplicationGroupRouteKind.STANDALONE
-        && targetRoute.getRouteKind() == ApplicationGroupRouteKind.LINKED_GROUP) {
-      return new ApplicationLinkPlan(
-          ApplicationLinkAction.ADD_TO_EXISTING_GROUP, targetRoute.getGroupId());
+    var lockedRoutes = routes.findAllByApplicationIdInForUpdate(applicationIds);
+    if (lockedRoutes.size() != applicationIds.size()
+        || lockedRoutes.stream()
+            .anyMatch(
+                route ->
+                    route.getRouteKind() != ApplicationGroupRouteKind.LINKED_GROUP
+                        || !Objects.equals(route.getGroupId(), groupId))
+        || !routes.findApplicationIdsByGroupId(groupId).equals(applicationIds)) {
+      throw membershipChanged(applicationId);
     }
-    throw new ApplicationLinkConflictException(
-        "Application "
-            + sourceRoute.getApplicationId()
-            + " already belongs to a different linked group");
+    RouteLockRegistry.recordApplications(applicationIds);
+    RouteLockRegistry.recordGroup(groupId);
+    return Optional.of(groupId);
   }
 
   /**
@@ -84,6 +149,9 @@ public class ApplicationGroupRouteResolver {
     if (!Objects.equals(groupId, expectedGroupId)) {
       throw LinkedApplicationGroupVersionConflictException.groupChanged(applicationId);
     }
+    RouteLockRegistry.recordApplications(
+        lockedRoutes.stream().map(ApplicationGroupRoute::getApplicationId).toList());
+    RouteLockRegistry.recordGroup(groupId);
     return groupId;
   }
 
@@ -140,6 +208,7 @@ public class ApplicationGroupRouteResolver {
           || lockedRoute.getGroupId() != null) {
         throw LinkedApplicationGroupVersionConflictException.groupChanged(applicationId);
       }
+      RouteLockRegistry.recordApplications(List.of(applicationId));
       return Optional.empty();
     }
     var groupId = membership.getGroupId();
@@ -157,7 +226,15 @@ public class ApplicationGroupRouteResolver {
     if (!stillMember) {
       throw LinkedApplicationGroupVersionConflictException.groupChanged(applicationId);
     }
+    RouteLockRegistry.recordApplications(
+        lockedRoutes.stream().map(ApplicationGroupRoute::getApplicationId).toList());
+    RouteLockRegistry.recordGroup(groupId);
     return Optional.of(groupId);
+  }
+
+  private ApplicationLinkConflictException membershipChanged(UUID applicationId) {
+    return new ApplicationLinkConflictException(
+        "Linked group membership of application " + applicationId + " changed; retry the request");
   }
 
   private ApplicationGroupRoute requiredRoute(

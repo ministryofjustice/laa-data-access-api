@@ -4,8 +4,11 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 import com.tngtech.archunit.base.DescribedPredicate;
+import com.tngtech.archunit.core.domain.JavaCall;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
+import com.tngtech.archunit.core.domain.properties.HasName;
+import com.tngtech.archunit.core.domain.properties.HasOwner;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.lang.ArchCondition;
@@ -17,6 +20,8 @@ import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
 import org.axonframework.messaging.commandhandling.gateway.CommandGateway;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.junit.jupiter.api.Test;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteProjection;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteRepository;
 
 class AxonArchitectureTest {
 
@@ -189,6 +194,24 @@ class AxonArchitectureTest {
         .should()
         .dependOnClassesThat()
         .haveFullyQualifiedName("org.axonframework.modelling.StateManager")
+        .check(classes);
+  }
+
+  @Test
+  void givenRouteLockQueries_whenImported_thenOnlyResolverAndRouteProjectionCallThem() {
+    noClasses()
+        .that()
+        .doNotHaveSimpleName("ApplicationGroupRouteResolver")
+        .and()
+        .doNotHaveSimpleName(ApplicationGroupRouteProjection.class.getSimpleName())
+        .should()
+        .callMethodWhere(
+            JavaCall.Predicates.target(HasName.Predicates.nameEndingWith("ForUpdate"))
+                .and(
+                    JavaCall.Predicates.target(
+                        HasOwner.Predicates.With.owner(
+                            JavaClass.Predicates.assignableTo(
+                                ApplicationGroupRouteRepository.class)))))
         .check(classes);
   }
 
