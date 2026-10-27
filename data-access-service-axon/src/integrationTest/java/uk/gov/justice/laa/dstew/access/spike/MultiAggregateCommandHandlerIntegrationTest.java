@@ -98,7 +98,7 @@ class MultiAggregateCommandHandlerIntegrationTest extends BaseIntegrationTest {
                         secondApplicationId,
                         TestJwtDecoderConfig.CASEWORKER_ID,
                         Instant.now())))
-        .isNotNull();
+        .hasStackTraceContaining("forced group assignment failure");
 
     assertThat(countDomainEvents(firstApplicationId, WorkItemAssigned.class)).isZero();
     assertThat(countDomainEvents(secondApplicationId, WorkItemAssigned.class)).isZero();
