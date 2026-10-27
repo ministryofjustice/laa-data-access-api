@@ -174,6 +174,25 @@ class AxonArchitectureTest {
   }
 
   @Test
+  void givenStateManager_whenImported_thenOnlyLinkedGroupStateLoadersUseIt() {
+    noClasses()
+        .that()
+        .doNotHaveSimpleName("LinkedGroupMembers")
+        .and()
+        .doNotHaveSimpleName("EstablishLinkedApplicationGroupCommandHandler")
+        .and()
+        .doNotHaveSimpleName("AddApplicationToLinkedGroupCommandHandler")
+        .and()
+        .doNotHaveSimpleName("LinkedGroupWorkItemAssignmentCommandHandler")
+        .and()
+        .doNotHaveSimpleName("MarkApplicationReadyCommandHandler")
+        .should()
+        .dependOnClassesThat()
+        .haveFullyQualifiedName("org.axonframework.modelling.StateManager")
+        .check(classes);
+  }
+
+  @Test
   void linkedApplicationRoutingClassesMustNotDependOnQueryPackages() {
     ArchRule rule =
         noClasses()

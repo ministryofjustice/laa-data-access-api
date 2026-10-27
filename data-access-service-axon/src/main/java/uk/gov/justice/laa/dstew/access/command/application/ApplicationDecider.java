@@ -6,11 +6,13 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import org.jspecify.annotations.Nullable;
 import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
@@ -24,7 +26,10 @@ import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplication
 import uk.gov.justice.laa.dstew.access.command.application.ready.ReadyApplicationResult;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationCommand;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException;
@@ -35,6 +40,79 @@ import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 /** Decision functions: derive events from current state and command inputs. */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class ApplicationDecider {
+
+  /** Returns whether the application is an active manual-assessment work item. */
+  public static boolean isActiveWorkItem(ApplicationState state) {
+    return state.autoGranted == AutoGrantedState.MANUAL && state.overallDecision == null;
+  }
+
+  /**
+   * Validates that the state is the active work item {@code workItemId} at the expected assignment
+   * version. Messages are identical to the existing ApplicationCommandHandlerSupport checks.
+   */
+  public static void validateDirectWorkItem(
+      ApplicationState state, UUID workItemId, long expectedAssignmentVersion) {
+    if (state.applicationId == null || !state.applicationId.equals(workItemId)) {
+      throw new ResourceNotFoundException("No application work item found with id: " + workItemId);
+    }
+    if (!isActiveWorkItem(state)) {
+      throw new ResourceNotFoundException("Application work item is not active: " + workItemId);
+    }
+    if (expectedAssignmentVersion != state.assignmentVersion) {
+      throw new WorkItemAssignmentConflictException(workItemId, "the assignment version is stale");
+    }
+  }
+
+  /**
+   * Returns the event that moves an application's assignment from its current caseworker to {@code
+   * targetCaseworkerId} (null = unassigned), or empty when they are already equal.
+   */
+  public static Optional<Object> decideAssignmentChange(
+      UUID applicationId,
+      long itemVersion,
+      long currentAssignmentVersion,
+      @Nullable UUID currentCaseworkerId,
+      @Nullable UUID targetCaseworkerId,
+      Instant occurredAt) {
+    if (Objects.equals(currentCaseworkerId, targetCaseworkerId)) {
+      return Optional.empty();
+    }
+    if (targetCaseworkerId == null) {
+      return Optional.of(
+          new WorkItemUnassigned(
+              applicationId,
+              WorkItemType.APPLICATION,
+              itemVersion,
+              currentAssignmentVersion + 1,
+              occurredAt));
+    }
+    return Optional.of(
+        new WorkItemAssigned(
+            applicationId,
+            WorkItemType.APPLICATION,
+            itemVersion,
+            currentAssignmentVersion + 1,
+            targetCaseworkerId,
+            occurredAt));
+  }
+
+  /**
+   * Returns the assignment change for a linked-group member, or empty when it is not active or
+   * unchanged.
+   */
+  public static Optional<Object> decideGroupMemberAssignment(
+      ApplicationState state, @Nullable UUID targetCaseworkerId, Instant occurredAt) {
+    if (!isActiveWorkItem(state)) {
+      return Optional.empty();
+    }
+    return decideAssignmentChange(
+        state.applicationId,
+        state.applicationVersion,
+        state.assignmentVersion,
+        state.caseworkerId,
+        targetCaseworkerId,
+        occurredAt);
+  }
 
   /**
    * Returns a singleton {@link ApplicationCreatedEvent} for a new application, an empty list for an
