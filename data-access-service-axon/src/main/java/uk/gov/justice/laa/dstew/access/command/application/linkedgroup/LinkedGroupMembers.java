@@ -22,12 +22,11 @@ public final class LinkedGroupMembers {
       StateManager stateManager, Collection<UUID> applicationIds, ProcessingContext context) {
     var loaded = new TreeMap<UUID, ApplicationState>();
     for (var applicationId : new TreeSet<>(applicationIds)) {
+      var aggregate =
+          stateManager.loadEntity(ApplicationAggregate.class, applicationId, context).join();
       loaded.put(
           applicationId,
-          stateManager
-              .loadEntity(ApplicationAggregate.class, applicationId, context)
-              .join()
-              .getState());
+          aggregate == null ? ApplicationState.empty(applicationId) : aggregate.getState());
     }
     return loaded;
   }

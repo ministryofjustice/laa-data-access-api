@@ -5,6 +5,7 @@ import org.axonframework.eventsourcing.configuration.EventSourcedEntityModule;
 import org.axonframework.eventsourcing.configuration.EventSourcingConfigurer;
 import org.axonframework.messaging.commandhandling.configuration.CommandHandlingModule;
 import org.axonframework.test.fixture.AxonTestFixture;
+import uk.gov.justice.laa.dstew.access.command.application.ApplicationAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.handler.AddApplicationToLinkedGroupCommandHandler;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.handler.ChangeLinkedGroupLeadCommandHandler;
@@ -24,6 +25,8 @@ public final class LinkedGroupTestFixture {
             .registerEntity(
                 EventSourcedEntityModule.autodetected(
                     UUID.class, LinkedApplicationGroupAggregate.class))
+            .registerEntity(
+                EventSourcedEntityModule.autodetected(UUID.class, ApplicationAggregate.class))
             .registerCommandHandlingModule(
                 CommandHandlingModule.named("linked-group-command-handlers")
                     .commandHandlers(
