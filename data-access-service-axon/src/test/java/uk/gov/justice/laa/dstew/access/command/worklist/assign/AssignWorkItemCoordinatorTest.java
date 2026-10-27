@@ -1,19 +1,16 @@
 package uk.gov.justice.laa.dstew.access.command.worklist.assign;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.axonframework.messaging.commandhandling.gateway.CommandGateway;
 import org.junit.jupiter.api.Test;
-import org.mockito.InOrder;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteResolver;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.route.WorkItemRoute;
@@ -34,7 +31,7 @@ class AssignWorkItemCoordinatorTest {
     AssignWorkItemCommand command =
         new AssignWorkItemCommand(id, caseworkerId, 0L, "{}", "Assigned", occurredAt);
     when(routes.resolveDirectRoute(id)).thenReturn(route(WorkItemType.APPLICATION, id, occurredAt));
-    when(groupRoutes.resolveGroupMembersForAssignment(id)).thenReturn(Optional.empty());
+    when(groupRoutes.lockForAssignment(id)).thenReturn(Optional.empty());
 
     handler.handle(command);
 
@@ -62,8 +59,7 @@ class AssignWorkItemCoordinatorTest {
         .sendAndWait(
             new DirectPriorAuthorityWorkItemAssignmentCommand(
                 id, caseworkerId, 0L, "{}", "Assigned", occurredAt));
-    verify(groupRoutes, never())
-        .resolveGroupMembersForAssignment(org.mockito.ArgumentMatchers.any());
+    verify(groupRoutes, never()).lockForAssignment(org.mockito.ArgumentMatchers.any());
   }
 
   @Test
@@ -89,34 +85,26 @@ class AssignWorkItemCoordinatorTest {
   }
 
   @Test
-  void propagatesAGroupedApplicationAssignmentToEveryMember() {
+  void givenGroupedApplication_whenAssigned_thenSendsOneGroupCommand() {
     WorkItemRouteResolver routes = mock(WorkItemRouteResolver.class);
     ApplicationGroupRouteResolver groupRoutes = mock(ApplicationGroupRouteResolver.class);
     CommandGateway gateway = mock(CommandGateway.class);
     AssignWorkItemCoordinator handler = new AssignWorkItemCoordinator(routes, groupRoutes, gateway);
     UUID id = UUID.randomUUID();
-    UUID siblingId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
     UUID caseworkerId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-09-01T10:00:00Z");
     AssignWorkItemCommand command =
         new AssignWorkItemCommand(id, caseworkerId, 0L, "{}", "Assigned", occurredAt);
     when(routes.resolveDirectRoute(id)).thenReturn(route(WorkItemType.APPLICATION, id, occurredAt));
-    when(groupRoutes.resolveGroupMembersForAssignment(id))
-        .thenReturn(Optional.of(List.of(id, siblingId)));
+    when(groupRoutes.lockForAssignment(id)).thenReturn(Optional.of(groupId));
 
     handler.handle(command);
 
-    InOrder order = inOrder(gateway);
-    order
-        .verify(gateway)
+    verify(gateway)
         .sendAndWait(
-            new DirectGroupWorkItemAssignmentCommand(
-                id, caseworkerId, 0L, "{}", "Assigned", occurredAt));
-    order
-        .verify(gateway)
-        .sendAndWait(
-            new DirectGroupWorkItemAssignmentCommand(
-                siblingId, caseworkerId, null, "{}", "Assigned", occurredAt));
+            new AssignLinkedGroupWorkItemCommand(
+                groupId, id, caseworkerId, 0L, "{}", "Assigned", occurredAt));
     verify(gateway, never())
         .sendAndWait(org.mockito.ArgumentMatchers.isA(DirectWorkItemAssignmentCommand.class));
   }

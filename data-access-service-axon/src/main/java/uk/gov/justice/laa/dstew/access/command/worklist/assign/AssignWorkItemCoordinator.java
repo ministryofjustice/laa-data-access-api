@@ -1,10 +1,9 @@
 package uk.gov.justice.laa.dstew.access.command.worklist.assign;
 
-import java.util.List;
-import java.util.UUID;
 import org.axonframework.messaging.commandhandling.gateway.CommandGateway;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.handler.LinkedGroupWorkItemAssignmentCommandHandler;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteResolver;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.route.WorkItemRoute;
@@ -29,12 +28,10 @@ public class AssignWorkItemCoordinator {
   }
 
   /**
-   * Dispatches the authenticated caseworker assignment to the direct authoritative aggregate.
+   * Dispatches the authenticated caseworker assignment to its authoritative aggregate.
    *
-   * <p>For an Application that belongs to a linked group, the assignment is instead propagated to
-   * every member of the group so the group is handled by a single caseworker; the per-item expected
-   * assignment version is not checked in that case, since the pessimistic lock taken across the
-   * whole group is the concurrency guard.
+   * <p>For an application in a linked group, every active member is assigned in one command; see
+   * {@link LinkedGroupWorkItemAssignmentCommandHandler}.
    */
   @Transactional
   @AllowApiCaseworker
@@ -53,10 +50,17 @@ public class AssignWorkItemCoordinator {
       return;
     }
 
-    var groupMemberApplicationIds =
-        groupRouteResolver.resolveGroupMembersForAssignment(command.workItemId());
-    if (groupMemberApplicationIds.isPresent()) {
-      assignGroup(groupMemberApplicationIds.get(), command);
+    var groupId = groupRouteResolver.lockForAssignment(command.workItemId());
+    if (groupId.isPresent()) {
+      commandGateway.sendAndWait(
+          new AssignLinkedGroupWorkItemCommand(
+              groupId.get(),
+              command.workItemId(),
+              command.caseworkerId(),
+              command.expectedAssignmentVersion(),
+              command.serialisedRequest(),
+              command.eventDescription(),
+              command.occurredAt()));
       return;
     }
 
@@ -68,19 +72,5 @@ public class AssignWorkItemCoordinator {
             command.serialisedRequest(),
             command.eventDescription(),
             command.occurredAt()));
-  }
-
-  private void assignGroup(List<UUID> memberApplicationIds, AssignWorkItemCommand command) {
-    for (UUID memberApplicationId : memberApplicationIds) {
-      boolean isTargetedItem = memberApplicationId.equals(command.workItemId());
-      commandGateway.sendAndWait(
-          new DirectGroupWorkItemAssignmentCommand(
-              memberApplicationId,
-              command.caseworkerId(),
-              isTargetedItem ? command.expectedAssignmentVersion() : null,
-              command.serialisedRequest(),
-              command.eventDescription(),
-              command.occurredAt()));
-    }
   }
 }

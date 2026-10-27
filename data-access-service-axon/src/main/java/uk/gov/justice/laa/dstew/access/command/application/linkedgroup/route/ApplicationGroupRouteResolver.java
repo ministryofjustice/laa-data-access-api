@@ -156,34 +156,6 @@ public class ApplicationGroupRouteResolver {
   }
 
   /**
-   * Locks every route in the application's linked group and returns the member application
-   * identifiers, or {@link Optional#empty()} if the application is standalone.
-   *
-   * <p>Used for operations like assignment propagation, which have no expected group version to
-   * validate (unlike {@link #resolveGroupForMutation}).
-   */
-  @Transactional
-  public Optional<List<UUID>> resolveGroupMembersForAssignment(UUID applicationId) {
-    var membership =
-        routes
-            .findMembershipByApplicationId(applicationId)
-            .orElseThrow(
-                () ->
-                    new ResourceNotFoundException(
-                        "No application group route found for application " + applicationId));
-    if (membership.getRouteKind() == ApplicationGroupRouteKind.STANDALONE) {
-      return Optional.empty();
-    }
-    var lockedRoutes = routes.findAllByGroupIdForUpdate(membership.getGroupId());
-    var memberApplicationIds =
-        lockedRoutes.stream().map(ApplicationGroupRoute::getApplicationId).toList();
-    if (!memberApplicationIds.contains(applicationId)) {
-      return Optional.empty();
-    }
-    return Optional.of(memberApplicationIds);
-  }
-
-  /**
    * Locks the application's current route and, when linked, all routes in its group before Prior
    * Authority creation. The caller retains these locks for its surrounding transaction.
    */

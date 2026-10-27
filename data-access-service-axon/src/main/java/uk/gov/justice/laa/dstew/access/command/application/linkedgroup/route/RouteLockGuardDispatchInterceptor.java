@@ -15,6 +15,10 @@ import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.AddApplic
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.ChangeLinkedGroupLeadCommand;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.EstablishLinkedApplicationGroupCommand;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.RemoveApplicationFromLinkedGroupCommand;
+import uk.gov.justice.laa.dstew.access.command.worklist.assign.AssignLinkedGroupWorkItemCommand;
+import uk.gov.justice.laa.dstew.access.command.worklist.assign.DirectWorkItemAssignmentCommand;
+import uk.gov.justice.laa.dstew.access.command.worklist.unassign.DirectWorkItemUnassignmentCommand;
+import uk.gov.justice.laa.dstew.access.command.worklist.unassign.UnassignLinkedGroupWorkItemCommand;
 
 /** Rejects linked-group commands dispatched without the resolver's route locks. */
 @Component
@@ -65,6 +69,22 @@ public class RouteLockGuardDispatchInterceptor
           RouteLockRegistry.holdsGroup(command.groupId())
               ? Optional.empty()
               : Optional.of(message(payload, "group " + command.groupId()));
+      case AssignLinkedGroupWorkItemCommand command ->
+          RouteLockRegistry.holdsGroup(command.groupId())
+              ? Optional.empty()
+              : Optional.of(message(payload, "group " + command.groupId()));
+      case UnassignLinkedGroupWorkItemCommand command ->
+          RouteLockRegistry.holdsGroup(command.groupId())
+              ? Optional.empty()
+              : Optional.of(message(payload, "group " + command.groupId()));
+      case DirectWorkItemAssignmentCommand command ->
+          RouteLockRegistry.missingApplications(List.of(command.workItemId())).isEmpty()
+              ? Optional.empty()
+              : Optional.of(message(payload, List.of(command.workItemId()).toString()));
+      case DirectWorkItemUnassignmentCommand command ->
+          RouteLockRegistry.missingApplications(List.of(command.workItemId())).isEmpty()
+              ? Optional.empty()
+              : Optional.of(message(payload, List.of(command.workItemId()).toString()));
       default -> Optional.empty();
     };
   }

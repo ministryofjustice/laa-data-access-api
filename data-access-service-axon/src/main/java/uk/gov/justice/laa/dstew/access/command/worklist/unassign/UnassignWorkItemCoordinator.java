@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.command.worklist.unassign;
 import org.axonframework.messaging.commandhandling.gateway.CommandGateway;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteResolver;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.route.WorkItemRoute;
 import uk.gov.justice.laa.dstew.access.command.worklist.route.WorkItemRouteResolver;
@@ -12,12 +13,16 @@ import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 @Service
 public class UnassignWorkItemCoordinator {
   private final WorkItemRouteResolver routeResolver;
+  private final ApplicationGroupRouteResolver groupRouteResolver;
   private final CommandGateway commandGateway;
 
   /** Creates the coordinator with work-item route resolution and command dispatch. */
   public UnassignWorkItemCoordinator(
-      WorkItemRouteResolver routeResolver, CommandGateway commandGateway) {
+      WorkItemRouteResolver routeResolver,
+      ApplicationGroupRouteResolver groupRouteResolver,
+      CommandGateway commandGateway) {
     this.routeResolver = routeResolver;
+    this.groupRouteResolver = groupRouteResolver;
     this.commandGateway = commandGateway;
   }
 
@@ -29,6 +34,19 @@ public class UnassignWorkItemCoordinator {
     if (route.getWorkItemType() == WorkItemType.PRIOR_AUTHORITY) {
       commandGateway.sendAndWait(
           new DirectPriorAuthorityWorkItemUnassignmentCommand(
+              command.workItemId(),
+              command.expectedAssignmentVersion(),
+              command.serialisedRequest(),
+              command.eventDescription(),
+              command.occurredAt()));
+      return;
+    }
+
+    var groupId = groupRouteResolver.lockForAssignment(command.workItemId());
+    if (groupId.isPresent()) {
+      commandGateway.sendAndWait(
+          new UnassignLinkedGroupWorkItemCommand(
+              groupId.get(),
               command.workItemId(),
               command.expectedAssignmentVersion(),
               command.serialisedRequest(),

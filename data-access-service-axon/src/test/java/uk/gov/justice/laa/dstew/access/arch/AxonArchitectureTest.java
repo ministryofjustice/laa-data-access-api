@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.arch;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 import com.tngtech.archunit.base.DescribedPredicate;
@@ -256,5 +257,16 @@ class AxonArchitectureTest {
             .haveSimpleNameEndingWith("CommandHandler")
             .should(declareAxonCommandHandler);
     rule.check(classes);
+  }
+
+  @Test
+  void givenAxonCommandHandlerMethods_whenImported_thenDeclaredOnlyInCommandHandlerClasses() {
+    methods()
+        .that()
+        .areAnnotatedWith(CommandHandler.class)
+        .should()
+        .beDeclaredInClassesThat()
+        .haveSimpleNameEndingWith("CommandHandler")
+        .check(classes);
   }
 }

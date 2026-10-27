@@ -2,7 +2,6 @@ package uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -22,7 +21,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -229,48 +227,6 @@ class ApplicationGroupRouteResolverTest {
         .thenReturn(Optional.of(route(applicationId, ApplicationGroupRouteKind.STANDALONE, null)));
 
     assertThat(resolver.resolveGroupForPriorAuthorityCreation(applicationId)).isEmpty();
-  }
-
-  @Test
-  void givenMissingAssignmentMembership_thenThrowsNotFound() {
-    UUID applicationId = UUID.randomUUID();
-    when(routes.findMembershipByApplicationId(applicationId)).thenReturn(Optional.empty());
-
-    assertThatThrownBy(() -> resolver.resolveGroupMembersForAssignment(applicationId))
-        .isInstanceOf(ResourceNotFoundException.class)
-        .hasMessage("No application group route found for application " + applicationId);
-  }
-
-  @Test
-  void givenStandaloneAssignmentMembership_thenReturnsNoGroup() {
-    UUID applicationId = UUID.randomUUID();
-    when(routes.findMembershipByApplicationId(applicationId))
-        .thenReturn(Optional.of(new RouteMembership(ApplicationGroupRouteKind.STANDALONE, null)));
-
-    assertThat(resolver.resolveGroupMembersForAssignment(applicationId)).isEmpty();
-
-    verify(routes, never()).findAllByGroupIdForUpdate(any());
-  }
-
-  @ParameterizedTest
-  @ValueSource(booleans = {true, false})
-  void givenLinkedAssignmentMembership_thenReturnsMembersOnlyIfStillInGroup(boolean stillMember) {
-    UUID applicationId = UUID.randomUUID();
-    UUID otherMemberId = UUID.randomUUID();
-    UUID groupId = UUID.randomUUID();
-    var applicationRoute = route(applicationId, ApplicationGroupRouteKind.LINKED_GROUP, groupId);
-    var otherRoute = route(otherMemberId, ApplicationGroupRouteKind.LINKED_GROUP, groupId);
-    when(routes.findMembershipByApplicationId(applicationId))
-        .thenReturn(
-            Optional.of(new RouteMembership(ApplicationGroupRouteKind.LINKED_GROUP, groupId)));
-    when(routes.findAllByGroupIdForUpdate(groupId))
-        .thenReturn(stillMember ? List.of(applicationRoute, otherRoute) : List.of(otherRoute));
-
-    assertThat(resolver.resolveGroupMembersForAssignment(applicationId))
-        .isEqualTo(
-            stillMember ? Optional.of(List.of(applicationId, otherMemberId)) : Optional.empty());
-
-    verify(routes).findAllByGroupIdForUpdate(groupId);
   }
 
   @Test

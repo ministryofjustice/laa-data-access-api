@@ -27,6 +27,10 @@ import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.AddApplic
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.ChangeLinkedGroupLeadCommand;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.EstablishLinkedApplicationGroupCommand;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.RemoveApplicationFromLinkedGroupCommand;
+import uk.gov.justice.laa.dstew.access.command.worklist.assign.AssignLinkedGroupWorkItemCommand;
+import uk.gov.justice.laa.dstew.access.command.worklist.assign.DirectWorkItemAssignmentCommand;
+import uk.gov.justice.laa.dstew.access.command.worklist.unassign.DirectWorkItemUnassignmentCommand;
+import uk.gov.justice.laa.dstew.access.command.worklist.unassign.UnassignLinkedGroupWorkItemCommand;
 
 @ExtendWith(MockitoExtension.class)
 class RouteLockGuardDispatchInterceptorTest {
@@ -95,7 +99,18 @@ class RouteLockGuardDispatchInterceptorTest {
                 groupId, firstId, List.of(firstId, secondId), occurredAt)),
         Arguments.of(new AddApplicationToLinkedGroupCommand(groupId, firstId, 0L, occurredAt)),
         Arguments.of(new RemoveApplicationFromLinkedGroupCommand(groupId, firstId, 0L, occurredAt)),
-        Arguments.of(new ChangeLinkedGroupLeadCommand(groupId, secondId, 0L, occurredAt)));
+        Arguments.of(new ChangeLinkedGroupLeadCommand(groupId, secondId, 0L, occurredAt)),
+        Arguments.of(
+            new AssignLinkedGroupWorkItemCommand(
+                groupId, firstId, UUID.randomUUID(), 0L, "{}", "Assigned", occurredAt)),
+        Arguments.of(
+            new UnassignLinkedGroupWorkItemCommand(
+                groupId, firstId, 0L, "{}", "Unassigned", occurredAt)),
+        Arguments.of(
+            new DirectWorkItemAssignmentCommand(
+                firstId, UUID.randomUUID(), 0L, "{}", "Assigned", occurredAt)),
+        Arguments.of(
+            new DirectWorkItemUnassignmentCommand(firstId, 0L, "{}", "Unassigned", occurredAt)));
   }
 
   private void recordRequiredLocks(Object payload) {
@@ -109,6 +124,14 @@ class RouteLockGuardDispatchInterceptorTest {
       case RemoveApplicationFromLinkedGroupCommand command ->
           RouteLockRegistry.recordGroup(command.groupId());
       case ChangeLinkedGroupLeadCommand command -> RouteLockRegistry.recordGroup(command.groupId());
+      case AssignLinkedGroupWorkItemCommand command ->
+          RouteLockRegistry.recordGroup(command.groupId());
+      case UnassignLinkedGroupWorkItemCommand command ->
+          RouteLockRegistry.recordGroup(command.groupId());
+      case DirectWorkItemAssignmentCommand command ->
+          RouteLockRegistry.recordApplications(List.of(command.workItemId()));
+      case DirectWorkItemUnassignmentCommand command ->
+          RouteLockRegistry.recordApplications(List.of(command.workItemId()));
       default -> throw new IllegalArgumentException("Unexpected command");
     }
   }
