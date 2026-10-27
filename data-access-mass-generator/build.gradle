@@ -20,9 +20,6 @@ ext['postgresql.version'] = '42.7.12'
 dependencies {
   annotationProcessor "org.projectlombok:lombok-mapstruct-binding:0.2.0"
 
-    implementation project(':data-access-service')
-    implementation project(path: ':data-access-service', configuration: 'testUtilitiesRuntimeElements')
-
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
