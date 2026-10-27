@@ -4,6 +4,7 @@ import java.net.URI;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.axonframework.modelling.entity.EntityMissingForInstanceCommandHandlerException;
+import org.axonframework.modelling.repository.EntityNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
@@ -80,6 +81,13 @@ public class ApplicationExceptionHandler {
   @ExceptionHandler(ResourceNotFoundException.class)
   ResponseEntity<ProblemDetail> handleResourceNotFoundException(
       ResourceNotFoundException exception) {
+    return ResponseEntity.status(HttpStatus.NOT_FOUND)
+        .body(ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, exception.getMessage()));
+  }
+
+  /** Returns a missing linked application as a standard HTTP not-found response. */
+  @ExceptionHandler(EntityNotFoundException.class)
+  ResponseEntity<ProblemDetail> handleResourceNotFoundException(EntityNotFoundException exception) {
     return ResponseEntity.status(HttpStatus.NOT_FOUND)
         .body(ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, exception.getMessage()));
   }

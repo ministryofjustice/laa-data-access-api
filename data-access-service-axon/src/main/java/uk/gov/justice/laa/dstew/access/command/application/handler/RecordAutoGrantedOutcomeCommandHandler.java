@@ -27,7 +27,6 @@ public class RecordAutoGrantedOutcomeCommandHandler {
       @InjectEntity(idProperty = "applicationId") ApplicationAggregate application,
       ApplicationDataStore applicationDataStore,
       EventAppender eventAppender) {
-    ApplicationCommandHandlerSupport.requireApplicationExists(application, command.applicationId());
     validateAutomaticOutcome(command, application, applicationDataStore);
     if (application.getState().getAutoGranted() == AutoGrantedState.AUTOGRANTED) {
       return;

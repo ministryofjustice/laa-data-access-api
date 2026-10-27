@@ -22,7 +22,6 @@ public class MarkApplicationReadyCommandHandler {
       @InjectEntity(idProperty = "applicationId") ApplicationAggregate application,
       ApplicationDataStore applicationDataStore,
       EventAppender eventAppender) {
-    ApplicationCommandHandlerSupport.requireApplicationExists(application, command.applicationId());
     ReadyApplicationResult result = ApplicationDecider.decideReady(application.getState(), command);
     if (result == ReadyApplicationResult.ALREADY_RECORDED) {
       return result;

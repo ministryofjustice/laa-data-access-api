@@ -23,6 +23,7 @@ import java.util.UUID;
 import org.axonframework.eventsourcing.configuration.EventSourcedEntityModule;
 import org.axonframework.eventsourcing.configuration.EventSourcingConfigurer;
 import org.axonframework.messaging.commandhandling.configuration.CommandHandlingModule;
+import org.axonframework.modelling.repository.EntityNotFoundException;
 import org.axonframework.test.fixture.AxonTestFixture;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -66,7 +67,6 @@ import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConf
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException;
 import uk.gov.justice.laa.dstew.access.exception.InvalidApplicationStateException;
-import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
@@ -864,7 +864,7 @@ class ApplicationAggregateTest {
         .when()
         .command(new ValidateApplicationGrantedCommand(UUID.randomUUID()))
         .then()
-        .exception(ResourceNotFoundException.class)
+        .exception(EntityNotFoundException.class)
         .noEvents();
   }
 
@@ -876,7 +876,7 @@ class ApplicationAggregateTest {
         .when()
         .command(new CreateNoteCommand(UUID.randomUUID(), "My note", "{}", Instant.now()))
         .then()
-        .exception(ResourceNotFoundException.class)
+        .exception(EntityNotFoundException.class)
         .noEvents();
   }
 
@@ -1078,7 +1078,7 @@ class ApplicationAggregateTest {
             new UpdateApplicationCommand(
                 UUID.randomUUID(), "APPLICATION_SUBMITTED", Map.of(), "{}", Instant.now()))
         .then()
-        .exception(ResourceNotFoundException.class)
+        .exception(EntityNotFoundException.class)
         .noEvents();
   }
 
