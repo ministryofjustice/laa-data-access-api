@@ -15,6 +15,7 @@ import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.AddApplic
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.ChangeLinkedGroupLeadCommand;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.EstablishLinkedApplicationGroupCommand;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.RemoveApplicationFromLinkedGroupCommand;
+import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand;
 import uk.gov.justice.laa.dstew.access.command.worklist.assign.AssignLinkedGroupWorkItemCommand;
 import uk.gov.justice.laa.dstew.access.command.worklist.assign.DirectWorkItemAssignmentCommand;
 import uk.gov.justice.laa.dstew.access.command.worklist.unassign.DirectWorkItemUnassignmentCommand;
@@ -85,6 +86,19 @@ public class RouteLockGuardDispatchInterceptor
           RouteLockRegistry.missingApplications(List.of(command.workItemId())).isEmpty()
               ? Optional.empty()
               : Optional.of(message(payload, List.of(command.workItemId()).toString()));
+      case MarkApplicationReadyCommand command ->
+          RouteLockRegistry.missingApplications(List.of(command.applicationId())).isEmpty()
+                  && (command.linkedGroupId() == null
+                      || RouteLockRegistry.holdsGroup(command.linkedGroupId()))
+              ? Optional.empty()
+              : Optional.of(
+                  message(
+                      payload,
+                      "application "
+                          + command.applicationId()
+                          + (command.linkedGroupId() == null
+                              ? ""
+                              : " and group " + command.linkedGroupId())));
       default -> Optional.empty();
     };
   }

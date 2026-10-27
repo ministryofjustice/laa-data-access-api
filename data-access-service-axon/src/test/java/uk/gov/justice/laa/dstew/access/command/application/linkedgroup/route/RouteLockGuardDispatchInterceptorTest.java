@@ -27,6 +27,7 @@ import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.AddApplic
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.ChangeLinkedGroupLeadCommand;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.EstablishLinkedApplicationGroupCommand;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.RemoveApplicationFromLinkedGroupCommand;
+import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand;
 import uk.gov.justice.laa.dstew.access.command.worklist.assign.AssignLinkedGroupWorkItemCommand;
 import uk.gov.justice.laa.dstew.access.command.worklist.assign.DirectWorkItemAssignmentCommand;
 import uk.gov.justice.laa.dstew.access.command.worklist.unassign.DirectWorkItemUnassignmentCommand;
@@ -88,6 +89,27 @@ class RouteLockGuardDispatchInterceptorTest {
     verify(chain).proceed(command, null);
   }
 
+  @Test
+  void givenOnlyApplicationLock_whenGroupedReadinessDispatched_thenFailsWithoutProceeding() {
+    var applicationId = UUID.randomUUID();
+    var command =
+        message(
+            new MarkApplicationReadyCommand(
+                    applicationId, 0L, "{}", Instant.parse("2026-09-14T09:00:00Z"))
+                .withLinkedGroupId(UUID.randomUUID()));
+    RouteLockRegistry.recordApplications(List.of(applicationId));
+
+    var stream = interceptor.interceptOnDispatch(command, null, chain);
+
+    assertThat(stream.error())
+        .hasValueSatisfying(
+            error ->
+                assertThat(error)
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("requires linked-group route locks"));
+    verifyNoInteractions(chain);
+  }
+
   private static Stream<Arguments> guardedCommands() {
     var groupId = UUID.randomUUID();
     var firstId = UUID.randomUUID();
@@ -110,7 +132,11 @@ class RouteLockGuardDispatchInterceptorTest {
             new DirectWorkItemAssignmentCommand(
                 firstId, UUID.randomUUID(), 0L, "{}", "Assigned", occurredAt)),
         Arguments.of(
-            new DirectWorkItemUnassignmentCommand(firstId, 0L, "{}", "Unassigned", occurredAt)));
+            new DirectWorkItemUnassignmentCommand(firstId, 0L, "{}", "Unassigned", occurredAt)),
+        Arguments.of(
+            new MarkApplicationReadyCommand(firstId, 0L, "{}", occurredAt)
+                .withLinkedGroupId(groupId)),
+        Arguments.of(new MarkApplicationReadyCommand(firstId, 0L, "{}", occurredAt)));
   }
 
   private void recordRequiredLocks(Object payload) {
@@ -132,6 +158,12 @@ class RouteLockGuardDispatchInterceptorTest {
           RouteLockRegistry.recordApplications(List.of(command.workItemId()));
       case DirectWorkItemUnassignmentCommand command ->
           RouteLockRegistry.recordApplications(List.of(command.workItemId()));
+      case MarkApplicationReadyCommand command -> {
+        RouteLockRegistry.recordApplications(List.of(command.applicationId()));
+        if (command.linkedGroupId() != null) {
+          RouteLockRegistry.recordGroup(command.linkedGroupId());
+        }
+      }
       default -> throw new IllegalArgumentException("Unexpected command");
     }
   }

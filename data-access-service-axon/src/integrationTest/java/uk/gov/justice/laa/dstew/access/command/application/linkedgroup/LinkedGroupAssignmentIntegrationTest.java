@@ -115,6 +115,47 @@ class LinkedGroupAssignmentIntegrationTest extends AbstractLinkedGroupIntegratio
     assertThat(countDomainEvents(sourceId, WorkItemAssigned.class)).isEqualTo(1L);
   }
 
+  @Test
+  void givenAssignedGroup_whenSubmittedMemberBecomesReady_thenAssignedToGroupCaseworker() {
+    var lastName = uniqueLastName();
+    var assignedMemberId = createApplication(lastName);
+    assertThat(assign(assignedMemberId, CASEWORKER_ID, 0L).getStatusCode())
+        .isEqualTo(HttpStatus.OK);
+    var submittedMemberId = createSubmittedApplication(lastName);
+
+    assertThat(link(submittedMemberId, assignedMemberId, null).getStatusCode())
+        .isEqualTo(HttpStatus.NO_CONTENT);
+
+    assertThat(markReady(submittedMemberId).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+
+    awaitWorkListAssignee(submittedMemberId, CASEWORKER_ID, 1L);
+  }
+
+  @Test
+  void givenUnassignedGroup_whenSubmittedMemberBecomesReady_thenUnassigned() {
+    var lastName = uniqueLastName();
+    var unassignedMemberId = createApplication(lastName);
+    var submittedMemberId = createSubmittedApplication(lastName);
+
+    assertThat(link(submittedMemberId, unassignedMemberId, null).getStatusCode())
+        .isEqualTo(HttpStatus.NO_CONTENT);
+
+    assertThat(markReady(submittedMemberId).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+
+    awaitWorkListAssignee(submittedMemberId, null, 0L);
+    assertThat(countDomainEvents(submittedMemberId, WorkItemAssigned.class)).isZero();
+  }
+
+  @Test
+  void givenStandalone_whenReady_thenUnassigned() {
+    var applicationId = createSubmittedApplication(uniqueLastName());
+
+    assertThat(markReady(applicationId).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+
+    awaitWorkListAssignee(applicationId, null, 0L);
+    assertThat(countDomainEvents(applicationId, WorkItemAssigned.class)).isZero();
+  }
+
   private void assertLinkCaseAssignments(
       LinkCase linkCase, UUID targetId, UUID joiningId, UUID existingMemberId) {
     var caseworkerId =
