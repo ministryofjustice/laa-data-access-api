@@ -72,6 +72,7 @@ class WorkListResponseMapperTest {
             Instant.parse("2026-09-01T10:00:00Z"),
             1L,
             1L);
+    item.setSubmittedAt(Instant.parse("2026-09-01T10:00:00Z"));
     item.setUsedDelegatedFunctions(true);
     item.setCategoryOfLaw("Family");
     item.setCategoryOfLawCode("FAM");
@@ -111,6 +112,7 @@ class WorkListResponseMapperTest {
             Instant.parse("2026-09-01T10:00:00Z"),
             1L,
             1L);
+    item.setSubmittedAt(Instant.parse("2026-09-01T10:00:00Z"));
     item.setCategoryOfLaw("Unexpected category");
     item.setCategoryOfLawCode("CAT-991");
     item.setMatterTypes(List.of("Unexpected matter"));
@@ -139,6 +141,7 @@ class WorkListResponseMapperTest {
             Instant.parse("2026-09-01T10:00:00Z"),
             1L,
             1L);
+    item.setSubmittedAt(Instant.parse("2026-09-01T10:00:00Z"));
     item.setCategoryOfLaw("Family");
     item.setCategoryOfLawCode("FAM");
     item.setMatterTypes(List.of("First", "Second"));

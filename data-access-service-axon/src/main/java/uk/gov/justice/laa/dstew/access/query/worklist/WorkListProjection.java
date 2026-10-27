@@ -15,6 +15,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
+import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
@@ -62,31 +64,51 @@ public class WorkListProjection {
         page.getContent(), page.getTotalElements(), query.page(), query.pageSize());
   }
 
-  /** A manual-assessment outcome activates one application work item. */
+  /** Creates an application work item as soon as the application is submitted. */
   @EventHandler
-  public void on(ApplicationReadyForManualAssessmentEvent event, EventMessage message) {
-    ApplicationDataPayload data =
-        applicationDataStore.get(event.applicationId(), event.applicationDataVersion());
+  public void on(ApplicationCreatedEvent event, EventMessage message) {
     WorkListItemReadModel item =
         new WorkListItemReadModel(
             WorkItemType.APPLICATION,
             event.applicationId(),
             null,
             event.occurredAt(),
-            event.applicationVersion(),
+            0L,
             message.identifier().hashCode());
+    item.setSubmittedAt(event.occurredAt());
+    item.setAutoGranted(AutoGrantedState.PENDING);
+    item.setApplicationStatus(event.status());
+    ApplicationDataPayload data =
+        applicationDataStore.get(event.applicationId(), event.applicationDataVersion());
     populateApplicationFields(item, data);
+    items.save(item);
+  }
+
+  /** A manual-assessment outcome updates an existing application work item. */
+  @EventHandler
+  public void on(ApplicationReadyForManualAssessmentEvent event, EventMessage message) {
+    WorkListItemReadModel item =
+        items
+            .findById(event.applicationId())
+            .orElseThrow(
+                () ->
+                    new IllegalStateException(
+                        "Missing application work-list item for " + event.applicationId()));
+    ApplicationDataPayload data =
+        applicationDataStore.get(event.applicationId(), event.applicationDataVersion());
+    populateApplicationFields(item, data);
+    item.setReadyAt(event.occurredAt());
+    item.setAutoGranted(AutoGrantedState.MANUAL);
     item.setApplicationStatus("APPLICATION_SUBMITTED");
+    item.setItemVersion(event.applicationVersion());
+    item.setUpdatedAt(event.occurredAt());
+    item.setProjectionPosition(message.identifier().hashCode());
     items.save(item);
   }
 
   /** PA submission directly activates one PA work item under its parent application. */
   @EventHandler
   public void on(PriorAuthoritySubmittedEvent event, EventMessage message) {
-    ApplicationDataPayload parentData =
-        applicationDataStore.get(event.applicationId(), event.applicationDataVersion());
-    PriorAuthorityDataPayload priorAuthorityData =
-        priorAuthorityDataStore.get(event.priorAuthorityId(), event.dataVersion());
     WorkListItemReadModel item =
         new WorkListItemReadModel(
             WorkItemType.PRIOR_AUTHORITY,
@@ -95,7 +117,13 @@ public class WorkListProjection {
             event.occurredAt(),
             event.dataVersion(),
             message.identifier().hashCode());
+    item.setSubmittedAt(event.occurredAt());
+    item.setReadyAt(event.occurredAt());
+    ApplicationDataPayload parentData =
+        applicationDataStore.get(event.applicationId(), event.applicationDataVersion());
     populateApplicationFields(item, parentData);
+    PriorAuthorityDataPayload priorAuthorityData =
+        priorAuthorityDataStore.get(event.priorAuthorityId(), event.dataVersion());
     String priorAuthorityType = priorAuthorityData.content().priorAuthorityType().name();
     item.setPriorAuthorityType(priorAuthorityType);
     item.setExpertType(

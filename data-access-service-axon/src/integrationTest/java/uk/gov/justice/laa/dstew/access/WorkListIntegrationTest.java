@@ -123,6 +123,70 @@ class WorkListIntegrationTest {
   }
 
   @Test
+  void givenSubmittedApplication_whenManualOutcomeArrives_thenUpdatesItsPendingWorkListRow() {
+    UUID applicationId = UUID.randomUUID();
+    ResponseEntity<Void> created =
+        restTemplate.postForEntity(
+            "http://localhost:" + port + "/api/v0/applications",
+            new HttpEntity<>(
+                validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()),
+            Void.class);
+    assertThat(created.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+
+    Instant submittedAt = awaitPendingApplicationWorkListItem(applicationId);
+
+    ResponseEntity<Void> manualOutcome =
+        restTemplate.exchange(
+            "http://localhost:"
+                + port
+                + "/api/v0/applications/"
+                + applicationId
+                + "/auto-grant-outcome",
+            HttpMethod.PATCH,
+            new HttpEntity<>(new ManualOutcomeRequest(AutoGrantOutcome.MANUAL), headers()),
+            Void.class);
+    assertThat(manualOutcome.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+
+    await()
+        .atMost(15, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              assertThat(
+                      jdbcTemplate.queryForObject(
+                          "SELECT count(*) FROM axon.work_list_item WHERE item_id = ?",
+                          Long.class,
+                          applicationId))
+                  .isEqualTo(1L);
+              assertThat(workListSubmittedAt(applicationId)).isEqualTo(submittedAt);
+              assertThat(workListReadyAt(applicationId)).isNotNull();
+              assertThat(workListAutoGranted(applicationId)).isEqualTo("MANUAL");
+            });
+  }
+
+  @Test
+  void
+      givenApplicationsCreatedBeforeManualOutcomes_whenListed_thenTheyRemainInSubmissionOrder() {
+    UUID firstApplicationId = UUID.randomUUID();
+    UUID secondApplicationId = UUID.randomUUID();
+    createSubmittedApplication(firstApplicationId);
+    createSubmittedApplication(secondApplicationId);
+    markApplicationManual(secondApplicationId);
+    markApplicationManual(firstApplicationId);
+
+    await()
+        .atMost(15, TimeUnit.SECONDS)
+        .untilAsserted(
+            () ->
+                assertThat(getWorkList("").getItems())
+                    .filteredOn(
+                        item ->
+                            item.getItemId().equals(firstApplicationId)
+                                || item.getItemId().equals(secondApplicationId))
+                    .extracting(WorkListItem::getItemId)
+                    .containsExactly(firstApplicationId, secondApplicationId));
+  }
+
+  @Test
   void givenManualApplicationAssignedToCaseworker_whenDecided_thenItIsRemovedFromTheWorkQueue() {
     UUID applicationId = UUID.randomUUID();
     UUID proceedingId = UUID.randomUUID();
@@ -373,6 +437,8 @@ class WorkListIntegrationTest {
     assertThat(item.getMatterTypes()).containsExactly("Parent matter", "Second");
     assertThat(item.getMatterTypeCodes()).containsExactly("PARENT-1", "PARENT-2");
     assertThat(item.getSubmittedAt().toInstant()).isEqualTo(workListSubmittedAt(priorAuthorityId));
+    assertThat(workListReadyAt(priorAuthorityId)).isEqualTo(workListSubmittedAt(priorAuthorityId));
+    assertThat(workListAutoGranted(priorAuthorityId)).isNull();
   }
 
   @Test
@@ -927,19 +993,30 @@ class WorkListIntegrationTest {
   }
 
   private void createManualApplication(ApplicationCreateRequest request) {
+    createSubmittedApplication(request);
+    markApplicationManual(request.getId());
+  }
+
+  private void createSubmittedApplication(UUID applicationId) {
+    createSubmittedApplication(validCreateApplicationRequest(applicationId, UUID.randomUUID()));
+  }
+
+  private void createSubmittedApplication(ApplicationCreateRequest request) {
     ResponseEntity<Void> created =
         restTemplate.postForEntity(
             "http://localhost:" + port + "/api/v0/applications",
             new HttpEntity<>(request, headers()),
             Void.class);
     assertThat(created.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+  }
 
+  private void markApplicationManual(UUID applicationId) {
     ResponseEntity<Void> ready =
         restTemplate.exchange(
             "http://localhost:"
                 + port
                 + "/api/v0/applications/"
-                + request.getId()
+                + applicationId
                 + "/auto-grant-outcome",
             HttpMethod.PATCH,
             new HttpEntity<>(new ManualOutcomeRequest(AutoGrantOutcome.MANUAL), headers()),
@@ -1087,6 +1164,29 @@ class WorkListIntegrationTest {
   private Instant workListSubmittedAt(UUID itemId) {
     return jdbcTemplate.queryForObject(
         "SELECT submitted_at FROM axon.work_list_item WHERE item_id = ?", Instant.class, itemId);
+  }
+
+  private Instant awaitPendingApplicationWorkListItem(UUID applicationId) {
+    return await()
+        .atMost(15, TimeUnit.SECONDS)
+        .until(
+            () -> {
+              Instant submittedAt = workListSubmittedAt(applicationId);
+              String autoGranted = workListAutoGranted(applicationId);
+              Instant readyAt = workListReadyAt(applicationId);
+              return "PENDING".equals(autoGranted) && readyAt == null ? submittedAt : null;
+            },
+            submittedAt -> submittedAt != null);
+  }
+
+  private Instant workListReadyAt(UUID itemId) {
+    return jdbcTemplate.queryForObject(
+        "SELECT ready_at FROM axon.work_list_item WHERE item_id = ?", Instant.class, itemId);
+  }
+
+  private String workListAutoGranted(UUID itemId) {
+    return jdbcTemplate.queryForObject(
+        "SELECT autogranted FROM axon.work_list_item WHERE item_id = ?", String.class, itemId);
   }
 
   private String assignmentUrl(UUID itemId, String operation) {
