@@ -109,6 +109,7 @@ public class WorkListItemReadModel {
     this.id = itemId;
     this.itemType = itemType;
     this.parentApplicationId = parentApplicationId;
+    this.submittedAt = initialUpdatedAt;
     this.updatedAt = initialUpdatedAt;
     this.assignmentBoundaryType = "DIRECT";
     this.assignmentBoundaryId = itemId;

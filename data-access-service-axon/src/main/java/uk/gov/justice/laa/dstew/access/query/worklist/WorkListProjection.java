@@ -75,7 +75,6 @@ public class WorkListProjection {
             event.occurredAt(),
             0L,
             message.identifier().hashCode());
-    item.setSubmittedAt(event.occurredAt());
     item.setAutoGranted(AutoGrantedState.PENDING);
     item.setApplicationStatus(event.status());
     ApplicationDataPayload data =
@@ -117,7 +116,6 @@ public class WorkListProjection {
             event.occurredAt(),
             event.dataVersion(),
             message.identifier().hashCode());
-    item.setSubmittedAt(event.occurredAt());
     item.setReadyAt(event.occurredAt());
     ApplicationDataPayload parentData =
         applicationDataStore.get(event.applicationId(), event.applicationDataVersion());

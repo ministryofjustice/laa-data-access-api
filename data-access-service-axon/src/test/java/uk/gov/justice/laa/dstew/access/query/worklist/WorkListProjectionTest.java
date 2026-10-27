@@ -98,7 +98,6 @@ class WorkListProjectionTest {
     WorkListItemReadModel existing =
         new WorkListItemReadModel(
             WorkItemType.APPLICATION, applicationId, null, submittedAt, 1L, 0L);
-    existing.setSubmittedAt(submittedAt);
     existing.setAutoGranted(AutoGrantedState.PENDING);
     existing.setAssigneeId(assigneeId);
     existing.setAssignmentVersion(4L);
