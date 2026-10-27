@@ -19,11 +19,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import uk.gov.justice.laa.dstew.access.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.ChangeLinkedGroupLeadCommand;
+import uk.gov.justice.laa.dstew.access.command.worklist.assign.DirectWorkItemAssignmentCommand;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkType;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.LinkedGroupChangeRequest;
 import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
+import uk.gov.justice.laa.dstew.access.model.WorkListAssignRequest;
 import uk.gov.justice.laa.dstew.access.version.VersionToken;
 
 class RouteLockGuardIntegrationTest extends BaseIntegrationTest {
@@ -80,6 +82,34 @@ class RouteLockGuardIntegrationTest extends BaseIntegrationTest {
             new HttpEntity<>(changeRequest, headers()),
             Void.class);
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+  }
+
+  @Test
+  void givenStandaloneApplication_whenDirectAssignmentDispatchedWithoutLock_thenRejected() {
+    UUID applicationId = createReadyApplication();
+
+    assertThatThrownBy(
+            () ->
+                commandGateway.sendAndWait(
+                    new DirectWorkItemAssignmentCommand(
+                        applicationId, UUID.randomUUID(), 0L, "{}", "Assigned", Instant.now())))
+        .satisfies(
+            throwable ->
+                assertThat(causeChain(throwable))
+                    .anySatisfy(
+                        cause ->
+                            assertThat(cause)
+                                .isInstanceOf(IllegalStateException.class)
+                                .hasMessageContaining(
+                                    "DirectWorkItemAssignmentCommand requires linked-group route locks")));
+
+    ResponseEntity<Void> response =
+        restTemplate.exchange(
+            url("/api/v0/work-list/" + applicationId + "/assign"),
+            HttpMethod.POST,
+            new HttpEntity<>(new WorkListAssignRequest(0L), headers()),
+            Void.class);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
   }
 
   private UUID createReadyApplication() {
