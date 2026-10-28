@@ -37,7 +37,8 @@ class LinkedApplicationGroupWriteAccessResolverTest {
 
     var targets =
         resolver.resolve(
-            new LinkApplicationCommand(sourceId, targetId, LinkType.FAMILY, null, OCCURRED_AT, null));
+            new LinkApplicationCommand(
+                sourceId, targetId, LinkType.FAMILY, null, OCCURRED_AT, null));
 
     assertThat(targets)
         .containsExactly(
@@ -270,7 +271,10 @@ class LinkedApplicationGroupWriteAccessResolverTest {
                 new LinkedApplicationGroupWriteAccessResolver(routes)
                     .resolve(
                         new MakeApplicationLeadCommand(
-                            applicationId, new ExpectedLinkedGroup(groupId, 1L), OCCURRED_AT, null)))
+                            applicationId,
+                            new ExpectedLinkedGroup(groupId, 1L),
+                            OCCURRED_AT,
+                            null)))
         .isInstanceOf(ApplicationLinkConflictException.class)
         .hasMessageContaining("not in a linked group");
   }

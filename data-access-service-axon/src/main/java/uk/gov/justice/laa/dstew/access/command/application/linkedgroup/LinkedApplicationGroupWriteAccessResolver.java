@@ -34,7 +34,8 @@ public class LinkedApplicationGroupWriteAccessResolver implements WriteAccessTar
     if (resource instanceof MakeApplicationLeadCommand makeLeadCommand) {
       return resolveGroupMutation(makeLeadCommand.applicationId());
     }
-    throw new IllegalStateException("Unsupported linked-application resource " + resource.getClass());
+    throw new IllegalStateException(
+        "Unsupported linked-application resource " + resource.getClass());
   }
 
   private List<ProtectedResource> resolveLink(LinkApplicationCommand command) {

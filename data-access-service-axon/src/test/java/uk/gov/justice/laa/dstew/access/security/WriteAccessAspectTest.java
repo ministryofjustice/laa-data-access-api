@@ -26,7 +26,8 @@ class WriteAccessAspectTest {
     ProceedingJoinPoint joinPoint = joinPoint(method, command);
     TestResolver resolver = new TestResolver();
 
-    new WriteAccessAspect(List.of(resolver), policy).requireWriteAccess(joinPoint, annotation(method));
+    new WriteAccessAspect(List.of(resolver), policy)
+        .requireWriteAccess(joinPoint, annotation(method));
 
     verify(joinPoint).proceed();
     assertThat(resolver.resource).isSameAs(command);
@@ -55,7 +56,8 @@ class WriteAccessAspectTest {
     ProceedingJoinPoint joinPoint = joinPoint(method, resource, new TestCommand(caller("0Z123A")));
     ResourceBackedResolver resolver = new ResourceBackedResolver();
 
-    new WriteAccessAspect(List.of(resolver), policy).requireWriteAccess(joinPoint, annotation(method));
+    new WriteAccessAspect(List.of(resolver), policy)
+        .requireWriteAccess(joinPoint, annotation(method));
 
     verify(joinPoint).proceed();
     assertThat(resolver.resource).isSameAs(resource);
@@ -74,7 +76,8 @@ class WriteAccessAspectTest {
   }
 
   @Test
-  void givenNoResolverResourceMarker_whenRequiringWriteAccess_thenRejectsHandler() throws Throwable {
+  void givenNoResolverResourceMarker_whenRequiringWriteAccess_thenRejectsHandler()
+      throws Throwable {
     Method method = MissingResourceHandler.class.getDeclaredMethod("handle", TestCommand.class);
 
     assertThatThrownBy(

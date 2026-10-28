@@ -100,5 +100,4 @@ public class WriteAccessAspect {
                     "No WriteAccessTargetResolver bean for "
                         + requireWriteAccess.resolver().getName()));
   }
-
 }
