@@ -20,7 +20,6 @@ public class CreateNoteCommandHandler {
       @InjectEntity(idProperty = "applicationId") ApplicationAggregate application,
       ApplicationDataStore applicationDataStore,
       EventAppender eventAppender) {
-    ApplicationCommandHandlerSupport.requireApplicationExists(application, command.applicationId());
     var event = ApplicationDecider.decideNote(application.getState(), command);
     var current =
         applicationDataStore.get(
