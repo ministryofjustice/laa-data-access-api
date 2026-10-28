@@ -9,9 +9,6 @@ import java.lang.annotation.Target;
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
 public @interface RequireWriteAccess {
-  /** Returns the resolver bean class that supplies authoritative access targets. */
-  Class<? extends WriteAccessTargetResolver<?, ?>> resolver();
-
-  /** Returns the authorizer bean class that enforces access to the resolved targets. */
-  Class<? extends WriteAccessAuthorizer<?>> authorizer();
+  /** Returns the resolver bean class that supplies authoritative protected resources. */
+  Class<? extends WriteAccessTargetResolver> resolver();
 }

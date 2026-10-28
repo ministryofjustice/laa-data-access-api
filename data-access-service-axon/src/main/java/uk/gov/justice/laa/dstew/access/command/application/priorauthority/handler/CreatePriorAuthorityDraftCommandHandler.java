@@ -41,7 +41,7 @@ public class CreatePriorAuthorityDraftCommandHandler {
     }
 
     String officeCode = application.getOfficeCode();
-    writeAccessPolicy.requireWriteAccess(officeCode, command.caller());
+    writeAccessPolicy.requireOfficeCodeWriteAccess(officeCode, command.caller());
     PriorAuthorityDataPayload payload =
         new PriorAuthorityDataPayload(
             command.priorAuthorityId(),

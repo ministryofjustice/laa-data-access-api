@@ -18,11 +18,12 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConfli
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.assign.DirectGroupWorkItemAssignmentCommand;
+import uk.gov.justice.laa.dstew.access.security.OfficeCodeOwned;
 
 /** Event-sourced consistency boundary for an Application and its owned child state. */
 @EventSourced(tagKey = "ApplicationAggregate", idType = UUID.class)
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
-public class ApplicationAggregate {
+public class ApplicationAggregate implements OfficeCodeOwned {
 
   private UUID applicationId;
   private final ApplicationState state = new ApplicationState();

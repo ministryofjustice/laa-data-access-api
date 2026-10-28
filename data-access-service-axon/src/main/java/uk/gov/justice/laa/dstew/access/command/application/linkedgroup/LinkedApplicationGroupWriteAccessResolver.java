@@ -11,16 +11,12 @@ import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.App
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteRepository;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationLinkConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
-import uk.gov.justice.laa.dstew.access.security.OfficeCodeWriteAccessTarget;
-import uk.gov.justice.laa.dstew.access.security.WriteAccessTargetResolutionContext;
+import uk.gov.justice.laa.dstew.access.security.ProtectedResource;
 import uk.gov.justice.laa.dstew.access.security.WriteAccessTargetResolver;
 
 /** Resolves locked route ownership for explicit application linking. */
 @Component
-public class LinkedApplicationGroupWriteAccessResolver
-    implements WriteAccessTargetResolver<Object, OfficeCodeWriteAccessTarget> {
-  private static final String APPLICATION_GROUP_ROUTE = "application-group-route";
-
+public class LinkedApplicationGroupWriteAccessResolver implements WriteAccessTargetResolver {
   private final ApplicationGroupRouteRepository routes;
 
   public LinkedApplicationGroupWriteAccessResolver(ApplicationGroupRouteRepository routes) {
@@ -28,18 +24,7 @@ public class LinkedApplicationGroupWriteAccessResolver
   }
 
   @Override
-  public Class<Object> commandType() {
-    return Object.class;
-  }
-
-  @Override
-  public Class<OfficeCodeWriteAccessTarget> targetType() {
-    return OfficeCodeWriteAccessTarget.class;
-  }
-
-  @Override
-  public List<OfficeCodeWriteAccessTarget> resolve(
-      Object command, WriteAccessTargetResolutionContext context) {
+  public List<ProtectedResource> resolve(Object command, Object resource) {
     if (command instanceof LinkApplicationCommand linkCommand) {
       return resolveLink(linkCommand);
     }
@@ -52,7 +37,7 @@ public class LinkedApplicationGroupWriteAccessResolver
     throw new IllegalStateException("Unsupported linked-application command " + command.getClass());
   }
 
-  private List<OfficeCodeWriteAccessTarget> resolveLink(LinkApplicationCommand command) {
+  private List<ProtectedResource> resolveLink(LinkApplicationCommand command) {
     var routesByApplicationId =
         routes
             .findLinkRoutesForUpdate(
@@ -77,12 +62,12 @@ public class LinkedApplicationGroupWriteAccessResolver
                 .filter(route -> target.getGroupId().equals(route.getGroupId()))
                 .toList();
     return Stream.concat(Stream.of(source), targetGroupRoutes.stream())
-        .map(this::toWriteAccessTarget)
         .distinct()
+        .map(this::toProtectedResource)
         .toList();
   }
 
-  private List<OfficeCodeWriteAccessTarget> resolveGroupMutation(UUID applicationId) {
+  private List<ProtectedResource> resolveGroupMutation(UUID applicationId) {
     var membership =
         routes
             .findMembershipByApplicationId(applicationId)
@@ -104,7 +89,11 @@ public class LinkedApplicationGroupWriteAccessResolver
                 () ->
                     new ApplicationLinkConflictException(
                         "Application " + applicationId + " is not in a linked group"));
-    return List.of(toWriteAccessTarget(applicationRoute));
+    return List.of(toProtectedResource(applicationRoute));
+  }
+
+  private ProtectedResource toProtectedResource(ApplicationGroupRoute route) {
+    return new ProtectedResource(route.getOfficeCode());
   }
 
   private ApplicationGroupRoute requiredRoute(
@@ -117,10 +106,5 @@ public class LinkedApplicationGroupWriteAccessResolver
     }
     throw new ResourceNotFoundException(
         "No application group route found for " + routeRole + " application " + applicationId);
-  }
-
-  private OfficeCodeWriteAccessTarget toWriteAccessTarget(ApplicationGroupRoute route) {
-    return new OfficeCodeWriteAccessTarget(
-        APPLICATION_GROUP_ROUTE, route.getApplicationId(), route.getOfficeCode());
   }
 }

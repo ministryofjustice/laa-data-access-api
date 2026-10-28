@@ -5,6 +5,7 @@ import java.util.Objects;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
+import uk.gov.justice.laa.dstew.access.security.CallerCommand;
 
 /** Command for explicitly linking one application to another. */
 public record LinkApplicationCommand(
@@ -13,7 +14,8 @@ public record LinkApplicationCommand(
     LinkType linkType,
     @Nullable ExpectedLinkedGroup expectedTargetGroup,
     Instant occurredAt,
-    @Nullable AuthenticatedCaller caller) {
+    @Nullable AuthenticatedCaller caller)
+    implements CallerCommand {
 
   /** Enforces the command invariants owned below the controller seam. */
   public LinkApplicationCommand {

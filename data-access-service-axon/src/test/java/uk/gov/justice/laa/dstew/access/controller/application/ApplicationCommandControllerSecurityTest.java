@@ -195,7 +195,12 @@ class ApplicationCommandControllerSecurityTest {
     ApplicationLinkRequest request = validLinkRequest();
     var command =
         new LinkApplicationCommand(
-            sourceApplicationId, request.getApplicationId(), LinkType.FAMILY, null, Instant.now(), null);
+            sourceApplicationId,
+            request.getApplicationId(),
+            LinkType.FAMILY,
+            null,
+            Instant.now(),
+            null);
     AuthenticatedCaller caller = mock(AuthenticatedCaller.class);
     when(authenticatedCallerFactory.currentCaller()).thenReturn(caller);
     when(linkApplicationCommandMapper.toCommand(sourceApplicationId, request, caller))

@@ -221,6 +221,11 @@ class LinkApplicationCommandHandlerTest {
 
   private LinkApplicationCommand linkCommand(ExpectedLinkedGroup expectedGroup) {
     return new LinkApplicationCommand(
-        sourceApplicationId, targetApplicationId, LinkType.FAMILY, expectedGroup, OCCURRED_AT, null);
+        sourceApplicationId,
+        targetApplicationId,
+        LinkType.FAMILY,
+        expectedGroup,
+        OCCURRED_AT,
+        null);
   }
 }

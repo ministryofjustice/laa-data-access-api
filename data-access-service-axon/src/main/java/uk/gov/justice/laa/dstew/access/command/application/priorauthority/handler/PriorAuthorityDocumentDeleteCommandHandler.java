@@ -16,7 +16,6 @@ import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.security.AggregateResource;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedCallerResource;
 import uk.gov.justice.laa.dstew.access.security.OfficeCodeResourceWriteAccessResolver;
-import uk.gov.justice.laa.dstew.access.security.OfficeCodeWriteAccessAuthorizer;
 import uk.gov.justice.laa.dstew.access.security.RequireWriteAccess;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
@@ -26,16 +25,11 @@ public class PriorAuthorityDocumentDeleteCommandHandler {
 
   /** Deletes a document from the prior-authority draft and emits the corresponding event. */
   @CommandHandler
-  @RequireWriteAccess(
-      resolver = OfficeCodeResourceWriteAccessResolver.class,
-      authorizer = OfficeCodeWriteAccessAuthorizer.class)
+  @RequireWriteAccess(resolver = OfficeCodeResourceWriteAccessResolver.class)
   public DocumentMetadata handle(
       @AuthenticatedCallerResource PriorAuthorityDocumentDeleteCommand command,
       PriorAuthorityDraftStore draftStore,
-      @InjectEntity(idProperty = "priorAuthorityId")
-          @AggregateResource(
-              resourceType = "prior-authority",
-              resourceIdProperty = "priorAuthorityId")
+      @InjectEntity(idProperty = "priorAuthorityId") @AggregateResource
           PriorAuthorityAggregate priorAuthority,
       EventAppender eventAppender) {
 

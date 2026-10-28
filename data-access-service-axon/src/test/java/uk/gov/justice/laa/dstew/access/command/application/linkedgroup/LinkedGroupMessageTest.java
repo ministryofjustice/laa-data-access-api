@@ -117,7 +117,8 @@ class LinkedGroupMessageTest {
 
   @Test
   void givenNullExpectedGroup_whenMakeLeadCommandCreated_thenThrowsNullPointer() {
-    assertThatThrownBy(() -> new MakeApplicationLeadCommand(UUID.randomUUID(), null, OCCURRED_AT, null))
+    assertThatThrownBy(
+            () -> new MakeApplicationLeadCommand(UUID.randomUUID(), null, OCCURRED_AT, null))
         .isInstanceOf(NullPointerException.class)
         .hasMessage("expectedGroup must not be null");
   }
@@ -135,7 +136,8 @@ class LinkedGroupMessageTest {
 
   @Test
   void givenNullExpectedGroup_whenUnlinkCommandCreated_thenThrowsNullPointer() {
-    assertThatThrownBy(() -> new UnlinkApplicationCommand(UUID.randomUUID(), null, OCCURRED_AT, null))
+    assertThatThrownBy(
+            () -> new UnlinkApplicationCommand(UUID.randomUUID(), null, OCCURRED_AT, null))
         .isInstanceOf(NullPointerException.class)
         .hasMessage("expectedGroup must not be null");
   }
