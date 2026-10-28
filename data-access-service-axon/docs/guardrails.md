@@ -153,6 +153,36 @@ projection was not visible before the timeout.
 
 ## Data and transaction rules
 
+### Linked-group assignment locks
+
+Linked-group assignment and membership writers lock the relevant `application_group_route` rows
+with `PESSIMISTIC_WRITE`, in ascending application ID order, in one statement. They re-read
+membership after acquiring the locks. If membership changed while waiting, they return 409 rather
+than taking additional locks in another pass. A coordinator then dispatches one command; its
+handler loads the aggregate state, calls a pure decider and appends all resulting events together.
+
+Do not lock `work_item_route` before appending to an application. A decision appends to the
+application stream before its route projection removes the work-item route. Taking the route lock
+first could deadlock against that event append.
+
+The enforcement is part of the implementation:
+
+- The ArchUnit rule permits route `…ForUpdate` queries only in `ApplicationGroupRouteResolver` and
+  `ApplicationGroupRouteProjection`.
+- `RouteLockRegistry` records verified application and group locks for the current transaction.
+- `RouteLockGuardDispatchInterceptor` is enabled by default and checks these locks for establish,
+  add, remove and change
+  lead; linked-group assign and unassign; direct application assign and unassign; and readiness.
+  Dispatching a guarded command without its locks is a programming error and fails with
+  `IllegalStateException`.
+- `dstew.linked-group.route-lock-guard.enabled=false` is only for aggregate and projection
+  integration tests that deliberately dispatch commands directly. Do not disable it for use-case
+  or coordinator tests.
+
+Add any new command that reads or changes a linked group's membership or an application's
+assignment to the dispatch guard. Route locking is still required when a handler only reads a
+member's state and does not append to that member's stream.
+
 ### Append; never update `application_data`
 
 Each detailed change creates a complete next version. PostgreSQL rejects update, direct delete, and

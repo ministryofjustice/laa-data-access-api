@@ -45,21 +45,24 @@ Aggregates are rebuilt on every command by replaying that stream's events throug
        ApplicationDataStore applicationDataStore, EventAppender eventAppender)
    ```
    Because it is a Spring bean it may inject stores, factories and validators. The aggregate class
-   itself therefore has almost no `@CommandHandler`s (only `DirectGroupWorkItemAssignmentCommand`).
+   itself has no `@CommandHandler`s.
 2. **Linked-group handler component.** Each linked-group command is handled by a dedicated
    `@Component` in `command/application/linkedgroup/handler/`. Its `@CommandHandler` receives the
-   group through `@InjectEntity(idProperty = "groupId")` and delegates to
-   `LinkedApplicationGroupDecider`.
+   group through `@InjectEntity(idProperty = "groupId")`. Handlers that change assignment also load
+   member state with `StateManager` and `LinkedGroupMembers`, call the pure assignment decider, and
+   append all resulting events together.
 
-The flow is the same:
+Linked-group assignment commands follow this pipeline:
 
 ```
-Controller → mapper → Command → UseCase → RetryingCommandDispatcher → CommandGateway
+Controller → mapper / use case
+   → Coordinator: secure where required, lock routes, route one command
+   → CommandGateway (RetryingCommandDispatcher where used)
    → Command handler:
-        1. load aggregate (replay events through Evolve)
-        2. validate / decide  (Decider: version check, state rules → event or exception)
+        1. load consistent command-side state (@InjectEntity; StateManager for other aggregates)
+        2. decide (pure Decider: state rules → event or exception)
         3. if detail changes: append next immutable version to application_data   ← BEFORE the event
-        4. eventAppender.append(thin event)                                      ← same transaction
+        4. eventAppender.append(events)                                          ← same transaction
    → event store commit
    → async: projections update read tables; sync: route projections + integration router
 ```
@@ -70,7 +73,7 @@ Controller → mapper → Command → UseCase → RetryingCommandDispatcher → 
 |---|---|---|---|---|---|
 | Aggregate fold | `@EventSourcingHandler` → `*Evolve` | Every aggregate load | **No** | On every load | `ApplicationAggregate.on(...)` |
 | Read projection | `@EventHandler` on a `@Namespace` bound to a **pooled streaming** processor (`AxonEventProcessingConfig`) | Async, after commit; may lag | Yes (DB) | Yes — reset + replay | `ApplicationProjection`, `ApplicationHistoryProjection`, `ApplicationListIndexProjection`, `LinkedApplicationGroupProjection`, `WorkListProjection`, `PriorAuthorityProjection`, `PriorAuthorityHistoryProjection` |
-| Synchronous reaction | `@EventHandler` on a **subscribing** processor with `PropagatingErrorHandler` | Inside the command's unit of work; failure rolls the command back | Deliberately | No | `ApplicationGroupRouteProjection` (`application-group-route`), `WorkItemRouteProjection` (`work-item-route`), `LinkedGroupAssignmentEventHandler` (`linkedGroupAssignment`), `ApplicationSubmittedEventRouter` (`application-submitted-publisher`, SNS on `AFTER_COMMIT`) |
+| Synchronous reaction | `@EventHandler` on a **subscribing** processor with `PropagatingErrorHandler` | Inside the command's unit of work; failure rolls the command back | Deliberately | No | `ApplicationGroupRouteProjection` (`application-group-route`), `WorkItemRouteProjection` (`work-item-route`), `ApplicationSubmittedEventRouter` (`application-submitted-publisher`, SNS on `AFTER_COMMIT`) |
 
 Processor wiring is in `config/AxonEventProcessingConfig`. A new `@Namespace` that is not declared
 there gets Axon's default processor settings, so declare it explicitly if you need
@@ -179,11 +182,6 @@ bean in `AxonEventProcessingConfig`. No change to aggregate or existing projecti
 
 ## 8. Things to be aware of in the current code
 
-* **Reaction handlers that read projections.** `LinkedGroupAssignmentDispatcher`
-  (called from `LinkedGroupAssignmentEventHandler`) decides using `ApplicationReadRepository` and
-  `LinkedApplicationGroupReadRepository`, which are eventually consistent read models. This is
-  outside the aggregate rules above; changes to assignment-sync behaviour must take that staleness
-  into account.
 * **Multiple projections consume the same events independently** (`application-projection`,
   `application-list-index-projection`, `application-history-projection`, `work-list-projection`,
   group, prior authority). A new/changed event usually needs to be considered for all of them;
@@ -192,8 +190,10 @@ bean in `AxonEventProcessingConfig`. No change to aggregate or existing projecti
   handlers for ordering (creation vs. membership events). New handlers there inherit that ordering.
 * **Draft lifecycle**: an Application in draft has `state.status == null`; documents upload before
   `ApplicationCreatedEvent`; this is the guard used by `requireApplicationDraft`.
-* **`ApplicationAggregate` handler `DirectGroupWorkItemAssignmentCommand` silently returns** for
-  inactive/non-manual items rather than throwing; it is the only `@CommandHandler` on that class.
+* **Multi-aggregate assignment handlers.** Link, group assignment and readiness handlers load
+  application members through `StateManager` and append events to the affected streams in one
+  command. The ArchUnit rule limits `StateManager` use to `LinkedGroupMembers` and those handlers;
+  route locks still protect member state that is read but not appended.
 * **Documentation drift risk.** Several docs describe processors/flows in prose (for example the
   linking router/initializer). When in doubt, check `AxonEventProcessingConfig`, the `@Namespace`
   value and the class's `@EventHandler` methods.
@@ -224,11 +224,11 @@ deviations or inconsistencies, ordered by risk.
 
 | # | Observation | Why it matters | Suggested change |
 |---|---|---|---|
-| 1 | `LinkedGroupAssignmentDispatcher` (called from `LinkedGroupAssignmentEventHandler`) decides using `ApplicationReadRepository` and `LinkedApplicationGroupReadRepository`. | These are eventually consistent read models, so assignment-sync decisions can use stale data. This breaks the "decide from command-side state" rule. | Decide from command-side state (aggregate state or `application_group_route`) or guard with a version check. At minimum document the race and add a test for it. |
-| 2 | The decider is used inconsistently. `ApplicationDecider` covers create, decision, note, ready and update, but assignment/unassignment rules sit in `ApplicationCommandHandlerSupport` and the handlers; `MarkApplicationReadyCommandHandler` computes versions and builds its event inline; draft document-upload rules are in `ApplicationDocumentUploadCommandHandler`; `ApplicationAggregate.handle(DirectGroupWorkItemAssignmentCommand)` holds rules inline. | Rules are harder to find and cannot be unit-tested without Axon. New contributors cannot rely on "rules live in the decider". | Move these decisions and event construction into `ApplicationDecider` so handlers only load data, call the decider and append. |
+| 1 | `LinkedGroupAssignmentDispatcher` (called from `LinkedGroupAssignmentEventHandler`) decided using `ApplicationReadRepository` and `LinkedApplicationGroupReadRepository`. | Those projections could lag, so assignment decisions could use stale data. | **Resolved:** the dispatcher was removed. Link, group assignment and readiness handlers decide from aggregate state using `LinkedGroupAssignmentDecider`. |
+| 2 | The decider is used inconsistently. `ApplicationDecider` covers create, decision, note, ready and update, but assignment/unassignment rules sit in `ApplicationCommandHandlerSupport` and the handlers; `MarkApplicationReadyCommandHandler` computes versions and builds its event inline; draft document-upload rules are in `ApplicationDocumentUploadCommandHandler`. | Rules are harder to find and cannot be unit-tested without Axon. New contributors cannot rely on "rules live in the decider". | Move these decisions and event construction into `ApplicationDecider` so handlers only load data, call the decider and append. |
 | 3 | `RecordAutoGrantedOutcomeCommandHandler` calls the static `MakeApplicationDecisionCommandHandler.recordDecision`. | Couples one handler to another's internals. | Move the shared logic to the decider or a shared support class. |
 | 4 | Retry policy is inconsistent: `AssignWorkItemCoordinator`, `UnassignWorkItemCoordinator` and `LinkedGroupAssignmentDispatcher` use `CommandGateway` directly rather than `RetryingCommandDispatcher`. | Concurrent-write failures are not retried there. | Use the dispatcher, or document why retry is unsafe or unnecessary. |
-| 5 | `AssignWorkItemCoordinator.assignGroup` sends one command per member inside one `@Transactional` method. | One request changes several aggregates; consistency relies on route locks, not on an aggregate boundary. | Document this as an accepted exception and add partial-failure tests. Revisit the boundary if group rules grow. |
+| 5 | Group assignment changes several application aggregates in one request. | Consistency spans streams, so the complete event append must remain atomic and route locks must protect the loaded member state. | **Resolved:** one handler loads members and appends all assignment events in one command; route-lock checks and all-or-nothing integration tests protect the operation. |
 | 6 | About 17 classes under `query` import `command.*` types (`ApplicationDataStore`, `ApplicationDataPayload`, event classes). `AxonArchitectureTest` only forbids `CommandGateway` in query. | Read and write sides are coupled through shared persistence classes, so a command-side refactor can break projections. | Move the data store and payload to a neutral shared package. Add an ArchUnit rule that `query` must not use aggregates, deciders or command handlers. |
 | 7 | `ApplicationGroupRouteProjection` and `WorkItemRouteProjection` are write-side routing tables maintained by subscribing handlers. `WorkItemRouteProjection` has no reset handler. | A missing or corrupt route cannot be rebuilt by replay. | Document this clearly and consider a repair or rebuild procedure. |
 | 8 | `PriorAuthorityDraftUpdatedEvent` has an empty `@EventSourcingHandler`. | Intentional (stream concurrency only) but easy to mistake for a bug. | Keep it, and keep the explanatory comment. |
