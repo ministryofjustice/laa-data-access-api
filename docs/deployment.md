@@ -2,7 +2,7 @@
 
 ## Overview
 
-The pipeline is defined in `.github/workflows/build-test-deploy.yml` and uses GitHub Actions with Helm to build, test, and deploy the application. Two Docker images are produced per commit: one for `data-access-service` and one for `data-access-mass-generator`. Both are pushed to AWS ECR tagged with the Git commit SHA.
+The pipeline is defined in `.github/workflows/build-test-deploy.yml` and uses GitHub Actions with Helm to build, test, and deploy the application. Two Docker images are produced per commit: one for `data-access-service-axon` and one for `data-access-mass-generator`. Both are pushed to AWS ECR tagged with the Git commit SHA.
 
 There is no tag-based RC promotion flow. Feature preset deployments are driven directly from `main` after UAT smoke tests succeed.
 

@@ -20,6 +20,7 @@ import java.util.UUID;
 import org.axonframework.eventsourcing.configuration.EventSourcedEntityModule;
 import org.axonframework.eventsourcing.configuration.EventSourcingConfigurer;
 import org.axonframework.messaging.commandhandling.configuration.CommandHandlingModule;
+import org.axonframework.modelling.repository.EntityNotFoundException;
 import org.axonframework.test.fixture.AxonTestFixture;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -500,7 +501,7 @@ class ApplicationAggregateDraftTest {
         .when()
         .command(command)
         .then()
-        .exception(ResourceNotFoundException.class)
+        .exception(EntityNotFoundException.class)
         .noEvents();
   }
 

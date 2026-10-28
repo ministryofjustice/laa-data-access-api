@@ -1,4 +1,0 @@
-jdbc:
-  datasource-proxy:
-    slow-query:
-      threshold: ${SLOW_QUERY_THRESHOLD_SECONDS:1}

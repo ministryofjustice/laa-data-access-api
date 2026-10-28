@@ -16,7 +16,6 @@ public class ValidateApplicationGrantedCommandHandler {
   public void handle(
       ValidateApplicationGrantedCommand command,
       @InjectEntity(idProperty = "applicationId") ApplicationAggregate application) {
-    ApplicationCommandHandlerSupport.requireApplicationExists(application, command.applicationId());
     ApplicationDecider.validateGranted(application.getState());
   }
 }
