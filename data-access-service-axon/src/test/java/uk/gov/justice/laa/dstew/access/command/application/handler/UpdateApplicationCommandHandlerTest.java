@@ -40,9 +40,9 @@ class UpdateApplicationCommandHandlerTest {
     UpdateApplicationCommand command =
         new UpdateApplicationCommand(applicationId, null, Map.of(), "{}", OCCURRED_AT);
 
-    stubApplication(applicationId, state);
     when(applicationDataStore.get(applicationId, 5L)).thenReturn(current);
     when(detailsFactory.prepare(command, current, false)).thenReturn(updated);
+    when(application.getState()).thenReturn(state);
 
     new UpdateApplicationCommandHandler()
         .handle(command, application, applicationDataStore, detailsFactory, eventAppender);
@@ -69,9 +69,9 @@ class UpdateApplicationCommandHandlerTest {
         new UpdateApplicationCommand(
             applicationId, "APPLICATION_SUBMITTED", Map.of(), "{}", OCCURRED_AT);
 
-    stubApplication(applicationId, state);
     when(applicationDataStore.get(applicationId, 7L)).thenReturn(current);
     when(detailsFactory.prepare(command, current, true)).thenReturn(updated);
+    when(application.getState()).thenReturn(state);
 
     new UpdateApplicationCommandHandler()
         .handle(command, application, applicationDataStore, detailsFactory, eventAppender);
@@ -98,9 +98,9 @@ class UpdateApplicationCommandHandlerTest {
         new UpdateApplicationCommand(
             applicationId, "APPLICATION_GRANTED", Map.of(), "{}", OCCURRED_AT);
 
-    stubApplication(applicationId, state);
     when(applicationDataStore.get(applicationId, 2L)).thenReturn(current);
     when(detailsFactory.prepare(command, current, false)).thenReturn(updated);
+    when(application.getState()).thenReturn(state);
 
     new UpdateApplicationCommandHandler()
         .handle(command, application, applicationDataStore, detailsFactory, eventAppender);
@@ -117,11 +117,6 @@ class UpdateApplicationCommandHandlerTest {
                 "APPLICATION_IN_PROGRESS",
                 "APPLICATION_GRANTED",
                 OCCURRED_AT));
-  }
-
-  private void stubApplication(UUID applicationId, ApplicationState state) {
-    when(application.getApplicationId()).thenReturn(applicationId);
-    when(application.getState()).thenReturn(state);
   }
 
   private static ApplicationState state(

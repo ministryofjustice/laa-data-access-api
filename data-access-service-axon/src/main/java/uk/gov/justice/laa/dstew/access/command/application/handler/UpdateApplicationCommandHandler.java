@@ -22,7 +22,6 @@ public class UpdateApplicationCommandHandler {
       ApplicationDataStore applicationDataStore,
       ApplicationUpdateDetailsFactory detailsFactory,
       EventAppender eventAppender) {
-    ApplicationCommandHandlerSupport.requireApplicationExists(application, command.applicationId());
     var current =
         applicationDataStore.get(
             command.applicationId(), application.getState().getApplicationDataVersion());

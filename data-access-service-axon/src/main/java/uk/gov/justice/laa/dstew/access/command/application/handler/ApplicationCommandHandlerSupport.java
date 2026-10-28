@@ -23,9 +23,7 @@ final class ApplicationCommandHandlerSupport {
     }
   }
 
-  static void requireApplicationDraft(
-      ApplicationAggregate application, UUID requestedApplicationId) {
-    requireApplicationExists(application, requestedApplicationId);
+  static void requireApplicationDraft(ApplicationAggregate application) {
     if (application.getState().getStatus() != null) {
       throw new ValidationException(
           List.of("Documents can only be uploaded to an application draft"));
@@ -44,8 +42,8 @@ final class ApplicationCommandHandlerSupport {
 
   static void validateDirectWorkItem(
       ApplicationAggregate application, UUID workItemId, long expectedAssignmentVersion) {
-    requireApplicationExists(application, workItemId);
-    if (!application.getApplicationId().equals(workItemId)) {
+    if (application.getApplicationId() == null
+        || !application.getApplicationId().equals(workItemId)) {
       throw new ResourceNotFoundException("No application work item found with id: " + workItemId);
     }
     if (application.getState().getAutoGranted() != AutoGrantedState.MANUAL

@@ -216,6 +216,47 @@ class LinkedApplicationGroupAggregateTest {
   }
 
   @Test
+  void givenNoGroup_whenChangeLead_thenRejectsWithIllegalState() {
+    fixture
+        .given()
+        .noPriorActivity()
+        .when()
+        .command(
+            new ChangeLinkedGroupLeadCommand(
+                UUID.randomUUID(), UUID.randomUUID(), 0, Instant.parse("2026-07-15T08:00:00Z")))
+        .then()
+        .exception(IllegalStateException.class)
+        .noEvents();
+  }
+
+  @Test
+  void givenNoGroup_whenRemoveApplication_thenRejectsWithIllegalState() {
+    fixture
+        .given()
+        .noPriorActivity()
+        .when()
+        .command(
+            new RemoveApplicationFromLinkedGroupCommand(
+                UUID.randomUUID(), UUID.randomUUID(), 0, Instant.parse("2026-07-15T08:00:00Z")))
+        .then()
+        .exception(IllegalStateException.class)
+        .noEvents();
+  }
+
+  @Test
+  void givenNoGroup_whenValidatingPriorAuthorityGroupEligibility_thenRejectsWithVersionConflict() {
+    fixture
+        .given()
+        .noPriorActivity()
+        .when()
+        .command(
+            new ValidatePriorAuthorityGroupEligibilityCommand(UUID.randomUUID(), UUID.randomUUID()))
+        .then()
+        .exception(LinkedApplicationGroupVersionConflictException.class)
+        .noEvents();
+  }
+
+  @Test
   void givenStaleVersion_whenAddApplication_thenVersionConflict() {
     UUID groupId = UUID.randomUUID();
     UUID leadId = UUID.randomUUID();
