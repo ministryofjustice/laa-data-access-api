@@ -11,13 +11,13 @@ class OfficeCodeResourceWriteAccessResolverTest {
 
   @Test
   void givenOfficeCodeOwnedResource_whenResolving_thenReturnsProtectedResource() {
-    assertThat(resolver.resolve(new Object(), new Resource(" 0Z123A ")))
+    assertThat(resolver.resolve(new Resource(" 0Z123A ")))
         .containsExactly(new ProtectedResource(" 0Z123A "));
   }
 
   @Test
   void givenResourceNotImplementingOfficeCodeOwned_whenResolving_thenFailsClearly() {
-    assertThatThrownBy(() -> resolver.resolve(new Object(), new Object()))
+    assertThatThrownBy(() -> resolver.resolve(new Object()))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("must implement OfficeCodeOwned");
   }

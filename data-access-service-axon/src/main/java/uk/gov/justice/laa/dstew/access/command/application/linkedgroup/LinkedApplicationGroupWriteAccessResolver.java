@@ -24,17 +24,17 @@ public class LinkedApplicationGroupWriteAccessResolver implements WriteAccessTar
   }
 
   @Override
-  public List<ProtectedResource> resolve(Object command, Object resource) {
-    if (command instanceof LinkApplicationCommand linkCommand) {
+  public List<ProtectedResource> resolve(Object resource) {
+    if (resource instanceof LinkApplicationCommand linkCommand) {
       return resolveLink(linkCommand);
     }
-    if (command instanceof UnlinkApplicationCommand unlinkCommand) {
+    if (resource instanceof UnlinkApplicationCommand unlinkCommand) {
       return resolveGroupMutation(unlinkCommand.applicationId());
     }
-    if (command instanceof MakeApplicationLeadCommand makeLeadCommand) {
+    if (resource instanceof MakeApplicationLeadCommand makeLeadCommand) {
       return resolveGroupMutation(makeLeadCommand.applicationId());
     }
-    throw new IllegalStateException("Unsupported linked-application command " + command.getClass());
+    throw new IllegalStateException("Unsupported linked-application resource " + resource.getClass());
   }
 
   private List<ProtectedResource> resolveLink(LinkApplicationCommand command) {

@@ -37,9 +37,7 @@ class LinkedApplicationGroupWriteAccessResolverTest {
 
     var targets =
         resolver.resolve(
-            new LinkApplicationCommand(
-                sourceId, targetId, LinkType.FAMILY, null, OCCURRED_AT, null),
-            null);
+            new LinkApplicationCommand(sourceId, targetId, LinkType.FAMILY, null, OCCURRED_AT, null));
 
     assertThat(targets)
         .containsExactly(
@@ -76,8 +74,7 @@ class LinkedApplicationGroupWriteAccessResolverTest {
     assertThat(
             resolver.resolve(
                 new LinkApplicationCommand(
-                    sourceId, targetId, LinkType.FAMILY, null, OCCURRED_AT, null),
-                null))
+                    sourceId, targetId, LinkType.FAMILY, null, OCCURRED_AT, null)))
         .containsExactly(
             new uk.gov.justice.laa.dstew.access.security.ProtectedResource("0Z123A"),
             new uk.gov.justice.laa.dstew.access.security.ProtectedResource("0Z123A"),
@@ -98,8 +95,7 @@ class LinkedApplicationGroupWriteAccessResolverTest {
                 new LinkedApplicationGroupWriteAccessResolver(routes)
                     .resolve(
                         new LinkApplicationCommand(
-                            sourceId, missingTargetId, LinkType.FAMILY, null, OCCURRED_AT, null),
-                        null))
+                            sourceId, missingTargetId, LinkType.FAMILY, null, OCCURRED_AT, null)))
         .isInstanceOf(ResourceNotFoundException.class)
         .hasMessageContaining("target application " + missingTargetId);
   }
@@ -118,8 +114,7 @@ class LinkedApplicationGroupWriteAccessResolverTest {
                 new LinkedApplicationGroupWriteAccessResolver(routes)
                     .resolve(
                         new LinkApplicationCommand(
-                            missingSourceId, targetId, LinkType.FAMILY, null, OCCURRED_AT, null),
-                        null))
+                            missingSourceId, targetId, LinkType.FAMILY, null, OCCURRED_AT, null)))
         .isInstanceOf(ResourceNotFoundException.class)
         .hasMessageContaining("source application " + missingSourceId);
   }
@@ -155,8 +150,7 @@ class LinkedApplicationGroupWriteAccessResolverTest {
                         applicationId,
                         new ExpectedLinkedGroup(UUID.randomUUID(), 1L),
                         OCCURRED_AT,
-                        null),
-                    null))
+                        null)))
         .containsExactly(new uk.gov.justice.laa.dstew.access.security.ProtectedResource("0Z123A"));
   }
 
@@ -182,8 +176,7 @@ class LinkedApplicationGroupWriteAccessResolverTest {
             new LinkedApplicationGroupWriteAccessResolver(routes)
                 .resolve(
                     new MakeApplicationLeadCommand(
-                        applicationId, new ExpectedLinkedGroup(groupId, 1L), OCCURRED_AT, null),
-                    null))
+                        applicationId, new ExpectedLinkedGroup(groupId, 1L), OCCURRED_AT, null)))
         .containsExactly(new uk.gov.justice.laa.dstew.access.security.ProtectedResource("0Z123A"));
   }
 
@@ -216,8 +209,7 @@ class LinkedApplicationGroupWriteAccessResolverTest {
             new LinkedApplicationGroupWriteAccessResolver(routes)
                 .resolve(
                     new UnlinkApplicationCommand(
-                        applicationId, new ExpectedLinkedGroup(groupId, 1L), OCCURRED_AT, null),
-                    null))
+                        applicationId, new ExpectedLinkedGroup(groupId, 1L), OCCURRED_AT, null)))
         .containsExactly(new uk.gov.justice.laa.dstew.access.security.ProtectedResource("0Z123A"));
   }
 
@@ -236,8 +228,7 @@ class LinkedApplicationGroupWriteAccessResolverTest {
                             applicationId,
                             new ExpectedLinkedGroup(UUID.randomUUID(), 1L),
                             OCCURRED_AT,
-                            null),
-                        null))
+                            null)))
         .isInstanceOf(ResourceNotFoundException.class)
         .hasMessageContaining("application " + applicationId);
   }
@@ -258,8 +249,7 @@ class LinkedApplicationGroupWriteAccessResolverTest {
                             applicationId,
                             new ExpectedLinkedGroup(UUID.randomUUID(), 1L),
                             OCCURRED_AT,
-                            null),
-                        null))
+                            null)))
         .isInstanceOf(ApplicationLinkConflictException.class)
         .hasMessageContaining("not in a linked group");
   }
@@ -280,8 +270,7 @@ class LinkedApplicationGroupWriteAccessResolverTest {
                 new LinkedApplicationGroupWriteAccessResolver(routes)
                     .resolve(
                         new MakeApplicationLeadCommand(
-                            applicationId, new ExpectedLinkedGroup(groupId, 1L), OCCURRED_AT, null),
-                        null))
+                            applicationId, new ExpectedLinkedGroup(groupId, 1L), OCCURRED_AT, null)))
         .isInstanceOf(ApplicationLinkConflictException.class)
         .hasMessageContaining("not in a linked group");
   }

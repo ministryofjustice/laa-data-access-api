@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.security;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -21,12 +22,14 @@ class WriteAccessAspectTest {
   @Test
   void givenAuthorisedCallerCommand_whenRequiringWriteAccess_thenProceeds() throws Throwable {
     Method method = TestHandler.class.getDeclaredMethod("handle", TestCommand.class);
-    ProceedingJoinPoint joinPoint = joinPoint(method, new TestCommand(caller("0Z123A")));
+    TestCommand command = new TestCommand(caller("0Z123A"));
+    ProceedingJoinPoint joinPoint = joinPoint(method, command);
+    TestResolver resolver = new TestResolver();
 
-    new WriteAccessAspect(List.of(new TestResolver()), policy)
-        .requireWriteAccess(joinPoint, annotation(method));
+    new WriteAccessAspect(List.of(resolver), policy).requireWriteAccess(joinPoint, annotation(method));
 
     verify(joinPoint).proceed();
+    assertThat(resolver.resource).isSameAs(command);
   }
 
   @Test
@@ -50,11 +53,12 @@ class WriteAccessAspectTest {
         ResourceHandler.class.getDeclaredMethod("handle", Resource.class, TestCommand.class);
     Resource resource = new Resource("0Z123A");
     ProceedingJoinPoint joinPoint = joinPoint(method, resource, new TestCommand(caller("0Z123A")));
+    ResourceBackedResolver resolver = new ResourceBackedResolver();
 
-    new WriteAccessAspect(List.of(new ResourceBackedResolver()), policy)
-        .requireWriteAccess(joinPoint, annotation(method));
+    new WriteAccessAspect(List.of(resolver), policy).requireWriteAccess(joinPoint, annotation(method));
 
     verify(joinPoint).proceed();
+    assertThat(resolver.resource).isSameAs(resource);
   }
 
   @Test
@@ -67,6 +71,35 @@ class WriteAccessAspectTest {
                         joinPoint(method, new TestCommand(caller("0Z123A"))), annotation(method)))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("must declare an @AuthenticatedCallerResource");
+  }
+
+  @Test
+  void givenNoResolverResourceMarker_whenRequiringWriteAccess_thenRejectsHandler() throws Throwable {
+    Method method = MissingResourceHandler.class.getDeclaredMethod("handle", TestCommand.class);
+
+    assertThatThrownBy(
+            () ->
+                new WriteAccessAspect(List.of(new TestResolver()), policy)
+                    .requireWriteAccess(
+                        joinPoint(method, new TestCommand(caller("0Z123A"))), annotation(method)))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("must declare an @WriteAccessResolverResource");
+  }
+
+  @Test
+  void givenDuplicateResolverResourceMarkers_whenRequiringWriteAccess_thenRejectsHandler()
+      throws Throwable {
+    Method method =
+        DuplicateResourceHandler.class.getDeclaredMethod("handle", TestCommand.class, Object.class);
+
+    assertThatThrownBy(
+            () ->
+                new WriteAccessAspect(List.of(new TestResolver()), policy)
+                    .requireWriteAccess(
+                        joinPoint(method, new TestCommand(caller("0Z123A")), new Object()),
+                        annotation(method)))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("Only one @WriteAccessResolverResource");
   }
 
   @Test
@@ -143,18 +176,31 @@ class WriteAccessAspectTest {
 
   private static class TestHandler {
     @RequireWriteAccess(resolver = TestResolver.class)
-    void handle(@AuthenticatedCallerResource TestCommand command) {}
+    void handle(@AuthenticatedCallerResource @WriteAccessResolverResource TestCommand command) {}
   }
 
   private static class ResourceHandler {
     @RequireWriteAccess(resolver = ResourceBackedResolver.class)
     void handle(
-        @AggregateResource Resource resource, @AuthenticatedCallerResource TestCommand command) {}
+        @WriteAccessResolverResource Resource resource,
+        @AuthenticatedCallerResource TestCommand command) {}
   }
 
   private static class MissingCallerHandler {
     @RequireWriteAccess(resolver = TestResolver.class)
     void handle(TestCommand command) {}
+  }
+
+  private static class MissingResourceHandler {
+    @RequireWriteAccess(resolver = TestResolver.class)
+    void handle(@AuthenticatedCallerResource TestCommand command) {}
+  }
+
+  private static class DuplicateResourceHandler {
+    @RequireWriteAccess(resolver = TestResolver.class)
+    void handle(
+        @AuthenticatedCallerResource @WriteAccessResolverResource TestCommand command,
+        @WriteAccessResolverResource Object resource) {}
   }
 
   private static class DuplicateCallerHandler {
@@ -178,11 +224,22 @@ class WriteAccessAspectTest {
   }
 
   private static class TestResolver implements WriteAccessTargetResolver {
+    private Object resource;
+
     @Override
-    public List<ProtectedResource> resolve(Object command, Object resource) {
+    public List<ProtectedResource> resolve(Object resource) {
+      this.resource = resource;
       return List.of(new ProtectedResource("0Z123A"));
     }
   }
 
-  private static class ResourceBackedResolver extends OfficeCodeResourceWriteAccessResolver {}
+  private static class ResourceBackedResolver extends OfficeCodeResourceWriteAccessResolver {
+    private Object resource;
+
+    @Override
+    public List<ProtectedResource> resolve(Object resource) {
+      this.resource = resource;
+      return super.resolve(resource);
+    }
+  }
 }

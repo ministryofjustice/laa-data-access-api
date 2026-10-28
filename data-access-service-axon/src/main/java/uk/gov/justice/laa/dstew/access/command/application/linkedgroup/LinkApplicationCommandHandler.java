@@ -13,6 +13,7 @@ import uk.gov.justice.laa.dstew.access.exception.LinkedApplicationGroupVersionCo
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedCallerResource;
 import uk.gov.justice.laa.dstew.access.security.RequireWriteAccess;
+import uk.gov.justice.laa.dstew.access.security.WriteAccessResolverResource;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /** Secured transactional coordinator for explicit application-link commands. */
@@ -26,7 +27,8 @@ public class LinkApplicationCommandHandler {
   @Transactional
   @AllowApiCaseworker
   @RequireWriteAccess(resolver = LinkedApplicationGroupWriteAccessResolver.class)
-  public void handle(@AuthenticatedCallerResource LinkApplicationCommand command) {
+  public void handle(
+      @AuthenticatedCallerResource @WriteAccessResolverResource LinkApplicationCommand command) {
     validate(command);
     handleLinkType(command);
   }

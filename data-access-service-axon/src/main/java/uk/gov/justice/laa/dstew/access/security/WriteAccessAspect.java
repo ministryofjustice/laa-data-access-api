@@ -31,29 +31,30 @@ public class WriteAccessAspect {
       ProceedingJoinPoint joinPoint, RequireWriteAccess requireWriteAccess) throws Throwable {
     CallerCommand command = callerCommand(joinPoint);
     WriteAccessTargetResolver resolver = resolverFor(requireWriteAccess);
-    Object resource = resolver.requiresHandlerResource() ? aggregateResource(joinPoint) : command;
-    policy.requireWriteAccess(resolver.resolve(command, resource), command.caller());
+    Object resource = writeAccessResolverResource(joinPoint);
+    policy.requireWriteAccess(resolver.resolve(resource), command.caller());
     return joinPoint.proceed();
   }
 
-  private Object aggregateResource(ProceedingJoinPoint joinPoint) {
+  private Object writeAccessResolverResource(ProceedingJoinPoint joinPoint) {
     Method method = ((MethodSignature) joinPoint.getSignature()).getMethod();
     Parameter[] parameters = method.getParameters();
     Object[] arguments = joinPoint.getArgs();
     Object resource = null;
 
     for (int index = 0; index < parameters.length; index++) {
-      if (parameters[index].isAnnotationPresent(AggregateResource.class)) {
+      if (parameters[index].isAnnotationPresent(WriteAccessResolverResource.class)) {
         if (resource != null) {
           throw new IllegalStateException(
-              "Only one @AggregateResource parameter is permitted on " + method);
+              "Only one @WriteAccessResolverResource parameter is permitted on " + method);
         }
         resource = arguments[index];
       }
     }
     if (resource == null) {
       throw new IllegalStateException(
-          "@RequireWriteAccess method must declare an @AggregateResource parameter: " + method);
+          "@RequireWriteAccess method must declare an @WriteAccessResolverResource parameter: "
+              + method);
     }
     return resource;
   }

@@ -5,7 +5,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-/** Identifies an authoritative aggregate argument used by a resource-backed resolver. */
+/** Identifies the handler argument supplied to a write-access target resolver. */
 @Target(ElementType.PARAMETER)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface AggregateResource {}
+public @interface WriteAccessResolverResource {}
+

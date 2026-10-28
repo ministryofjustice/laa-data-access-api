@@ -8,6 +8,7 @@ import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.App
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedCallerResource;
 import uk.gov.justice.laa.dstew.access.security.RequireWriteAccess;
+import uk.gov.justice.laa.dstew.access.security.WriteAccessResolverResource;
 
 /** Secured transactional coordinator for making an application the lead of its linked group. */
 @Service
@@ -20,7 +21,9 @@ public class MakeApplicationLeadCommandHandler {
   @Transactional
   @AllowApiCaseworker
   @RequireWriteAccess(resolver = LinkedApplicationGroupWriteAccessResolver.class)
-  public void handle(@AuthenticatedCallerResource MakeApplicationLeadCommand command) {
+  public void handle(
+      @AuthenticatedCallerResource @WriteAccessResolverResource
+          MakeApplicationLeadCommand command) {
     var expectedGroup = command.expectedGroup();
     var groupId =
         routeResolver.resolveGroupForMutation(command.applicationId(), expectedGroup.groupId());
