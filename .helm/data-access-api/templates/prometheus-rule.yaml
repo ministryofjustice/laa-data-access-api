@@ -1,0 +1,46 @@
+{{/*
+  Guard: only create this PrometheusRule for persistent environments (UAT, Staging, Production),
+  plus ephemeral PR previews while we trial this alert (TEMPORARY — remove the "pr-" prefix check
+  below once the trial is done, so ephemeral environments go back to being excluded).
+
+  Ephemeral PR previews and RC feature environments share the same values file and namespace as
+  persistent UAT, so the release name is the only way to tell them apart:
+    - "main"                -> persistent UAT          (keep)
+    - "laa-data-access-api" -> Staging or Production    (keep)
+    - "pr-<number>"         -> ephemeral PR preview      (temporarily included for the trial)
+    - "feat-env-<sha>"      -> RC feature environment    (still excluded)
+
+  Update this allow-list if the CI release-naming convention ever changes.
+*/}}
+{{- if or (eq .Release.Name "main") (eq .Release.Name "laa-data-access-api") (hasPrefix "pr-" .Release.Name) }}
+{{- $severity := "laa-data-stewardship-access-nonprod" }}
+{{- if eq .Values.sentry.environment "production" }}
+{{- $severity = "laa-data-stewardship-access-prod" }}
+{{- end }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ .Release.Name }}-{{ .Chart.Name }}-alert-rules
+  namespace: {{ .Release.Namespace }}
+  labels:
+    role: alert-rules
+spec:
+  groups:
+    - name: data-access-api-endpoint-performance
+      rules:
+        # Trial alert — deliberately just this one for now, to observe how it behaves before
+        # adding the rest (5xx rate, SQL slow query, critical tier).
+        # DRY-RUN OVERRIDE (TEMPORARY): threshold dropped to "> 0" and "for" shortened to 1m so
+        # this fires quickly off any real traffic, purely to prove the Prometheus -> Alertmanager
+        # -> Slack pipeline works. Revert expr to "> 1" and for to "5m" once the dry run is done.
+        - alert: DataAccessApiHttpLatencyP95Warning
+          expr: >-
+            histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{namespace="{{ .Release.Namespace }}",release="{{ .Release.Name }}"}[5m]))) > 0
+          for: 1m
+          labels:
+            severity: {{ $severity }}
+          annotations:
+            message: >-
+              95th percentile HTTP latency for {{ .Release.Name }} in {{ .Release.Namespace }} is
+              {{`{{ $value }}`}}s (DRY RUN threshold: 0s / for 1m — revert before relying on this).
+{{- end }}
