@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.axonframework.messaging.commandhandling.gateway.CommandGateway;
 import org.junit.jupiter.api.AfterEach;
@@ -21,6 +22,8 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import uk.gov.justice.laa.dstew.access.BaseIntegrationTest;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
@@ -136,12 +139,24 @@ class MultiAggregateCommandHandlerIntegrationTest extends BaseIntegrationTest {
     var firstApplicationId = createApplication(uniqueLastName());
     var secondApplicationId = createApplication(uniqueLastName());
     var callbackCount = new AtomicInteger();
+    var firstAttemptCompleted = new AtomicBoolean();
     AppendToTwoApplicationsCommandHandler.BEFORE_APPEND.set(
         () -> {
           if (callbackCount.getAndIncrement() == 0) {
+            TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                  @Override
+                  public void afterCompletion(int status) {
+                    firstAttemptCompleted.set(true);
+                  }
+                });
             var response =
                 assign(secondApplicationId, TestJwtDecoderConfig.OTHER_CASEWORKER_ID, 0L);
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+          } else {
+            assertThat(firstAttemptCompleted)
+                .as("the rejected attempt must complete before its retry")
+                .isTrue();
           }
         });
     var command =
@@ -150,23 +165,12 @@ class MultiAggregateCommandHandlerIntegrationTest extends BaseIntegrationTest {
             secondApplicationId,
             TestJwtDecoderConfig.CASEWORKER_ID,
             Instant.now());
-    RuntimeException failure = null;
-
-    try {
-      new TransactionTemplate(transactionManager)
-          .executeWithoutResult(status -> retryingDispatcher.dispatch(command));
-    } catch (RuntimeException exception) {
-      failure = exception;
-    }
-
-    if (failure == null) {
-      System.out.println("F4: retry succeeded inside the surrounding transaction");
-      awaitWorkListAssignee(firstApplicationId, TestJwtDecoderConfig.CASEWORKER_ID, 1L);
-      awaitWorkListAssignee(secondApplicationId, TestJwtDecoderConfig.CASEWORKER_ID, 2L);
-    } else {
-      System.out.println("F4: retry failed inside the surrounding transaction: " + failure);
-      assertThat(countDomainEvents(firstApplicationId, WorkItemAssigned.class)).isZero();
-    }
+    retryingDispatcher.dispatch(
+        () ->
+            new TransactionTemplate(transactionManager)
+                .execute(status -> commandGateway.sendAndWait(command)));
+    awaitWorkListAssignee(firstApplicationId, TestJwtDecoderConfig.CASEWORKER_ID, 1L);
+    awaitWorkListAssignee(secondApplicationId, TestJwtDecoderConfig.CASEWORKER_ID, 2L);
   }
 
   private AppendToTwoApplicationsCommand command(
