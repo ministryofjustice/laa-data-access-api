@@ -14,6 +14,7 @@ missing required version input is HTTP 400.
 | 409 | `Application <targetId> is no longer in a linked group; re-read before linking` |
 | 409 | `Application <targetId> is no longer in the linked group identified by linkedGroupVersion; re-read before retrying` |
 | 409 | `Linked group membership of application <id> changed; retry the request` |
+| 409 | `Linked group <groupId> members do not share one assignment; unassign the linked group and assign it again` |
 | 400 | `linkedGroupVersion: must be a valid linked group version token` |
 
 When the target is already linked, supply the target group's `linkedGroupVersion` as last read. A
@@ -31,7 +32,6 @@ group remains an idempotent success.
 | Unassign | 409 | `Work item <itemId> cannot be updated: it is already unassigned` |
 | Assign | 409 | `Work item <memberId> cannot be updated: it is assigned to caseworker <caseworkerId>; unassign the linked group before assigning it` |
 | Assign / unassign | 409 | `Linked group membership of application <id> changed; retry the request` |
-| Link / readiness | 409 | `Linked group <groupId> members do not share one assignment; unassign the linked group and assign it again` |
 
 The route-not-found response is unchanged for an unknown or missing work-item ID, including a null
 ID (`No work-item route found for null`). Only active manual-assessment applications can be assigned
@@ -43,9 +43,10 @@ against current command-side state.
 | Status | Detail |
 |---|---|
 | 409 | `Linked group membership of application <id> changed; retry the request` |
+| 409 | `Linked group <groupId> members do not share one assignment; unassign the linked group and assign it again` |
 
-This membership conflict applies when recording manual-assessment readiness and the linked group's
-membership changes while its routes are being locked.
+The membership conflict applies when the linked group's membership changes while its routes are
+being locked. The assignment conflict applies when its active members do not share one assignment.
 
 ## `POST /api/v0/applications/{id}/make-lead`
 
