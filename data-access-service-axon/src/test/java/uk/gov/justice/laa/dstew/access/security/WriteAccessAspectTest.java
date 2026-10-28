@@ -17,7 +17,8 @@ import org.junit.jupiter.api.Test;
 
 class WriteAccessAspectTest {
   @Test
-  void deniedAuthorisationDoesNotProceedToTheHandler() throws Throwable {
+  void givenDeniedAuthorisation_whenRequiringWriteAccess_thenDoesNotProceedToTheHandler()
+      throws Throwable {
     var resolver = new TestResolver();
     var authorizer = new OfficeCodeWriteAccessAuthorizer(new OfficeCodeWriteAccessPolicy());
     var aspect = new WriteAccessAspect(List.of(resolver), List.of(authorizer));
@@ -42,7 +43,8 @@ class WriteAccessAspectTest {
   }
 
   @Test
-  void resourceBackedResolverAuthorisesTheMarkedHandlerResourceBeforeProceeding() throws Throwable {
+  void givenAuthorisedCallerAndHandlerResource_whenRequiringWriteAccess_thenProceedsToTheHandler()
+      throws Throwable {
     var resolver = new OfficeCodeResourceWriteAccessResolver();
     var authorizer = new OfficeCodeWriteAccessAuthorizer(new OfficeCodeWriteAccessPolicy());
     var aspect = new WriteAccessAspect(List.of(resolver), List.of(authorizer));
@@ -65,7 +67,8 @@ class WriteAccessAspectTest {
   }
 
   @Test
-  void resourceBackedResolverDenialDoesNotProceedToTheHandler() throws Throwable {
+  void givenUnauthorisedCallerAndHandlerResource_whenRequiringWriteAccess_thenDoesNotProceedToTheHandler()
+      throws Throwable {
     var resolver = new OfficeCodeResourceWriteAccessResolver();
     var authorizer = new OfficeCodeWriteAccessAuthorizer(new OfficeCodeWriteAccessPolicy());
     var aspect = new WriteAccessAspect(List.of(resolver), List.of(authorizer));
@@ -92,7 +95,8 @@ class WriteAccessAspectTest {
   }
 
   @Test
-  void rejectsACommandUnsupportedByTheConfiguredResolver() throws Throwable {
+  void givenCommandUnsupportedByConfiguredResolver_whenRequiringWriteAccess_thenRejectsIt()
+      throws Throwable {
     Method method = UnsupportedCommandHandler.class.getDeclaredMethod("handle", TestCommand.class);
     var aspect =
         new WriteAccessAspect(List.of(new StringResolver()), List.of(officeCodeAuthorizer()));
@@ -106,7 +110,8 @@ class WriteAccessAspectTest {
   }
 
   @Test
-  void rejectsAnAuthorizerForADifferentTargetType() throws Throwable {
+  void givenAuthorizerForDifferentTargetType_whenRequiringWriteAccess_thenRejectsIt()
+      throws Throwable {
     Method method = MismatchedTargetHandler.class.getDeclaredMethod("handle", TestCommand.class);
     var aspect =
         new WriteAccessAspect(List.of(new TestResolver()), List.of(new OtherTargetAuthorizer()));
@@ -120,7 +125,8 @@ class WriteAccessAspectTest {
   }
 
   @Test
-  void rejectsMultipleAggregateResources() throws Throwable {
+  void givenMultipleAggregateResources_whenRequiringWriteAccess_thenRejectsTheHandler()
+      throws Throwable {
     Method method =
         DuplicateResourceHandler.class.getDeclaredMethod(
             "handle", Resource.class, Resource.class, TestCommand.class);
@@ -138,7 +144,8 @@ class WriteAccessAspectTest {
   }
 
   @Test
-  void rejectsResourceResolversWithoutAnAggregateResource() throws Throwable {
+  void givenResourceResolverWithoutAggregateResource_whenRequiringWriteAccess_thenRejectsTheHandler()
+      throws Throwable {
     Method method = MissingResourceHandler.class.getDeclaredMethod("handle", TestCommand.class);
     var aspect =
         new WriteAccessAspect(
@@ -153,7 +160,8 @@ class WriteAccessAspectTest {
   }
 
   @Test
-  void rejectsMultipleAuthenticatedCallerResources() throws Throwable {
+  void givenMultipleAuthenticatedCallerResources_whenRequiringWriteAccess_thenRejectsTheHandler()
+      throws Throwable {
     Method method =
         DuplicateCallerHandler.class.getDeclaredMethod(
             "handle", TestCommand.class, TestCommand.class);
@@ -170,7 +178,8 @@ class WriteAccessAspectTest {
   }
 
   @Test
-  void rejectsMethodsWithoutAnAuthenticatedCallerResource() throws Throwable {
+  void givenNoAuthenticatedCallerResource_whenRequiringWriteAccess_thenRejectsTheHandler()
+      throws Throwable {
     Method method = MissingCallerHandler.class.getDeclaredMethod("handle", TestCommand.class);
     var aspect =
         new WriteAccessAspect(List.of(new TestResolver()), List.of(officeCodeAuthorizer()));
@@ -184,7 +193,8 @@ class WriteAccessAspectTest {
   }
 
   @Test
-  void rejectsCallerResourcesThatDoNotExposeAnAuthenticatedCaller() throws Throwable {
+  void givenCallerResourceWithoutAuthenticatedCaller_whenRequiringWriteAccess_thenRejectsTheHandler()
+      throws Throwable {
     Method method = InvalidCallerHandler.class.getDeclaredMethod("handle", Object.class);
     var aspect =
         new WriteAccessAspect(List.of(new TestResolver()), List.of(officeCodeAuthorizer()));
@@ -196,7 +206,7 @@ class WriteAccessAspectTest {
   }
 
   @Test
-  void rejectsMissingResolverBeans() throws Throwable {
+  void givenNoResolverBean_whenRequiringWriteAccess_thenRejectsTheHandler() throws Throwable {
     Method method = TestHandler.class.getDeclaredMethod("handle", TestCommand.class);
     var aspect = new WriteAccessAspect(List.of(), List.of(officeCodeAuthorizer()));
 
@@ -209,7 +219,7 @@ class WriteAccessAspectTest {
   }
 
   @Test
-  void rejectsMissingAuthorizerBeans() throws Throwable {
+  void givenNoAuthorizerBean_whenRequiringWriteAccess_thenRejectsTheHandler() throws Throwable {
     Method method = TestHandler.class.getDeclaredMethod("handle", TestCommand.class);
     var aspect = new WriteAccessAspect(List.of(new TestResolver()), List.of());
 

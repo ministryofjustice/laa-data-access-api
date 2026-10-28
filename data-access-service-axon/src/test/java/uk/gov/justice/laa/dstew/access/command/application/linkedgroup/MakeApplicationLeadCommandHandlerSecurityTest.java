@@ -56,6 +56,6 @@ class MakeApplicationLeadCommandHandlerSecurityTest extends BaseSecuredUseCaseTe
     return new MakeApplicationLeadCommand(
         UUID.randomUUID(),
         new ExpectedLinkedGroup(UUID.randomUUID(), 0),
-        Instant.parse("2026-09-14T15:00:00Z"));
+        Instant.parse("2026-09-14T15:00:00Z"), null);
   }
 }

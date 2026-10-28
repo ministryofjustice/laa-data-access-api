@@ -15,21 +15,6 @@ public record LinkApplicationCommand(
     Instant occurredAt,
     @Nullable AuthenticatedCaller caller) {
 
-  /**
-   * Retains source compatibility for non-HTTP callers.
-   *
-   * @deprecated HTTP callers must provide the authenticated caller facts.
-   */
-  @Deprecated
-  public LinkApplicationCommand(
-      UUID sourceApplicationId,
-      UUID targetApplicationId,
-      LinkType linkType,
-      @Nullable ExpectedLinkedGroup expectedTargetGroup,
-      Instant occurredAt) {
-    this(sourceApplicationId, targetApplicationId, linkType, expectedTargetGroup, occurredAt, null);
-  }
-
   /** Enforces the command invariants owned below the controller seam. */
   public LinkApplicationCommand {
     Objects.requireNonNull(sourceApplicationId, "sourceApplicationId must not be null");

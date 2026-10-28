@@ -12,7 +12,8 @@ class OfficeCodeResourceWriteAccessResolverTest {
       new OfficeCodeResourceWriteAccessResolver();
 
   @Test
-  void resolvesTheConfiguredResourceIdentityAndOfficeCode() throws Exception {
+  void givenConfiguredResourceIdentityAndOfficeCode_whenResolving_thenReturnsTarget()
+      throws Exception {
     UUID priorAuthorityId = UUID.randomUUID();
     Method method = Handler.class.getDeclaredMethod("handle", Resource.class);
     AggregateResource metadata = method.getParameters()[0].getAnnotation(AggregateResource.class);
@@ -29,7 +30,7 @@ class OfficeCodeResourceWriteAccessResolverTest {
   }
 
   @Test
-  void rejectsResourcesWhoseConfiguredIdentifierIsNotAUuid() throws Exception {
+  void givenResourceWithNonUuidIdentifier_whenResolving_thenRejectsIt() throws Exception {
     Method method =
         InvalidIdentifierHandler.class.getDeclaredMethod("handle", InvalidResource.class);
     AggregateResource metadata = method.getParameters()[0].getAnnotation(AggregateResource.class);
@@ -45,7 +46,8 @@ class OfficeCodeResourceWriteAccessResolverTest {
   }
 
   @Test
-  void rejectsResourcesWithoutTheConfiguredIdentifierProperty() throws Exception {
+  void givenResourceWithoutConfiguredIdentifierProperty_whenResolving_thenRejectsIt()
+      throws Exception {
     Method method =
         MissingIdentifierHandler.class.getDeclaredMethod("handle", MissingIdentifier.class);
     AggregateResource metadata = method.getParameters()[0].getAnnotation(AggregateResource.class);
@@ -61,7 +63,7 @@ class OfficeCodeResourceWriteAccessResolverTest {
   }
 
   @Test
-  void rejectsResourcesWithoutAnOfficeCodeProperty() throws Exception {
+  void givenResourceWithoutOfficeCodeProperty_whenResolving_thenRejectsIt() throws Exception {
     Method method =
         MissingOfficeCodeHandler.class.getDeclaredMethod("handle", MissingOfficeCode.class);
     AggregateResource metadata = method.getParameters()[0].getAnnotation(AggregateResource.class);
@@ -77,7 +79,7 @@ class OfficeCodeResourceWriteAccessResolverTest {
   }
 
   @Test
-  void rejectsResourcesWhoseOfficeCodeIsNotAString() throws Exception {
+  void givenResourceWithNonStringOfficeCode_whenResolving_thenRejectsIt() throws Exception {
     Method method =
         InvalidOfficeCodeHandler.class.getDeclaredMethod("handle", InvalidOfficeCode.class);
     AggregateResource metadata = method.getParameters()[0].getAnnotation(AggregateResource.class);

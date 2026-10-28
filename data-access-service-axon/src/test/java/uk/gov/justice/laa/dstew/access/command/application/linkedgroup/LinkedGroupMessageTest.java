@@ -94,7 +94,7 @@ class LinkedGroupMessageTest {
   void givenValues_whenMakeLeadCommandCreated_thenValuesArePreserved() {
     var applicationId = UUID.randomUUID();
     var expectedGroup = new ExpectedLinkedGroup(UUID.randomUUID(), 9L);
-    var command = new MakeApplicationLeadCommand(applicationId, expectedGroup, OCCURRED_AT);
+    var command = new MakeApplicationLeadCommand(applicationId, expectedGroup, OCCURRED_AT, null);
 
     assertThat(command.applicationId()).isEqualTo(applicationId);
     assertThat(command.expectedGroup()).isEqualTo(expectedGroup);
@@ -117,7 +117,7 @@ class LinkedGroupMessageTest {
 
   @Test
   void givenNullExpectedGroup_whenMakeLeadCommandCreated_thenThrowsNullPointer() {
-    assertThatThrownBy(() -> new MakeApplicationLeadCommand(UUID.randomUUID(), null, OCCURRED_AT))
+    assertThatThrownBy(() -> new MakeApplicationLeadCommand(UUID.randomUUID(), null, OCCURRED_AT, null))
         .isInstanceOf(NullPointerException.class)
         .hasMessage("expectedGroup must not be null");
   }
@@ -126,7 +126,7 @@ class LinkedGroupMessageTest {
   void givenValues_whenUnlinkCommandCreated_thenValuesArePreserved() {
     var applicationId = UUID.randomUUID();
     var expectedGroup = new ExpectedLinkedGroup(UUID.randomUUID(), 10L);
-    var command = new UnlinkApplicationCommand(applicationId, expectedGroup, OCCURRED_AT);
+    var command = new UnlinkApplicationCommand(applicationId, expectedGroup, OCCURRED_AT, null);
 
     assertThat(command.applicationId()).isEqualTo(applicationId);
     assertThat(command.expectedGroup()).isEqualTo(expectedGroup);
@@ -135,7 +135,7 @@ class LinkedGroupMessageTest {
 
   @Test
   void givenNullExpectedGroup_whenUnlinkCommandCreated_thenThrowsNullPointer() {
-    assertThatThrownBy(() -> new UnlinkApplicationCommand(UUID.randomUUID(), null, OCCURRED_AT))
+    assertThatThrownBy(() -> new UnlinkApplicationCommand(UUID.randomUUID(), null, OCCURRED_AT, null))
         .isInstanceOf(NullPointerException.class)
         .hasMessage("expectedGroup must not be null");
   }

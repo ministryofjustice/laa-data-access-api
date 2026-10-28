@@ -26,7 +26,7 @@ class LinkApplicationUseCaseTest {
   void executeDelegatesExactlyOnceToTheCommandHandler() {
     var command =
         new LinkApplicationCommand(
-            UUID.randomUUID(), UUID.randomUUID(), LinkType.FAMILY, null, Instant.now());
+            UUID.randomUUID(), UUID.randomUUID(), LinkType.FAMILY, null, Instant.now(), null);
 
     useCase.execute(command);
 

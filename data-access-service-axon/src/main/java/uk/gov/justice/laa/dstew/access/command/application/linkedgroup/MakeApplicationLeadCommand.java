@@ -13,17 +13,6 @@ public record MakeApplicationLeadCommand(
     Instant occurredAt,
     @Nullable AuthenticatedCaller caller) {
 
-  /**
-   * Retains source compatibility for non-HTTP callers.
-   *
-   * @deprecated HTTP callers must provide the authenticated caller facts.
-   */
-  @Deprecated
-  public MakeApplicationLeadCommand(
-      UUID applicationId, ExpectedLinkedGroup expectedGroup, Instant occurredAt) {
-    this(applicationId, expectedGroup, occurredAt, null);
-  }
-
   /** Validates the application and expected linked group. */
   public MakeApplicationLeadCommand {
     Objects.requireNonNull(applicationId, "applicationId must not be null");

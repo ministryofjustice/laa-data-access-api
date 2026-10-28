@@ -24,7 +24,7 @@ class UnlinkApplicationUseCaseTest {
         new UnlinkApplicationCommand(
             UUID.randomUUID(),
             new ExpectedLinkedGroup(UUID.randomUUID(), 3),
-            Instant.parse("2026-09-14T15:00:00Z"));
+            Instant.parse("2026-09-14T15:00:00Z"), null);
 
     useCase.execute(command);
 
