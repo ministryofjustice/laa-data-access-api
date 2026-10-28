@@ -21,7 +21,7 @@ env:
 
 jobs:
   release:
-    uses: ministryofjustice/laa-ccms-common-workflows/.github/workflows/gradle-build-and-publish.yml@035ee98ca0047659f865532ea6234abd69529ee8 # v2.5.0
+    uses: ministryofjustice/laa-ccms-common-workflows/.github/workflows/gradle-build-and-publish.yml@57f8d08c0cf807ea64fc121500669c4d3dada733 # v2.5.1
     permissions:
       contents: write
       packages: write
@@ -38,7 +38,7 @@ jobs:
   # Not a deploy dependency: a failure is visible here but does not block the release.
   pact-test:
     needs: [ release ]
-    uses: ministryofjustice/laa-ccms-common-workflows/.github/workflows/pact-and-publish.yml@035ee98ca0047659f865532ea6234abd69529ee8 # v2.5.0
+    uses: ministryofjustice/laa-ccms-common-workflows/.github/workflows/pact-and-publish.yml@57f8d08c0cf807ea64fc121500669c4d3dada733 # v2.5.1
     permissions:
       contents: write
       packages: write
@@ -74,7 +74,7 @@ jobs:
   ecr-publish-service-image:
     needs: [ release ]
     if: ${{ needs.release.outputs.published_artifact_version != '' }}
-    uses: ministryofjustice/laa-ccms-common-workflows/.github/workflows/ecr-publish-image.yml@035ee98ca0047659f865532ea6234abd69529ee8 # v2.5.0
+    uses: ministryofjustice/laa-ccms-common-workflows/.github/workflows/ecr-publish-image.yml@57f8d08c0cf807ea64fc121500669c4d3dada733 # v2.5.1
     permissions:
       contents: read
       id-token: write
@@ -119,7 +119,7 @@ jobs:
       # `main` is the LAA convention for the main-branch (UAT) deployment, so record it here.
       - name: Record UAT deployment to pact broker
         id: record_uat_deployment
-        uses: ministryofjustice/laa-ccms-common-workflows/.github/actions/pact-record-deployment@035ee98ca0047659f865532ea6234abd69529ee8 # v2.5.0
+        uses: ministryofjustice/laa-ccms-common-workflows/.github/actions/pact-record-deployment@57f8d08c0cf807ea64fc121500669c4d3dada733 # v2.5.1
         with:
           pacticipant: 'laa-data-access-api'
           environment: 'main'
