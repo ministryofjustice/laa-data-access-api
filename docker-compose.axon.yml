@@ -32,6 +32,15 @@ services:
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-local-secret-key}
       AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL:-http://localstack:4566}
       APPLICATION_INTEGRATION_EVENTS_TOPIC_ARN: ${DATA_ACCESS_EVENTS_TOPIC_ARN:-}
+      AUTH_CLIENT_ID: test
+      AUTH_CLIENT_SECRET: test
+      AUTH_SCOPE: api://laa-data-access-api/.default
+      AUTH_TOKEN_URI: http://host.docker.internal:9999/entra/token
+      ENTRA_ISSUER_URI: http://host.docker.internal:9999/entra
+      ENTRA_JWK_SET_URI: http://host.docker.internal:9999/entra/jwks
+      ENTRA_AUD: laa-data-access-api
+    extra_hosts:
+      - host.docker.internal:host-gateway
     depends_on:
       postgres-axon:
         condition: service_healthy

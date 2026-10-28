@@ -1,124 +1,119 @@
-# k6 Performance Tests
+# k6 journey harness
 
-Native [k6](https://k6.io/) script that mirrors the `ApiPerformanceTestRunner` Java class.
+The local Compose mock OAuth server and the shared ephemeral mock OAuth server expose the same
+client-ID contract. The client credentials below mint deterministic identities for k6 journeys.
+All identities carry the API-recognised `LAA_CASEWORKER` role; the provider has
+`access_as_provider` and office `0Z123A`, while the three caseworkers have `access_as_user`.
 
----
+| Actor | Environment variable | Client ID | Stable subject |
+| --- | --- | --- | --- |
+| Provider | `K6_PROVIDER_CLIENT_ID` | `k6-provider` | `k6-provider` |
+| Application Caseworker | `K6_APPLICATION_CASEWORKER_CLIENT_ID` | `k6-application-caseworker` | `k6-application-caseworker` |
+| PA Caseworker | `K6_PA_CASEWORKER_CLIENT_ID` | `k6-pa-caseworker` | `k6-pa-caseworker` |
+| Contender Caseworker | `K6_CONTENDER_CLIENT_ID` | `k6-contender-caseworker` | `k6-contender-caseworker` |
 
-## Prerequisites
+Create an untracked environment file and provide the secrets from the target environment:
 
 ```bash
-brew install k6
+cp k6/.env.example k6/.env
+# Set K6_*_CLIENT_SECRET values in k6/.env, then export them for k6.
+set -a
+source k6/.env
+set +a
 ```
 
----
+`k6/.env` and all client secrets must remain outside version control. The mock OAuth configuration
+only selects identities by client ID; target-environment credentials are supplied to k6 through the
+`K6_*_CLIENT_ID` and `K6_*_CLIENT_SECRET` environment variables.
 
-## Files
+## Run locally
 
-```
-k6/
-  make-decision-performance-test.js          # main script
-  get-individuals-performance-test.js        # get applications -> get individuals flow
-  README.md                    # this file
-  fixtures/
-    applicationContent.json    # base applicationContent template, mutated per iteration
-```
+Start the local dependencies and API in separate terminals:
 
----
-
-## Environment variables
-
-| Variable            | Default                 | Description                                  |
-|---------------------|-------------------------|----------------------------------------------|
-| `BASE_URL`          | `http://localhost:8080` | API base URL                                 |
-| `BEARER_TOKEN`      | _(required)_            | Bearer token for the `Authorization` header  |
-| `VUS`               | `1`                     | Number of virtual users (concurrent threads) |
-| `ITERATIONS`        | `100`                   | Iterations **per VU** (total = VUs × ITERATIONS) |
-| `DECIDE_RATE`       | `0.5`                   | Probability (0–1) that a decision is made after each create |
-| `THINK_TIME_MIN_MS` | `0`                     | Minimum think-time sleep between calls (ms)  |
-| `THINK_TIME_MAX_MS` | `0`                     | Maximum think-time sleep between calls (ms); `0` = no sleep |
-
-Extra variables used by `get-individuals-performance-test.js`:
-
-| Variable               | Default          | Description |
-|------------------------|------------------|-------------|
-| `APPLICATIONS_PAGE_SIZE` | `20`          | `GET /api/v0/applications` page size used to source application IDs |
-| `CLIENT_FIRST_NAME`    | _empty_          | Optional filter used when fetching applications |
-| `CLIENT_LAST_NAME`     | _empty_          | Optional filter used when fetching applications |
-| `CLIENT_DATE_OF_BIRTH` | _empty_          | Optional `YYYY-MM-DD` filter used when fetching applications |
-| `STATUS`               | _empty_          | Optional application status filter |
-| `INCLUDE`              | `CLIENT_DETAILS` | Value passed to `GET /api/v0/individuals?include=...` |
-| `INDIVIDUAL_TYPE`      | `CLIENT`         | Value passed to `GET /api/v0/individuals?individualType=...` |
-
----
-
-## Run commands
-
-**Local with defaults** (1 VU, 100 iterations, no auth):
 ```bash
-k6 run k6/make-decision-performance-test.js
+docker compose up -d
+./gradlew bootRun --args='--spring.profiles.active=local'
 ```
 
-**With overrides** (e.g. staging):
+Create and export the local configuration, then run the runtime smoke scenario:
+
 ```bash
-k6 run \
-  -e BASE_URL=https://staging.example.com \
-  -e BEARER_TOKEN=eyJ... \
-  -e VUS=10 \
-  -e ITERATIONS=50 \
-  -e DECIDE_RATE=0.8 \
-  -e THINK_TIME_MIN_MS=500 \
-  -e THINK_TIME_MAX_MS=2000 \
-  k6/make-decision-performance-test.js
+cp k6/.env.example k6/.env
+# Set the required K6_*_CLIENT_SECRET values.
+set -a && source k6/.env && set +a
+./k6/run.sh
 ```
 
-**Synthetic stress mode** (no think time, maximum throughput):
+`run.sh` uses an installed `k6` binary when available. Otherwise it runs the pinned official
+`grafana/k6` image using Docker. The default scenario gets a provider token in `setup()` and checks
+that the API health endpoint is reachable; it performs no mutations. Pass a scenario relative to
+`k6/` as the first argument, for example `./k6/run.sh scenarios/smoke-complete-journey.js`.
+
+## Journey scenarios
+
+All journeys tag HTTP metrics with their scenario and canonical step name. Every virtual-user
+iteration creates a unique run context, so performance scenarios do not share externally visible
+Application, Prior Authority, client, or LAA-reference identifiers.
+
+| Scenario | Command | Default execution |
+| --- | --- | --- |
+| Complete smoke journey | `./k6/run.sh scenarios/smoke-complete-journey.js` | One VU, one complete Application and PA grant |
+| Application assignment contention | `./k6/run.sh scenarios/contention-application-assignment.js` | `K6_CONTENTION_VUS=2`, one shared Application and one assignment attempt per contender |
+| Complete journey baseline | `./k6/run.sh scenarios/performance-complete-journey.js` | `K6_PERFORMANCE_VUS=5` for `K6_PERFORMANCE_DURATION=5m` |
+| Provider drafting baseline | `./k6/run.sh scenarios/performance-provider-drafting.js` | Application draft, document, and submission phase |
+| Work Queue baseline | `./k6/run.sh scenarios/performance-work-queue.js` | Application discovery, assignment, and decision phase |
+| PA lifecycle baseline | `./k6/run.sh scenarios/performance-prior-authority.js` | Granted parent setup followed by PA lifecycle and decision |
+
+The PA caseworker uses the Application Caseworker credentials when both `K6_PA_CASEWORKER_*`
+variables are omitted; supply PA credentials to run them as distinct identities. Contention
+records `assigned` and `conflict` metrics for its one attempt per configured contender. Set
+`K6_THRESHOLDS` to add optional correctness, latency, or error thresholds.
+
+## Run against an ephemeral environment
+
+Port-forward the target API and its configured mock OAuth service, then override the URLs before
+running the same command:
+
 ```bash
-k6 run \
-  -e BEARER_TOKEN=eyJ... \
-  -e VUS=20 \
-  -e ITERATIONS=500 \
-  k6/make-decision-performance-test.js
+export K6_API_BASE_URL=http://localhost:8080
+export K6_OAUTH_TOKEN_URL=http://localhost:9999/entra/token
+./k6/run.sh
 ```
 
-**Get individuals flow** (fetch applications, pick an ID, then fetch individuals with client details):
+The token issuer must be the one trusted by the target API. Obtain only the client secrets from
+the target environment and do not add them to files under version control.
+
+## Configuration and output
+
+All settings are validated before the scenario starts. Required actors fail fast if their client ID
+or secret is missing; the PA caseworker falls back to the Application Caseworker only when both PA
+values are omitted.
+
+| Variable | Default |
+| --- | --- |
+| `K6_API_BASE_URL` | `http://localhost:8080` |
+| `K6_OAUTH_TOKEN_URL` | `http://localhost:9999/entra/token` |
+| `K6_SERVICE_NAME` | `CIVIL_APPLY` |
+| `K6_POLL_TIMEOUT_MS` / `K6_POLL_INTERVAL_MS` | `30000` / `500` |
+| `K6_SUMMARY_PATH` | `k6/results/summary.json` |
+| `K6_CONTENTION_VUS` | `2` |
+| `K6_PERFORMANCE_VUS` / `K6_PERFORMANCE_DURATION` | `5` / `5m` |
+| `K6_THRESHOLDS` | unset |
+
+The k6 console summary and JSON summary are both written at the end of a run. The default JSON
+path is `k6/results/summary.json`. Diagnostics report only method, path, status, safe record IDs,
+and a correlation ID; tokens, secrets, and authorization headers are never printed. Set
+`K6_DEBUG_RESPONSE_BODY=true` only for local debugging to include a capped failed-response preview.
+
+## Fixtures and step catalogue
+
+The synthetic fixture templates in `k6/fixtures/` contain no personal or case data. Apply a
+run context to them before use so each virtual user and iteration receives distinct identifiers.
+The registry in `k6/lib/step-registry.js` is the source of truth for the generated catalogue and
+feature-step validation:
+
 ```bash
-k6 run \
-  -e BASE_URL=http://localhost:9080 \
-  -e BEARER_TOKEN=eyJ... \
-  -e VUS=10 \
-  -e ITERATIONS=50 \
-  -e CLIENT_FIRST_NAME=John \
-  -e CLIENT_LAST_NAME=Doe \
-  -e CLIENT_DATE_OF_BIRTH=1985-04-16 \
-  -e INCLUDE=CLIENT_DETAILS \
-  k6/get-individuals-performance-test.js
+npm --prefix k6 run generate-step-catalogue
+npm --prefix k6 test
+npm --prefix k6 run validate-documentation
 ```
-
----
-
-## Output
-
-k6's built-in end-of-run summary prints p50/p90/p95/p99, mean, min/max, and error count
-broken down per tagged request name:
-
-- `POST /api/v0/applications`
-- `GET /api/v0/applications/{id}`
-- `PATCH /api/v0/applications/{id}/decision`
-
-The new script also reports:
-
-- `GET /api/v0/applications`
-- `GET /api/v0/individuals`
-
----
-
-## How the fixture works
-
-`fixtures/applicationContent.json` is a representative template of the ~50 fields the API
-validates (matching the structure produced by `FullJsonGenerator`). It is loaded **once at
-init time** and **shallow-mutated per iteration**: fresh UUIDs, a new `laaReference`, and
-updated timestamps are injected on each call so every request carries unique data without
-the overhead of generating the full payload from scratch inline.
-
-To extend the payload, edit `fixtures/applicationContent.json` directly.
-
