@@ -5,7 +5,10 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-/** Requires provider-office authorization before an annotated command handler executes. */
+/** Requires command-side write authorisation through the declared target resolver. */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface RequireOfficeCodeWriteAccess {}
+public @interface RequireWriteAccess {
+  /** Returns the resolver bean class that supplies authoritative protected resources. */
+  Class<? extends WriteAccessTargetResolver> resolver();
+}

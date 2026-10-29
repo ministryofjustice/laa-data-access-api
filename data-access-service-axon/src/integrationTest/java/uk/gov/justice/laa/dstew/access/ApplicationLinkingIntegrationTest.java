@@ -26,9 +26,6 @@ import java.util.stream.Stream;
 import org.axonframework.messaging.commandhandling.gateway.CommandGateway;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
@@ -63,6 +60,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryResponse;
+import uk.gov.justice.laa.dstew.access.model.LinkedGroupChangeRequest;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
@@ -176,6 +174,167 @@ public class ApplicationLinkingIntegrationTest {
   }
 
   @Test
+  void
+      givenProviderTokenWithOfficeAccess_whenLinkingApplicationsInThatOffice_thenLinkIsSuccessful() {
+    UUID sourceApplicationId = UUID.randomUUID();
+    UUID targetApplicationId = UUID.randomUUID();
+    String clientLastName = uniqueClientLastName();
+    createApplication(sourceApplicationId, clientLastName, "1A001B");
+    createApplication(targetApplicationId, clientLastName, "1A001B");
+
+    ResponseEntity<Void> response =
+        linkApplication(
+            sourceApplicationId,
+            targetApplicationId,
+            null,
+            TestJwtDecoderConfig.OFFICE_A_BEARER_TOKEN);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    var routesByApplicationId = awaitRoutes(sourceApplicationId, targetApplicationId);
+    assertThat(routesByApplicationId.get(sourceApplicationId).getGroupId())
+        .isEqualTo(routesByApplicationId.get(targetApplicationId).getGroupId())
+        .isNotNull();
+  }
+
+  @Test
+  void
+      givenProviderTokenWithoutOfficeAccess_whenLinkingApplications_thenRequestIsForbiddenAndDoesNotMutateRoutesOrEvents() {
+    UUID sourceApplicationId = UUID.randomUUID();
+    UUID targetApplicationId = UUID.randomUUID();
+    String clientLastName = uniqueClientLastName();
+    createApplication(sourceApplicationId, clientLastName, "1A001B");
+    createApplication(targetApplicationId, clientLastName, "1A001B");
+    long groupEventCount = countGroupEvents();
+
+    ResponseEntity<Void> response =
+        linkApplication(
+            sourceApplicationId,
+            targetApplicationId,
+            null,
+            TestJwtDecoderConfig.OFFICE_C_BEARER_TOKEN);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    assertStandaloneRoute(sourceApplicationId);
+    assertStandaloneRoute(targetApplicationId);
+    assertThat(countGroupEvents()).isEqualTo(groupEventCount);
+  }
+
+  @Test
+  void
+      givenProviderTokenWithoutOfficeAccess_whenChangingLinkedGroup_thenRequestsAreForbiddenAndDoNotMutateTheGroup() {
+    UUID sourceApplicationId = UUID.randomUUID();
+    UUID targetApplicationId = UUID.randomUUID();
+    String clientLastName = uniqueClientLastName();
+    createApplication(sourceApplicationId, clientLastName, "1A001B");
+    createApplication(targetApplicationId, clientLastName, "1A001B");
+    assertThat(linkApplication(sourceApplicationId, targetApplicationId).getStatusCode())
+        .isEqualTo(HttpStatus.NO_CONTENT);
+    var routes = awaitRoutes(sourceApplicationId, targetApplicationId);
+    UUID groupId = routes.get(targetApplicationId).getGroupId();
+    LinkedApplicationGroupReadModel group =
+        awaitGroupProjection(
+            groupId, targetApplicationId, targetApplicationId, sourceApplicationId);
+    long eventCount = countDomainEvents(groupId);
+    String versionToken = token(groupId, group.getVersion());
+
+    ResponseEntity<Void> makeLeadResponse =
+        makeApplicationLead(
+            sourceApplicationId, versionToken, TestJwtDecoderConfig.OFFICE_C_BEARER_TOKEN);
+    ResponseEntity<Void> unlinkResponse =
+        unlinkApplication(
+            sourceApplicationId, versionToken, TestJwtDecoderConfig.OFFICE_C_BEARER_TOKEN);
+
+    assertThat(makeLeadResponse.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    assertThat(unlinkResponse.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    assertRoutesInGroup(groupId, sourceApplicationId, targetApplicationId);
+    assertThat(
+            awaitGroupProjection(
+                groupId, targetApplicationId, targetApplicationId, sourceApplicationId))
+        .isNotNull();
+    assertThat(countDomainEvents(groupId)).isEqualTo(eventCount);
+  }
+
+  @Test
+  void givenProviderTokenWithOfficeAccess_whenMakingApplicationLead_thenLinkedGroupIsUpdated() {
+    UUID sourceApplicationId = UUID.randomUUID();
+    UUID targetApplicationId = UUID.randomUUID();
+    String clientLastName = uniqueClientLastName();
+    createApplication(sourceApplicationId, clientLastName, "1A001B");
+    createApplication(targetApplicationId, clientLastName, "1A001B");
+    assertThat(linkApplication(sourceApplicationId, targetApplicationId).getStatusCode())
+        .isEqualTo(HttpStatus.NO_CONTENT);
+    UUID groupId =
+        awaitRoutes(sourceApplicationId, targetApplicationId).get(targetApplicationId).getGroupId();
+    LinkedApplicationGroupReadModel group =
+        awaitGroupProjection(
+            groupId, targetApplicationId, targetApplicationId, sourceApplicationId);
+
+    ResponseEntity<Void> response =
+        makeApplicationLead(
+            sourceApplicationId,
+            token(groupId, group.getVersion()),
+            TestJwtDecoderConfig.OFFICE_A_BEARER_TOKEN);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    assertThat(
+            awaitGroupProjection(
+                groupId, sourceApplicationId, targetApplicationId, sourceApplicationId))
+        .isNotNull();
+  }
+
+  @Test
+  void
+      givenProviderTokenWithOfficeAccess_whenUnlinkingApplication_thenApplicationIsRemovedFromTheGroup() {
+    UUID sourceApplicationId = UUID.randomUUID();
+    UUID targetApplicationId = UUID.randomUUID();
+    String clientLastName = uniqueClientLastName();
+    createApplication(sourceApplicationId, clientLastName, "1A001B");
+    createApplication(targetApplicationId, clientLastName, "1A001B");
+    assertThat(linkApplication(sourceApplicationId, targetApplicationId).getStatusCode())
+        .isEqualTo(HttpStatus.NO_CONTENT);
+    UUID groupId =
+        awaitRoutes(sourceApplicationId, targetApplicationId).get(targetApplicationId).getGroupId();
+    LinkedApplicationGroupReadModel group =
+        awaitGroupProjection(
+            groupId, targetApplicationId, targetApplicationId, sourceApplicationId);
+
+    ResponseEntity<Void> response =
+        unlinkApplication(
+            sourceApplicationId,
+            token(groupId, group.getVersion()),
+            TestJwtDecoderConfig.OFFICE_A_BEARER_TOKEN);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    assertStandaloneRoute(sourceApplicationId);
+  }
+
+  @Test
+  void givenProviderToken_whenReferencingMissingRoutes_thenRequestsDoNotMutateAnyLinkedGroup() {
+    UUID missingApplicationId = UUID.randomUUID();
+    long groupEventCount = countGroupEvents();
+    String versionToken = token(UUID.randomUUID(), 0);
+
+    ResponseEntity<Void> linkResponse =
+        linkApplication(
+            missingApplicationId,
+            UUID.randomUUID(),
+            null,
+            TestJwtDecoderConfig.OFFICE_A_BEARER_TOKEN);
+    ResponseEntity<Void> makeLeadResponse =
+        makeApplicationLead(
+            missingApplicationId, versionToken, TestJwtDecoderConfig.OFFICE_A_BEARER_TOKEN);
+    ResponseEntity<Void> unlinkResponse =
+        unlinkApplication(
+            missingApplicationId, versionToken, TestJwtDecoderConfig.OFFICE_A_BEARER_TOKEN);
+
+    assertThat(linkResponse.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    assertThat(makeLeadResponse.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    assertThat(unlinkResponse.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    assertThat(countGroupEvents()).isEqualTo(groupEventCount);
+    assertThat(applicationGroupRouteRepository.findById(missingApplicationId)).isEmpty();
+  }
+
+  @Test
   void givenApplicationsFromDifferentOffices_whenApplicationsAreLinked_thenRequestIsRejected() {
     UUID sourceApplicationId = UUID.randomUUID();
     UUID targetApplicationId = UUID.randomUUID();
@@ -209,30 +368,6 @@ public class ApplicationLinkingIntegrationTest {
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     assertThat(countRoutes(applicationId)).isZero();
-  }
-
-  @ParameterizedTest
-  @MethodSource("invalidOfficeCodeCombinations")
-  void givenApplicationsWithMissingOfficeCode_whenApplicationsAreLinked_thenRequestIsRejected(
-      String sourceOfficeCode, String targetOfficeCode) {
-    UUID sourceApplicationId = UUID.randomUUID();
-    UUID targetApplicationId = UUID.randomUUID();
-    String clientLastName = uniqueClientLastName();
-    createApplication(sourceApplicationId, clientLastName, sourceOfficeCode);
-    createApplication(targetApplicationId, clientLastName, targetOfficeCode);
-    long groupEventCount = countGroupEvents();
-
-    ResponseEntity<Void> response = linkApplication(sourceApplicationId, targetApplicationId);
-
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-    assertThat(countGroupEvents()).isEqualTo(groupEventCount);
-    assertStandaloneRoute(sourceApplicationId);
-    assertStandaloneRoute(targetApplicationId);
-  }
-
-  private static Stream<Arguments> invalidOfficeCodeCombinations() {
-    return Stream.of(
-        Arguments.of("1A001B", " "), Arguments.of(" ", "1A001B"), Arguments.of(" ", " "));
   }
 
   @Test
@@ -762,13 +897,37 @@ public class ApplicationLinkingIntegrationTest {
   }
 
   private ResponseEntity<Void> linkApplication(UUID sourceId, UUID targetId, String token) {
+    return linkApplication(sourceId, targetId, token, TestJwtDecoderConfig.BEARER_TOKEN);
+  }
+
+  private ResponseEntity<Void> linkApplication(
+      UUID sourceId, UUID targetId, String token, String bearerToken) {
     ApplicationLinkRequest request =
         new ApplicationLinkRequest(targetId, ApplicationLinkType.FAMILY);
     request.setLinkedGroupVersion(token);
     return restTemplate.exchange(
         "/api/v0/applications/" + sourceId + "/link",
         HttpMethod.POST,
-        new HttpEntity<>(request, headers()),
+        new HttpEntity<>(request, headers(bearerToken)),
+        Void.class);
+  }
+
+  private ResponseEntity<Void> makeApplicationLead(
+      UUID applicationId, String versionToken, String bearerToken) {
+    return linkedGroupMutation(applicationId, "make-lead", versionToken, bearerToken);
+  }
+
+  private ResponseEntity<Void> unlinkApplication(
+      UUID applicationId, String versionToken, String bearerToken) {
+    return linkedGroupMutation(applicationId, "unlink", versionToken, bearerToken);
+  }
+
+  private ResponseEntity<Void> linkedGroupMutation(
+      UUID applicationId, String action, String versionToken, String bearerToken) {
+    return restTemplate.exchange(
+        "/api/v0/applications/" + applicationId + "/" + action,
+        HttpMethod.POST,
+        new HttpEntity<>(new LinkedGroupChangeRequest(versionToken), headers(bearerToken)),
         Void.class);
   }
 
@@ -1044,14 +1203,19 @@ public class ApplicationLinkingIntegrationTest {
   }
 
   private HttpHeaders headers() {
-    return headers(1);
+    return headers(TestJwtDecoderConfig.BEARER_TOKEN);
+  }
+
+  private HttpHeaders headers(String bearerToken) {
+    HttpHeaders headers = headers(1);
+    headers.setBearerAuth(bearerToken);
+    return headers;
   }
 
   private HttpHeaders headers(int schemaVersion) {
     HttpHeaders headers = new HttpHeaders();
     headers.set("X-Service-Name", "CIVIL_APPLY");
     headers.set("X-Schema-Version", String.valueOf(schemaVersion));
-    headers.setBearerAuth(TestJwtDecoderConfig.BEARER_TOKEN);
     return headers;
   }
 }

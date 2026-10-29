@@ -6,6 +6,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
@@ -39,6 +41,7 @@ import uk.gov.justice.laa.dstew.access.query.individual.FindIndividualsQuery;
 import uk.gov.justice.laa.dstew.access.query.individual.FindIndividualsResult;
 import uk.gov.justice.laa.dstew.access.query.worklist.WorkListItemReadModel;
 import uk.gov.justice.laa.dstew.access.query.worklist.WorkListItemReadRepository;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
 import uk.gov.justice.laa.dstew.access.testutils.GeneratedRequestFactory;
 
 /**
@@ -57,6 +60,8 @@ class ApplicationStateSeeder {
 
   static final Duration PROJECTION_WAIT = Duration.ofSeconds(30);
   static final Duration POLL_INTERVAL = Duration.ofMillis(50);
+  private static final AuthenticatedCaller PACT_CALLER =
+      new AuthenticatedCaller(Optional.empty(), Set.of("access_as_user"), Set.of(), Set.of());
 
   private final QueryGateway queryGateway;
   private final WorkListItemReadRepository workListItemReadRepository;
@@ -206,7 +211,7 @@ class ApplicationStateSeeder {
     // Linking two standalone applications makes the target the lead of the new group.
     linkApplicationUseCase.execute(
         new LinkApplicationCommand(
-            member.getId(), lead.getId(), LinkType.FAMILY, null, Instant.now()));
+            member.getId(), lead.getId(), LinkType.FAMILY, null, Instant.now(), PACT_CALLER));
     awaitApplication(member.getId(), app -> lead.getId().equals(app.getLeadApplicationId()));
     awaitApplication(lead.getId(), app -> app.getLinkedGroupId() != null);
   }

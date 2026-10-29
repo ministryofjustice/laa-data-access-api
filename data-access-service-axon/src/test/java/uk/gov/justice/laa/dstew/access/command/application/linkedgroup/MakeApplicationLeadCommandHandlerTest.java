@@ -37,7 +37,7 @@ class MakeApplicationLeadCommandHandlerTest {
     var groupId = UUID.randomUUID();
     var command =
         new MakeApplicationLeadCommand(
-            applicationId, new ExpectedLinkedGroup(groupId, 4), OCCURRED_AT);
+            applicationId, new ExpectedLinkedGroup(groupId, 4), OCCURRED_AT, null);
     when(routeResolver.resolveGroupForMutation(applicationId, groupId)).thenReturn(groupId);
 
     handler.handle(command);
@@ -53,7 +53,7 @@ class MakeApplicationLeadCommandHandlerTest {
     var groupId = UUID.randomUUID();
     var command =
         new MakeApplicationLeadCommand(
-            applicationId, new ExpectedLinkedGroup(groupId, 4), OCCURRED_AT);
+            applicationId, new ExpectedLinkedGroup(groupId, 4), OCCURRED_AT, null);
     var exception = new ResourceNotFoundException("route not found");
     when(routeResolver.resolveGroupForMutation(applicationId, groupId)).thenThrow(exception);
 

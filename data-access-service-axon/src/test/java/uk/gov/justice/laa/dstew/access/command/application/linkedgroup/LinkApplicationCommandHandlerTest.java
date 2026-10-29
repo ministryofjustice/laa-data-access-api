@@ -51,7 +51,7 @@ class LinkApplicationCommandHandlerTest {
   void rejectsSelfLinkBeforeRouteLookup() {
     var command =
         new LinkApplicationCommand(
-            sourceApplicationId, sourceApplicationId, LinkType.FAMILY, null, OCCURRED_AT);
+            sourceApplicationId, sourceApplicationId, LinkType.FAMILY, null, OCCURRED_AT, null);
 
     assertThatThrownBy(() -> handler.handle(command))
         .isInstanceOfSatisfying(
@@ -67,7 +67,7 @@ class LinkApplicationCommandHandlerTest {
   void rejectsNullLinkTypeBeforeRouteLookup() {
     var command =
         new LinkApplicationCommand(
-            sourceApplicationId, targetApplicationId, null, null, OCCURRED_AT);
+            sourceApplicationId, targetApplicationId, null, null, OCCURRED_AT, null);
 
     assertThatThrownBy(() -> handler.handle(command))
         .isInstanceOfSatisfying(
@@ -221,6 +221,11 @@ class LinkApplicationCommandHandlerTest {
 
   private LinkApplicationCommand linkCommand(ExpectedLinkedGroup expectedGroup) {
     return new LinkApplicationCommand(
-        sourceApplicationId, targetApplicationId, LinkType.FAMILY, expectedGroup, OCCURRED_AT);
+        sourceApplicationId,
+        targetApplicationId,
+        LinkType.FAMILY,
+        expectedGroup,
+        OCCURRED_AT,
+        null);
   }
 }

@@ -6,6 +6,9 @@ import org.springframework.transaction.annotation.Transactional;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteResolver;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedCallerResource;
+import uk.gov.justice.laa.dstew.access.security.RequireWriteAccess;
+import uk.gov.justice.laa.dstew.access.security.WriteAccessResolverResource;
 
 /** Secured transactional coordinator for removing an application from its linked group. */
 @Service
@@ -17,7 +20,9 @@ public class UnlinkApplicationCommandHandler {
   /** Resolves and locks the linked group before dispatching its removal command. */
   @Transactional
   @AllowApiCaseworker
-  public void handle(UnlinkApplicationCommand command) {
+  @RequireWriteAccess(resolver = LinkedApplicationGroupWriteAccessResolver.class)
+  public void handle(
+      @AuthenticatedCallerResource @WriteAccessResolverResource UnlinkApplicationCommand command) {
     var expectedGroup = command.expectedGroup();
     var groupId =
         routeResolver.resolveGroupForMutation(command.applicationId(), expectedGroup.groupId());

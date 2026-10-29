@@ -90,6 +90,7 @@ class SecurityIntegrationTest {
         autoGrantOutcomeRequest());
     assertUnauthorized(
         HttpMethod.POST, "/api/v0/applications/" + applicationId + "/notes", noteRequest());
+    assertPriorAuthorityCallerCommandEndpointsUnauthorized(applicationId);
     assertUnauthorized(HttpMethod.GET, "/api/v0/applications/" + applicationId + "/notes", null);
     assertUnauthorized(
         HttpMethod.POST, "/api/v0/work-list/" + applicationId + "/assign", assignRequest());
@@ -125,6 +126,7 @@ class SecurityIntegrationTest {
         autoGrantOutcomeRequest());
     assertForbidden(
         HttpMethod.POST, "/api/v0/applications/" + applicationId + "/notes", noteRequest());
+    assertPriorAuthorityCallerCommandEndpointsForbidden(applicationId);
     assertForbidden(HttpMethod.GET, "/api/v0/applications/" + applicationId + "/notes", null);
     assertForbidden(
         HttpMethod.POST, "/api/v0/work-list/" + applicationId + "/assign", assignRequest());
@@ -183,6 +185,33 @@ class SecurityIntegrationTest {
     return new CreateNoteRequest("security test note");
   }
 
+  private void assertPriorAuthorityCallerCommandEndpointsUnauthorized(UUID applicationId) {
+    assertPriorAuthorityCallerCommandEndpoints(applicationId, this::assertUnauthorized);
+  }
+
+  private void assertPriorAuthorityCallerCommandEndpointsForbidden(UUID applicationId) {
+    assertPriorAuthorityCallerCommandEndpoints(applicationId, this::assertForbidden);
+  }
+
+  private void assertPriorAuthorityCallerCommandEndpoints(
+      UUID applicationId, SecurityAssertion securityAssertion) {
+    UUID documentId = UUID.randomUUID();
+    securityAssertion.assertStatus(
+        HttpMethod.PUT, "/api/v0/prior-authorities/" + applicationId, null);
+    securityAssertion.assertStatus(
+        HttpMethod.POST, "/api/v0/prior-authorities/" + applicationId + "/submit", null);
+    securityAssertion.assertStatus(
+        HttpMethod.POST, "/api/v0/prior-authorities/" + applicationId + "/documents", null);
+    securityAssertion.assertStatus(
+        HttpMethod.PATCH,
+        "/api/v0/prior-authorities/" + applicationId + "/documents/" + documentId,
+        null);
+    securityAssertion.assertStatus(
+        HttpMethod.DELETE,
+        "/api/v0/prior-authorities/" + applicationId + "/documents/" + documentId,
+        null);
+  }
+
   private WorkListAssignRequest assignRequest() {
     return new WorkListAssignRequest(0L);
   }
@@ -209,5 +238,10 @@ class SecurityIntegrationTest {
   private ResponseEntity<String> exchangeString(
       HttpMethod method, String path, HttpEntity<?> entity) {
     return restTemplate.exchange("http://localhost:" + port + path, method, entity, String.class);
+  }
+
+  @FunctionalInterface
+  private interface SecurityAssertion {
+    void assertStatus(HttpMethod method, String path, Object body);
   }
 }

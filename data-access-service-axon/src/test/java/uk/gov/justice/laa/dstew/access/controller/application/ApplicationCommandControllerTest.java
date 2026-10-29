@@ -40,6 +40,8 @@ import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicat
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkType;
 import uk.gov.justice.laa.dstew.access.model.LinkedGroupChangeRequest;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedCallerFactory;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedUserId;
 import uk.gov.justice.laa.dstew.access.version.VersionToken;
 
@@ -61,6 +63,7 @@ class ApplicationCommandControllerTest {
   private LinkApplicationCommandMapper linkApplicationCommandMapper;
   @Mock private MakeApplicationLeadCommandMapper makeApplicationLeadCommandMapper;
   @Mock private UnlinkApplicationCommandMapper unlinkApplicationCommandMapper;
+  @Mock private AuthenticatedCallerFactory authenticatedCallerFactory;
   private AuthenticatedUserId authenticatedUserId;
   private ApplicationCommandController controller;
 
@@ -95,6 +98,7 @@ class ApplicationCommandControllerTest {
             linkApplicationCommandMapper,
             makeApplicationLeadCommandMapper,
             unlinkApplicationCommandMapper,
+            authenticatedCallerFactory,
             authenticatedUserId);
   }
 
@@ -108,10 +112,12 @@ class ApplicationCommandControllerTest {
     UUID id = UUID.randomUUID();
     ApplicationLinkRequest request =
         new ApplicationLinkRequest(UUID.randomUUID(), ApplicationLinkType.FAMILY);
+    AuthenticatedCaller caller = mock(AuthenticatedCaller.class);
     var command =
         new LinkApplicationCommand(
-            id, request.getApplicationId(), LinkType.FAMILY, null, Instant.now());
-    when(linkApplicationCommandMapper.toCommand(id, request)).thenReturn(command);
+            id, request.getApplicationId(), LinkType.FAMILY, null, Instant.now(), caller);
+    when(authenticatedCallerFactory.currentCaller()).thenReturn(caller);
+    when(linkApplicationCommandMapper.toCommand(id, request, caller)).thenReturn(command);
 
     ResponseEntity<Void> response = controller.linkApplication(null, id, request);
 
@@ -125,9 +131,12 @@ class ApplicationCommandControllerTest {
     UUID groupId = UUID.randomUUID();
     LinkedGroupChangeRequest request =
         new LinkedGroupChangeRequest(VersionToken.linkedGroup(groupId, 3L).encode());
+    AuthenticatedCaller caller = mock(AuthenticatedCaller.class);
     MakeApplicationLeadCommand command =
-        new MakeApplicationLeadCommand(id, new ExpectedLinkedGroup(groupId, 3L), Instant.now());
-    when(makeApplicationLeadCommandMapper.toCommand(id, request)).thenReturn(command);
+        new MakeApplicationLeadCommand(
+            id, new ExpectedLinkedGroup(groupId, 3L), Instant.now(), caller);
+    when(authenticatedCallerFactory.currentCaller()).thenReturn(caller);
+    when(makeApplicationLeadCommandMapper.toCommand(id, request, caller)).thenReturn(command);
 
     ResponseEntity<Void> response = controller.makeApplicationLead(null, id, request);
 
@@ -141,9 +150,12 @@ class ApplicationCommandControllerTest {
     UUID groupId = UUID.randomUUID();
     LinkedGroupChangeRequest request =
         new LinkedGroupChangeRequest(VersionToken.linkedGroup(groupId, 3L).encode());
+    AuthenticatedCaller caller = mock(AuthenticatedCaller.class);
     UnlinkApplicationCommand command =
-        new UnlinkApplicationCommand(id, new ExpectedLinkedGroup(groupId, 3L), Instant.now());
-    when(unlinkApplicationCommandMapper.toCommand(id, request)).thenReturn(command);
+        new UnlinkApplicationCommand(
+            id, new ExpectedLinkedGroup(groupId, 3L), Instant.now(), caller);
+    when(authenticatedCallerFactory.currentCaller()).thenReturn(caller);
+    when(unlinkApplicationCommandMapper.toCommand(id, request, caller)).thenReturn(command);
 
     ResponseEntity<Void> response = controller.unlinkApplication(null, id, request);
 

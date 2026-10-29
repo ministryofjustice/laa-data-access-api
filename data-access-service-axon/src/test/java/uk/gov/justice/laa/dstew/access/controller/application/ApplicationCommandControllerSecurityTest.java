@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.controller.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -39,10 +40,13 @@ import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationComm
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.document.UploadDocumentUseCase;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.ExpectedLinkedGroup;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkType;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MakeApplicationLeadCommand;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MakeApplicationLeadUseCase;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.UnlinkApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.UnlinkApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.ready.RecordAutoGrantOutcomeUseCase;
@@ -54,6 +58,8 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationLinkRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkType;
 import uk.gov.justice.laa.dstew.access.model.LinkedGroupChangeRequest;
 import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedCallerFactory;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedUserId;
 import uk.gov.laa.springboot.oauth2.testsupport.StubJwtDecoder;
 import uk.gov.laa.springboot.oauth2.testsupport.StubJwtToken;
@@ -95,6 +101,7 @@ class ApplicationCommandControllerSecurityTest {
   @MockitoBean private MakeApplicationLeadCommandMapper makeApplicationLeadCommandMapper;
   @MockitoBean private UnlinkApplicationCommandMapper unlinkApplicationCommandMapper;
   @MockitoBean private AuthenticatedUserId authenticatedUserId;
+  @MockitoBean private AuthenticatedCallerFactory authenticatedCallerFactory;
 
   @Test
   void givenNoCredentials_whenCreateApplication_thenReturnsUnauthorized() {
@@ -191,8 +198,16 @@ class ApplicationCommandControllerSecurityTest {
     ApplicationLinkRequest request = validLinkRequest();
     var command =
         new LinkApplicationCommand(
-            sourceApplicationId, request.getApplicationId(), LinkType.FAMILY, null, Instant.now());
-    when(linkApplicationCommandMapper.toCommand(sourceApplicationId, request)).thenReturn(command);
+            sourceApplicationId,
+            request.getApplicationId(),
+            LinkType.FAMILY,
+            null,
+            Instant.now(),
+            null);
+    AuthenticatedCaller caller = mock(AuthenticatedCaller.class);
+    when(authenticatedCallerFactory.currentCaller()).thenReturn(caller);
+    when(linkApplicationCommandMapper.toCommand(sourceApplicationId, request, caller))
+        .thenReturn(command);
 
     HttpHeaders headers = new HttpHeaders();
     headers.set("X-Service-Name", "CIVIL_APPLY");
@@ -208,6 +223,54 @@ class ApplicationCommandControllerSecurityTest {
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
     verify(linkApplicationUseCase).execute(command);
+  }
+
+  @Test
+  void givenAuthenticatedJwtUser_whenMakeApplicationLead_thenPassesCallerToCommand() {
+    UUID applicationId = UUID.randomUUID();
+    LinkedGroupChangeRequest request = new LinkedGroupChangeRequest("valid-token");
+    AuthenticatedCaller caller = mock(AuthenticatedCaller.class);
+    MakeApplicationLeadCommand command =
+        new MakeApplicationLeadCommand(
+            applicationId, new ExpectedLinkedGroup(UUID.randomUUID(), 1L), Instant.now(), caller);
+    when(authenticatedCallerFactory.currentCaller()).thenReturn(caller);
+    when(makeApplicationLeadCommandMapper.toCommand(applicationId, request, caller))
+        .thenReturn(command);
+
+    HttpHeaders headers = authenticatedHeaders();
+    var response =
+        restTemplate.exchange(
+            commandUrl(applicationId, "make-lead"),
+            HttpMethod.POST,
+            new HttpEntity<>(request, headers),
+            String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    verify(makeApplicationLeadUseCase).execute(command);
+  }
+
+  @Test
+  void givenAuthenticatedJwtUser_whenUnlinkApplication_thenPassesCallerToCommand() {
+    UUID applicationId = UUID.randomUUID();
+    LinkedGroupChangeRequest request = new LinkedGroupChangeRequest("valid-token");
+    AuthenticatedCaller caller = mock(AuthenticatedCaller.class);
+    UnlinkApplicationCommand command =
+        new UnlinkApplicationCommand(
+            applicationId, new ExpectedLinkedGroup(UUID.randomUUID(), 1L), Instant.now(), caller);
+    when(authenticatedCallerFactory.currentCaller()).thenReturn(caller);
+    when(unlinkApplicationCommandMapper.toCommand(applicationId, request, caller))
+        .thenReturn(command);
+
+    HttpHeaders headers = authenticatedHeaders();
+    var response =
+        restTemplate.exchange(
+            commandUrl(applicationId, "unlink"),
+            HttpMethod.POST,
+            new HttpEntity<>(request, headers),
+            String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    verify(unlinkApplicationUseCase).execute(command);
   }
 
   private CreateApplicationCommand validCommand() {
@@ -229,6 +292,14 @@ class ApplicationCommandControllerSecurityTest {
 
   private ApplicationLinkRequest validLinkRequest() {
     return new ApplicationLinkRequest(UUID.randomUUID(), ApplicationLinkType.FAMILY);
+  }
+
+  private HttpHeaders authenticatedHeaders() {
+    HttpHeaders headers = new HttpHeaders();
+    headers.set("X-Service-Name", "CIVIL_APPLY");
+    headers.setContentType(MediaType.APPLICATION_JSON);
+    headers.setBearerAuth(UNKNOWN_ROLE_BEARER_TOKEN);
+    return headers;
   }
 
   private String url() {

@@ -6,6 +6,9 @@ import org.springframework.transaction.annotation.Transactional;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteResolver;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedCallerResource;
+import uk.gov.justice.laa.dstew.access.security.RequireWriteAccess;
+import uk.gov.justice.laa.dstew.access.security.WriteAccessResolverResource;
 
 /** Secured transactional coordinator for making an application the lead of its linked group. */
 @Service
@@ -17,7 +20,10 @@ public class MakeApplicationLeadCommandHandler {
   /** Resolves and locks the linked group before dispatching its lead-change command. */
   @Transactional
   @AllowApiCaseworker
-  public void handle(MakeApplicationLeadCommand command) {
+  @RequireWriteAccess(resolver = LinkedApplicationGroupWriteAccessResolver.class)
+  public void handle(
+      @AuthenticatedCallerResource @WriteAccessResolverResource
+          MakeApplicationLeadCommand command) {
     var expectedGroup = command.expectedGroup();
     var groupId =
         routeResolver.resolveGroupForMutation(command.applicationId(), expectedGroup.groupId());

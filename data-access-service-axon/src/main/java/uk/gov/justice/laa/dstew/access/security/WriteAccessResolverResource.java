@@ -5,9 +5,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-/**
- * Identifies the injected command-handler argument whose {@code officeCode} property is protected.
- */
+/** Identifies the handler argument supplied to a write-access target resolver. */
 @Target(ElementType.PARAMETER)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface OfficeCodeResource {}
+public @interface WriteAccessResolverResource {}
