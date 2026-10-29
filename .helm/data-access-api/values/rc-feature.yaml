@@ -60,6 +60,9 @@ sentry:
   environment: rc-feature
   tracesSampleRate: 1
 
+alerting:
+  environment: rc-feature
+
 grafana:
   enabled: true
 

@@ -56,6 +56,9 @@ sentry:
   environment: uat
   tracesSampleRate: 1
 
+alerting:
+  environment: uat
+
 grafana:
   enabled: true
 
