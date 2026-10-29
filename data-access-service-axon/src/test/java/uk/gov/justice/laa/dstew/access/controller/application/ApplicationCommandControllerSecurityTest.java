@@ -40,10 +40,13 @@ import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationComm
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.document.UploadDocumentUseCase;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.ExpectedLinkedGroup;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkType;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MakeApplicationLeadCommand;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MakeApplicationLeadUseCase;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.UnlinkApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.UnlinkApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.ready.RecordAutoGrantOutcomeUseCase;
@@ -222,6 +225,54 @@ class ApplicationCommandControllerSecurityTest {
     verify(linkApplicationUseCase).execute(command);
   }
 
+  @Test
+  void givenAuthenticatedJwtUser_whenMakeApplicationLead_thenPassesCallerToCommand() {
+    UUID applicationId = UUID.randomUUID();
+    LinkedGroupChangeRequest request = new LinkedGroupChangeRequest("valid-token");
+    AuthenticatedCaller caller = mock(AuthenticatedCaller.class);
+    MakeApplicationLeadCommand command =
+        new MakeApplicationLeadCommand(
+            applicationId, new ExpectedLinkedGroup(UUID.randomUUID(), 1L), Instant.now(), caller);
+    when(authenticatedCallerFactory.currentCaller()).thenReturn(caller);
+    when(makeApplicationLeadCommandMapper.toCommand(applicationId, request, caller))
+        .thenReturn(command);
+
+    HttpHeaders headers = authenticatedHeaders();
+    var response =
+        restTemplate.exchange(
+            commandUrl(applicationId, "make-lead"),
+            HttpMethod.POST,
+            new HttpEntity<>(request, headers),
+            String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    verify(makeApplicationLeadUseCase).execute(command);
+  }
+
+  @Test
+  void givenAuthenticatedJwtUser_whenUnlinkApplication_thenPassesCallerToCommand() {
+    UUID applicationId = UUID.randomUUID();
+    LinkedGroupChangeRequest request = new LinkedGroupChangeRequest("valid-token");
+    AuthenticatedCaller caller = mock(AuthenticatedCaller.class);
+    UnlinkApplicationCommand command =
+        new UnlinkApplicationCommand(
+            applicationId, new ExpectedLinkedGroup(UUID.randomUUID(), 1L), Instant.now(), caller);
+    when(authenticatedCallerFactory.currentCaller()).thenReturn(caller);
+    when(unlinkApplicationCommandMapper.toCommand(applicationId, request, caller))
+        .thenReturn(command);
+
+    HttpHeaders headers = authenticatedHeaders();
+    var response =
+        restTemplate.exchange(
+            commandUrl(applicationId, "unlink"),
+            HttpMethod.POST,
+            new HttpEntity<>(request, headers),
+            String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    verify(unlinkApplicationUseCase).execute(command);
+  }
+
   private CreateApplicationCommand validCommand() {
     UUID applicationId = UUID.randomUUID();
     return new CreateApplicationCommand(
@@ -241,6 +292,14 @@ class ApplicationCommandControllerSecurityTest {
 
   private ApplicationLinkRequest validLinkRequest() {
     return new ApplicationLinkRequest(UUID.randomUUID(), ApplicationLinkType.FAMILY);
+  }
+
+  private HttpHeaders authenticatedHeaders() {
+    HttpHeaders headers = new HttpHeaders();
+    headers.set("X-Service-Name", "CIVIL_APPLY");
+    headers.setContentType(MediaType.APPLICATION_JSON);
+    headers.setBearerAuth(UNKNOWN_ROLE_BEARER_TOKEN);
+    return headers;
   }
 
   private String url() {
