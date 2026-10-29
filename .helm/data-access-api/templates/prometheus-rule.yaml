@@ -14,7 +14,7 @@
 */}}
 {{- if or (eq .Release.Name "main") (eq .Release.Name "laa-data-access-api") (hasPrefix "pr-" .Release.Name) }}
 {{- $severity := "laa-data-stewardship-access-nonprod" }}
-{{- if eq .Values.sentry.environment "production" }}
+{{- if eq .Values.alerting.environment "production" }}
 {{- $severity = "laa-data-stewardship-access-prod" }}
 {{- end }}
 apiVersion: monitoring.coreos.com/v1
