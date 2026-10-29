@@ -1,12 +1,15 @@
 package uk.gov.justice.laa.dstew.access.security;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.List;
+import java.util.stream.IntStream;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
+import org.springframework.context.ApplicationContext;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
@@ -16,12 +19,12 @@ import org.springframework.stereotype.Component;
 @Component
 @Order(Ordered.LOWEST_PRECEDENCE)
 public class WriteAccessAspect {
-  private final List<WriteAccessTargetResolver> resolvers;
+  private final ApplicationContext applicationContext;
   private final OfficeCodeWriteAccessPolicy policy;
 
   public WriteAccessAspect(
-      List<WriteAccessTargetResolver> resolvers, OfficeCodeWriteAccessPolicy policy) {
-    this.resolvers = resolvers;
+      ApplicationContext applicationContext, OfficeCodeWriteAccessPolicy policy) {
+    this.applicationContext = applicationContext;
     this.policy = policy;
   }
 
@@ -37,67 +40,44 @@ public class WriteAccessAspect {
   }
 
   private Object writeAccessResolverResource(ProceedingJoinPoint joinPoint) {
-    Method method = ((MethodSignature) joinPoint.getSignature()).getMethod();
-    Parameter[] parameters = method.getParameters();
-    Object[] arguments = joinPoint.getArgs();
-    Object resource = null;
-
-    for (int index = 0; index < parameters.length; index++) {
-      if (parameters[index].isAnnotationPresent(WriteAccessResolverResource.class)) {
-        if (resource != null) {
-          throw new IllegalStateException(
-              "Only one @WriteAccessResolverResource parameter is permitted on " + method);
-        }
-        resource = arguments[index];
-      }
-    }
+    Object resource = singleAnnotatedArgument(joinPoint, WriteAccessResolverResource.class);
     if (resource == null) {
       throw new IllegalStateException(
-          "@RequireWriteAccess method must declare an @WriteAccessResolverResource parameter: "
-              + method);
+          "@WriteAccessResolverResource parameter must have a non-null value");
     }
     return resource;
   }
 
   private CallerCommand callerCommand(ProceedingJoinPoint joinPoint) {
+    Object argument = singleAnnotatedArgument(joinPoint, AuthenticatedCallerResource.class);
+    if (!(argument instanceof CallerCommand command)) {
+      throw new IllegalStateException(
+          "@AuthenticatedCallerResource parameter must implement CallerCommand");
+    }
+    if (command.caller() == null) {
+      throw new IllegalStateException(
+          "@AuthenticatedCallerResource CallerCommand must have a non-null caller");
+    }
+    return command;
+  }
+
+  private static Object singleAnnotatedArgument(
+      ProceedingJoinPoint joinPoint, Class<? extends Annotation> annotation) {
     Method method = ((MethodSignature) joinPoint.getSignature()).getMethod();
     Parameter[] parameters = method.getParameters();
-    Object[] arguments = joinPoint.getArgs();
-    CallerCommand callerCommand = null;
-    for (int index = 0; index < parameters.length; index++) {
-      if (parameters[index].isAnnotationPresent(AuthenticatedCallerResource.class)) {
-        if (callerCommand != null) {
-          throw new IllegalStateException(
-              "Only one @AuthenticatedCallerResource parameter is permitted on " + method);
-        }
-        if (!(arguments[index] instanceof CallerCommand command)) {
-          throw new IllegalStateException(
-              "@AuthenticatedCallerResource parameter must implement CallerCommand: " + method);
-        }
-        AuthenticatedCaller caller = command.caller();
-        if (caller == null) {
-          throw new IllegalStateException(
-              "@AuthenticatedCallerResource CallerCommand must have a non-null caller: " + method);
-        }
-        callerCommand = command;
-      }
-    }
-    if (callerCommand == null) {
+    List<Object> matches =
+        IntStream.range(0, parameters.length)
+            .filter(index -> parameters[index].isAnnotationPresent(annotation))
+            .mapToObj(index -> joinPoint.getArgs()[index])
+            .toList();
+    if (matches.size() != 1) {
       throw new IllegalStateException(
-          "@RequireWriteAccess method must declare an @AuthenticatedCallerResource parameter: "
-              + method);
+          "Expected exactly one @" + annotation.getSimpleName() + " parameter on " + method);
     }
-    return callerCommand;
+    return matches.getFirst();
   }
 
   private WriteAccessTargetResolver resolverFor(RequireWriteAccess requireWriteAccess) {
-    return resolvers.stream()
-        .filter(resolver -> resolver.getClass().equals(requireWriteAccess.resolver()))
-        .findFirst()
-        .orElseThrow(
-            () ->
-                new IllegalStateException(
-                    "No WriteAccessTargetResolver bean for "
-                        + requireWriteAccess.resolver().getName()));
+    return applicationContext.getBean(requireWriteAccess.resolver());
   }
 }
