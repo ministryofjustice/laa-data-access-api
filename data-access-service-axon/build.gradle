@@ -8,7 +8,7 @@ plugins {
 }
 
 def versions = [
-        sentry                  : '8.60.0',
+        sentry                  : '8.61.0',
         axonFramework           : '5.4.0',
         jsonSchemaValidator     : '3.0.8',
         swaggerAnnotations      : '2.2.55',
