@@ -31,6 +31,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
+import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
@@ -60,8 +62,53 @@ class WorkListProjectionTest {
   }
 
   @Test
-  void givenApplicationReady_whenProjected_thenReadyAtIsReadinessEventTime() {
+  void givenApplicationCreated_whenProjected_thenCreatesPendingWorkItemAtSubmissionTime() {
     UUID applicationId = UUID.randomUUID();
+    Instant submittedAt = Instant.parse("2026-08-28T09:00:00Z");
+    ApplicationDataPayload data = mock(ApplicationDataPayload.class);
+    when(applicationDataStore.get(applicationId, 5L)).thenReturn(data);
+    when(data.proceedings()).thenReturn(List.of());
+
+    projection.on(
+        new ApplicationCreatedEvent(
+            applicationId,
+            5L,
+            "fingerprint",
+            "APPLICATION_SUBMITTED",
+            1,
+            submittedAt,
+            List.of(),
+            "1A"),
+        message());
+
+    ArgumentCaptor<WorkListItemReadModel> captor =
+        ArgumentCaptor.forClass(WorkListItemReadModel.class);
+    verify(items).save(captor.capture());
+    WorkListItemReadModel row = captor.getValue();
+    assertThat(row.getId()).isEqualTo(applicationId);
+    assertThat(row.getItemType()).isEqualTo(WorkItemType.APPLICATION);
+    assertThat(row.getParentApplicationId()).isNull();
+    assertThat(row.getSubmittedAt()).isEqualTo(submittedAt);
+    assertThat(row.getReadyAt()).isNull();
+    assertThat(row.getAutoGranted()).isEqualTo(AutoGrantedState.PENDING);
+    assertThat(row.getApplicationStatus()).isEqualTo("APPLICATION_SUBMITTED");
+    assertThat(row.getUpdatedAt()).isEqualTo(submittedAt);
+    assertThat(row.getItemVersion()).isZero();
+    verify(applicationDataStore).get(applicationId, 5L);
+  }
+
+  @Test
+  void givenApplicationReady_whenProjected_thenUpdatesTheExistingWorkItem() {
+    UUID applicationId = UUID.randomUUID();
+    UUID assigneeId = UUID.randomUUID();
+    Instant submittedAt = Instant.parse("2026-08-28T09:00:00Z");
+    WorkListItemReadModel existing =
+        new WorkListItemReadModel(
+            WorkItemType.APPLICATION, applicationId, null, submittedAt, 1L, 0L);
+    existing.setAutoGranted(AutoGrantedState.PENDING);
+    existing.setAssigneeId(assigneeId);
+    existing.setAssignmentVersion(4L);
+    when(items.findById(applicationId)).thenReturn(Optional.of(existing));
 
     ApplicationDataPayload data = mock(ApplicationDataPayload.class);
     Proceeding proceeding = mock(Proceeding.class);
@@ -76,23 +123,24 @@ class WorkListProjectionTest {
     projection.on(
         new ApplicationReadyForManualAssessmentEvent(applicationId, 3L, 5L, occurredAt), message());
 
-    ArgumentCaptor<WorkListItemReadModel> captor =
-        ArgumentCaptor.forClass(WorkListItemReadModel.class);
-    verify(items).save(captor.capture());
-    WorkListItemReadModel row = captor.getValue();
+    WorkListItemReadModel row = existing;
     assertThat(row.getId()).isEqualTo(applicationId);
     assertThat(row.getItemType()).isEqualTo(WorkItemType.APPLICATION);
     assertThat(row.getParentApplicationId()).isNull();
-    assertThat(row.getAssigneeId()).isNull();
+    assertThat(row.getAssigneeId()).isEqualTo(assigneeId);
     assertThat(row.getLaaReference()).isEqualTo("LAA-123456");
     assertThat(row.getUsedDelegatedFunctions()).isTrue();
     assertThat(row.getCategoryOfLaw()).isEqualTo("FAMILY");
     assertThat(row.getMatterTypes()).containsExactly("special children act (SCA)");
     assertThat(row.getApplicationStatus()).isEqualTo("APPLICATION_SUBMITTED");
     assertThat(row.getAssignmentBoundaryType()).isEqualTo("DIRECT");
-    assertThat(row.getAssignmentVersion()).isZero();
+    assertThat(row.getAssignmentVersion()).isEqualTo(4L);
     assertThat(row.getItemVersion()).isEqualTo(3L);
-    assertThat(row.getSubmittedAt()).isEqualTo(occurredAt);
+    assertThat(row.getSubmittedAt()).isEqualTo(submittedAt);
+    assertThat(row.getReadyAt()).isEqualTo(occurredAt);
+    assertThat(row.getAutoGranted()).isEqualTo(AutoGrantedState.MANUAL);
+    assertThat(row.getAssignmentVersion()).isEqualTo(4L);
+    verify(items).save(existing);
   }
 
   @Test
@@ -139,6 +187,8 @@ class WorkListProjectionTest {
     assertThat(captor.getValue().getAssignmentBoundaryId()).isEqualTo(priorAuthorityId);
     assertThat(captor.getValue().getAssignmentVersion()).isZero();
     assertThat(captor.getValue().getSubmittedAt()).isEqualTo(Instant.parse("2026-08-28T10:00:00Z"));
+    assertThat(captor.getValue().getReadyAt()).isEqualTo(Instant.parse("2026-08-28T10:00:00Z"));
+    assertThat(captor.getValue().getAutoGranted()).isNull();
     assertThat(captor.getValue().getLaaReference()).isEqualTo("LAA-654321");
     assertThat(captor.getValue().getCategoryOfLaw()).isEqualTo("FAMILY");
     assertThat(captor.getValue().getMatterTypes()).containsExactly("special children act (SCA)");
@@ -196,6 +246,15 @@ class WorkListProjectionTest {
     when(data.proceedings()).thenReturn(proceedings);
     when(data.categoryOfLaw()).thenReturn("Family");
     when(data.categoryOfLawCode()).thenReturn("MAT");
+    WorkListItemReadModel existing =
+        new WorkListItemReadModel(
+            WorkItemType.APPLICATION,
+            applicationId,
+            null,
+            Instant.parse("2026-08-28T09:00:00Z"),
+            1L,
+            0L);
+    when(items.findById(applicationId)).thenReturn(Optional.of(existing));
 
     projection.on(
         new ApplicationReadyForManualAssessmentEvent(
@@ -243,6 +302,15 @@ class WorkListProjectionTest {
     ApplicationDataPayload data = mock(ApplicationDataPayload.class);
     when(applicationDataStore.get(applicationId, 5L)).thenReturn(data);
     when(data.proceedings()).thenReturn(null);
+    WorkListItemReadModel existing =
+        new WorkListItemReadModel(
+            WorkItemType.APPLICATION,
+            applicationId,
+            null,
+            Instant.parse("2026-08-28T09:00:00Z"),
+            1L,
+            0L);
+    when(items.findById(applicationId)).thenReturn(Optional.of(existing));
 
     projection.on(
         new ApplicationReadyForManualAssessmentEvent(
@@ -256,7 +324,25 @@ class WorkListProjectionTest {
   }
 
   @Test
-  void givenWorkListQuery_whenHandled_thenPagesWithOldestReadyTimeFirst() {
+  void givenMissingApplicationWorkItem_whenManualReadinessIsProjected_thenFailsWithoutSaving() {
+    UUID applicationId = UUID.randomUUID();
+    when(items.findById(applicationId)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(
+            () ->
+                projection.on(
+                    new ApplicationReadyForManualAssessmentEvent(
+                        applicationId, 3L, 5L, Instant.parse("2026-08-28T10:00:00Z")),
+                    message()))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Missing application work-list item for " + applicationId);
+
+    verify(items, never()).save(any());
+    verify(applicationDataStore, never()).get(any(), any(Long.class));
+  }
+
+  @Test
+  void givenWorkListQuery_whenHandled_thenPagesWithOldestSubmissionTimeFirst() {
     WorkListItemReadModel item =
         new WorkListItemReadModel(
             WorkItemType.APPLICATION,
@@ -280,6 +366,8 @@ class WorkListProjectionTest {
     assertThat(result.requestedPageSize()).isEqualTo(20);
     assertThat(pageable.getValue().getSort().getOrderFor("submittedAt").getDirection())
         .isEqualTo(Sort.Direction.ASC);
+    assertThat(pageable.getValue().getSort().stream().map(Sort.Order::getProperty))
+        .containsExactly("submittedAt", "itemType", "id");
   }
 
   private Proceeding proceeding(String name, String code) {
