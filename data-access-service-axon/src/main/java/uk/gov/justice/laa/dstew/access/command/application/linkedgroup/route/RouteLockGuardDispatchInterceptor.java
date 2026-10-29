@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.axonframework.messaging.commandhandling.CommandMessage;
 import org.axonframework.messaging.core.MessageDispatchInterceptor;
 import org.axonframework.messaging.core.MessageDispatchInterceptorChain;
@@ -47,9 +48,7 @@ public class RouteLockGuardDispatchInterceptor
   private Optional<String> violation(Object payload) {
     return switch (payload) {
       case EstablishLinkedApplicationGroupCommand command ->
-          RouteLockRegistry.missingApplications(command.memberApplicationIds()).isEmpty()
-              ? Optional.empty()
-              : Optional.of(message(payload, command.memberApplicationIds().toString()));
+          requireApplications(payload, command.memberApplicationIds());
       case AddApplicationToLinkedGroupCommand command ->
           RouteLockRegistry.holdsGroup(command.groupId())
                   && RouteLockRegistry.missingApplications(List.of(command.applicationId()))
@@ -63,29 +62,14 @@ public class RouteLockGuardDispatchInterceptor
                           + " and application "
                           + command.applicationId()));
       case RemoveApplicationFromLinkedGroupCommand command ->
-          RouteLockRegistry.holdsGroup(command.groupId())
-              ? Optional.empty()
-              : Optional.of(message(payload, "group " + command.groupId()));
-      case ChangeLinkedGroupLeadCommand command ->
-          RouteLockRegistry.holdsGroup(command.groupId())
-              ? Optional.empty()
-              : Optional.of(message(payload, "group " + command.groupId()));
-      case AssignLinkedGroupWorkItemCommand command ->
-          RouteLockRegistry.holdsGroup(command.groupId())
-              ? Optional.empty()
-              : Optional.of(message(payload, "group " + command.groupId()));
-      case UnassignLinkedGroupWorkItemCommand command ->
-          RouteLockRegistry.holdsGroup(command.groupId())
-              ? Optional.empty()
-              : Optional.of(message(payload, "group " + command.groupId()));
+          requireGroup(payload, command.groupId());
+      case ChangeLinkedGroupLeadCommand command -> requireGroup(payload, command.groupId());
+      case AssignLinkedGroupWorkItemCommand command -> requireGroup(payload, command.groupId());
+      case UnassignLinkedGroupWorkItemCommand command -> requireGroup(payload, command.groupId());
       case DirectWorkItemAssignmentCommand command ->
-          RouteLockRegistry.missingApplications(List.of(command.workItemId())).isEmpty()
-              ? Optional.empty()
-              : Optional.of(message(payload, List.of(command.workItemId()).toString()));
+          requireApplications(payload, List.of(command.workItemId()));
       case DirectWorkItemUnassignmentCommand command ->
-          RouteLockRegistry.missingApplications(List.of(command.workItemId())).isEmpty()
-              ? Optional.empty()
-              : Optional.of(message(payload, List.of(command.workItemId()).toString()));
+          requireApplications(payload, List.of(command.workItemId()));
       case MarkApplicationReadyCommand command ->
           RouteLockRegistry.missingApplications(List.of(command.applicationId())).isEmpty()
                   && (command.linkedGroupId() == null
@@ -101,6 +85,18 @@ public class RouteLockGuardDispatchInterceptor
                               : " and group " + command.linkedGroupId())));
       default -> Optional.empty();
     };
+  }
+
+  private Optional<String> requireGroup(Object payload, UUID groupId) {
+    return RouteLockRegistry.holdsGroup(groupId)
+        ? Optional.empty()
+        : Optional.of(message(payload, "group " + groupId));
+  }
+
+  private Optional<String> requireApplications(Object payload, List<UUID> applicationIds) {
+    return RouteLockRegistry.missingApplications(applicationIds).isEmpty()
+        ? Optional.empty()
+        : Optional.of(message(payload, applicationIds.toString()));
   }
 
   private String message(Object payload, String lockTarget) {

@@ -130,7 +130,7 @@ class MarkApplicationReadyGroupAssignmentTest {
   void givenGroupWithoutMembers_whenReady_thenRejectsChangedMembership() {
     givenApplicationState(stateOf(notReady(APPLICATION_ID)));
     givenDataStore(0L);
-    givenGroup(null);
+    givenGroup(List.of());
 
     assertThatThrownBy(
             () ->
@@ -173,7 +173,7 @@ class MarkApplicationReadyGroupAssignmentTest {
     var group = mock(LinkedApplicationGroupAggregate.class);
     var state = mock(LinkedApplicationGroupState.class);
     when(state.getGroupId()).thenReturn(GROUP_ID);
-    when(state.getMemberApplicationIds()).thenReturn(members);
+    when(state.memberIdsOrEmpty()).thenReturn(members);
     when(group.getState()).thenReturn(state);
     when(stateManager.loadEntity(LinkedApplicationGroupAggregate.class, GROUP_ID, context))
         .thenReturn(CompletableFuture.completedFuture(group));

@@ -6,6 +6,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
@@ -107,18 +108,8 @@ public final class LinkedGroupAssignmentDecider {
       }
     }
 
-    var events = new ArrayList<Object>();
-    ApplicationDecider.decideGroupMemberAssignment(
-            addressed, command.caseworkerId(), command.occurredAt())
-        .ifPresent(events::add);
-    for (var entry : new TreeMap<>(members).entrySet()) {
-      if (!entry.getKey().equals(command.workItemId())) {
-        ApplicationDecider.decideGroupMemberAssignment(
-                entry.getValue(), command.caseworkerId(), command.occurredAt())
-            .ifPresent(events::add);
-      }
-    }
-    return events;
+    return decideAddressedFirst(
+        command.workItemId(), members, command.caseworkerId(), command.occurredAt());
   }
 
   /**
@@ -137,16 +128,7 @@ public final class LinkedGroupAssignmentDecider {
           command.workItemId(), "it is already unassigned");
     }
 
-    var events = new ArrayList<Object>();
-    ApplicationDecider.decideGroupMemberAssignment(addressed, null, command.occurredAt())
-        .ifPresent(events::add);
-    for (var entry : new TreeMap<>(members).entrySet()) {
-      if (!entry.getKey().equals(command.workItemId())) {
-        ApplicationDecider.decideGroupMemberAssignment(entry.getValue(), null, command.occurredAt())
-            .ifPresent(events::add);
-      }
-    }
-    return events;
+    return decideAddressedFirst(command.workItemId(), members, null, command.occurredAt());
   }
 
   /**
@@ -165,11 +147,9 @@ public final class LinkedGroupAssignmentDecider {
       return Optional.empty();
     }
     @Nullable UUID targetCaseworkerId =
-        switch (otherAssignment) {
-          case GroupAssignment.Assigned assigned -> assigned.caseworkerId();
-          case GroupAssignment.Unassigned ignored -> null;
-          case GroupAssignment.None ignored -> null;
-        };
+        otherAssignment instanceof GroupAssignment.Assigned assigned
+            ? assigned.caseworkerId()
+            : null;
     return ApplicationDecider.decideAssignmentChange(
         stateBeforeReady.getApplicationId(),
         nextApplicationVersion,
@@ -179,6 +159,29 @@ public final class LinkedGroupAssignmentDecider {
         occurredAt);
   }
 
+  /**
+   * Moves the addressed member to {@code targetCaseworkerId} first, then the other members in
+   * application ID order, so the addressed member's event is always appended first.
+   */
+  private static List<Object> decideAddressedFirst(
+      UUID addressedId,
+      Map<UUID, ApplicationState> members,
+      @Nullable UUID targetCaseworkerId,
+      Instant occurredAt) {
+    var events = new ArrayList<Object>();
+    ApplicationDecider.decideGroupMemberAssignment(
+            members.get(addressedId), targetCaseworkerId, occurredAt)
+        .ifPresent(events::add);
+    for (var entry : new TreeMap<>(members).entrySet()) {
+      if (!entry.getKey().equals(addressedId)) {
+        ApplicationDecider.decideGroupMemberAssignment(
+                entry.getValue(), targetCaseworkerId, occurredAt)
+            .ifPresent(events::add);
+      }
+    }
+    return events;
+  }
+
   private static @Nullable UUID firstAssignedJoiningCaseworker(
       Collection<ApplicationState> joiningApplications) {
     var sortedApplications = new TreeMap<UUID, ApplicationState>();
@@ -186,7 +189,7 @@ public final class LinkedGroupAssignmentDecider {
     return sortedApplications.values().stream()
         .filter(ApplicationDecider::isActiveWorkItem)
         .map(ApplicationState::getCaseworkerId)
-        .filter(caseworkerId -> caseworkerId != null)
+        .filter(Objects::nonNull)
         .findFirst()
         .orElse(null);
   }
@@ -194,8 +197,7 @@ public final class LinkedGroupAssignmentDecider {
   private static void requireMember(LinkedApplicationGroupState group, UUID applicationId) {
     if (group.getGroupId() == null
         || group.isDissolved()
-        || group.getMemberApplicationIds() == null
-        || !group.getMemberApplicationIds().contains(applicationId)) {
+        || !group.memberIdsOrEmpty().contains(applicationId)) {
       throw new ApplicationLinkConflictException(
           "Linked group membership of application "
               + applicationId

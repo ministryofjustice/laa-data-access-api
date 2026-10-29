@@ -5,6 +5,7 @@ import java.util.UUID;
 import org.axonframework.eventsourcing.annotation.EventSourcingHandler;
 import org.axonframework.eventsourcing.annotation.reflection.EntityCreator;
 import org.axonframework.extension.spring.stereotype.EventSourced;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Event-sourced consistency boundary that owns group identity, lead assignment, and membership for
@@ -57,5 +58,11 @@ public class LinkedApplicationGroupAggregate {
   /** Returns the folded state for the dedicated command handlers; handlers must not mutate it. */
   public LinkedApplicationGroupState getState() {
     return state;
+  }
+
+  /** Returns the folded state of {@code group}, or an empty state when the group does not exist. */
+  public static LinkedApplicationGroupState stateOf(
+      @Nullable LinkedApplicationGroupAggregate group) {
+    return group == null ? new LinkedApplicationGroupState() : group.getState();
   }
 }

@@ -58,7 +58,7 @@ class LinkedGroupWorkItemAssignmentCommandHandlerTest {
   private void givenExistingGroup() {
     when(group.getState()).thenReturn(groupState);
     when(groupState.getGroupId()).thenReturn(GROUP_ID);
-    when(groupState.getMemberApplicationIds()).thenReturn(List.of(SECOND_ID, FIRST_ID));
+    when(groupState.memberIdsOrEmpty()).thenReturn(List.of(SECOND_ID, FIRST_ID));
   }
 
   @Test

@@ -16,4 +16,9 @@ public class LinkedApplicationGroupState {
   List<UUID> memberApplicationIds;
   long groupVersion;
   boolean dissolved;
+
+  /** Returns the member application IDs, or an empty list before the group is established. */
+  public List<UUID> memberIdsOrEmpty() {
+    return memberApplicationIds == null ? List.of() : memberApplicationIds;
+  }
 }

@@ -2,7 +2,6 @@ package uk.gov.justice.laa.dstew.access.command.application.handler;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
 import org.axonframework.messaging.core.unitofwork.ProcessingContext;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
@@ -61,14 +60,12 @@ public class MarkApplicationReadyCommandHandler {
               .loadEntity(LinkedApplicationGroupAggregate.class, command.linkedGroupId(), context)
               .join()
               .getState();
-      var memberIds =
-          group.getMemberApplicationIds() == null
-              ? List.<UUID>of()
-              : group.getMemberApplicationIds();
       var others =
           LinkedGroupMembers.load(
               stateManager,
-              memberIds.stream().filter(id -> !id.equals(command.applicationId())).toList(),
+              group.memberIdsOrEmpty().stream()
+                  .filter(id -> !id.equals(command.applicationId()))
+                  .toList(),
               context);
       LinkedGroupAssignmentDecider.decideReadyAssignment(
               group,

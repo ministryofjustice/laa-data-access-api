@@ -1,16 +1,13 @@
 package uk.gov.justice.laa.dstew.access.command.application.linkedgroup.handler;
 
-import jakarta.annotation.Nullable;
-import java.util.List;
-import java.util.UUID;
 import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
 import org.axonframework.messaging.core.unitofwork.ProcessingContext;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import org.axonframework.modelling.StateManager;
 import org.axonframework.modelling.annotation.InjectEntity;
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupAggregate;
-import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupState;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedGroupAssignmentDecider;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedGroupMembers;
 import uk.gov.justice.laa.dstew.access.command.worklist.assign.AssignLinkedGroupWorkItemCommand;
@@ -28,8 +25,8 @@ public class LinkedGroupWorkItemAssignmentCommandHandler {
       StateManager stateManager,
       ProcessingContext context,
       EventAppender eventAppender) {
-    var state = group == null ? new LinkedApplicationGroupState() : group.getState();
-    var members = LinkedGroupMembers.load(stateManager, memberIdsOrEmpty(state), context);
+    var state = LinkedApplicationGroupAggregate.stateOf(group);
+    var members = LinkedGroupMembers.load(stateManager, state.memberIdsOrEmpty(), context);
     eventAppender.append(LinkedGroupAssignmentDecider.decideGroupAssign(state, members, command));
   }
 
@@ -41,12 +38,8 @@ public class LinkedGroupWorkItemAssignmentCommandHandler {
       StateManager stateManager,
       ProcessingContext context,
       EventAppender eventAppender) {
-    var state = group == null ? new LinkedApplicationGroupState() : group.getState();
-    var members = LinkedGroupMembers.load(stateManager, memberIdsOrEmpty(state), context);
+    var state = LinkedApplicationGroupAggregate.stateOf(group);
+    var members = LinkedGroupMembers.load(stateManager, state.memberIdsOrEmpty(), context);
     eventAppender.append(LinkedGroupAssignmentDecider.decideGroupUnassign(state, members, command));
-  }
-
-  private static List<UUID> memberIdsOrEmpty(LinkedApplicationGroupState state) {
-    return state.getMemberApplicationIds() == null ? List.of() : state.getMemberApplicationIds();
   }
 }

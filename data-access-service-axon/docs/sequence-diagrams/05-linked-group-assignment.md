@@ -21,7 +21,7 @@ sequenceDiagram
     Client->>Coordinator: POST /api/v0/applications/{id}/link
     Coordinator->>Resolver: resolve(source, target)
     Resolver->>Resolver: lock routes in ascending application ID order
-    Resolver->>Resolver: re-read membership; changed → 409
+    Resolver->>Resolver: re-read membership, changed → 409
     Resolver-->>Coordinator: add to existing group
     Coordinator->>Handler: AddApplicationToLinkedGroupCommand
     Handler->>Group: load group through @InjectEntity

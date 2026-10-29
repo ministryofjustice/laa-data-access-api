@@ -1,6 +1,5 @@
 package uk.gov.justice.laa.dstew.access.command.application.linkedgroup.handler;
 
-import jakarta.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -9,11 +8,11 @@ import org.axonframework.messaging.core.unitofwork.ProcessingContext;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import org.axonframework.modelling.StateManager;
 import org.axonframework.modelling.annotation.InjectEntity;
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.EstablishLinkedApplicationGroupCommand;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupDecider;
-import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupState;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedGroupAssignmentDecider;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedGroupMembers;
 
@@ -31,7 +30,7 @@ public class EstablishLinkedApplicationGroupCommandHandler {
       EventAppender eventAppender) {
     var created =
         LinkedApplicationGroupDecider.decideEstablish(
-            group == null ? new LinkedApplicationGroupState() : group.getState(), command);
+            LinkedApplicationGroupAggregate.stateOf(group), command);
     if (created.isEmpty()) {
       return;
     }
@@ -44,7 +43,7 @@ public class EstablishLinkedApplicationGroupCommandHandler {
             .filter(entry -> !entry.getKey().equals(command.leadApplicationId()))
             .map(Map.Entry::getValue)
             .toList();
-    var events = new ArrayList<Object>();
+    var events = new ArrayList<>();
     events.add(created.get());
     events.addAll(
         LinkedGroupAssignmentDecider.decideJoin(

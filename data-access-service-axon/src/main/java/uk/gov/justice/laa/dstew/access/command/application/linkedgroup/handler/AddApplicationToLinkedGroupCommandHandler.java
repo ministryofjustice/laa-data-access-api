@@ -1,6 +1,5 @@
 package uk.gov.justice.laa.dstew.access.command.application.linkedgroup.handler;
 
-import jakarta.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
@@ -8,11 +7,11 @@ import org.axonframework.messaging.core.unitofwork.ProcessingContext;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import org.axonframework.modelling.StateManager;
 import org.axonframework.modelling.annotation.InjectEntity;
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.AddApplicationToLinkedGroupCommand;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupDecider;
-import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupState;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedGroupAssignmentDecider;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedGroupMembers;
 
@@ -30,15 +29,15 @@ public class AddApplicationToLinkedGroupCommandHandler {
       EventAppender eventAppender) {
     var added =
         LinkedApplicationGroupDecider.decideAddApplication(
-            group == null ? new LinkedApplicationGroupState() : group.getState(), command);
+            LinkedApplicationGroupAggregate.stateOf(group), command);
     if (added.isEmpty()) {
       return;
     }
 
-    var memberIds = List.copyOf(group.getState().getMemberApplicationIds());
-    var ids = new ArrayList<>(memberIds);
-    ids.add(command.applicationId());
-    var applications = LinkedGroupMembers.load(stateManager, ids, context);
+    var memberIds = List.copyOf(group.getState().memberIdsOrEmpty());
+    var applicationIdsToLoad = new ArrayList<>(memberIds);
+    applicationIdsToLoad.add(command.applicationId());
+    var applications = LinkedGroupMembers.load(stateManager, applicationIdsToLoad, context);
     var existing = memberIds.stream().map(applications::get).toList();
     var joining = List.of(applications.get(command.applicationId()));
     var events = new ArrayList<Object>();
