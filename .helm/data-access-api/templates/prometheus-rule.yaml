@@ -1,18 +1,8 @@
 {{/*
-  Guard: only create this PrometheusRule for persistent environments (UAT, Staging, Production),
-  plus ephemeral PR previews while we trial this alert (TEMPORARY — remove the "pr-" prefix check
-  below once the trial is done, so ephemeral environments go back to being excluded).
-
-  Ephemeral PR previews and RC feature environments share the same values file and namespace as
-  persistent UAT, so the release name is the only way to tell them apart:
-    - "main"                -> persistent UAT          (keep)
-    - "laa-data-access-api" -> Staging or Production    (keep)
-    - "pr-<number>"         -> ephemeral PR preview      (temporarily included for the trial)
-    - "feat-env-<sha>"      -> RC feature environment    (still excluded)
-
-  Update this allow-list if the CI release-naming convention ever changes.
+  Alerting is enabled only in persistent environments (UAT, Staging,
+  and Production). Ephemeral PR preview and RC feature environments are excluded.
 */}}
-{{- if or (eq .Release.Name "main") (eq .Release.Name "laa-data-access-api") (hasPrefix "pr-" .Release.Name) }}
+{{- if or (eq .Release.Name "main") (eq .Release.Name "laa-data-access-api") }}
 {{- $severity := "laa-data-stewardship-access-nonprod" }}
 {{- if eq .Values.alerting.environment "production" }}
 {{- $severity = "laa-data-stewardship-access-prod" }}
@@ -30,12 +20,44 @@ spec:
       rules:
         - alert: DataAccessApiHttpLatencyP95Warning
           expr: >-
-            histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{namespace="{{ .Release.Namespace }}",release="{{ .Release.Name }}"}[5m]))) > 0
-          for: 1m
+            histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{namespace="{{ .Release.Namespace }}",release="{{ .Release.Name }}"}[5m]))) > 1
+          for: 5m
           labels:
             severity: {{ $severity }}
           annotations:
             message: >-
               95th percentile HTTP latency for {{ .Release.Name }} in {{ .Release.Namespace }} is
               {{`{{ $value }}`}}s.
+        - alert: DataAccessApiHttpLatencyP95Critical
+          expr: >-
+            histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{namespace="{{ .Release.Namespace }}",release="{{ .Release.Name }}"}[5m]))) > 3
+          for: 2m
+          labels:
+            severity: {{ $severity }}
+          annotations:
+            message: >-
+              95th percentile HTTP latency for {{ .Release.Name }} in {{ .Release.Namespace }} is
+              {{`{{ $value }}`}}s (critical threshold exceeded).
+        - alert: DataAccessApiHttp5xxErrorRateWarning
+          expr: >-
+            sum(rate(http_server_requests_seconds_count{namespace="{{ .Release.Namespace }}",release="{{ .Release.Name }}",status=~"5.."}[5m]))
+            /
+            sum(rate(http_server_requests_seconds_count{namespace="{{ .Release.Namespace }}",release="{{ .Release.Name }}"}[5m])) > 0.05
+          for: 5m
+          labels:
+            severity: {{ $severity }}
+          annotations:
+            message: >-
+              5xx error rate for {{ .Release.Name }} in {{ .Release.Namespace }} is
+              {{`{{ $value | humanizePercentage }}`}}.
+        - alert: DataAccessApiSqlQueryLatencyP95Warning
+          expr: >-
+            histogram_quantile(0.95, sum by (le) (rate(jdbc_query_seconds_bucket{namespace="{{ .Release.Namespace }}",release="{{ .Release.Name }}"}[5m]))) > {{ .Values.slowQueryThresholdSeconds }}
+          for: 5m
+          labels:
+            severity: {{ $severity }}
+          annotations:
+            message: >-
+              95th percentile SQL query latency for {{ .Release.Name }} in {{ .Release.Namespace }} is
+              {{`{{ $value }}`}}s (slow query threshold: {{ .Values.slowQueryThresholdSeconds }}s).
 {{- end }}
