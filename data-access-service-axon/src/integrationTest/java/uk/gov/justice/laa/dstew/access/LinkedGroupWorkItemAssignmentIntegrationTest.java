@@ -25,8 +25,10 @@ class LinkedGroupWorkItemAssignmentIntegrationTest extends AbstractLinkedGroupIn
     assertThat(assign(memberIds.get(1), TestJwtDecoderConfig.CASEWORKER_ID, 0L).getStatusCode())
         .isEqualTo(HttpStatus.OK);
 
+    var groupId = routeRepository.findById(memberIds.getFirst()).orElseThrow().getGroupId();
     for (var memberId : memberIds) {
       awaitWorkListAssignee(memberId, TestJwtDecoderConfig.CASEWORKER_ID, 1L);
+      awaitWorkListBoundary(memberId, "LINKED_GROUP", groupId);
     }
   }
 
@@ -102,6 +104,46 @@ class LinkedGroupWorkItemAssignmentIntegrationTest extends AbstractLinkedGroupIn
     awaitWorkListAssignee(leadId, TestJwtDecoderConfig.CASEWORKER_ID, 1L);
     awaitWorkListAssignee(readyMemberId, TestJwtDecoderConfig.CASEWORKER_ID, 1L);
     assertThat(countDomainEvents(notReadyMemberId, WorkItemAssigned.class)).isZero();
+  }
+
+  @Test
+  void givenLinkedBeforeReady_whenMarkedReady_thenWorkItemUsesGroupBoundary() {
+    var lastName = uniqueLastName();
+    var leadId = createApplication(lastName);
+    var memberId = createSubmittedApplication(lastName);
+    assertThat(link(memberId, leadId, null).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    var groupId =
+        Objects.requireNonNull(awaitRoute(leadId, ApplicationGroupRouteKind.LINKED_GROUP));
+    awaitWorkListBoundary(leadId, "LINKED_GROUP", groupId);
+
+    assertThat(markReady(memberId).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+
+    awaitWorkListBoundary(memberId, "LINKED_GROUP", groupId);
+  }
+
+  @Test
+  void givenThreeMemberGroup_whenMemberUnlinked_thenOnlyThatMemberUsesDirectBoundary() {
+    var memberIds = createGroup(3);
+    var groupId = routeRepository.findById(memberIds.getFirst()).orElseThrow().getGroupId();
+    var removedId = memberIds.get(1);
+
+    assertThat(unlink(removedId, groupToken(groupId, 1L)).getStatusCode())
+        .isEqualTo(HttpStatus.NO_CONTENT);
+
+    awaitWorkListBoundary(removedId, "DIRECT", removedId);
+    awaitWorkListBoundary(memberIds.getFirst(), "LINKED_GROUP", groupId);
+    awaitWorkListBoundary(memberIds.get(2), "LINKED_GROUP", groupId);
+  }
+
+  @Test
+  void givenTwoMemberGroup_whenMemberUnlinked_thenEveryMemberUsesDirectBoundary() {
+    var memberIds = createGroup(2);
+    var groupId = routeRepository.findById(memberIds.getFirst()).orElseThrow().getGroupId();
+
+    assertThat(unlink(memberIds.get(1), groupToken(groupId, 0L)).getStatusCode())
+        .isEqualTo(HttpStatus.NO_CONTENT);
+
+    memberIds.forEach(memberId -> awaitWorkListBoundary(memberId, "DIRECT", memberId));
   }
 
   @Test

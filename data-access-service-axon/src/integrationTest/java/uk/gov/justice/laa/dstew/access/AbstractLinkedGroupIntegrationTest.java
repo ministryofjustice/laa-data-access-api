@@ -22,6 +22,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationLinkRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkType;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantedOutcomeRequest;
+import uk.gov.justice.laa.dstew.access.model.LinkedGroupChangeRequest;
 import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.WorkListAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.WorkListUnassignRequest;
@@ -99,6 +100,15 @@ public abstract class AbstractLinkedGroupIntegrationTest extends BaseIntegration
         String.class);
   }
 
+  /** Removes an application from its linked group at the expected group version. */
+  protected ResponseEntity<String> unlink(UUID applicationId, String token) {
+    return restTemplate.exchange(
+        url("/api/v0/applications/" + applicationId + "/unlink"),
+        HttpMethod.POST,
+        new HttpEntity<>(new LinkedGroupChangeRequest(token), headers()),
+        String.class);
+  }
+
   /** Assigns an application work item to a caseworker at the expected version. */
   protected ResponseEntity<String> assign(UUID itemId, UUID caseworkerId, long version) {
     return restTemplate.exchange(
@@ -148,6 +158,23 @@ public abstract class AbstractLinkedGroupIntegrationTest extends BaseIntegration
               assertThat(row.get("assignee_id")).isEqualTo(expectedAssignee);
               assertThat(((Number) row.get("assignment_version")).longValue())
                   .isEqualTo(expectedAssignmentVersion);
+            });
+  }
+
+  /** Waits until the projected work item has the expected assignment boundary. */
+  protected void awaitWorkListBoundary(
+      UUID itemId, String expectedBoundaryType, UUID expectedBoundaryId) {
+    await()
+        .atMost(15, TimeUnit.SECONDS)
+        .pollInterval(100, TimeUnit.MILLISECONDS)
+        .untilAsserted(
+            () -> {
+              var row =
+                  jdbcTemplate.queryForMap(
+                      "SELECT assignment_boundary_type, assignment_boundary_id FROM axon.work_list_item WHERE item_id = ?",
+                      itemId);
+              assertThat(row.get("assignment_boundary_type")).isEqualTo(expectedBoundaryType);
+              assertThat(row.get("assignment_boundary_id")).isEqualTo(expectedBoundaryId);
             });
   }
 

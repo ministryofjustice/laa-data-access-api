@@ -34,6 +34,10 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupDissolvedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberRemovedFromGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
@@ -47,6 +51,7 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType
 
 class WorkListProjectionTest {
   private WorkListItemReadRepository items;
+  private WorkListGroupMemberReadRepository groupMembers;
   private ApplicationDataStore applicationDataStore;
   private PriorAuthorityDataStore priorAuthorityDataStore;
   private WorkListProjection projection;
@@ -54,9 +59,11 @@ class WorkListProjectionTest {
   @BeforeEach
   void setUp() {
     items = mock(WorkListItemReadRepository.class);
+    groupMembers = mock(WorkListGroupMemberReadRepository.class);
     applicationDataStore = mock(ApplicationDataStore.class);
     priorAuthorityDataStore = mock(PriorAuthorityDataStore.class);
-    projection = new WorkListProjection(items, applicationDataStore, priorAuthorityDataStore);
+    projection =
+        new WorkListProjection(items, groupMembers, applicationDataStore, priorAuthorityDataStore);
   }
 
   @Test
@@ -460,6 +467,147 @@ class WorkListProjectionTest {
     projection.reset();
 
     verify(items).deleteAllInBatch();
+    verify(groupMembers).deleteAllInBatch();
+  }
+
+  @Test
+  void givenLinkedApplication_whenReadyProjected_thenUsesLinkedGroupBoundary() {
+    UUID applicationId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    when(applicationDataStore.get(applicationId, 5L))
+        .thenReturn(mock(ApplicationDataPayload.class));
+    when(groupMembers.findById(applicationId))
+        .thenReturn(Optional.of(new WorkListGroupMemberReadModel(applicationId, groupId)));
+
+    projection.on(
+        new ApplicationReadyForManualAssessmentEvent(applicationId, 3L, 5L, Instant.now()),
+        message());
+
+    ArgumentCaptor<WorkListItemReadModel> captor =
+        ArgumentCaptor.forClass(WorkListItemReadModel.class);
+    verify(items).save(captor.capture());
+    assertLinkedGroupBoundary(captor.getValue(), groupId);
+  }
+
+  @Test
+  void givenActiveApplications_whenGroupCreated_thenMembersUseLinkedGroupBoundary() {
+    UUID leadId = UUID.randomUUID();
+    UUID memberId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    WorkListItemReadModel lead = applicationRow(leadId);
+    WorkListItemReadModel member = applicationRow(memberId);
+    when(items.findById(leadId)).thenReturn(Optional.of(lead));
+    when(items.findById(memberId)).thenReturn(Optional.of(member));
+
+    projection.on(
+        new LinkedApplicationGroupCreatedEvent(
+            groupId, leadId, List.of(leadId, memberId), Instant.now()),
+        message());
+
+    assertLinkedGroupBoundary(lead, groupId);
+    assertLinkedGroupBoundary(member, groupId);
+    verify(groupMembers, times(2)).save(any(WorkListGroupMemberReadModel.class));
+    verify(items).save(lead);
+    verify(items).save(member);
+  }
+
+  @Test
+  void givenNotYetReadyApplication_whenAddedToGroup_thenRecordsMembershipOnly() {
+    UUID memberId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    when(items.findById(memberId)).thenReturn(Optional.empty());
+
+    projection.on(
+        new MemberAddedToGroupEvent(groupId, UUID.randomUUID(), memberId, Instant.now()),
+        message());
+
+    ArgumentCaptor<WorkListGroupMemberReadModel> captor =
+        ArgumentCaptor.forClass(WorkListGroupMemberReadModel.class);
+    verify(groupMembers).save(captor.capture());
+    assertThat(captor.getValue().getApplicationId()).isEqualTo(memberId);
+    assertThat(captor.getValue().getGroupId()).isEqualTo(groupId);
+    verify(items, never()).save(any());
+  }
+
+  @Test
+  void givenGroupedApplication_whenRemovedFromGroup_thenUsesDirectBoundary() {
+    UUID memberId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    WorkListItemReadModel member = applicationRow(memberId);
+    member.useLinkedGroupBoundary(groupId);
+    when(items.findById(memberId)).thenReturn(Optional.of(member));
+
+    projection.on(
+        new MemberRemovedFromGroupEvent(groupId, UUID.randomUUID(), memberId, 2L, Instant.now()),
+        message());
+
+    assertDirectBoundary(member);
+    verify(groupMembers).deleteById(memberId);
+    verify(items).save(member);
+  }
+
+  @Test
+  void givenGroupedApplications_whenGroupDissolved_thenEveryMemberUsesDirectBoundary() {
+    UUID leadId = UUID.randomUUID();
+    UUID removedId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    WorkListItemReadModel lead = applicationRow(leadId);
+    lead.useLinkedGroupBoundary(groupId);
+    WorkListItemReadModel removed = applicationRow(removedId);
+    removed.useLinkedGroupBoundary(groupId);
+    when(items.findById(leadId)).thenReturn(Optional.of(lead));
+    when(items.findById(removedId)).thenReturn(Optional.of(removed));
+    when(groupMembers.findAllByGroupId(groupId))
+        .thenReturn(List.of(new WorkListGroupMemberReadModel(leadId, groupId)));
+
+    projection.on(
+        new LinkedApplicationGroupDissolvedEvent(
+            groupId, leadId, removedId, List.of(leadId), 1L, Instant.now()),
+        message());
+
+    assertDirectBoundary(lead);
+    assertDirectBoundary(removed);
+    verify(groupMembers).deleteById(leadId);
+    verify(groupMembers).deleteById(removedId);
+  }
+
+  @Test
+  void givenGroupedPriorAuthorityId_whenGroupCreated_thenLeavesPriorAuthorityDirect() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    WorkListItemReadModel row =
+        new WorkListItemReadModel(
+            WorkItemType.PRIOR_AUTHORITY,
+            priorAuthorityId,
+            UUID.randomUUID(),
+            Instant.now(),
+            1L,
+            0L);
+    when(items.findById(priorAuthorityId)).thenReturn(Optional.of(row));
+
+    projection.on(
+        new LinkedApplicationGroupCreatedEvent(
+            UUID.randomUUID(), priorAuthorityId, List.of(priorAuthorityId), Instant.now()),
+        message());
+
+    assertDirectBoundary(row);
+    verify(items, never()).save(any());
+  }
+
+  private static WorkListItemReadModel applicationRow(UUID applicationId) {
+    return new WorkListItemReadModel(
+        WorkItemType.APPLICATION, applicationId, null, Instant.now(), 1L, 0L);
+  }
+
+  private static void assertLinkedGroupBoundary(WorkListItemReadModel row, UUID groupId) {
+    assertThat(row.getAssignmentBoundaryType()).isEqualTo("LINKED_GROUP");
+    assertThat(row.getAssignmentBoundaryId()).isEqualTo(groupId);
+    assertThat(row.getGroupId()).isEqualTo(groupId);
+  }
+
+  private static void assertDirectBoundary(WorkListItemReadModel row) {
+    assertThat(row.getAssignmentBoundaryType()).isEqualTo("DIRECT");
+    assertThat(row.getAssignmentBoundaryId()).isEqualTo(row.getId());
+    assertThat(row.getGroupId()).isNull();
   }
 
   private static EventMessage message() {
