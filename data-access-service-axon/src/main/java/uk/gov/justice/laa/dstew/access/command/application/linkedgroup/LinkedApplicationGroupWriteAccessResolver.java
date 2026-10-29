@@ -7,6 +7,8 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRoute;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteRepository;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationLinkConflictException;
@@ -24,6 +26,7 @@ public class LinkedApplicationGroupWriteAccessResolver implements WriteAccessTar
   }
 
   @Override
+  @Transactional(propagation = Propagation.MANDATORY)
   public List<ProtectedResource> resolve(Object resource) {
     if (resource instanceof LinkApplicationCommand linkCommand) {
       return resolveLink(linkCommand);

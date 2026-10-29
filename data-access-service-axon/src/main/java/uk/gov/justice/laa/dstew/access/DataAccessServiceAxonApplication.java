@@ -12,6 +12,9 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 @ExcludeFromGeneratedCodeCoverage
 @SpringBootApplication(exclude = FlywayAutoConfiguration.class)
 @EnableScheduling
+// Transaction advice must wrap WriteAccessAspect (which has LOWEST_PRECEDENCE).
+// This makes write-access resolution, including pessimistic lock queries, run inside
+// the command handler transaction rather than relying on Spring's equal-order tie-break.
 @EnableTransactionManagement(order = Ordered.HIGHEST_PRECEDENCE)
 @EntityScan(
     basePackages = {
