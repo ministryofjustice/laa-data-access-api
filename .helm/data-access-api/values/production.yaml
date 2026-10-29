@@ -48,6 +48,9 @@ sentry:
   environment: production
   tracesSampleRate: 1
 
+alerting:
+  environment: production
+
 grafana:
   enabled: true
 

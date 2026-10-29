@@ -59,6 +59,9 @@ sentry:
   environment: staging
   tracesSampleRate: 1
 
+alerting:
+  environment: staging
+
 grafana:
   enabled: true
 
