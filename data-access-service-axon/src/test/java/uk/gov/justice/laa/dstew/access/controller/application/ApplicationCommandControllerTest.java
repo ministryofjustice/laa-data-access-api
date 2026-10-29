@@ -19,14 +19,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.CreateApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionUseCase;
-import uk.gov.justice.laa.dstew.access.command.application.document.UploadDocumentUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.ExpectedLinkedGroup;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkApplicationUseCase;
@@ -37,20 +35,11 @@ import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.UnlinkApp
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.UnlinkApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteUseCase;
-import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand;
-import uk.gov.justice.laa.dstew.access.command.application.ready.ReadyApplicationResult;
-import uk.gov.justice.laa.dstew.access.command.application.ready.RecordAutoGrantOutcomeUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationUseCase;
-import uk.gov.justice.laa.dstew.access.document.DocumentUploadResult;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkType;
-import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
-import uk.gov.justice.laa.dstew.access.model.DocumentType;
 import uk.gov.justice.laa.dstew.access.model.LinkedGroupChangeRequest;
-import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
-import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
-import uk.gov.justice.laa.dstew.access.security.AuthenticatedCallerFactory;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedUserId;
 import uk.gov.justice.laa.dstew.access.version.VersionToken;
 
@@ -61,22 +50,18 @@ class ApplicationCommandControllerTest {
   private CreateApplicationUseCase createApplicationUseCase;
   private MakeApplicationDecisionUseCase makeDecisionUseCase;
   private CreateNoteUseCase createNoteUseCase;
-  private RecordAutoGrantOutcomeUseCase recordAutoGrantOutcomeUseCase;
   private UpdateApplicationUseCase updateApplicationUseCase;
-  private UploadDocumentUseCase uploadDocumentUseCase;
   private LinkApplicationUseCase linkApplicationUseCase;
   @Mock private MakeApplicationLeadUseCase makeApplicationLeadUseCase;
   @Mock private UnlinkApplicationUseCase unlinkApplicationUseCase;
   private CreateApplicationCommandMapper commandMapper;
   private MakeDecisionCommandMapper decisionCommandMapper;
   private CreateNoteCommandMapper createNoteCommandMapper;
-  private AutoGrantOutcomeCommandMapper autoGrantOutcomeCommandMapper;
   private UpdateApplicationCommandMapper updateApplicationCommandMapper;
   private LinkApplicationCommandMapper linkApplicationCommandMapper;
   @Mock private MakeApplicationLeadCommandMapper makeApplicationLeadCommandMapper;
   @Mock private UnlinkApplicationCommandMapper unlinkApplicationCommandMapper;
   private AuthenticatedUserId authenticatedUserId;
-  @Mock private AuthenticatedCallerFactory authenticatedCallerFactory;
   private ApplicationCommandController controller;
 
   @BeforeEach
@@ -86,14 +71,11 @@ class ApplicationCommandControllerTest {
     createApplicationUseCase = mock(CreateApplicationUseCase.class);
     makeDecisionUseCase = mock(MakeApplicationDecisionUseCase.class);
     createNoteUseCase = mock(CreateNoteUseCase.class);
-    recordAutoGrantOutcomeUseCase = mock(RecordAutoGrantOutcomeUseCase.class);
     updateApplicationUseCase = mock(UpdateApplicationUseCase.class);
-    uploadDocumentUseCase = mock(UploadDocumentUseCase.class);
     linkApplicationUseCase = mock(LinkApplicationUseCase.class);
     commandMapper = mock(CreateApplicationCommandMapper.class);
     decisionCommandMapper = mock(MakeDecisionCommandMapper.class);
     createNoteCommandMapper = mock(CreateNoteCommandMapper.class);
-    autoGrantOutcomeCommandMapper = mock(AutoGrantOutcomeCommandMapper.class);
     updateApplicationCommandMapper = mock(UpdateApplicationCommandMapper.class);
     linkApplicationCommandMapper = mock(LinkApplicationCommandMapper.class);
     authenticatedUserId = mock(AuthenticatedUserId.class);
@@ -102,22 +84,18 @@ class ApplicationCommandControllerTest {
             createApplicationUseCase,
             makeDecisionUseCase,
             createNoteUseCase,
-            recordAutoGrantOutcomeUseCase,
             updateApplicationUseCase,
-            uploadDocumentUseCase,
             linkApplicationUseCase,
             makeApplicationLeadUseCase,
             unlinkApplicationUseCase,
             commandMapper,
             decisionCommandMapper,
             createNoteCommandMapper,
-            autoGrantOutcomeCommandMapper,
             updateApplicationCommandMapper,
             linkApplicationCommandMapper,
             makeApplicationLeadCommandMapper,
             unlinkApplicationCommandMapper,
-            authenticatedUserId,
-            authenticatedCallerFactory);
+            authenticatedUserId);
   }
 
   @AfterEach
@@ -126,49 +104,18 @@ class ApplicationCommandControllerTest {
   }
 
   @Test
-  void givenReadinessRecorded_whenMarkApplicationReady_thenReturnsNoContent() {
-    UUID id = UUID.randomUUID();
-    ManualOutcomeRequest request = new ManualOutcomeRequest(AutoGrantOutcome.MANUAL);
-    MarkApplicationReadyCommand command =
-        new MarkApplicationReadyCommand(id, 2L, "{}", Instant.now());
-    when(autoGrantOutcomeCommandMapper.toCommand(id, request)).thenReturn(command);
-    when(recordAutoGrantOutcomeUseCase.recordReady(command))
-        .thenReturn(ReadyApplicationResult.RECORDED);
-
-    assertThat(controller.recordAutoGrantOutcome(null, id, request).getStatusCode())
-        .isEqualTo(HttpStatus.NO_CONTENT);
-  }
-
-  @Test
-  void givenReadinessAlreadyRecorded_whenMarkApplicationReady_thenReturnsOk() {
-    UUID id = UUID.randomUUID();
-    ManualOutcomeRequest request = new ManualOutcomeRequest(AutoGrantOutcome.MANUAL);
-    MarkApplicationReadyCommand command =
-        new MarkApplicationReadyCommand(id, 2L, "{}", Instant.now());
-    when(autoGrantOutcomeCommandMapper.toCommand(id, request)).thenReturn(command);
-    when(recordAutoGrantOutcomeUseCase.recordReady(command))
-        .thenReturn(ReadyApplicationResult.ALREADY_RECORDED);
-
-    assertThat(controller.recordAutoGrantOutcome(null, id, request).getStatusCode())
-        .isEqualTo(HttpStatus.OK);
-  }
-
-  @Test
   void givenRequest_whenLinkApplication_thenDelegatesToUseCaseAndReturnsNoContent() {
     UUID id = UUID.randomUUID();
     ApplicationLinkRequest request =
         new ApplicationLinkRequest(UUID.randomUUID(), ApplicationLinkType.FAMILY);
-    AuthenticatedCaller caller = mock(AuthenticatedCaller.class);
     var command =
         new LinkApplicationCommand(
-            id, request.getApplicationId(), LinkType.FAMILY, null, Instant.now(), caller);
-    when(authenticatedCallerFactory.currentCaller()).thenReturn(caller);
-    when(linkApplicationCommandMapper.toCommand(id, request, caller)).thenReturn(command);
+            id, request.getApplicationId(), LinkType.FAMILY, null, Instant.now());
+    when(linkApplicationCommandMapper.toCommand(id, request)).thenReturn(command);
 
     ResponseEntity<Void> response = controller.linkApplication(null, id, request);
 
     verify(linkApplicationUseCase).execute(command);
-    verify(authenticatedCallerFactory).currentCaller();
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
   }
 
@@ -178,17 +125,13 @@ class ApplicationCommandControllerTest {
     UUID groupId = UUID.randomUUID();
     LinkedGroupChangeRequest request =
         new LinkedGroupChangeRequest(VersionToken.linkedGroup(groupId, 3L).encode());
-    AuthenticatedCaller caller = mock(AuthenticatedCaller.class);
     MakeApplicationLeadCommand command =
-        new MakeApplicationLeadCommand(
-            id, new ExpectedLinkedGroup(groupId, 3L), Instant.now(), caller);
-    when(authenticatedCallerFactory.currentCaller()).thenReturn(caller);
-    when(makeApplicationLeadCommandMapper.toCommand(id, request, caller)).thenReturn(command);
+        new MakeApplicationLeadCommand(id, new ExpectedLinkedGroup(groupId, 3L), Instant.now());
+    when(makeApplicationLeadCommandMapper.toCommand(id, request)).thenReturn(command);
 
     ResponseEntity<Void> response = controller.makeApplicationLead(null, id, request);
 
     verify(makeApplicationLeadUseCase).execute(command);
-    verify(authenticatedCallerFactory).currentCaller();
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
   }
 
@@ -198,17 +141,13 @@ class ApplicationCommandControllerTest {
     UUID groupId = UUID.randomUUID();
     LinkedGroupChangeRequest request =
         new LinkedGroupChangeRequest(VersionToken.linkedGroup(groupId, 3L).encode());
-    AuthenticatedCaller caller = mock(AuthenticatedCaller.class);
     UnlinkApplicationCommand command =
-        new UnlinkApplicationCommand(
-            id, new ExpectedLinkedGroup(groupId, 3L), Instant.now(), caller);
-    when(authenticatedCallerFactory.currentCaller()).thenReturn(caller);
-    when(unlinkApplicationCommandMapper.toCommand(id, request, caller)).thenReturn(command);
+        new UnlinkApplicationCommand(id, new ExpectedLinkedGroup(groupId, 3L), Instant.now());
+    when(unlinkApplicationCommandMapper.toCommand(id, request)).thenReturn(command);
 
     ResponseEntity<Void> response = controller.unlinkApplication(null, id, request);
 
     verify(unlinkApplicationUseCase).execute(command);
-    verify(authenticatedCallerFactory).currentCaller();
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
   }
 
@@ -259,48 +198,6 @@ class ApplicationCommandControllerTest {
     when(createNoteCommandMapper.toCommand(id, null)).thenReturn(command);
     controller.createApplicationNotes(null, id, null);
     verify(createNoteUseCase).execute(command);
-  }
-
-  @Test
-  void givenDocumentType_whenUploadApplicationDocument_thenDelegatesToUseCaseAndReturns201() {
-    UUID id = UUID.randomUUID();
-    UUID documentId = UUID.randomUUID();
-    Instant uploadedAt = Instant.parse("2026-09-28T15:10:27.430Z");
-    MockMultipartFile file =
-        new MockMultipartFile("file", "test.pdf", "application/pdf", "content".getBytes());
-    DocumentUploadResult expected =
-        new DocumentUploadResult(
-            documentId,
-            "test.pdf",
-            "PDF",
-            "application/pdf",
-            7L,
-            uploadedAt,
-            "CIVIL_APPLY",
-            "checksum");
-    when(uploadDocumentUseCase.execute(id, file, "GATEWAY_EVIDENCE", "CIVIL_APPLY"))
-        .thenReturn(expected);
-
-    ResponseEntity<uk.gov.justice.laa.dstew.access.model.UploadApplicationDocumentResponse>
-        response =
-            controller.uploadApplicationDocument(
-                uk.gov.justice.laa.dstew.access.model.ServiceName.CIVIL_APPLY,
-                id,
-                file,
-                DocumentType.GATEWAY_EVIDENCE);
-
-    verify(uploadDocumentUseCase).execute(id, file, "GATEWAY_EVIDENCE", "CIVIL_APPLY");
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-    assertThat(response.getBody()).isNotNull();
-    assertThat(response.getBody().getDocumentId()).isEqualTo(documentId);
-    assertThat(response.getBody().getFileName()).isEqualTo("test.pdf");
-    assertThat(response.getBody().getFileType()).isEqualTo("PDF");
-    assertThat(response.getBody().getContentType()).isEqualTo("application/pdf");
-    assertThat(response.getBody().getSize()).isEqualTo(7L);
-    assertThat(response.getBody().getUploadedAt())
-        .isEqualTo(uploadedAt.atOffset(java.time.ZoneOffset.UTC));
-    assertThat(response.getBody().getSourceService()).isEqualTo("CIVIL_APPLY");
-    assertThat(response.getBody().getChecksum()).isEqualTo("checksum");
   }
 
   private CreateApplicationCommand stubCreateCommand() {
