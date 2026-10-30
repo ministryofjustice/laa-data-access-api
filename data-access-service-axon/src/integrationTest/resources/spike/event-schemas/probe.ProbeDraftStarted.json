@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ProbeDraftStarted kept fields",
+  "type": "object",
+  "properties": {
+    "draftId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "officeCode": {
+      "type": "string",
+      "pattern": "^[0-9A-Z]{6}$"
+    },
+    "startedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "draftId",
+    "officeCode",
+    "startedAt"
+  ],
+  "additionalProperties": false
+}
