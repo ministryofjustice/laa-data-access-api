@@ -169,18 +169,14 @@ The enforcement is part of the implementation:
 
 - The ArchUnit rule permits route `…ForUpdate` queries only in `ApplicationGroupRouteResolver` and
   `ApplicationGroupRouteProjection`.
-- `RouteLockRegistry` records verified application and group locks for the current transaction.
-- `RouteLockGuardDispatchInterceptor` is enabled by default and checks these locks for establish,
-  add, remove and change
-  lead; linked-group assign and unassign; direct application assign and unassign; and readiness.
-  Dispatching a guarded command without its locks is a programming error and fails with
-  `IllegalStateException`.
-- `dstew.linked-group.route-lock-guard.enabled=false` is only for aggregate and projection
-  integration tests that deliberately dispatch commands directly. Do not disable it for use-case
-  or coordinator tests.
+- A second ArchUnit rule permits only `*Coordinator` classes to send the commands that rely on
+  route locks: establish, add, remove and change lead; linked-group assign and unassign; direct
+  application assign and unassign; and readiness. Each coordinator must call the resolver before
+  sending, in the same transaction.
 
 Add any new command that reads or changes a linked group's membership or an application's
-assignment to the dispatch guard. Route locking is still required when a handler only reads a
+assignment to `ROUTE_LOCKED_COMMANDS` in `AxonArchitectureTest`, and send it from a coordinator.
+Tests may send these commands directly when they deliberately bypass coordinators. Route locking is still required when a handler only reads a
 member's state and does not append to that member's stream.
 
 ### Append; never update `application_data`

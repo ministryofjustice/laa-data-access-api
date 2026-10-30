@@ -14,7 +14,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.test.context.TestPropertySource;
 import uk.gov.justice.laa.dstew.access.AbstractLinkedGroupIntegrationTest;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteKind;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
@@ -25,7 +24,6 @@ import uk.gov.justice.laa.dstew.access.command.worklist.assign.DirectWorkItemAss
  * longer produce such groups, so the split is seeded by dispatching direct assignments that bypass
  * the linked-group coordinator, as data written before atomic group assignment could be.
  */
-@TestPropertySource(properties = "dstew.linked-group.route-lock-guard.enabled=false")
 class LinkedGroupSplitAssignmentIntegrationTest extends AbstractLinkedGroupIntegrationTest {
 
   @Autowired private CommandGateway commandGateway;

@@ -84,13 +84,12 @@ Writers follow this lock order:
    application stream before the route projection removes its work-item route. Locking that route
    first could deadlock against the event append.
 
-This order is enforced, not just documented. An ArchUnit rule limits route-lock queries to
-`ApplicationGroupRouteResolver` and the route projection. The resolver records verified route locks
-in the transaction-bound `RouteLockRegistry`. `RouteLockGuardDispatchInterceptor` checks them when
-these commands are dispatched: establish, add, remove and change lead; linked-group assign and
-unassign; direct application assign and unassign; and readiness. The opt-out
-`dstew.linked-group.route-lock-guard.enabled=false` is for aggregate and projection integration
-tests that deliberately bypass coordinators.
+Two ArchUnit rules in `AxonArchitectureTest` enforce this at build time. Only
+`ApplicationGroupRouteResolver` and the route projection may run route-lock queries. Only
+`*Coordinator` classes may send the commands that depend on those locks: establish, add, remove
+and change lead; linked-group assign and unassign; direct application assign and unassign; and
+readiness. Code review checks that each coordinator calls the resolver before sending in the same
+transaction.
 
 For readiness, the retry boundary includes the complete lock-and-dispatch attempt. A retry runs in a
 fresh transaction and reacquires its route locks.
@@ -108,17 +107,21 @@ fresh transaction and reacquires its route locks.
 - **Locking `work_item_route`:** rejected because its lock can conflict with the application event
   append and deadlock.
 - **A generic lock check in `RetryingCommandDispatcher`:** rejected. A generic dispatcher cannot
-  know which routes each command needs. The per-command-type dispatch guard can.
+  know which routes each command needs.
+- **A runtime dispatch guard:** removed. A transaction-bound lock registry and a command dispatch
+  interceptor rejected these commands when their locks had not been recorded. It needed its own
+  per-command list, a test opt-out property and about 600 lines of code and tests. The ArchUnit
+  coordinator rule catches the realistic mistake, sending a command from outside a coordinator, at
+  build time instead.
 
 ## Consequences
 
 - The group-wide assignment invariant is maintained by the command rules and route locks, not by an
-  aggregate. A future command that changes membership or assignment must use the resolver and be
-  added to the dispatch guard.
+  aggregate. A future command that changes membership or assignment must be sent from a coordinator
+  that uses the resolver, and must be added to the ArchUnit coordinator rule.
 - A group change can append one event for each affected application.
 - Membership changes found while locking, disagreement among active members, and an attempted
-  takeover return 409. A missing route-lock check is a programming error and fails dispatch with
-  `IllegalStateException` (HTTP 500).
+  takeover return 409.
 - Read projections may lag after a successful command.
 
 ## Reconsider when

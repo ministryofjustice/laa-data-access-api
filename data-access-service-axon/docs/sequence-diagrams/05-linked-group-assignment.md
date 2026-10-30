@@ -43,7 +43,6 @@ sequenceDiagram
     actor Client
     participant Coordinator as AssignWorkItemCoordinator
     participant Resolver as ApplicationGroupRouteResolver
-    participant Guard as RouteLockGuardDispatchInterceptor
     participant Handler as LinkedGroupWorkItemAssignmentCommandHandler
     participant Group as LinkedApplicationGroupAggregate
     participant StateManager
@@ -55,9 +54,7 @@ sequenceDiagram
     Resolver->>Resolver: lock group routes in ascending application ID order
     Resolver->>Resolver: verify membership is unchanged
     Resolver-->>Coordinator: groupId
-    Coordinator->>Guard: AssignLinkedGroupWorkItemCommand
-    Guard->>Guard: verify RouteLockRegistry holds group routes
-    Guard->>Handler: proceed
+    Coordinator->>Handler: AssignLinkedGroupWorkItemCommand
     Handler->>Group: load group through @InjectEntity
     Handler->>StateManager: load member applications
     StateManager-->>Handler: consistent application states
@@ -78,7 +75,6 @@ sequenceDiagram
     participant Retry as RetryingCommandDispatcher
     participant Transaction as Fresh transaction
     participant Resolver as ApplicationGroupRouteResolver
-    participant Guard as RouteLockGuardDispatchInterceptor
     participant Handler as MarkApplicationReadyCommandHandler
     participant StateManager
     participant Decider as LinkedGroupAssignmentDecider
@@ -89,9 +85,7 @@ sequenceDiagram
     Retry->>Transaction: begin attempt
     Transaction->>Resolver: lockForAssignment(applicationId)
     Resolver-->>Transaction: groupId
-    Transaction->>Guard: MarkApplicationReadyCommand
-    Guard->>Guard: verify application and group locks
-    Guard->>Handler: proceed
+    Transaction->>Handler: MarkApplicationReadyCommand
     Handler->>StateManager: load group and other active-member state
     StateManager-->>Handler: consistent state
     Handler->>Decider: decide readiness assignment

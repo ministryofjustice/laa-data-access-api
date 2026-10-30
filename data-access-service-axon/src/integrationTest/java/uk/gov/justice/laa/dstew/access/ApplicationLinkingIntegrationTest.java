@@ -72,11 +72,7 @@ import util.ProjectionAwaiter;
 @Testcontainers
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-    properties = {
-      "feature.enable-dev-token=true",
-      // Dispatches linked-group commands directly, bypassing coordinators and their route locks.
-      "dstew.linked-group.route-lock-guard.enabled=false"
-    })
+    properties = {"feature.enable-dev-token=true"})
 @AutoConfigureTestRestTemplate
 @Import(TestJwtDecoderConfig.class)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)

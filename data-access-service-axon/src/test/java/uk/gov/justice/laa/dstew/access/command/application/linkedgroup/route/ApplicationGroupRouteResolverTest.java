@@ -14,8 +14,6 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Stream;
 import org.jspecify.annotations.Nullable;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -24,8 +22,6 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import uk.gov.justice.laa.dstew.access.exception.LinkedApplicationGroupVersionConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
@@ -39,23 +35,6 @@ class ApplicationGroupRouteResolverTest {
   @Mock private ApplicationGroupRouteRepository routes;
 
   @InjectMocks private ApplicationGroupRouteResolver resolver;
-
-  @BeforeEach
-  void setUpTransaction() {
-    TransactionSynchronizationManager.initSynchronization();
-    TransactionSynchronizationManager.setActualTransactionActive(true);
-  }
-
-  @AfterEach
-  void clearTransaction() {
-    if (TransactionSynchronizationManager.isSynchronizationActive()) {
-      TransactionSynchronizationManager.getSynchronizations()
-          .forEach(
-              synchronization ->
-                  synchronization.afterCompletion(TransactionSynchronization.STATUS_UNKNOWN));
-    }
-    TransactionSynchronizationManager.clear();
-  }
 
   @ParameterizedTest(name = "{0}")
   @MethodSource("resolutionScenarios")
@@ -361,7 +340,7 @@ class ApplicationGroupRouteResolverTest {
   }
 
   @Test
-  void givenLinkedTarget_whenResolve_thenLocksSourceAndWholeGroupAndRecordsGroup() {
+  void givenLinkedTarget_whenResolve_thenLocksSourceAndWholeGroup() {
     UUID sourceApplicationId = UUID.fromString("00000000-0000-0000-0000-000000000001");
     UUID targetApplicationId = UUID.fromString("00000000-0000-0000-0000-000000000002");
     UUID otherMemberId = UUID.fromString("00000000-0000-0000-0000-000000000003");
@@ -385,7 +364,6 @@ class ApplicationGroupRouteResolverTest {
     verify(routes)
         .findAllByApplicationIdInForUpdate(
             List.of(sourceApplicationId, targetApplicationId, otherMemberId));
-    assertThat(RouteLockRegistry.holdsGroup(groupId)).isTrue();
   }
 
   @Test
@@ -437,17 +415,15 @@ class ApplicationGroupRouteResolverTest {
   }
 
   @Test
-  void givenNoRoute_whenLockForAssignment_thenReturnsEmptyAndRecordsApplication() {
+  void givenNoRoute_whenLockForAssignment_thenReturnsEmpty() {
     UUID applicationId = UUID.randomUUID();
     when(routes.findMembershipByApplicationId(applicationId)).thenReturn(Optional.empty());
 
     assertThat(resolver.lockForAssignment(applicationId)).isEmpty();
-
-    assertThat(RouteLockRegistry.missingApplications(List.of(applicationId))).isEmpty();
   }
 
   @Test
-  void givenStandalone_whenLockForAssignment_thenLocksOwnRowAndRecordsIt() {
+  void givenStandalone_whenLockForAssignment_thenLocksOwnRow() {
     UUID applicationId = UUID.randomUUID();
     when(routes.findMembershipByApplicationId(applicationId))
         .thenReturn(Optional.of(new RouteMembership(ApplicationGroupRouteKind.STANDALONE, null)));
@@ -457,7 +433,6 @@ class ApplicationGroupRouteResolverTest {
     assertThat(resolver.lockForAssignment(applicationId)).isEmpty();
 
     verify(routes).findByApplicationIdForUpdate(applicationId);
-    assertThat(RouteLockRegistry.missingApplications(List.of(applicationId))).isEmpty();
   }
 
   @Test
@@ -479,7 +454,7 @@ class ApplicationGroupRouteResolverTest {
   }
 
   @Test
-  void givenGroup_whenLockForAssignment_thenLocksAllMembersAndRecordsGroup() {
+  void givenGroup_whenLockForAssignment_thenLocksAllMembers() {
     UUID applicationId = UUID.fromString("00000000-0000-0000-0000-000000000003");
     UUID firstMemberId = UUID.fromString("00000000-0000-0000-0000-000000000001");
     UUID secondMemberId = UUID.fromString("00000000-0000-0000-0000-000000000002");
@@ -498,12 +473,10 @@ class ApplicationGroupRouteResolverTest {
     assertThat(resolver.lockForAssignment(applicationId)).contains(groupId);
 
     verify(routes).findAllByApplicationIdInForUpdate(memberIds);
-    assertThat(RouteLockRegistry.holdsGroup(groupId)).isTrue();
-    assertThat(RouteLockRegistry.missingApplications(memberIds)).isEmpty();
   }
 
   @Test
-  void givenMemberJoinedWhileWaiting_whenLockForAssignment_thenThrowsAndRecordsNothing() {
+  void givenMemberJoinedWhileWaiting_whenLockForAssignment_thenThrowsMembershipChanged() {
     UUID applicationId = UUID.randomUUID();
     UUID groupId = UUID.randomUUID();
     UUID newMemberId = UUID.randomUUID();
@@ -521,8 +494,6 @@ class ApplicationGroupRouteResolverTest {
             "Linked group membership of application "
                 + applicationId
                 + " changed; retry the request");
-    assertThat(RouteLockRegistry.missingApplications(List.of(applicationId)))
-        .contains(applicationId);
   }
 
   @Test

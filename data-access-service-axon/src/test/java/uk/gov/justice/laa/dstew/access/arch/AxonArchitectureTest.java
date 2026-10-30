@@ -5,6 +5,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 import com.tngtech.archunit.base.DescribedPredicate;
+import com.tngtech.archunit.core.domain.Dependency;
 import com.tngtech.archunit.core.domain.JavaCall;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
@@ -16,15 +17,38 @@ import com.tngtech.archunit.lang.ArchCondition;
 import com.tngtech.archunit.lang.ArchRule;
 import com.tngtech.archunit.lang.ConditionEvents;
 import com.tngtech.archunit.lang.SimpleConditionEvent;
+import java.util.List;
 import org.axonframework.extension.spring.stereotype.EventSourced;
 import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
 import org.axonframework.messaging.commandhandling.gateway.CommandGateway;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.junit.jupiter.api.Test;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.AddApplicationToLinkedGroupCommand;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.ChangeLinkedGroupLeadCommand;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.EstablishLinkedApplicationGroupCommand;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.RemoveApplicationFromLinkedGroupCommand;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteProjection;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteRepository;
+import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand;
+import uk.gov.justice.laa.dstew.access.command.worklist.assign.AssignLinkedGroupWorkItemCommand;
+import uk.gov.justice.laa.dstew.access.command.worklist.assign.DirectWorkItemAssignmentCommand;
+import uk.gov.justice.laa.dstew.access.command.worklist.unassign.DirectWorkItemUnassignmentCommand;
+import uk.gov.justice.laa.dstew.access.command.worklist.unassign.UnassignLinkedGroupWorkItemCommand;
 
 class AxonArchitectureTest {
+
+  /** Commands whose handlers rely on the coordinator holding the relevant route locks. */
+  private static final List<Class<?>> ROUTE_LOCKED_COMMANDS =
+      List.of(
+          EstablishLinkedApplicationGroupCommand.class,
+          AddApplicationToLinkedGroupCommand.class,
+          RemoveApplicationFromLinkedGroupCommand.class,
+          ChangeLinkedGroupLeadCommand.class,
+          AssignLinkedGroupWorkItemCommand.class,
+          UnassignLinkedGroupWorkItemCommand.class,
+          DirectWorkItemAssignmentCommand.class,
+          DirectWorkItemUnassignmentCommand.class,
+          MarkApplicationReadyCommand.class);
 
   private static final JavaClasses classes =
       new ClassFileImporter()
@@ -213,6 +237,46 @@ class AxonArchitectureTest {
                         HasOwner.Predicates.With.owner(
                             JavaClass.Predicates.assignableTo(
                                 ApplicationGroupRouteRepository.class)))))
+        .check(classes);
+  }
+
+  @Test
+  void givenRouteLockedCommands_whenImported_thenOnlyCoordinatorsDispatchThem() {
+    ArchCondition<JavaClass> dispatchRouteLockedCommands =
+        new ArchCondition<>("dispatch commands that require linked-group route locks") {
+          @Override
+          public void check(JavaClass javaClass, ConditionEvents events) {
+            var targets =
+                javaClass.getDirectDependenciesFromSelf().stream()
+                    .map(Dependency::getTargetClass)
+                    .toList();
+            var routeLockedCommands =
+                targets.stream()
+                    .filter(
+                        target -> ROUTE_LOCKED_COMMANDS.stream().anyMatch(target::isEquivalentTo))
+                    .map(JavaClass::getSimpleName)
+                    .distinct()
+                    .sorted()
+                    .toList();
+            var dispatchesCommands =
+                targets.stream().anyMatch(target -> target.isAssignableTo(CommandGateway.class));
+            if (dispatchesCommands && !routeLockedCommands.isEmpty()) {
+              events.add(
+                  SimpleConditionEvent.satisfied(
+                      javaClass,
+                      javaClass.getName()
+                          + " dispatches "
+                          + routeLockedCommands
+                          + " without being a coordinator; lock routes through"
+                          + " ApplicationGroupRouteResolver in a *Coordinator"));
+            }
+          }
+        };
+
+    noClasses()
+        .that()
+        .haveSimpleNameNotEndingWith("Coordinator")
+        .should(dispatchRouteLockedCommands)
         .check(classes);
   }
 

@@ -75,10 +75,6 @@ public class ApplicationGroupRouteResolver {
               + sourceRoute.getApplicationId()
               + " already belongs to a different linked group");
     }
-    RouteLockRegistry.recordApplications(applicationIds);
-    if (targetRoute.getRouteKind() == ApplicationGroupRouteKind.LINKED_GROUP) {
-      RouteLockRegistry.recordGroup(targetRoute.getGroupId());
-    }
     return plan;
   }
 
@@ -90,7 +86,6 @@ public class ApplicationGroupRouteResolver {
   public Optional<UUID> lockForAssignment(UUID applicationId) {
     var membership = routes.findMembershipByApplicationId(applicationId);
     if (membership.isEmpty()) {
-      RouteLockRegistry.recordApplications(List.of(applicationId));
       return Optional.empty();
     }
     if (membership.get().getRouteKind() == ApplicationGroupRouteKind.STANDALONE) {
@@ -99,7 +94,6 @@ public class ApplicationGroupRouteResolver {
           || lockedRoute.get().getRouteKind() != ApplicationGroupRouteKind.STANDALONE) {
         throw membershipChanged(applicationId);
       }
-      RouteLockRegistry.recordApplications(List.of(applicationId));
       return Optional.empty();
     }
 
@@ -118,8 +112,6 @@ public class ApplicationGroupRouteResolver {
         || !routes.findApplicationIdsByGroupId(groupId).equals(applicationIds)) {
       throw membershipChanged(applicationId);
     }
-    RouteLockRegistry.recordApplications(applicationIds);
-    RouteLockRegistry.recordGroup(groupId);
     return Optional.of(groupId);
   }
 
@@ -149,9 +141,6 @@ public class ApplicationGroupRouteResolver {
     if (!Objects.equals(groupId, expectedGroupId)) {
       throw LinkedApplicationGroupVersionConflictException.groupChanged(applicationId);
     }
-    RouteLockRegistry.recordApplications(
-        lockedRoutes.stream().map(ApplicationGroupRoute::getApplicationId).toList());
-    RouteLockRegistry.recordGroup(groupId);
     return groupId;
   }
 
@@ -180,7 +169,6 @@ public class ApplicationGroupRouteResolver {
           || lockedRoute.getGroupId() != null) {
         throw LinkedApplicationGroupVersionConflictException.groupChanged(applicationId);
       }
-      RouteLockRegistry.recordApplications(List.of(applicationId));
       return Optional.empty();
     }
     var groupId = membership.getGroupId();
@@ -198,9 +186,6 @@ public class ApplicationGroupRouteResolver {
     if (!stillMember) {
       throw LinkedApplicationGroupVersionConflictException.groupChanged(applicationId);
     }
-    RouteLockRegistry.recordApplications(
-        lockedRoutes.stream().map(ApplicationGroupRoute::getApplicationId).toList());
-    RouteLockRegistry.recordGroup(groupId);
     return Optional.of(groupId);
   }
 

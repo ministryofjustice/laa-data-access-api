@@ -136,8 +136,8 @@ decision appends to the application stream before its route row is removed.
 
 `AxonArchitectureTest` limits `StateManager` dependencies to `LinkedGroupMembers` and the
 establish, add, group-assignment and readiness handlers that load additional state. It also limits
-route `…ForUpdate` calls to `ApplicationGroupRouteResolver` and the route projection. The
-`RouteLockGuardDispatchInterceptor` checks route locks at command dispatch.
+route `…ForUpdate` calls to `ApplicationGroupRouteResolver` and the route projection, and only lets
+`*Coordinator` classes send commands that rely on route locks.
 
 The readiness coordinator retries the complete lock-and-dispatch attempt in a fresh transaction.
 This reacquires the locks after a failed attempt instead of reusing locks from a failed transaction.
