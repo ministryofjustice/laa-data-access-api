@@ -11,20 +11,21 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.applicationcontent.JacksonExceptionMessageBuilder;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreationDetails;
+import uk.gov.justice.laa.dstew.access.observability.ErrorReporter;
 
 /** Writes and retrieves immutable application-data versions. */
 @Component
-@Slf4j
 public class ApplicationDataStore {
 
   private final ApplicationDataRepository repository;
+  private final ErrorReporter errorReporter;
 
-  public ApplicationDataStore(ApplicationDataRepository repository) {
+  public ApplicationDataStore(ApplicationDataRepository repository, ErrorReporter errorReporter) {
     this.repository = repository;
+    this.errorReporter = errorReporter;
   }
 
   /**
@@ -157,19 +158,17 @@ public class ApplicationDataStore {
       JacksonExceptionMessageBuilder.findJacksonException(exception)
           .ifPresentOrElse(
               jacksonException ->
-                  log.error(
-                      "application_data JSON deserialization failed: {}={}, "
-                          + "jacksonExceptionType={}, jacksonMessage={}",
-                      identifierName,
-                      identifiers,
-                      jacksonException.getClass().getSimpleName(),
-                      JacksonExceptionMessageBuilder.buildMessage(jacksonException),
+                  errorReporter.report(
+                      "application_data JSON deserialization failed: %s=%s, "
+                              .formatted(identifierName, identifiers)
+                          + "jacksonExceptionType=%s, jacksonMessage=%s"
+                              .formatted(
+                                  jacksonException.getClass().getSimpleName(),
+                                  JacksonExceptionMessageBuilder.buildMessage(jacksonException)),
                       exception),
               () ->
-                  log.error(
-                      "application_data load failed: {}={}",
-                      identifierName,
-                      identifiers,
+                  errorReporter.report(
+                      "application_data load failed: %s=%s".formatted(identifierName, identifiers),
                       exception));
       throw exception;
     }

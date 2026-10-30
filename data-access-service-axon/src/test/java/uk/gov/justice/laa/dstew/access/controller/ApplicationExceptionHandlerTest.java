@@ -1,6 +1,11 @@
 package uk.gov.justice.laa.dstew.access.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.same;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import java.net.URI;
 import java.util.List;
@@ -24,12 +29,15 @@ import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityVersionConflictEx
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.exception.VirusDetectedException;
 import uk.gov.justice.laa.dstew.access.exception.VirusScanException;
+import uk.gov.justice.laa.dstew.access.observability.ErrorReporter;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryIntegrityException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 class ApplicationExceptionHandlerTest {
 
-  private final ApplicationExceptionHandler handler = new ApplicationExceptionHandler();
+  private final ErrorReporter errorReporter = mock(ErrorReporter.class);
+  private final ApplicationExceptionHandler handler =
+      new ApplicationExceptionHandler(errorReporter);
 
   @Test
   void givenValidationFailure_whenHandled_thenReturnsPublicProblemDetailsAndErrors() {
@@ -236,35 +244,47 @@ class ApplicationExceptionHandlerTest {
   }
 
   @Test
-  void givenVirusDetected_whenHandled_thenReturnsBadRequest() {
-    var response =
-        handler.handleVirusDetectedException(
-            new VirusDetectedException("Virus detected in uploaded file"));
+  void givenVirusDetected_whenHandled_thenReturnsBadRequestWithoutReportingToSentry() {
+    var exception = new VirusDetectedException("Virus detected in uploaded file");
+    var response = handler.handleVirusDetectedException(exception);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     assertThat(response.getBody().getDetail()).isEqualTo("Virus detected in uploaded file");
+    verifyNoInteractions(errorReporter);
   }
 
   @Test
-  void givenVirusScanError_whenHandled_thenReturnsInternalServerError() {
-    var response =
-        handler.handleVirusScanException(
-            new VirusScanException("Virus scan gave a non-standard result"));
+  void givenVirusScanError_whenHandled_thenReturnsInternalServerErrorAndReportsToSentry() {
+    var exception = new VirusScanException("Virus scan gave a non-standard result");
+    var response = handler.handleVirusScanException(exception);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
     assertThat(response.getBody().getDetail()).isEqualTo("Virus scan gave a non-standard result");
+    verify(errorReporter).report(anyString(), same(exception));
   }
 
   @Test
-  void givenOauthClientAuthorizationFailure_whenHandled_thenReturnsInternalServerError() {
-    var response =
-        handler.handleClientAuthorizationException(
-            new ClientAuthorizationException(
-                new OAuth2Error("invalid_client", "invalid credentials", null), "sds-client"));
+  void givenOauthClientAuthorizationFailure_whenHandled_thenReturnsInternalServerErrorAndReports() {
+    var exception =
+        new ClientAuthorizationException(
+            new OAuth2Error("invalid_client", "invalid credentials", null), "sds-client");
+    var response = handler.handleClientAuthorizationException(exception);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
     assertThat(response.getBody().getDetail())
         .isEqualTo("Failed to obtain access token for an external service");
+    verify(errorReporter).report(anyString(), same(exception));
+  }
+
+  @Test
+  void givenUnmappedException_whenHandled_thenReturnsGenericInternalServerErrorAndReports() {
+    var exception = new IllegalStateException("something nobody anticipated");
+    var response = handler.handleUnexpectedException(exception);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+    assertThat(response.getBody().getDetail()).isEqualTo("An unexpected error occurred");
+    assertThat(response.getBody().toString()).doesNotContain("nobody anticipated");
+    verify(errorReporter).report(anyString(), same(exception));
   }
 
   @Test
@@ -287,17 +307,48 @@ class ApplicationExceptionHandlerTest {
         .doesNotContain(applicationId.toString())
         .doesNotContain(priorAuthorityId.toString())
         .doesNotContain("conflicting");
+    verify(errorReporter).report(anyString(), same(integrityException));
   }
 
   @Test
-  void givenClientAuthorizationFailure_whenHandled_thenReturnsInternalServerError() {
-    var response =
-        handler.handleClientAuthorizationException(
-            new ClientAuthorizationException(
-                new OAuth2Error("invalid_token"), "sds-client", "Token request failed"));
+  void givenClientAuthorizationFailure_whenHandled_thenReturnsInternalServerErrorAndReports() {
+    var exception =
+        new ClientAuthorizationException(
+            new OAuth2Error("invalid_token"), "sds-client", "Token request failed");
+    var response = handler.handleClientAuthorizationException(exception);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
     assertThat(response.getBody().getDetail())
         .isEqualTo("Failed to obtain access token for an external service");
+    verify(errorReporter).report(anyString(), same(exception));
+  }
+
+  @Test
+  void givenValidationFailure_whenHandled_thenDoesNotReportToSentry() {
+    handler.handleValidationException(
+        new ValidationException(List.of("Exactly one application ID must be provided")));
+
+    verifyNoInteractions(errorReporter);
+  }
+
+  @Test
+  void givenStaleVersion_whenHandled_thenDoesNotReportToSentry() {
+    handler.handleApplicationVersionConflictException(
+        new ApplicationVersionConflictException(UUID.randomUUID(), 4L));
+
+    verifyNoInteractions(errorReporter);
+  }
+
+  @Test
+  void givenJsonDeserializationFailure_whenHandled_thenReturnsBadRequestWithoutReporting() {
+    var httpInputMessage = mock(org.springframework.http.HttpInputMessage.class);
+    var exception =
+        new org.springframework.http.converter.HttpMessageNotReadableException(
+            "Invalid JSON: unknown enum value", httpInputMessage);
+    var response = handler.handleHttpMessageNotReadableException(exception);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(response.getBody().getDetail()).isEqualTo("Generic Validation Error");
+    verifyNoInteractions(errorReporter);
   }
 }

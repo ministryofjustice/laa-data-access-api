@@ -2,12 +2,12 @@ package uk.gov.justice.laa.dstew.access.controller;
 
 import java.net.URI;
 import java.util.List;
-import lombok.extern.slf4j.Slf4j;
 import org.axonframework.modelling.entity.EntityMissingForInstanceCommandHandlerException;
 import org.axonframework.modelling.repository.EntityNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.oauth2.client.ClientAuthorizationException;
 import org.springframework.validation.FieldError;
@@ -29,13 +29,19 @@ import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityVersionConflictEx
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.exception.VirusDetectedException;
 import uk.gov.justice.laa.dstew.access.exception.VirusScanException;
+import uk.gov.justice.laa.dstew.access.observability.ErrorReporter;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryIntegrityException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /** Translates command-side failures to the existing HTTP validation contract. */
-@Slf4j
 @RestControllerAdvice
 public class ApplicationExceptionHandler {
+
+  private final ErrorReporter errorReporter;
+
+  public ApplicationExceptionHandler(ErrorReporter errorReporter) {
+    this.errorReporter = errorReporter;
+  }
 
   /** Returns a forbidden response when the authenticated identity has no usable Entra OID. */
   @ExceptionHandler(AccessDeniedException.class)
@@ -216,6 +222,7 @@ public class ApplicationExceptionHandler {
   /** Returns 500 when SDS virus scan gives an unexpected result. */
   @ExceptionHandler(VirusScanException.class)
   ResponseEntity<ProblemDetail> handleVirusScanException(VirusScanException exception) {
+    errorReporter.report("SDS virus scan gave an unexpected result", exception);
     ProblemDetail problemDetail =
         ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR, exception.getMessage());
     problemDetail.setTitle("Virus Scan Error");
@@ -226,6 +233,7 @@ public class ApplicationExceptionHandler {
   @ExceptionHandler(ClientAuthorizationException.class)
   ResponseEntity<ProblemDetail> handleClientAuthorizationException(
       ClientAuthorizationException exception) {
+    errorReporter.report("Failed to obtain access token for an external service", exception);
     ProblemDetail problemDetail =
         ProblemDetail.forStatusAndDetail(
             HttpStatus.INTERNAL_SERVER_ERROR,
@@ -237,14 +245,47 @@ public class ApplicationExceptionHandler {
   @ExceptionHandler(ApplicationHistoryIntegrityException.class)
   ResponseEntity<ProblemDetail> handleApplicationHistoryIntegrityException(
       ApplicationHistoryIntegrityException exception) {
-    log.error(
-        "Application history integrity failure [applicationId={}, priorAuthorityId={}, reason={}]",
-        exception.getApplicationId(),
-        exception.getPriorAuthorityId(),
-        exception.getReason());
+    errorReporter.report(
+        "Application history integrity failure [applicationId=%s, priorAuthorityId=%s, reason=%s]"
+            .formatted(
+                exception.getApplicationId(),
+                exception.getPriorAuthorityId(),
+                exception.getReason()),
+        exception);
     ProblemDetail problemDetail =
         ProblemDetail.forStatusAndDetail(
             HttpStatus.INTERNAL_SERVER_ERROR, "Application history data is inconsistent");
+    problemDetail.setInstance(URI.create("about:blank"));
+    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(problemDetail);
+  }
+
+  /**
+   * Returns 400 when JSON deserialization fails (e.g., invalid enum value, malformed payload).
+   * These are expected client errors, not unexpected server failures, so they return a validation
+   * error without reporting to Sentry.
+   */
+  @ExceptionHandler(HttpMessageNotReadableException.class)
+  ResponseEntity<ProblemDetail> handleHttpMessageNotReadableException(
+      HttpMessageNotReadableException exception) {
+    return validationError(List.of("Invalid JSON or request body format"));
+  }
+
+  /**
+   * Backstop for any unmapped <em>unchecked</em> exception. Reports exactly once — a no-op if an
+   * inner boundary (e.g. a repository/data-store catch block) already reported the same instance —
+   * and returns a generic 500 that never leaks internal details.
+   *
+   * <p>Deliberately scoped to {@link RuntimeException} rather than {@link Exception}: Spring MVC's
+   * own request-binding failures (e.g. a missing required parameter) are checked {@code
+   * ServletException}s, and must fall through to Spring's default handling — which already returns
+   * the correct 400 — instead of being swallowed here as an unexpected 500.
+   */
+  @ExceptionHandler(RuntimeException.class)
+  ResponseEntity<ProblemDetail> handleUnexpectedException(RuntimeException exception) {
+    errorReporter.report("Unexpected error handling request", exception);
+    ProblemDetail problemDetail =
+        ProblemDetail.forStatusAndDetail(
+            HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred");
     problemDetail.setInstance(URI.create("about:blank"));
     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(problemDetail);
   }

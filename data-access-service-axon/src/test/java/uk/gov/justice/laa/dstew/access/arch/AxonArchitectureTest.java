@@ -186,4 +186,48 @@ class AxonArchitectureTest {
             .allowEmptyShould(true);
     rule.check(classes);
   }
+
+  @Test
+  void onlyErrorReporterMayLogAtErrorLevel() {
+    ArchCondition<JavaClass> callLoggerErrorMethod =
+        new ArchCondition<>("call Logger.error(..)") {
+          @Override
+          public void check(JavaClass javaClass, ConditionEvents events) {
+            javaClass.getMethodCallsFromSelf().stream()
+                .filter(call -> call.getTarget().getName().equals("error"))
+                .filter(call -> call.getTarget().getOwner().isAssignableTo(org.slf4j.Logger.class))
+                .forEach(
+                    call ->
+                        events.add(
+                            SimpleConditionEvent.satisfied(
+                                javaClass,
+                                String.format(
+                                    "Method <%s> calls <%s>",
+                                    call.getOriginOwner().getFullName() + "." + call.getName(),
+                                    call.getTarget().getFullName()))));
+          }
+        };
+
+    // All ERROR-level reporting must flow through ErrorReporter so that every failure is
+    // routed to Sentry exactly once and in a consistent format. Two classes are deliberate,
+    // documented exceptions:
+    //  - Axon event-processing code: its ERROR-level logging already reaches Sentry via
+    //    sentry-logback because every event processor uses PropagatingErrorHandler (see
+    //    AxonEventProcessingConfig), so no call-site changes are required there.
+    //  - LoggingAspects (data-access-shared): a generic cross-cutting AOP aspect that logs any
+    //    @LogMethodArguments/@LogMethodResponse-annotated method's thrown exception. It predates
+    //    this module's Sentry retrofit and is out of scope here; it already reaches Sentry via
+    //    sentry-logback regardless.
+    ArchRule rule =
+        noClasses()
+            .that()
+            .doNotHaveFullyQualifiedName(
+                "uk.gov.justice.laa.dstew.access.observability.ErrorReporter")
+            .and()
+            .doNotHaveFullyQualifiedName(
+                "uk.gov.justice.laa.dstew.access.shared.logging.aspects.LoggingAspects")
+            .should(callLoggerErrorMethod)
+            .allowEmptyShould(true);
+    rule.check(classes);
+  }
 }

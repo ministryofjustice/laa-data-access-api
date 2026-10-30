@@ -1,6 +1,9 @@
 package uk.gov.justice.laa.dstew.access.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 import java.time.Instant;
 import java.util.List;
@@ -15,6 +18,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import uk.gov.justice.laa.dstew.access.observability.ErrorReporter;
 
 class SecondaryAuthorizationFilterTest {
 
@@ -217,5 +221,35 @@ class SecondaryAuthorizationFilterTest {
         .claim("oid", "entra-object-id")
         .issuedAt(issuedAt)
         .expiresAt(issuedAt.plusSeconds(300));
+  }
+
+  @Test
+  void givenUnexpectedMergeFailure_whenFiltered_thenReportsToSentryAndReturnsInternalServerError()
+      throws Exception {
+    Jwt oboJwt = jwt("obo-token").build();
+    JwtAuthenticationToken existingAuth =
+        new JwtAuthenticationToken(oboJwt) {
+          @Override
+          public java.util.Collection<org.springframework.security.core.GrantedAuthority>
+              getAuthorities() {
+            throw new IllegalStateException("boom");
+          }
+        };
+    SecurityContextHolder.getContext().setAuthentication(existingAuth);
+    ErrorReporter errorReporter = mock(ErrorReporter.class);
+    SecondaryAuthorizationFilter filter =
+        new SecondaryAuthorizationFilter(
+            token -> jwt(token).claim("LAA_ACCOUNTS", List.of("ABC123")).build(), errorReporter);
+    MockHttpServletRequest request = new MockHttpServletRequest();
+    request.addHeader("X-Authorization", "x-authorization-token");
+    MockHttpServletResponse response = new MockHttpServletResponse();
+    AtomicBoolean chainInvoked = new AtomicBoolean();
+
+    filter.doFilterInternal(
+        request, response, (ignoredRequest, ignoredResponse) -> chainInvoked.set(true));
+
+    assertThat(chainInvoked).isFalse();
+    assertThat(response.getStatus()).isEqualTo(500);
+    verify(errorReporter).report(any(String.class), any(RuntimeException.class));
   }
 }
