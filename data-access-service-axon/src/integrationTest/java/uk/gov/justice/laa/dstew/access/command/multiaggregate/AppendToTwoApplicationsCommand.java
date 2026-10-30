@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.spike;
+package uk.gov.justice.laa.dstew.access.command.multiaggregate;
 
 import java.time.Instant;
 import java.util.UUID;

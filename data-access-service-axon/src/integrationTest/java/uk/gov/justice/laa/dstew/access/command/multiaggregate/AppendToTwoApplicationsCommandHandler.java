@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.spike;
+package uk.gov.justice.laa.dstew.access.command.multiaggregate;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -15,7 +15,7 @@ import uk.gov.justice.laa.dstew.access.command.application.ApplicationState;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 
-/** Appends assignment events to two applications for the multi-aggregate fixture spike. */
+/** Test-only handler that appends assignment events to two applications in one command. */
 @Component
 public class AppendToTwoApplicationsCommandHandler {
 

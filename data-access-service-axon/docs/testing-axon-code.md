@@ -85,9 +85,9 @@ aggregates with assigned state.
 
 The `MultiAggregateCommandHandlerIntegrationTest` is the regression test for Axon's real
 multi-aggregate append. It verifies that changes to two application streams commit together and
-that a write conflict on a loaded member rejects the whole append. Its retry case records the
-current retry behaviour. Keep this integration test when changing these handlers or Axon
-configuration.
+that a write conflict on a loaded member rejects the whole append. Its retry case verifies that
+`RetryingCommandDispatcher` retries a rejected append only after the failed attempt's transaction
+has completed. Keep this integration test when changing these handlers or Axon configuration.
 
 ## In-memory Spring tests
 

@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.spike;
+package uk.gov.justice.laa.dstew.access.command.multiaggregate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -47,7 +47,7 @@ class MultiAggregateCommandHandlerIntegrationTest extends BaseIntegrationTest {
   @Autowired private ApplicationGroupRouteRepository routeRepository;
 
   @AfterEach
-  void resetSpikeStateAndDropTrigger() {
+  void resetHandlerStateAndDropTrigger() {
     AppendToTwoApplicationsCommandHandler.BEFORE_APPEND.set(() -> {});
     AppendToTwoApplicationsCommandHandler.SAME_INSTANCE_WHEN_RELOADED.set(false);
     jdbcTemplate.execute(
