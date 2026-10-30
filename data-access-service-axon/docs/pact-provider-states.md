@@ -65,7 +65,7 @@ each state through the real use cases, and `DataAccessApiProviderTests` replays 
 
 | State string | Guarantees | Typical endpoints |
 | --- | --- | --- |
-| `work list items exist` | At least three items: application `…0003` assigned to the dev caseworker, application `…0004` unassigned, prior authority `…a002` submitted and unassigned | GET work-list, with and without filters |
+| `work list items exist` | At least four items: application `…0003` assigned to the dev caseworker, application `…0004` unassigned, application `…0010` still pending its auto-grant check (unassigned, `autoGranted = PENDING`), prior authority `…a002` submitted and unassigned | GET work-list, with and without filters |
 
 ## Prior authorities
 

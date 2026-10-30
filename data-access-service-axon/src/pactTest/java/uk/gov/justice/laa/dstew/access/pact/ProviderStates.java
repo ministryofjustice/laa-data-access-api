@@ -4,6 +4,7 @@ import static uk.gov.justice.laa.dstew.access.pact.PactApplicationFixtures.submi
 import static uk.gov.justice.laa.dstew.access.pact.PactApplicationFixtures.submittedApplication001;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import org.axonframework.common.configuration.AxonConfiguration;
 import org.axonframework.messaging.eventhandling.processing.streaming.StreamingEventProcessor;
@@ -125,12 +126,24 @@ class ProviderStates {
 
   // ─── Work list ───────────────────────────────────────────────────────────────
 
-  /** One assigned application, one unassigned application and one submitted prior authority. */
+  /**
+   * One assigned application, one unassigned application, one pending application and one submitted
+   * prior authority.
+   */
   void workListItemsExist() {
     log.info("State: {}", PactStates.WORK_LIST_ITEMS_EXIST);
     applicationAssignedExists();
     applicationUnassignedExists();
+    applicationPendingOnWorkListExists();
     priorAuthoritySubmittedExists();
+  }
+
+  /** Application 010: submitted, auto-grant still pending, visible on the work list as PENDING. */
+  void applicationPendingOnWorkListExists() {
+    ApplicationCreateRequest request =
+        application(PactIds.APPLICATION_PENDING_WORK_LIST, "0010", "Pip", "Pending");
+    applications.ensureSubmitted(request);
+    applications.awaitWorkListItem(request.getId(), Objects::nonNull);
   }
 
   // ─── Prior authorities ───────────────────────────────────────────────────────

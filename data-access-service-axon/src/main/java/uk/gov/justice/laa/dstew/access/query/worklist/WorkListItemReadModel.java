@@ -14,6 +14,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
+import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 
 /** Disposable tracking row representing exactly one active work item. */
@@ -66,6 +67,13 @@ public class WorkListItemReadModel {
   @Column(name = "submitted_at")
   private Instant submittedAt;
 
+  @Column(name = "ready_at")
+  private Instant readyAt;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "autogranted")
+  private AutoGrantedState autoGranted;
+
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
 
@@ -95,14 +103,14 @@ public class WorkListItemReadModel {
       WorkItemType itemType,
       UUID itemId,
       UUID parentApplicationId,
-      Instant updatedAt,
+      Instant initialUpdatedAt,
       long itemVersion,
       long projectionPosition) {
     this.id = itemId;
     this.itemType = itemType;
     this.parentApplicationId = parentApplicationId;
-    this.submittedAt = updatedAt;
-    this.updatedAt = updatedAt;
+    this.submittedAt = initialUpdatedAt;
+    this.updatedAt = initialUpdatedAt;
     this.assignmentBoundaryType = "DIRECT";
     this.assignmentBoundaryId = itemId;
     this.assignmentVersion = 0L;

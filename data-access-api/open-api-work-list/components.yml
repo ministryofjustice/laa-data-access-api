@@ -33,7 +33,10 @@ components:
         submittedAt:
           type: string
           format: date-time
-          description: When this work item became ready for assessment (application readiness, or prior authority submission)
+          description: When this work item was first submitted (application creation, or prior authority submission)
+        autoGranted:
+          $ref: "../open-api-applications/components.yml#/components/schemas/AutoGranted"
+          description: Auto-grant state of an application item; omitted for prior-authority items, which never go through the auto-grant check
         laaReference:
           type: string
           description: LAA reference for the application item or the parent application of a PA item
