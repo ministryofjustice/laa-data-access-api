@@ -64,8 +64,7 @@ public class ApplicationGroupRouteResolver {
     } else if (sourceRoute.getRouteKind() == ApplicationGroupRouteKind.STANDALONE
         && targetRoute.getRouteKind() == ApplicationGroupRouteKind.STANDALONE) {
       plan = new ApplicationLinkPlan(ApplicationLinkAction.CREATE_GROUP, null);
-    } else if (sourceRoute.getRouteKind() == ApplicationGroupRouteKind.STANDALONE
-        && targetRoute.getRouteKind() == ApplicationGroupRouteKind.LINKED_GROUP) {
+    } else if (sourceRoute.getRouteKind() == ApplicationGroupRouteKind.STANDALONE) {
       plan =
           new ApplicationLinkPlan(
               ApplicationLinkAction.ADD_TO_EXISTING_GROUP, targetRoute.getGroupId());
