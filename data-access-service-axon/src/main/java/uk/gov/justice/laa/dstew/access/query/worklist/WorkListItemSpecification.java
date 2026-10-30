@@ -4,6 +4,7 @@ import jakarta.persistence.criteria.Predicate;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.data.jpa.domain.Specification;
+import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 
 /** Database predicates for {@link FindWorkListItemsQuery}. */
 public final class WorkListItemSpecification {
@@ -26,6 +27,14 @@ public final class WorkListItemSpecification {
         predicates.add(criteriaBuilder.equal(root.get("assigneeId"), query.authenticatedUserId()));
       } else {
         predicates.add(criteriaBuilder.isNull(root.get("assigneeId")));
+      }
+      if (query.excludePendingAutoGrant()) {
+        // PRIOR_AUTHORITY rows never carry an autoGranted value and must never be excluded just
+        // because it is null.
+        predicates.add(
+            criteriaBuilder.or(
+                criteriaBuilder.isNull(root.get("autoGranted")),
+                criteriaBuilder.notEqual(root.get("autoGranted"), AutoGrantedState.PENDING)));
       }
       return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
     };

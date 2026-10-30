@@ -9,6 +9,7 @@ public record FindWorkListItemsQuery(
     Boolean assignedToMe,
     WorkItemType itemType,
     Boolean unassigned,
+    Boolean excludePendingAutoGrant,
     Integer page,
     Integer pageSize,
     UUID authenticatedUserId) {
@@ -20,6 +21,9 @@ public record FindWorkListItemsQuery(
     }
     if (unassigned == null) {
       unassigned = true;
+    }
+    if (excludePendingAutoGrant == null) {
+      excludePendingAutoGrant = false;
     }
     if (!assignedToMe && !unassigned) {
       throw new IllegalArgumentException("assignedToMe and unassigned cannot both be false");
