@@ -11,19 +11,21 @@ class FindWorkListItemsQueryTest {
 
   @Test
   void defaultsToOpenApplicationsAndPaginationWhenFiltersAreNotProvided() {
-    FindWorkListItemsQuery query = new FindWorkListItemsQuery(null, null, null, null, null, null);
+    FindWorkListItemsQuery query =
+        new FindWorkListItemsQuery(null, null, null, null, null, null, null);
 
     assertThat(query.page()).isEqualTo(1);
     assertThat(query.pageSize()).isEqualTo(20);
     assertThat(query.assignedToMe()).isFalse();
     assertThat(query.unassigned()).isTrue();
+    assertThat(query.excludePendingAutoGrant()).isFalse();
   }
 
   @Test
   void preservesARequestForTheAuthenticatedCaseworkersPersonalQueue() {
     UUID authenticatedUserId = UUID.randomUUID();
     FindWorkListItemsQuery query =
-        new FindWorkListItemsQuery(true, null, false, null, null, authenticatedUserId);
+        new FindWorkListItemsQuery(true, null, false, null, null, null, authenticatedUserId);
 
     assertThat(query.assignedToMe()).isTrue();
     assertThat(query.unassigned()).isFalse();
@@ -33,7 +35,7 @@ class FindWorkListItemsQueryTest {
   @Test
   void acceptsTheCombinedOpenApplicationsAndPersonalQueueFilter() {
     FindWorkListItemsQuery query =
-        new FindWorkListItemsQuery(true, null, true, null, null, UUID.randomUUID());
+        new FindWorkListItemsQuery(true, null, true, null, null, null, UUID.randomUUID());
 
     assertThat(query.assignedToMe()).isTrue();
     assertThat(query.unassigned()).isTrue();
@@ -41,14 +43,14 @@ class FindWorkListItemsQueryTest {
 
   @Test
   void rejectsARequestThatWouldReturnAllWorkQueueItems() {
-    assertThatThrownBy(() -> new FindWorkListItemsQuery(false, null, false, 1, 20, null))
+    assertThatThrownBy(() -> new FindWorkListItemsQuery(false, null, false, null, 1, 20, null))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("assignedToMe and unassigned cannot both be false");
   }
 
   @Test
   void rejectsAPersonalQueueRequestWithoutAnAuthenticatedUserId() {
-    assertThatThrownBy(() -> new FindWorkListItemsQuery(true, null, false, 1, 20, null))
+    assertThatThrownBy(() -> new FindWorkListItemsQuery(true, null, false, null, 1, 20, null))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("authenticatedUserId is required when assignedToMe is true");
   }

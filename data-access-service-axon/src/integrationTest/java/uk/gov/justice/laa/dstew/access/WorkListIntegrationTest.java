@@ -186,6 +186,53 @@ class WorkListIntegrationTest {
   }
 
   @Test
+  void givenNoFilter_whenListed_thenPendingApplicationsAreIncludedByDefault() {
+    UUID pendingApplicationId = UUID.randomUUID();
+    createSubmittedApplication(pendingApplicationId);
+    awaitPendingApplicationWorkListItem(pendingApplicationId);
+
+    await()
+        .atMost(15, TimeUnit.SECONDS)
+        .untilAsserted(
+            () ->
+                assertThat(getWorkList("").getItems())
+                    .extracting(WorkListItem::getItemId)
+                    .contains(pendingApplicationId));
+  }
+
+  @Test
+  void givenExcludePendingAutoGrantFilter_whenListed_thenOmitsPendingApplicationsButKeepsOthers() {
+    UUID pendingApplicationId = UUID.randomUUID();
+    createSubmittedApplication(pendingApplicationId);
+    awaitPendingApplicationWorkListItem(pendingApplicationId);
+
+    UUID manualApplicationId = UUID.randomUUID();
+    createSubmittedApplication(manualApplicationId);
+    markApplicationManual(manualApplicationId);
+
+    UUID priorAuthorityParentId = UUID.randomUUID();
+    createGrantedApplication(priorAuthorityParentId);
+    UUID priorAuthorityId = createAndSubmitPriorAuthorityDraft(priorAuthorityParentId);
+
+    await()
+        .atMost(15, TimeUnit.SECONDS)
+        .untilAsserted(
+            () ->
+                assertThat(getWorkList("").getItems())
+                    .extracting(WorkListItem::getItemId)
+                    .contains(pendingApplicationId, manualApplicationId, priorAuthorityId));
+
+    WorkListResponse filtered = getWorkList("?excludePendingAutoGrant=true");
+
+    assertThat(filtered.getItems())
+        .extracting(WorkListItem::getItemId)
+        .doesNotContain(pendingApplicationId);
+    assertThat(filtered.getItems())
+        .extracting(WorkListItem::getItemId)
+        .contains(manualApplicationId, priorAuthorityId);
+  }
+
+  @Test
   void givenManualApplicationAssignedToCaseworker_whenDecided_thenItIsRemovedFromTheWorkQueue() {
     UUID applicationId = UUID.randomUUID();
     UUID proceedingId = UUID.randomUUID();

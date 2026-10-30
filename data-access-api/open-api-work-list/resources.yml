@@ -24,6 +24,14 @@ paths:
           schema:
             $ref: "./components.yml#/components/schemas/WorkListItemType"
         - in: query
+          name: excludePendingAutoGrant
+          description: >-
+            Exclude APPLICATION items still pending their auto-grant check (autoGranted = PENDING).
+            Defaults to false (current, unfiltered behaviour).
+          schema:
+            type: boolean
+            default: false
+        - in: query
           name: page
           description: One-based page number (defaults to 1)
           schema:
