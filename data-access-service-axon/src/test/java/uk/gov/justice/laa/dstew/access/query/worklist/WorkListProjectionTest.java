@@ -3,6 +3,7 @@ package uk.gov.justice.laa.dstew.access.query.worklist;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -19,12 +20,16 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.axonframework.messaging.core.MessageType;
+import org.axonframework.messaging.core.annotation.SequencingPolicy;
 import org.axonframework.messaging.eventhandling.EventMessage;
 import org.axonframework.messaging.eventhandling.GenericEventMessage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
+import org.mockito.Mockito;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -34,6 +39,14 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupDissolvedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberRemovedFromGroupEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.ApplicationAssignmentReclaimedFromGroupEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.LinkedGroupAssignedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.LinkedGroupMemberAssignmentInheritedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.LinkedGroupUnassignedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
@@ -44,11 +57,15 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
+import uk.gov.justice.laa.dstew.access.query.groupassignment.AssignmentChange;
+import uk.gov.justice.laa.dstew.access.query.groupassignment.LinkedGroupAssignmentTracker;
 
 class WorkListProjectionTest {
   private WorkListItemReadRepository items;
   private ApplicationDataStore applicationDataStore;
   private PriorAuthorityDataStore priorAuthorityDataStore;
+  private LinkedGroupAssignmentTracker assignmentTracker;
+  private WorkListGroupAssignmentStore assignmentStore;
   private WorkListProjection projection;
 
   @BeforeEach
@@ -56,7 +73,44 @@ class WorkListProjectionTest {
     items = mock(WorkListItemReadRepository.class);
     applicationDataStore = mock(ApplicationDataStore.class);
     priorAuthorityDataStore = mock(PriorAuthorityDataStore.class);
-    projection = new WorkListProjection(items, applicationDataStore, priorAuthorityDataStore);
+    assignmentTracker = mock(LinkedGroupAssignmentTracker.class);
+    assignmentStore = mock(WorkListGroupAssignmentStore.class);
+    Mockito.when(
+            assignmentTracker.applicationReady(Mockito.any(), Mockito.any(), Mockito.anyLong()))
+        .thenAnswer(
+            invocation ->
+                new AssignmentChange(
+                    invocation.getArgument(1), null, null, null, invocation.getArgument(2)));
+    Mockito.when(
+            assignmentTracker.directAssignmentChanged(
+                Mockito.any(), Mockito.any(), Mockito.nullable(UUID.class), Mockito.anyLong()))
+        .thenAnswer(
+            invocation ->
+                new AssignmentChange(
+                    invocation.getArgument(1),
+                    null,
+                    null,
+                    invocation.getArgument(2),
+                    invocation.getArgument(3)));
+    Mockito.when(
+            assignmentTracker.groupAssignmentChanged(
+                Mockito.any(), Mockito.any(), Mockito.nullable(UUID.class), Mockito.anyLong()))
+        .thenReturn(List.of());
+    Mockito.when(
+            assignmentTracker.memberInherited(
+                Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any(), Mockito.anyLong()))
+        .thenReturn(Optional.empty());
+    Mockito.when(
+            assignmentTracker.assignmentReclaimed(
+                Mockito.any(), Mockito.any(), Mockito.nullable(UUID.class), Mockito.anyLong()))
+        .thenReturn(Optional.empty());
+    projection =
+        new WorkListProjection(
+            items,
+            applicationDataStore,
+            priorAuthorityDataStore,
+            assignmentTracker,
+            assignmentStore);
   }
 
   @Test
@@ -74,7 +128,8 @@ class WorkListProjectionTest {
 
     Instant occurredAt = Instant.parse("2026-08-28T10:00:00Z");
     projection.on(
-        new ApplicationReadyForManualAssessmentEvent(applicationId, 3L, 5L, occurredAt), message());
+        new ApplicationReadyForManualAssessmentEvent(applicationId, 3L, 5L, 0L, occurredAt),
+        message());
 
     ArgumentCaptor<WorkListItemReadModel> captor =
         ArgumentCaptor.forClass(WorkListItemReadModel.class);
@@ -93,6 +148,31 @@ class WorkListProjectionTest {
     assertThat(row.getAssignmentVersion()).isZero();
     assertThat(row.getItemVersion()).isEqualTo(3L);
     assertThat(row.getSubmittedAt()).isEqualTo(occurredAt);
+  }
+
+  @Test
+  void givenGroupedReadyApplication_whenProjected_thenRowUsesGroupBoundary() {
+    UUID applicationId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-08-28T10:00:00Z");
+    ApplicationDataPayload data = mock(ApplicationDataPayload.class);
+    when(applicationDataStore.get(applicationId, 5L)).thenReturn(data);
+    when(assignmentTracker.applicationReady(assignmentStore, applicationId, 4L))
+        .thenReturn(new AssignmentChange(applicationId, groupId, null, null, 4L));
+
+    projection.on(
+        new ApplicationReadyForManualAssessmentEvent(applicationId, 3L, 5L, 4L, occurredAt),
+        message());
+
+    ArgumentCaptor<WorkListItemReadModel> captor =
+        ArgumentCaptor.forClass(WorkListItemReadModel.class);
+    verify(items).save(captor.capture());
+    WorkListItemReadModel row = captor.getValue();
+    assertThat(row.getAssignmentBoundaryType()).isEqualTo("LINKED_GROUP");
+    assertThat(row.getAssignmentBoundaryId()).isEqualTo(groupId);
+    assertThat(row.getGroupId()).isEqualTo(groupId);
+    assertThat(row.getAssignmentVersion()).isEqualTo(4L);
+    verify(assignmentTracker).applicationReady(assignmentStore, applicationId, 4L);
   }
 
   @Test
@@ -199,7 +279,7 @@ class WorkListProjectionTest {
 
     projection.on(
         new ApplicationReadyForManualAssessmentEvent(
-            applicationId, 3L, 5L, Instant.parse("2026-08-28T10:00:00Z")),
+            applicationId, 3L, 5L, 0L, Instant.parse("2026-08-28T10:00:00Z")),
         message());
 
     ArgumentCaptor<WorkListItemReadModel> captor =
@@ -246,7 +326,7 @@ class WorkListProjectionTest {
 
     projection.on(
         new ApplicationReadyForManualAssessmentEvent(
-            applicationId, 3L, 5L, Instant.parse("2026-08-28T10:00:00Z")),
+            applicationId, 3L, 5L, 0L, Instant.parse("2026-08-28T10:00:00Z")),
         message());
 
     ArgumentCaptor<WorkListItemReadModel> captor =
@@ -334,6 +414,26 @@ class WorkListProjectionTest {
     assertThat(row.getUpdatedAt()).isEqualTo(occurredAt);
     assertThat(row.getProjectionPosition()).isNotZero();
     verify(items).save(row);
+    verify(assignmentTracker).directAssignmentChanged(assignmentStore, itemId, null, 2L);
+  }
+
+  @ParameterizedTest
+  @EnumSource(WorkItemType.class)
+  void givenAssignment_whenProjected_thenOnlyApplicationsTracked(WorkItemType type) {
+    UUID itemId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+    WorkListItemReadModel row =
+        new WorkListItemReadModel(type, itemId, null, Instant.now(), 1L, 0L);
+    when(items.findById(itemId)).thenReturn(Optional.of(row));
+
+    projection.on(
+        new WorkItemAssigned(itemId, type, 2L, 3L, caseworkerId, Instant.now()), message());
+
+    if (type == WorkItemType.APPLICATION) {
+      verify(assignmentTracker).directAssignmentChanged(assignmentStore, itemId, caseworkerId, 3L);
+    } else {
+      verify(assignmentTracker, never()).directAssignmentChanged(any(), any(), any(), anyLong());
+    }
   }
 
   @Test
@@ -366,6 +466,12 @@ class WorkListProjectionTest {
     }
 
     verify(items, never()).save(any());
+    verify(assignmentTracker)
+        .directAssignmentChanged(
+            ArgumentMatchers.eq(assignmentStore),
+            ArgumentMatchers.eq(itemId),
+            ArgumentMatchers.any(UUID.class),
+            ArgumentMatchers.eq(1L));
   }
 
   @Test
@@ -460,6 +566,235 @@ class WorkListProjectionTest {
     projection.reset();
 
     verify(items).deleteAllInBatch();
+    verify(assignmentStore).deleteAll();
+  }
+
+  @Test
+  void givenProjection_whenInspected_thenProcessesInOneLane() {
+    assertThat(WorkListProjection.class.isAnnotationPresent(SequencingPolicy.class)).isTrue();
+  }
+
+  @Test
+  void givenGroupAssignment_whenProjected_thenRowUsesGroupAssignmentBoundary() {
+    UUID applicationId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-09-30T12:00:00Z");
+    WorkListItemReadModel row =
+        new WorkListItemReadModel(
+            WorkItemType.APPLICATION, applicationId, null, occurredAt, 3L, 1L);
+    AssignmentChange change = new AssignmentChange(applicationId, groupId, null, caseworkerId, 4L);
+    when(assignmentTracker.groupAssignmentChanged(assignmentStore, groupId, caseworkerId, 4L))
+        .thenReturn(List.of(change));
+    when(items.findById(applicationId)).thenReturn(Optional.of(row));
+    LinkedGroupAssignedEvent event =
+        new LinkedGroupAssignedEvent(groupId, caseworkerId, 4L, occurredAt);
+
+    projection.on(event, message());
+
+    assertThat(row.getAssigneeId()).isEqualTo(caseworkerId);
+    assertThat(row.getAssignmentVersion()).isEqualTo(4L);
+    assertThat(row.getAssignmentBoundaryType()).isEqualTo("LINKED_GROUP");
+    assertThat(row.getAssignmentBoundaryId()).isEqualTo(groupId);
+    assertThat(row.getGroupId()).isEqualTo(groupId);
+    assertThat(row.getUpdatedAt()).isEqualTo(occurredAt);
+    verify(items).save(row);
+  }
+
+  @Test
+  void givenGroupUnassigned_whenProjected_thenRowCaseworkerIsCleared() {
+    UUID applicationId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-09-30T12:00:00Z");
+    WorkListItemReadModel row =
+        new WorkListItemReadModel(
+            WorkItemType.APPLICATION, applicationId, null, occurredAt, 3L, 1L);
+    row.applyAssignment(groupId, caseworkerId, 2L);
+    when(assignmentTracker.groupAssignmentChanged(assignmentStore, groupId, null, 3L))
+        .thenReturn(List.of(new AssignmentChange(applicationId, groupId, caseworkerId, null, 3L)));
+    when(items.findById(applicationId)).thenReturn(Optional.of(row));
+
+    projection.on(new LinkedGroupUnassignedEvent(groupId, 3L, occurredAt), message());
+
+    assertThat(row.getAssigneeId()).isNull();
+    assertThat(row.getAssignmentBoundaryType()).isEqualTo("LINKED_GROUP");
+    assertThat(row.getAssignmentVersion()).isEqualTo(3L);
+    verify(items).save(row);
+  }
+
+  @Test
+  void givenChangeForMissingRow_whenProjected_thenNothingSaved() {
+    UUID applicationId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+    when(assignmentTracker.groupAssignmentChanged(assignmentStore, groupId, caseworkerId, 4L))
+        .thenReturn(List.of(new AssignmentChange(applicationId, groupId, null, caseworkerId, 4L)));
+
+    projection.on(
+        new LinkedGroupAssignedEvent(
+            groupId, caseworkerId, 4L, Instant.parse("2026-09-30T12:00:00Z")),
+        message());
+
+    verify(items).findById(applicationId);
+    verify(items, never()).save(any());
+  }
+
+  @Test
+  void givenChangeForPriorAuthorityRow_whenProjected_thenNothingSaved() {
+    UUID applicationId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+    WorkListItemReadModel priorAuthority =
+        new WorkListItemReadModel(
+            WorkItemType.PRIOR_AUTHORITY, applicationId, UUID.randomUUID(), Instant.now(), 1L, 0L);
+    when(assignmentTracker.groupAssignmentChanged(assignmentStore, groupId, caseworkerId, 4L))
+        .thenReturn(List.of(new AssignmentChange(applicationId, groupId, null, caseworkerId, 4L)));
+    when(items.findById(applicationId)).thenReturn(Optional.of(priorAuthority));
+
+    projection.on(
+        new LinkedGroupAssignedEvent(
+            groupId, caseworkerId, 4L, Instant.parse("2026-09-30T12:00:00Z")),
+        message());
+
+    assertThat(priorAuthority.getAssigneeId()).isNull();
+    verify(items, never()).save(any());
+  }
+
+  @Test
+  void givenDecision_whenProjected_thenTrackerMarksInactive() {
+    UUID applicationId = UUID.randomUUID();
+
+    projection.on(
+        new ApplicationDecisionMadeEvent(
+            applicationId, 2L, 3L, "GRANTED", null, Instant.parse("2026-09-30T12:00:00Z")));
+
+    verify(items).deleteById(applicationId);
+    verify(assignmentTracker).applicationDecided(assignmentStore, applicationId);
+  }
+
+  @Test
+  void givenInheritedAssignment_whenProjected_thenRowShowsGroupOwner() {
+    UUID applicationId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-09-30T12:00:00Z");
+    WorkListItemReadModel row =
+        new WorkListItemReadModel(
+            WorkItemType.APPLICATION, applicationId, null, occurredAt, 3L, 1L);
+    when(assignmentTracker.memberInherited(
+            assignmentStore, groupId, applicationId, caseworkerId, 2L))
+        .thenReturn(
+            Optional.of(new AssignmentChange(applicationId, groupId, null, caseworkerId, 2L)));
+    when(items.findById(applicationId)).thenReturn(Optional.of(row));
+
+    projection.on(
+        new LinkedGroupMemberAssignmentInheritedEvent(
+            groupId, applicationId, caseworkerId, 2L, occurredAt),
+        message());
+
+    assertThat(row.getAssigneeId()).isEqualTo(caseworkerId);
+    assertThat(row.getAssignmentBoundaryId()).isEqualTo(groupId);
+    verify(items).save(row);
+  }
+
+  @Test
+  void givenReclaimedAssignment_whenProjected_thenRowReturnsToDirectBoundary() {
+    UUID applicationId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-09-30T12:00:00Z");
+    WorkListItemReadModel row =
+        new WorkListItemReadModel(
+            WorkItemType.APPLICATION, applicationId, null, occurredAt, 3L, 1L);
+    row.applyAssignment(groupId, null, 2L);
+    when(assignmentTracker.assignmentReclaimed(assignmentStore, applicationId, caseworkerId, 4L))
+        .thenReturn(Optional.of(new AssignmentChange(applicationId, null, null, caseworkerId, 4L)));
+    when(items.findById(applicationId)).thenReturn(Optional.of(row));
+
+    projection.on(
+        new ApplicationAssignmentReclaimedFromGroupEvent(
+            applicationId, groupId, caseworkerId, 4L, occurredAt),
+        message());
+
+    assertThat(row.getAssigneeId()).isEqualTo(caseworkerId);
+    assertThat(row.getAssignmentBoundaryType()).isEqualTo("DIRECT");
+    assertThat(row.getAssignmentBoundaryId()).isEqualTo(applicationId);
+    assertThat(row.getGroupId()).isNull();
+    verify(items).save(row);
+  }
+
+  @Test
+  void givenGroupCreated_whenProjected_thenActiveRowsJoinGroupBoundary() {
+    UUID applicationId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-09-30T12:00:00Z");
+    WorkListItemReadModel row =
+        new WorkListItemReadModel(
+            WorkItemType.APPLICATION, applicationId, null, occurredAt, 3L, 1L);
+    when(assignmentTracker.groupCreated(assignmentStore, groupId, List.of(applicationId)))
+        .thenReturn(List.of(new AssignmentChange(applicationId, groupId, null, null, 0L)));
+    when(items.findById(applicationId)).thenReturn(Optional.of(row));
+
+    projection.on(
+        new LinkedApplicationGroupCreatedEvent(
+            groupId, applicationId, List.of(applicationId), occurredAt),
+        message());
+
+    assertThat(row.getAssignmentBoundaryType()).isEqualTo("LINKED_GROUP");
+    assertThat(row.getAssignmentBoundaryId()).isEqualTo(groupId);
+    verify(items).save(row);
+  }
+
+  @Test
+  void givenMemberAdded_whenProjected_thenNewMemberTakesGroupAssignment() {
+    UUID applicationId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-09-30T12:00:00Z");
+    WorkListItemReadModel row =
+        new WorkListItemReadModel(
+            WorkItemType.APPLICATION, applicationId, null, occurredAt, 3L, 1L);
+    when(assignmentTracker.memberAdded(assignmentStore, groupId, applicationId))
+        .thenReturn(List.of(new AssignmentChange(applicationId, groupId, null, caseworkerId, 2L)));
+    when(items.findById(applicationId)).thenReturn(Optional.of(row));
+
+    projection.on(
+        new MemberAddedToGroupEvent(groupId, UUID.randomUUID(), applicationId, occurredAt),
+        message());
+
+    assertThat(row.getAssigneeId()).isEqualTo(caseworkerId);
+    assertThat(row.getAssignmentBoundaryId()).isEqualTo(groupId);
+    assertThat(row.getAssignmentVersion()).isEqualTo(2L);
+    verify(items).save(row);
+  }
+
+  @Test
+  void givenMemberRemoved_whenProjected_thenTrackerReleasesMember() {
+    UUID applicationId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-09-30T12:00:00Z");
+
+    projection.on(
+        new MemberRemovedFromGroupEvent(
+            groupId, UUID.randomUUID(), applicationId, 1L, null, 0L, occurredAt));
+
+    verify(assignmentTracker).membersLeft(assignmentStore, groupId, List.of(applicationId));
+  }
+
+  @Test
+  void givenGroupDissolved_whenProjected_thenTrackerReleasesAllMembers() {
+    UUID firstId = UUID.randomUUID();
+    UUID secondId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    List<UUID> memberIds = List.of(firstId, secondId);
+    Instant occurredAt = Instant.parse("2026-09-30T12:00:00Z");
+
+    projection.on(
+        new LinkedApplicationGroupDissolvedEvent(
+            groupId, firstId, secondId, memberIds, 1L, null, 0L, occurredAt));
+
+    verify(assignmentTracker).membersLeft(assignmentStore, groupId, memberIds);
   }
 
   private static EventMessage message() {

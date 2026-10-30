@@ -41,7 +41,7 @@ The previous creation commands have been removed, without compatibility aliases:
 
 Prior-authority commands require `--type` with `EXPERT`, `DISBURSEMENT`, `COUNSEL`, or `ALL`; `--count` is the number created for each selected type. `create-drafts` requires an existing granted application and leaves the generated prior authorities as drafts. `create-submitted` creates and submits a parent application through the draft API, waits for its read model, assigns it to the Swagger token's authenticated user, records a granted decision, creates a prior-authority draft, saves valid type-specific content, and submits it. Each result line labels its `applicationId`, `priorAuthorityId`, and state.
 
-Assignment uses the public work-list API and therefore requires the current `assignmentVersion`; it returns a conflict if the item changes before the write. The `local` commands read the JDBC-backed Axon `domain_event_entry` table directly. They default to the `axon` schema and `postgres` credentials, accept `--axon-schema`, `--db-username`, and `--db-password` overrides, and may display sensitive event payloads.
+Assignment uses the public work-list API and therefore requires the current `assignmentVersion` token from the work list, passed back unchanged; it returns a conflict if the item changes before the write. The `local` commands read the JDBC-backed Axon `domain_event_entry` table directly. They default to the `axon` schema and `postgres` credentials, accept `--axon-schema`, `--db-username`, and `--db-password` overrides, and may display sensitive event payloads.
 
 ```zsh
 # Create complete drafts, leaving them available for evidence uploads
@@ -112,13 +112,13 @@ data-access-tools/build/install/data-access-tools/bin/data-access-tools \
 data-access-tools/build/install/data-access-tools/bin/data-access-tools \
   --api-url http://localhost:8082 \
   applications assign --application-id 123e4567-e89b-12d3-a456-426614174000 \
-  --expected-assignment-version 0
+  --expected-assignment-version 'paste-assignmentVersion-token-from-work-list'
 
 # Assign a prior-authority work-list item to the Swagger token's authenticated user
 data-access-tools/build/install/data-access-tools/bin/data-access-tools \
   --api-url http://localhost:8082 \
   prior-authorities assign --prior-authority-id 123e4567-e89b-12d3-a456-426614174002 \
-  --expected-assignment-version 0
+  --expected-assignment-version 'paste-assignmentVersion-token-from-work-list'
 
 # Read an application's raw Axon domain events from the event store
 data-access-tools/build/install/data-access-tools/bin/data-access-tools \
@@ -130,4 +130,3 @@ data-access-tools/build/install/data-access-tools/bin/data-access-tools \
   local prior-authority-events --jdbc-url jdbc:postgresql://localhost:5432/data_access_api \
   --prior-authority-id 123e4567-e89b-12d3-a456-426614174002
 ```
-

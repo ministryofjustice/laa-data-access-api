@@ -5,14 +5,15 @@ import org.springframework.stereotype.Service;
 /** Controller-facing use case for unassigning a work item. */
 @Service
 public class UnassignWorkItemUseCase {
-  private final UnassignWorkItemCommandHandler commandHandler;
+  private final UnassignWorkItemCoordinator coordinator;
 
-  public UnassignWorkItemUseCase(UnassignWorkItemCommandHandler commandHandler) {
-    this.commandHandler = commandHandler;
+  /** Creates the use case with its transactional coordinator. */
+  public UnassignWorkItemUseCase(UnassignWorkItemCoordinator coordinator) {
+    this.coordinator = coordinator;
   }
 
   /** Unassigns a work item using its authoritative aggregate route. */
   public void execute(UnassignWorkItemCommand command) {
-    commandHandler.handle(command);
+    coordinator.handle(command);
   }
 }

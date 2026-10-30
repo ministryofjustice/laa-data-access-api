@@ -13,10 +13,12 @@ import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftStore;
+import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCoordinator;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.document.UploadDocumentUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.MakePriorAuthorityDecisionUseCase;
+import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCoordinator;
 import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationUseCase;
 import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
@@ -45,6 +47,8 @@ class ApplicationCommandUseCasesSecurityTest extends BaseSecuredUseCaseTest {
   @Autowired private UploadDocumentUseCase uploadDocumentUseCase;
 
   @MockitoBean private RetryingCommandDispatcher dispatcher;
+  @MockitoBean private MarkApplicationReadyCoordinator readyCoordinator;
+  @MockitoBean private MakeApplicationDecisionCoordinator decisionCoordinator;
   @MockitoBean private SubscriptionProjectionGateway projectionGateway;
   @MockitoBean private SdsService sdsService;
   @MockitoBean private ApplicationDraftStore draftStore;
@@ -61,7 +65,13 @@ class ApplicationCommandUseCasesSecurityTest extends BaseSecuredUseCaseTest {
     assertDenied(() -> uploadDocumentUseCase.execute(null, null));
     assertDenied(() -> uploadDocumentUseCase.execute(null, null, null, null));
 
-    verifyNoInteractions(dispatcher, projectionGateway, sdsService, draftStore);
+    verifyNoInteractions(
+        dispatcher,
+        projectionGateway,
+        sdsService,
+        draftStore,
+        readyCoordinator,
+        decisionCoordinator);
   }
 
   @Test
@@ -77,7 +87,13 @@ class ApplicationCommandUseCasesSecurityTest extends BaseSecuredUseCaseTest {
     assertDenied(() -> uploadDocumentUseCase.execute(null, null));
     assertDenied(() -> uploadDocumentUseCase.execute(null, null, null, null));
 
-    verifyNoInteractions(dispatcher, projectionGateway, sdsService, draftStore);
+    verifyNoInteractions(
+        dispatcher,
+        projectionGateway,
+        sdsService,
+        draftStore,
+        readyCoordinator,
+        decisionCoordinator);
   }
 
   private void assertDenied(ThrowingInvocation invocation) {

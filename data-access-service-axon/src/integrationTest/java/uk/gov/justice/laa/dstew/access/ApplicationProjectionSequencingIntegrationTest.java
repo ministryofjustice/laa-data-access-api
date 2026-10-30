@@ -53,6 +53,7 @@ import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuer
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexProjection;
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadRepository;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
+import uk.gov.justice.laa.dstew.access.testutils.LinkedGroupTestFixture;
 
 @Testcontainers
 @SpringBootTest(
@@ -173,7 +174,11 @@ class ApplicationProjectionSequencingIntegrationTest {
       gate.awaitBlocked();
       commands.sendAndWait(
           new EstablishLinkedApplicationGroupCommand(
-              groupId, leadId, List.of(leadId, applicationId), Instant.now()));
+              groupId,
+              leadId,
+              List.of(leadId, applicationId),
+              LinkedGroupTestFixture.unassignedDelegations(List.of(leadId, applicationId)),
+              Instant.now()));
       assertThat(gate.observedWhileBlocked()).isFalse();
     } finally {
       gate.release();
@@ -205,7 +210,11 @@ class ApplicationProjectionSequencingIntegrationTest {
       gate.awaitBlocked();
       commands.sendAndWait(
           new EstablishLinkedApplicationGroupCommand(
-              groupId, leadId, List.of(leadId, applicationId), Instant.now()));
+              groupId,
+              leadId,
+              List.of(leadId, applicationId),
+              LinkedGroupTestFixture.unassignedDelegations(List.of(leadId, applicationId)),
+              Instant.now()));
       assertThat(gate.observedWhileBlocked()).isFalse();
     } finally {
       gate.release();
@@ -239,13 +248,21 @@ class ApplicationProjectionSequencingIntegrationTest {
     try {
       commands.sendAndWait(
           new EstablishLinkedApplicationGroupCommand(
-              firstGroup, firstLead, List.of(firstLead, applicationId), Instant.now()));
+              firstGroup,
+              firstLead,
+              List.of(firstLead, applicationId),
+              LinkedGroupTestFixture.unassignedDelegations(List.of(firstLead, applicationId)),
+              Instant.now()));
       gate.awaitBlocked();
       commands.sendAndWait(
           new RemoveApplicationFromLinkedGroupCommand(firstGroup, applicationId, 0, Instant.now()));
       commands.sendAndWait(
           new EstablishLinkedApplicationGroupCommand(
-              secondGroup, secondLead, List.of(secondLead, applicationId), Instant.now()));
+              secondGroup,
+              secondLead,
+              List.of(secondLead, applicationId),
+              LinkedGroupTestFixture.unassignedDelegations(List.of(secondLead, applicationId)),
+              Instant.now()));
       assertThat(gate.observedWhileBlocked()).isFalse();
     } finally {
       gate.release();
@@ -278,7 +295,11 @@ class ApplicationProjectionSequencingIntegrationTest {
       gate.awaitBlocked();
       commands.sendAndWait(
           new EstablishLinkedApplicationGroupCommand(
-              groupId, leadId, List.of(leadId, applicationId), Instant.now()));
+              groupId,
+              leadId,
+              List.of(leadId, applicationId),
+              LinkedGroupTestFixture.unassignedDelegations(List.of(leadId, applicationId)),
+              Instant.now()));
       assertThat(gate.observedWhileBlocked()).isFalse();
     } finally {
       gate.release();
@@ -316,13 +337,21 @@ class ApplicationProjectionSequencingIntegrationTest {
     try {
       commands.sendAndWait(
           new EstablishLinkedApplicationGroupCommand(
-              firstGroup, firstLead, List.of(firstLead, applicationId), Instant.now()));
+              firstGroup,
+              firstLead,
+              List.of(firstLead, applicationId),
+              LinkedGroupTestFixture.unassignedDelegations(List.of(firstLead, applicationId)),
+              Instant.now()));
       gate.awaitBlocked();
       commands.sendAndWait(
           new RemoveApplicationFromLinkedGroupCommand(firstGroup, applicationId, 0, Instant.now()));
       commands.sendAndWait(
           new EstablishLinkedApplicationGroupCommand(
-              secondGroup, secondLead, List.of(secondLead, applicationId), Instant.now()));
+              secondGroup,
+              secondLead,
+              List.of(secondLead, applicationId),
+              LinkedGroupTestFixture.unassignedDelegations(List.of(secondLead, applicationId)),
+              Instant.now()));
       assertThat(gate.observedWhileBlocked()).isFalse();
     } finally {
       gate.release();

@@ -47,7 +47,10 @@ experience should follow the learning path below before using the documents as a
 
 - `ApplicationCommandController` accepts write requests and dispatches commands.
 - `ApplicationAggregate` owns the state and rules of one application.
-- `LinkApplicationCommandHandler` validates and routes explicit application-link requests.
+- `LinkApplicationCoordinator` validates and routes explicit application-link requests.
+- `AssignWorkItemCoordinator` routes assignments to the owning work-item or linked-group
+  aggregate; `MakeApplicationDecisionCoordinator` validates the assignee for decisions inside a
+  group.
 - `LinkedApplicationGroupAggregate` owns the lead and membership of a linked group.
 - `ApplicationGroupRouteProjection` maintains durable write-side linking routes.
 - `ApplicationSubmittedEventRouter` schedules live-only SNS publication after command commit.

@@ -11,4 +11,5 @@ public record ApplicationReadyForManualAssessmentEvent(
     @EventTag(key = "ApplicationAggregate") UUID applicationId,
     long applicationVersion,
     long applicationDataVersion,
+    long assignmentVersion,
     Instant occurredAt) {}

@@ -59,7 +59,8 @@ class HttpDataAccessApiClientTest {
     assertEquals(priorAuthorityId, client.createPriorAuthorityDraft("{}"));
     client.updatePriorAuthorityDraft(priorAuthorityId, "{\"justification\":\"Required\"}");
     assertEquals(priorAuthorityId, client.submitPriorAuthorityDraft(priorAuthorityId));
-    client.assignWorkListItem(applicationId, 3, "Assigned \"locally\"");
+    String assignmentToken = WorkItemAssignmentTokens.initial(applicationId);
+    client.assignWorkListItem(applicationId, assignmentToken, "Assigned \"locally\"");
 
     assertEquals(9, requests.size());
     requests.forEach(
@@ -85,7 +86,9 @@ class HttpDataAccessApiClientTest {
     assertEquals("POST", requests.get(8).method());
     assertEquals("/api/v0/work-list/" + applicationId + "/assign", requests.get(8).path());
     assertEquals(
-        "{\"expectedAssignmentVersion\":3,\"eventHistory\":{\"eventDescription\":\"Assigned \\\"locally\\\"\"}}",
+        "{\"expectedAssignmentVersion\":\""
+            + assignmentToken
+            + "\",\"eventHistory\":{\"eventDescription\":\"Assigned \\\"locally\\\"\"}}",
         requests.get(8).body());
   }
 

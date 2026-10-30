@@ -9,7 +9,8 @@ import lombok.RequiredArgsConstructor;
 @Getter
 @RequiredArgsConstructor
 public enum VersionedResourceType {
-  LINKED_GROUP("linked-group");
+  LINKED_GROUP("linked-group"),
+  WORK_ITEM_ASSIGNMENT("work-item-assignment");
 
   private final String tokenName;
 

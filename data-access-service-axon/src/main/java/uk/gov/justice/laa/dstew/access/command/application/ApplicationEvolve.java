@@ -6,6 +6,8 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftStartedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.ApplicationAssignmentDelegatedToGroupEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.ApplicationAssignmentReclaimedFromGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
@@ -76,6 +78,21 @@ public final class ApplicationEvolve {
   public static void apply(ApplicationState state, WorkItemUnassigned event) {
     state.assignmentVersion = event.assignmentVersion();
     state.caseworkerId = null;
+  }
+
+  /** Applies a linked group's takeover of an application's assignment. */
+  public static void apply(
+      ApplicationState state, ApplicationAssignmentDelegatedToGroupEvent event) {
+    state.assignmentGroupId = event.groupId();
+    state.caseworkerId = null;
+  }
+
+  /** Applies an application's recovery of its assignment after leaving a linked group. */
+  public static void apply(
+      ApplicationState state, ApplicationAssignmentReclaimedFromGroupEvent event) {
+    state.assignmentGroupId = null;
+    state.caseworkerId = event.caseworkerId();
+    state.assignmentVersion = event.assignmentVersion();
   }
 
   /** Applies a {@link NoteCreatedEvent} to the given state. */

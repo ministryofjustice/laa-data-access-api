@@ -11,8 +11,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.DelegatedAssignment;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationLinkConflictException;
 import uk.gov.justice.laa.dstew.access.exception.LinkedApplicationGroupVersionConflictException;
+import uk.gov.justice.laa.dstew.access.testutils.LinkedGroupTestFixture;
 
 /** Pure unit tests for {@link LinkedApplicationGroupDecider} — no Spring, no Axon, no database. */
 class LinkedApplicationGroupDeciderTest {
@@ -27,11 +29,16 @@ class LinkedApplicationGroupDeciderTest {
     UUID sourceApplicationId = UUID.randomUUID();
     List<UUID> members = List.of(leadId, sourceApplicationId);
 
-    LinkedApplicationGroupCreatedEvent event =
+    var events =
         LinkedApplicationGroupDecider.decideEstablish(
-                state,
-                new EstablishLinkedApplicationGroupCommand(groupId, leadId, members, OCCURRED_AT))
-            .orElseThrow();
+            state,
+            new EstablishLinkedApplicationGroupCommand(
+                groupId,
+                leadId,
+                members,
+                LinkedGroupTestFixture.unassignedDelegations(members),
+                OCCURRED_AT));
+    var event = (LinkedApplicationGroupCreatedEvent) events.getFirst();
 
     assertThat(event.groupId()).isEqualTo(groupId);
     assertThat(event.leadApplicationId()).isEqualTo(leadId);
@@ -46,7 +53,12 @@ class LinkedApplicationGroupDeciderTest {
     ArrayList<UUID> mutableMembers = new ArrayList<>(List.of(leadId, UUID.randomUUID()));
 
     EstablishLinkedApplicationGroupCommand command =
-        new EstablishLinkedApplicationGroupCommand(groupId, leadId, mutableMembers, OCCURRED_AT);
+        new EstablishLinkedApplicationGroupCommand(
+            groupId,
+            leadId,
+            mutableMembers,
+            LinkedGroupTestFixture.unassignedDelegations(mutableMembers),
+            OCCURRED_AT);
     mutableMembers.add(UUID.randomUUID());
 
     assertThat(command.memberApplicationIds()).hasSize(2);
@@ -65,7 +77,11 @@ class LinkedApplicationGroupDeciderTest {
                 LinkedApplicationGroupDecider.decideEstablish(
                     state,
                     new EstablishLinkedApplicationGroupCommand(
-                        groupId, leadId, memberApplicationIds, OCCURRED_AT)))
+                        groupId,
+                        leadId,
+                        memberApplicationIds,
+                        LinkedGroupTestFixture.unassignedDelegations(memberApplicationIds),
+                        OCCURRED_AT)))
         .as(scenario)
         .isInstanceOf(IllegalArgumentException.class);
   }
@@ -83,7 +99,11 @@ class LinkedApplicationGroupDeciderTest {
         LinkedApplicationGroupDecider.decideEstablish(
             state,
             new EstablishLinkedApplicationGroupCommand(
-                groupId, leadId, List.of(sourceApplicationId, leadId), OCCURRED_AT));
+                groupId,
+                leadId,
+                List.of(sourceApplicationId, leadId),
+                LinkedGroupTestFixture.unassignedDelegations(List.of(sourceApplicationId, leadId)),
+                OCCURRED_AT));
 
     assertThat(decision).isEmpty();
   }
@@ -102,7 +122,11 @@ class LinkedApplicationGroupDeciderTest {
         LinkedApplicationGroupDecider.decideEstablish(
             state,
             new EstablishLinkedApplicationGroupCommand(
-                groupId, leadId, List.of(leadId, sourceApplicationId), OCCURRED_AT));
+                groupId,
+                leadId,
+                List.of(leadId, sourceApplicationId),
+                LinkedGroupTestFixture.unassignedDelegations(List.of(leadId, sourceApplicationId)),
+                OCCURRED_AT));
 
     assertThat(decision).isEmpty();
   }
@@ -124,6 +148,8 @@ class LinkedApplicationGroupDeciderTest {
                         groupId,
                         differentLeadId,
                         List.of(differentLeadId, sourceApplicationId),
+                        LinkedGroupTestFixture.unassignedDelegations(
+                            List.of(differentLeadId, sourceApplicationId)),
                         OCCURRED_AT)))
         .isInstanceOf(ApplicationLinkConflictException.class)
         .hasMessageContaining(currentLeadId.toString())
@@ -148,6 +174,8 @@ class LinkedApplicationGroupDeciderTest {
                         groupId,
                         leadId,
                         List.of(leadId, sourceApplicationId, missingMemberId),
+                        LinkedGroupTestFixture.unassignedDelegations(
+                            List.of(leadId, sourceApplicationId, missingMemberId)),
                         OCCURRED_AT)))
         .isInstanceOf(ApplicationLinkConflictException.class)
         .hasMessageContaining(missingMemberId.toString())
@@ -163,10 +191,12 @@ class LinkedApplicationGroupDeciderTest {
     LinkedApplicationGroupState state =
         stateAfterCreate(groupId, leadId, List.of(leadId, existingMemberId));
 
-    MemberAddedToGroupEvent event =
+    var events =
         LinkedApplicationGroupDecider.decideAddApplication(
-                state, new AddApplicationToLinkedGroupCommand(groupId, newMemberId, 0, OCCURRED_AT))
-            .orElseThrow();
+            state,
+            new AddApplicationToLinkedGroupCommand(
+                groupId, newMemberId, 0, new DelegatedAssignment(null), OCCURRED_AT));
+    var event = (MemberAddedToGroupEvent) events.getFirst();
 
     assertThat(event.groupId()).isEqualTo(groupId);
     assertThat(event.leadApplicationId()).isEqualTo(leadId);
@@ -185,7 +215,8 @@ class LinkedApplicationGroupDeciderTest {
     var decision =
         LinkedApplicationGroupDecider.decideAddApplication(
             state,
-            new AddApplicationToLinkedGroupCommand(groupId, existingMemberId, 1, OCCURRED_AT));
+            new AddApplicationToLinkedGroupCommand(
+                groupId, existingMemberId, 1, new DelegatedAssignment(null), OCCURRED_AT));
 
     assertThat(decision).isEmpty();
   }
@@ -202,7 +233,8 @@ class LinkedApplicationGroupDeciderTest {
             () ->
                 LinkedApplicationGroupDecider.decideAddApplication(
                     state,
-                    new AddApplicationToLinkedGroupCommand(groupId, newMemberId, 1, OCCURRED_AT)))
+                    new AddApplicationToLinkedGroupCommand(
+                        groupId, newMemberId, 1, new DelegatedAssignment(null), OCCURRED_AT)))
         .isInstanceOf(LinkedApplicationGroupVersionConflictException.class)
         .hasMessage(
             "Target linked group's version does not match the supplied linkedGroupVersion;"
@@ -223,7 +255,8 @@ class LinkedApplicationGroupDeciderTest {
             () ->
                 LinkedApplicationGroupDecider.decideAddApplication(
                     state,
-                    new AddApplicationToLinkedGroupCommand(groupId, newMemberId, 3, OCCURRED_AT)))
+                    new AddApplicationToLinkedGroupCommand(
+                        groupId, newMemberId, 3, new DelegatedAssignment(null), OCCURRED_AT)))
         .isInstanceOf(LinkedApplicationGroupVersionConflictException.class)
         .hasMessage(
             "Target linked group's version does not match the supplied linkedGroupVersion;"
@@ -239,7 +272,11 @@ class LinkedApplicationGroupDeciderTest {
                 LinkedApplicationGroupDecider.decideAddApplication(
                     state,
                     new AddApplicationToLinkedGroupCommand(
-                        UUID.randomUUID(), UUID.randomUUID(), 0, OCCURRED_AT)))
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        0,
+                        new DelegatedAssignment(null),
+                        OCCURRED_AT)))
         .isInstanceOf(IllegalStateException.class);
   }
 
@@ -371,12 +408,11 @@ class LinkedApplicationGroupDeciderTest {
 
     var event =
         LinkedApplicationGroupDecider.decideRemoveApplication(
-                state,
-                new RemoveApplicationFromLinkedGroupCommand(groupId, removedId, 0, OCCURRED_AT))
-            .orElseThrow();
+            state, new RemoveApplicationFromLinkedGroupCommand(groupId, removedId, 0, OCCURRED_AT));
 
     assertThat(event)
-        .isEqualTo(new MemberRemovedFromGroupEvent(groupId, leadId, removedId, 1, OCCURRED_AT));
+        .isEqualTo(
+            new MemberRemovedFromGroupEvent(groupId, leadId, removedId, 1, null, 0, OCCURRED_AT));
   }
 
   @Test
@@ -389,14 +425,12 @@ class LinkedApplicationGroupDeciderTest {
 
     var event =
         LinkedApplicationGroupDecider.decideRemoveApplication(
-                state,
-                new RemoveApplicationFromLinkedGroupCommand(groupId, removedId, 0, OCCURRED_AT))
-            .orElseThrow();
+            state, new RemoveApplicationFromLinkedGroupCommand(groupId, removedId, 0, OCCURRED_AT));
 
     assertThat(event)
         .isEqualTo(
             new LinkedApplicationGroupDissolvedEvent(
-                groupId, leadId, removedId, members, 1, OCCURRED_AT));
+                groupId, leadId, removedId, members, 1, null, 0, OCCURRED_AT));
   }
 
   @Test
@@ -501,7 +535,7 @@ class LinkedApplicationGroupDeciderTest {
                 LinkedApplicationGroupDecider.decideAddApplication(
                     state,
                     new AddApplicationToLinkedGroupCommand(
-                        groupId, UUID.randomUUID(), 0, OCCURRED_AT)))
+                        groupId, UUID.randomUUID(), 0, new DelegatedAssignment(null), OCCURRED_AT)))
         .isInstanceOf(ApplicationLinkConflictException.class)
         .hasMessage("Linked application group " + groupId + " has been dissolved");
   }
@@ -519,7 +553,11 @@ class LinkedApplicationGroupDeciderTest {
                 LinkedApplicationGroupDecider.decideEstablish(
                     state,
                     new EstablishLinkedApplicationGroupCommand(
-                        groupId, leadId, List.of(leadId), OCCURRED_AT)))
+                        groupId,
+                        leadId,
+                        List.of(leadId),
+                        LinkedGroupTestFixture.unassignedDelegations(List.of(leadId)),
+                        OCCURRED_AT)))
         .isInstanceOf(ApplicationLinkConflictException.class)
         .hasMessage("Linked application group " + groupId + " has been dissolved");
   }

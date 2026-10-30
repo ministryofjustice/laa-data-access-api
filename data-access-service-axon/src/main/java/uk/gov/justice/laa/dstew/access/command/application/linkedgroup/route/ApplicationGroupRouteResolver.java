@@ -6,6 +6,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
@@ -88,34 +89,6 @@ public class ApplicationGroupRouteResolver {
   }
 
   /**
-   * Locks every route in the application's linked group and returns the member application
-   * identifiers, or {@link Optional#empty()} if the application is standalone.
-   *
-   * <p>Used for operations like assignment propagation, which have no expected group version to
-   * validate (unlike {@link #resolveGroupForMutation}).
-   */
-  @Transactional
-  public Optional<List<UUID>> resolveGroupMembersForAssignment(UUID applicationId) {
-    var membership =
-        routes
-            .findMembershipByApplicationId(applicationId)
-            .orElseThrow(
-                () ->
-                    new ResourceNotFoundException(
-                        "No application group route found for application " + applicationId));
-    if (membership.getRouteKind() == ApplicationGroupRouteKind.STANDALONE) {
-      return Optional.empty();
-    }
-    var lockedRoutes = routes.findAllByGroupIdForUpdate(membership.getGroupId());
-    var memberApplicationIds =
-        lockedRoutes.stream().map(ApplicationGroupRoute::getApplicationId).toList();
-    if (!memberApplicationIds.contains(applicationId)) {
-      return Optional.empty();
-    }
-    return Optional.of(memberApplicationIds);
-  }
-
-  /**
    * Locks the application's current route and, when linked, all routes in its group before Prior
    * Authority creation. The caller retains these locks for its surrounding transaction.
    */
@@ -128,6 +101,33 @@ public class ApplicationGroupRouteResolver {
                 () ->
                     new ResourceNotFoundException(
                         "No application group route found for application " + applicationId));
+    return lockCurrentGroupRoutes(
+        applicationId,
+        membership,
+        () -> LinkedApplicationGroupVersionConflictException.groupChanged(applicationId));
+  }
+
+  /** Locks the current group membership before a readiness command is recorded. */
+  @Transactional
+  public Optional<UUID> lockGroupRoutesForReadiness(UUID applicationId) {
+    var membership = routes.findMembershipByApplicationId(applicationId);
+    if (membership.isEmpty()) {
+      return Optional.empty();
+    }
+    return lockCurrentGroupRoutes(
+        applicationId,
+        membership.get(),
+        () ->
+            new ApplicationLinkConflictException(
+                "Linked group membership of application "
+                    + applicationId
+                    + " changed; retry the request"));
+  }
+
+  private Optional<UUID> lockCurrentGroupRoutes(
+      UUID applicationId,
+      ApplicationGroupRouteMembership membership,
+      Supplier<RuntimeException> membershipChanged) {
     if (membership.getRouteKind() == ApplicationGroupRouteKind.STANDALONE) {
       var lockedRoute =
           routes
@@ -138,13 +138,13 @@ public class ApplicationGroupRouteResolver {
                           "No application group route found for application " + applicationId));
       if (lockedRoute.getRouteKind() != ApplicationGroupRouteKind.STANDALONE
           || lockedRoute.getGroupId() != null) {
-        throw LinkedApplicationGroupVersionConflictException.groupChanged(applicationId);
+        throw membershipChanged.get();
       }
       return Optional.empty();
     }
     var groupId = membership.getGroupId();
     if (groupId == null) {
-      throw LinkedApplicationGroupVersionConflictException.groupChanged(applicationId);
+      throw membershipChanged.get();
     }
     var lockedRoutes = routes.findAllByGroupIdForUpdate(groupId);
     var stillMember =
@@ -155,7 +155,7 @@ public class ApplicationGroupRouteResolver {
                         && lockedRoute.getRouteKind() == ApplicationGroupRouteKind.LINKED_GROUP
                         && groupId.equals(lockedRoute.getGroupId()));
     if (!stillMember) {
-      throw LinkedApplicationGroupVersionConflictException.groupChanged(applicationId);
+      throw membershipChanged.get();
     }
     return Optional.of(groupId);
   }

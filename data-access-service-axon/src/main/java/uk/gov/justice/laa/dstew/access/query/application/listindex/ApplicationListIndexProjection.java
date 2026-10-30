@@ -2,7 +2,9 @@ package uk.gov.justice.laa.dstew.access.query.application.listindex;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.axonframework.messaging.core.annotation.Namespace;
 import org.axonframework.messaging.core.annotation.SequencingPolicy;
 import org.axonframework.messaging.eventhandling.EventMessage;
@@ -22,6 +24,10 @@ import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApp
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupLeadChangedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberRemovedFromGroupEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.ApplicationAssignmentReclaimedFromGroupEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.LinkedGroupAssignedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.LinkedGroupMemberAssignmentInheritedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.LinkedGroupUnassignedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
@@ -29,6 +35,8 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.query.groupassignment.AssignmentChange;
+import uk.gov.justice.laa.dstew.access.query.groupassignment.LinkedGroupAssignmentTracker;
 
 /**
  * Independently replayable tracking projection that maintains {@code application_list_index}.
@@ -46,18 +54,13 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 @Component
 @SequencingPolicy
 @Namespace("application-list-index-projection")
+@RequiredArgsConstructor
 public class ApplicationListIndexProjection {
 
   private final ApplicationListIndexReadRepository listIndexRepository;
   private final ApplicationDataStore applicationDataStore;
-
-  /** Constructs the projection with its repository and data store. */
-  public ApplicationListIndexProjection(
-      ApplicationListIndexReadRepository listIndexRepository,
-      ApplicationDataStore applicationDataStore) {
-    this.listIndexRepository = listIndexRepository;
-    this.applicationDataStore = applicationDataStore;
-  }
+  private final LinkedGroupAssignmentTracker assignmentTracker;
+  private final ApplicationListIndexGroupAssignmentStore assignmentStore;
 
   /**
    * Inserts the initial index row from an Application's creation event.
@@ -108,6 +111,11 @@ public class ApplicationListIndexProjection {
                         : event.leadApplicationId(),
                     event.occurredAt(),
                     message));
+    applyAssignmentChanges(
+        assignmentTracker.groupCreated(
+            assignmentStore, event.groupId(), event.memberApplicationIds()),
+        event.occurredAt(),
+        message);
   }
 
   /** Updates the added member index row when it joins an existing linked group explicitly. */
@@ -115,6 +123,10 @@ public class ApplicationListIndexProjection {
   public void on(MemberAddedToGroupEvent event, EventMessage message) {
     updateLeadApplicationId(
         event.memberId(), event.leadApplicationId(), event.occurredAt(), message);
+    applyAssignmentChanges(
+        assignmentTracker.memberAdded(assignmentStore, event.groupId(), event.memberId()),
+        event.occurredAt(),
+        message);
   }
 
   /** Updates every list-index row affected by a linked-group lead change. */
@@ -140,6 +152,7 @@ public class ApplicationListIndexProjection {
   @EventHandler
   public void on(MemberRemovedFromGroupEvent event, EventMessage message) {
     updateLeadApplicationId(event.memberId(), null, event.occurredAt(), message);
+    assignmentTracker.membersLeft(assignmentStore, event.groupId(), List.of(event.memberId()));
   }
 
   /** Clears list-index lead references when a group is dissolved. */
@@ -148,6 +161,7 @@ public class ApplicationListIndexProjection {
     event
         .memberApplicationIds()
         .forEach(memberId -> updateLeadApplicationId(memberId, null, event.occurredAt(), message));
+    assignmentTracker.membersLeft(assignmentStore, event.groupId(), event.memberApplicationIds());
   }
 
   /**
@@ -156,6 +170,7 @@ public class ApplicationListIndexProjection {
    */
   @EventHandler
   public void on(ApplicationDecisionMadeEvent event, EventMessage message) {
+    assignmentTracker.applicationDecided(assignmentStore, event.applicationId());
     ApplicationStatus applicationStatus;
     if (event.overallDecision() == null || event.overallDecision().isBlank()) {
       applicationStatus = null;
@@ -182,6 +197,8 @@ public class ApplicationListIndexProjection {
   /** Records that automatic assessment completed with a manual-assessment outcome. */
   @EventHandler
   public void on(ApplicationReadyForManualAssessmentEvent event, EventMessage message) {
+    assignmentTracker.applicationReady(
+        assignmentStore, event.applicationId(), event.assignmentVersion());
     listIndexRepository
         .findById(event.applicationId())
         .ifPresent(
@@ -229,6 +246,8 @@ public class ApplicationListIndexProjection {
     if (event.workItemType() != WorkItemType.APPLICATION) {
       return;
     }
+    assignmentTracker.directAssignmentChanged(
+        assignmentStore, event.workItemId(), event.caseworkerId(), event.assignmentVersion());
     listIndexRepository
         .findById(event.workItemId())
         .ifPresent(
@@ -249,6 +268,8 @@ public class ApplicationListIndexProjection {
     if (event.workItemType() != WorkItemType.APPLICATION) {
       return;
     }
+    assignmentTracker.directAssignmentChanged(
+        assignmentStore, event.workItemId(), null, event.assignmentVersion());
     listIndexRepository
         .findById(event.workItemId())
         .ifPresent(
@@ -259,6 +280,59 @@ public class ApplicationListIndexProjection {
               row.setProjectionPosition(message.identifier().hashCode());
               listIndexRepository.save(row);
             });
+  }
+
+  /** Applies a group assignment to every affected application index row. */
+  @EventHandler
+  public void on(LinkedGroupAssignedEvent event, EventMessage message) {
+    applyAssignmentChanges(
+        assignmentTracker.groupAssignmentChanged(
+            assignmentStore, event.groupId(), event.caseworkerId(), event.assignmentVersion()),
+        event.occurredAt(),
+        message);
+  }
+
+  /** Applies a group unassignment to every affected application index row. */
+  @EventHandler
+  public void on(LinkedGroupUnassignedEvent event, EventMessage message) {
+    applyAssignmentChanges(
+        assignmentTracker.groupAssignmentChanged(
+            assignmentStore, event.groupId(), null, event.assignmentVersion()),
+        event.occurredAt(),
+        message);
+  }
+
+  /** Applies an inherited group assignment to an eligible application index row. */
+  @EventHandler
+  public void on(LinkedGroupMemberAssignmentInheritedEvent event, EventMessage message) {
+    applyAssignmentChanges(
+        assignmentTracker
+            .memberInherited(
+                assignmentStore,
+                event.groupId(),
+                event.memberApplicationId(),
+                event.caseworkerId(),
+                event.assignmentVersion())
+            .stream()
+            .toList(),
+        event.occurredAt(),
+        message);
+  }
+
+  /** Applies a reclaimed direct assignment to the application index row. */
+  @EventHandler
+  public void on(ApplicationAssignmentReclaimedFromGroupEvent event, EventMessage message) {
+    applyAssignmentChanges(
+        assignmentTracker
+            .assignmentReclaimed(
+                assignmentStore,
+                event.applicationId(),
+                event.caseworkerId(),
+                event.assignmentVersion())
+            .stream()
+            .toList(),
+        event.occurredAt(),
+        message);
   }
 
   /**
@@ -292,6 +366,24 @@ public class ApplicationListIndexProjection {
             });
   }
 
+  /** Updates only caseworker filter state, preserving the application stream version. */
+  private void applyAssignmentChanges(
+      List<AssignmentChange> changes, Instant occurredAt, EventMessage message) {
+    changes.stream()
+        .filter(AssignmentChange::caseworkerChanged)
+        .forEach(
+            change ->
+                listIndexRepository
+                    .findById(change.applicationId())
+                    .ifPresent(
+                        row -> {
+                          row.setCaseworkerId(change.caseworkerId());
+                          row.setModifiedAt(occurredAt);
+                          row.setProjectionPosition(message.identifier().hashCode());
+                          listIndexRepository.save(row);
+                        }));
+  }
+
   private void updateLeadApplicationId(
       UUID applicationId, UUID leadApplicationId, Instant occurredAt, EventMessage message) {
     listIndexRepository
@@ -309,6 +401,7 @@ public class ApplicationListIndexProjection {
   @ResetHandler
   public void reset() {
     listIndexRepository.deleteAllInBatch();
+    assignmentStore.deleteAll();
   }
 
   private static String officeCode(ApplicationDataPayload data) {

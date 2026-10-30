@@ -153,6 +153,20 @@ projection was not visible before the timeout.
 
 ## Data and transaction rules
 
+### Lock linked-group routes before writing group-related events
+
+Any request that changes a linked group, changes the assignment of an active manual-assessment
+application in a group, records an application's readiness for manual assessment in a group, or
+decides an active manual-assessment application in a group, must lock that group's
+`application_group_route` rows (through `ApplicationGroupRouteResolver` or `WorkItemRouteResolver`)
+before dispatching its first command, in the lock order of
+[ADR 0005](adr/0005-linked-group-owns-assignment.md). Terminal auto-grant decisions are exempt:
+an auto-granted application is never active as a manual-assessment work item, has no work-item
+route, and `RecordAutoGrantOutcomeUseCase.record(Object)` dispatches its decision directly. The
+work-list, application, list-index and history projections process events in one lane and rely on
+related transactions committing in global-index order; otherwise live processing and replay can
+disagree. Nothing checks this at runtime — review every new coordinator against it.
+
 ### Append; never update `application_data`
 
 Each detailed change creates a complete next version. PostgreSQL rejects update, direct delete, and
@@ -175,7 +189,9 @@ incomplete operation. Do not silently convert every missing row to a retention o
 - command and event messages in command packages are records;
 - events do not contain other event-typed fields;
 - aggregates do not depend on `QueryGateway`;
-- query classes do not depend on `CommandGateway`.
+- query classes do not depend on `CommandGateway`;
+- classes named `*CommandHandler` declare an Axon `@CommandHandler` method;
+- Axon `@CommandHandler` methods are declared only in classes named `*CommandHandler`.
 
 When a rule is important and mechanically detectable, prefer adding an architecture test rather
 than relying only on this document.

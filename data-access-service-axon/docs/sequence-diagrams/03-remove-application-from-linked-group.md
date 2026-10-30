@@ -10,9 +10,10 @@ sequenceDiagram
     actor Client
     participant Controller as ApplicationCommandController
     participant UseCase as UnlinkApplicationUseCase
-    participant Handler as UnlinkApplicationCommandHandler
+    participant Coordinator as UnlinkApplicationCoordinator
     participant Resolver as ApplicationGroupRouteResolver
     participant Dispatcher as RetryingCommandDispatcher
+    participant GroupHandler as RemoveApplicationFromLinkedGroupCommandHandler
     participant Aggregate as LinkedApplicationGroupAggregate
     participant EventStore as Event store
     participant RouteProjection as ApplicationGroupRouteProjection<br/>(sync)
@@ -23,27 +24,33 @@ sequenceDiagram
 
     Client->>Controller: POST /api/v0/applications/{id}/unlink<br/>linkedGroupVersion (token)
     Controller->>UseCase: execute(UnlinkApplicationCommand)
-    UseCase->>Handler: handle(command)
-    Handler->>Resolver: resolveGroupForMutation(applicationId, expectedGroupId)
+    UseCase->>Coordinator: handle(command)
+    Coordinator->>Resolver: resolveGroupForMutation(applicationId, expectedGroupId)
     Resolver->>Resolver: lock all group routes<br/>ordered by application ID
     Resolver->>Resolver: group ≠ expectedGroupId → 409
-    Resolver-->>Handler: groupId
-    Handler->>Dispatcher: dispatch(RemoveApplicationFromLinkedGroupCommand)
-    Dispatcher->>Aggregate: handle(command)
-    Aggregate->>Aggregate: validate member, lead rule, and expected version
+    Resolver-->>Coordinator: groupId
+    Coordinator->>Dispatcher: dispatch(RemoveApplicationFromLinkedGroupCommand)
+    Dispatcher->>GroupHandler: handle(command)
+    GroupHandler->>Aggregate: load (replay events)
+    GroupHandler->>Aggregate: validate member, lead rule, and expected version
     alt More than two members before removal
-        Aggregate->>EventStore: append MemberRemovedFromGroupEvent
+        GroupHandler->>EventStore: append MemberRemovedFromGroupEvent
         EventStore->>RouteProjection: MemberRemovedFromGroupEvent
         RouteProjection->>RouteProjection: set removed member route to STANDALONE
     else Removal dissolves a two-member group
-        Aggregate->>EventStore: append LinkedApplicationGroupDissolvedEvent
+        GroupHandler->>EventStore: append LinkedApplicationGroupDissolvedEvent
         EventStore->>RouteProjection: LinkedApplicationGroupDissolvedEvent
         RouteProjection->>RouteProjection: set both routes to STANDALONE
     end
     RouteProjection-->>EventStore: route update committed
     EventStore-->>Dispatcher: event and route update committed
-    Dispatcher-->>Handler: success
-    Handler-->>UseCase: success
+    GroupHandler-->>Dispatcher: LinkedGroupRemovalResult
+    Dispatcher-->>Coordinator: LinkedGroupRemovalResult
+    loop each leaving application (ascending ID)
+        Coordinator->>Dispatcher: dispatch(ReclaimAssignmentFromGroupCommand)
+    end
+    Dispatcher-->>Coordinator: success
+    Coordinator-->>UseCase: success
     UseCase-->>Controller: success
     Controller-->>Client: 204 No Content
 

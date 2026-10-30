@@ -35,6 +35,7 @@ import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetailsRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.WorkListAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.WorkListUnassignRequest;
+import uk.gov.justice.laa.dstew.access.version.VersionToken;
 
 @Testcontainers
 @SpringBootTest(
@@ -184,11 +185,13 @@ class SecurityIntegrationTest {
   }
 
   private WorkListAssignRequest assignRequest() {
-    return new WorkListAssignRequest(0L);
+    return new WorkListAssignRequest(
+        VersionToken.workItemAssignment(UUID.randomUUID(), 0L).encode());
   }
 
   private WorkListUnassignRequest unassignRequest() {
-    return new WorkListUnassignRequest(0L);
+    return new WorkListUnassignRequest(
+        VersionToken.workItemAssignment(UUID.randomUUID(), 0L).encode());
   }
 
   private void assertUnauthorized(HttpMethod method, String path, Object body) {

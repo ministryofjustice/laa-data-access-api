@@ -23,8 +23,8 @@ components:
           type: string
           format: uuid
         assignmentVersion:
-          type: integer
-          format: int64
+          type: string
+          description: Opaque token identifying who owns this item's assignment (the item itself, or the linked group that owns it) and the assignment's current version. Pass it back unchanged as expectedAssignmentVersion. Do not parse it.
         assignmentBoundaryType:
           type: string
           enum:
@@ -81,9 +81,8 @@ components:
         - expectedAssignmentVersion
       properties:
         expectedAssignmentVersion:
-          type: integer
-          format: int64
-          minimum: 0
+          type: string
+          description: The item's assignmentVersion token exactly as last read from the work list.
         eventHistory:
           $ref: "../open-api-common/components.yml#/components/schemas/EventHistoryRequest"
     WorkListUnassignRequest:
@@ -92,8 +91,7 @@ components:
         - expectedAssignmentVersion
       properties:
         expectedAssignmentVersion:
-          type: integer
-          format: int64
-          minimum: 0
+          type: string
+          description: The item's assignmentVersion token exactly as last read from the work list.
         eventHistory:
           $ref: "../open-api-common/components.yml#/components/schemas/EventHistoryRequest"

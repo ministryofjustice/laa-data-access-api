@@ -3,7 +3,9 @@ package uk.gov.justice.laa.dstew.access.query.application.history;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.axonframework.messaging.core.annotation.Namespace;
+import org.axonframework.messaging.core.annotation.SequencingPolicy;
 import org.axonframework.messaging.eventhandling.EventMessage;
 import org.axonframework.messaging.eventhandling.annotation.EventHandler;
 import org.axonframework.messaging.eventhandling.replay.annotation.ResetHandler;
@@ -17,33 +19,39 @@ import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApp
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupLeadChangedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberRemovedFromGroupEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.ApplicationAssignmentReclaimedFromGroupEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.LinkedGroupAssignedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.LinkedGroupMemberAssignmentInheritedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.LinkedGroupUnassignedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.config.interceptor.RequestMetadataDispatchInterceptor;
+import uk.gov.justice.laa.dstew.access.query.groupassignment.AssignmentChange;
+import uk.gov.justice.laa.dstew.access.query.groupassignment.LinkedGroupAssignmentTracker;
 
 /** Independently replayable, append-only audit projection of Application events. */
 @Component
+@SequencingPolicy
 @Namespace("application-history-projection")
+@RequiredArgsConstructor
 public class ApplicationHistoryProjection {
 
   private final ApplicationHistoryReadRepository applicationHistoryReadRepository;
   private final ApplicationHistoryAssembler applicationHistoryAssembler;
   private final PriorAuthorityHistoryReadRepository priorAuthorityHistoryReadRepository;
   private final PriorAuthorityHistoryAssembler priorAuthorityHistoryAssembler;
+  private final LinkedGroupAssignmentTracker assignmentTracker;
+  private final ApplicationHistoryGroupAssignmentStore assignmentStore;
 
-  /** Creates the history projection with its persistence and reconstruction dependencies. */
-  public ApplicationHistoryProjection(
-      ApplicationHistoryReadRepository applicationHistoryReadRepository,
-      ApplicationHistoryAssembler applicationHistoryAssembler,
-      PriorAuthorityHistoryReadRepository priorAuthorityHistoryReadRepository,
-      PriorAuthorityHistoryAssembler priorAuthorityHistoryAssembler) {
-    this.applicationHistoryReadRepository = applicationHistoryReadRepository;
-    this.applicationHistoryAssembler = applicationHistoryAssembler;
-    this.priorAuthorityHistoryReadRepository = priorAuthorityHistoryReadRepository;
-    this.priorAuthorityHistoryAssembler = priorAuthorityHistoryAssembler;
+  /** Starts tracking an application as active without writing a history entry. */
+  @EventHandler
+  public void on(ApplicationReadyForManualAssessmentEvent event) {
+    assignmentTracker.applicationReady(
+        assignmentStore, event.applicationId(), event.assignmentVersion());
   }
 
   /** Appends an audit entry when an Application is created. */
@@ -94,6 +102,11 @@ public class ApplicationHistoryProjection {
                     null,
                     event.occurredAt(),
                     groupHistoryId(message, memberId)));
+    appendAssignmentChanges(
+        assignmentTracker.groupCreated(
+            assignmentStore, event.groupId(), event.memberApplicationIds()),
+        message,
+        event.occurredAt());
   }
 
   /** Appends an audit entry when an application joins an existing linked application group. */
@@ -106,6 +119,10 @@ public class ApplicationHistoryProjection {
         null,
         event.occurredAt(),
         groupHistoryId(message, event.memberId()));
+    appendAssignmentChanges(
+        assignmentTracker.memberAdded(assignmentStore, event.groupId(), event.memberId()),
+        message,
+        event.occurredAt());
   }
 
   /** Appends a history entry for both applications affected by a linked-group lead change. */
@@ -137,6 +154,7 @@ public class ApplicationHistoryProjection {
         null,
         event.occurredAt(),
         groupHistoryId(message, event.memberId()));
+    assignmentTracker.membersLeft(assignmentStore, event.groupId(), List.of(event.memberId()));
   }
 
   /** Appends history entries for the member leaving and the dissolution of its former group. */
@@ -160,11 +178,13 @@ public class ApplicationHistoryProjection {
                     null,
                     event.occurredAt(),
                     groupHistoryId(message, applicationId)));
+    assignmentTracker.membersLeft(assignmentStore, event.groupId(), event.memberApplicationIds());
   }
 
   /** Appends a thin audit entry for an Application decision. */
   @EventHandler
   public void on(ApplicationDecisionMadeEvent event, EventMessage message) {
+    assignmentTracker.applicationDecided(assignmentStore, event.applicationId());
     append(
         message,
         event.applicationId(),
@@ -181,6 +201,8 @@ public class ApplicationHistoryProjection {
     if (WorkItemType.PRIOR_AUTHORITY.equals(event.workItemType())) {
       return;
     }
+    assignmentTracker.directAssignmentChanged(
+        assignmentStore, event.workItemId(), event.caseworkerId(), event.assignmentVersion());
     append(
         message, event.workItemId(), "ASSIGN_APPLICATION_TO_CASEWORKER", null, event.occurredAt());
   }
@@ -191,11 +213,66 @@ public class ApplicationHistoryProjection {
     if (WorkItemType.PRIOR_AUTHORITY.equals(event.workItemType())) {
       return;
     }
+    assignmentTracker.directAssignmentChanged(
+        assignmentStore, event.workItemId(), null, event.assignmentVersion());
     append(
         message,
         event.workItemId(),
         "UNASSIGN_APPLICATION_TO_CASEWORKER",
         null,
+        event.occurredAt());
+  }
+
+  /** Appends history for linked-group assignment changes that alter a member's caseworker. */
+  @EventHandler
+  public void on(LinkedGroupAssignedEvent event, EventMessage message) {
+    appendAssignmentChanges(
+        assignmentTracker.groupAssignmentChanged(
+            assignmentStore, event.groupId(), event.caseworkerId(), event.assignmentVersion()),
+        message,
+        event.occurredAt());
+  }
+
+  /** Appends history for group unassignment changes that alter a member's caseworker. */
+  @EventHandler
+  public void on(LinkedGroupUnassignedEvent event, EventMessage message) {
+    appendAssignmentChanges(
+        assignmentTracker.groupAssignmentChanged(
+            assignmentStore, event.groupId(), null, event.assignmentVersion()),
+        message,
+        event.occurredAt());
+  }
+
+  /** Appends history when an active member inherits a changed group assignment. */
+  @EventHandler
+  public void on(LinkedGroupMemberAssignmentInheritedEvent event, EventMessage message) {
+    appendAssignmentChanges(
+        assignmentTracker
+            .memberInherited(
+                assignmentStore,
+                event.groupId(),
+                event.memberApplicationId(),
+                event.caseworkerId(),
+                event.assignmentVersion())
+            .stream()
+            .toList(),
+        message,
+        event.occurredAt());
+  }
+
+  /** Appends history when an active member reclaims a changed direct assignment. */
+  @EventHandler
+  public void on(ApplicationAssignmentReclaimedFromGroupEvent event, EventMessage message) {
+    appendAssignmentChanges(
+        assignmentTracker
+            .assignmentReclaimed(
+                assignmentStore,
+                event.applicationId(),
+                event.caseworkerId(),
+                event.assignmentVersion())
+            .stream()
+            .toList(),
+        message,
         event.occurredAt());
   }
 
@@ -229,10 +306,35 @@ public class ApplicationHistoryProjection {
     return new ApplicationHistoryResult(applicationEvents, priorAuthorityGroups);
   }
 
+  /** Clears history and tracking tables before replay. */
   @ResetHandler
   public void reset() {
     applicationHistoryReadRepository.deleteAllInBatch();
     priorAuthorityHistoryReadRepository.deleteAllInBatch();
+    assignmentStore.deleteAll();
+  }
+
+  /** Appends only changed caseworker facts using the existing history event types. */
+  private void appendAssignmentChanges(
+      List<AssignmentChange> changes, EventMessage message, Instant occurredAt) {
+    changes.stream()
+        .filter(AssignmentChange::caseworkerChanged)
+        .forEach(
+            change ->
+                applicationHistoryReadRepository.save(
+                    ApplicationHistoryReadModel.builder()
+                        .eventId(
+                            message.identifier() + ":" + change.applicationId() + ":assignment")
+                        .applicationId(change.applicationId())
+                        .eventType(
+                            change.caseworkerId() != null
+                                ? "ASSIGN_APPLICATION_TO_CASEWORKER"
+                                : "UNASSIGN_APPLICATION_TO_CASEWORKER")
+                        .dataVersion(null)
+                        .serviceName(RequestMetadataDispatchInterceptor.serviceName(message))
+                        .caseworkerId(RequestMetadataDispatchInterceptor.caseworkerId(message))
+                        .occurredAt(occurredAt)
+                        .build()));
   }
 
   private void append(

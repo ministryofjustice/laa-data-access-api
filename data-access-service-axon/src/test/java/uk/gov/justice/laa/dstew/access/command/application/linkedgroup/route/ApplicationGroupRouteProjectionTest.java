@@ -349,7 +349,8 @@ class ApplicationGroupRouteProjectionTest {
 
   private static MemberRemovedFromGroupEvent memberRemovedEvent(
       UUID groupId, UUID memberId, Instant occurredAt) {
-    return new MemberRemovedFromGroupEvent(groupId, UUID.randomUUID(), memberId, 1L, occurredAt);
+    return new MemberRemovedFromGroupEvent(
+        groupId, UUID.randomUUID(), memberId, 1L, null, 0L, occurredAt);
   }
 
   private static LinkedApplicationGroupDissolvedEvent dissolvedEvent(
@@ -360,6 +361,8 @@ class ApplicationGroupRouteProjectionTest {
         memberApplicationIds.getLast(),
         memberApplicationIds,
         1L,
+        null,
+        0L,
         occurredAt);
   }
 

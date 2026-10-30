@@ -20,6 +20,7 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.Submit
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.MakePriorAuthorityDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.MakePriorAuthorityDecisionUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.document.UploadPriorAuthorityDocumentUseCase;
+import uk.gov.justice.laa.dstew.access.command.worklist.ExpectedAssignment;
 import uk.gov.justice.laa.dstew.access.command.worklist.assign.AssignWorkItemCommand;
 import uk.gov.justice.laa.dstew.access.command.worklist.assign.AssignWorkItemUseCase;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
@@ -163,7 +164,7 @@ class PriorAuthorityStateSeeder {
         new AssignWorkItemCommand(
             priorAuthorityId,
             PactIds.DEV_CASEWORKER,
-            item.getAssignmentVersion(),
+            new ExpectedAssignment(item.getAssignmentBoundaryId(), item.getAssignmentVersion()),
             null,
             "Assigned during Pact provider state setup",
             Instant.now()));

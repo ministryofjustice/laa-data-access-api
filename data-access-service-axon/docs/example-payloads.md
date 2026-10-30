@@ -341,14 +341,15 @@ Example response (verified against a running instance, after creating the applic
 ### Assign an open work-list item to yourself
 
 `POST /api/v0/work-list/{itemId}/assign` assigns the item to the authenticated JWT's Entra OID.
-The request body never accepts a caseworker ID.
+The request body never accepts a caseworker ID. Get the item's `assignmentVersion` from
+`GET /api/v0/work-list` and pass the returned token back unchanged as `expectedAssignmentVersion`.
 
 ```bash
 curl -i -X POST http://localhost:8082/api/v0/work-list/8c9e6c2e-4f1a-4e3a-9c2b-1a2b3c4d5e6f/assign \
   -H "Content-Type: application/json" \
   -H "X-Service-Name: CIVIL_DECIDE" \
   -d '{
-    "expectedAssignmentVersion": 0,
+    "expectedAssignmentVersion": "<assignmentVersion token from GET /api/v0/work-list>",
     "eventHistory": {
       "eventDescription": "Assigned during triage"
     }

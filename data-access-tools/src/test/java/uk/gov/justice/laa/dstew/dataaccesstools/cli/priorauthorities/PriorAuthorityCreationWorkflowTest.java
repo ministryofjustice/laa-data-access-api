@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.dataaccesstools.cli.applications.ApplicationRequestFactory;
 import uk.gov.justice.laa.dstew.dataaccesstools.cli.applications.DecisionRequestFactory;
 import uk.gov.justice.laa.dstew.dataaccesstools.utils.client.DataAccessApiClient;
+import uk.gov.justice.laa.dstew.dataaccesstools.utils.client.WorkItemAssignmentTokens;
 import uk.gov.justice.laa.dstew.dataaccesstools.utils.workflow.WorkflowResult;
 
 class PriorAuthorityCreationWorkflowTest {
@@ -93,8 +94,8 @@ class PriorAuthorityCreationWorkflowTest {
 
           @Override
           public void assignWorkListItem(
-              UUID itemId, long expectedAssignmentVersion, String eventDescription) {
-            assertEquals(0, expectedAssignmentVersion);
+              UUID itemId, String expectedAssignmentVersion, String eventDescription) {
+            assertEquals(WorkItemAssignmentTokens.initial(itemId), expectedAssignmentVersion);
             operations.add("assign");
           }
 

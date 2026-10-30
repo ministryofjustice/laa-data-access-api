@@ -66,7 +66,7 @@ paths:
               $ref: "./components.yml#/components/schemas/WorkListAssignRequest"
       responses:
         "200": { description: OK }
-        "400": { description: Bad request }
+        "400": { description: "Bad request, including an invalid expectedAssignmentVersion token" }
         "401": { description: Unauthorized }
         "403": { description: Forbidden }
         "404": { description: Work item or route not found }
@@ -95,7 +95,7 @@ paths:
               $ref: "./components.yml#/components/schemas/WorkListUnassignRequest"
       responses:
         "200": { description: OK }
-        "400": { description: Bad request }
+        "400": { description: "Bad request, including an invalid expectedAssignmentVersion token" }
         "401": { description: Unauthorized }
         "403": { description: Forbidden }
         "404": { description: Work item or route not found }

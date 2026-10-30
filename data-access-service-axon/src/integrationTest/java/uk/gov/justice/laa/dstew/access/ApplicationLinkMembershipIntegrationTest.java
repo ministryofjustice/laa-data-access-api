@@ -54,6 +54,7 @@ import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApp
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberRemovedFromGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.RemoveApplicationFromLinkedGroupCommand;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.DelegatedAssignment;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRoute;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteKind;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteRepository;
@@ -1012,7 +1013,11 @@ public class ApplicationLinkMembershipIntegrationTest {
               () ->
                   commandGateway.sendAndWait(
                       new AddApplicationToLinkedGroupCommand(
-                          group.groupId(), newMemberId, group.version(), Instant.now())))
+                          group.groupId(),
+                          newMemberId,
+                          group.version(),
+                          new DelegatedAssignment(null),
+                          Instant.now())))
           .satisfies(
               failure ->
                   assertThat(rootCause(failure))

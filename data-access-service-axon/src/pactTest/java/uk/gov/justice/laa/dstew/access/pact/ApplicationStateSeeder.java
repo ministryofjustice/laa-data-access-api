@@ -17,6 +17,7 @@ import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkType;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteUseCase;
 import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand;
 import uk.gov.justice.laa.dstew.access.command.application.ready.RecordAutoGrantOutcomeUseCase;
+import uk.gov.justice.laa.dstew.access.command.worklist.ExpectedAssignment;
 import uk.gov.justice.laa.dstew.access.command.worklist.assign.AssignWorkItemCommand;
 import uk.gov.justice.laa.dstew.access.command.worklist.assign.AssignWorkItemUseCase;
 import uk.gov.justice.laa.dstew.access.controller.application.AutoGrantOutcomeCommandMapper;
@@ -142,7 +143,7 @@ class ApplicationStateSeeder {
         new AssignWorkItemCommand(
             request.getId(),
             PactIds.DEV_CASEWORKER,
-            item.getAssignmentVersion(),
+            new ExpectedAssignment(item.getAssignmentBoundaryId(), item.getAssignmentVersion()),
             null,
             "Assigned during Pact provider state setup",
             Instant.now()));

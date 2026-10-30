@@ -16,23 +16,10 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.resttestclient.TestRestTemplate;
-import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.annotation.DirtiesContext;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.model.ApplicationCreateRequest;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
@@ -58,25 +45,10 @@ import uk.gov.justice.laa.dstew.access.model.WorkListItemType;
 import uk.gov.justice.laa.dstew.access.model.WorkListResponse;
 import uk.gov.justice.laa.dstew.access.model.WorkListUnassignRequest;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
+import uk.gov.justice.laa.dstew.access.version.VersionToken;
 
 /** Full HTTP/Postgres/Axon integration tests for delivered work-list behaviour. */
-@Testcontainers
-@SpringBootTest(
-    webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-    properties = {"feature.enable-dev-token=true"})
-@AutoConfigureTestRestTemplate
-@Import(TestJwtDecoderConfig.class)
-@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
-class WorkListIntegrationTest {
-
-  @Container @ServiceConnection
-  static PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine");
-
-  @LocalServerPort private int port;
-
-  @Autowired private TestRestTemplate restTemplate;
-
-  @Autowired private JdbcTemplate jdbcTemplate;
+class WorkListIntegrationTest extends BaseIntegrationTest {
 
   @Autowired private ObjectMapper objectMapper;
 
@@ -92,7 +64,10 @@ class WorkListIntegrationTest {
         restTemplate.exchange(
             assignmentUrl(applicationId, "assign"),
             HttpMethod.POST,
-            new HttpEntity<>(new WorkListAssignRequest(0L), headers()),
+            new HttpEntity<>(
+                new WorkListAssignRequest(
+                    VersionToken.workItemAssignment(applicationId, 0L).encode()),
+                headers()),
             Void.class);
     assertThat(assigned.getStatusCode()).isEqualTo(HttpStatus.OK);
     awaitWorkListContains("?assignedToMe=true&unassigned=false", applicationId, caseworkerId, 1L);
@@ -108,7 +83,10 @@ class WorkListIntegrationTest {
         restTemplate.exchange(
             assignmentUrl(applicationId, "assign"),
             HttpMethod.POST,
-            new HttpEntity<>(new WorkListAssignRequest(0L), headers()),
+            new HttpEntity<>(
+                new WorkListAssignRequest(
+                    VersionToken.workItemAssignment(applicationId, 0L).encode()),
+                headers()),
             Void.class);
     assertThat(duplicate.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
 
@@ -116,10 +94,49 @@ class WorkListIntegrationTest {
         restTemplate.exchange(
             assignmentUrl(applicationId, "unassign"),
             HttpMethod.POST,
-            new HttpEntity<>(new WorkListUnassignRequest(1L), headers()),
+            new HttpEntity<>(
+                new WorkListUnassignRequest(
+                    VersionToken.workItemAssignment(applicationId, 1L).encode()),
+                headers()),
             Void.class);
     assertThat(unassigned.getStatusCode()).isEqualTo(HttpStatus.OK);
     awaitWorkListContains("", applicationId, null, 2L);
+  }
+
+  @Test
+  void givenInvalidToken_whenAssigned_thenBadRequest() {
+    UUID applicationId = UUID.randomUUID();
+    createManualApplication(applicationId);
+
+    ResponseEntity<String> response =
+        restTemplate.exchange(
+            assignmentUrl(applicationId, "assign"),
+            HttpMethod.POST,
+            new HttpEntity<>(new WorkListAssignRequest("not-a-token"), headers()),
+            String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(response.getBody())
+        .contains("expectedAssignmentVersion: must be a valid assignment version token");
+  }
+
+  @Test
+  void givenTokenForAnotherItem_whenAssigned_thenConflict() {
+    UUID applicationId = UUID.randomUUID();
+    createManualApplication(applicationId);
+
+    ResponseEntity<String> response =
+        restTemplate.exchange(
+            assignmentUrl(applicationId, "assign"),
+            HttpMethod.POST,
+            new HttpEntity<>(
+                new WorkListAssignRequest(
+                    VersionToken.workItemAssignment(UUID.randomUUID(), 0L).encode()),
+                headers()),
+            String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+    assertThat(response.getBody()).contains("the assignment version is stale");
   }
 
   @Test
@@ -505,7 +522,10 @@ class WorkListIntegrationTest {
         restTemplate.exchange(
             assignmentUrl(claimedPriorAuthorityId, "assign"),
             HttpMethod.POST,
-            new HttpEntity<>(new WorkListAssignRequest(0L), headers()),
+            new HttpEntity<>(
+                new WorkListAssignRequest(
+                    VersionToken.workItemAssignment(claimedPriorAuthorityId, 0L).encode()),
+                headers()),
             Void.class);
     assertThat(assigned.getStatusCode()).isEqualTo(HttpStatus.OK);
 
@@ -854,7 +874,8 @@ class WorkListIntegrationTest {
     UUID applicationId = UUID.randomUUID();
     UUID caseworkerId = TestJwtDecoderConfig.CASEWORKER_ID;
     createManualApplication(applicationId);
-    WorkListAssignRequest request = new WorkListAssignRequest(0L);
+    WorkListAssignRequest request =
+        new WorkListAssignRequest(VersionToken.workItemAssignment(applicationId, 0L).encode());
     request.setEventHistory(
         EventHistoryRequest.builder().eventDescription("Taken for assessment").build());
 
@@ -917,7 +938,10 @@ class WorkListIntegrationTest {
         restTemplate.exchange(
             assignmentUrl(priorAuthorityId, "assign"),
             HttpMethod.POST,
-            new HttpEntity<>(new WorkListAssignRequest(1L), headersFor(caseworkerId)),
+            new HttpEntity<>(
+                new WorkListAssignRequest(
+                    VersionToken.workItemAssignment(priorAuthorityId, 1L).encode()),
+                headersFor(caseworkerId)),
             Void.class);
     assertThat(reassigned.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
   }
@@ -1056,7 +1080,9 @@ class WorkListIntegrationTest {
                         assertThat(item.getItemType()).isEqualTo(expectedItemType);
                         assertThat(item.getAssignedTo()).isEqualTo(expectedAssignee);
                         assertThat(item.getAssignmentVersion())
-                            .isEqualTo(expectedAssignmentVersion);
+                            .isEqualTo(
+                                VersionToken.workItemAssignment(itemId, expectedAssignmentVersion)
+                                    .encode());
                       });
             });
   }
@@ -1097,23 +1123,9 @@ class WorkListIntegrationTest {
     return restTemplate.exchange(
         assignmentUrl(itemId, "assign"),
         HttpMethod.POST,
-        new HttpEntity<>(new WorkListAssignRequest(0L), headersFor(caseworkerId)),
+        new HttpEntity<>(
+            new WorkListAssignRequest(VersionToken.workItemAssignment(itemId, 0L).encode()),
+            headersFor(caseworkerId)),
         Void.class);
-  }
-
-  private HttpHeaders headers() {
-    return headersFor(TestJwtDecoderConfig.CASEWORKER_ID);
-  }
-
-  private HttpHeaders headersFor(UUID caseworkerId) {
-    HttpHeaders headers = new HttpHeaders();
-    headers.set("X-Service-Name", "CIVIL_APPLY");
-    headers.set("X-Schema-Version", "1");
-    headers.setContentType(MediaType.APPLICATION_JSON);
-    headers.setBearerAuth(
-        caseworkerId.equals(TestJwtDecoderConfig.OTHER_CASEWORKER_ID)
-            ? TestJwtDecoderConfig.OTHER_BEARER_TOKEN
-            : TestJwtDecoderConfig.BEARER_TOKEN);
-    return headers;
   }
 }

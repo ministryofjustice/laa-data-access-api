@@ -33,7 +33,8 @@ public class MakeDecisionCommandMapper {
         request.getCertificate(),
         serialise(request),
         request.getEventHistory() == null ? null : request.getEventHistory().getEventDescription(),
-        Instant.now());
+        Instant.now(),
+        null);
   }
 
   private List<MakeDecisionProceeding> proceedings(

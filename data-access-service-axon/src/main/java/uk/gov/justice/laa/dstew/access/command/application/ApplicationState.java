@@ -24,5 +24,6 @@ public class ApplicationState {
   long applicationVersion;
   UUID caseworkerId;
   long assignmentVersion;
+  UUID assignmentGroupId;
   List<DocumentMetadata> uploadedDocuments = new ArrayList<>();
 }

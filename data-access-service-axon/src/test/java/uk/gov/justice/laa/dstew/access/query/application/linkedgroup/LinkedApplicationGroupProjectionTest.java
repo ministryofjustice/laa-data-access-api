@@ -175,7 +175,8 @@ class LinkedApplicationGroupProjectionTest {
             .build();
     when(groupReadRepository.findById(groupId)).thenReturn(Optional.of(existing));
 
-    projection.on(new MemberRemovedFromGroupEvent(groupId, leadId, memberId, 2L, occurredAt));
+    projection.on(
+        new MemberRemovedFromGroupEvent(groupId, leadId, memberId, 2L, null, 0L, occurredAt));
 
     assertThat(existing.getMemberIds()).containsExactly(leadId);
     assertThat(existing.getVersion()).isEqualTo(2L);
@@ -193,6 +194,8 @@ class LinkedApplicationGroupProjectionTest {
             UUID.randomUUID(),
             List.of(UUID.randomUUID(), UUID.randomUUID()),
             2L,
+            null,
+            0L,
             Instant.now()));
 
     verify(groupReadRepository).deleteById(groupId);
@@ -217,7 +220,7 @@ class LinkedApplicationGroupProjectionTest {
 
     projection.on(
         new MemberRemovedFromGroupEvent(
-            groupId, UUID.randomUUID(), UUID.randomUUID(), 2L, Instant.now()));
+            groupId, UUID.randomUUID(), UUID.randomUUID(), 2L, null, 0L, Instant.now()));
 
     verify(groupReadRepository, never()).save(any());
   }

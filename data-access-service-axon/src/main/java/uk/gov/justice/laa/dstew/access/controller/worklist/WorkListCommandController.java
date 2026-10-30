@@ -44,7 +44,7 @@ public class WorkListCommandController implements WorkListCommandApi {
         new AssignWorkItemCommand(
             itemId,
             authenticatedUserId.get(),
-            request.getExpectedAssignmentVersion(),
+            AssignmentVersionTokens.decode(request.getExpectedAssignmentVersion()),
             serialise(request),
             eventDescription(request.getEventHistory()),
             Instant.now()));
@@ -57,7 +57,7 @@ public class WorkListCommandController implements WorkListCommandApi {
     unassignWorkItemUseCase.execute(
         new UnassignWorkItemCommand(
             itemId,
-            request.getExpectedAssignmentVersion(),
+            AssignmentVersionTokens.decode(request.getExpectedAssignmentVersion()),
             serialise(request),
             eventDescription(request.getEventHistory()),
             Instant.now()));

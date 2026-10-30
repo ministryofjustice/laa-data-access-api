@@ -12,6 +12,7 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.query.worklist.FindWorkListItemsResult;
 import uk.gov.justice.laa.dstew.access.query.worklist.WorkListItemReadModel;
+import uk.gov.justice.laa.dstew.access.version.VersionToken;
 
 /** Unit tests for the public work-list response mapper. */
 class WorkListResponseMapperTest {
@@ -52,7 +53,8 @@ class WorkListResponseMapperTest {
               assertThat(mapped.getItemType().getValue()).isEqualTo("PRIOR_AUTHORITY");
               assertThat(mapped.getParentApplicationId()).isEqualTo(applicationId);
               assertThat(mapped.getAssignedTo()).isEqualTo(caseworkerId);
-              assertThat(mapped.getAssignmentVersion()).isEqualTo(3L);
+              assertThat(mapped.getAssignmentVersion())
+                  .isEqualTo(VersionToken.workItemAssignment(itemId, 3L).encode());
               assertThat(mapped.getAssignmentBoundaryType().getValue()).isEqualTo("DIRECT");
               assertThat(mapped.getSubmittedAt())
                   .isEqualTo(Instant.parse("2026-08-28T09:00:00Z").atOffset(ZoneOffset.UTC));

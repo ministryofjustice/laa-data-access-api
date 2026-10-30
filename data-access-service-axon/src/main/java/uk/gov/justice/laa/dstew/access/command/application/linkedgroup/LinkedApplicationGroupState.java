@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import java.util.List;
 import java.util.UUID;
 import lombok.NoArgsConstructor;
+import org.jspecify.annotations.Nullable;
 
 /** State object reconstructed by folding a linked-group aggregate's event stream. */
 @NoArgsConstructor
@@ -14,4 +15,6 @@ public class LinkedApplicationGroupState {
   List<UUID> memberApplicationIds;
   long groupVersion;
   boolean dissolved;
+  @Nullable UUID caseworkerId;
+  long assignmentVersion;
 }

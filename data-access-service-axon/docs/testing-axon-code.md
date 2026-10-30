@@ -92,6 +92,10 @@ transaction rollback across JPA repositories.
 
 ## PostgreSQL integration tests
 
+New integration tests extend `BaseIntegrationTest`, which starts the service on a random port
+against a fresh PostgreSQL container per class and provides `TestRestTemplate`, `MockMvc`,
+`JdbcTemplate` and authenticated headers.
+
 `PostgresAxonIntegrationTest` uses Testcontainers and the real migrations. Add or extend integration
 coverage when changing:
 

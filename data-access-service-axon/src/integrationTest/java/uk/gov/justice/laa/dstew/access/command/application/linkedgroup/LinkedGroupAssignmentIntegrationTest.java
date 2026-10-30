@@ -4,398 +4,776 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
 
-import java.util.ArrayList;
+import java.math.BigDecimal;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-import org.junit.jupiter.api.DisplayName;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.resttestclient.TestRestTemplate;
-import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.annotation.DirtiesContext;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
-import uk.gov.justice.laa.dstew.access.DataAccessServiceAxonApplication;
-import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteKind;
-import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteRepository;
+import tools.jackson.databind.ObjectMapper;
+import uk.gov.justice.laa.dstew.access.BaseIntegrationTest;
+import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.ApplicationAssignmentReclaimedFromGroupEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.LinkedGroupAssignedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.LinkedGroupMemberAssignmentInheritedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.assignment.LinkedGroupUnassignedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkType;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
+import uk.gov.justice.laa.dstew.access.model.AutoGrantedOutcomeRequest;
+import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityDraftRequest;
+import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
+import uk.gov.justice.laa.dstew.access.model.DisbursementDetails;
+import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
+import uk.gov.justice.laa.dstew.access.model.LinkedGroupChangeRequest;
+import uk.gov.justice.laa.dstew.access.model.MakeDecisionProceedingRequest;
+import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
+import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetailsRequest;
+import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
+import uk.gov.justice.laa.dstew.access.model.PriorAuthorityType;
+import uk.gov.justice.laa.dstew.access.model.SavePriorAuthorityDraftResponse;
 import uk.gov.justice.laa.dstew.access.model.WorkListAssignRequest;
+import uk.gov.justice.laa.dstew.access.model.WorkListUnassignRequest;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 import uk.gov.justice.laa.dstew.access.version.VersionToken;
 
-/**
- * Full HTTP/Postgres/Axon integration tests proving that linked group assignment propagates
- * caseworker assignments correctly across group members.
- *
- * <p>Verifies that:
- *
- * <ul>
- *   <li>When one member of a linked group is assigned, the assignment propagates to all members
- *   <li>When a linked group member is reassigned, all members are reassigned atomically
- *   <li>Assignment operations maintain consistency across group members
- *   <li>The LinkedGroupAssignmentEventHandler correctly synchronizes assignments
- * </ul>
- */
-@Testcontainers
-@SpringBootTest(
-    classes = DataAccessServiceAxonApplication.class,
-    webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-    properties = {"feature.enable-dev-token=true"})
-@AutoConfigureTestRestTemplate
-@Import(TestJwtDecoderConfig.class)
-@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
-@DisplayName("LinkedGroupAssignment Integration Tests")
-class LinkedGroupAssignmentIntegrationTest {
+/** End-to-end linked-group assignment tests over HTTP, PostgreSQL and Axon. */
+class LinkedGroupAssignmentIntegrationTest extends BaseIntegrationTest {
 
-  @Container @ServiceConnection
-  static PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine");
+  private static final UUID C1 = TestJwtDecoderConfig.CASEWORKER_ID;
+  private static final UUID C2 = TestJwtDecoderConfig.OTHER_CASEWORKER_ID;
 
-  @LocalServerPort private int port;
+  @Autowired private ObjectMapper objectMapper;
 
-  @Autowired private TestRestTemplate restTemplate;
-
-  @Autowired private JdbcTemplate jdbcTemplate;
-
-  @Autowired private ApplicationGroupRouteRepository routeRepository;
+  private final Map<UUID, UUID> proceedingIds = new HashMap<>();
 
   @Test
-  @DisplayName("When one member is assigned, all members of the linked group are assigned")
-  void givenUnassignedLinkedGroup_whenOneMemberIsAssigned_thenEveryMemberIsAssigned() {
-    List<UUID> memberIds = createLinkedGroup(3);
+  void givenLinkedReadyItems_whenOneAssigned_thenOneGroupEventAndAllShowIt() {
+    UUID a = createApplication(true);
+    UUID b = createApplication(true);
+    UUID c = createApplication(true);
+    link(b, a);
+    UUID groupId = awaitGroup(a);
+    link(c, a, linkedGroupToken(groupId, 0));
 
-    // Assign the second member
-    ResponseEntity<Void> assignResponse =
-        restTemplate.exchange(
-            "http://localhost:" + port + "/api/v0/work-list/" + memberIds.get(1) + "/assign",
-            HttpMethod.POST,
-            new HttpEntity<>(new WorkListAssignRequest(0L), headers()),
-            Void.class);
-
-    assertThat(assignResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-
-    // Verify all members are assigned to the same caseworker
-    for (UUID memberId : memberIds) {
-      awaitWorkListAssignee(memberId, TestJwtDecoderConfig.CASEWORKER_ID, 1L);
+    for (UUID member : List.of(a, b, c)) {
+      awaitWorkListRow(member, null, groupId, 0);
     }
+    assertThat(assign(b, C1, assignmentToken(groupId, 0)).getStatusCode()).isEqualTo(HttpStatus.OK);
+
+    for (UUID member : List.of(a, b, c)) {
+      awaitWorkListRow(member, C1, groupId, 1);
+      awaitShownCaseworker(member, C1);
+      awaitHistoryCount(member, "ASSIGN_APPLICATION_TO_CASEWORKER", 1);
+      assertThat(countEvents(member, WorkItemAssigned.class)).isZero();
+    }
+    assertThat(countEvents(groupId, LinkedGroupAssignedEvent.class)).isEqualTo(1);
   }
 
   @Test
-  @DisplayName("When a member is reassigned, all members of the linked group are reassigned")
-  void givenFullyAssignedLinkedGroup_whenReassigned_thenEveryMemberIsReassigned() {
-    List<UUID> memberIds = createLinkedGroup(3);
+  void givenAssignedGroup_whenAssignedAgain_thenConflictWithoutEvent() {
+    UUID a = createApplication(true);
+    UUID b = createApplication(true);
+    link(b, a);
+    UUID groupId = awaitGroup(a);
 
-    // Initial assignment
-    restTemplate.exchange(
-        "http://localhost:" + port + "/api/v0/work-list/" + memberIds.get(0) + "/assign",
-        HttpMethod.POST,
-        new HttpEntity<>(new WorkListAssignRequest(0L), headers()),
-        Void.class);
+    assertThat(assign(a, C1, assignmentToken(groupId, 0)).getStatusCode()).isEqualTo(HttpStatus.OK);
+    ResponseEntity<String> second = assign(b, C2, assignmentToken(groupId, 1));
 
-    // Verify all members have version 1
-    for (UUID memberId : memberIds) {
-      awaitWorkListAssignee(memberId, TestJwtDecoderConfig.CASEWORKER_ID, 1L);
-    }
-
-    // Reassign to different caseworker
-    restTemplate.exchange(
-        "http://localhost:" + port + "/api/v0/work-list/" + memberIds.get(2) + "/assign",
-        HttpMethod.POST,
-        new HttpEntity<>(
-            new WorkListAssignRequest(1L), headersFor(TestJwtDecoderConfig.OTHER_CASEWORKER_ID)),
-        Void.class);
-
-    // Verify all members are reassigned to new caseworker with version 2
-    for (UUID memberId : memberIds) {
-      awaitWorkListAssignee(memberId, TestJwtDecoderConfig.OTHER_CASEWORKER_ID, 2L);
-    }
+    assertThat(second.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+    assertThat(second.getBody()).contains("it is already assigned");
+    assertThat(countEvents(groupId, LinkedGroupAssignedEvent.class)).isEqualTo(1);
   }
 
   @Test
-  @DisplayName("Assignment events are recorded correctly for each group member")
-  void givenGroupAssignment_whenCompleted_thenEveryMemberHasWorkItemAssignedEvent() {
-    List<UUID> memberIds = createLinkedGroup(2);
+  void givenApplicationToken_whenApplicationJoinsGroup_thenTokenRejected() {
+    UUID a = createApplication(true);
+    assertThat(assign(a, C1, assignmentToken(a, 0)).getStatusCode()).isEqualTo(HttpStatus.OK);
+    UUID b = createApplication(true);
+    link(b, a);
+    UUID groupId = awaitGroup(a);
+    awaitWorkListRow(a, C1, groupId, 1);
+    awaitWorkListRow(b, C1, groupId, 1);
 
-    // Assign first member
-    restTemplate.exchange(
-        "http://localhost:" + port + "/api/v0/work-list/" + memberIds.get(0) + "/assign",
-        HttpMethod.POST,
-        new HttpEntity<>(new WorkListAssignRequest(0L), headers()),
-        Void.class);
-
-    // Verify both members have WorkItemAssigned events
-    for (UUID memberId : memberIds) {
-      await()
-          .atMost(5, TimeUnit.SECONDS)
-          .untilAsserted(
-              () -> {
-                long eventCount = countDomainEvents(memberId, WorkItemAssigned.class.getName());
-                assertThat(eventCount)
-                    .as("WorkItemAssigned event should exist for member " + memberId)
-                    .isGreaterThan(0);
-              });
-    }
+    ResponseEntity<String> stale = unassign(a, assignmentToken(a, 1));
+    assertThat(stale.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+    assertThat(stale.getBody()).contains("the assignment version is stale");
+    assertThat(unassign(a, assignmentToken(groupId, 1)).getStatusCode()).isEqualTo(HttpStatus.OK);
+    awaitWorkListRow(a, null, groupId, 2);
+    awaitWorkListRow(b, null, groupId, 2);
   }
 
   @Test
-  @DisplayName(
-      "Scenario: Linked group assigned from application - "
-          + "When group is unassigned and member is assigned, group gets member's caseworker")
-  void givenUnassignedLinkedGroup_whenMemberIsAssigned_thenGroupIsAssignedToMembersCaseworker() {
-    List<UUID> memberIds = createLinkedGroup(3);
+  void givenAssignedGroup_whenUnassigned_thenOneGroupEventAndAllCleared() {
+    UUID a = createApplication(true);
+    UUID b = createApplication(true);
+    link(b, a);
+    UUID groupId = awaitGroup(a);
+    assign(a, C1, assignmentToken(groupId, 0));
 
-    // Verify all members start unassigned
-    for (UUID memberId : memberIds) {
-      assertMemberIsUnassigned(memberId);
+    assertThat(unassign(b, assignmentToken(groupId, 1)).getStatusCode()).isEqualTo(HttpStatus.OK);
+    for (UUID member : List.of(a, b)) {
+      awaitWorkListRow(member, null, groupId, 2);
+      awaitHistoryCount(member, "UNASSIGN_APPLICATION_TO_CASEWORKER", 1);
+      assertThat(countEvents(member, WorkItemUnassigned.class)).isZero();
     }
-
-    // Assign the second member (first non-lead member)
-    ResponseEntity<Void> assignResponse =
-        restTemplate.exchange(
-            "http://localhost:" + port + "/api/v0/work-list/" + memberIds.get(1) + "/assign",
-            HttpMethod.POST,
-            new HttpEntity<>(new WorkListAssignRequest(0L), headers()),
-            Void.class);
-
-    assertThat(assignResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-
-    // Verify lead (index 0) is now assigned to the caseworker (AC3)
-    awaitWorkListAssignee(memberIds.get(0), TestJwtDecoderConfig.CASEWORKER_ID, 1L);
-
-    // Verify all members are assigned to the same caseworker
-    for (UUID memberId : memberIds) {
-      awaitWorkListAssignee(memberId, TestJwtDecoderConfig.CASEWORKER_ID, 1L);
-    }
+    assertThat(countEvents(groupId, LinkedGroupUnassignedEvent.class)).isEqualTo(1);
   }
 
   @Test
-  @DisplayName(
-      "Scenario: Linked group assigned from application - "
-          + "When group created with multiple members and each member assigned, "
-          + "all members including lead get assigned")
-  void
-      givenUnassignedLinkedGroupWithMultipleMembers_whenEachMemberAssignedSequentially_thenLeadAndAllMembersAssigned() {
-    List<UUID> memberIds = createLinkedGroup(4);
+  void givenUnassignedGroup_whenUnassigned_thenConflict() {
+    UUID a = createApplication(true);
+    UUID b = createApplication(true);
+    link(b, a);
+    UUID groupId = awaitGroup(a);
 
-    // Assign second member (first non-lead)
-    restTemplate.exchange(
-        "http://localhost:" + port + "/api/v0/work-list/" + memberIds.get(1) + "/assign",
-        HttpMethod.POST,
-        new HttpEntity<>(new WorkListAssignRequest(0L), headers()),
-        Void.class);
+    ResponseEntity<String> response = unassign(a, assignmentToken(groupId, 0));
 
-    // Verify lead and all members are assigned
-    for (UUID memberId : memberIds) {
-      awaitWorkListAssignee(memberId, TestJwtDecoderConfig.CASEWORKER_ID, 1L);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+    assertThat(response.getBody()).contains("it is already unassigned");
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("creationRules")
+  void givenStandaloneAssignments_whenGroupCreated_thenLeadAssigneeWins(
+      String rule, UUID leadAssignee, UUID memberAssignee, UUID expected) {
+    UUID lead = createApplication(true);
+    UUID member = createApplication(true);
+    if (leadAssignee != null) {
+      assign(lead, leadAssignee, assignmentToken(lead, 0));
     }
+    if (memberAssignee != null) {
+      assign(member, memberAssignee, assignmentToken(member, 0));
+    }
+
+    link(member, lead);
+    UUID groupId = awaitGroup(lead);
+    long version = expected == null ? 0 : 1;
+
+    awaitWorkListRow(lead, expected, groupId, version);
+    awaitWorkListRow(member, expected, groupId, version);
+    assertThat(countEvents(groupId, LinkedGroupAssignedEvent.class))
+        .isEqualTo(expected == null ? 0 : 1);
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("addRules")
+  void givenGroupAndMemberAssignments_whenAdded_thenGroupAssigneeWins(
+      String rule,
+      UUID groupAssignee,
+      UUID memberAssignee,
+      UUID expected,
+      boolean groupEventOnAdd) {
+    UUID a = createApplication(true);
+    UUID b = createApplication(true);
+    link(b, a);
+    UUID groupId = awaitGroup(a);
+    if (groupAssignee != null) {
+      assign(a, groupAssignee, assignmentToken(groupId, 0));
+    }
+    UUID newMember = createApplication(true);
+    if (memberAssignee != null) {
+      assign(newMember, memberAssignee, assignmentToken(newMember, 0));
+    }
+
+    link(newMember, a, linkedGroupToken(groupId, 0));
+    long version = (groupAssignee == null ? 0 : 1) + (groupEventOnAdd ? 1 : 0);
+    for (UUID member : List.of(a, b, newMember)) {
+      awaitWorkListRow(member, expected, groupId, version);
+    }
+    assertThat(countEvents(groupId, LinkedGroupAssignedEvent.class)).isEqualTo(version);
   }
 
   @Test
-  @DisplayName(
-      "Scenario: No assignment change - "
-          + "When group and member are both unassigned, no assignment changes occur")
-  void
-      givenUnassignedLinkedGroupWithUnassignedMembers_whenNoAssignmentOccurs_thenRemainsUnassigned() {
-    List<UUID> memberIds = createLinkedGroup(2);
+  void givenAssignedGroup_whenMemberBecomesReady_thenInheritsAssignment() {
+    UUID a = createApplication(true);
+    UUID b = createApplication(false);
+    link(b, a);
+    UUID groupId = awaitGroup(a);
+    assign(a, C1, assignmentToken(groupId, 0));
 
-    // Verify all members remain unassigned
+    assertThat(markReady(b).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+
+    awaitWorkListRow(b, C1, groupId, 1);
+    assertThat(routeKind(b)).isEqualTo("LINKED_GROUP");
+    assertThat(countEvents(groupId, LinkedGroupMemberAssignmentInheritedEvent.class)).isEqualTo(1);
+    awaitHistoryCount(b, "ASSIGN_APPLICATION_TO_CASEWORKER", 1);
+  }
+
+  @Test
+  void givenUnassignedGroup_whenMemberBecomesReady_thenUnassignedInGroup() {
+    UUID a = createApplication(true);
+    UUID b = createApplication(false);
+    link(b, a);
+    UUID groupId = awaitGroup(a);
     await()
-        .atMost(5, TimeUnit.SECONDS)
+        .atMost(15, TimeUnit.SECONDS)
         .untilAsserted(
-            () -> {
-              for (UUID memberId : memberIds) {
-                assertMemberIsUnassigned(memberId);
-              }
+            () ->
+                assertThat(
+                        jdbcTemplate.queryForList(
+                            "SELECT group_id, active FROM axon.work_list_assignment_application "
+                                + "WHERE application_id = ?",
+                            b))
+                    .singleElement()
+                    .satisfies(
+                        row -> {
+                          assertThat(row.get("group_id")).isEqualTo(groupId);
+                          assertThat(row.get("active")).isEqualTo(false);
+                        }));
+
+    ResponseEntity<String> ready = markReady(b);
+    assertThat(ready.getStatusCode()).as(ready.getBody()).isEqualTo(HttpStatus.NO_CONTENT);
+    awaitWorkItemRoute(b, "LINKED_GROUP");
+    assertThat(countEvents(b, ApplicationReadyForManualAssessmentEvent.class)).isEqualTo(1);
+    await()
+        .atMost(15, TimeUnit.SECONDS)
+        .untilAsserted(
+            () ->
+                assertThat(
+                        jdbcTemplate.queryForObject(
+                            "SELECT application_version FROM axon.application_current_state "
+                                + "WHERE application_id = ?",
+                            Long.class,
+                            b))
+                    .isEqualTo(1L));
+    assertThat(
+            jdbcTemplate.queryForList(
+                "SELECT application_id, group_id, active, caseworker_id, assignment_version "
+                    + "FROM axon.work_list_assignment_application WHERE application_id = ?",
+                b))
+        .as("work-list projection's linked-group assignment tracker row")
+        .singleElement()
+        .satisfies(
+            row -> {
+              assertThat(row.get("group_id")).isEqualTo(groupId);
+              assertThat(row.get("active")).isEqualTo(true);
             });
+
+    awaitWorkListRow(b, null, groupId, 0);
+    assertThat(countEvents(groupId, LinkedGroupMemberAssignmentInheritedEvent.class)).isZero();
   }
 
-  /**
-   * Creates a linked group with the specified number of members. The first application is the lead,
-   * and subsequent applications are linked to it.
-   */
-  private List<UUID> createLinkedGroup(int memberCount) {
-    String lastName = "LinkedGroupAssign" + UUID.randomUUID().toString().replace("-", "");
-    List<UUID> memberIds = new ArrayList<>();
+  @Test
+  void givenAssignedGroup_whenMemberAutoGranted_thenNeverShowsGroupCaseworker() {
+    UUID a = createApplication(true);
+    UUID b = createApplication(false);
+    link(b, a);
+    UUID groupId = awaitGroup(a);
+    assign(a, C1, assignmentToken(groupId, 0));
 
-    // Create lead application
-    UUID leadId = createApplication(lastName);
-    memberIds.add(leadId);
+    assertThat(autoGrant(b).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
 
-    // Create and link member applications
-    for (int index = 1; index < memberCount; index++) {
-      UUID memberId = createApplication(lastName);
-      memberIds.add(memberId);
-
-      // Link member to lead
-      String linkToken =
-          index > 1
-              ? token(awaitRoute(leadId, ApplicationGroupRouteKind.LINKED_GROUP), index - 2L)
-              : null;
-      var linkRequest = new ApplicationLinkRequest(leadId, ApplicationLinkType.FAMILY);
-      linkRequest.setLinkedGroupVersion(linkToken);
-
-      ResponseEntity<Void> linkResponse =
-          restTemplate.exchange(
-              "http://localhost:" + port + "/api/v0/applications/" + memberId + "/link",
-              HttpMethod.POST,
-              new HttpEntity<>(linkRequest, headers()),
-              Void.class);
-
-      assertThat(linkResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-    }
-
-    // Verify all members have the linked group route
-    for (UUID memberId : memberIds) {
-      awaitRoute(memberId, ApplicationGroupRouteKind.LINKED_GROUP);
-    }
-
-    return memberIds;
+    awaitShownCaseworker(b, null);
+    awaitNoWorkListRow(b);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM axon.work_item_route WHERE work_item_id = ?",
+                Integer.class,
+                b))
+        .isZero();
   }
 
-  /** Creates a new application and sets it to MANUAL status (ready for assignment). */
-  private UUID createApplication(String lastName) {
-    UUID applicationId = UUID.randomUUID();
-    var request = validCreateApplicationRequest(applicationId, UUID.randomUUID());
+  @Test
+  void givenAssignedGroup_whenAssigneeDecidesMember_thenDecisionSucceeds() {
+    UUID a = createApplication(true);
+    UUID b = createApplication(true);
+    link(b, a);
+    UUID groupId = awaitGroup(a);
+    assign(a, C1, assignmentToken(groupId, 0));
 
-    // Update client last name for grouping
+    assertThat(decide(b, C1).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+
+    awaitNoWorkListRow(b);
+    awaitShownCaseworker(b, C1);
+    awaitWorkListRow(a, C1, groupId, 1);
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("rejectedDecisions")
+  void givenGroupedMember_whenDecisionRejected_thenConflict(
+      String scenario, UUID groupAssignee, UUID decider, String reason) {
+    UUID a = createApplication(true);
+    UUID b = createApplication(true);
+    link(b, a);
+    UUID groupId = awaitGroup(a);
+    if (groupAssignee != null) {
+      assign(a, groupAssignee, assignmentToken(groupId, 0));
+    }
+
+    ResponseEntity<String> response = decide(b, decider);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+    assertThat(response.getBody()).contains(reason);
+    assertThat(countEvents(b, ApplicationDecisionMadeEvent.class)).isZero();
+  }
+
+  @Test
+  void givenMemberDecidedWhileGrouped_whenUnassignedAndLeft_thenKeepsCaseworker() {
+    UUID a = createApplication(true);
+    UUID b = createApplication(true);
+    UUID c = createApplication(true);
+    link(b, a);
+    UUID groupId = awaitGroup(a);
+    link(c, a, linkedGroupToken(groupId, 0));
+    assign(a, C1, assignmentToken(groupId, 0));
+    assertThat(decide(b, C1).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+
+    assertThat(unassign(a, assignmentToken(groupId, 1)).getStatusCode()).isEqualTo(HttpStatus.OK);
+    awaitWorkListRow(a, null, groupId, 2);
+    awaitWorkListRow(c, null, groupId, 2);
+    awaitShownCaseworker(b, C1);
+    assertThat(unlink(b, linkedGroupToken(groupId, 1)).getStatusCode())
+        .isEqualTo(HttpStatus.NO_CONTENT);
+    awaitShownCaseworker(b, C1);
+    awaitHistoryCount(b, "APPLICATION_GROUP_LEFT", 1);
+    assertThat(countHistory(b, "UNASSIGN_APPLICATION_TO_CASEWORKER")).isZero();
+  }
+
+  @Test
+  void givenAssignedGroup_whenActiveMemberUnlinked_thenOwnsAssignmentDirectly() {
+    UUID a = createApplication(true);
+    UUID b = createApplication(true);
+    UUID c = createApplication(true);
+    link(b, a);
+    UUID groupId = awaitGroup(a);
+    link(c, a, linkedGroupToken(groupId, 0));
+    assign(a, C1, assignmentToken(groupId, 0));
+
+    assertThat(unlink(c, linkedGroupToken(groupId, 1)).getStatusCode())
+        .isEqualTo(HttpStatus.NO_CONTENT);
+    awaitWorkListRow(c, C1, c, 2);
+    assertThat(routeKind(c)).isEqualTo("STANDALONE");
+    ResponseEntity<String> oldOwner = unassign(c, assignmentToken(groupId, 1));
+    assertThat(oldOwner.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+    assertThat(oldOwner.getBody()).contains("the assignment version is stale");
+    assertThat(unassign(c, assignmentToken(c, 2)).getStatusCode()).isEqualTo(HttpStatus.OK);
+    awaitWorkListRow(c, null, c, 3);
+    awaitWorkListRow(a, C1, groupId, 1);
+    awaitWorkListRow(b, C1, groupId, 1);
+  }
+
+  @Test
+  void givenAssignedGroup_whenNotReadyMemberUnlinked_thenUnassignedWhenReady() {
+    UUID a = createApplication(true);
+    UUID b = createApplication(false);
+    UUID c = createApplication(true);
+    link(b, a);
+    UUID groupId = awaitGroup(a);
+    link(c, a, linkedGroupToken(groupId, 0));
+    assign(a, C1, assignmentToken(groupId, 0));
+
+    assertThat(unlink(b, linkedGroupToken(groupId, 1)).getStatusCode())
+        .isEqualTo(HttpStatus.NO_CONTENT);
+    assertThat(markReady(b).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    awaitWorkListRow(b, null, b, 2);
+    assertThat(assign(b, C2, assignmentToken(b, 2)).getStatusCode()).isEqualTo(HttpStatus.OK);
+  }
+
+  @Test
+  void givenAssignedTwoMemberGroup_whenDissolved_thenBothKeepCaseworker() {
+    UUID a = createApplication(true);
+    UUID b = createApplication(true);
+    link(b, a);
+    UUID groupId = awaitGroup(a);
+    assign(a, C1, assignmentToken(groupId, 0));
+
+    assertThat(unlink(b, linkedGroupToken(groupId, 0)).getStatusCode())
+        .isEqualTo(HttpStatus.NO_CONTENT);
+
+    awaitWorkListRow(a, C1, a, 2);
+    awaitWorkListRow(b, C1, b, 2);
+    assertThat(countEvents(a, ApplicationAssignmentReclaimedFromGroupEvent.class)).isEqualTo(1);
+    assertThat(countEvents(b, ApplicationAssignmentReclaimedFromGroupEvent.class)).isEqualTo(1);
+  }
+
+  @Test
+  void givenAssignedGroup_whenLeadChanged_thenAssignmentUnchanged() {
+    UUID a = createApplication(true);
+    UUID b = createApplication(true);
+    link(b, a);
+    UUID groupId = awaitGroup(a);
+    assign(a, C1, assignmentToken(groupId, 0));
+
+    assertThat(makeLead(b, linkedGroupToken(groupId, 0)).getStatusCode())
+        .isEqualTo(HttpStatus.NO_CONTENT);
+
+    awaitWorkListRow(a, C1, groupId, 1);
+    awaitWorkListRow(b, C1, groupId, 1);
+    assertThat(countEvents(groupId, LinkedGroupAssignedEvent.class)).isEqualTo(1);
+    assertThat(countEvents(groupId, LinkedGroupUnassignedEvent.class)).isZero();
+  }
+
+  @Test
+  void givenGroupedLead_whenPriorAuthorityAssigned_thenGroupUnaffected() throws Exception {
+    UUID lead = createApplication(false);
+    assertThat(autoGrant(lead).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    UUID member = createApplication(true);
+    link(member, lead);
+    UUID groupId = awaitGroup(member);
+    assign(member, C1, assignmentToken(groupId, 0));
+    UUID priorAuthority = createAndSubmitPriorAuthorityDraft(lead);
+
+    assertThat(assign(priorAuthority, C2, assignmentToken(priorAuthority, 0)).getStatusCode())
+        .isEqualTo(HttpStatus.OK);
+
+    awaitWorkListRow(priorAuthority, C2, priorAuthority, 1);
+    awaitWorkListRow(member, C1, groupId, 1);
+    assertThat(countEvents(groupId, LinkedGroupAssignedEvent.class)).isEqualTo(1);
+  }
+
+  @Test
+  void givenGroupEventRejected_whenLinked_thenNoDelegationPersists() throws Exception {
+    UUID a = createApplication(true);
+    UUID b = createApplication(true);
+    jdbcTemplate.execute(
+        """
+        CREATE OR REPLACE FUNCTION axon.reject_test_group_created_event()
+        RETURNS trigger AS $$
+        BEGIN
+          IF NEW.payload_type LIKE '%LinkedApplicationGroupCreatedEvent' THEN
+            RAISE EXCEPTION 'forced group creation failure';
+          END IF;
+          RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql
+        """);
+    jdbcTemplate.execute(
+        """
+        CREATE TRIGGER reject_test_group_created_event
+        BEFORE INSERT ON axon.domain_event_entry
+        FOR EACH ROW EXECUTE FUNCTION axon.reject_test_group_created_event()
+        """);
+    try {
+      ResponseEntity<String> response = link(b, a);
+      assertThat(response.getStatusCode().is5xxServerError()).isTrue();
+    } finally {
+      jdbcTemplate.execute(
+          "DROP TRIGGER IF EXISTS reject_test_group_created_event ON axon.domain_event_entry");
+      jdbcTemplate.execute("DROP FUNCTION IF EXISTS axon.reject_test_group_created_event()");
+    }
+
+    assertThat(countDelegationEvents(a)).isZero();
+    assertThat(countDelegationEvents(b)).isZero();
+    awaitApplicationRoute(a, "STANDALONE");
+    awaitApplicationRoute(b, "STANDALONE");
+  }
+
+  private static Stream<Arguments> creationRules() {
+    return Stream.of(
+        Arguments.of("AC1 lead assigned", C1, null, C1),
+        Arguments.of("AC2 both assigned differently", C1, C2, C1),
+        Arguments.of("AC3 only member assigned", null, C2, C2),
+        Arguments.of("AC4 neither assigned", null, null, null),
+        Arguments.of("AC4 both assigned identically", C1, C1, C1));
+  }
+
+  private static Stream<Arguments> addRules() {
+    return Stream.of(
+        Arguments.of("AC1 group assigned", C1, null, C1, false),
+        Arguments.of("AC2 group and member assigned differently", C1, C2, C1, false),
+        Arguments.of("AC3 only joining member assigned", null, C2, C2, true),
+        Arguments.of("AC4 neither assigned", null, null, null, false),
+        Arguments.of("AC4 assigned identically", C1, C1, C1, false));
+  }
+
+  private static Stream<Arguments> rejectedDecisions() {
+    return Stream.of(
+        Arguments.of("unassigned group", null, C1, "it is unassigned"),
+        Arguments.of(
+            "other caseworker", C1, C2, "the supplied caseworker is not its current assignee"));
+  }
+
+  private UUID createApplication(boolean ready) {
+    UUID id = UUID.randomUUID();
+    UUID proceedingId = UUID.randomUUID();
+    proceedingIds.put(id, proceedingId);
+    var request = validCreateApplicationRequest(id, proceedingId);
     Map<String, Object> content = new HashMap<>(request.getApplicationContent());
-    Map<?, ?> originalClient = (Map<?, ?>) content.get("client");
-    Map<String, Object> client = new HashMap<>();
-    originalClient.forEach((key, value) -> client.put(key.toString(), value));
-    client.put("lastName", lastName);
-    content.put("client", client);
-
-    // Update provider office code
     Map<?, ?> originalProvider = (Map<?, ?>) content.get("provider");
     Map<String, Object> provider = new HashMap<>();
     originalProvider.forEach((key, value) -> provider.put(key.toString(), value));
     provider.put("officeCode", "1A001B");
     content.put("provider", provider);
-
     request.setApplicationContent(content);
 
-    // Create application
-    ResponseEntity<Void> created =
+    ResponseEntity<String> response =
         restTemplate.postForEntity(
-            "http://localhost:" + port + "/api/v0/applications",
-            new HttpEntity<>(request, headers()),
-            Void.class);
-    assertThat(created.getStatusCode()).isIn(HttpStatus.CREATED, HttpStatus.ACCEPTED);
-
-    // Set to MANUAL status
-    ResponseEntity<Void> ready =
-        restTemplate.exchange(
-            "http://localhost:"
-                + port
-                + "/api/v0/applications/"
-                + applicationId
-                + "/auto-grant-outcome",
-            HttpMethod.PATCH,
-            new HttpEntity<>(new ManualOutcomeRequest(AutoGrantOutcome.MANUAL), headers()),
-            Void.class);
-    assertThat(ready.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-
-    // Await standalone route before linking
-    awaitRoute(applicationId, ApplicationGroupRouteKind.STANDALONE);
-
-    return applicationId;
+            url("/api/v0/applications"), new HttpEntity<>(request, headers()), String.class);
+    assertThat(response.getStatusCode()).isIn(HttpStatus.CREATED, HttpStatus.ACCEPTED);
+    if (ready) {
+      assertThat(markReady(id).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    }
+    return id;
   }
 
-  /** Waits for an application to have a route of the specified kind. */
-  private UUID awaitRoute(UUID applicationId, ApplicationGroupRouteKind expectedKind) {
+  private ResponseEntity<String> link(UUID source, UUID target) {
+    return link(source, target, null);
+  }
+
+  private ResponseEntity<String> link(UUID source, UUID target, String token) {
+    ApplicationLinkRequest request = new ApplicationLinkRequest(target, ApplicationLinkType.FAMILY);
+    request.setLinkedGroupVersion(token);
+    return restTemplate.exchange(
+        url("/api/v0/applications/" + source + "/link"),
+        HttpMethod.POST,
+        new HttpEntity<>(request, headers()),
+        String.class);
+  }
+
+  private ResponseEntity<String> unlink(UUID id, String token) {
+    return groupMutation(id, "unlink", token);
+  }
+
+  private ResponseEntity<String> makeLead(UUID id, String token) {
+    return groupMutation(id, "make-lead", token);
+  }
+
+  private ResponseEntity<String> groupMutation(UUID id, String operation, String token) {
+    return restTemplate.exchange(
+        url("/api/v0/applications/" + id + "/" + operation),
+        HttpMethod.POST,
+        new HttpEntity<>(new LinkedGroupChangeRequest(token), headers()),
+        String.class);
+  }
+
+  private String linkedGroupToken(UUID groupId, long version) {
+    return VersionToken.linkedGroup(groupId, version).encode();
+  }
+
+  private UUID awaitGroup(UUID applicationId) {
     return await()
-        .atMost(5, TimeUnit.SECONDS)
-        .pollInterval(100, TimeUnit.MILLISECONDS)
+        .atMost(Duration.ofSeconds(15))
         .until(
-            () -> routeRepository.findById(applicationId).orElse(null),
-            route -> route != null && route.getRouteKind() == expectedKind)
-        .getGroupId();
+            () ->
+                jdbcTemplate
+                    .query(
+                        "SELECT group_id FROM axon.application_group_route "
+                            + "WHERE application_id = ? AND route_kind = 'LINKED_GROUP'",
+                        (rs, row) -> rs.getObject(1, UUID.class),
+                        applicationId)
+                    .stream()
+                    .findFirst()
+                    .orElse(null),
+            group -> group != null);
   }
 
-  /** Waits for a work list item to be assigned to a specific caseworker with a specific version. */
-  private void awaitWorkListAssignee(
-      UUID itemId, UUID expectedAssignee, long expectedAssignmentVersion) {
+  private String assignmentToken(UUID ownerId, long version) {
+    return VersionToken.workItemAssignment(ownerId, version).encode();
+  }
+
+  private ResponseEntity<String> assign(UUID item, UUID caseworker, String token) {
+    return restTemplate.exchange(
+        url("/api/v0/work-list/" + item + "/assign"),
+        HttpMethod.POST,
+        new HttpEntity<>(new WorkListAssignRequest(token), headersFor(caseworker)),
+        String.class);
+  }
+
+  private ResponseEntity<String> unassign(UUID item, String token) {
+    return restTemplate.exchange(
+        url("/api/v0/work-list/" + item + "/unassign"),
+        HttpMethod.POST,
+        new HttpEntity<>(new WorkListUnassignRequest(token), headers()),
+        String.class);
+  }
+
+  private ResponseEntity<String> markReady(UUID id) {
+    return restTemplate.exchange(
+        url("/api/v0/applications/" + id + "/auto-grant-outcome"),
+        HttpMethod.PATCH,
+        new HttpEntity<>(new ManualOutcomeRequest(AutoGrantOutcome.MANUAL), headers()),
+        String.class);
+  }
+
+  private ResponseEntity<String> autoGrant(UUID id) {
+    return restTemplate.exchange(
+        url("/api/v0/applications/" + id + "/auto-grant-outcome"),
+        HttpMethod.PATCH,
+        new HttpEntity<>(
+            new AutoGrantedOutcomeRequest(
+                AutoGrantOutcome.AUTOGRANTED, Map.of("certificateNumber", "PA-CERT-001")),
+            headers()),
+        String.class);
+  }
+
+  private ResponseEntity<String> decide(UUID id, UUID caseworker) {
+    MakeDecisionRequest request =
+        MakeDecisionRequest.builder()
+            .applicationVersion(1L)
+            .overallDecision(DecisionStatus.REFUSED)
+            .eventHistory(
+                EventHistoryRequest.builder().eventDescription("Decision recorded").build())
+            .proceedings(
+                List.of(
+                    MakeDecisionProceedingRequest.builder()
+                        .proceedingId(proceedingIds.get(id))
+                        .meritsDecision(
+                            MeritsDecisionDetailsRequest.builder()
+                                .decision(MeritsDecisionStatus.REFUSED)
+                                .reason("Insufficient evidence")
+                                .justification("The evidence did not meet the test")
+                                .build())
+                        .build()))
+            .build();
+    return restTemplate.exchange(
+        url("/api/v0/applications/" + id + "/decision"),
+        HttpMethod.PATCH,
+        new HttpEntity<>(request, headersFor(caseworker)),
+        String.class);
+  }
+
+  private void awaitWorkListRow(UUID item, UUID assignee, UUID owner, long version) {
     await()
-        .atMost(5, TimeUnit.SECONDS)
-        .pollInterval(100, TimeUnit.MILLISECONDS)
+        .atMost(15, TimeUnit.SECONDS)
         .untilAsserted(
             () -> {
               Map<String, Object> row =
                   jdbcTemplate.queryForMap(
-                      "SELECT assignee_id, assignment_version FROM axon.work_list_item WHERE item_id = ?",
-                      itemId);
-              assertThat(row.get("assignee_id"))
-                  .as("Assignee should match for item " + itemId)
-                  .isEqualTo(expectedAssignee);
-              assertThat(((Number) row.get("assignment_version")).longValue())
-                  .as("Assignment version should match for item " + itemId)
-                  .isEqualTo(expectedAssignmentVersion);
+                      "SELECT assignee_id, assignment_version, assignment_boundary_type, "
+                          + "assignment_boundary_id, group_id FROM axon.work_list_item "
+                          + "WHERE item_id = ?",
+                      item);
+              assertThat(row.get("assignee_id")).isEqualTo(assignee);
+              assertThat(((Number) row.get("assignment_version")).longValue()).isEqualTo(version);
+              assertThat(row.get("assignment_boundary_type"))
+                  .isEqualTo(owner.equals(item) ? "DIRECT" : "LINKED_GROUP");
+              assertThat(row.get("assignment_boundary_id")).isEqualTo(owner);
+              assertThat(row.get("group_id")).isEqualTo(owner.equals(item) ? null : owner);
             });
   }
 
-  /** Asserts that a work list item is unassigned (no assignee). */
-  private void assertMemberIsUnassigned(UUID itemId) {
-    Map<String, Object> row =
-        jdbcTemplate.queryForMap(
-            "SELECT assignee_id FROM axon.work_list_item WHERE item_id = ?", itemId);
-    assertThat(row.get("assignee_id")).as("Member " + itemId + " should be unassigned").isNull();
+  private void awaitNoWorkListRow(UUID item) {
+    await()
+        .atMost(15, TimeUnit.SECONDS)
+        .untilAsserted(
+            () ->
+                assertThat(
+                        jdbcTemplate.queryForObject(
+                            "SELECT COUNT(*) FROM axon.work_list_item WHERE item_id = ?",
+                            Integer.class,
+                            item))
+                    .isZero());
   }
 
-  /** Counts the domain events of a specific type for an aggregate. */
-  private long countDomainEvents(UUID aggregateId, String payloadType) {
-    return Objects.requireNonNull(
-        jdbcTemplate.queryForObject(
-            """
-            SELECT COUNT(*)
-            FROM axon.domain_event_entry
-            WHERE aggregate_identifier = ?
-              AND payload_type = ?
-            """,
-            Long.class,
-            aggregateId.toString(),
-            payloadType));
+  private void awaitShownCaseworker(UUID id, UUID caseworker) {
+    await()
+        .atMost(15, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              assertThat(
+                      jdbcTemplate.queryForObject(
+                          "SELECT caseworker_id FROM axon.application_current_state "
+                              + "WHERE application_id = ?",
+                          UUID.class,
+                          id))
+                  .isEqualTo(caseworker);
+              assertThat(
+                      jdbcTemplate.queryForObject(
+                          "SELECT caseworker_id FROM axon.application_list_index "
+                              + "WHERE application_id = ?",
+                          UUID.class,
+                          id))
+                  .isEqualTo(caseworker);
+            });
   }
 
-  /** Encodes a linked group version token. */
-  private String token(UUID groupId, long version) {
-    return VersionToken.linkedGroup(groupId, version).encode();
+  private long countEvents(UUID aggregateId, Class<?> eventType) {
+    return jdbcTemplate.queryForObject(
+        "SELECT COUNT(*) FROM axon.domain_event_entry "
+            + "WHERE aggregate_identifier = ? AND payload_type = ?",
+        Long.class,
+        aggregateId.toString(),
+        eventType.getName());
   }
 
-  /** Creates HTTP headers with test JWT token for the default caseworker. */
-  private HttpHeaders headers() {
-    return headersFor(TestJwtDecoderConfig.CASEWORKER_ID);
+  private long countHistory(UUID id, String eventType) {
+    return jdbcTemplate.queryForObject(
+        "SELECT COUNT(*) FROM axon.application_history WHERE application_id = ? AND event_type = ?",
+        Long.class,
+        id,
+        eventType);
   }
 
-  /** Creates HTTP headers with test JWT token for a specific caseworker. */
-  private HttpHeaders headersFor(UUID caseworkerId) {
-    String bearerToken =
-        caseworkerId.equals(TestJwtDecoderConfig.CASEWORKER_ID)
-            ? TestJwtDecoderConfig.BEARER_TOKEN
-            : TestJwtDecoderConfig.OTHER_BEARER_TOKEN;
-    HttpHeaders headers = new HttpHeaders();
-    headers.set("X-Service-Name", "CIVIL_APPLY");
-    headers.set("X-Schema-Version", "1");
-    headers.setContentType(MediaType.APPLICATION_JSON);
-    headers.setBearerAuth(bearerToken);
-    return headers;
+  private void awaitHistoryCount(UUID id, String eventType, long expectedCount) {
+    await()
+        .atMost(Duration.ofSeconds(15))
+        .untilAsserted(() -> assertThat(countHistory(id, eventType)).isEqualTo(expectedCount));
+  }
+
+  private String routeKind(UUID id) {
+    return jdbcTemplate.queryForObject(
+        "SELECT route_kind FROM axon.work_item_route WHERE work_item_id = ?", String.class, id);
+  }
+
+  private void awaitWorkItemRoute(UUID id, String expected) {
+    await()
+        .atMost(Duration.ofSeconds(15))
+        .untilAsserted(() -> assertThat(routeKind(id)).isEqualTo(expected));
+  }
+
+  private long countDelegationEvents(UUID id) {
+    return jdbcTemplate.queryForObject(
+        "SELECT COUNT(*) FROM axon.domain_event_entry WHERE aggregate_identifier = ? "
+            + "AND payload_type LIKE '%ApplicationAssignmentDelegatedToGroupEvent'",
+        Long.class, id.toString());
+  }
+
+  private void awaitApplicationRoute(UUID id, String expected) {
+    await()
+        .atMost(Duration.ofSeconds(15))
+        .untilAsserted(
+            () ->
+                assertThat(
+                        jdbcTemplate.queryForObject(
+                            "SELECT route_kind FROM axon.application_group_route "
+                                + "WHERE application_id = ?",
+                            String.class,
+                            id))
+                    .isEqualTo(expected));
+  }
+
+  private UUID createAndSubmitPriorAuthorityDraft(UUID applicationId) throws Exception {
+    CreatePriorAuthorityDraftRequest request =
+        CreatePriorAuthorityDraftRequest.builder()
+            .applicationId(applicationId)
+            .priorAuthorityType(PriorAuthorityType.DISBURSEMENT)
+            .justification("Interpreter costs for proceedings")
+            .disbursementDetails(
+                DisbursementDetails.builder()
+                    .disbursementPurpose("Court interpreter")
+                    .disbursementAmount(BigDecimal.valueOf(150))
+                    .build())
+            .build();
+    ResponseEntity<String> draft =
+        restTemplate.postForEntity(
+            url("/api/v0/prior-authorities"), new HttpEntity<>(request, headers()), String.class);
+    assertThat(draft.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    UUID id =
+        objectMapper
+            .readValue(draft.getBody(), SavePriorAuthorityDraftResponse.class)
+            .getPriorAuthorityId();
+    ResponseEntity<String> submitted =
+        restTemplate.postForEntity(
+            url("/api/v0/prior-authorities/" + id + "/submit"),
+            new HttpEntity<>(request, headers()),
+            String.class);
+    assertThat(submitted.getStatusCode()).isEqualTo(HttpStatus.OK);
+    return id;
   }
 }

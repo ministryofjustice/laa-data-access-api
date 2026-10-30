@@ -14,6 +14,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
+import org.jspecify.annotations.Nullable;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 
 /** Disposable tracking row representing exactly one active work item. */
@@ -108,5 +109,21 @@ public class WorkListItemReadModel {
     this.assignmentVersion = 0L;
     this.itemVersion = itemVersion;
     this.projectionPosition = projectionPosition;
+  }
+
+  /** Updates assignment owner, assignee and version from the shared assignment tracker. */
+  public void applyAssignment(
+      @Nullable UUID owningGroupId, @Nullable UUID newAssigneeId, long newAssignmentVersion) {
+    assigneeId = newAssigneeId;
+    assignmentVersion = newAssignmentVersion;
+    if (owningGroupId == null) {
+      assignmentBoundaryType = "DIRECT";
+      assignmentBoundaryId = id;
+      groupId = null;
+    } else {
+      assignmentBoundaryType = "LINKED_GROUP";
+      assignmentBoundaryId = owningGroupId;
+      groupId = owningGroupId;
+    }
   }
 }

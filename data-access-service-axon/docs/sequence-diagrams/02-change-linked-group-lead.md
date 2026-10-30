@@ -9,9 +9,10 @@ sequenceDiagram
     actor Client
     participant Controller as ApplicationCommandController
     participant UseCase as MakeApplicationLeadUseCase
-    participant Handler as MakeApplicationLeadCommandHandler
+    participant Coordinator as MakeApplicationLeadCoordinator
     participant Resolver as ApplicationGroupRouteResolver
     participant Dispatcher as RetryingCommandDispatcher
+    participant GroupHandler as ChangeLinkedGroupLeadCommandHandler
     participant Aggregate as LinkedApplicationGroupAggregate
     participant EventStore as Event store
     participant AppProjection as ApplicationProjection<br/>(async)
@@ -21,18 +22,20 @@ sequenceDiagram
 
     Client->>Controller: POST /api/v0/applications/{id}/make-lead<br/>linkedGroupVersion (token)
     Controller->>UseCase: execute(MakeApplicationLeadCommand)
-    UseCase->>Handler: handle(command)
-    Handler->>Resolver: resolveGroupForMutation(applicationId, expectedGroupId)
+    UseCase->>Coordinator: handle(command)
+    Coordinator->>Resolver: resolveGroupForMutation(applicationId, expectedGroupId)
     Resolver->>Resolver: lock all group routes<br/>ordered by application ID
     Resolver->>Resolver: group ≠ expectedGroupId → 409
-    Resolver-->>Handler: groupId
-    Handler->>Dispatcher: dispatch(ChangeLinkedGroupLeadCommand)
-    Dispatcher->>Aggregate: handle(command)
-    Aggregate->>Aggregate: validate membership and expected version
-    Aggregate->>EventStore: append LinkedApplicationGroupLeadChangedEvent
+    Resolver-->>Coordinator: groupId
+    Coordinator->>Dispatcher: dispatch(ChangeLinkedGroupLeadCommand)
+    Dispatcher->>GroupHandler: handle(command)
+    GroupHandler->>Aggregate: load (replay events)
+    GroupHandler->>Aggregate: validate membership and expected version
+    GroupHandler->>EventStore: append LinkedApplicationGroupLeadChangedEvent
     EventStore-->>Dispatcher: committed event
-    Dispatcher-->>Handler: success
-    Handler-->>UseCase: success
+    GroupHandler-->>Dispatcher: success
+    Dispatcher-->>Coordinator: success
+    Coordinator-->>UseCase: success
     UseCase-->>Controller: success
     Controller-->>Client: 204 No Content
 
@@ -51,5 +54,5 @@ sequenceDiagram
     end
 
     Note over AppProjection,ListProjection: Processors are independent; query results can lag and may not advance together
-    Note over Handler,EventStore: No route projection update is needed: membership routes do not store the lead
+    Note over Coordinator,EventStore: No route projection update is needed: membership routes do not store the lead
 ```

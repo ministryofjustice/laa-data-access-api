@@ -37,7 +37,7 @@ public class WorkListResponseMapper {
     response.setItemType(WorkListItemType.valueOf(item.getItemType().name()));
     response.setParentApplicationId(item.getParentApplicationId());
     response.setAssignedTo(item.getAssigneeId());
-    response.setAssignmentVersion(item.getAssignmentVersion());
+    response.setAssignmentVersion(AssignmentVersionTokens.encode(item));
     response.setAssignmentBoundaryType(
         WorkListItem.AssignmentBoundaryTypeEnum.valueOf(item.getAssignmentBoundaryType()));
     response.setSubmittedAt(item.getSubmittedAt().atOffset(ZoneOffset.UTC));

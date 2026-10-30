@@ -35,6 +35,7 @@ import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetailsRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.WorkListAssignRequest;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
+import uk.gov.justice.laa.dstew.access.version.VersionToken;
 
 /**
  * Verifies that when the application-projection tracking processor is stopped the controller
@@ -259,7 +260,10 @@ class ProjectionTimeoutInMemoryTest {
                 .exchange(
                     "/api/v0/work-list/" + applicationId + "/assign",
                     HttpMethod.POST,
-                    new HttpEntity<>(new WorkListAssignRequest(0L), headers),
+                    new HttpEntity<>(
+                        new WorkListAssignRequest(
+                            VersionToken.workItemAssignment(applicationId, 0L).encode()),
+                        headers),
                     Void.class)
                 .getStatusCode())
         .isEqualTo(HttpStatus.OK);

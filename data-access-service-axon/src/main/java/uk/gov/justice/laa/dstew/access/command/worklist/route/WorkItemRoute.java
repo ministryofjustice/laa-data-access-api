@@ -63,4 +63,42 @@ public class WorkItemRoute {
     this.createdAt = occurredAt;
     this.updatedAt = occurredAt;
   }
+
+  /** Routes this work item to a linked group, or does nothing if it is already there. */
+  void joinGroup(UUID newGroupId, Instant occurredAt) {
+    if (routeKind == WorkItemRouteKind.LINKED_GROUP) {
+      if (!newGroupId.equals(groupId)) {
+        throw new IllegalStateException(
+            "Work item "
+                + workItemId
+                + " already routes to linked group "
+                + groupId
+                + ", not "
+                + newGroupId);
+      }
+      return;
+    }
+    routeKind = WorkItemRouteKind.LINKED_GROUP;
+    groupId = newGroupId;
+    updatedAt = occurredAt;
+  }
+
+  /** Routes this work item to its own aggregate, or does nothing if already standalone. */
+  void leaveGroup(UUID expectedGroupId, Instant occurredAt) {
+    if (routeKind == WorkItemRouteKind.STANDALONE) {
+      return;
+    }
+    if (!expectedGroupId.equals(groupId)) {
+      throw new IllegalStateException(
+          "Work item "
+              + workItemId
+              + " routes to linked group "
+              + groupId
+              + ", not "
+              + expectedGroupId);
+    }
+    routeKind = WorkItemRouteKind.STANDALONE;
+    groupId = null;
+    updatedAt = occurredAt;
+  }
 }
