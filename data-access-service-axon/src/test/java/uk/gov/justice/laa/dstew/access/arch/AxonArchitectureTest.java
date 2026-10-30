@@ -1,23 +1,54 @@
 package uk.gov.justice.laa.dstew.access.arch;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 import com.tngtech.archunit.base.DescribedPredicate;
+import com.tngtech.archunit.core.domain.Dependency;
+import com.tngtech.archunit.core.domain.JavaCall;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
+import com.tngtech.archunit.core.domain.properties.HasName;
+import com.tngtech.archunit.core.domain.properties.HasOwner;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.lang.ArchCondition;
 import com.tngtech.archunit.lang.ArchRule;
 import com.tngtech.archunit.lang.ConditionEvents;
 import com.tngtech.archunit.lang.SimpleConditionEvent;
+import java.util.List;
 import org.axonframework.extension.spring.stereotype.EventSourced;
+import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
 import org.axonframework.messaging.commandhandling.gateway.CommandGateway;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.junit.jupiter.api.Test;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.AddApplicationToLinkedGroupCommand;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.ChangeLinkedGroupLeadCommand;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.EstablishLinkedApplicationGroupCommand;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.RemoveApplicationFromLinkedGroupCommand;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteProjection;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteRepository;
+import uk.gov.justice.laa.dstew.access.command.application.ready.MarkApplicationReadyCommand;
+import uk.gov.justice.laa.dstew.access.command.worklist.assign.AssignLinkedGroupWorkItemCommand;
+import uk.gov.justice.laa.dstew.access.command.worklist.assign.DirectWorkItemAssignmentCommand;
+import uk.gov.justice.laa.dstew.access.command.worklist.unassign.DirectWorkItemUnassignmentCommand;
+import uk.gov.justice.laa.dstew.access.command.worklist.unassign.UnassignLinkedGroupWorkItemCommand;
 
 class AxonArchitectureTest {
+
+  /** Commands whose handlers rely on the coordinator holding the relevant route locks. */
+  private static final List<Class<?>> ROUTE_LOCKED_COMMANDS =
+      List.of(
+          EstablishLinkedApplicationGroupCommand.class,
+          AddApplicationToLinkedGroupCommand.class,
+          RemoveApplicationFromLinkedGroupCommand.class,
+          ChangeLinkedGroupLeadCommand.class,
+          AssignLinkedGroupWorkItemCommand.class,
+          UnassignLinkedGroupWorkItemCommand.class,
+          DirectWorkItemAssignmentCommand.class,
+          DirectWorkItemUnassignmentCommand.class,
+          MarkApplicationReadyCommand.class);
 
   private static final JavaClasses classes =
       new ClassFileImporter()
@@ -173,11 +204,88 @@ class AxonArchitectureTest {
   }
 
   @Test
+  void givenStateManager_whenImported_thenOnlyLinkedGroupStateLoadersUseIt() {
+    noClasses()
+        .that()
+        .doNotHaveSimpleName("LinkedGroupMembers")
+        .and()
+        .doNotHaveSimpleName("EstablishLinkedApplicationGroupCommandHandler")
+        .and()
+        .doNotHaveSimpleName("AddApplicationToLinkedGroupCommandHandler")
+        .and()
+        .doNotHaveSimpleName("LinkedGroupWorkItemAssignmentCommandHandler")
+        .and()
+        .doNotHaveSimpleName("MarkApplicationReadyCommandHandler")
+        .should()
+        .dependOnClassesThat()
+        .haveFullyQualifiedName("org.axonframework.modelling.StateManager")
+        .check(classes);
+  }
+
+  @Test
+  void givenRouteLockQueries_whenImported_thenOnlyResolverAndRouteProjectionCallThem() {
+    noClasses()
+        .that()
+        .doNotHaveSimpleName("ApplicationGroupRouteResolver")
+        .and()
+        .doNotHaveSimpleName(ApplicationGroupRouteProjection.class.getSimpleName())
+        .should()
+        .callMethodWhere(
+            JavaCall.Predicates.target(HasName.Predicates.nameEndingWith("ForUpdate"))
+                .and(
+                    JavaCall.Predicates.target(
+                        HasOwner.Predicates.With.owner(
+                            JavaClass.Predicates.assignableTo(
+                                ApplicationGroupRouteRepository.class)))))
+        .check(classes);
+  }
+
+  @Test
+  void givenRouteLockedCommands_whenImported_thenOnlyCoordinatorsDispatchThem() {
+    ArchCondition<JavaClass> dispatchRouteLockedCommands =
+        new ArchCondition<>("dispatch commands that require linked-group route locks") {
+          @Override
+          public void check(JavaClass javaClass, ConditionEvents events) {
+            var targets =
+                javaClass.getDirectDependenciesFromSelf().stream()
+                    .map(Dependency::getTargetClass)
+                    .toList();
+            var routeLockedCommands =
+                targets.stream()
+                    .filter(
+                        target -> ROUTE_LOCKED_COMMANDS.stream().anyMatch(target::isEquivalentTo))
+                    .map(JavaClass::getSimpleName)
+                    .distinct()
+                    .sorted()
+                    .toList();
+            var dispatchesCommands =
+                targets.stream().anyMatch(target -> target.isAssignableTo(CommandGateway.class));
+            if (dispatchesCommands && !routeLockedCommands.isEmpty()) {
+              events.add(
+                  SimpleConditionEvent.satisfied(
+                      javaClass,
+                      javaClass.getName()
+                          + " dispatches "
+                          + routeLockedCommands
+                          + " without being a coordinator; lock routes through"
+                          + " ApplicationGroupRouteResolver in a *Coordinator"));
+            }
+          }
+        };
+
+    noClasses()
+        .that()
+        .haveSimpleNameNotEndingWith("Coordinator")
+        .should(dispatchRouteLockedCommands)
+        .check(classes);
+  }
+
+  @Test
   void linkedApplicationRoutingClassesMustNotDependOnQueryPackages() {
     ArchRule rule =
         noClasses()
             .that()
-            .haveSimpleName("LinkApplicationCommandHandler")
+            .haveSimpleName("LinkApplicationCoordinator")
             .or()
             .haveSimpleName("ApplicationGroupRouteResolver")
             .should()
@@ -185,5 +293,44 @@ class AxonArchitectureTest {
             .resideInAPackage("..query..")
             .allowEmptyShould(true);
     rule.check(classes);
+  }
+
+  @Test
+  void givenCommandHandlerClasses_whenImported_thenEachDeclaresAxonHandler() {
+    ArchCondition<JavaClass> declareAxonCommandHandler =
+        new ArchCondition<>("declare a method annotated with @CommandHandler") {
+          @Override
+          public void check(JavaClass javaClass, ConditionEvents events) {
+            boolean declaresAxonHandler =
+                javaClass.getMethods().stream()
+                    .anyMatch(method -> method.isAnnotatedWith(CommandHandler.class));
+            events.add(
+                new SimpleConditionEvent(
+                    javaClass,
+                    declaresAxonHandler,
+                    declaresAxonHandler
+                        ? javaClass.getName() + " declares an Axon @CommandHandler"
+                        : javaClass.getName()
+                            + " does not declare a method annotated with @CommandHandler"));
+          }
+        };
+
+    ArchRule rule =
+        classes()
+            .that()
+            .haveSimpleNameEndingWith("CommandHandler")
+            .should(declareAxonCommandHandler);
+    rule.check(classes);
+  }
+
+  @Test
+  void givenAxonCommandHandlerMethods_whenImported_thenDeclaredOnlyInCommandHandlerClasses() {
+    methods()
+        .that()
+        .areAnnotatedWith(CommandHandler.class)
+        .should()
+        .beDeclaredInClassesThat()
+        .haveSimpleNameEndingWith("CommandHandler")
+        .check(classes);
   }
 }

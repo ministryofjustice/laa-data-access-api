@@ -18,7 +18,10 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.MakeDecision
 import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftStartedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
@@ -28,6 +31,140 @@ import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 class ApplicationDeciderTest {
 
   private static final Instant TIMESTAMP = Instant.parse("2026-07-28T10:00:00Z");
+
+  @Test
+  void givenManualUndecidedState_whenIsActiveWorkItem_thenReturnsTrue() {
+    var state = new ApplicationState();
+    state.autoGranted = AutoGrantedState.MANUAL;
+
+    assertThat(ApplicationDecider.isActiveWorkItem(state)).isTrue();
+  }
+
+  @Test
+  void givenNonManualOrDecidedState_whenIsActiveWorkItem_thenReturnsFalse() {
+    var pending = new ApplicationState();
+    var decided = new ApplicationState();
+    decided.autoGranted = AutoGrantedState.MANUAL;
+    decided.overallDecision = "GRANTED";
+
+    assertThat(ApplicationDecider.isActiveWorkItem(pending)).isFalse();
+    assertThat(ApplicationDecider.isActiveWorkItem(decided)).isFalse();
+  }
+
+  @Test
+  void givenValidWorkItem_whenValidateDirectWorkItem_thenReturnsNormally() {
+    var workItemId = UUID.randomUUID();
+    var state = new ApplicationState();
+    state.applicationId = workItemId;
+    state.autoGranted = AutoGrantedState.MANUAL;
+    state.assignmentVersion = 2L;
+
+    ApplicationDecider.validateDirectWorkItem(state, workItemId, 2L);
+  }
+
+  @Test
+  void givenMissingApplication_whenValidateDirectWorkItem_thenUsesExistingWorkItemMessage() {
+    var workItemId = UUID.randomUUID();
+    var state = new ApplicationState();
+
+    assertThatThrownBy(() -> ApplicationDecider.validateDirectWorkItem(state, workItemId, 0L))
+        .isInstanceOf(ResourceNotFoundException.class)
+        .hasMessage("No application work item found with id: " + workItemId);
+  }
+
+  @Test
+  void givenDifferentApplicationId_whenValidateDirectWorkItem_thenThrowsNotFound() {
+    var workItemId = UUID.randomUUID();
+    var state = new ApplicationState();
+    state.applicationId = UUID.randomUUID();
+
+    assertThatThrownBy(() -> ApplicationDecider.validateDirectWorkItem(state, workItemId, 0L))
+        .isInstanceOf(ResourceNotFoundException.class)
+        .hasMessage("No application work item found with id: " + workItemId);
+  }
+
+  @Test
+  void givenInactiveApplication_whenValidateDirectWorkItem_thenThrowsNotFound() {
+    var workItemId = UUID.randomUUID();
+    var state = new ApplicationState();
+    state.applicationId = workItemId;
+
+    assertThatThrownBy(() -> ApplicationDecider.validateDirectWorkItem(state, workItemId, 0L))
+        .isInstanceOf(ResourceNotFoundException.class)
+        .hasMessage("Application work item is not active: " + workItemId);
+  }
+
+  @Test
+  void givenStaleAssignmentVersion_whenValidateDirectWorkItem_thenThrowsConflict() {
+    var workItemId = UUID.randomUUID();
+    var state = new ApplicationState();
+    state.applicationId = workItemId;
+    state.autoGranted = AutoGrantedState.MANUAL;
+    state.assignmentVersion = 1L;
+
+    assertThatThrownBy(() -> ApplicationDecider.validateDirectWorkItem(state, workItemId, 0L))
+        .isInstanceOf(WorkItemAssignmentConflictException.class)
+        .hasMessage(
+            "Work item " + workItemId + " cannot be updated: the assignment version is stale");
+  }
+
+  @Test
+  void givenUnchangedAssignment_whenDecideAssignmentChange_thenReturnsEmpty() {
+    var applicationId = UUID.randomUUID();
+    var caseworkerId = UUID.randomUUID();
+
+    assertThat(
+            ApplicationDecider.decideAssignmentChange(
+                applicationId, 4L, 3L, caseworkerId, caseworkerId, TIMESTAMP))
+        .isEmpty();
+  }
+
+  @Test
+  void givenUnassignedItem_whenDecideAssignmentChange_thenReturnsAssignedEvent() {
+    var applicationId = UUID.randomUUID();
+    var caseworkerId = UUID.randomUUID();
+
+    assertThat(
+            ApplicationDecider.decideAssignmentChange(
+                applicationId, 4L, 3L, null, caseworkerId, TIMESTAMP))
+        .contains(
+            new WorkItemAssigned(
+                applicationId, WorkItemType.APPLICATION, 4L, 4L, caseworkerId, TIMESTAMP));
+  }
+
+  @Test
+  void givenAssignedItem_whenDecideAssignmentChange_thenReturnsUnassignedEvent() {
+    var applicationId = UUID.randomUUID();
+    var caseworkerId = UUID.randomUUID();
+
+    assertThat(
+            ApplicationDecider.decideAssignmentChange(
+                applicationId, 4L, 3L, caseworkerId, null, TIMESTAMP))
+        .contains(
+            new WorkItemUnassigned(applicationId, WorkItemType.APPLICATION, 4L, 4L, TIMESTAMP));
+  }
+
+  @Test
+  void givenDifferentCaseworkers_whenDecideAssignmentChange_thenReturnsReassignmentEvent() {
+    var applicationId = UUID.randomUUID();
+    var currentCaseworkerId = UUID.randomUUID();
+    var targetCaseworkerId = UUID.randomUUID();
+
+    assertThat(
+            ApplicationDecider.decideAssignmentChange(
+                applicationId, 4L, 3L, currentCaseworkerId, targetCaseworkerId, TIMESTAMP))
+        .contains(
+            new WorkItemAssigned(
+                applicationId, WorkItemType.APPLICATION, 4L, 4L, targetCaseworkerId, TIMESTAMP));
+  }
+
+  @Test
+  void givenInactiveApplication_whenDecideGroupMemberAssignment_thenReturnsEmpty() {
+    var state = new ApplicationState();
+
+    assertThat(ApplicationDecider.decideGroupMemberAssignment(state, UUID.randomUUID(), TIMESTAMP))
+        .isEmpty();
+  }
 
   // ── decideCreate ───────────────────────────────────────────────────────────────
 

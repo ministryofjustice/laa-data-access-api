@@ -2,7 +2,7 @@ package uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Stream;
@@ -19,7 +20,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -44,6 +44,7 @@ class ApplicationGroupRouteResolverTest {
       ApplicationGroupRoute sourceRoute,
       ApplicationGroupRoute targetRoute,
       ApplicationLinkPlan expectedPlan) {
+    stubResolveMembership(sourceRoute, targetRoute);
     when(routes.findAllByApplicationIdInForUpdate(sortedIds(sourceRoute, targetRoute)))
         .thenReturn(sortedRoutes(sourceRoute, targetRoute));
 
@@ -56,6 +57,7 @@ class ApplicationGroupRouteResolverTest {
   @MethodSource("conflictScenarios")
   void rejectsWhenSourceAlreadyBelongsToADifferentGroup(
       String scenario, ApplicationGroupRoute sourceRoute, ApplicationGroupRoute targetRoute) {
+    stubResolveMembership(sourceRoute, targetRoute);
     when(routes.findAllByApplicationIdInForUpdate(sortedIds(sourceRoute, targetRoute)))
         .thenReturn(sortedRoutes(sourceRoute, targetRoute));
 
@@ -73,6 +75,7 @@ class ApplicationGroupRouteResolverTest {
   @MethodSource("invalidOfficeCodeScenarios")
   void rejectsDifferentOrMissingOfficeCodes(
       String scenario, ApplicationGroupRoute sourceRoute, ApplicationGroupRoute targetRoute) {
+    stubResolveMembership(sourceRoute, targetRoute);
     when(routes.findAllByApplicationIdInForUpdate(sortedIds(sourceRoute, targetRoute)))
         .thenReturn(sortedRoutes(sourceRoute, targetRoute));
 
@@ -92,6 +95,8 @@ class ApplicationGroupRouteResolverTest {
     UUID targetApplicationId = UUID.fromString("00000000-0000-0000-0000-000000000005");
     ApplicationGroupRoute targetRoute =
         route(targetApplicationId, ApplicationGroupRouteKind.STANDALONE, null);
+    when(routes.findMembershipByApplicationId(targetApplicationId))
+        .thenReturn(Optional.of(new RouteMembership(ApplicationGroupRouteKind.STANDALONE, null)));
     when(routes.findAllByApplicationIdInForUpdate(
             List.of(sourceApplicationId, targetApplicationId)))
         .thenReturn(List.of(targetRoute));
@@ -108,6 +113,7 @@ class ApplicationGroupRouteResolverTest {
     UUID targetApplicationId = UUID.fromString("00000000-0000-0000-0000-000000000005");
     ApplicationGroupRoute sourceRoute =
         route(sourceApplicationId, ApplicationGroupRouteKind.STANDALONE, null);
+    when(routes.findMembershipByApplicationId(targetApplicationId)).thenReturn(Optional.empty());
     when(routes.findAllByApplicationIdInForUpdate(
             List.of(sourceApplicationId, targetApplicationId)))
         .thenReturn(List.of(sourceRoute));
@@ -201,48 +207,6 @@ class ApplicationGroupRouteResolverTest {
         .thenReturn(Optional.of(route(applicationId, ApplicationGroupRouteKind.STANDALONE, null)));
 
     assertThat(resolver.resolveGroupForPriorAuthorityCreation(applicationId)).isEmpty();
-  }
-
-  @Test
-  void givenMissingAssignmentMembership_thenThrowsNotFound() {
-    UUID applicationId = UUID.randomUUID();
-    when(routes.findMembershipByApplicationId(applicationId)).thenReturn(Optional.empty());
-
-    assertThatThrownBy(() -> resolver.resolveGroupMembersForAssignment(applicationId))
-        .isInstanceOf(ResourceNotFoundException.class)
-        .hasMessage("No application group route found for application " + applicationId);
-  }
-
-  @Test
-  void givenStandaloneAssignmentMembership_thenReturnsNoGroup() {
-    UUID applicationId = UUID.randomUUID();
-    when(routes.findMembershipByApplicationId(applicationId))
-        .thenReturn(Optional.of(new RouteMembership(ApplicationGroupRouteKind.STANDALONE, null)));
-
-    assertThat(resolver.resolveGroupMembersForAssignment(applicationId)).isEmpty();
-
-    verify(routes, never()).findAllByGroupIdForUpdate(any());
-  }
-
-  @ParameterizedTest
-  @ValueSource(booleans = {true, false})
-  void givenLinkedAssignmentMembership_thenReturnsMembersOnlyIfStillInGroup(boolean stillMember) {
-    UUID applicationId = UUID.randomUUID();
-    UUID otherMemberId = UUID.randomUUID();
-    UUID groupId = UUID.randomUUID();
-    var applicationRoute = route(applicationId, ApplicationGroupRouteKind.LINKED_GROUP, groupId);
-    var otherRoute = route(otherMemberId, ApplicationGroupRouteKind.LINKED_GROUP, groupId);
-    when(routes.findMembershipByApplicationId(applicationId))
-        .thenReturn(
-            Optional.of(new RouteMembership(ApplicationGroupRouteKind.LINKED_GROUP, groupId)));
-    when(routes.findAllByGroupIdForUpdate(groupId))
-        .thenReturn(stillMember ? List.of(applicationRoute, otherRoute) : List.of(otherRoute));
-
-    assertThat(resolver.resolveGroupMembersForAssignment(applicationId))
-        .isEqualTo(
-            stillMember ? Optional.of(List.of(applicationId, otherMemberId)) : Optional.empty());
-
-    verify(routes).findAllByGroupIdForUpdate(groupId);
   }
 
   @Test
@@ -364,6 +328,8 @@ class ApplicationGroupRouteResolverTest {
         route(laterApplicationId, ApplicationGroupRouteKind.STANDALONE, null);
     ApplicationGroupRoute targetRoute =
         route(earlierApplicationId, ApplicationGroupRouteKind.STANDALONE, null);
+    when(routes.findMembershipByApplicationId(earlierApplicationId))
+        .thenReturn(Optional.of(new RouteMembership(ApplicationGroupRouteKind.STANDALONE, null)));
     when(routes.findAllByApplicationIdInForUpdate(
             List.of(earlierApplicationId, laterApplicationId)))
         .thenReturn(List.of(targetRoute, sourceRoute));
@@ -372,6 +338,293 @@ class ApplicationGroupRouteResolverTest {
 
     verify(routes)
         .findAllByApplicationIdInForUpdate(List.of(earlierApplicationId, laterApplicationId));
+  }
+
+  @Test
+  void givenLinkedTarget_whenResolve_thenLocksSourceAndWholeGroup() {
+    UUID sourceApplicationId = UUID.fromString("00000000-0000-0000-0000-000000000001");
+    UUID targetApplicationId = UUID.fromString("00000000-0000-0000-0000-000000000002");
+    UUID otherMemberId = UUID.fromString("00000000-0000-0000-0000-000000000003");
+    UUID groupId = UUID.randomUUID();
+    var sourceRoute = route(sourceApplicationId, ApplicationGroupRouteKind.STANDALONE, null);
+    var targetRoute = route(targetApplicationId, ApplicationGroupRouteKind.LINKED_GROUP, groupId);
+    var otherRoute = route(otherMemberId, ApplicationGroupRouteKind.LINKED_GROUP, groupId);
+    when(routes.findMembershipByApplicationId(targetApplicationId))
+        .thenReturn(
+            Optional.of(new RouteMembership(ApplicationGroupRouteKind.LINKED_GROUP, groupId)));
+    when(routes.findApplicationIdsByGroupId(groupId))
+        .thenReturn(
+            List.of(targetApplicationId, otherMemberId),
+            List.of(targetApplicationId, otherMemberId));
+    when(routes.findAllByApplicationIdInForUpdate(
+            List.of(sourceApplicationId, targetApplicationId, otherMemberId)))
+        .thenReturn(List.of(sourceRoute, targetRoute, otherRoute));
+
+    resolver.resolve(sourceApplicationId, targetApplicationId);
+
+    verify(routes)
+        .findAllByApplicationIdInForUpdate(
+            List.of(sourceApplicationId, targetApplicationId, otherMemberId));
+  }
+
+  @Test
+  void givenTargetGroupGainedMember_whenResolve_thenThrowsMembershipChanged() {
+    UUID sourceApplicationId = UUID.randomUUID();
+    UUID targetApplicationId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    UUID newMemberId = UUID.randomUUID();
+    when(routes.findMembershipByApplicationId(targetApplicationId))
+        .thenReturn(
+            Optional.of(new RouteMembership(ApplicationGroupRouteKind.LINKED_GROUP, groupId)));
+    when(routes.findApplicationIdsByGroupId(groupId))
+        .thenReturn(List.of(targetApplicationId), List.of(targetApplicationId, newMemberId));
+    when(routes.findAllByApplicationIdInForUpdate(
+            Stream.of(sourceApplicationId, targetApplicationId).sorted().toList()))
+        .thenReturn(
+            List.of(
+                route(sourceApplicationId, ApplicationGroupRouteKind.STANDALONE, null),
+                route(targetApplicationId, ApplicationGroupRouteKind.LINKED_GROUP, groupId)));
+
+    assertThatThrownBy(() -> resolver.resolve(sourceApplicationId, targetApplicationId))
+        .isInstanceOf(ApplicationLinkConflictException.class)
+        .hasMessage(
+            "Linked group membership of application "
+                + targetApplicationId
+                + " changed; retry the request");
+  }
+
+  @Test
+  void givenTargetLinkedSinceRead_whenResolve_thenThrowsMembershipChanged() {
+    UUID sourceApplicationId = UUID.randomUUID();
+    UUID targetApplicationId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    when(routes.findMembershipByApplicationId(targetApplicationId))
+        .thenReturn(Optional.of(new RouteMembership(ApplicationGroupRouteKind.STANDALONE, null)));
+    when(routes.findAllByApplicationIdInForUpdate(
+            Stream.of(sourceApplicationId, targetApplicationId).sorted().toList()))
+        .thenReturn(
+            List.of(
+                route(sourceApplicationId, ApplicationGroupRouteKind.STANDALONE, null),
+                route(targetApplicationId, ApplicationGroupRouteKind.LINKED_GROUP, groupId)));
+
+    assertThatThrownBy(() -> resolver.resolve(sourceApplicationId, targetApplicationId))
+        .isInstanceOf(ApplicationLinkConflictException.class)
+        .hasMessage(
+            "Linked group membership of application "
+                + targetApplicationId
+                + " changed; retry the request");
+  }
+
+  @Test
+  void givenTargetLinkedWithoutMembership_whenResolve_thenThrowsMembershipChanged() {
+    UUID sourceApplicationId = UUID.randomUUID();
+    UUID targetApplicationId = UUID.randomUUID();
+    when(routes.findMembershipByApplicationId(targetApplicationId)).thenReturn(Optional.empty());
+    when(routes.findAllByApplicationIdInForUpdate(
+            Stream.of(sourceApplicationId, targetApplicationId).sorted().toList()))
+        .thenReturn(
+            List.of(
+                route(sourceApplicationId, ApplicationGroupRouteKind.STANDALONE, null),
+                route(
+                    targetApplicationId,
+                    ApplicationGroupRouteKind.LINKED_GROUP,
+                    UUID.randomUUID())));
+
+    assertThatThrownBy(() -> resolver.resolve(sourceApplicationId, targetApplicationId))
+        .isInstanceOf(ApplicationLinkConflictException.class)
+        .hasMessage(
+            "Linked group membership of application "
+                + targetApplicationId
+                + " changed; retry the request");
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("targetRoutesChangedSinceLinkedMembershipRead")
+  void givenLinkedTargetRouteChanged_whenResolve_thenThrowsMembershipChanged(
+      String scenario, ApplicationGroupRouteKind lockedRouteKind, UUID lockedGroupId) {
+    UUID sourceApplicationId = UUID.fromString("00000000-0000-0000-0000-000000000001");
+    UUID targetApplicationId = UUID.fromString("00000000-0000-0000-0000-000000000002");
+    UUID readGroupId = UUID.fromString("10000000-0000-0000-0000-000000000001");
+    when(routes.findMembershipByApplicationId(targetApplicationId))
+        .thenReturn(
+            Optional.of(new RouteMembership(ApplicationGroupRouteKind.LINKED_GROUP, readGroupId)));
+    when(routes.findApplicationIdsByGroupId(readGroupId)).thenReturn(List.of(targetApplicationId));
+    when(routes.findAllByApplicationIdInForUpdate(
+            List.of(sourceApplicationId, targetApplicationId)))
+        .thenReturn(
+            List.of(
+                route(sourceApplicationId, ApplicationGroupRouteKind.STANDALONE, null),
+                route(targetApplicationId, lockedRouteKind, lockedGroupId)));
+
+    assertThatThrownBy(() -> resolver.resolve(sourceApplicationId, targetApplicationId))
+        .as(scenario)
+        .isInstanceOf(ApplicationLinkConflictException.class)
+        .hasMessage(
+            "Linked group membership of application "
+                + targetApplicationId
+                + " changed; retry the request");
+  }
+
+  @Test
+  void givenStandaloneRouteRemoved_whenLockForAssignment_thenThrowsMembershipChanged() {
+    UUID applicationId = UUID.randomUUID();
+    when(routes.findMembershipByApplicationId(applicationId))
+        .thenReturn(Optional.of(new RouteMembership(ApplicationGroupRouteKind.STANDALONE, null)));
+    when(routes.findByApplicationIdForUpdate(applicationId)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> resolver.lockForAssignment(applicationId))
+        .isInstanceOf(ApplicationLinkConflictException.class)
+        .hasMessage(
+            "Linked group membership of application "
+                + applicationId
+                + " changed; retry the request");
+  }
+
+  @Test
+  void givenApplicationMissingFromGroupIds_whenLockForAssignment_thenThrowsMembershipChanged() {
+    UUID applicationId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    when(routes.findMembershipByApplicationId(applicationId))
+        .thenReturn(
+            Optional.of(new RouteMembership(ApplicationGroupRouteKind.LINKED_GROUP, groupId)));
+    when(routes.findApplicationIdsByGroupId(groupId)).thenReturn(List.of(UUID.randomUUID()));
+
+    assertThatThrownBy(() -> resolver.lockForAssignment(applicationId))
+        .isInstanceOf(ApplicationLinkConflictException.class)
+        .hasMessage(
+            "Linked group membership of application "
+                + applicationId
+                + " changed; retry the request");
+    verify(routes, never()).findAllByApplicationIdInForUpdate(anyList());
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("changedLockedGroupRoutes")
+  void givenLockedGroupRoutesChanged_whenLockForAssignment_thenThrowsMembershipChanged(
+      String scenario, List<ApplicationGroupRoute> lockedRoutes) {
+    UUID applicationId = UUID.fromString("00000000-0000-0000-0000-000000000001");
+    UUID otherMemberId = UUID.fromString("00000000-0000-0000-0000-000000000002");
+    UUID groupId = UUID.fromString("10000000-0000-0000-0000-000000000001");
+    var memberIds = List.of(applicationId, otherMemberId);
+    when(routes.findMembershipByApplicationId(applicationId))
+        .thenReturn(
+            Optional.of(new RouteMembership(ApplicationGroupRouteKind.LINKED_GROUP, groupId)));
+    when(routes.findApplicationIdsByGroupId(groupId)).thenReturn(memberIds);
+    when(routes.findAllByApplicationIdInForUpdate(memberIds)).thenReturn(lockedRoutes);
+
+    assertThatThrownBy(() -> resolver.lockForAssignment(applicationId))
+        .as(scenario)
+        .isInstanceOf(ApplicationLinkConflictException.class)
+        .hasMessage(
+            "Linked group membership of application "
+                + applicationId
+                + " changed; retry the request");
+  }
+
+  @Test
+  void givenNoRoute_whenLockForAssignment_thenReturnsEmpty() {
+    UUID applicationId = UUID.randomUUID();
+    when(routes.findMembershipByApplicationId(applicationId)).thenReturn(Optional.empty());
+
+    assertThat(resolver.lockForAssignment(applicationId)).isEmpty();
+  }
+
+  @Test
+  void givenStandalone_whenLockForAssignment_thenLocksOwnRow() {
+    UUID applicationId = UUID.randomUUID();
+    when(routes.findMembershipByApplicationId(applicationId))
+        .thenReturn(Optional.of(new RouteMembership(ApplicationGroupRouteKind.STANDALONE, null)));
+    when(routes.findByApplicationIdForUpdate(applicationId))
+        .thenReturn(Optional.of(route(applicationId, ApplicationGroupRouteKind.STANDALONE, null)));
+
+    assertThat(resolver.lockForAssignment(applicationId)).isEmpty();
+
+    verify(routes).findByApplicationIdForUpdate(applicationId);
+  }
+
+  @Test
+  void givenStandaloneBecameLinked_whenLockForAssignment_thenThrowsMembershipChanged() {
+    UUID applicationId = UUID.randomUUID();
+    when(routes.findMembershipByApplicationId(applicationId))
+        .thenReturn(Optional.of(new RouteMembership(ApplicationGroupRouteKind.STANDALONE, null)));
+    when(routes.findByApplicationIdForUpdate(applicationId))
+        .thenReturn(
+            Optional.of(
+                route(applicationId, ApplicationGroupRouteKind.LINKED_GROUP, UUID.randomUUID())));
+
+    assertThatThrownBy(() -> resolver.lockForAssignment(applicationId))
+        .isInstanceOf(ApplicationLinkConflictException.class)
+        .hasMessage(
+            "Linked group membership of application "
+                + applicationId
+                + " changed; retry the request");
+  }
+
+  @Test
+  void givenGroup_whenLockForAssignment_thenLocksAllMembers() {
+    UUID applicationId = UUID.fromString("00000000-0000-0000-0000-000000000003");
+    UUID firstMemberId = UUID.fromString("00000000-0000-0000-0000-000000000001");
+    UUID secondMemberId = UUID.fromString("00000000-0000-0000-0000-000000000002");
+    UUID groupId = UUID.randomUUID();
+    var memberIds = List.of(firstMemberId, secondMemberId, applicationId);
+    when(routes.findMembershipByApplicationId(applicationId))
+        .thenReturn(
+            Optional.of(new RouteMembership(ApplicationGroupRouteKind.LINKED_GROUP, groupId)));
+    when(routes.findApplicationIdsByGroupId(groupId)).thenReturn(memberIds, memberIds);
+    when(routes.findAllByApplicationIdInForUpdate(memberIds))
+        .thenReturn(
+            memberIds.stream()
+                .map(id -> route(id, ApplicationGroupRouteKind.LINKED_GROUP, groupId))
+                .toList());
+
+    assertThat(resolver.lockForAssignment(applicationId)).contains(groupId);
+
+    verify(routes).findAllByApplicationIdInForUpdate(memberIds);
+  }
+
+  @Test
+  void givenMemberJoinedWhileWaiting_whenLockForAssignment_thenThrowsMembershipChanged() {
+    UUID applicationId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    UUID newMemberId = UUID.randomUUID();
+    when(routes.findMembershipByApplicationId(applicationId))
+        .thenReturn(
+            Optional.of(new RouteMembership(ApplicationGroupRouteKind.LINKED_GROUP, groupId)));
+    when(routes.findApplicationIdsByGroupId(groupId))
+        .thenReturn(List.of(applicationId), List.of(applicationId, newMemberId));
+    when(routes.findAllByApplicationIdInForUpdate(List.of(applicationId)))
+        .thenReturn(List.of(route(applicationId, ApplicationGroupRouteKind.LINKED_GROUP, groupId)));
+
+    assertThatThrownBy(() -> resolver.lockForAssignment(applicationId))
+        .isInstanceOf(ApplicationLinkConflictException.class)
+        .hasMessage(
+            "Linked group membership of application "
+                + applicationId
+                + " changed; retry the request");
+  }
+
+  @Test
+  void givenApplicationLeftGroup_whenLockForAssignment_thenThrowsMembershipChanged() {
+    UUID applicationId = UUID.randomUUID();
+    UUID otherMemberId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    when(routes.findMembershipByApplicationId(applicationId))
+        .thenReturn(
+            Optional.of(new RouteMembership(ApplicationGroupRouteKind.LINKED_GROUP, groupId)));
+    when(routes.findApplicationIdsByGroupId(groupId))
+        .thenReturn(List.of(applicationId, otherMemberId));
+    when(routes.findAllByApplicationIdInForUpdate(List.of(applicationId, otherMemberId)))
+        .thenReturn(
+            List.of(
+                route(applicationId, ApplicationGroupRouteKind.STANDALONE, null),
+                route(otherMemberId, ApplicationGroupRouteKind.LINKED_GROUP, groupId)));
+
+    assertThatThrownBy(() -> resolver.lockForAssignment(applicationId))
+        .isInstanceOf(ApplicationLinkConflictException.class)
+        .hasMessage(
+            "Linked group membership of application "
+                + applicationId
+                + " changed; retry the request");
   }
 
   @Test
@@ -444,6 +697,33 @@ class ApplicationGroupRouteResolverTest {
             "linked route lost its group identifier",
             route(applicationId, ApplicationGroupRouteKind.LINKED_GROUP, null),
             originalGroupId));
+  }
+
+  private static Stream<Arguments> targetRoutesChangedSinceLinkedMembershipRead() {
+    return Stream.of(
+        Arguments.of(
+            "target moved to another group",
+            ApplicationGroupRouteKind.LINKED_GROUP,
+            UUID.fromString("20000000-0000-0000-0000-000000000002")),
+        Arguments.of("target became standalone", ApplicationGroupRouteKind.STANDALONE, null));
+  }
+
+  private static Stream<Arguments> changedLockedGroupRoutes() {
+    UUID applicationId = UUID.fromString("00000000-0000-0000-0000-000000000001");
+    UUID otherMemberId = UUID.fromString("00000000-0000-0000-0000-000000000002");
+    UUID groupId = UUID.fromString("10000000-0000-0000-0000-000000000001");
+    return Stream.of(
+        Arguments.of(
+            "a member route was removed before it could be locked",
+            List.of(route(applicationId, ApplicationGroupRouteKind.LINKED_GROUP, groupId))),
+        Arguments.of(
+            "a member moved to another group",
+            List.of(
+                route(applicationId, ApplicationGroupRouteKind.LINKED_GROUP, groupId),
+                route(
+                    otherMemberId,
+                    ApplicationGroupRouteKind.LINKED_GROUP,
+                    UUID.fromString("20000000-0000-0000-0000-000000000002")))));
   }
 
   private static Stream<Arguments> resolutionScenarios() {
@@ -540,6 +820,26 @@ class ApplicationGroupRouteResolverTest {
     return Stream.of(sourceRoute.getApplicationId(), targetRoute.getApplicationId())
         .sorted()
         .toList();
+  }
+
+  private void stubResolveMembership(
+      ApplicationGroupRoute sourceRoute, ApplicationGroupRoute targetRoute) {
+    when(routes.findMembershipByApplicationId(targetRoute.getApplicationId()))
+        .thenReturn(
+            Optional.of(new RouteMembership(targetRoute.getRouteKind(), targetRoute.getGroupId())));
+    if (targetRoute.getRouteKind() == ApplicationGroupRouteKind.LINKED_GROUP) {
+      var memberIds =
+          Stream.of(sourceRoute, targetRoute)
+              .filter(
+                  route ->
+                      route.getRouteKind() == ApplicationGroupRouteKind.LINKED_GROUP
+                          && Objects.equals(route.getGroupId(), targetRoute.getGroupId()))
+              .map(ApplicationGroupRoute::getApplicationId)
+              .sorted()
+              .toList();
+      when(routes.findApplicationIdsByGroupId(targetRoute.getGroupId()))
+          .thenReturn(memberIds, memberIds);
+    }
   }
 
   private static List<ApplicationGroupRoute> sortedRoutes(

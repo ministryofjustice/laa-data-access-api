@@ -75,6 +75,20 @@ Use ordinary JUnit and Mockito when Axon's runtime is not the behaviour under te
 Projection unit tests should cover missing rows, idempotency, reset handlers, emitted subscription
 updates, and hydration fallbacks where relevant.
 
+### Multi-aggregate linked-group handlers
+
+Keep the linked-group rules in plain unit tests of `LinkedGroupAssignmentDecider`. Handler wiring
+tests prove that the handler loads the expected states through `StateManager`, calls the decider,
+and appends the returned events once. The Axon fixture can cover blank, inactive application state;
+it also covers the missing-aggregate fallback. Use Mockito for wiring cases that require application
+aggregates with assigned state.
+
+The `MultiAggregateCommandHandlerIntegrationTest` is the regression test for Axon's real
+multi-aggregate append. It verifies that changes to two application streams commit together and
+that a write conflict on a loaded member rejects the whole append. Its retry case verifies that
+`RetryingCommandDispatcher` retries a rejected append only after the failed attempt's transaction
+has completed. Keep this integration test when changing these handlers or Axon configuration.
+
 ## In-memory Spring tests
 
 The Spring tests use Axon 5's JPA event and token stores with an in-memory H2 database, retaining

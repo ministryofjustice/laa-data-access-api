@@ -103,10 +103,23 @@ public class WorkListItemReadModel {
     this.parentApplicationId = parentApplicationId;
     this.submittedAt = updatedAt;
     this.updatedAt = updatedAt;
-    this.assignmentBoundaryType = "DIRECT";
-    this.assignmentBoundaryId = itemId;
+    useDirectBoundary();
     this.assignmentVersion = 0L;
     this.itemVersion = itemVersion;
     this.projectionPosition = projectionPosition;
+  }
+
+  /** Makes the linked group the boundary that assignment changes apply to. */
+  public void useLinkedGroupBoundary(UUID linkedGroupId) {
+    this.assignmentBoundaryType = "LINKED_GROUP";
+    this.assignmentBoundaryId = linkedGroupId;
+    this.groupId = linkedGroupId;
+  }
+
+  /** Makes this item its own assignment boundary. */
+  public void useDirectBoundary() {
+    this.assignmentBoundaryType = "DIRECT";
+    this.assignmentBoundaryId = id;
+    this.groupId = null;
   }
 }

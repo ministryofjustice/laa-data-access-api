@@ -25,4 +25,11 @@ public class ApplicationState {
   UUID caseworkerId;
   long assignmentVersion;
   List<DocumentMetadata> uploadedDocuments = new ArrayList<>();
+
+  /** Creates an otherwise empty state for an application with no events yet. */
+  public static ApplicationState empty(UUID applicationId) {
+    var state = new ApplicationState();
+    state.applicationId = applicationId;
+    return state;
+  }
 }

@@ -24,7 +24,7 @@ Application creation does not create or extend linked groups.
 1. Create each application normally with `POST /api/v0/applications`.
 2. Call the explicit application-link endpoint for the source application with an
    `ApplicationLinkRequest`.
-3. `LinkApplicationCommandHandler` validates the request and asks
+3. `LinkApplicationCoordinator` validates the request and asks
    `ApplicationGroupRouteResolver` to lock the source and target routes. When the target is already
    linked, include its `linkedGroupVersion` token as last read; omit that value when the target is
    standalone.
@@ -121,6 +121,46 @@ Every group mutation locks all route rows for that group with `PESSIMISTIC_WRITE
 application-ID order. Link/add also locks its target route. These locks serialize add, lead change,
 and removal before the group command is dispatched; aggregate version validation remains the
 authoritative backstop.
+
+## Assignment in linked groups
+
+Assignment remains per application: each `ApplicationAggregate` owns its `caseworkerId` and
+`assignmentVersion`. A linked group has no assignment of its own. An **active work item** is an
+application with `autoGranted == MANUAL` and no overall decision. The **group assignment** is
+derived from active members: they are all assigned to the same caseworker, all unassigned, or there
+are no active members. Disagreement returns 409. Not-ready, auto-granted and decided members do not
+give or receive the group's caseworker. The lead does not affect assignment.
+
+- **Assign:** `POST /api/v0/work-list/{itemId}/assign` validates the addressed application's active
+  state and assignment version, then assigns every active member to the caller in one command and
+  transaction. The addressed item must be unassigned. An already-assigned item returns 409; group
+  takeover requires unassigning first. A different caseworker on another active member is also
+  rejected with 409 as a guard against a broken group assignment.
+- **Unassign:** `POST /api/v0/work-list/{itemId}/unassign` validates that the addressed item is
+  active, assigned and at the expected version. It unassigns every assigned active member in one
+  command, including members held by another caseworker.
+- **Link:** assignment is worked out from the group's members before the new member joins. For a
+  new group, the target application is the existing group. If the group is assigned, an active
+  joining member takes that caseworker (AC1/AC2). If the group is unassigned or has no active
+  members, an active joining member with a caseworker assigns every active member (AC3). Otherwise
+  nothing changes (AC4). The establish and add handlers load member state and append the group
+  event and assignment events together.
+- **Readiness:** when a grouped application becomes ready, it matches the other active members'
+  assignment. It takes their caseworker or is cleared if they are unassigned. If there are no other
+  active members, it keeps its current assignment. Repeated readiness changes nothing.
+- **Unlink, lead change and dissolution** do not change assignment. Decisions remain per application.
+
+The assignment decider builds changes from aggregate state, not from query projections. The
+group-assignment handler and readiness handler load the relevant application states with
+`StateManager` and `LinkedGroupMembers`; each handler appends the resulting application events in
+one batch.
+
+Before dispatch, `ApplicationGroupRouteResolver` locks the relevant
+`application_group_route` rows in ascending application ID order and verifies membership again.
+If membership changed while the request waited, it returns 409 rather than acquiring more locks.
+Do not lock `work_item_route`: an application decision appends to its event stream before its route
+row is removed, so taking that row lock first could deadlock with the append. Route-lock enforcement
+is described in [Guardrails](guardrails.md).
 
 ## Where the resulting data appears
 

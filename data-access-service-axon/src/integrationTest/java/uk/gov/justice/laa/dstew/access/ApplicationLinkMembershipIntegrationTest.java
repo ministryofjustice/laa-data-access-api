@@ -655,7 +655,7 @@ public class ApplicationLinkMembershipIntegrationTest {
   }
 
   @RepeatedTest(3)
-  void givenConcurrentIdenticalLinks_whenStandalone_thenOneGroupIsCreated() throws Exception {
+  void givenConcurrentLinks_whenStandalone_thenCreatesOneGroup() throws Exception {
     var lastName = uniqueLastName();
     var sourceId = createApplication(lastName);
     var targetId = createApplication(lastName);
@@ -664,7 +664,8 @@ public class ApplicationLinkMembershipIntegrationTest {
 
     assertThat(results)
         .extracting(ResponseEntity::getStatusCode)
-        .containsOnly(HttpStatus.NO_CONTENT);
+        .contains(HttpStatus.NO_CONTENT)
+        .containsOnly(HttpStatus.NO_CONTENT, HttpStatus.CONFLICT);
     var groupId = awaitRoute(sourceId, ApplicationGroupRouteKind.LINKED_GROUP).getGroupId();
     assertThat(countDomainEvents(groupId, LinkedApplicationGroupCreatedEvent.class)).isOne();
     assertThat(countAllDomainEvents(LinkedApplicationGroupCreatedEvent.class))

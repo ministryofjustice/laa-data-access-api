@@ -42,7 +42,11 @@ public class RetryingCommandDispatcher {
     return dispatch(() -> commandGateway.sendAndWait(command, responseType));
   }
 
-  private <R> R dispatch(Supplier<R> dispatch) {
+  /**
+   * Executes one retryable operation, allowing callers to scope a complete attempt (including
+   * transaction setup) inside the retry boundary.
+   */
+  public <R> R dispatch(Supplier<R> dispatch) {
     try {
       return dispatch.get();
     } catch (RuntimeException first) {
