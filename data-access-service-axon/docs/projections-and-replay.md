@@ -17,10 +17,9 @@ rebuilt without changing aggregate event streams or immutable application-data v
 `application-projection` owns the event-derived `application_current_state.submitted_at`.
 `application-list-index-projection` owns the lead-proceeding name/code columns and the
 event-derived `application_list_index.submitted_at` used for submitted-date sorting.
-`work-list-projection` owns `work_list_item`, including `submitted_at`, which records when an
-application became ready or a prior authority was submitted (named `submittedAt` to match consumer
-expectations, even though it is readiness/PA-submission time, not the true application submission
-time recorded elsewhere).
+`work-list-projection` owns `work_list_item`, including `submitted_at`, which records an
+application's true creation/submission time. `ready_at` records when an application became ready
+for manual assessment. For Prior Authorities, both timestamps record the submission time.
 
 Migration V25 adds event-derived `submitted_at` to `application_current_state` and code columns to
 `application_list_index` and `work_list_item`. Existing rows are not backfilled by the migration;
