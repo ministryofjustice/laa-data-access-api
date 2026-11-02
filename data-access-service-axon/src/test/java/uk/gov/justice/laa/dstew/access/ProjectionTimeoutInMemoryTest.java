@@ -34,6 +34,7 @@ import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetailsRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.WorkListAssignRequest;
+import uk.gov.justice.laa.dstew.access.testsupport.InMemoryEventContentStoreConfig;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 
 /**
@@ -57,7 +58,7 @@ import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
       "application.projection.timeout=200ms"
     })
 @AutoConfigureTestRestTemplate
-@Import(TestJwtDecoderConfig.class)
+@Import({TestJwtDecoderConfig.class, InMemoryEventContentStoreConfig.class})
 @DirtiesContext(methodMode = DirtiesContext.MethodMode.AFTER_METHOD)
 class ProjectionTimeoutInMemoryTest {
 

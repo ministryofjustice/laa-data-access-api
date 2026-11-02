@@ -6,7 +6,7 @@ import org.axonframework.eventsourcing.annotation.EventTag;
 import org.axonframework.messaging.eventhandling.annotation.Event;
 
 /** Thin event recording the immutable data version that contains {@code autoGranted=MANUAL}. */
-@Event
+@Event(namespace = "access", name = "ApplicationReadyForManualAssessment")
 public record ApplicationReadyForManualAssessmentEvent(
     @EventTag(key = "ApplicationAggregate") UUID applicationId,
     long applicationVersion,

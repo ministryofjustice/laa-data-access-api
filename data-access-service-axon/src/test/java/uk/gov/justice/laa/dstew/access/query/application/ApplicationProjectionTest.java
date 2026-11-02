@@ -490,7 +490,8 @@ class ApplicationProjectionTest {
             1,
             Instant.parse("2026-07-15T08:00:00Z"),
             duplicates,
-            null);
+            null,
+            "LAA-123");
     ApplicationReadModel[] savedCapture = new ApplicationReadModel[1];
     when(applicationReadRepository.save(any()))
         .thenAnswer(

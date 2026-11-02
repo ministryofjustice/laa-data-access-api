@@ -56,6 +56,7 @@ import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuer
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
+import uk.gov.justice.laa.dstew.access.testsupport.InMemoryEventContentStoreConfig;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 
 @SpringBootTest(
@@ -71,7 +72,7 @@ import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
       "feature.enable-dev-token=false"
     })
 @AutoConfigureTestRestTemplate
-@Import(TestJwtDecoderConfig.class)
+@Import({TestJwtDecoderConfig.class, InMemoryEventContentStoreConfig.class})
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class CreateApplicationInMemoryTest {
 

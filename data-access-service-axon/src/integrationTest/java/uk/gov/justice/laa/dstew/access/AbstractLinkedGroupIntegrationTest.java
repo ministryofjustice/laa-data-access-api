@@ -16,6 +16,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import uk.gov.justice.laa.dstew.access.testutils.EventTypeNames;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteKind;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteRepository;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkRequest;
@@ -190,7 +191,7 @@ public abstract class AbstractLinkedGroupIntegrationTest extends BaseIntegration
             """,
             Long.class,
             aggregateId.toString(),
-            eventType.getName()));
+            EventTypeNames.of(eventType)));
   }
 
   /** Adds a trigger that rejects event appends for {@code aggregateId}. */

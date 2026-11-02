@@ -228,7 +228,7 @@ public class ApplicationProjection {
                 .modifiedAt(event.occurredAt())
                 .leadApplicationId(null)
                 .linkedGroupId(null)
-                .potentialDuplicates(event.potentialDuplicates())
+                .potentialDuplicates(event.potentialDuplicates().orElse(null))
                 .officeCode(officeCode)
                 .uploadedDocuments(existing == null ? List.of() : existing.getUploadedDocuments())
                 .build());
@@ -400,14 +400,14 @@ public class ApplicationProjection {
     documents.add(
         new DocumentMetadata(
             event.documentId(),
-            event.documentType(),
+            event.documentType().orElse(null),
             event.uploadedAt(),
-            event.size(),
-            event.contentType(),
+            event.size().orElse(null),
+            event.contentType().orElse(null),
             event.checksum(),
-            event.sourceService(),
+            event.sourceService().orElse(null),
             false,
-            event.fileSuffix()));
+            event.fileSuffix().orElse(null)));
     application.setUploadedDocuments(List.copyOf(documents));
     if (event.applicationDataVersion() != null) {
       application.setApplicationDataVersion(event.applicationDataVersion());

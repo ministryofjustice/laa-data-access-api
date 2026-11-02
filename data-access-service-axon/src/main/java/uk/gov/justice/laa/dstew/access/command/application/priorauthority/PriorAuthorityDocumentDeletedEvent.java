@@ -6,7 +6,7 @@ import org.axonframework.eventsourcing.annotation.EventTag;
 import org.axonframework.messaging.eventhandling.annotation.Event;
 
 /** Persisted event emitted when a prior-authority draft document is marked deleted. */
-@Event
+@Event(namespace = "access", name = "PriorAuthorityDocumentDeleted")
 public record PriorAuthorityDocumentDeletedEvent(
     @EventTag(key = "PriorAuthorityAggregate") UUID priorAuthorityId,
     UUID documentId,

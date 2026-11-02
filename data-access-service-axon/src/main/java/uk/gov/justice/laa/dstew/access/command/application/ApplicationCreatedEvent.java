@@ -5,10 +5,11 @@ import java.util.List;
 import java.util.UUID;
 import org.axonframework.eventsourcing.annotation.EventTag;
 import org.axonframework.messaging.eventhandling.annotation.Event;
+import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 
 /** Thin event establishing the non-sensitive initial state of an Application aggregate. */
-@Event
+@Event(namespace = "access", name = "ApplicationCreated")
 public record ApplicationCreatedEvent(
     @EventTag(key = "ApplicationAggregate") UUID applicationId,
     long applicationDataVersion,
@@ -16,5 +17,34 @@ public record ApplicationCreatedEvent(
     String status,
     int schemaVersion,
     Instant occurredAt,
-    List<PotentialDuplicate> potentialDuplicates,
-    String officeCode) {}
+    Erasable<List<PotentialDuplicate>> potentialDuplicates,
+    String officeCode,
+    String laaReference) {
+
+  public ApplicationCreatedEvent {
+    potentialDuplicates = Erasable.orErased(potentialDuplicates);
+  }
+
+  /** Creates the event from plain content values. */
+  public ApplicationCreatedEvent(
+      UUID applicationId,
+      long applicationDataVersion,
+      String requestFingerprint,
+      String status,
+      int schemaVersion,
+      Instant occurredAt,
+      List<PotentialDuplicate> potentialDuplicates,
+      String officeCode,
+      String laaReference) {
+    this(
+        applicationId,
+        applicationDataVersion,
+        requestFingerprint,
+        status,
+        schemaVersion,
+        occurredAt,
+        Erasable.of(potentialDuplicates),
+        officeCode,
+        laaReference);
+  }
+}

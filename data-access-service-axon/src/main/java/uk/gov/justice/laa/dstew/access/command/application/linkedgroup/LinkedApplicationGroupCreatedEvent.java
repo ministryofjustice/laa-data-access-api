@@ -10,7 +10,7 @@ import org.axonframework.messaging.eventhandling.annotation.Event;
  * Emitted by {@code LinkedApplicationGroupAggregate} once the group is fully initialised. Consumed
  * by projections to record group membership and derive {@code isLead} on each member's read model.
  */
-@Event
+@Event(namespace = "access", name = "LinkedApplicationGroupCreated")
 public record LinkedApplicationGroupCreatedEvent(
     @EventTag(key = "LinkedApplicationGroupAggregate") UUID groupId,
     UUID leadApplicationId,

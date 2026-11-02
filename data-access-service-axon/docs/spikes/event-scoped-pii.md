@@ -302,6 +302,9 @@ from recreating erased data, or address SDS, backups and restoration.
 
 ## Running the experiment
 
+> **Historical.** These spike tests were removed in 4b-1; see the 4b-1 entry
+> under gate 4. The record below describes what they proved at the time.
+
 Requires Java 25 and running Docker:
 
 ```bash
@@ -856,6 +859,52 @@ Split into two steps:
         is low risk.
       - `PriorAuthorityDraftUpdatedEvent` is the only type without `@Event`;
         4b-1 adds explicit names to all types anyway.
+  - **4b-1 implemented, 2026-11-03.** No change to API behaviour.
+    - **Where it lives:** `eventcontent` holds the model and port;
+      `eventcontent.jdbc` and `eventcontent.axon` hold the adapters. A storage
+      engine decorator splits content on append and joins it back on read.
+      Content goes in `axon.event_content`, keyed by event identifier
+      (migration `V29`).
+    - **Event names:** all 21 stored types carry
+      `@Event(namespace = "access")`; the payload type is now `access.<Name>`
+      rather than the Java class name. Each has a schema
+      `event-schemas/access.<Name>.json` listing exactly its kept fields, with
+      `additionalProperties: false`. An event type with no schema is
+      rejected.
+    - **Metadata allowlist (decided 2026-11-03):** only `causationId`,
+      `correlationId`, `X-Service-Name` and `authenticatedUserId` are stored.
+      The last two identify the actor, not the data subject, so they stay.
+    - **Schema qualification:** the content store schema-qualifies its table
+      using `axon.db.schema`. Testcontainers service connections replace the
+      URL and drop `currentSchema`, so an unqualified table name fails there.
+    - **Test type names:** `new MessageType(SomeClass.class)` ignores
+      `@Event` and uses the fully qualified class name, so test-only events
+      need schemas under that name.
+    - **Subscribing processors** (group route, work-item route, submitted
+      publisher) receive events with content attached. None reads it. An
+      architecture rule enforces this: only `eventcontent`, `*Evolve`,
+      `ApplicationProjection` and `PriorAuthorityProjection` may call
+      `Erasable` accessors. Further rules keep the content store and Axon
+      adapter out of domain code, ban snapshot types, and check every
+      `@Event` schema against its record's kept components. A deliberate
+      violation of each rule was confirmed to fail.
+    - **Erasure invariant proven** by `ErasureReplayTest`. It folds full
+      Application and prior authority histories through the real evolve
+      functions, with and without content. States match apart from content
+      fields, and decider outcomes are identical (ready, note, PA decision with
+      right and wrong version, wrong actor, already decided).
+    - **`fileSuffix` after erasure (decided 2026-11-03):** once content is
+      erased, deleting a PA document cannot build the SDS filename. This is
+      accepted: that clean-up is best-effort and logged, and erasure is
+      expected to remove the SDS files itself.
+    - **Spike probes removed:** the `uk.gov.justice.laa.dstew.spike` tests
+      and their SQL were deleted. Their erasure evidence is replaced by
+      `ErasureReplayTest` and the production integration tests.
+    - **Validation:** all unit tests pass. All `uk.gov.justice.laa.dstew.access`
+      integration tests pass except
+      `ApplicationSubmittedLocalStackIntegrationTest`, which could not pull
+      the LocalStack image (environmental). Main Checkstyle is clean, and test
+      Checkstyle is below its baseline.
 
 ### Remaining gates
 1. Choose the declaration design: hash-bound review (recommended by the review)

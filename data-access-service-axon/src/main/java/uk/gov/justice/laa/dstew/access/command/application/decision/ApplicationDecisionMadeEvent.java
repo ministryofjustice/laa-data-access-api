@@ -7,7 +7,7 @@ import org.axonframework.messaging.eventhandling.annotation.Event;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 
 /** Thin event recording that an Application decision was stored in an immutable data version. */
-@Event
+@Event(namespace = "access", name = "ApplicationDecisionMade")
 public record ApplicationDecisionMadeEvent(
     @EventTag(key = "ApplicationAggregate") UUID applicationId,
     long applicationVersion,

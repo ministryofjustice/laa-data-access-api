@@ -7,7 +7,7 @@ import org.axonframework.eventsourcing.annotation.EventTag;
 import org.axonframework.messaging.eventhandling.annotation.Event;
 
 /** Emitted when removing a member leaves a linked group with no active membership. */
-@Event
+@Event(namespace = "access", name = "LinkedApplicationGroupDissolved")
 public record LinkedApplicationGroupDissolvedEvent(
     @EventTag(key = "LinkedApplicationGroupAggregate") UUID groupId,
     UUID formerLeadApplicationId,

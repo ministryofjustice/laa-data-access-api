@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "access.WorkItemUnassigned kept fields",
+  "description": "Fields kept on the stored event. Every other field is content, stored apart so that it can be erased.",
+  "type": "object",
+  "properties": {
+    "workItemId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "workItemType": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "APPLICATION",
+        "PRIOR_AUTHORITY"
+      ]
+    },
+    "itemVersion": {
+      "type": "integer"
+    },
+    "assignmentVersion": {
+      "type": "integer"
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "workItemId",
+    "workItemType",
+    "itemVersion",
+    "assignmentVersion",
+    "occurredAt"
+  ],
+  "additionalProperties": false
+}

@@ -6,7 +6,7 @@ import org.axonframework.eventsourcing.annotation.EventTag;
 import org.axonframework.messaging.eventhandling.annotation.Event;
 
 /** Thin, replayable fact that an Application's immutable data and current state advanced. */
-@Event
+@Event(namespace = "access", name = "ApplicationUpdated")
 public record ApplicationUpdatedEvent(
     @EventTag(key = "ApplicationAggregate") UUID applicationId,
     long applicationVersion,

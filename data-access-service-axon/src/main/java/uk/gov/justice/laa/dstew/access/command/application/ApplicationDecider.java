@@ -408,6 +408,7 @@ public final class ApplicationDecider {
         details.schemaVersion(),
         details.occurredAt(),
         details.potentialDuplicates(),
-        details.provider() == null ? null : details.provider().getOfficeCode());
+        details.provider() == null ? null : details.provider().getOfficeCode(),
+        details.laaReference());
   }
 }

@@ -16,7 +16,7 @@ import org.axonframework.messaging.eventhandling.annotation.Event;
  * absent is normalised to {@code 0L} — the parent application's original data version, which always
  * exists.
  */
-@Event
+@Event(namespace = "access", name = "PriorAuthoritySubmitted")
 public record PriorAuthoritySubmittedEvent(
     @EventTag(key = "PriorAuthorityAggregate") UUID priorAuthorityId,
     UUID applicationId,

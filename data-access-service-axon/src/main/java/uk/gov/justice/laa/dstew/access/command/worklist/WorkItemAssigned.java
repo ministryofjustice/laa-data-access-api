@@ -6,7 +6,7 @@ import org.axonframework.eventsourcing.annotation.EventTag;
 import org.axonframework.messaging.eventhandling.annotation.Event;
 
 /** Thin replayable event recording a direct work-item assignment. */
-@Event
+@Event(namespace = "access", name = "WorkItemAssigned")
 public record WorkItemAssigned(
     @EventTag UUID workItemId,
     WorkItemType workItemType,
