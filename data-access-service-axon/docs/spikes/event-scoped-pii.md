@@ -800,10 +800,62 @@ Split into two steps:
        `If-Match` (gate 1).
 
     Prior authority follows the same pattern afterwards.
-  - **Open before 4b-1:** whether the content model (`EventJson`, schemas,
+  - **Decided 2026-11-02:** the content model (`EventJson`, schemas,
     `Erasable`, content store) lives in a framework-neutral package behind our
-    own port, with only a thin Axon adapter. Recommended: yes. Also still open:
-    how large real application bodies get.
+    own port, with only a thin Axon adapter. Still open: how large real
+    application bodies get.
+  - **4b-1 classification, agreed 2026-11-02.** There are 21 stored event
+    types. `ApplicationSubmittedEvent` in `integrationevent` is an outbound
+    message, not a stored event, so it is out of scope.
+    - **Rule: an event keeps only**
+      1. identity and linking keys: aggregate, document, group, caseworker and
+         work-item IDs, and the LAA reference;
+      2. values a decider rule uses: status, versions, decision outcome,
+         `autoGranted`, schema version, request fingerprint and `checksum`;
+      3. values that decide access or work allocation, now or planned:
+         `officeCode`, `priorAuthorityType` and `workItemType`;
+      4. the event's own timestamp (`occurredAt`, or `uploadedAt` /
+         `deletedAt` on document events).
+
+      Everything else is content. Usefulness after erasure is not a reason to
+      keep a field; if data is needed after deletion, that needs its own
+      solution.
+    - **Invariant:** with all content erased, every aggregate still loads and
+      every command still decides correctly. Evolve may read content only
+      through `Erasable`, and no decider rule may depend on it.
+    - **Why the boundary looked blurry:** aggregate state also acts as a read
+      model. Evolve copies document metadata into state, but document rules
+      only check `documentId`. That metadata moves to content, and readers
+      get it from content.
+    - **Keep everything (16 types):** all linked-group events (5), both
+      work-item events (2), `ApplicationDraftStartedEvent`,
+      `ApplicationUpdatedEvent`, `ApplicationDecisionMadeEvent`,
+      `ApplicationReadyForManualAssessmentEvent`, `NoteCreatedEvent`,
+      `PriorAuthorityDraftStartedEvent`, `PriorAuthorityDraftUpdatedEvent`,
+      `PriorAuthoritySubmittedEvent` and `PriorAuthorityDocumentDeletedEvent`.
+    - **Content-bearing (5 types):**
+      - `ApplicationCreatedEvent`: content `potentialDuplicates`, which links
+        this person to other applications. **Add** the LAA reference as a kept
+        field; no event carries it today.
+      - `ApplicationDocumentUploadedEvent`: keep `applicationId`,
+        `documentId`, `uploadedAt`, `checksum`, `applicationDataVersion`;
+        content `documentType`, `size`, `contentType`, `sourceService`,
+        `fileSuffix`.
+      - `PriorAuthorityDocumentUploadedEvent`: keep `priorAuthorityId`,
+        `documentId`, `uploadedAt`, `checksum`, `parentApplicationId`;
+        content `size`, `contentType`, `sourceService`, `fileSuffix`.
+      - `PriorAuthorityDocumentTypeUpdatedEvent`: content `documentType`.
+      - `PriorAuthorityDecisionMadeEvent`: content `decisionJustification`,
+        `amountGranted`, `dateGranted`. `overallDecision` stays.
+    - **Also noted:**
+      - `fileSuffix` is everything after the last `.` in the uploaded filename,
+        so it can hold part of a name. Document deletion builds the storage
+        filename from it, so that path reads it through `Erasable`.
+      - `requestFingerprint` is an unsalted SHA-256 of the whole request. After
+        erasure it can only confirm an exact guess of the full payload, which
+        is low risk.
+      - `PriorAuthorityDraftUpdatedEvent` is the only type without `@Event`;
+        4b-1 adds explicit names to all types anyway.
 
 ### Remaining gates
 1. Choose the declaration design: hash-bound review (recommended by the review)
