@@ -17,10 +17,18 @@ import org.springframework.stereotype.Component;
  * must <em>not</em> be routed through this method — log them at {@code INFO}/{@code WARN}/{@code
  * DEBUG} as appropriate, so they remain breadcrumbs rather than Sentry events.
  *
- * <p>Axon event/command processors are a deliberate, documented exception to this rule: they use
- * {@code PropagatingErrorHandler}, so failures are rethrown and logged at {@code ERROR} by Axon's
- * own framework logging, which {@code sentry-logback} already picks up regardless of call site.
- * There is no need to route those failures through this method as well.
+ * <p>Axon's 4 synchronous "subscribing" event processors (command-side routes/publishers) are a
+ * deliberate, documented exception to the rule above: their failures propagate back through the
+ * originating command's call stack to the HTTP boundary, so they are already reported there and
+ * must not also be routed through this method directly from processor code (that would
+ * double-report).
+ *
+ * <p>Axon's pooled-streaming projection processors run on background threads with no HTTP caller to
+ * propagate back to. Their failures are routed through {@code ReportingErrorHandler}, which calls
+ * this method (with a cooldown to avoid retry-storm alerts) before delegating to {@code
+ * PropagatingErrorHandler} for Axon's normal rethrow/retry/abort handling. See {@code
+ * uk.gov.justice.laa.dstew.access.config.AxonEventProcessingConfig} and {@code
+ * ReportingErrorHandler} for details.
  */
 @Component
 @Slf4j
