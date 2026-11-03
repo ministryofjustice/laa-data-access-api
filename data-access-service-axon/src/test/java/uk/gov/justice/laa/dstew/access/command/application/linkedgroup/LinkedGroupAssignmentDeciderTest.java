@@ -118,7 +118,7 @@ class LinkedGroupAssignmentDeciderTest {
 
     var events =
         LinkedGroupAssignmentDecider.decideJoin(
-            UUID.randomUUID(), List.of(lead), List.of(joining), OCCURRED_AT);
+            UUID.randomUUID(), List.of(lead), joining, OCCURRED_AT);
 
     assertThat(events).containsExactly(assigned(joining.getApplicationId(), 1L, 1L, CASEWORKER));
   }
@@ -130,7 +130,7 @@ class LinkedGroupAssignmentDeciderTest {
 
     var events =
         LinkedGroupAssignmentDecider.decideJoin(
-            UUID.randomUUID(), List.of(lead), List.of(joining), OCCURRED_AT);
+            UUID.randomUUID(), List.of(lead), joining, OCCURRED_AT);
 
     assertThat(events).containsExactly(assigned(joining.getApplicationId(), 1L, 2L, CASEWORKER));
   }
@@ -142,7 +142,7 @@ class LinkedGroupAssignmentDeciderTest {
 
     assertThat(
             LinkedGroupAssignmentDecider.decideJoin(
-                UUID.randomUUID(), List.of(lead), List.of(joining), OCCURRED_AT))
+                UUID.randomUUID(), List.of(lead), joining, OCCURRED_AT))
         .isEmpty();
   }
 
@@ -157,7 +157,7 @@ class LinkedGroupAssignmentDeciderTest {
 
     var events =
         LinkedGroupAssignmentDecider.decideJoin(
-            UUID.randomUUID(), List.of(lead, otherMember), List.of(joining), OCCURRED_AT);
+            UUID.randomUUID(), List.of(lead, otherMember), joining, OCCURRED_AT);
 
     assertThat(events)
         .containsExactly(
@@ -171,7 +171,7 @@ class LinkedGroupAssignmentDeciderTest {
 
     assertThat(
             LinkedGroupAssignmentDecider.decideJoin(
-                UUID.randomUUID(), List.of(lead), List.of(joining), OCCURRED_AT))
+                UUID.randomUUID(), List.of(lead), joining, OCCURRED_AT))
         .isEmpty();
   }
 
@@ -182,7 +182,7 @@ class LinkedGroupAssignmentDeciderTest {
 
     assertThat(
             LinkedGroupAssignmentDecider.decideJoin(
-                UUID.randomUUID(), List.of(lead), List.of(joining), OCCURRED_AT))
+                UUID.randomUUID(), List.of(lead), joining, OCCURRED_AT))
         .isEmpty();
   }
 
@@ -193,7 +193,7 @@ class LinkedGroupAssignmentDeciderTest {
 
     assertThat(
             LinkedGroupAssignmentDecider.decideJoin(
-                UUID.randomUUID(), List.of(lead), List.of(joining), OCCURRED_AT))
+                UUID.randomUUID(), List.of(lead), joining, OCCURRED_AT))
         .doesNotContain(assigned(lead.getApplicationId(), 1L, 1L, CASEWORKER));
   }
 
@@ -205,7 +205,7 @@ class LinkedGroupAssignmentDeciderTest {
 
     assertThat(
             LinkedGroupAssignmentDecider.decideJoin(
-                UUID.randomUUID(), List.of(lead), List.of(joining), OCCURRED_AT))
+                UUID.randomUUID(), List.of(lead), joining, OCCURRED_AT))
         .isEmpty();
   }
 
@@ -213,11 +213,12 @@ class LinkedGroupAssignmentDeciderTest {
   void givenDisagreeingExistingMembers_whenJoining_thenThrowsConflict() {
     var first = state(ApplicationStateEvents.activeAssigned(UUID.randomUUID(), CASEWORKER));
     var second = state(ApplicationStateEvents.activeAssigned(UUID.randomUUID(), OTHER_CASEWORKER));
+    var joining = state(ApplicationStateEvents.activeUnassigned(UUID.randomUUID()));
 
     assertThatThrownBy(
             () ->
                 LinkedGroupAssignmentDecider.decideJoin(
-                    UUID.randomUUID(), List.of(first, second), List.of(), OCCURRED_AT))
+                    UUID.randomUUID(), List.of(first, second), joining, OCCURRED_AT))
         .isInstanceOf(ApplicationLinkConflictException.class);
   }
 

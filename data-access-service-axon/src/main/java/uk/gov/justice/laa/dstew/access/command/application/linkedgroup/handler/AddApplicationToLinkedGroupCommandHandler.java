@@ -39,8 +39,8 @@ public class AddApplicationToLinkedGroupCommandHandler {
     applicationIdsToLoad.add(command.applicationId());
     var applications = LinkedGroupMembers.load(stateManager, applicationIdsToLoad, context);
     var existing = memberIds.stream().map(applications::get).toList();
-    var joining = List.of(applications.get(command.applicationId()));
-    var events = new ArrayList<Object>();
+    var joining = applications.get(command.applicationId());
+    var events = new ArrayList<>();
     events.add(added.get());
     events.addAll(
         LinkedGroupAssignmentDecider.decideJoin(

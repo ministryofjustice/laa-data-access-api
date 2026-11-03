@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.SortedMap;
@@ -50,19 +49,21 @@ public final class LinkedGroupAssignmentDecider {
             + " members do not share one assignment; unassign the linked group and assign it again");
   }
 
-  /** Decides the assignment changes when applications join a group (DSTEW-2284 AC1-AC4). */
+  /**
+   * Decides the assignment changes when one application joins a group (DSTEW-2284 AC1-AC4). An
+   * assigned group's caseworker wins; otherwise the joiner's active assignment, if any, is applied
+   * to every active member.
+   */
   public static List<WorkItemAssignmentChange> decideJoin(
       UUID groupId,
       Collection<ApplicationState> existingMembers,
-      Collection<ApplicationState> joiningApplications,
+      ApplicationState joiningApplication,
       Instant occurredAt) {
-    var existingAssignment = groupAssignment(groupId, existingMembers);
     UUID targetCaseworkerId =
-        switch (existingAssignment) {
+        switch (groupAssignment(groupId, existingMembers)) {
           case GroupAssignment.Assigned assigned -> assigned.caseworkerId();
-          case GroupAssignment.Unassigned ignored ->
-              firstAssignedJoiningCaseworker(joiningApplications);
-          case GroupAssignment.None ignored -> firstAssignedJoiningCaseworker(joiningApplications);
+          case GroupAssignment.Unassigned ignored -> activeCaseworker(joiningApplication);
+          case GroupAssignment.None ignored -> activeCaseworker(joiningApplication);
         };
     if (targetCaseworkerId == null) {
       return List.of();
@@ -70,8 +71,12 @@ public final class LinkedGroupAssignmentDecider {
 
     var allMembers = new TreeMap<UUID, ApplicationState>();
     existingMembers.forEach(state -> allMembers.put(state.getApplicationId(), state));
-    joiningApplications.forEach(state -> allMembers.put(state.getApplicationId(), state));
+    allMembers.put(joiningApplication.getApplicationId(), joiningApplication);
     return decideMembersAssignment(allMembers.values(), targetCaseworkerId, occurredAt);
+  }
+
+  private static @Nullable UUID activeCaseworker(ApplicationState application) {
+    return ApplicationDecider.isActiveWorkItem(application) ? application.getCaseworkerId() : null;
   }
 
   /**
@@ -186,17 +191,5 @@ public final class LinkedGroupAssignmentDecider {
         stateBeforeReady.getCaseworkerId(),
         targetCaseworkerId,
         occurredAt);
-  }
-
-  private static @Nullable UUID firstAssignedJoiningCaseworker(
-      Collection<ApplicationState> joiningApplications) {
-    var sortedApplications = new TreeMap<UUID, ApplicationState>();
-    joiningApplications.forEach(state -> sortedApplications.put(state.getApplicationId(), state));
-    return sortedApplications.values().stream()
-        .filter(ApplicationDecider::isActiveWorkItem)
-        .map(ApplicationState::getCaseworkerId)
-        .filter(Objects::nonNull)
-        .findFirst()
-        .orElse(null);
   }
 }

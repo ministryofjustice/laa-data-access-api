@@ -2,7 +2,6 @@ package uk.gov.justice.laa.dstew.access.command.application.linkedgroup.handler;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
 import org.axonframework.messaging.core.unitofwork.ProcessingContext;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
@@ -37,17 +36,14 @@ public class EstablishLinkedApplicationGroupCommandHandler {
 
     var applications =
         LinkedGroupMembers.load(stateManager, command.memberApplicationIds(), context);
-    var lead = applications.get(command.leadApplicationId());
-    var joining =
-        applications.entrySet().stream()
-            .filter(entry -> !entry.getKey().equals(command.leadApplicationId()))
-            .map(Map.Entry::getValue)
-            .toList();
     var events = new ArrayList<>();
     events.add(created.get());
     events.addAll(
         LinkedGroupAssignmentDecider.decideJoin(
-            command.groupId(), List.of(lead), joining, command.occurredAt()));
+            command.groupId(),
+            List.of(applications.get(command.leadApplicationId())),
+            applications.get(command.joiningApplicationId()),
+            command.occurredAt()));
     eventAppender.append(events);
   }
 }
