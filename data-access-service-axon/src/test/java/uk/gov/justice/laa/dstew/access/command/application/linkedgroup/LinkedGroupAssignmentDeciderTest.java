@@ -1,13 +1,19 @@
 package uk.gov.justice.laa.dstew.access.command.application.linkedgroup;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
+import java.util.SortedMap;
+import java.util.TreeMap;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationState;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationStateEvents;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationLinkConflictException;
@@ -24,6 +30,10 @@ class LinkedGroupAssignmentDeciderTest {
   private static final UUID CASEWORKER = UUID.fromString("00000000-0000-0000-0000-000000000101");
   private static final UUID OTHER_CASEWORKER =
       UUID.fromString("00000000-0000-0000-0000-000000000102");
+  private static final UUID GROUP_ID = UUID.fromString("00000000-0000-0000-0000-000000000100");
+  private static final UUID LOWER_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
+  private static final UUID MIDDLE_ID = UUID.fromString("00000000-0000-0000-0000-000000000002");
+  private static final UUID ADDRESSED_ID = UUID.fromString("00000000-0000-0000-0000-000000000003");
 
   @Test
   void givenNoMembers_whenGroupAssignment_thenReturnsNone() {
@@ -211,189 +221,155 @@ class LinkedGroupAssignmentDeciderTest {
         .isInstanceOf(ApplicationLinkConflictException.class);
   }
 
-  @Test
-  void givenUnassignedGroup_whenAssigning_thenAddressesFirstThenOtherMembers() {
-    var firstId = UUID.fromString("00000000-0000-0000-0000-000000000001");
-    var addressedId = UUID.fromString("00000000-0000-0000-0000-000000000002");
-    var group =
-        LinkedApplicationGroupStates.group(UUID.randomUUID(), List.of(firstId, addressedId));
-    var first = state(ApplicationStateEvents.activeUnassigned(firstId));
-    var addressed = state(ApplicationStateEvents.activeUnassigned(addressedId));
-    var command = assignCommand(group.getGroupId(), addressedId, 0L);
+  // ── group assign: rules ────────────────────────────────────────────────
 
-    var events =
-        LinkedGroupAssignmentDecider.decideGroupAssign(
-            group, Map.of(firstId, first, addressedId, addressed), command);
-
-    assertThat(events)
-        .containsExactly(
-            assigned(addressedId, 1L, 1L, CASEWORKER), assigned(firstId, 1L, 1L, CASEWORKER));
-  }
-
-  @Test
-  void givenInactiveMembers_whenAssigning_thenSkipsNotReadyAndDecidedMembers() {
-    var addressedId = UUID.randomUUID();
-    var notReadyId = UUID.randomUUID();
-    var decidedId = UUID.randomUUID();
-    var group =
-        LinkedApplicationGroupStates.group(
-            UUID.randomUUID(), List.of(addressedId, notReadyId, decidedId));
-    var addressed = state(ApplicationStateEvents.activeUnassigned(addressedId));
-    var notReady = state(ApplicationStateEvents.notReady(notReadyId));
-    var decided = state(ApplicationStateEvents.decidedAssigned(decidedId, OTHER_CASEWORKER));
-
-    var events =
-        LinkedGroupAssignmentDecider.decideGroupAssign(
-            group,
-            Map.of(addressedId, addressed, notReadyId, notReady, decidedId, decided),
-            assignCommand(group.getGroupId(), addressedId, 0L));
-
-    assertThat(events).containsExactly(assigned(addressedId, 1L, 1L, CASEWORKER));
-  }
-
-  @Test
-  void givenStaleVersion_whenAssigning_thenThrowsConflict() {
-    var id = UUID.randomUUID();
-    var group = LinkedApplicationGroupStates.group(UUID.randomUUID(), List.of(id));
-    var state = state(ApplicationStateEvents.activeUnassigned(id));
-
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("rejectedGroupAssigns")
+  void givenRejectedRequest_whenValidateGroupAssign_thenThrows(
+      String description,
+      SortedMap<UUID, ApplicationState> members,
+      long expectedVersion,
+      Class<? extends RuntimeException> exceptionType,
+      String message) {
     assertThatThrownBy(
             () ->
-                LinkedGroupAssignmentDecider.decideGroupAssign(
-                    group, Map.of(id, state), assignCommand(group.getGroupId(), id, 1L)))
-        .isInstanceOf(WorkItemAssignmentConflictException.class)
-        .hasMessageContaining("the assignment version is stale");
+                LinkedGroupAssignmentDecider.validateGroupAssign(
+                    members, assignCommand(expectedVersion)))
+        .isInstanceOf(exceptionType)
+        .hasMessageContaining(message);
+  }
+
+  private static Stream<Arguments> rejectedGroupAssigns() {
+    return Stream.of(
+        Arguments.of(
+            "stale version",
+            members(ApplicationStateEvents.activeUnassigned(ADDRESSED_ID)),
+            1L,
+            WorkItemAssignmentConflictException.class,
+            "the assignment version is stale"),
+        Arguments.of(
+            "addressed item already assigned",
+            members(ApplicationStateEvents.activeAssigned(ADDRESSED_ID, CASEWORKER)),
+            1L,
+            WorkItemAssignmentConflictException.class,
+            "it is already assigned"),
+        Arguments.of(
+            "addressed item not active",
+            members(ApplicationStateEvents.notReady(ADDRESSED_ID)),
+            0L,
+            ResourceNotFoundException.class,
+            "Application work item is not active: " + ADDRESSED_ID),
+        Arguments.of(
+            "addressed item missing from members",
+            members(ApplicationStateEvents.activeUnassigned(LOWER_ID)),
+            0L,
+            ResourceNotFoundException.class,
+            "No application work item found with id: " + ADDRESSED_ID),
+        Arguments.of(
+            "other active member assigned elsewhere reports lowest id",
+            members(
+                ApplicationStateEvents.activeUnassigned(ADDRESSED_ID),
+                ApplicationStateEvents.activeAssigned(LOWER_ID, OTHER_CASEWORKER),
+                ApplicationStateEvents.activeAssigned(MIDDLE_ID, OTHER_CASEWORKER)),
+            0L,
+            WorkItemAssignmentConflictException.class,
+            "Work item " + LOWER_ID + " cannot be updated"));
   }
 
   @Test
-  void givenAssignedAddressedItem_whenAssigning_thenThrowsAlreadyAssignedConflict() {
-    var id = UUID.randomUUID();
-    var group = LinkedApplicationGroupStates.group(UUID.randomUUID(), List.of(id));
-    var state = state(ApplicationStateEvents.activeAssigned(id, CASEWORKER));
-
-    assertThatThrownBy(
-            () ->
-                LinkedGroupAssignmentDecider.decideGroupAssign(
-                    group, Map.of(id, state), assignCommand(group.getGroupId(), id, 1L)))
-        .isInstanceOf(WorkItemAssignmentConflictException.class)
-        .hasMessageContaining("it is already assigned");
-  }
-
-  @Test
-  void givenInactiveAddressedItem_whenAssigning_thenThrowsNotFound() {
-    var id = UUID.randomUUID();
-    var group = LinkedApplicationGroupStates.group(UUID.randomUUID(), List.of(id));
-    var state = state(ApplicationStateEvents.notReady(id));
-
-    assertThatThrownBy(
-            () ->
-                LinkedGroupAssignmentDecider.decideGroupAssign(
-                    group, Map.of(id, state), assignCommand(group.getGroupId(), id, 0L)))
-        .isInstanceOf(ResourceNotFoundException.class)
-        .hasMessageContaining("Application work item is not active: " + id);
-  }
-
-  @Test
-  void givenOtherMemberAssignedToDifferentCaseworker_whenAssigning_thenReportsLowestId() {
-    var addressedId = UUID.fromString("00000000-0000-0000-0000-000000000003");
-    var lowerOtherId = UUID.fromString("00000000-0000-0000-0000-000000000001");
-    var higherOtherId = UUID.fromString("00000000-0000-0000-0000-000000000002");
-    var group =
-        LinkedApplicationGroupStates.group(
-            UUID.randomUUID(), List.of(addressedId, lowerOtherId, higherOtherId));
+  void givenOtherMemberAlreadyWithCaseworker_whenValidateGroupAssign_thenAccepts() {
     var members =
-        Map.of(
-            addressedId, state(ApplicationStateEvents.activeUnassigned(addressedId)),
-            lowerOtherId,
-                state(ApplicationStateEvents.activeAssigned(lowerOtherId, OTHER_CASEWORKER)),
-            higherOtherId,
-                state(ApplicationStateEvents.activeAssigned(higherOtherId, OTHER_CASEWORKER)));
+        members(
+            ApplicationStateEvents.activeUnassigned(ADDRESSED_ID),
+            ApplicationStateEvents.activeAssigned(LOWER_ID, CASEWORKER));
 
+    assertThatCode(
+            () -> LinkedGroupAssignmentDecider.validateGroupAssign(members, assignCommand(0L)))
+        .doesNotThrowAnyException();
+  }
+
+  @Test
+  void givenInactiveMemberAssignedElsewhere_whenValidateGroupAssign_thenAccepts() {
+    var members =
+        members(
+            ApplicationStateEvents.activeUnassigned(ADDRESSED_ID),
+            ApplicationStateEvents.decidedAssigned(LOWER_ID, OTHER_CASEWORKER));
+
+    assertThatCode(
+            () -> LinkedGroupAssignmentDecider.validateGroupAssign(members, assignCommand(0L)))
+        .doesNotThrowAnyException();
+  }
+
+  // ── group assign: effects ──────────────────────────────────────────────
+
+  @Test
+  void givenUnassignedGroup_whenDecideGroupAssign_thenAddressesFirstThenOtherMembers() {
+    var members =
+        members(
+            ApplicationStateEvents.activeUnassigned(LOWER_ID),
+            ApplicationStateEvents.activeUnassigned(ADDRESSED_ID));
+
+    assertThat(LinkedGroupAssignmentDecider.decideGroupAssign(members, assignCommand(0L)))
+        .containsExactly(
+            assigned(ADDRESSED_ID, 1L, 1L, CASEWORKER), assigned(LOWER_ID, 1L, 1L, CASEWORKER));
+  }
+
+  @Test
+  void givenInactiveMembers_whenDecideGroupAssign_thenSkipsNotReadyAndDecidedMembers() {
+    var members =
+        members(
+            ApplicationStateEvents.activeUnassigned(ADDRESSED_ID),
+            ApplicationStateEvents.notReady(LOWER_ID),
+            ApplicationStateEvents.decidedAssigned(MIDDLE_ID, OTHER_CASEWORKER));
+
+    assertThat(LinkedGroupAssignmentDecider.decideGroupAssign(members, assignCommand(0L)))
+        .containsExactly(assigned(ADDRESSED_ID, 1L, 1L, CASEWORKER));
+  }
+
+  // ── group unassign: rules ──────────────────────────────────────────────
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("rejectedGroupUnassigns")
+  void givenRejectedRequest_whenValidateGroupUnassign_thenThrows(
+      String description, SortedMap<UUID, ApplicationState> members, String message) {
     assertThatThrownBy(
-            () ->
-                LinkedGroupAssignmentDecider.decideGroupAssign(
-                    group, members, assignCommand(group.getGroupId(), addressedId, 0L)))
+            () -> LinkedGroupAssignmentDecider.validateGroupUnassign(members, unassignCommand(0L)))
         .isInstanceOf(WorkItemAssignmentConflictException.class)
-        .hasMessageContaining("Work item " + lowerOtherId + " cannot be updated");
+        .hasMessageContaining(message);
+  }
+
+  private static Stream<Arguments> rejectedGroupUnassigns() {
+    return Stream.of(
+        Arguments.of(
+            "addressed item already unassigned",
+            members(ApplicationStateEvents.activeUnassigned(ADDRESSED_ID)),
+            "it is already unassigned"),
+        Arguments.of(
+            "stale version",
+            members(ApplicationStateEvents.activeAssigned(ADDRESSED_ID, CASEWORKER)),
+            "the assignment version is stale"));
   }
 
   @Test
-  void givenAddressedItemOutsideGroup_whenAssigning_thenThrowsMembershipChanged() {
-    var group = LinkedApplicationGroupStates.group(UUID.randomUUID(), List.of(UUID.randomUUID()));
-    var missingId = UUID.randomUUID();
+  void givenAssignedAddressedItem_whenValidateGroupUnassign_thenAccepts() {
+    var members = members(ApplicationStateEvents.activeAssigned(ADDRESSED_ID, CASEWORKER));
 
-    assertThatThrownBy(
-            () ->
-                LinkedGroupAssignmentDecider.decideGroupAssign(
-                    group, Map.of(), assignCommand(group.getGroupId(), missingId, 0L)))
-        .isInstanceOf(ApplicationLinkConflictException.class)
-        .hasMessageContaining("membership of application " + missingId + " changed");
+    assertThatCode(
+            () -> LinkedGroupAssignmentDecider.validateGroupUnassign(members, unassignCommand(1L)))
+        .doesNotThrowAnyException();
   }
 
-  @Test
-  void givenDissolvedGroup_whenAssigning_thenThrowsMembershipChanged() {
-    var id = UUID.randomUUID();
-    var group = LinkedApplicationGroupStates.dissolved(UUID.randomUUID(), List.of(id));
-
-    assertThatThrownBy(
-            () ->
-                LinkedGroupAssignmentDecider.decideGroupAssign(
-                    group,
-                    Map.of(id, state(ApplicationStateEvents.activeUnassigned(id))),
-                    assignCommand(group.getGroupId(), id, 0L)))
-        .isInstanceOf(ApplicationLinkConflictException.class);
-  }
+  // ── group unassign: effects ────────────────────────────────────────────
 
   @Test
-  void givenAssignedGroup_whenUnassigning_thenClearsAllAssignedActiveMembers() {
-    var firstId = UUID.fromString("00000000-0000-0000-0000-000000000001");
-    var addressedId = UUID.fromString("00000000-0000-0000-0000-000000000002");
-    var group =
-        LinkedApplicationGroupStates.group(UUID.randomUUID(), List.of(firstId, addressedId));
-    var first = state(ApplicationStateEvents.activeAssigned(firstId, OTHER_CASEWORKER));
-    var addressed = state(ApplicationStateEvents.activeAssigned(addressedId, CASEWORKER));
+  void givenAssignedGroup_whenDecideGroupUnassign_thenClearsAddressedFirstThenOthers() {
+    var members =
+        members(
+            ApplicationStateEvents.activeAssigned(LOWER_ID, OTHER_CASEWORKER),
+            ApplicationStateEvents.activeAssigned(ADDRESSED_ID, CASEWORKER));
 
-    var events =
-        LinkedGroupAssignmentDecider.decideGroupUnassign(
-            group,
-            Map.of(firstId, first, addressedId, addressed),
-            new UnassignLinkedGroupWorkItemCommand(
-                group.getGroupId(), addressedId, 1L, "{}", "Unassigned", OCCURRED_AT));
-
-    assertThat(events)
-        .containsExactly(unassigned(addressedId, 1L, 2L), unassigned(firstId, 1L, 2L));
-  }
-
-  @Test
-  void givenUnassignedAddressedItem_whenUnassigning_thenThrowsConflict() {
-    var id = UUID.randomUUID();
-    var group = LinkedApplicationGroupStates.group(UUID.randomUUID(), List.of(id));
-
-    assertThatThrownBy(
-            () ->
-                LinkedGroupAssignmentDecider.decideGroupUnassign(
-                    group,
-                    Map.of(id, state(ApplicationStateEvents.activeUnassigned(id))),
-                    new UnassignLinkedGroupWorkItemCommand(
-                        group.getGroupId(), id, 0L, "{}", "Unassigned", OCCURRED_AT)))
-        .isInstanceOf(WorkItemAssignmentConflictException.class)
-        .hasMessageContaining("it is already unassigned");
-  }
-
-  @Test
-  void givenStaleVersion_whenUnassigning_thenThrowsConflict() {
-    var id = UUID.randomUUID();
-    var group = LinkedApplicationGroupStates.group(UUID.randomUUID(), List.of(id));
-
-    assertThatThrownBy(
-            () ->
-                LinkedGroupAssignmentDecider.decideGroupUnassign(
-                    group,
-                    Map.of(id, state(ApplicationStateEvents.activeAssigned(id, CASEWORKER))),
-                    new UnassignLinkedGroupWorkItemCommand(
-                        group.getGroupId(), id, 0L, "{}", "Unassigned", OCCURRED_AT)))
-        .isInstanceOf(WorkItemAssignmentConflictException.class)
-        .hasMessageContaining("the assignment version is stale");
+    assertThat(LinkedGroupAssignmentDecider.decideGroupUnassign(members, unassignCommand(1L)))
+        .containsExactly(unassigned(ADDRESSED_ID, 1L, 2L), unassigned(LOWER_ID, 1L, 2L));
   }
 
   @Test
@@ -471,10 +447,24 @@ class LinkedGroupAssignmentDeciderTest {
     return ApplicationStateEvents.stateOf(events);
   }
 
-  private static AssignLinkedGroupWorkItemCommand assignCommand(
-      UUID groupId, UUID workItemId, long version) {
+  @SafeVarargs
+  private static SortedMap<UUID, ApplicationState> members(List<Object>... eventStreams) {
+    var members = new TreeMap<UUID, ApplicationState>();
+    for (var events : eventStreams) {
+      var state = ApplicationStateEvents.stateOf(events);
+      members.put(state.getApplicationId(), state);
+    }
+    return members;
+  }
+
+  private static AssignLinkedGroupWorkItemCommand assignCommand(long expectedVersion) {
     return new AssignLinkedGroupWorkItemCommand(
-        groupId, workItemId, CASEWORKER, version, "{}", "Assigned", OCCURRED_AT);
+        GROUP_ID, ADDRESSED_ID, CASEWORKER, expectedVersion, "{}", "Assigned", OCCURRED_AT);
+  }
+
+  private static UnassignLinkedGroupWorkItemCommand unassignCommand(long expectedVersion) {
+    return new UnassignLinkedGroupWorkItemCommand(
+        GROUP_ID, ADDRESSED_ID, expectedVersion, "{}", "Unassigned", OCCURRED_AT);
   }
 
   private static WorkItemAssigned assigned(

@@ -572,8 +572,11 @@ class LinkedApplicationGroupDeciderTest {
   }
 
   private static List<LinkedApplicationGroupState> groupStatesWithoutMember() {
+    var establishedGroupWithoutMemberList = new LinkedApplicationGroupState();
+    establishedGroupWithoutMemberList.groupId = UUID.randomUUID();
     return List.of(
         new LinkedApplicationGroupState(),
+        establishedGroupWithoutMemberList,
         LinkedApplicationGroupStates.dissolved(
             UUID.randomUUID(), List.of(MEMBER_ID, UUID.randomUUID())),
         LinkedApplicationGroupStates.group(

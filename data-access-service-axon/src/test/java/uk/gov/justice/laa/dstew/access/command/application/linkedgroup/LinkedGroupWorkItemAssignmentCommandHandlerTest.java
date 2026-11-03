@@ -145,6 +145,36 @@ class LinkedGroupWorkItemAssignmentCommandHandlerTest {
     verifyNoInteractions(stateManager, eventAppender);
   }
 
+  @Test
+  void givenAddressedItemNotInGroup_whenAssign_thenMembershipConflictBeforeLoadingMembers() {
+    givenExistingGroup();
+    var outsiderId = UUID.fromString("00000000-0000-0000-0000-000000000009");
+    var command =
+        new AssignLinkedGroupWorkItemCommand(
+            GROUP_ID, outsiderId, CASEWORKER_ID, 0L, "{}", "Assigned", OCCURRED_AT);
+
+    assertThatThrownBy(() -> handler.handle(command, group, stateManager, context, eventAppender))
+        .isInstanceOf(ApplicationLinkConflictException.class)
+        .hasMessageContaining("membership of application " + outsiderId + " changed");
+
+    verifyNoInteractions(stateManager, eventAppender);
+  }
+
+  @Test
+  void givenAddressedItemNotInGroup_whenUnassign_thenMembershipConflictBeforeLoadingMembers() {
+    givenExistingGroup();
+    var outsiderId = UUID.fromString("00000000-0000-0000-0000-000000000009");
+    var command =
+        new UnassignLinkedGroupWorkItemCommand(
+            GROUP_ID, outsiderId, 1L, "{}", "Unassigned", OCCURRED_AT);
+
+    assertThatThrownBy(() -> handler.handle(command, group, stateManager, context, eventAppender))
+        .isInstanceOf(ApplicationLinkConflictException.class)
+        .hasMessageContaining("membership of application " + outsiderId + " changed");
+
+    verifyNoInteractions(stateManager, eventAppender);
+  }
+
   private void givenApplication(UUID applicationId, ApplicationState state) {
     var aggregate = mock(ApplicationAggregate.class);
     when(aggregate.getState()).thenReturn(state);

@@ -5,10 +5,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.UUID;
 import lombok.AccessLevel;
@@ -71,30 +71,20 @@ public final class LinkedGroupAssignmentDecider {
     var allMembers = new TreeMap<UUID, ApplicationState>();
     existingMembers.forEach(state -> allMembers.put(state.getApplicationId(), state));
     joiningApplications.forEach(state -> allMembers.put(state.getApplicationId(), state));
-    var events = new ArrayList<WorkItemAssignmentChange>();
-    for (var state : allMembers.values()) {
-      ApplicationDecider.decideGroupMemberAssignment(state, targetCaseworkerId, occurredAt)
-          .ifPresent(events::add);
-    }
-    return events;
+    return decideMembersAssignment(allMembers.values(), targetCaseworkerId, occurredAt);
   }
 
   /**
-   * Decides a group assign addressed through one member; throws when the request is not allowed.
+   * Validates a group assign addressed through one member. {@code members} must hold every current
+   * group member; check membership with {@link LinkedApplicationGroupDecider#validateMember} first.
    */
-  public static List<WorkItemAssignmentChange> decideGroupAssign(
-      LinkedApplicationGroupState group,
-      Map<UUID, ApplicationState> members,
-      AssignLinkedGroupWorkItemCommand command) {
-    requireMember(group, command.workItemId());
-    var addressed = members.get(command.workItemId());
-    ApplicationDecider.validateDirectWorkItem(
-        addressed, command.workItemId(), command.expectedAssignmentVersion());
-    if (addressed.getCaseworkerId() != null) {
-      throw new WorkItemAssignmentConflictException(command.workItemId(), "it is already assigned");
-    }
-
-    for (var entry : new TreeMap<>(members).entrySet()) {
+  public static void validateGroupAssign(
+      SortedMap<UUID, ApplicationState> members, AssignLinkedGroupWorkItemCommand command) {
+    ApplicationDecider.validateAssignable(
+        members.get(command.workItemId()),
+        command.workItemId(),
+        command.expectedAssignmentVersion());
+    for (var entry : members.entrySet()) {
       var memberId = entry.getKey();
       var state = entry.getValue();
       if (!memberId.equals(command.workItemId())
@@ -108,28 +98,66 @@ public final class LinkedGroupAssignmentDecider {
                 + "; unassign the linked group before assigning it");
       }
     }
-
-    return decideAddressedFirst(
-        command.workItemId(), members, command.caseworkerId(), command.occurredAt());
   }
 
   /**
-   * Decides a group unassign addressed through one member; throws when the request is not allowed.
+   * Validates a group unassign addressed through one member. {@code members} must hold every
+   * current group member; check membership with {@link
+   * LinkedApplicationGroupDecider#validateMember} first.
+   */
+  public static void validateGroupUnassign(
+      SortedMap<UUID, ApplicationState> members, UnassignLinkedGroupWorkItemCommand command) {
+    ApplicationDecider.validateUnassignable(
+        members.get(command.workItemId()),
+        command.workItemId(),
+        command.expectedAssignmentVersion());
+  }
+
+  /**
+   * Assigns every active member, addressed member first; call {@link #validateGroupAssign} first.
+   */
+  public static List<WorkItemAssignmentChange> decideGroupAssign(
+      SortedMap<UUID, ApplicationState> members, AssignLinkedGroupWorkItemCommand command) {
+    return decideMembersAssignment(
+        addressedFirst(command.workItemId(), members),
+        command.caseworkerId(),
+        command.occurredAt());
+  }
+
+  /**
+   * Unassigns every active member, addressed member first; call {@link #validateGroupUnassign}
+   * first.
    */
   public static List<WorkItemAssignmentChange> decideGroupUnassign(
-      LinkedApplicationGroupState group,
-      Map<UUID, ApplicationState> members,
-      UnassignLinkedGroupWorkItemCommand command) {
-    requireMember(group, command.workItemId());
-    var addressed = members.get(command.workItemId());
-    ApplicationDecider.validateDirectWorkItem(
-        addressed, command.workItemId(), command.expectedAssignmentVersion());
-    if (addressed.getCaseworkerId() == null) {
-      throw new WorkItemAssignmentConflictException(
-          command.workItemId(), "it is already unassigned");
-    }
+      SortedMap<UUID, ApplicationState> members, UnassignLinkedGroupWorkItemCommand command) {
+    return decideMembersAssignment(
+        addressedFirst(command.workItemId(), members), null, command.occurredAt());
+  }
 
-    return decideAddressedFirst(command.workItemId(), members, null, command.occurredAt());
+  /** Moves each active member, in the given order, to {@code targetCaseworkerId} (null = none). */
+  private static List<WorkItemAssignmentChange> decideMembersAssignment(
+      Collection<ApplicationState> membersInOrder,
+      @Nullable UUID targetCaseworkerId,
+      Instant occurredAt) {
+    var events = new ArrayList<WorkItemAssignmentChange>();
+    for (var state : membersInOrder) {
+      ApplicationDecider.decideGroupMemberAssignment(state, targetCaseworkerId, occurredAt)
+          .ifPresent(events::add);
+    }
+    return events;
+  }
+
+  private static List<ApplicationState> addressedFirst(
+      UUID addressedId, SortedMap<UUID, ApplicationState> members) {
+    var ordered = new ArrayList<ApplicationState>();
+    ordered.add(members.get(addressedId));
+    members.forEach(
+        (memberId, state) -> {
+          if (!memberId.equals(addressedId)) {
+            ordered.add(state);
+          }
+        });
+    return ordered;
   }
 
   /**
@@ -142,7 +170,7 @@ public final class LinkedGroupAssignmentDecider {
       long nextApplicationVersion,
       Collection<ApplicationState> otherMembers,
       Instant occurredAt) {
-    requireMember(group, stateBeforeReady.getApplicationId());
+    LinkedApplicationGroupDecider.validateMember(group, stateBeforeReady.getApplicationId());
     var otherAssignment = groupAssignment(group.getGroupId(), otherMembers);
     if (otherAssignment instanceof GroupAssignment.None) {
       return Optional.empty();
@@ -160,29 +188,6 @@ public final class LinkedGroupAssignmentDecider {
         occurredAt);
   }
 
-  /**
-   * Moves the addressed member to {@code targetCaseworkerId} first, then the other members in
-   * application ID order, so the addressed member's event is always appended first.
-   */
-  private static List<WorkItemAssignmentChange> decideAddressedFirst(
-      UUID addressedId,
-      Map<UUID, ApplicationState> members,
-      @Nullable UUID targetCaseworkerId,
-      Instant occurredAt) {
-    var events = new ArrayList<WorkItemAssignmentChange>();
-    ApplicationDecider.decideGroupMemberAssignment(
-            members.get(addressedId), targetCaseworkerId, occurredAt)
-        .ifPresent(events::add);
-    for (var entry : new TreeMap<>(members).entrySet()) {
-      if (!entry.getKey().equals(addressedId)) {
-        ApplicationDecider.decideGroupMemberAssignment(
-                entry.getValue(), targetCaseworkerId, occurredAt)
-            .ifPresent(events::add);
-      }
-    }
-    return events;
-  }
-
   private static @Nullable UUID firstAssignedJoiningCaseworker(
       Collection<ApplicationState> joiningApplications) {
     var sortedApplications = new TreeMap<UUID, ApplicationState>();
@@ -193,16 +198,5 @@ public final class LinkedGroupAssignmentDecider {
         .filter(Objects::nonNull)
         .findFirst()
         .orElse(null);
-  }
-
-  private static void requireMember(LinkedApplicationGroupState group, UUID applicationId) {
-    if (group.getGroupId() == null
-        || group.isDissolved()
-        || !group.memberIdsOrEmpty().contains(applicationId)) {
-      throw new ApplicationLinkConflictException(
-          "Linked group membership of application "
-              + applicationId
-              + " changed; retry the request");
-    }
   }
 }

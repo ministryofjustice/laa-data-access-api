@@ -8,6 +8,7 @@ import org.axonframework.modelling.annotation.InjectEntity;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupAggregate;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupDecider;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedGroupAssignmentDecider;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedGroupMembers;
 import uk.gov.justice.laa.dstew.access.command.worklist.assign.AssignLinkedGroupWorkItemCommand;
@@ -26,8 +27,10 @@ public class LinkedGroupWorkItemAssignmentCommandHandler {
       ProcessingContext context,
       EventAppender eventAppender) {
     var state = LinkedApplicationGroupAggregate.stateOf(group);
+    LinkedApplicationGroupDecider.validateMember(state, command.workItemId());
     var members = LinkedGroupMembers.load(stateManager, state.memberIdsOrEmpty(), context);
-    eventAppender.append(LinkedGroupAssignmentDecider.decideGroupAssign(state, members, command));
+    LinkedGroupAssignmentDecider.validateGroupAssign(members, command);
+    eventAppender.append(LinkedGroupAssignmentDecider.decideGroupAssign(members, command));
   }
 
   /** Unassigns every assigned active member of a linked group in one append. */
@@ -39,7 +42,9 @@ public class LinkedGroupWorkItemAssignmentCommandHandler {
       ProcessingContext context,
       EventAppender eventAppender) {
     var state = LinkedApplicationGroupAggregate.stateOf(group);
+    LinkedApplicationGroupDecider.validateMember(state, command.workItemId());
     var members = LinkedGroupMembers.load(stateManager, state.memberIdsOrEmpty(), context);
-    eventAppender.append(LinkedGroupAssignmentDecider.decideGroupUnassign(state, members, command));
+    LinkedGroupAssignmentDecider.validateGroupUnassign(members, command);
+    eventAppender.append(LinkedGroupAssignmentDecider.decideGroupUnassign(members, command));
   }
 }
