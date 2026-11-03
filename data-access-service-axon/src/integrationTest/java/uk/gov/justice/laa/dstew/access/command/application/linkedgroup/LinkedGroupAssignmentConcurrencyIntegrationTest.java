@@ -5,7 +5,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import javax.sql.DataSource;
@@ -81,6 +84,76 @@ class LinkedGroupAssignmentConcurrencyIntegrationTest extends AbstractLinkedGrou
         awaitWorkListAssignee(joiningMemberId, TestJwtDecoderConfig.OTHER_CASEWORKER_ID, 1L);
       }
     }
+  }
+
+  @ParameterizedTest
+  @EnumSource(AddressedFirst.class)
+  void givenUnassignedGroup_whenTwoAssignsRace_thenOneCaseworkerWins(AddressedFirst addressedFirst)
+      throws Exception {
+    var group = createTwoMemberGroup();
+    var leadId = group.leadId();
+    var memberId = group.memberIds().get(1);
+    var winnerItemId = addressedFirst == AddressedFirst.LEAD ? leadId : memberId;
+    var loserItemId = addressedFirst == AddressedFirst.LEAD ? memberId : leadId;
+
+    try (var gate = pauseEvent(WorkItemAssigned.class.getName())) {
+      CompletableFuture<ResponseEntity<String>> first =
+          CompletableFuture.supplyAsync(
+              () -> assign(winnerItemId, TestJwtDecoderConfig.CASEWORKER_ID, 0L));
+      var firstPid = awaitBlockedBy(gate.backendPid());
+      CompletableFuture<ResponseEntity<String>> second =
+          CompletableFuture.supplyAsync(
+              () -> assign(loserItemId, TestJwtDecoderConfig.OTHER_CASEWORKER_ID, 0L));
+      awaitBlockedBy(firstPid);
+      assertThat(second).isNotDone();
+      gate.release();
+
+      assertThat(first.get(15, TimeUnit.SECONDS).getStatusCode()).isEqualTo(HttpStatus.OK);
+      var secondResponse = second.get(15, TimeUnit.SECONDS);
+      assertThat(secondResponse.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+      assertThat(secondResponse.getBody()).contains("the assignment version is stale");
+    }
+
+    for (var applicationId : group.memberIds()) {
+      awaitWorkListAssignee(applicationId, TestJwtDecoderConfig.CASEWORKER_ID, 1L);
+      awaitWorkListBoundary(applicationId, "LINKED_GROUP", group.groupId());
+      assertThat(countDomainEvents(applicationId, WorkItemAssigned.class)).isOne();
+    }
+  }
+
+  private record GroupFixture(UUID groupId, List<UUID> memberIds) {
+    UUID leadId() {
+      return memberIds.getFirst();
+    }
+  }
+
+  private enum AddressedFirst {
+    LEAD,
+    MEMBER
+  }
+
+  private GroupFixture createTwoMemberGroup() {
+    return createGroup(2);
+  }
+
+  private GroupFixture createGroup(int memberCount) {
+    var lastName = uniqueLastName();
+    var memberIds = new ArrayList<UUID>();
+    for (int index = 0; index < memberCount; index++) {
+      memberIds.add(createApplication(lastName));
+    }
+    var leadId = memberIds.getFirst();
+    assertThat(link(memberIds.get(1), leadId, null).getStatusCode())
+        .isEqualTo(HttpStatus.NO_CONTENT);
+    var groupId =
+        Objects.requireNonNull(awaitRoute(leadId, ApplicationGroupRouteKind.LINKED_GROUP));
+    for (int index = 2; index < memberCount; index++) {
+      assertThat(
+              link(memberIds.get(index), leadId, groupToken(groupId, index - 2L)).getStatusCode())
+          .isEqualTo(HttpStatus.NO_CONTENT);
+    }
+    memberIds.forEach(memberId -> awaitRoute(memberId, ApplicationGroupRouteKind.LINKED_GROUP));
+    return new GroupFixture(groupId, List.copyOf(memberIds));
   }
 
   private enum RaceOrder {
