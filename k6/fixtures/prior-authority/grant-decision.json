@@ -1,0 +1,10 @@
+{
+  "decision": "GRANTED",
+  "decisionJustification": "Synthetic k6 grant decision.",
+  "amountGranted": 750,
+  "dateGranted": "2026-01-01T00:00:00Z",
+  "eventHistory": {
+    "eventDescription": "Synthetic k6 grant decision."
+  },
+  "priorAuthorityVersion": 0
+}

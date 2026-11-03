@@ -6,6 +6,55 @@
       "tokenExpiry": 3600,
       "requestMappings": [
         {
+          "requestParam": "client_id",
+          "match": "k6-provider",
+          "claims": {
+            "sub": "k6-provider",
+            "oid": "00000000-0000-0000-0000-000000000101",
+            "aud": ["laa-data-access-api"],
+            "scp": "access_as_provider",
+            "LAA_ACCOUNTS": ["0Z123A"],
+            "roles": ["LAA_CASEWORKER"],
+            "LAA_APP_ROLES": ["LAA_CASEWORKER"]
+          }
+        },
+        {
+          "requestParam": "client_id",
+          "match": "k6-application-caseworker",
+          "claims": {
+            "sub": "k6-application-caseworker",
+            "oid": "00000000-0000-0000-0000-000000000102",
+            "aud": ["laa-data-access-api"],
+            "scp": "access_as_user",
+            "roles": ["LAA_CASEWORKER"],
+            "LAA_APP_ROLES": ["LAA_CASEWORKER"]
+          }
+        },
+        {
+          "requestParam": "client_id",
+          "match": "k6-pa-caseworker",
+          "claims": {
+            "sub": "k6-pa-caseworker",
+            "oid": "00000000-0000-0000-0000-000000000103",
+            "aud": ["laa-data-access-api"],
+            "scp": "access_as_user",
+            "roles": ["LAA_CASEWORKER"],
+            "LAA_APP_ROLES": ["LAA_CASEWORKER"]
+          }
+        },
+        {
+          "requestParam": "client_id",
+          "match": "k6-contender-caseworker",
+          "claims": {
+            "sub": "k6-contender-caseworker",
+            "oid": "00000000-0000-0000-0000-000000000104",
+            "aud": ["laa-data-access-api"],
+            "scp": "access_as_user",
+            "roles": ["LAA_CASEWORKER"],
+            "LAA_APP_ROLES": ["LAA_CASEWORKER"]
+          }
+        },
+        {
           "requestParam": "grant_type",
           "match": "client_credentials",
           "claims": {

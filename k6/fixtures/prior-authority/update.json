@@ -1,0 +1,15 @@
+{
+  "justification": "A synthetic independent expert assessment is required for this test.",
+  "expertDetails": {
+    "expertType": "Clinical psychologist",
+    "expertFullName": "K6 Test Expert",
+    "expertPostcode": "TE1 1ST",
+    "expertCosts": {
+      "billingType": "HOURLY",
+      "hourlyRate": 300,
+      "timeRequested": { "hours": 2, "minutes": 30 },
+      "totalAmount": 750,
+      "costsSharedWithOtherParties": false
+    }
+  }
+}

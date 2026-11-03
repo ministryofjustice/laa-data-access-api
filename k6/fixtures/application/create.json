@@ -1,0 +1,54 @@
+{
+  "id": "{{applicationId}}",
+  "status": "APPLICATION_SUBMITTED",
+  "laaReference": "{{laaReference}}",
+  "applicationContent": {
+    "createdAt": "2026-01-01T00:00:00Z",
+    "submittedAt": "2026-01-01T00:00:00Z",
+    "provider": {
+      "officeCode": "0Z123A",
+      "contactEmail": "k6.provider@example.com"
+    },
+    "client": {
+      "firstName": "K6",
+      "lastName": "{{clientId}}",
+      "dateOfBirth": "1990-01-01",
+      "appliedPreviously": false,
+      "addresses": [{
+        "location": "home",
+        "addressLineOne": "1 Test Street",
+        "city": "Testville",
+        "postcode": "TE1 1ST",
+        "countryCode": "GBR",
+        "countryName": "United Kingdom"
+      }]
+    },
+    "proceedings": [{
+      "id": "{{priorAuthorityId}}",
+      "leadProceeding": true,
+      "code": "SE003",
+      "meaning": "Care order",
+      "description": "Synthetic care order",
+      "matterType": "special children act (SCA)",
+      "matterTypeCode": "KPBLW",
+      "categoryOfLaw": "Family",
+      "categoryOfLawCode": "MAT",
+      "clientInvolvementType": "Applicant",
+      "clientInvolvementTypeCode": "B",
+      "usedDelegatedFunctions": false,
+      "delegatedFunctionsCostLimitation": "0",
+      "substantiveCostLimitation": "2500",
+      "substantiveLevelOfServiceCode": 3,
+      "substantiveLevelOfServiceName": "Full Representation",
+      "emergencyLevelOfServiceCode": 3,
+      "emergencyLevelOfServiceName": "Full Representation",
+      "scopeLimitations": [{
+        "id": "{{applicationId}}",
+        "type": "SUBSTANTIVE",
+        "code": "FM001",
+        "meaning": "Final hearing",
+        "description": "Synthetic scope limitation for the k6 journey."
+      }]
+    }]
+  }
+}
