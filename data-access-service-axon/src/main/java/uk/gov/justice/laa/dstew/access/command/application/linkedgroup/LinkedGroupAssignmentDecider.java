@@ -146,9 +146,9 @@ public final class LinkedGroupAssignmentDecider {
     if (otherAssignment instanceof GroupAssignment.None) {
       return Optional.empty();
     }
-    @Nullable UUID targetCaseworkerId =
-        otherAssignment instanceof GroupAssignment.Assigned assigned
-            ? assigned.caseworkerId()
+    UUID targetCaseworkerId =
+        otherAssignment instanceof GroupAssignment.Assigned(UUID caseworkerId)
+            ? caseworkerId
             : null;
     return ApplicationDecider.decideAssignmentChange(
         stateBeforeReady.getApplicationId(),
@@ -168,7 +168,7 @@ public final class LinkedGroupAssignmentDecider {
       Map<UUID, ApplicationState> members,
       @Nullable UUID targetCaseworkerId,
       Instant occurredAt) {
-    var events = new ArrayList<Object>();
+    var events = new ArrayList<>();
     ApplicationDecider.decideGroupMemberAssignment(
             members.get(addressedId), targetCaseworkerId, occurredAt)
         .ifPresent(events::add);

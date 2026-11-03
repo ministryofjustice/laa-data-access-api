@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.command.application.linkedgroup;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import java.util.UUID;
+import lombok.Getter;
 import org.axonframework.eventsourcing.annotation.EventSourcingHandler;
 import org.axonframework.eventsourcing.annotation.reflection.EntityCreator;
 import org.axonframework.extension.spring.stereotype.EventSourced;
@@ -17,6 +18,7 @@ import org.jspecify.annotations.Nullable;
  * <p>Command handlers live in {@code command.application.linkedgroup.handler}; this class only
  * folds events.
  */
+@Getter
 @EventSourced(tagKey = "LinkedApplicationGroupAggregate", idType = UUID.class)
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 public class LinkedApplicationGroupAggregate {
@@ -53,11 +55,6 @@ public class LinkedApplicationGroupAggregate {
   @EntityCreator
   protected LinkedApplicationGroupAggregate() {
     // Required by Axon when rebuilding the aggregate from its event stream.
-  }
-
-  /** Returns the folded state for the dedicated command handlers; handlers must not mutate it. */
-  public LinkedApplicationGroupState getState() {
-    return state;
   }
 
   /** Returns the folded state of {@code group}, or an empty state when the group does not exist. */
