@@ -155,6 +155,19 @@ group-assignment handler and readiness handler load the relevant application sta
 `StateManager` and `LinkedGroupMembers`; each handler appends the resulting application events in
 one batch.
 
+The handlers check rules before they build events:
+
+1. `LinkedApplicationGroupDecider.validateMember` checks the addressed application is still a member
+   of the group, using group state only, before any member state is loaded.
+2. The members are loaded once and passed to `LinkedGroupAssignmentDecider.validateGroupAssign` or
+   `validateGroupUnassign`. These delegate per-application rules to `ApplicationDecider`.
+3. `decideGroupAssign`, `decideGroupUnassign`, `decideJoin` and `decideReadyAssignment` only build
+   `WorkItemAssignmentChange` events, and assume validation has passed.
+
+`EstablishLinkedApplicationGroupCommand` carries a lead application and exactly one joining
+application, and `AddApplicationToLinkedGroupCommand` adds one application. Every join therefore
+has one joining application, so the joining caseworker is never chosen by application ID order.
+
 Before dispatch, `ApplicationGroupRouteResolver` locks the relevant
 `application_group_route` rows in ascending application ID order and verifies membership again.
 If membership changed while the request waited, it returns 409 rather than acquiring more locks.
