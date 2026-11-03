@@ -173,6 +173,18 @@ has one joining application, so the joining caseworker is never chosen by applic
 Before dispatch, `ApplicationGroupRouteResolver` locks the relevant
 `application_group_route` rows in ascending application ID order and verifies membership again.
 If membership changed while the request waited, it returns 409 rather than acquiring more locks.
+
+Concurrent assign, unassign, link, unlink and dissolve requests for the same group therefore run
+one at a time, whichever member they address. The request that takes the locks first wins. A
+request that waited sees the new state: a stale assignment version returns 409, and a membership
+change returns 409 asking the client to retry. It is never partly applied and never re-routed to the
+new topology. `LinkedGroupAssignmentConcurrencyIntegrationTest` forces each of these orderings.
+
+The assign and unassign coordinators lock routes and dispatch in a new transaction for each
+attempt. `RetryingCommandDispatcher` retries a concurrent-write or database lock failure (deadlock or
+lock not available) once in a fresh transaction. If the retry also fails, the coordinator returns
+409 asking the client to retry. Business conflicts are never retried.
+
 Do not lock `work_item_route`: an application decision appends to its event stream before its route
 row is removed, so taking that row lock first could deadlock with the append. Route-lock enforcement
 is described in [Guardrails](guardrails.md).
