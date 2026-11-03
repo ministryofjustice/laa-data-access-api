@@ -1,6 +1,5 @@
 package uk.gov.justice.laa.dstew.access.command.application.linkedgroup;
 
-import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -38,20 +37,13 @@ public final class LinkedApplicationGroupDecider {
               + state.leadApplicationId);
     }
 
-    var currentMemberIds = new HashSet<>(state.memberApplicationIds);
-    if (currentMemberIds.containsAll(command.memberApplicationIds())) {
+    if (state.memberApplicationIds.contains(command.joiningApplicationId())) {
       return Optional.empty();
     }
 
-    var missingMemberId =
-        command.memberApplicationIds().stream()
-            .filter(memberApplicationId -> !currentMemberIds.contains(memberApplicationId))
-            .findFirst()
-            .orElseThrow();
-
     throw new ApplicationLinkConflictException(
         "Requested application "
-            + missingMemberId
+            + command.joiningApplicationId()
             + " is not part of the established linked application group");
   }
 

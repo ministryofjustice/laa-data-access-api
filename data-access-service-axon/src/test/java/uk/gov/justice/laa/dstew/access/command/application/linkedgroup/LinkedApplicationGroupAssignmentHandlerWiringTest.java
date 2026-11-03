@@ -55,8 +55,7 @@ class LinkedApplicationGroupAssignmentHandlerWiringTest {
     givenApplication(LEAD_ID, leadAggregate, lead);
     givenApplication(MEMBER_ID, memberAggregate, member);
     var command =
-        new EstablishLinkedApplicationGroupCommand(
-            GROUP_ID, LEAD_ID, List.of(LEAD_ID, MEMBER_ID), OCCURRED_AT);
+        new EstablishLinkedApplicationGroupCommand(GROUP_ID, LEAD_ID, MEMBER_ID, OCCURRED_AT);
 
     new EstablishLinkedApplicationGroupCommandHandler()
         .handle(command, null, stateManager, context, eventAppender);
@@ -77,8 +76,7 @@ class LinkedApplicationGroupAssignmentHandlerWiringTest {
     givenApplication(LEAD_ID, leadAggregate, lead);
     givenApplication(MEMBER_ID, memberAggregate, member);
     var command =
-        new EstablishLinkedApplicationGroupCommand(
-            GROUP_ID, LEAD_ID, List.of(LEAD_ID, MEMBER_ID), OCCURRED_AT);
+        new EstablishLinkedApplicationGroupCommand(GROUP_ID, LEAD_ID, MEMBER_ID, OCCURRED_AT);
 
     new EstablishLinkedApplicationGroupCommandHandler()
         .handle(command, null, stateManager, context, eventAppender);

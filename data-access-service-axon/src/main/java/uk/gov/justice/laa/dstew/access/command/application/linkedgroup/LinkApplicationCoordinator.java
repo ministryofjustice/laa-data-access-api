@@ -57,7 +57,7 @@ public class LinkApplicationCoordinator {
                 new EstablishLinkedApplicationGroupCommand(
                     UUID.randomUUID(),
                     command.targetApplicationId(),
-                    List.of(command.targetApplicationId(), command.sourceApplicationId()),
+                    command.sourceApplicationId(),
                     command.occurredAt()));
       }
       case ADD_TO_EXISTING_GROUP -> {

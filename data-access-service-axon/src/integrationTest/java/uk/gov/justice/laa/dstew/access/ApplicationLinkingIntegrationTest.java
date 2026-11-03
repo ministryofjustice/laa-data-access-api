@@ -633,13 +633,12 @@ public class ApplicationLinkingIntegrationTest {
     UUID groupId = UUID.randomUUID();
     UUID leadApplicationId = UUID.randomUUID();
     UUID memberApplicationId = UUID.randomUUID();
-    var memberApplicationIds = List.of(leadApplicationId, memberApplicationId);
     String clientLastName = uniqueClientLastName();
     createApplication(leadApplicationId, clientLastName);
     createApplication(memberApplicationId, clientLastName);
     var command =
         new EstablishLinkedApplicationGroupCommand(
-            groupId, leadApplicationId, memberApplicationIds, Instant.now());
+            groupId, leadApplicationId, memberApplicationId, Instant.now());
 
     try {
       jdbcTemplate.execute(
@@ -683,11 +682,10 @@ public class ApplicationLinkingIntegrationTest {
     UUID groupId = UUID.randomUUID();
     UUID leadApplicationId = UUID.randomUUID();
     UUID memberApplicationId = UUID.randomUUID();
-    var memberApplicationIds = List.of(leadApplicationId, memberApplicationId);
 
     var command =
         new EstablishLinkedApplicationGroupCommand(
-            groupId, leadApplicationId, memberApplicationIds, Instant.now());
+            groupId, leadApplicationId, memberApplicationId, Instant.now());
 
     assertThatThrownBy(() -> commandGateway.sendAndWait(command))
         .satisfies(

@@ -9,9 +9,6 @@ import org.axonframework.test.fixture.AxonTestFixture;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationLinkConflictException;
 import uk.gov.justice.laa.dstew.access.exception.LinkedApplicationGroupVersionConflictException;
 import uk.gov.justice.laa.dstew.access.testutils.LinkedGroupTestFixture;
@@ -40,7 +37,7 @@ class LinkedApplicationGroupAggregateTest {
         .when()
         .command(
             new EstablishLinkedApplicationGroupCommand(
-                groupId, leadApplicationId, members, occurredAt))
+                groupId, leadApplicationId, sourceApplicationId, occurredAt))
         .then()
         .events(
             new LinkedApplicationGroupCreatedEvent(
@@ -63,10 +60,7 @@ class LinkedApplicationGroupAggregateTest {
         .when()
         .command(
             new EstablishLinkedApplicationGroupCommand(
-                groupId,
-                leadApplicationId,
-                List.of(sourceApplicationId, leadApplicationId),
-                occurredAt))
+                groupId, leadApplicationId, sourceApplicationId, occurredAt))
         .then()
         .noEvents();
   }
@@ -88,7 +82,7 @@ class LinkedApplicationGroupAggregateTest {
         .when()
         .command(
             new EstablishLinkedApplicationGroupCommand(
-                groupId, leadId, List.of(leadId, sourceApplicationId), occurredAt))
+                groupId, leadId, sourceApplicationId, occurredAt))
         .then()
         .noEvents();
   }
@@ -110,10 +104,7 @@ class LinkedApplicationGroupAggregateTest {
         .when()
         .command(
             new EstablishLinkedApplicationGroupCommand(
-                groupId,
-                differentLeadId,
-                List.of(differentLeadId, sourceApplicationId),
-                occurredAt))
+                groupId, differentLeadId, sourceApplicationId, occurredAt))
         .then()
         .exception(ApplicationLinkConflictException.class)
         .noEvents();
@@ -136,25 +127,23 @@ class LinkedApplicationGroupAggregateTest {
         .events(existing)
         .when()
         .command(
-            new EstablishLinkedApplicationGroupCommand(
-                groupId, leadId, List.of(leadId, sourceApplicationId, newMemberId), occurredAt))
+            new EstablishLinkedApplicationGroupCommand(groupId, leadId, newMemberId, occurredAt))
         .then()
         .exception(ApplicationLinkConflictException.class)
         .noEvents();
   }
 
-  @ParameterizedTest(name = "{0}")
-  @MethodSource("invalidEstablishMemberLists")
-  void givenInvalidEstablishMemberList_whenEstablish_thenRejectsWithIllegalArgument(
-      String scenario, UUID leadApplicationId, List<UUID> memberApplicationIds) {
+  @Test
+  void givenJoiningEqualsLead_whenEstablish_thenRejectsWithIllegalArgument() {
+    UUID leadApplicationId = UUID.randomUUID();
+
     assertThatThrownBy(
             () ->
                 new EstablishLinkedApplicationGroupCommand(
                     UUID.randomUUID(),
                     leadApplicationId,
-                    memberApplicationIds,
+                    leadApplicationId,
                     Instant.parse("2026-07-15T08:00:00Z")))
-        .as(scenario)
         .isInstanceOf(IllegalArgumentException.class);
   }
 
@@ -606,18 +595,6 @@ class LinkedApplicationGroupAggregateTest {
         .command(new ValidatePriorAuthorityGroupEligibilityCommand(groupId, newLeadApplicationId))
         .then()
         .noEvents();
-  }
-
-  private static List<Arguments> invalidEstablishMemberLists() {
-    UUID leadApplicationId = UUID.randomUUID();
-    UUID otherMemberId = UUID.randomUUID();
-    return List.of(
-        Arguments.of("empty member list", leadApplicationId, List.of()),
-        Arguments.of("missing lead application", leadApplicationId, List.of(otherMemberId)),
-        Arguments.of(
-            "duplicate member ids",
-            leadApplicationId,
-            List.of(leadApplicationId, otherMemberId, otherMemberId)));
   }
 
   @AfterEach

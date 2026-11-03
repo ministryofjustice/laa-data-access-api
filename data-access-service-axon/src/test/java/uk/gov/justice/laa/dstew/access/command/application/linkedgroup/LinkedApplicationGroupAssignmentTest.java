@@ -43,8 +43,7 @@ class LinkedApplicationGroupAssignmentTest {
         .events(fixtureEvents(activeUnassigned(LEAD_ID), activeUnassigned(MEMBER_ID)))
         .when()
         .command(
-            new EstablishLinkedApplicationGroupCommand(
-                GROUP_ID, LEAD_ID, List.of(LEAD_ID, MEMBER_ID), OCCURRED_AT))
+            new EstablishLinkedApplicationGroupCommand(GROUP_ID, LEAD_ID, MEMBER_ID, OCCURRED_AT))
         .then()
         .events(groupEvent);
   }
@@ -60,8 +59,7 @@ class LinkedApplicationGroupAssignmentTest {
         .events(groupEvent)
         .when()
         .command(
-            new EstablishLinkedApplicationGroupCommand(
-                GROUP_ID, LEAD_ID, List.of(MEMBER_ID, LEAD_ID), OCCURRED_AT))
+            new EstablishLinkedApplicationGroupCommand(GROUP_ID, LEAD_ID, MEMBER_ID, OCCURRED_AT))
         .then()
         .noEvents();
   }

@@ -5,12 +5,10 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationLinkConflictException;
 import uk.gov.justice.laa.dstew.access.exception.LinkedApplicationGroupVersionConflictException;
@@ -32,7 +30,8 @@ class LinkedApplicationGroupDeciderTest {
     LinkedApplicationGroupCreatedEvent event =
         LinkedApplicationGroupDecider.decideEstablish(
                 state,
-                new EstablishLinkedApplicationGroupCommand(groupId, leadId, members, OCCURRED_AT))
+                new EstablishLinkedApplicationGroupCommand(
+                    groupId, leadId, sourceApplicationId, OCCURRED_AT))
             .orElseThrow();
 
     assertThat(event.groupId()).isEqualTo(groupId);
@@ -42,39 +41,31 @@ class LinkedApplicationGroupDeciderTest {
   }
 
   @Test
-  void givenMutableMemberList_whenConstructingEstablishCommand_thenDefensivelyCopiesMembers() {
-    UUID groupId = UUID.randomUUID();
+  void givenEstablishCommand_whenMemberApplicationIds_thenReturnsLeadThenJoining() {
     UUID leadId = UUID.randomUUID();
-    ArrayList<UUID> mutableMembers = new ArrayList<>(List.of(leadId, UUID.randomUUID()));
+    UUID joiningId = UUID.randomUUID();
 
-    EstablishLinkedApplicationGroupCommand command =
-        new EstablishLinkedApplicationGroupCommand(groupId, leadId, mutableMembers, OCCURRED_AT);
-    mutableMembers.add(UUID.randomUUID());
+    var command =
+        new EstablishLinkedApplicationGroupCommand(
+            UUID.randomUUID(), leadId, joiningId, OCCURRED_AT);
 
-    assertThat(command.memberApplicationIds()).hasSize(2);
+    assertThat(command.memberApplicationIds()).containsExactly(leadId, joiningId);
   }
 
-  @ParameterizedTest(name = "{0}")
-  @MethodSource("invalidEstablishCommands")
-  void givenInvalidEstablishInput_whenDecideEstablish_thenThrowsIllegalArgument(
-      String scenario, List<UUID> memberApplicationIds) {
-    LinkedApplicationGroupState state = new LinkedApplicationGroupState();
-    UUID groupId = UUID.randomUUID();
+  @Test
+  void givenJoiningEqualsLead_whenConstructingEstablishCommand_thenThrowsIllegalArgument() {
     UUID leadId = UUID.randomUUID();
 
     assertThatThrownBy(
             () ->
-                LinkedApplicationGroupDecider.decideEstablish(
-                    state,
-                    new EstablishLinkedApplicationGroupCommand(
-                        groupId, leadId, memberApplicationIds, OCCURRED_AT)))
-        .as(scenario)
-        .isInstanceOf(IllegalArgumentException.class);
+                new EstablishLinkedApplicationGroupCommand(
+                    UUID.randomUUID(), leadId, leadId, OCCURRED_AT))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("joiningApplicationId must differ from leadApplicationId");
   }
 
   @Test
-  void
-      givenExistingGroup_whenEquivalentEstablishRetriedInDifferentOrder_thenReturnsEmptyOptional() {
+  void givenExistingGroup_whenEstablishRetried_thenReturnsEmptyOptional() {
     UUID groupId = UUID.randomUUID();
     UUID leadId = UUID.randomUUID();
     UUID sourceApplicationId = UUID.randomUUID();
@@ -85,7 +76,7 @@ class LinkedApplicationGroupDeciderTest {
         LinkedApplicationGroupDecider.decideEstablish(
             state,
             new EstablishLinkedApplicationGroupCommand(
-                groupId, leadId, List.of(sourceApplicationId, leadId), OCCURRED_AT));
+                groupId, leadId, sourceApplicationId, OCCURRED_AT));
 
     assertThat(decision).isEmpty();
   }
@@ -104,7 +95,7 @@ class LinkedApplicationGroupDeciderTest {
         LinkedApplicationGroupDecider.decideEstablish(
             state,
             new EstablishLinkedApplicationGroupCommand(
-                groupId, leadId, List.of(leadId, sourceApplicationId), OCCURRED_AT));
+                groupId, leadId, sourceApplicationId, OCCURRED_AT));
 
     assertThat(decision).isEmpty();
   }
@@ -123,10 +114,7 @@ class LinkedApplicationGroupDeciderTest {
                 LinkedApplicationGroupDecider.decideEstablish(
                     state,
                     new EstablishLinkedApplicationGroupCommand(
-                        groupId,
-                        differentLeadId,
-                        List.of(differentLeadId, sourceApplicationId),
-                        OCCURRED_AT)))
+                        groupId, differentLeadId, sourceApplicationId, OCCURRED_AT)))
         .isInstanceOf(ApplicationLinkConflictException.class)
         .hasMessageContaining(currentLeadId.toString())
         .hasMessageContaining(differentLeadId.toString())
@@ -147,10 +135,7 @@ class LinkedApplicationGroupDeciderTest {
                 LinkedApplicationGroupDecider.decideEstablish(
                     state,
                     new EstablishLinkedApplicationGroupCommand(
-                        groupId,
-                        leadId,
-                        List.of(leadId, sourceApplicationId, missingMemberId),
-                        OCCURRED_AT)))
+                        groupId, leadId, missingMemberId, OCCURRED_AT)))
         .isInstanceOf(ApplicationLinkConflictException.class)
         .hasMessageContaining(missingMemberId.toString())
         .hasMessageNotContaining(groupId.toString());
@@ -521,7 +506,7 @@ class LinkedApplicationGroupDeciderTest {
                 LinkedApplicationGroupDecider.decideEstablish(
                     state,
                     new EstablishLinkedApplicationGroupCommand(
-                        groupId, leadId, List.of(leadId), OCCURRED_AT)))
+                        groupId, leadId, UUID.randomUUID(), OCCURRED_AT)))
         .isInstanceOf(ApplicationLinkConflictException.class)
         .hasMessage("Linked application group " + groupId + " has been dissolved");
   }
@@ -560,15 +545,6 @@ class LinkedApplicationGroupDeciderTest {
     LinkedApplicationGroupEvolve.apply(
         state, new MemberAddedToGroupEvent(groupId, leadId, newMemberId, OCCURRED_AT));
     return state;
-  }
-
-  private static List<Arguments> invalidEstablishCommands() {
-    UUID leadId = UUID.randomUUID();
-    UUID otherMemberId = UUID.randomUUID();
-    return List.of(
-        Arguments.of("empty member list", List.of()),
-        Arguments.of("missing lead application", List.of(otherMemberId)),
-        Arguments.of("duplicate member ids", List.of(leadId, otherMemberId, otherMemberId)));
   }
 
   private static List<LinkedApplicationGroupState> groupStatesWithoutMember() {

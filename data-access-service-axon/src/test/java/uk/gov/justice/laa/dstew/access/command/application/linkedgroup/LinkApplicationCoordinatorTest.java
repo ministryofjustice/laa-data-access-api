@@ -107,8 +107,7 @@ class LinkApplicationCoordinatorTest {
                   .isNotEqualTo(sourceApplicationId)
                   .isNotEqualTo(targetApplicationId);
               assertThat(dispatchedCommand.leadApplicationId()).isEqualTo(targetApplicationId);
-              assertThat(dispatchedCommand.memberApplicationIds())
-                  .containsExactly(targetApplicationId, sourceApplicationId);
+              assertThat(dispatchedCommand.joiningApplicationId()).isEqualTo(sourceApplicationId);
               assertThat(dispatchedCommand.occurredAt()).isEqualTo(OCCURRED_AT);
             });
   }
