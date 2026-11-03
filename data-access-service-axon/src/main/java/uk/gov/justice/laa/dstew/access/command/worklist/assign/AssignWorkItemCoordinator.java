@@ -1,8 +1,12 @@
 package uk.gov.justice.laa.dstew.access.command.worklist.assign;
 
+import lombok.RequiredArgsConstructor;
 import org.axonframework.messaging.commandhandling.gateway.CommandGateway;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
+import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.handler.LinkedGroupWorkItemAssignmentCommandHandler;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteResolver;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
@@ -10,33 +14,36 @@ import uk.gov.justice.laa.dstew.access.command.worklist.route.WorkItemRoute;
 import uk.gov.justice.laa.dstew.access.command.worklist.route.WorkItemRouteResolver;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 
-/** Transactional coordinator that dispatches assignments to their authoritative aggregate(s). */
+/** Coordinator that locks routes and dispatches assignments to their authoritative aggregate(s). */
 @Service
+@RequiredArgsConstructor
 public class AssignWorkItemCoordinator {
   private final WorkItemRouteResolver routeResolver;
   private final ApplicationGroupRouteResolver groupRouteResolver;
+  private final RetryingCommandDispatcher dispatcher;
   private final CommandGateway commandGateway;
-
-  /** Creates the coordinator with assignment validation, route resolution, and dispatch. */
-  public AssignWorkItemCoordinator(
-      WorkItemRouteResolver routeResolver,
-      ApplicationGroupRouteResolver groupRouteResolver,
-      CommandGateway commandGateway) {
-    this.routeResolver = routeResolver;
-    this.groupRouteResolver = groupRouteResolver;
-    this.commandGateway = commandGateway;
-  }
+  private final PlatformTransactionManager transactionManager;
 
   /**
    * Dispatches the authenticated caseworker assignment to its authoritative aggregate.
    *
    * <p>For an application in a linked group, every active member is assigned in one command; see
-   * {@link LinkedGroupWorkItemAssignmentCommandHandler}.
+   * {@link LinkedGroupWorkItemAssignmentCommandHandler}. Each attempt locks routes and dispatches
+   * in a new transaction; a concurrent-write or lock failure is retried once, and a stale
+   * assignment version is never retried.
    */
-  @Transactional
   @AllowApiCaseworker
   public void handle(AssignWorkItemCommand command) {
+    var transactionTemplate = new TransactionTemplate(transactionManager);
+    transactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+    dispatcher.dispatch(
+        () -> {
+          transactionTemplate.executeWithoutResult(status -> dispatchToAuthority(command));
+          return null;
+        });
+  }
 
+  private void dispatchToAuthority(AssignWorkItemCommand command) {
     WorkItemRoute route = routeResolver.resolveDirectRoute(command.workItemId());
     if (route.getWorkItemType() == WorkItemType.PRIOR_AUTHORITY) {
       commandGateway.sendAndWait(

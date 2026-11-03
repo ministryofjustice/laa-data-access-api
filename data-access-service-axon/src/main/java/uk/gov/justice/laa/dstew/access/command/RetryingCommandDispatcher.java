@@ -1,28 +1,34 @@
 package uk.gov.justice.laa.dstew.access.command;
 
 import java.sql.SQLException;
+import java.util.Set;
 import java.util.function.Supplier;
 import org.axonframework.eventsourcing.eventstore.AppendEventsTransactionRejectedException;
 import org.axonframework.messaging.commandhandling.gateway.CommandGateway;
 import org.axonframework.modelling.ConcurrencyException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.stereotype.Component;
 
 /**
- * Wraps Axon's {@link CommandGateway} with a single retry on concurrent-write failures.
+ * Wraps Axon's {@link CommandGateway} with a single retry on concurrent-write and lock failures.
  *
  * <p>Retries once when a {@link ConcurrencyException}, {@link
- * AppendEventsTransactionRejectedException}, {@link OptimisticLockingFailureException}, or a
- * unique-constraint {@link DataIntegrityViolationException} (SQL state {@code 23505}) is thrown.
- * The first three failures are also recognised when nested in a runtime exception.
- * Unique-constraint failures require a top-level {@code DataIntegrityViolationException}. All other
- * exceptions are propagated immediately.
+ * AppendEventsTransactionRejectedException}, {@link OptimisticLockingFailureException}, {@link
+ * PessimisticLockingFailureException}, a PostgreSQL deadlock ({@code 40P01}) or lock-not-available
+ * ({@code 55P03}) SQL state, or a unique-constraint {@link DataIntegrityViolationException} (SQL
+ * state {@code 23505}) is thrown. All but the unique-constraint failure are also recognised when
+ * nested in a runtime exception. All other exceptions are propagated immediately.
+ *
+ * <p>A database failure aborts the surrounding PostgreSQL transaction, so callers that hold a
+ * transaction must use {@link #dispatch(Supplier)} and start a new transaction inside the supplier.
  */
 @Component
 public class RetryingCommandDispatcher {
 
   private static final String UNIQUE_CONSTRAINT_VIOLATION = "23505";
+  private static final Set<String> LOCK_FAILURE_SQL_STATES = Set.of("40P01", "55P03");
 
   private final CommandGateway commandGateway;
 
@@ -62,15 +68,18 @@ public class RetryingCommandDispatcher {
     }
   }
 
-  private boolean isRetryableConcurrentWrite(RuntimeException exception) {
+  /** Returns whether {@code exception} is a concurrent-write or lock failure worth one retry. */
+  public static boolean isRetryableConcurrentWrite(Throwable exception) {
     return hasCause(exception, ConcurrencyException.class)
         || hasCause(exception, AppendEventsTransactionRejectedException.class)
         || hasCause(exception, OptimisticLockingFailureException.class)
+        || hasCause(exception, PessimisticLockingFailureException.class)
+        || hasSqlState(exception, LOCK_FAILURE_SQL_STATES)
         || exception instanceof DataIntegrityViolationException
-            && hasUniqueConstraintViolation(exception);
+            && hasSqlState(exception, Set.of(UNIQUE_CONSTRAINT_VIOLATION));
   }
 
-  private boolean hasCause(Throwable exception, Class<? extends Throwable> causeType) {
+  private static boolean hasCause(Throwable exception, Class<? extends Throwable> causeType) {
     Throwable cause = exception;
     while (cause != null) {
       if (causeType.isInstance(cause)) {
@@ -81,11 +90,11 @@ public class RetryingCommandDispatcher {
     return false;
   }
 
-  private boolean hasUniqueConstraintViolation(Throwable exception) {
+  private static boolean hasSqlState(Throwable exception, Set<String> sqlStates) {
     Throwable cause = exception;
     while (cause != null) {
       if (cause instanceof SQLException sqlException
-          && UNIQUE_CONSTRAINT_VIOLATION.equals(sqlException.getSQLState())) {
+          && sqlStates.contains(sqlException.getSQLState())) {
         return true;
       }
       cause = cause.getCause();
