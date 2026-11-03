@@ -376,13 +376,12 @@ class LinkedGroupAssignmentDeciderTest {
   void givenOtherMembersAssigned_whenReady_thenTakesTheirAssignment() {
     var id = UUID.randomUUID();
     var otherId = UUID.randomUUID();
-    var group = LinkedApplicationGroupStates.group(UUID.randomUUID(), List.of(id, otherId));
     var stateBeforeReady = state(ApplicationStateEvents.notReady(id));
     var other = state(ApplicationStateEvents.activeAssigned(otherId, CASEWORKER));
 
     assertThat(
             LinkedGroupAssignmentDecider.decideReadyAssignment(
-                group, stateBeforeReady, 1L, List.of(other), OCCURRED_AT))
+                GROUP_ID, stateBeforeReady, 1L, List.of(other), OCCURRED_AT))
         .contains(assigned(id, 1L, 1L, CASEWORKER));
   }
 
@@ -390,13 +389,12 @@ class LinkedGroupAssignmentDeciderTest {
   void givenUnassignedOthersAndStaleAssignment_whenReady_thenClearsAssignment() {
     var id = UUID.randomUUID();
     var otherId = UUID.randomUUID();
-    var group = LinkedApplicationGroupStates.group(UUID.randomUUID(), List.of(id, otherId));
     var stateBeforeReady = state(ApplicationStateEvents.resubmittedAfterAssignment(id, CASEWORKER));
     var other = state(ApplicationStateEvents.activeUnassigned(otherId));
 
     assertThat(
             LinkedGroupAssignmentDecider.decideReadyAssignment(
-                group, stateBeforeReady, 3L, List.of(other), OCCURRED_AT))
+                GROUP_ID, stateBeforeReady, 3L, List.of(other), OCCURRED_AT))
         .contains(unassigned(id, 3L, 2L));
   }
 
@@ -404,14 +402,13 @@ class LinkedGroupAssignmentDeciderTest {
   void givenOthersAssignedToNewCaseworker_whenReady_thenReplacesStaleAssignment() {
     var id = UUID.randomUUID();
     var otherId = UUID.randomUUID();
-    var group = LinkedApplicationGroupStates.group(UUID.randomUUID(), List.of(id, otherId));
     var stateBeforeReady =
         state(ApplicationStateEvents.resubmittedAfterAssignment(id, OTHER_CASEWORKER));
     var other = state(ApplicationStateEvents.activeAssigned(otherId, CASEWORKER));
 
     assertThat(
             LinkedGroupAssignmentDecider.decideReadyAssignment(
-                group, stateBeforeReady, 3L, List.of(other), OCCURRED_AT))
+                GROUP_ID, stateBeforeReady, 3L, List.of(other), OCCURRED_AT))
         .contains(assigned(id, 3L, 2L, CASEWORKER));
   }
 
@@ -419,28 +416,15 @@ class LinkedGroupAssignmentDeciderTest {
   void givenNoOtherActiveMembers_whenReady_thenKeepsCurrentAssignment() {
     var id = UUID.randomUUID();
     var inactiveId = UUID.randomUUID();
-    var group = LinkedApplicationGroupStates.group(UUID.randomUUID(), List.of(id, inactiveId));
 
     assertThat(
             LinkedGroupAssignmentDecider.decideReadyAssignment(
-                group,
+                GROUP_ID,
                 state(ApplicationStateEvents.notReady(id)),
                 1L,
                 List.of(state(ApplicationStateEvents.notReady(inactiveId))),
                 OCCURRED_AT))
         .isEmpty();
-  }
-
-  @Test
-  void givenApplicationOutsideGroup_whenReady_thenThrowsMembershipChanged() {
-    var id = UUID.randomUUID();
-    var group = LinkedApplicationGroupStates.group(UUID.randomUUID(), List.of(UUID.randomUUID()));
-
-    assertThatThrownBy(
-            () ->
-                LinkedGroupAssignmentDecider.decideReadyAssignment(
-                    group, state(ApplicationStateEvents.notReady(id)), 1L, List.of(), OCCURRED_AT))
-        .isInstanceOf(ApplicationLinkConflictException.class);
   }
 
   private static ApplicationState state(List<Object> events) {

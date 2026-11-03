@@ -12,6 +12,7 @@ import uk.gov.justice.laa.dstew.access.command.application.ApplicationAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDecider;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupAggregate;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupDecider;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedGroupAssignmentDecider;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedGroupMembers;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
@@ -60,6 +61,7 @@ public class MarkApplicationReadyCommandHandler {
               .loadEntity(LinkedApplicationGroupAggregate.class, command.linkedGroupId(), context)
               .join()
               .getState();
+      LinkedApplicationGroupDecider.validateMember(group, command.applicationId());
       var others =
           LinkedGroupMembers.load(
               stateManager,
@@ -68,7 +70,7 @@ public class MarkApplicationReadyCommandHandler {
                   .toList(),
               context);
       LinkedGroupAssignmentDecider.decideReadyAssignment(
-              group,
+              group.getGroupId(),
               application.getState(),
               nextApplicationVersion,
               others.values(),

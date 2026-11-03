@@ -162,16 +162,16 @@ public final class LinkedGroupAssignmentDecider {
 
   /**
    * Decides the assignment of a grouped application that is being marked ready, from the state it
-   * had before the readiness event. Empty means "keep the current assignment".
+   * had before the readiness event. Empty means "keep the current assignment". The caller must
+   * first check membership with {@link LinkedApplicationGroupDecider#validateMember}.
    */
   public static Optional<WorkItemAssignmentChange> decideReadyAssignment(
-      LinkedApplicationGroupState group,
+      UUID groupId,
       ApplicationState stateBeforeReady,
       long nextApplicationVersion,
       Collection<ApplicationState> otherMembers,
       Instant occurredAt) {
-    LinkedApplicationGroupDecider.validateMember(group, stateBeforeReady.getApplicationId());
-    var otherAssignment = groupAssignment(group.getGroupId(), otherMembers);
+    var otherAssignment = groupAssignment(groupId, otherMembers);
     if (otherAssignment instanceof GroupAssignment.None) {
       return Optional.empty();
     }
