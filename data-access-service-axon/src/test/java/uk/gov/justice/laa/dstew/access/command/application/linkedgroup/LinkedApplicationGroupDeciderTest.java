@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.command.application.linkedgroup;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Instant;
@@ -18,6 +19,7 @@ import uk.gov.justice.laa.dstew.access.exception.LinkedApplicationGroupVersionCo
 class LinkedApplicationGroupDeciderTest {
 
   private static final Instant OCCURRED_AT = Instant.parse("2026-07-15T08:00:00Z");
+  private static final UUID MEMBER_ID = UUID.fromString("00000000-0000-0000-0000-0000000000a1");
 
   @Test
   void givenNoGroup_whenDecideEstablish_thenReturnsGroupCreatedEvent() {
@@ -524,6 +526,26 @@ class LinkedApplicationGroupDeciderTest {
         .hasMessage("Linked application group " + groupId + " has been dissolved");
   }
 
+  @Test
+  void givenMember_whenValidateMember_thenReturnsNormally() {
+    var state =
+        LinkedApplicationGroupStates.group(
+            UUID.randomUUID(), List.of(MEMBER_ID, UUID.randomUUID()));
+
+    assertThatCode(() -> LinkedApplicationGroupDecider.validateMember(state, MEMBER_ID))
+        .doesNotThrowAnyException();
+  }
+
+  @ParameterizedTest
+  @MethodSource("groupStatesWithoutMember")
+  void givenNoLongerMember_whenValidateMember_thenThrowsMembershipChanged(
+      LinkedApplicationGroupState state) {
+    assertThatThrownBy(() -> LinkedApplicationGroupDecider.validateMember(state, MEMBER_ID))
+        .isInstanceOf(ApplicationLinkConflictException.class)
+        .hasMessage(
+            "Linked group membership of application " + MEMBER_ID + " changed; retry the request");
+  }
+
   private static LinkedApplicationGroupState stateAfterCreate(
       UUID groupId, UUID leadId, List<UUID> members) {
     LinkedApplicationGroupState state = new LinkedApplicationGroupState();
@@ -547,5 +569,14 @@ class LinkedApplicationGroupDeciderTest {
         Arguments.of("empty member list", List.of()),
         Arguments.of("missing lead application", List.of(otherMemberId)),
         Arguments.of("duplicate member ids", List.of(leadId, otherMemberId, otherMemberId)));
+  }
+
+  private static List<LinkedApplicationGroupState> groupStatesWithoutMember() {
+    return List.of(
+        new LinkedApplicationGroupState(),
+        LinkedApplicationGroupStates.dissolved(
+            UUID.randomUUID(), List.of(MEMBER_ID, UUID.randomUUID())),
+        LinkedApplicationGroupStates.group(
+            UUID.randomUUID(), List.of(UUID.randomUUID(), UUID.randomUUID())));
   }
 }

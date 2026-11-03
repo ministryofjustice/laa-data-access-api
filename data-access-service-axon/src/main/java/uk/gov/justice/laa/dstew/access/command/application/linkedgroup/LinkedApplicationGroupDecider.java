@@ -174,6 +174,20 @@ public final class LinkedApplicationGroupDecider {
     }
   }
 
+  /**
+   * Validates that {@code applicationId} is still a member of an established, undissolved group.
+   */
+  public static void validateMember(LinkedApplicationGroupState state, UUID applicationId) {
+    if (state.getGroupId() == null
+        || state.isDissolved()
+        || !state.memberIdsOrEmpty().contains(applicationId)) {
+      throw new ApplicationLinkConflictException(
+          "Linked group membership of application "
+              + applicationId
+              + " changed; retry the request");
+    }
+  }
+
   private static ApplicationLinkConflictException dissolvedConflict(UUID groupId) {
     return new ApplicationLinkConflictException(
         "Linked application group " + groupId + " has been dissolved");
