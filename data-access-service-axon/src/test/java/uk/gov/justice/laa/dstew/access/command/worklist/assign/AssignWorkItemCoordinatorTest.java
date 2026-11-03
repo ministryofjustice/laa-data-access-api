@@ -21,6 +21,7 @@ import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.SimpleTransactionStatus;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteResolver;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.route.WorkItemRoute;
 import uk.gov.justice.laa.dstew.access.command.worklist.route.WorkItemRouteKind;
@@ -149,6 +150,39 @@ class AssignWorkItemCoordinatorTest {
     verify(transactionManager).commit(any(TransactionStatus.class));
     verify(groupRoutes, times(2)).lockForAssignment(id);
     verify(gateway, times(2)).sendAndWait(groupCommand);
+  }
+
+  @Test
+  void givenAppendConflictTwice_whenAssigned_thenAssignmentConflict() {
+    WorkItemRouteResolver routes = mock(WorkItemRouteResolver.class);
+    ApplicationGroupRouteResolver groupRoutes = mock(ApplicationGroupRouteResolver.class);
+    CommandGateway gateway = mock(CommandGateway.class);
+    AssignWorkItemCoordinator handler =
+        coordinator(routes, groupRoutes, gateway, mock(PlatformTransactionManager.class));
+    UUID id = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    UUID caseworkerId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-09-01T10:00:00Z");
+    when(routes.resolveDirectRoute(id)).thenReturn(route(WorkItemType.APPLICATION, id, occurredAt));
+    when(groupRoutes.lockForAssignment(id)).thenReturn(Optional.of(groupId));
+    RuntimeException retryFailure =
+        new RuntimeException("append conflict", new ConcurrencyException("second"));
+    when(gateway.sendAndWait(
+            new AssignLinkedGroupWorkItemCommand(
+                groupId, id, caseworkerId, 0L, "{}", "Assigned", occurredAt)))
+        .thenThrow(new RuntimeException("append conflict", new ConcurrencyException("first")))
+        .thenThrow(retryFailure);
+
+    assertThatThrownBy(
+            () ->
+                handler.handle(
+                    new AssignWorkItemCommand(id, caseworkerId, 0L, "{}", "Assigned", occurredAt)))
+        .isInstanceOf(WorkItemAssignmentConflictException.class)
+        .hasMessage(
+            "Work item "
+                + id
+                + " cannot be updated: it was changed by a concurrent request; retry the request")
+        .hasCause(retryFailure);
   }
 
   private AssignWorkItemCoordinator coordinator(

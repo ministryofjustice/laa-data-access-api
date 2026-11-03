@@ -9,6 +9,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.handler.LinkedGroupWorkItemAssignmentCommandHandler;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteResolver;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.route.WorkItemRoute;
 import uk.gov.justice.laa.dstew.access.command.worklist.route.WorkItemRouteResolver;
@@ -29,18 +30,25 @@ public class AssignWorkItemCoordinator {
    *
    * <p>For an application in a linked group, every active member is assigned in one command; see
    * {@link LinkedGroupWorkItemAssignmentCommandHandler}. Each attempt locks routes and dispatches
-   * in a new transaction; a concurrent-write or lock failure is retried once, and a stale
-   * assignment version is never retried.
+   * in a new transaction; a concurrent-write or lock failure is retried once and then returned as a
+   * 409 conflict; a stale assignment version is never retried.
    */
   @AllowApiCaseworker
   public void handle(AssignWorkItemCommand command) {
     var transactionTemplate = new TransactionTemplate(transactionManager);
     transactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
-    dispatcher.dispatch(
-        () -> {
-          transactionTemplate.executeWithoutResult(status -> dispatchToAuthority(command));
-          return null;
-        });
+    try {
+      dispatcher.dispatch(
+          () -> {
+            transactionTemplate.executeWithoutResult(status -> dispatchToAuthority(command));
+            return null;
+          });
+    } catch (RuntimeException failure) {
+      if (RetryingCommandDispatcher.isRetryableConcurrentWrite(failure)) {
+        throw WorkItemAssignmentConflictException.concurrentChange(command.workItemId(), failure);
+      }
+      throw failure;
+    }
   }
 
   private void dispatchToAuthority(AssignWorkItemCommand command) {

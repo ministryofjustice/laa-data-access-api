@@ -14,6 +14,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 import javax.sql.DataSource;
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -305,6 +306,35 @@ class LinkedGroupAssignmentConcurrencyIntegrationTest extends AbstractLinkedGrou
     }
   }
 
+  @Test
+  void givenDeadlockOnFirstAttempt_whenAssigned_thenRetriedAndGroupAssigned() {
+    var group = createTwoMemberGroup();
+    failAssignmentEventsWithDeadlock(group.leadId(), false);
+
+    assertThat(assign(group.leadId(), TestJwtDecoderConfig.CASEWORKER_ID, 0L).getStatusCode())
+        .isEqualTo(HttpStatus.OK);
+
+    for (var applicationId : group.memberIds()) {
+      awaitWorkListAssignee(applicationId, TestJwtDecoderConfig.CASEWORKER_ID, 1L);
+      assertThat(countDomainEvents(applicationId, WorkItemAssigned.class)).isOne();
+    }
+  }
+
+  @Test
+  void givenDeadlockOnEveryAttempt_whenAssigned_thenConflictAndNothingChanges() {
+    var group = createTwoMemberGroup();
+    failAssignmentEventsWithDeadlock(group.leadId(), true);
+
+    var response = assign(group.leadId(), TestJwtDecoderConfig.CASEWORKER_ID, 0L);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+    assertThat(response.getBody()).contains("retry the request");
+    for (var applicationId : group.memberIds()) {
+      assertThat(countDomainEvents(applicationId, WorkItemAssigned.class)).isZero();
+      awaitWorkListAssignee(applicationId, null, 0L);
+    }
+  }
+
   private record GroupFixture(UUID groupId, List<UUID> memberIds) {
     UUID leadId() {
       return memberIds.getFirst();
@@ -358,6 +388,40 @@ class LinkedGroupAssignmentConcurrencyIntegrationTest extends AbstractLinkedGrou
   private enum RaceOrder {
     ASSIGN_FIRST,
     ADD_FIRST
+  }
+
+  private void failAssignmentEventsWithDeadlock(UUID aggregateId, boolean everyAttempt) {
+    jdbcTemplate.execute("CREATE SEQUENCE IF NOT EXISTS axon.fail_test_assignment_lock_seq");
+    jdbcTemplate.execute(
+        """
+        CREATE OR REPLACE FUNCTION axon.fail_test_assignment_lock()
+        RETURNS trigger AS $$
+        BEGIN
+          IF NEW.aggregate_identifier = '%s'
+              AND NEW.payload_type LIKE '%%WorkItemAssigned' THEN
+            IF %s OR nextval('axon.fail_test_assignment_lock_seq') = 1 THEN
+              RAISE EXCEPTION 'forced deadlock' USING ERRCODE = '40P01';
+            END IF;
+          END IF;
+          RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql
+        """
+            .formatted(aggregateId, everyAttempt ? "TRUE" : "FALSE"));
+    jdbcTemplate.execute(
+        """
+        CREATE TRIGGER fail_test_assignment_lock
+        BEFORE INSERT ON axon.domain_event_entry
+        FOR EACH ROW EXECUTE FUNCTION axon.fail_test_assignment_lock()
+        """);
+  }
+
+  @AfterEach
+  void dropAssignmentLockFailureTrigger() {
+    jdbcTemplate.execute(
+        "DROP TRIGGER IF EXISTS fail_test_assignment_lock ON axon.domain_event_entry");
+    jdbcTemplate.execute("DROP FUNCTION IF EXISTS axon.fail_test_assignment_lock()");
+    jdbcTemplate.execute("DROP SEQUENCE IF EXISTS axon.fail_test_assignment_lock_seq");
   }
 
   private EventGate pauseEvent(String eventType) throws SQLException {
