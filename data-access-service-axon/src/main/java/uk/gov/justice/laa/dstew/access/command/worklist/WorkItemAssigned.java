@@ -13,4 +13,5 @@ public record WorkItemAssigned(
     long itemVersion,
     long assignmentVersion,
     UUID caseworkerId,
-    Instant occurredAt) {}
+    Instant occurredAt)
+    implements WorkItemAssignmentChange {}

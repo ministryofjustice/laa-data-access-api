@@ -17,6 +17,7 @@ import org.jspecify.annotations.Nullable;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDecider;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationState;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationLinkConflictException;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentChange;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
 import uk.gov.justice.laa.dstew.access.command.worklist.assign.AssignLinkedGroupWorkItemCommand;
 import uk.gov.justice.laa.dstew.access.command.worklist.unassign.UnassignLinkedGroupWorkItemCommand;
@@ -50,7 +51,7 @@ public final class LinkedGroupAssignmentDecider {
   }
 
   /** Decides the assignment changes when applications join a group (DSTEW-2284 AC1-AC4). */
-  public static List<Object> decideJoin(
+  public static List<WorkItemAssignmentChange> decideJoin(
       UUID groupId,
       Collection<ApplicationState> existingMembers,
       Collection<ApplicationState> joiningApplications,
@@ -70,7 +71,7 @@ public final class LinkedGroupAssignmentDecider {
     var allMembers = new TreeMap<UUID, ApplicationState>();
     existingMembers.forEach(state -> allMembers.put(state.getApplicationId(), state));
     joiningApplications.forEach(state -> allMembers.put(state.getApplicationId(), state));
-    var events = new ArrayList<Object>();
+    var events = new ArrayList<WorkItemAssignmentChange>();
     for (var state : allMembers.values()) {
       ApplicationDecider.decideGroupMemberAssignment(state, targetCaseworkerId, occurredAt)
           .ifPresent(events::add);
@@ -81,7 +82,7 @@ public final class LinkedGroupAssignmentDecider {
   /**
    * Decides a group assign addressed through one member; throws when the request is not allowed.
    */
-  public static List<Object> decideGroupAssign(
+  public static List<WorkItemAssignmentChange> decideGroupAssign(
       LinkedApplicationGroupState group,
       Map<UUID, ApplicationState> members,
       AssignLinkedGroupWorkItemCommand command) {
@@ -115,7 +116,7 @@ public final class LinkedGroupAssignmentDecider {
   /**
    * Decides a group unassign addressed through one member; throws when the request is not allowed.
    */
-  public static List<Object> decideGroupUnassign(
+  public static List<WorkItemAssignmentChange> decideGroupUnassign(
       LinkedApplicationGroupState group,
       Map<UUID, ApplicationState> members,
       UnassignLinkedGroupWorkItemCommand command) {
@@ -135,7 +136,7 @@ public final class LinkedGroupAssignmentDecider {
    * Decides the assignment of a grouped application that is being marked ready, from the state it
    * had before the readiness event. Empty means "keep the current assignment".
    */
-  public static Optional<Object> decideReadyAssignment(
+  public static Optional<WorkItemAssignmentChange> decideReadyAssignment(
       LinkedApplicationGroupState group,
       ApplicationState stateBeforeReady,
       long nextApplicationVersion,
@@ -163,12 +164,12 @@ public final class LinkedGroupAssignmentDecider {
    * Moves the addressed member to {@code targetCaseworkerId} first, then the other members in
    * application ID order, so the addressed member's event is always appended first.
    */
-  private static List<Object> decideAddressedFirst(
+  private static List<WorkItemAssignmentChange> decideAddressedFirst(
       UUID addressedId,
       Map<UUID, ApplicationState> members,
       @Nullable UUID targetCaseworkerId,
       Instant occurredAt) {
-    var events = new ArrayList<>();
+    var events = new ArrayList<WorkItemAssignmentChange>();
     ApplicationDecider.decideGroupMemberAssignment(
             members.get(addressedId), targetCaseworkerId, occurredAt)
         .ifPresent(events::add);

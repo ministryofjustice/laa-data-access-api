@@ -27,6 +27,7 @@ import uk.gov.justice.laa.dstew.access.command.application.ready.ReadyApplicatio
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.UpdateApplicationCommand;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentChange;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
@@ -67,7 +68,7 @@ public final class ApplicationDecider {
    * Returns the event that moves an application's assignment from its current caseworker to {@code
    * targetCaseworkerId} (null = unassigned), or empty when they are already equal.
    */
-  public static Optional<Object> decideAssignmentChange(
+  public static Optional<WorkItemAssignmentChange> decideAssignmentChange(
       UUID applicationId,
       long itemVersion,
       long currentAssignmentVersion,
@@ -100,7 +101,7 @@ public final class ApplicationDecider {
    * Returns the assignment change for a linked-group member, or empty when it is not active or
    * unchanged.
    */
-  public static Optional<Object> decideGroupMemberAssignment(
+  public static Optional<WorkItemAssignmentChange> decideGroupMemberAssignment(
       ApplicationState state, @Nullable UUID targetCaseworkerId, Instant occurredAt) {
     if (!isActiveWorkItem(state)) {
       return Optional.empty();

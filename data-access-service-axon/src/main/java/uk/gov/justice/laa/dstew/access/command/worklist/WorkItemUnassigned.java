@@ -12,4 +12,5 @@ public record WorkItemUnassigned(
     WorkItemType workItemType,
     long itemVersion,
     long assignmentVersion,
-    Instant occurredAt) {}
+    Instant occurredAt)
+    implements WorkItemAssignmentChange {}

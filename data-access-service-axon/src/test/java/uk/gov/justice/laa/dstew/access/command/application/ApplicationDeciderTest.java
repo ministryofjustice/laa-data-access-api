@@ -8,6 +8,7 @@ import java.lang.reflect.RecordComponent;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
@@ -19,6 +20,7 @@ import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraf
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentChange;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
@@ -156,6 +158,15 @@ class ApplicationDeciderTest {
         .contains(
             new WorkItemAssigned(
                 applicationId, WorkItemType.APPLICATION, 4L, 4L, targetCaseworkerId, TIMESTAMP));
+  }
+
+  @Test
+  void givenUnassignedItem_whenDecideAssignmentChange_thenReturnsTypedAssignmentChange() {
+    Optional<WorkItemAssignmentChange> change =
+        ApplicationDecider.decideAssignmentChange(
+            UUID.randomUUID(), 1L, 0L, null, UUID.randomUUID(), TIMESTAMP);
+
+    assertThat(change).containsInstanceOf(WorkItemAssigned.class);
   }
 
   @Test
