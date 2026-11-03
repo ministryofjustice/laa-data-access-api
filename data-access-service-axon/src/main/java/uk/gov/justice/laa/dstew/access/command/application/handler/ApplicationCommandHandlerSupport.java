@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationAggregate;
-import uk.gov.justice.laa.dstew.access.command.application.ApplicationDecider;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftStore;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
@@ -37,12 +36,6 @@ final class ApplicationCommandHandlerSupport {
             () ->
                 new ResourceNotFoundException(
                     "No application draft found with Application ID: " + requestedApplicationId));
-  }
-
-  static void validateDirectWorkItem(
-      ApplicationAggregate application, UUID workItemId, long expectedAssignmentVersion) {
-    ApplicationDecider.validateDirectWorkItem(
-        application.getState(), workItemId, expectedAssignmentVersion);
   }
 
   @SuppressWarnings("unchecked")

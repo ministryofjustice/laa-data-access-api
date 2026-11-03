@@ -52,8 +52,8 @@ public final class ApplicationDecider {
    * version. Messages are identical to the existing ApplicationCommandHandlerSupport checks.
    */
   public static void validateDirectWorkItem(
-      ApplicationState state, UUID workItemId, long expectedAssignmentVersion) {
-    if (state.applicationId == null || !state.applicationId.equals(workItemId)) {
+      @Nullable ApplicationState state, UUID workItemId, long expectedAssignmentVersion) {
+    if (state == null || state.applicationId == null || !state.applicationId.equals(workItemId)) {
       throw new ResourceNotFoundException("No application work item found with id: " + workItemId);
     }
     if (!isActiveWorkItem(state)) {
@@ -62,6 +62,46 @@ public final class ApplicationDecider {
     if (expectedAssignmentVersion != state.assignmentVersion) {
       throw new WorkItemAssignmentConflictException(workItemId, "the assignment version is stale");
     }
+  }
+
+  /** Validates that {@code state} is an active, unassigned work item at the expected version. */
+  public static void validateAssignable(
+      @Nullable ApplicationState state, UUID workItemId, long expectedAssignmentVersion) {
+    validateDirectWorkItem(state, workItemId, expectedAssignmentVersion);
+    if (state.caseworkerId != null) {
+      throw new WorkItemAssignmentConflictException(workItemId, "it is already assigned");
+    }
+  }
+
+  /** Validates that {@code state} is an active, assigned work item at the expected version. */
+  public static void validateUnassignable(
+      @Nullable ApplicationState state, UUID workItemId, long expectedAssignmentVersion) {
+    validateDirectWorkItem(state, workItemId, expectedAssignmentVersion);
+    if (state.caseworkerId == null) {
+      throw new WorkItemAssignmentConflictException(workItemId, "it is already unassigned");
+    }
+  }
+
+  /** Returns the event assigning {@code state} to {@code caseworkerId}; validate it first. */
+  public static WorkItemAssigned decideAssign(
+      ApplicationState state, UUID caseworkerId, Instant occurredAt) {
+    return new WorkItemAssigned(
+        state.applicationId,
+        WorkItemType.APPLICATION,
+        state.applicationVersion,
+        state.assignmentVersion + 1,
+        caseworkerId,
+        occurredAt);
+  }
+
+  /** Returns the event returning {@code state} to the open list; validate it first. */
+  public static WorkItemUnassigned decideUnassign(ApplicationState state, Instant occurredAt) {
+    return new WorkItemUnassigned(
+        state.applicationId,
+        WorkItemType.APPLICATION,
+        state.applicationVersion,
+        state.assignmentVersion + 1,
+        occurredAt);
   }
 
   /**

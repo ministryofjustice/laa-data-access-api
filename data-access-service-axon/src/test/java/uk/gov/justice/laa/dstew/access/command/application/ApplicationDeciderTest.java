@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.command.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationCreationDetails;
 
@@ -108,6 +109,80 @@ class ApplicationDeciderTest {
         .isInstanceOf(WorkItemAssignmentConflictException.class)
         .hasMessage(
             "Work item " + workItemId + " cannot be updated: the assignment version is stale");
+  }
+
+  @Test
+  void givenMissingState_whenValidateDirectWorkItem_thenThrowsNotFound() {
+    var workItemId = UUID.randomUUID();
+
+    assertThatThrownBy(() -> ApplicationDecider.validateDirectWorkItem(null, workItemId, 0L))
+        .isInstanceOf(ResourceNotFoundException.class)
+        .hasMessage("No application work item found with id: " + workItemId);
+  }
+
+  @Test
+  void givenActiveUnassignedItem_whenValidateAssignable_thenReturnsNormally() {
+    var workItemId = UUID.randomUUID();
+    var state = ApplicationStateEvents.stateOf(ApplicationStateEvents.activeUnassigned(workItemId));
+
+    assertThatCode(() -> ApplicationDecider.validateAssignable(state, workItemId, 0L))
+        .doesNotThrowAnyException();
+  }
+
+  @Test
+  void givenAssignedItem_whenValidateAssignable_thenThrowsAlreadyAssigned() {
+    var workItemId = UUID.randomUUID();
+    var state =
+        ApplicationStateEvents.stateOf(
+            ApplicationStateEvents.activeAssigned(workItemId, UUID.randomUUID()));
+
+    assertThatThrownBy(() -> ApplicationDecider.validateAssignable(state, workItemId, 1L))
+        .isInstanceOf(WorkItemAssignmentConflictException.class)
+        .hasMessage("Work item " + workItemId + " cannot be updated: it is already assigned");
+  }
+
+  @Test
+  void givenAssignedItem_whenValidateUnassignable_thenReturnsNormally() {
+    var workItemId = UUID.randomUUID();
+    var state =
+        ApplicationStateEvents.stateOf(
+            ApplicationStateEvents.activeAssigned(workItemId, UUID.randomUUID()));
+
+    assertThatCode(() -> ApplicationDecider.validateUnassignable(state, workItemId, 1L))
+        .doesNotThrowAnyException();
+  }
+
+  @Test
+  void givenUnassignedItem_whenValidateUnassignable_thenThrowsAlreadyUnassigned() {
+    var workItemId = UUID.randomUUID();
+    var state = ApplicationStateEvents.stateOf(ApplicationStateEvents.activeUnassigned(workItemId));
+
+    assertThatThrownBy(() -> ApplicationDecider.validateUnassignable(state, workItemId, 0L))
+        .isInstanceOf(WorkItemAssignmentConflictException.class)
+        .hasMessage("Work item " + workItemId + " cannot be updated: it is already unassigned");
+  }
+
+  @Test
+  void givenUnassignedItem_whenDecideAssign_thenAssignsAtNextAssignmentVersion() {
+    var workItemId = UUID.randomUUID();
+    var caseworkerId = UUID.randomUUID();
+    var state = ApplicationStateEvents.stateOf(ApplicationStateEvents.activeUnassigned(workItemId));
+
+    assertThat(ApplicationDecider.decideAssign(state, caseworkerId, TIMESTAMP))
+        .isEqualTo(
+            new WorkItemAssigned(
+                workItemId, WorkItemType.APPLICATION, 1L, 1L, caseworkerId, TIMESTAMP));
+  }
+
+  @Test
+  void givenAssignedItem_whenDecideUnassign_thenUnassignsAtNextAssignmentVersion() {
+    var workItemId = UUID.randomUUID();
+    var state =
+        ApplicationStateEvents.stateOf(
+            ApplicationStateEvents.activeAssigned(workItemId, UUID.randomUUID()));
+
+    assertThat(ApplicationDecider.decideUnassign(state, TIMESTAMP))
+        .isEqualTo(new WorkItemUnassigned(workItemId, WorkItemType.APPLICATION, 1L, 2L, TIMESTAMP));
   }
 
   @Test

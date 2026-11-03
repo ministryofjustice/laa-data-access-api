@@ -5,8 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import java.time.Instant;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -14,15 +12,8 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationState;
-import uk.gov.justice.laa.dstew.access.command.application.ApplicationStateEvents;
-import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftStore;
-import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
-import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
-import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
-import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
-import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
@@ -94,86 +85,6 @@ class ApplicationCommandHandlerSupportTest {
             () -> ApplicationCommandHandlerSupport.requireDraft(applicationId, draftStore))
         .isInstanceOf(ResourceNotFoundException.class)
         .hasMessageContaining("No application draft found with Application ID: " + applicationId);
-  }
-
-  @Test
-  void givenActiveManualWorkItem_whenValidateDirectWorkItem_thenDoesNotThrow() {
-    UUID workItemId = UUID.randomUUID();
-    ApplicationAggregate application =
-        mockDirectWorkItem(workItemId, AutoGrantedState.MANUAL, null, 1L);
-
-    // Should not throw
-    ApplicationCommandHandlerSupport.validateDirectWorkItem(application, workItemId, 1L);
-  }
-
-  @Test
-  void givenApplicationWithNullId_whenValidateDirectWorkItem_thenThrowsResourceNotFoundException() {
-    UUID workItemId = UUID.randomUUID();
-    ApplicationAggregate application = mockDirectWorkItem(null, AutoGrantedState.MANUAL, null, 1L);
-
-    assertThatThrownBy(
-            () ->
-                ApplicationCommandHandlerSupport.validateDirectWorkItem(
-                    application, workItemId, 1L))
-        .isInstanceOf(ResourceNotFoundException.class)
-        .hasMessage("No application work item found with id: " + workItemId);
-  }
-
-  @Test
-  void givenMismatchedWorkItemIds_whenValidateDirectWorkItem_thenThrowsResourceNotFoundException() {
-    UUID workItemId = UUID.randomUUID();
-    UUID applicationId = UUID.randomUUID();
-    ApplicationAggregate application =
-        mockDirectWorkItem(applicationId, AutoGrantedState.MANUAL, null, 1L);
-
-    assertThatThrownBy(
-            () ->
-                ApplicationCommandHandlerSupport.validateDirectWorkItem(
-                    application, workItemId, 1L))
-        .isInstanceOf(ResourceNotFoundException.class)
-        .hasMessageContaining("No application work item found with id: " + workItemId);
-  }
-
-  @Test
-  void givenAutoGrantedWorkItem_whenValidateDirectWorkItem_thenThrowsResourceNotFoundException() {
-    UUID workItemId = UUID.randomUUID();
-    ApplicationAggregate application =
-        mockDirectWorkItem(workItemId, AutoGrantedState.AUTOGRANTED, null, 1L);
-
-    assertThatThrownBy(
-            () ->
-                ApplicationCommandHandlerSupport.validateDirectWorkItem(
-                    application, workItemId, 1L))
-        .isInstanceOf(ResourceNotFoundException.class)
-        .hasMessageContaining("Application work item is not active: " + workItemId);
-  }
-
-  @Test
-  void givenWorkItemWithDecision_whenValidateDirectWorkItem_thenThrowsResourceNotFoundException() {
-    UUID workItemId = UUID.randomUUID();
-    ApplicationAggregate application =
-        mockDirectWorkItem(workItemId, AutoGrantedState.MANUAL, "GRANTED", 1L);
-
-    assertThatThrownBy(
-            () ->
-                ApplicationCommandHandlerSupport.validateDirectWorkItem(
-                    application, workItemId, 1L))
-        .isInstanceOf(ResourceNotFoundException.class)
-        .hasMessageContaining("Application work item is not active: " + workItemId);
-  }
-
-  @Test
-  void givenStaleAssignmentVersion_whenValidateDirectWorkItem_thenThrowsConflictException() {
-    UUID workItemId = UUID.randomUUID();
-    ApplicationAggregate application =
-        mockDirectWorkItem(workItemId, AutoGrantedState.MANUAL, null, 2L);
-
-    assertThatThrownBy(
-            () ->
-                ApplicationCommandHandlerSupport.validateDirectWorkItem(
-                    application, workItemId, 1L))
-        .isInstanceOf(WorkItemAssignmentConflictException.class)
-        .hasMessageContaining("the assignment version is stale");
   }
 
   @Test
@@ -255,38 +166,6 @@ class ApplicationCommandHandlerSupportTest {
     when(application.getApplicationId()).thenReturn(applicationId);
     when(application.getState()).thenReturn(state);
     when(state.getStatus()).thenReturn(status);
-    return application;
-  }
-
-  private ApplicationAggregate mockDirectWorkItem(
-      UUID workItemId, AutoGrantedState autoGranted, String decision, long assignmentVersion) {
-    ApplicationAggregate application = mock(ApplicationAggregate.class);
-    var events = new ArrayList<>(ApplicationStateEvents.notReady(workItemId));
-    if (autoGranted == AutoGrantedState.MANUAL) {
-      events.add(new ApplicationReadyForManualAssessmentEvent(workItemId, 1L, 1L, Instant.EPOCH));
-    } else if (autoGranted == AutoGrantedState.AUTOGRANTED) {
-      events.add(
-          new ApplicationDecisionMadeEvent(
-              workItemId, 1L, 1L, "GRANTED", autoGranted, Instant.EPOCH));
-    }
-    if (decision != null) {
-      events.add(
-          new ApplicationDecisionMadeEvent(
-              workItemId, 2L, 2L, decision, autoGranted, Instant.EPOCH));
-    }
-    if (assignmentVersion > 0) {
-      events.add(
-          new WorkItemAssigned(
-              workItemId,
-              WorkItemType.APPLICATION,
-              decision == null ? 1L : 2L,
-              assignmentVersion,
-              UUID.randomUUID(),
-              Instant.EPOCH));
-    }
-    ApplicationState state = ApplicationStateEvents.stateOf(events);
-    when(application.getApplicationId()).thenReturn(workItemId);
-    when(application.getState()).thenReturn(state);
     return application;
   }
 }
