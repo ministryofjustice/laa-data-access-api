@@ -161,8 +161,10 @@ The handlers check rules before they build events:
    of the group, using group state only, before any member state is loaded.
 2. The members are loaded once and passed to `LinkedGroupAssignmentDecider.validateGroupAssign` or
    `validateGroupUnassign`. These delegate per-application rules to `ApplicationDecider`.
-3. `decideGroupAssign`, `decideGroupUnassign`, `decideJoin` and `decideReadyAssignment` only build
-   `WorkItemAssignmentChange` events, and assume validation has passed.
+3. `decideGroupAssign` and `decideGroupUnassign` only build `WorkItemAssignmentChange` events
+   and assume validation has passed. `decideJoin` and `decideReadyAssignment` still reject
+   conflicting active-member assignments through `groupAssignment`; moving that rule into a
+   separate validation method is follow-up work.
 
 `EstablishLinkedApplicationGroupCommand` carries a lead application and exactly one joining
 application, and `AddApplicationToLinkedGroupCommand` adds one application. Every join therefore
