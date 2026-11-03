@@ -11,11 +11,14 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 import javax.sql.DataSource;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -215,6 +218,93 @@ class LinkedGroupAssignmentConcurrencyIntegrationTest extends AbstractLinkedGrou
     }
   }
 
+  static Stream<Arguments> assignUnlinkCases() {
+    return Stream.of(UnlinkTopology.values())
+        .flatMap(
+            topology ->
+                Stream.of(AssignUnlinkOrder.values()).map(order -> Arguments.of(topology, order)));
+  }
+
+  @ParameterizedTest
+  @MethodSource("assignUnlinkCases")
+  void givenGroup_whenAssignAndUnlinkRace_thenNoPartialAssignment(
+      UnlinkTopology topology, AssignUnlinkOrder order) throws Exception {
+    var threeMembers = topology == UnlinkTopology.THREE_MEMBERS;
+    var group = createGroup(threeMembers ? 3 : 2);
+    var leadId = group.leadId();
+    var leaverId = group.memberIds().get(1);
+    var groupVersion = threeMembers ? 1L : 0L;
+    var assignFirst = order == AssignUnlinkOrder.ASSIGN_FIRST;
+    var unlinkEvent =
+        threeMembers
+            ? MemberRemovedFromGroupEvent.class.getName()
+            : LinkedApplicationGroupDissolvedEvent.class.getName();
+    var gatedEvent = assignFirst ? WorkItemAssigned.class.getName() : unlinkEvent;
+
+    try (var gate = pauseEvent(gatedEvent)) {
+      CompletableFuture<ResponseEntity<String>> first =
+          CompletableFuture.supplyAsync(
+              () ->
+                  assignFirst
+                      ? assign(leadId, TestJwtDecoderConfig.CASEWORKER_ID, 0L)
+                      : unlink(leaverId, groupToken(group.groupId(), groupVersion)));
+      var firstPid = awaitBlockedBy(gate.backendPid());
+      CompletableFuture<ResponseEntity<String>> second =
+          CompletableFuture.supplyAsync(
+              () ->
+                  assignFirst
+                      ? unlink(leaverId, groupToken(group.groupId(), groupVersion))
+                      : assign(leadId, TestJwtDecoderConfig.CASEWORKER_ID, 0L));
+      awaitBlockedBy(firstPid);
+      assertThat(second).isNotDone();
+      gate.release();
+
+      var assignResponse =
+          assignFirst ? first.get(15, TimeUnit.SECONDS) : second.get(15, TimeUnit.SECONDS);
+      var unlinkResponse =
+          assignFirst ? second.get(15, TimeUnit.SECONDS) : first.get(15, TimeUnit.SECONDS);
+      assertThat(unlinkResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+      if (assignFirst) {
+        assertThat(assignResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+      } else {
+        assertThat(assignResponse.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(assignResponse.getBody()).contains("changed; retry the request");
+      }
+    }
+
+    awaitRoute(leaverId, ApplicationGroupRouteKind.STANDALONE);
+    awaitWorkListBoundary(leaverId, "DIRECT", leaverId);
+    var remainingIds =
+        group.memberIds().stream().filter(candidateId -> !candidateId.equals(leaverId)).toList();
+    for (var remainingId : remainingIds) {
+      if (threeMembers) {
+        awaitWorkListBoundary(remainingId, "LINKED_GROUP", group.groupId());
+      } else {
+        awaitWorkListBoundary(remainingId, "DIRECT", remainingId);
+      }
+    }
+
+    if (assignFirst) {
+      for (var applicationId : group.memberIds()) {
+        awaitWorkListAssignee(applicationId, TestJwtDecoderConfig.CASEWORKER_ID, 1L);
+        assertThat(countDomainEvents(applicationId, WorkItemAssigned.class)).isOne();
+      }
+      return;
+    }
+
+    for (var applicationId : group.memberIds()) {
+      awaitWorkListAssignee(applicationId, null, 0L);
+      assertThat(countDomainEvents(applicationId, WorkItemAssigned.class)).isZero();
+    }
+    assertThat(assign(leaverId, TestJwtDecoderConfig.OTHER_CASEWORKER_ID, 0L).getStatusCode())
+        .isEqualTo(HttpStatus.OK);
+    awaitWorkListAssignee(leaverId, TestJwtDecoderConfig.OTHER_CASEWORKER_ID, 1L);
+    for (var remainingId : remainingIds) {
+      awaitWorkListAssignee(remainingId, null, 0L);
+      assertThat(countDomainEvents(remainingId, WorkItemAssigned.class)).isZero();
+    }
+  }
+
   private record GroupFixture(UUID groupId, List<UUID> memberIds) {
     UUID leadId() {
       return memberIds.getFirst();
@@ -229,6 +319,16 @@ class LinkedGroupAssignmentConcurrencyIntegrationTest extends AbstractLinkedGrou
   private enum AssignUnassignOrder {
     ASSIGN_FIRST,
     UNASSIGN_FIRST
+  }
+
+  private enum UnlinkTopology {
+    THREE_MEMBERS,
+    TWO_MEMBERS
+  }
+
+  private enum AssignUnlinkOrder {
+    ASSIGN_FIRST,
+    UNLINK_FIRST
   }
 
   private GroupFixture createTwoMemberGroup() {
