@@ -50,7 +50,6 @@ each state through the real use cases, and `DataAccessApiProviderTests` replays 
 | State string | Guarantees | Not guaranteed | Typical endpoints |
 | --- | --- | --- | --- |
 | `applications exist` | Application `…0001`, submitted, awaiting manual assessment, in the list. Reference `LAA-REF-0001`, client Alice Anderson | `isLead` is false. Position in the list | GET applications |
-| `a client individual exists for application 00000000-0000-0000-0000-000000000001` | GET individuals for `…0001` returns one CLIENT, Alice Anderson, DOB 1980-01-01 | No `clientId` is returned | GET individuals |
 | `that no matching special children act application already exists` | The ID you send in the body does not exist. Create succeeds, Location echoes your ID | Whether 201 or 202 is returned depends on projection timing; both are valid | POST applications |
 | `a submitted application 00000000-0000-0000-0000-000000000002 exists` | Submitted, auto-grant pending, application version 0, no decision, no notes, not linked | Anything time-based | GET by id, PATCH, GET history, PATCH auto-grant-outcome |
 | `application 00000000-0000-0000-0000-000000000003 is ready for manual assessment and assigned to the caseworker` | Manual assessment recorded, assigned to the dev caseworker, application version 1, assignment version 1 | | PATCH decision, POST work-list unassign |
