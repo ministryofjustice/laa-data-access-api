@@ -37,7 +37,6 @@ public class WorkListQueryController implements WorkListQueryApi {
       Boolean assignedToMe,
       Boolean unassigned,
       WorkListItemType itemType,
-      Boolean excludePendingAutoGrant,
       Integer page,
       Integer pageSize) {
     return responseMapper.toResponse(
@@ -46,7 +45,6 @@ public class WorkListQueryController implements WorkListQueryApi {
                 assignedToMe,
                 itemType == null ? null : WorkItemType.valueOf(itemType.name()),
                 unassigned,
-                excludePendingAutoGrant,
                 page,
                 pageSize,
                 Boolean.TRUE.equals(assignedToMe) ? authenticatedUserId.get() : null)));
