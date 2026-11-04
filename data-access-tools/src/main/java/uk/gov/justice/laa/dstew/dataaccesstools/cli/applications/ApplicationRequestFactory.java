@@ -8,6 +8,8 @@ import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import net.datafaker.Faker;
 
 public final class ApplicationRequestFactory {
@@ -35,6 +37,8 @@ public final class ApplicationRequestFactory {
 
   private final Faker faker;
   private final String officeCode;
+  private final int opponentCount;
+  private final OpponentType opponentType;
   private final Set<String> generatedReferences = new HashSet<>();
 
   public ApplicationRequestFactory() {
@@ -46,6 +50,17 @@ public final class ApplicationRequestFactory {
   }
 
   public ApplicationRequestFactory(long seed, String officeCode) {
+    this(seed, officeCode, 1, null);
+  }
+
+  /** A null {@code opponentType} randomises the type of each generated opponent. */
+  public ApplicationRequestFactory(
+      long seed, String officeCode, int opponentCount, OpponentType opponentType) {
+    if (opponentCount < 1) {
+      throw new IllegalArgumentException("opponentCount must be positive");
+    }
+    this.opponentCount = opponentCount;
+    this.opponentType = opponentType;
     this.faker = new Faker(new Random(seed));
     if (officeCode != null && !officeCode.matches(OfficeCodeConverter.PATTERN)) {
       throw new IllegalArgumentException("officeCode must match " + OfficeCodeConverter.PATTERN);
@@ -68,7 +83,8 @@ public final class ApplicationRequestFactory {
           "provider":{"officeCode":"%s","contactEmail":"%s"},
           "client":{"firstName":"%s","lastName":"%s","dateOfBirth":"%s","appliedPreviously":%s,
             "addresses":[{"location":"home","addressLineOne":"%s","city":"%s","postcode":"%s","countryCode":"GBR","countryName":"United Kingdom"}]},
-          "proceedings":[{"id":"%s","leadProceeding":true,"code":"SE003","meaning":"Care order","description":"Care order","matterType":"special children act (SCA)","matterTypeCode":"KPBLW","categoryOfLaw":"Family","categoryOfLawCode":"MAT","clientInvolvementType":"%s","clientInvolvementTypeCode":"%s","usedDelegatedFunctions":false,"delegatedFunctionsCostLimitation":"0","substantiveCostLimitation":"%d","substantiveLevelOfServiceCode":%d,"substantiveLevelOfServiceName":"%s","emergencyLevelOfServiceCode":%d,"emergencyLevelOfServiceName":"%s","scopeLimitations":[{"id":"%s","type":"SUBSTANTIVE","code":"%s","meaning":"%s","description":"%s"}]}]
+          "proceedings":[{"id":"%s","leadProceeding":true,"code":"SE003","meaning":"Care order","description":"Care order","matterType":"special children act (SCA)","matterTypeCode":"KPBLW","categoryOfLaw":"Family","categoryOfLawCode":"MAT","clientInvolvementType":"%s","clientInvolvementTypeCode":"%s","usedDelegatedFunctions":false,"delegatedFunctionsCostLimitation":"0","substantiveCostLimitation":"%d","substantiveLevelOfServiceCode":%d,"substantiveLevelOfServiceName":"%s","emergencyLevelOfServiceCode":%d,"emergencyLevelOfServiceName":"%s","scopeLimitations":[{"id":"%s","type":"SUBSTANTIVE","code":"%s","meaning":"%s","description":"%s"}]}],
+          "opponents":[%s]
         }}
         """
             .formatted(
@@ -96,8 +112,28 @@ public final class ApplicationRequestFactory {
                 UUID.randomUUID(),
                 randomScopeLimitationCode(),
                 scopeLimitation.meaning(),
-                scopeLimitation.description());
+                scopeLimitation.description(),
+                randomOpponents());
     return new ApplicationData(applicationId, proceedingId, reference, request);
+  }
+
+  private String randomOpponents() {
+    return IntStream.range(0, opponentCount)
+        .mapToObj(i -> randomOpponent())
+        .collect(Collectors.joining(","));
+  }
+
+  private String randomOpponent() {
+    OpponentType type =
+        opponentType != null ? opponentType : faker.options().option(OpponentType.class);
+    return switch (type) {
+      case INDIVIDUAL ->
+          "{\"opponentType\":\"INDIVIDUAL\",\"firstName\":\"%s\",\"lastName\":\"%s\"}"
+              .formatted(faker.name().firstName(), faker.name().lastName());
+      case ORGANISATION ->
+          "{\"opponentType\":\"ORGANISATION\",\"organisationName\":\"%s\"}"
+              .formatted(faker.company().name().replace("\"", "\\\""));
+    };
   }
 
   private String generateReference() {
@@ -123,6 +159,11 @@ public final class ApplicationRequestFactory {
   private LocalDate randomDateOfBirth() {
     int age = faker.number().numberBetween(18, 90);
     return LocalDate.now().minusYears(age).minusDays(faker.number().numberBetween(0, 365));
+  }
+
+  public enum OpponentType {
+    INDIVIDUAL,
+    ORGANISATION
   }
 
   public record ApplicationData(

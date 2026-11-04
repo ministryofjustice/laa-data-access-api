@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.dataaccesstools.cli.applications;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -64,6 +65,90 @@ class ApplicationsCommandTest {
           assertTrue(content.required("client").required("addresses").size() > 0);
           assertTrue(content.required("proceedings").get(0).required("leadProceeding").asBoolean());
         });
+  }
+
+  @Test
+  void createsOneOpponentByDefaultAndHonoursOpponentCount() {
+    assertEquals(0, execute("create-draft", "--count", "1"));
+    assertEquals(
+        1,
+        drafts
+            .values()
+            .iterator()
+            .next()
+            .required("applicationContent")
+            .required("opponents")
+            .size());
+
+    drafts.clear();
+    assertEquals(0, execute("create-draft", "--count", "1", "--opponent-count", "3"));
+    JsonNode opponents =
+        drafts.values().iterator().next().required("applicationContent").required("opponents");
+    assertEquals(3, opponents.size());
+    assertEquals("INDIVIDUAL", opponents.get(2).required("opponentType").asText());
+  }
+
+  @Test
+  void forcesOpponentTypeWithOnlyItsRequiredFields() {
+    assertEquals(
+        0,
+        execute(
+            "create-draft",
+            "--count",
+            "1",
+            "--opponent-count",
+            "5",
+            "--opponent-type",
+            "organisation"));
+    JsonNode opponents =
+        drafts.values().iterator().next().required("applicationContent").required("opponents");
+    assertEquals(5, opponents.size());
+    opponents.forEach(
+        opponent -> {
+          assertEquals("ORGANISATION", opponent.required("opponentType").asText());
+          assertFalse(opponent.required("organisationName").asText().isBlank());
+          assertFalse(opponent.has("firstName"));
+          assertFalse(opponent.has("lastName"));
+        });
+
+    drafts.clear();
+    assertEquals(
+        0,
+        execute(
+            "create-draft",
+            "--count",
+            "1",
+            "--opponent-count",
+            "5",
+            "--opponent-type",
+            "INDIVIDUAL"));
+    drafts
+        .values()
+        .iterator()
+        .next()
+        .required("applicationContent")
+        .required("opponents")
+        .forEach(
+            opponent -> {
+              assertEquals("INDIVIDUAL", opponent.required("opponentType").asText());
+              assertFalse(opponent.required("firstName").asText().isBlank());
+              assertFalse(opponent.required("lastName").asText().isBlank());
+              assertFalse(opponent.has("organisationName"));
+            });
+  }
+
+  @Test
+  void randomisesOpponentTypesByDefault() {
+    assertEquals(0, execute("create-draft", "--count", "1", "--opponent-count", "50"));
+    var types = new java.util.HashSet<String>();
+    drafts
+        .values()
+        .iterator()
+        .next()
+        .required("applicationContent")
+        .required("opponents")
+        .forEach(opponent -> types.add(opponent.required("opponentType").asText()));
+    assertEquals(java.util.Set.of("INDIVIDUAL", "ORGANISATION"), types);
   }
 
   @Test
@@ -176,6 +261,9 @@ class ApplicationsCommandTest {
             new String[] {"create-draft", "--count", "0"},
             new String[] {"create-draft", "--count", "-1"},
             new String[] {"create-draft"},
+            new String[] {"create", "--count", "1", "--opponent-type", "company"},
+            new String[] {"create", "--count", "1", "--opponent-count", "0"},
+            new String[] {"create-draft", "--count", "1", "--opponent-count", "0"},
             new String[] {"create-draft", "--count", "1", "--office-code", "invalid"},
             new String[] {"submit-draft"},
             new String[] {"submit-draft", "--application-id", "not-a-uuid"})

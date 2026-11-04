@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.dataaccesstools.cli.applications;
 
 import java.util.concurrent.Callable;
 import picocli.CommandLine;
+import uk.gov.justice.laa.dstew.dataaccesstools.cli.applications.ApplicationRequestFactory.OpponentType;
 
 @CommandLine.Command(
     name = "create-draft",
@@ -22,11 +23,32 @@ public final class CreateApplicationDraftCommand implements Callable<Integer> {
       description = "Provider office code to use for every created application.")
   private String officeCode;
 
+  @CommandLine.Option(
+      names = "--opponent-count",
+      defaultValue = "1",
+      description = "Number of opponents to create on each application (default: 1).")
+  private int opponentCount;
+
+  @CommandLine.Option(
+      names = "--opponent-type",
+      converter = OpponentTypeConverter.class,
+      description = "Force every opponent to be INDIVIDUAL or ORGANISATION (default: random).")
+  private OpponentType opponentType;
+
   @Override
   public Integer call() {
     if (count < 1) {
       throw new CommandLine.ParameterException(new CommandLine(this), "--count must be positive");
     }
-    return applications.root().print(applications.creationWorkflow(officeCode).createDrafts(count));
+    if (opponentCount < 1) {
+      throw new CommandLine.ParameterException(
+          new CommandLine(this), "--opponent-count must be positive");
+    }
+    return applications
+        .root()
+        .print(
+            applications
+                .creationWorkflow(officeCode, opponentCount, opponentType)
+                .createDrafts(count));
   }
 }
