@@ -128,7 +128,7 @@ class AssignWorkItemCoordinatorTest {
     ApplicationGroupRouteResolver groupRoutes = mock(ApplicationGroupRouteResolver.class);
     CommandGateway gateway = mock(CommandGateway.class);
     PlatformTransactionManager transactionManager = mock(PlatformTransactionManager.class);
-    AssignWorkItemCoordinator handler =
+    final AssignWorkItemCoordinator handler =
         coordinator(routes, groupRoutes, gateway, transactionManager);
     UUID id = UUID.randomUUID();
     UUID groupId = UUID.randomUUID();

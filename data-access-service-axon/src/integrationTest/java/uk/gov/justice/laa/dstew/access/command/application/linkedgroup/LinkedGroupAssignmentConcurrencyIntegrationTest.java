@@ -57,7 +57,7 @@ class LinkedGroupAssignmentConcurrencyIntegrationTest extends AbstractLinkedGrou
             ? WorkItemAssigned.class.getName()
             : MemberAddedToGroupEvent.class.getName();
     try (var gate = pauseEvent(eventType)) {
-      CompletableFuture<ResponseEntity<String>> first =
+      final CompletableFuture<ResponseEntity<String>> first =
           CompletableFuture.supplyAsync(
               () ->
                   assignmentFirst
@@ -103,7 +103,7 @@ class LinkedGroupAssignmentConcurrencyIntegrationTest extends AbstractLinkedGrou
     var loserItemId = addressedFirst == AddressedFirst.LEAD ? memberId : leadId;
 
     try (var gate = pauseEvent(WorkItemAssigned.class.getName())) {
-      CompletableFuture<ResponseEntity<String>> first =
+      final CompletableFuture<ResponseEntity<String>> first =
           CompletableFuture.supplyAsync(
               () -> assign(winnerItemId, TestJwtDecoderConfig.CASEWORKER_ID, 0L));
       var firstPid = awaitBlockedBy(gate.backendPid());
@@ -149,7 +149,7 @@ class LinkedGroupAssignmentConcurrencyIntegrationTest extends AbstractLinkedGrou
         assignFirst ? WorkItemAssigned.class.getName() : WorkItemUnassigned.class.getName();
 
     try (var gate = pauseEvent(gatedEvent)) {
-      CompletableFuture<ResponseEntity<String>> first =
+      final CompletableFuture<ResponseEntity<String>> first =
           CompletableFuture.supplyAsync(
               () ->
                   assignFirst
@@ -196,7 +196,7 @@ class LinkedGroupAssignmentConcurrencyIntegrationTest extends AbstractLinkedGrou
                 awaitWorkListAssignee(applicationId, TestJwtDecoderConfig.CASEWORKER_ID, 1L));
 
     try (var gate = pauseEvent(WorkItemUnassigned.class.getName())) {
-      CompletableFuture<ResponseEntity<String>> first =
+      final CompletableFuture<ResponseEntity<String>> first =
           CompletableFuture.supplyAsync(
               () -> unassign(leadId, TestJwtDecoderConfig.CASEWORKER_ID, 1L));
       var firstPid = awaitBlockedBy(gate.backendPid());
@@ -243,7 +243,7 @@ class LinkedGroupAssignmentConcurrencyIntegrationTest extends AbstractLinkedGrou
     var gatedEvent = assignFirst ? WorkItemAssigned.class.getName() : unlinkEvent;
 
     try (var gate = pauseEvent(gatedEvent)) {
-      CompletableFuture<ResponseEntity<String>> first =
+      final CompletableFuture<ResponseEntity<String>> first =
           CompletableFuture.supplyAsync(
               () ->
                   assignFirst

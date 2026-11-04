@@ -96,7 +96,7 @@ class UnassignWorkItemCoordinatorTest {
     ApplicationGroupRouteResolver groupRoutes = mock(ApplicationGroupRouteResolver.class);
     CommandGateway gateway = mock(CommandGateway.class);
     PlatformTransactionManager transactionManager = mock(PlatformTransactionManager.class);
-    UnassignWorkItemCoordinator handler =
+    final UnassignWorkItemCoordinator handler =
         coordinator(routes, groupRoutes, gateway, transactionManager);
     UUID id = UUID.randomUUID();
     UUID groupId = UUID.randomUUID();
