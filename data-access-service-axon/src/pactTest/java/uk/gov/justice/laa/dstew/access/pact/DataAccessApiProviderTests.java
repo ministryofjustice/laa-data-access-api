@@ -63,12 +63,6 @@ public class DataAccessApiProviderTests extends AbstractProviderPactTests {
     states.applicationsExist();
   }
 
-  /** Consumer: laa-civil-decide-api, GET individuals. */
-  @State(PactStates.CLIENT_INDIVIDUAL_EXISTS_FOR_APPLICATION_001)
-  public void clientIndividualExistsForApplication001() {
-    states.clientIndividualExistsForApplication001();
-  }
-
   /** Consumer: laa-apply-for-legal-aid, POST applications. */
   @State(PactStates.NO_MATCHING_SCA_APPLICATION_EXISTS)
   public void noMatchingSpecialChildrenActApplicationExists() {

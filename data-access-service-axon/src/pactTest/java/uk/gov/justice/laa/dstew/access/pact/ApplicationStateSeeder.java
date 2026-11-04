@@ -35,8 +35,6 @@ import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsQuer
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsResult;
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
 import uk.gov.justice.laa.dstew.access.query.application.FindNotesForApplicationQuery;
-import uk.gov.justice.laa.dstew.access.query.individual.FindIndividualsQuery;
-import uk.gov.justice.laa.dstew.access.query.individual.FindIndividualsResult;
 import uk.gov.justice.laa.dstew.access.query.worklist.WorkListItemReadModel;
 import uk.gov.justice.laa.dstew.access.query.worklist.WorkListItemReadRepository;
 import uk.gov.justice.laa.dstew.access.testutils.GeneratedRequestFactory;
@@ -228,21 +226,6 @@ class ApplicationStateSeeder {
                 result != null
                     && result.applications().stream()
                         .anyMatch(app -> applicationId.equals(app.getApplicationId())));
-  }
-
-  /** Waits until the individuals query can return the application's client. */
-  void awaitClientIndividual(UUID applicationId) {
-    await()
-        .atMost(PROJECTION_WAIT)
-        .pollInterval(POLL_INTERVAL)
-        .until(
-            () ->
-                queryGateway
-                    .query(
-                        new FindIndividualsQuery(applicationId, "CLIENT", false, 1, 10),
-                        FindIndividualsResult.class)
-                    .join(),
-            result -> result != null && result.client() != null);
   }
 
   WorkListItemReadModel awaitWorkListItem(
