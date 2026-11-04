@@ -186,6 +186,31 @@ class WorkListIntegrationTest {
   }
 
   @Test
+  void givenPendingApplication_whenListed_thenOnlyThePendingItemIsExcluded() {
+    UUID pendingApplicationId = UUID.randomUUID();
+    createSubmittedApplication(pendingApplicationId);
+    awaitPendingApplicationWorkListItem(pendingApplicationId);
+
+    UUID manualApplicationId = UUID.randomUUID();
+    createSubmittedApplication(manualApplicationId);
+    markApplicationManual(manualApplicationId);
+
+    UUID priorAuthorityParentId = UUID.randomUUID();
+    createGrantedApplication(priorAuthorityParentId);
+    UUID priorAuthorityId = createAndSubmitPriorAuthorityDraft(priorAuthorityParentId);
+
+    await()
+        .atMost(15, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              List<UUID> itemIds =
+                  getWorkList("").getItems().stream().map(WorkListItem::getItemId).toList();
+              assertThat(itemIds).doesNotContain(pendingApplicationId);
+              assertThat(itemIds).contains(manualApplicationId, priorAuthorityId);
+            });
+  }
+
+  @Test
   void givenManualApplicationAssignedToCaseworker_whenDecided_thenItIsRemovedFromTheWorkQueue() {
     UUID applicationId = UUID.randomUUID();
     UUID proceedingId = UUID.randomUUID();
