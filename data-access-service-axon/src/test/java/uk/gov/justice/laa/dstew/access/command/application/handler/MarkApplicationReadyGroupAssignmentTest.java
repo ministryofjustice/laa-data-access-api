@@ -192,6 +192,7 @@ class MarkApplicationReadyGroupAssignmentTest {
   private void givenMember(UUID applicationId, List<Object> events) {
     var aggregate = mock(ApplicationAggregate.class);
     ApplicationState state = stateOf(events);
+    when(aggregate.getApplicationId()).thenReturn(applicationId);
     when(aggregate.getState()).thenReturn(state);
     when(stateManager.loadEntity(ApplicationAggregate.class, applicationId, context))
         .thenReturn(CompletableFuture.completedFuture(aggregate));

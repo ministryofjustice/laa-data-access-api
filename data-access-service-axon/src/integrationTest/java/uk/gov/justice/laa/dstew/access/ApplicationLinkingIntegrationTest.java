@@ -682,6 +682,13 @@ public class ApplicationLinkingIntegrationTest {
     UUID groupId = UUID.randomUUID();
     UUID leadApplicationId = UUID.randomUUID();
     UUID memberApplicationId = UUID.randomUUID();
+    String clientLastName = uniqueClientLastName();
+    createApplication(leadApplicationId, clientLastName);
+    createApplication(memberApplicationId, clientLastName);
+    jdbcTemplate.update(
+        "DELETE FROM axon.application_group_route WHERE application_id IN (?, ?)",
+        leadApplicationId,
+        memberApplicationId);
 
     var command =
         new EstablishLinkedApplicationGroupCommand(

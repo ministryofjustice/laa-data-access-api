@@ -24,9 +24,13 @@ public final class LinkedGroupMembers {
     for (var applicationId : new TreeSet<>(applicationIds)) {
       var aggregate =
           stateManager.loadEntity(ApplicationAggregate.class, applicationId, context).join();
-      loaded.put(
-          applicationId,
-          aggregate == null ? ApplicationState.empty(applicationId) : aggregate.getState());
+      // Membership is only granted to applications validated by the route resolver, and
+      // applications are never deleted, so a missing stream means a broken invariant.
+      if (aggregate == null || aggregate.getApplicationId() == null) {
+        throw new IllegalStateException(
+            "Linked group member application " + applicationId + " has no event stream");
+      }
+      loaded.put(applicationId, aggregate.getState());
     }
     return loaded;
   }

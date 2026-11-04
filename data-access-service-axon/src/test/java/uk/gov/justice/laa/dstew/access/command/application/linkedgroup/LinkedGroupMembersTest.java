@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.command.application.linkedgroup;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -29,6 +30,8 @@ class LinkedGroupMembersTest {
   void givenUnorderedDuplicateIds_whenLoading_thenReturnsStatesInIdOrderOnceEach() {
     var lowerId = UUID.fromString("00000000-0000-0000-0000-000000000001");
     var higherId = UUID.fromString("00000000-0000-0000-0000-000000000002");
+    when(firstAggregate.getApplicationId()).thenReturn(lowerId);
+    when(secondAggregate.getApplicationId()).thenReturn(higherId);
     when(firstAggregate.getState()).thenReturn(firstState);
     when(secondAggregate.getState()).thenReturn(secondState);
     when(stateManager.loadEntity(ApplicationAggregate.class, lowerId, context))
@@ -43,5 +46,27 @@ class LinkedGroupMembersTest {
     assertThat(loaded.values()).containsExactly(firstState, secondState);
     verify(stateManager).loadEntity(ApplicationAggregate.class, lowerId, context);
     verify(stateManager).loadEntity(ApplicationAggregate.class, higherId, context);
+  }
+
+  @Test
+  void givenNoAggregateLoaded_whenLoading_thenThrowsIllegalState() {
+    var applicationId = UUID.randomUUID();
+    when(stateManager.loadEntity(ApplicationAggregate.class, applicationId, context))
+        .thenReturn(CompletableFuture.completedFuture(null));
+
+    assertThatThrownBy(() -> LinkedGroupMembers.load(stateManager, List.of(applicationId), context))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining(applicationId.toString());
+  }
+
+  @Test
+  void givenAggregateWithNoEvents_whenLoading_thenThrowsIllegalState() {
+    var applicationId = UUID.randomUUID();
+    when(stateManager.loadEntity(ApplicationAggregate.class, applicationId, context))
+        .thenReturn(CompletableFuture.completedFuture(firstAggregate));
+
+    assertThatThrownBy(() -> LinkedGroupMembers.load(stateManager, List.of(applicationId), context))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining(applicationId.toString());
   }
 }

@@ -143,6 +143,7 @@ class LinkedApplicationGroupAssignmentHandlerWiringTest {
 
   private void givenApplication(
       UUID applicationId, ApplicationAggregate aggregate, ApplicationState state) {
+    when(aggregate.getApplicationId()).thenReturn(applicationId);
     when(aggregate.getState()).thenReturn(state);
     when(stateManager.loadEntity(eq(ApplicationAggregate.class), eq(applicationId), eq(context)))
         .thenReturn(CompletableFuture.completedFuture(aggregate));

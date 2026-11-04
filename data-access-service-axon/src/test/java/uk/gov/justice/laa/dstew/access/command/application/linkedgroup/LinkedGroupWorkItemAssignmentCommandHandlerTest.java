@@ -177,6 +177,7 @@ class LinkedGroupWorkItemAssignmentCommandHandlerTest {
 
   private void givenApplication(UUID applicationId, ApplicationState state) {
     var aggregate = mock(ApplicationAggregate.class);
+    when(aggregate.getApplicationId()).thenReturn(applicationId);
     when(aggregate.getState()).thenReturn(state);
     when(stateManager.loadEntity(ApplicationAggregate.class, applicationId, context))
         .thenReturn(CompletableFuture.completedFuture(aggregate));

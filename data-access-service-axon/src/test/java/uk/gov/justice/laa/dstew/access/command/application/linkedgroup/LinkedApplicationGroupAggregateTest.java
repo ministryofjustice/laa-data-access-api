@@ -1,10 +1,12 @@
 package uk.gov.justice.laa.dstew.access.command.application.linkedgroup;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static uk.gov.justice.laa.dstew.access.command.application.ApplicationStateEvents.notReady;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.axonframework.test.fixture.AxonTestFixture;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,7 +35,10 @@ class LinkedApplicationGroupAggregateTest {
 
     fixture
         .given()
-        .noPriorActivity()
+        .events(
+            Stream.of(notReady(leadApplicationId), notReady(sourceApplicationId))
+                .flatMap(List::stream)
+                .toArray())
         .when()
         .command(
             new EstablishLinkedApplicationGroupCommand(
@@ -158,12 +163,39 @@ class LinkedApplicationGroupAggregateTest {
     fixture
         .given()
         .events(
+            Stream.of(
+                    List.<Object>of(
+                        new LinkedApplicationGroupCreatedEvent(
+                            groupId, leadId, List.of(leadId, existingMemberId), occurredAt)),
+                    notReady(leadId),
+                    notReady(existingMemberId),
+                    notReady(newMemberId))
+                .flatMap(List::stream)
+                .toArray())
+        .when()
+        .command(new AddApplicationToLinkedGroupCommand(groupId, newMemberId, 0, occurredAt))
+        .then()
+        .events(new MemberAddedToGroupEvent(groupId, leadId, newMemberId, occurredAt));
+  }
+
+  @Test
+  void givenMemberWithNoEventStream_whenAddApplication_thenRejectsWithIllegalState() {
+    UUID groupId = UUID.randomUUID();
+    UUID leadId = UUID.randomUUID();
+    UUID existingMemberId = UUID.randomUUID();
+    UUID newMemberId = UUID.randomUUID();
+    Instant occurredAt = Instant.parse("2026-07-15T08:00:00Z");
+
+    fixture
+        .given()
+        .events(
             new LinkedApplicationGroupCreatedEvent(
                 groupId, leadId, List.of(leadId, existingMemberId), occurredAt))
         .when()
         .command(new AddApplicationToLinkedGroupCommand(groupId, newMemberId, 0, occurredAt))
         .then()
-        .events(new MemberAddedToGroupEvent(groupId, leadId, newMemberId, occurredAt));
+        .exception(IllegalStateException.class)
+        .noEvents();
   }
 
   @Test
