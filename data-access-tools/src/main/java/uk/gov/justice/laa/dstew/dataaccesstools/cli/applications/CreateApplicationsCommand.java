@@ -35,7 +35,7 @@ public final class CreateApplicationsCommand implements Callable<Integer> {
   @CommandLine.Option(
       names = "--opponent-count",
       defaultValue = "1",
-      description = "Number of opponents to create on each application (default: 1).")
+      description = "Number of opponents to create on each application, 0 or more (default: 1).")
   private int opponentCount;
 
   @CommandLine.Option(
@@ -49,9 +49,9 @@ public final class CreateApplicationsCommand implements Callable<Integer> {
     if (count < 1) {
       throw new CommandLine.ParameterException(new CommandLine(this), "--count must be positive");
     }
-    if (opponentCount < 1) {
+    if (opponentCount < 0) {
       throw new CommandLine.ParameterException(
-          new CommandLine(this), "--opponent-count must be positive");
+          new CommandLine(this), "--opponent-count must not be negative");
     }
     return applications
         .root()

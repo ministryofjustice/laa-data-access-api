@@ -89,6 +89,20 @@ class ApplicationsCommandTest {
   }
 
   @Test
+  void allowsZeroOpponents() {
+    assertEquals(0, execute("create-draft", "--count", "1", "--opponent-count", "0"));
+    assertEquals(
+        0,
+        drafts
+            .values()
+            .iterator()
+            .next()
+            .required("applicationContent")
+            .required("opponents")
+            .size());
+  }
+
+  @Test
   void forcesOpponentTypeWithOnlyItsRequiredFields() {
     assertEquals(
         0,
@@ -262,8 +276,8 @@ class ApplicationsCommandTest {
             new String[] {"create-draft", "--count", "-1"},
             new String[] {"create-draft"},
             new String[] {"create", "--count", "1", "--opponent-type", "company"},
-            new String[] {"create", "--count", "1", "--opponent-count", "0"},
-            new String[] {"create-draft", "--count", "1", "--opponent-count", "0"},
+            new String[] {"create", "--count", "1", "--opponent-count", "-1"},
+            new String[] {"create-draft", "--count", "1", "--opponent-count", "-1"},
             new String[] {"create-draft", "--count", "1", "--office-code", "invalid"},
             new String[] {"submit-draft"},
             new String[] {"submit-draft", "--application-id", "not-a-uuid"})

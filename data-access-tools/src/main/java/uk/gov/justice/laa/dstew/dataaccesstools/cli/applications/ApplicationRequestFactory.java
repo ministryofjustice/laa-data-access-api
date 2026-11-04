@@ -56,8 +56,8 @@ public final class ApplicationRequestFactory {
   /** A null {@code opponentType} randomises the type of each generated opponent. */
   public ApplicationRequestFactory(
       long seed, String officeCode, int opponentCount, OpponentType opponentType) {
-    if (opponentCount < 1) {
-      throw new IllegalArgumentException("opponentCount must be positive");
+    if (opponentCount < 0) {
+      throw new IllegalArgumentException("opponentCount must not be negative");
     }
     this.opponentCount = opponentCount;
     this.opponentType = opponentType;
