@@ -157,15 +157,19 @@ content, defaults or `{}` after erasure, and when read with kept fields only.
 **Invariant:** with all content erased, every aggregate loads and every command decides as it
 would with content. `ErasureReplayTest` folds Application and Prior Authority histories through
 the real evolve functions with and without content and compares the states and decider outcomes.
+The one deliberate exception is an Application draft: its content is what submit turns into the
+Application, so a draft whose content is erased counts as no draft and submit and upload return
+not found.
 
 | Event | Content |
 |---|---|
 | `ApplicationCreated` | `potentialDuplicates` (links this person to other applications). Gains the kept `laaReference`. |
-| `ApplicationDocumentUploaded` | `documentType`, `size`, `contentType`, `sourceService`, `fileSuffix` |
+| `ApplicationDraftStarted` | `applicationContent`, `serialisedRequest`, `potentialDuplicates`. Gains the kept `status` and `laaReference`. |
+| `ApplicationDocumentUploaded` | `documentType`, `size`, `contentType`, `sourceService`, `fileSuffix`, `originalFilename` |
 | `PriorAuthorityDocumentUploaded` | `size`, `contentType`, `sourceService`, `fileSuffix` |
 | `PriorAuthorityDocumentTypeUpdated` | `documentType` |
 | `PriorAuthorityDecisionMade` | `decisionJustification`, `amountGranted`, `dateGranted` |
-| The other 16 event types | None |
+| The other 15 event types | None |
 
 `fileSuffix` can hold part of a filename, so it is content. Once erased, deleting a Prior
 Authority document cannot build the SDS filename; that clean-up is best-effort and logged, and
@@ -296,7 +300,9 @@ Snapshots require an erasure design first.
 
 This layer moves no content into events that was not there already. Later layers:
 
-1. move draft content into events and remove `ApplicationDraftStore`;
+1. move draft content into events and remove `ApplicationDraftStore` (done: Application draft
+   content and upload filenames are event content; submit and the upload pre-check read the draft
+   from the aggregate, and the projection records draft filenames for document downloads);
 2. move submitted content into events, read application details from the aggregate and remove
    `ApplicationDataStore`;
 3. do the same for Prior Authority drafts, submissions and decisions;

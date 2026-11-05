@@ -37,8 +37,6 @@ import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftPayload;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftStore;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationNote;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftStartedEvent;
@@ -70,7 +68,6 @@ class ApplicationProjectionTest {
   @Mock private ApplicationDataStore applicationDataStore;
   @Mock private ApplicationListIndexReadRepository listIndexRepository;
   @Mock private PriorAuthorityReadRepository priorAuthorityReadRepository;
-  @Mock private ApplicationDraftStore draftStore;
   @Mock private ApplicationReadQueryGateway applicationReadQueryGateway;
   @Mock private ApplicationCurrentStateAccessPolicy currentStateAccessPolicy;
   @Mock private ApplicationListIndexAccessPolicy listIndexAccessPolicy;
@@ -82,7 +79,6 @@ class ApplicationProjectionTest {
         new ApplicationProjection(
             applicationReadRepository,
             applicationDataStore,
-            draftStore,
             applicationReadQueryGateway,
             currentStateAccessPolicy,
             listIndexAccessPolicy,
@@ -224,6 +220,21 @@ class ApplicationProjectionTest {
     assertThat(document.storageFilename()).isEqualTo(documentId + ".PDF");
   }
 
+  private ApplicationDraftStartedEvent draftStarted(
+      UUID applicationId, Instant occurredAt, String officeCode) {
+    return new ApplicationDraftStartedEvent(
+        applicationId,
+        3,
+        "fingerprint",
+        occurredAt,
+        officeCode,
+        "APPLICATION_SUBMITTED",
+        "LAA-123",
+        Map.of(),
+        "{}",
+        List.of());
+  }
+
   private ApplicationReadModel documentReadModel(UUID applicationId, DocumentMetadata document) {
     return ApplicationReadModel.builder()
         .applicationId(applicationId)
@@ -253,11 +264,7 @@ class ApplicationProjectionTest {
       when(applicationDataStore.getAll(List.of(id))).thenReturn(Map.of(id, payload));
     } else {
       when(applicationDataStore.getAll(List.of(id))).thenReturn(Map.of());
-      when(draftStore.find(application.getApplicationId()))
-          .thenReturn(
-              Optional.of(
-                  new ApplicationDraftPayload(
-                      "APPLICATION_SUBMITTED", "LAA-123", Map.of(), "{}", List.of(), filenames)));
+      application.setDraftDocumentFilenames(filenames);
     }
   }
 
@@ -269,8 +276,7 @@ class ApplicationProjectionTest {
     when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.empty());
     when(applicationReadRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-    projection.on(
-        new ApplicationDraftStartedEvent(applicationId, 3, "fingerprint", occurredAt, officeCode));
+    projection.on(draftStarted(applicationId, occurredAt, officeCode));
 
     ArgumentCaptor<ApplicationReadModel> saved =
         ArgumentCaptor.forClass(ApplicationReadModel.class);
@@ -291,8 +297,7 @@ class ApplicationProjectionTest {
     when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.empty());
     when(applicationReadRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-    projection.on(
-        new ApplicationDraftStartedEvent(applicationId, 1, "fingerprint", Instant.now(), "1A001B"));
+    projection.on(draftStarted(applicationId, Instant.now(), "1A001B"));
     ArgumentCaptor<ApplicationReadModel> draft =
         ArgumentCaptor.forClass(ApplicationReadModel.class);
     verify(applicationReadRepository).save(draft.capture());
@@ -339,15 +344,16 @@ class ApplicationProjectionTest {
         ApplicationDataPayload.from(applicationCreationDetails(applicationId));
     when(applicationDataStore.get(applicationId, event.applicationDataVersion())).thenReturn(data);
 
-    projection.on(
-        new ApplicationDraftStartedEvent(applicationId, 1, "fingerprint", draftStartedAt, null));
+    projection.on(draftStarted(applicationId, draftStartedAt, null));
     ApplicationReadModel savedDraft = draft[0];
+    savedDraft.setDraftDocumentFilenames(Map.of(UUID.randomUUID(), "draft evidence.pdf"));
     when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(savedDraft));
 
     projection.on(event);
 
     assertThat(draft[0].getCreatedAt()).isEqualTo(draftStartedAt);
     assertThat(draft[0].getSubmittedAt()).isEqualTo(event.occurredAt());
+    assertThat(draft[0].getDraftDocumentFilenames()).isNull();
   }
 
   @Test
@@ -373,6 +379,63 @@ class ApplicationProjectionTest {
 
     assertThat(application.getApplicationDataVersion()).isEqualTo(4L);
     assertThat(application.getUploadedDocuments()).hasSize(1);
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void givenDocumentUploadWithFilename_whenProjected_thenRecordsFilenameOnlyForDrafts(
+      boolean submitted) {
+    UUID applicationId = UUID.randomUUID();
+    UUID earlierDocumentId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    ApplicationReadModel application =
+        ApplicationReadModel.builder()
+            .applicationId(applicationId)
+            .submittedAt(submitted ? Instant.now() : null)
+            .draftDocumentFilenames(submitted ? null : Map.of(earlierDocumentId, "earlier.pdf"))
+            .build();
+    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(application));
+
+    projection.on(documentUploaded(applicationId, documentId, "evidence.pdf"));
+    projection.on(documentUploaded(applicationId, UUID.randomUUID(), null));
+
+    if (submitted) {
+      assertThat(application.getDraftDocumentFilenames()).isNull();
+    } else {
+      assertThat(application.getDraftDocumentFilenames())
+          .containsExactlyInAnyOrderEntriesOf(
+              Map.of(earlierDocumentId, "earlier.pdf", documentId, "evidence.pdf"));
+    }
+  }
+
+  @Test
+  void givenFirstDraftUploadWithFilename_whenProjected_thenStartsFilenameMap() {
+    UUID applicationId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    ApplicationReadModel application =
+        ApplicationReadModel.builder().applicationId(applicationId).build();
+    when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(application));
+
+    projection.on(documentUploaded(applicationId, documentId, "evidence.pdf"));
+
+    assertThat(application.getDraftDocumentFilenames())
+        .containsExactlyEntriesOf(Map.of(documentId, "evidence.pdf"));
+  }
+
+  private ApplicationDocumentUploadedEvent documentUploaded(
+      UUID applicationId, UUID documentId, String originalFilename) {
+    return new ApplicationDocumentUploadedEvent(
+        applicationId,
+        documentId,
+        "GATEWAY_EVIDENCE",
+        Instant.now(),
+        12L,
+        "application/pdf",
+        "checksum",
+        "CIVIL_APPLY",
+        null,
+        ".pdf",
+        originalFilename);
   }
 
   @Test

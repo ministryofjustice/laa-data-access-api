@@ -9,7 +9,6 @@ import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadCommand;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadedEvent;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftStore;
 import uk.gov.justice.laa.dstew.access.document.DocumentFileSuffix;
 import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
@@ -23,14 +22,12 @@ public class ApplicationDocumentUploadCommandHandler {
   public UUID handle(
       ApplicationDocumentUploadCommand command,
       @InjectEntity(idProperty = "applicationId") ApplicationAggregate application,
-      ApplicationDraftStore draftStore,
       EventAppender eventAppender) {
     ApplicationCommandHandlerSupport.requireApplicationDraft(application);
     if (command.originalFilename() == null || command.originalFilename().isBlank()) {
       throw new ValidationException(List.of("Original filename is required"));
     }
-    var current =
-        ApplicationCommandHandlerSupport.requireDraft(command.applicationId(), draftStore);
+    ApplicationCommandHandlerSupport.requireDraft(application, command.applicationId());
     boolean existing =
         application.getState().getUploadedDocuments().stream()
             .map(DocumentMetadata::documentId)
@@ -39,11 +36,6 @@ public class ApplicationDocumentUploadCommandHandler {
       throw new ValidationException(List.of("Document ID already records a different upload"));
     }
 
-    draftStore.upsert(
-        command.applicationId(),
-        current.withDocumentFilename(command.documentId(), command.originalFilename()),
-        current.serialisedRequest(),
-        command.uploadedAt());
     eventAppender.append(
         new ApplicationDocumentUploadedEvent(
             command.applicationId(),
@@ -55,7 +47,8 @@ public class ApplicationDocumentUploadCommandHandler {
             command.checksum(),
             command.sourceService(),
             null,
-            DocumentFileSuffix.fromFilename(command.originalFilename())));
+            DocumentFileSuffix.fromFilename(command.originalFilename()),
+            command.originalFilename()));
     return command.documentId();
   }
 }
