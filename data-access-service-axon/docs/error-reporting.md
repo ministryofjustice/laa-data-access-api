@@ -196,17 +196,3 @@ this" signal the design intends.
 | `MethodArgumentNotValidException` | #4 | WARN | No | No |
 | Axon `EntityNotFoundException` (exact class name) | #5 | WARN | No | No |
 | Anything else (`RuntimeException`, `NullPointerException`, infra errors, etc.) | none | ERROR | **Yes** | Yes |
-
-## Points worth flagging in review
-
-1. **Name-based matching (rule #5) is brittle** — it only matches the exact class; subclasses or
-   renamed/relocated classes silently fall through to ERROR/Sentry.
-2. **The rule set is centralized but closed** — adding a new "expected" exception type requires
-   either implementing `ClientFacingException` (first-party) or editing the hardcoded
-   `CLIENT_FACING_FRAMEWORK_TYPE_NAMES` set (third-party) in this shared module; there's no
-   extension point for consuming services to register their own types without modifying shared
-   code.
-3. **`IllegalArgumentException` is a very broad JDK type** — any library or internal code throwing
-   it for non-client reasons would be unintentionally downgraded to WARN/no-Sentry.
-4. **Correlation ID relies on MDC being populated upstream** — if the request filter/MDC-population
-   step hasn't run, `correlationId` logs as `null` on both paths, weakening incident correlation.
