@@ -47,6 +47,7 @@ paths:
       tags:
         - work-list-command
       summary: Assign an open work-list item to the authenticated caseworker
+      description: When the item is an application in a linked group, every active member of the group is assigned to the caller in the same request; the request fails without changes if any member cannot be assigned.
       operationId: assignWorkListItem
       parameters:
         - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
@@ -70,13 +71,14 @@ paths:
         "401": { description: Unauthorized }
         "403": { description: Forbidden }
         "404": { description: Work item or route not found }
-        "409": { description: Assignment version is stale or item is not open }
+        "409": { description: Assignment version is stale, the item is already assigned, or the linked group changed during the request }
 
   /api/v0/work-list/{itemId}/unassign:
     post:
       tags:
         - work-list-command
       summary: Return an assigned work-list item to the unassigned list
+      description: When the item is an application in a linked group, every assigned active member of the group is unassigned in the same request.
       operationId: unassignWorkListItem
       parameters:
         - $ref: "../open-api-common/components.yml#/components/parameters/XServiceName"
@@ -99,4 +101,4 @@ paths:
         "401": { description: Unauthorized }
         "403": { description: Forbidden }
         "404": { description: Work item or route not found }
-        "409": { description: Assignment version is stale or item is not assigned }
+        "409": { description: Assignment version is stale, the item is not assigned, or the linked group changed during the request }

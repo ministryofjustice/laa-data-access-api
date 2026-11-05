@@ -24,6 +24,16 @@ public interface ApplicationGroupRouteRepository
       """)
   List<ApplicationGroupRoute> findAllByApplicationIdInForUpdate(Collection<UUID> applicationIds);
 
+  /** Reads the application identifiers currently routed to a group in ascending order. */
+  @Query(
+      """
+      select route.applicationId
+      from ApplicationGroupRoute route
+      where route.groupId = :groupId
+      order by route.applicationId
+      """)
+  List<UUID> findApplicationIdsByGroupId(UUID groupId);
+
   /** Locks every route in the supplied group in ascending application identifier order. */
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query(

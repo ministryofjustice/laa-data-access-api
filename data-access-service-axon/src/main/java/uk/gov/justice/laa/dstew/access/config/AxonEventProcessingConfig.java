@@ -68,14 +68,6 @@ public class AxonEventProcessingConfig {
             configuration -> configuration.errorHandler(PropagatingErrorHandler.instance()));
   }
 
-  /** Handles linked group assignment synchronization synchronously within the event transaction. */
-  @Bean
-  EventProcessorDefinition linkedGroupAssignmentProcessor() {
-    return EventProcessorDefinition.subscribingMatching("linkedGroupAssignment")
-        .customized(
-            configuration -> configuration.errorHandler(PropagatingErrorHandler.instance()));
-  }
-
   private EventProcessorDefinition pooledStreamingProcessor(String processingGroup) {
     return EventProcessorDefinition.pooledStreamingMatching(processingGroup)
         .customized(
