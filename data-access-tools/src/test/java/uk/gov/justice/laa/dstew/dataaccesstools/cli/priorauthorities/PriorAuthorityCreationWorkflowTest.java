@@ -61,12 +61,14 @@ class PriorAuthorityCreationWorkflowTest {
   @Test
   void createsAndSubmitsEachSelectedPriorAuthority() {
     List<String> operations = new ArrayList<>();
+    List<String> applicationDraftRequests = new ArrayList<>();
     UUID priorAuthorityId = UUID.randomUUID();
     DataAccessApiClient client =
         new DataAccessApiClient() {
           @Override
           public UUID createApplicationDraft(String requestBody) {
             operations.add("application-draft");
+            applicationDraftRequests.add(requestBody);
             try {
               return UUID.fromString(
                   new ObjectMapper().readTree(requestBody).required("id").asText());
@@ -129,7 +131,7 @@ class PriorAuthorityCreationWorkflowTest {
         new PriorAuthorityCreationWorkflow(
                 client,
                 new PriorAuthorityRequestFactory(),
-                new ApplicationRequestFactory(),
+                new ApplicationRequestFactory(42L, "1A234B"),
                 new DecisionRequestFactory())
             .createSubmitted(1, PriorAuthorityTypeSelector.EXPERT);
 
@@ -148,5 +150,6 @@ class PriorAuthorityCreationWorkflowTest {
         operations);
     assertEquals(priorAuthorityId, result.items().getFirst().priorAuthorityId());
     assertEquals("SUBMITTED", result.items().getFirst().state());
+    assertTrue(applicationDraftRequests.getFirst().contains("\"officeCode\":\"1A234B\""));
   }
 }

@@ -5,6 +5,7 @@ import java.util.UUID;
 import org.axonframework.messaging.commandhandling.annotation.Command;
 import org.axonframework.modelling.annotation.TargetEntityId;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
+import uk.gov.justice.laa.dstew.access.security.CallerCommand;
 
 /** Command that removes a document from a prior-authority draft. */
 @Command(routingKey = "priorAuthorityId")
@@ -12,7 +13,8 @@ public record PriorAuthorityDocumentDeleteCommand(
     @TargetEntityId UUID priorAuthorityId,
     UUID documentId,
     Instant occurredAt,
-    AuthenticatedCaller caller) {
+    AuthenticatedCaller caller)
+    implements CallerCommand {
 
   /** Temporary source-compatible constructor for non-HTTP command fixtures. */
   @Deprecated(forRemoval = true)

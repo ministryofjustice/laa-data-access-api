@@ -39,7 +39,7 @@ The previous creation commands have been removed, without compatibility aliases:
 | `applications create-granted --count N` | `applications create --count N --outcome granted` |
 | `applications create-refused --count N` | `applications create --count N --outcome refused` |
 
-Prior-authority commands require `--type` with `EXPERT`, `DISBURSEMENT`, `COUNSEL`, or `ALL`; `--count` is the number created for each selected type. `create-drafts` requires an existing granted application and leaves the generated prior authorities as drafts. `create-submitted` creates and submits a parent application through the draft API, waits for its read model, assigns it to the Swagger token's authenticated user, records a granted decision, creates a prior-authority draft, saves valid type-specific content, and submits it. Each result line labels its `applicationId`, `priorAuthorityId`, and state.
+Prior-authority commands require `--type` with `EXPERT`, `DISBURSEMENT`, `COUNSEL`, or `ALL`; `--count` is the number created for each selected type. `create-drafts` requires an existing granted application and leaves the generated prior authorities as drafts. `create-submitted` creates and submits a parent application through the draft API, waits for its read model, assigns it to the Swagger token's authenticated user, records a granted decision, creates a prior-authority draft, saves valid type-specific content, and submits it. Its optional `--office-code` is applied to each parent application it creates. Each result line labels its `applicationId`, `priorAuthorityId`, and state.
 
 Assignment uses the public work-list API and therefore requires the current `assignmentVersion`; it returns a conflict if the item changes before the write. The `local` commands read the JDBC-backed Axon `domain_event_entry` table directly. They default to the `axon` schema and `postgres` credentials, accept `--axon-schema`, `--db-username`, and `--db-password` overrides, and may display sensitive event payloads.
 
@@ -103,10 +103,10 @@ data-access-tools/build/install/data-access-tools/bin/data-access-tools \
   prior-authorities create-drafts --application-id 44ade549-09c8-432e-90ff-1fe18f39624a \
   --type ALL --count 2
 
-# Create submitted EXPERT prior authorities end-to-end (own application, assignment, decision)
+# Create submitted EXPERT prior authorities end-to-end with parent applications in one provider office
 data-access-tools/build/install/data-access-tools/bin/data-access-tools \
   --api-url http://localhost:8082 \
-  prior-authorities create-submitted --type EXPERT --count 10
+  prior-authorities create-submitted --type EXPERT --count 10 --office-code 1A234B
 
 # Assign an application work-list item to the Swagger token's authenticated user
 data-access-tools/build/install/data-access-tools/bin/data-access-tools \

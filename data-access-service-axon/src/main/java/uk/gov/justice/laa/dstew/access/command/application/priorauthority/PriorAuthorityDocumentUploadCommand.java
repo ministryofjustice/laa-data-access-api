@@ -5,6 +5,7 @@ import java.util.UUID;
 import org.axonframework.messaging.commandhandling.annotation.Command;
 import org.axonframework.modelling.annotation.TargetEntityId;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedCaller;
+import uk.gov.justice.laa.dstew.access.security.CallerCommand;
 
 /** Command that records a prior-authority document after SDS accepts its content. */
 @Command(routingKey = "priorAuthorityId")
@@ -17,7 +18,8 @@ public record PriorAuthorityDocumentUploadCommand(
     String originalFilename,
     Long fileSize,
     String contentType,
-    AuthenticatedCaller caller) {
+    AuthenticatedCaller caller)
+    implements CallerCommand {
 
   /** Temporary source-compatible constructor for non-HTTP command fixtures. */
   @Deprecated(forRemoval = true)

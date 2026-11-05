@@ -4,6 +4,7 @@ import java.util.concurrent.Callable;
 import picocli.CommandLine;
 import uk.gov.justice.laa.dstew.dataaccesstools.cli.applications.ApplicationRequestFactory;
 import uk.gov.justice.laa.dstew.dataaccesstools.cli.applications.DecisionRequestFactory;
+import uk.gov.justice.laa.dstew.dataaccesstools.cli.applications.OfficeCodeConverter;
 
 @CommandLine.Command(
     name = "create-submitted",
@@ -24,6 +25,12 @@ public final class CreateSubmittedPriorAuthoritiesCommand implements Callable<In
       description = "Number to create per selected type.")
   private int count;
 
+  @CommandLine.Option(
+      names = "--office-code",
+      converter = OfficeCodeConverter.class,
+      description = "Provider office code to use for every created application.")
+  private String officeCode;
+
   @Override
   public Integer call() {
     if (count < 1) {
@@ -33,7 +40,7 @@ public final class CreateSubmittedPriorAuthoritiesCommand implements Callable<In
         new PriorAuthorityCreationWorkflow(
             priorAuthorities.root().client(),
             new PriorAuthorityRequestFactory(),
-            new ApplicationRequestFactory(),
+            new ApplicationRequestFactory(priorAuthorities.root().seed(), officeCode),
             new DecisionRequestFactory());
     return priorAuthorities.root().print(workflow.createSubmitted(count, type));
   }
