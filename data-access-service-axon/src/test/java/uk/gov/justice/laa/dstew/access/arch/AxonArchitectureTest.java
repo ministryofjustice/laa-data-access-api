@@ -230,4 +230,24 @@ class AxonArchitectureTest {
             .allowEmptyShould(true);
     rule.check(classes);
   }
+
+  @Test
+  void dataStoreClassesMustDependOnErrorReporter() {
+    // *DataStore classes read JSON payload columns (e.g. @JdbcTypeCode(SqlTypes.JSON)) and must
+    // report repository/deserialization failures via ErrorReporter so every DataStore reports
+    // consistently to Sentry, rather than relying on individual authors to remember to wire it up
+    // when adding a new sibling class (see PriorAuthorityDataStore, which was missed for this
+    // reason until this rule was introduced).
+    ArchRule rule =
+        classes()
+            .that()
+            .resideInAPackage("..command..data..")
+            .and()
+            .haveSimpleNameEndingWith("DataStore")
+            .should()
+            .dependOnClassesThat()
+            .areAssignableTo(uk.gov.justice.laa.dstew.access.observability.ErrorReporter.class)
+            .allowEmptyShould(true);
+    rule.check(classes);
+  }
 }

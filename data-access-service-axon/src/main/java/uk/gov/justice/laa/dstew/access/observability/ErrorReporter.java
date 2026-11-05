@@ -29,6 +29,16 @@ import org.springframework.stereotype.Component;
  * PropagatingErrorHandler} for Axon's normal rethrow/retry/abort handling. See {@code
  * uk.gov.justice.laa.dstew.access.config.AxonEventProcessingConfig} and {@code
  * ReportingErrorHandler} for details.
+ *
+ * <p><strong>Convention for {@code *DataStore} classes:</strong> any class reading a JSON payload
+ * column (for example {@code @JdbcTypeCode(SqlTypes.JSON)}) must depend on {@code ErrorReporter}
+ * and wrap its reads so that repository failures and JSON deserialization failures are reported
+ * here before being rethrown — see {@code ApplicationDataStore}/{@code PriorAuthorityDataStore} for
+ * the reference pattern. This is enforced for all {@code *DataStore} classes in {@code
+ * ..command..data..} packages by {@code
+ * AxonArchitectureTest#dataStoreClassesMustDependOnErrorReporter}; when adding a new {@code
+ * *DataStore} class, follow the same pattern rather than relying on this rule to merely flag its
+ * absence after the fact.
  */
 @Component
 @Slf4j
