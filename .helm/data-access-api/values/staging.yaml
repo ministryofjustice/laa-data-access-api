@@ -67,7 +67,11 @@ grafana:
 
 slowQueryThresholdSeconds: 1
 
-featureFlags: {}
+featureFlags:
+  # Enable dev token feature to allow swagger-caseworker-token
+  enable_dev_token: "true"
+  # Keep security enabled (JWT validation active)
+  disable_security: "false"
 
 aws:
   integrationEvents:
