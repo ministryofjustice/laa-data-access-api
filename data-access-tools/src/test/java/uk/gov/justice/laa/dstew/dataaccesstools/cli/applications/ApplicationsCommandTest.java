@@ -15,8 +15,11 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
@@ -70,99 +73,57 @@ class ApplicationsCommandTest {
   @Test
   void createsOneOpponentByDefaultAndHonoursOpponentCount() {
     assertEquals(0, execute("create-draft", "--count", "1"));
-    assertEquals(
-        1,
-        drafts
-            .values()
-            .iterator()
-            .next()
-            .required("applicationContent")
-            .required("opponents")
-            .size());
+    assertEquals(1, onlyDraftOpponents().size());
 
     drafts.clear();
     assertEquals(0, execute("create-draft", "--count", "1", "--opponent-count", "3"));
-    JsonNode opponents =
-        drafts.values().iterator().next().required("applicationContent").required("opponents");
-    assertEquals(3, opponents.size());
-    assertEquals("INDIVIDUAL", opponents.get(2).required("opponentType").asText());
+    assertEquals(3, onlyDraftOpponents().size());
   }
 
   @Test
   void allowsZeroOpponents() {
     assertEquals(0, execute("create-draft", "--count", "1", "--opponent-count", "0"));
-    assertEquals(
-        0,
-        drafts
-            .values()
-            .iterator()
-            .next()
-            .required("applicationContent")
-            .required("opponents")
-            .size());
+    assertEquals(0, onlyDraftOpponents().size());
   }
 
-  @Test
-  void forcesOpponentTypeWithOnlyItsRequiredFields() {
+  @ParameterizedTest
+  @MethodSource("forcedOpponentTypes")
+  void forcesOpponentTypeWithOnlyItsRequiredFields(
+      String option, String expectedType, List<String> presentFields, List<String> absentFields) {
     assertEquals(
         0,
         execute(
-            "create-draft",
-            "--count",
-            "1",
-            "--opponent-count",
-            "5",
-            "--opponent-type",
-            "organisation"));
-    JsonNode opponents =
-        drafts.values().iterator().next().required("applicationContent").required("opponents");
+            "create-draft", "--count", "1", "--opponent-count", "5", "--opponent-type", option));
+    JsonNode opponents = onlyDraftOpponents();
     assertEquals(5, opponents.size());
     opponents.forEach(
         opponent -> {
-          assertEquals("ORGANISATION", opponent.required("opponentType").asText());
-          assertFalse(opponent.required("organisationName").asText().isBlank());
-          assertFalse(opponent.has("firstName"));
-          assertFalse(opponent.has("lastName"));
+          assertEquals(expectedType, opponent.required("opponentType").asText());
+          presentFields.forEach(field -> assertFalse(opponent.required(field).asText().isBlank()));
+          absentFields.forEach(field -> assertFalse(opponent.has(field)));
         });
+  }
 
-    drafts.clear();
-    assertEquals(
-        0,
-        execute(
-            "create-draft",
-            "--count",
-            "1",
-            "--opponent-count",
-            "5",
-            "--opponent-type",
-            "INDIVIDUAL"));
-    drafts
-        .values()
-        .iterator()
-        .next()
-        .required("applicationContent")
-        .required("opponents")
-        .forEach(
-            opponent -> {
-              assertEquals("INDIVIDUAL", opponent.required("opponentType").asText());
-              assertFalse(opponent.required("firstName").asText().isBlank());
-              assertFalse(opponent.required("lastName").asText().isBlank());
-              assertFalse(opponent.has("organisationName"));
-            });
+  static Stream<Arguments> forcedOpponentTypes() {
+    return Stream.of(
+        Arguments.of(
+            "organisation",
+            "ORGANISATION",
+            List.of("organisationName"),
+            List.of("firstName", "lastName")),
+        Arguments.of(
+            "INDIVIDUAL",
+            "INDIVIDUAL",
+            List.of("firstName", "lastName"),
+            List.of("organisationName")));
   }
 
   @Test
   void randomisesOpponentTypesByDefault() {
     assertEquals(0, execute("create-draft", "--count", "1", "--opponent-count", "50"));
-    var types = new java.util.HashSet<String>();
-    drafts
-        .values()
-        .iterator()
-        .next()
-        .required("applicationContent")
-        .required("opponents")
-        .forEach(opponent -> types.add(opponent.required("opponentType").asText()));
-    assertEquals(java.util.Set.of("INDIVIDUAL", "ORGANISATION"), types);
+    var types = new HashSet<String>();
+    onlyDraftOpponents().forEach(opponent -> types.add(opponent.required("opponentType").asText()));
+    assertEquals(Set.of("INDIVIDUAL", "ORGANISATION"), types);
   }
 
   @Test
@@ -186,7 +147,7 @@ class ApplicationsCommandTest {
             "--count",
             "1",
             "--outcome",
-            outcome.name().toLowerCase(java.util.Locale.ROOT),
+            outcome.name().toLowerCase(Locale.ROOT),
             "--office-code",
             "1A234B"));
     List<String> methods = requests.stream().map(Request::method).toList();
@@ -293,9 +254,13 @@ class ApplicationsCommandTest {
     assertTrue(output.toString().contains("create-draft"));
     assertTrue(output.toString().contains("submit-draft"));
     assertEquals(
-        java.util.Set.of("create", "create-draft", "submit-draft", "make-decision", "assign"),
+        Set.of("create", "create-draft", "submit-draft", "make-decision", "assign"),
         command.getSubcommands().get("applications").getSubcommands().keySet());
     assertTrue(requests.isEmpty());
+  }
+
+  private JsonNode onlyDraftOpponents() {
+    return drafts.values().iterator().next().required("applicationContent").required("opponents");
   }
 
   private int execute(String... arguments) {
