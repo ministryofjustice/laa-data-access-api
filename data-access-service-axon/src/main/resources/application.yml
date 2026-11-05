@@ -98,10 +98,6 @@ laa:
               },
               {
                 "method": ["GET"],
-                "uri": "/api/v*/individuals"
-              },
-              {
-                "method": ["GET"],
                 "uri": "/api/v*/prior-authorities/**"
               },
               {
