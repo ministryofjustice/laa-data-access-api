@@ -16,7 +16,7 @@ import org.awaitility.Awaitility;
 import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftStore;
+import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftExistsQuery;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.document.DeletePriorAuthorityDocumentUseCase;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityResult;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
@@ -38,7 +38,6 @@ class PactProviderBootCheckTest extends AbstractProviderPactTests {
   @Autowired private QueryGateway queryGateway;
   @Autowired private DeletePriorAuthorityDocumentUseCase deleteDocumentUseCase;
   @Autowired private AuthenticatedCallerFactory authenticatedCallerFactory;
-  @Autowired private ApplicationDraftStore applicationDraftStore;
 
   @Test
   void everyApplicationStateCanBeSeeded() {
@@ -80,8 +79,8 @@ class PactProviderBootCheckTest extends AbstractProviderPactTests {
     UUID second = applicationDraft(states.newApplicationDraftExists());
 
     assertThat(first).isNotEqualTo(second);
-    assertThat(applicationDraftStore.find(first)).isPresent();
-    assertThat(applicationDraftStore.find(second)).isPresent();
+    assertThat(draftExists(first)).isTrue();
+    assertThat(draftExists(second)).isTrue();
   }
 
   @Test
@@ -216,5 +215,9 @@ class PactProviderBootCheckTest extends AbstractProviderPactTests {
       strings.add((String) field.get(null));
     }
     return strings;
+  }
+
+  private boolean draftExists(UUID applicationId) {
+    return queryGateway.query(new ApplicationDraftExistsQuery(applicationId), Boolean.class).join();
   }
 }
