@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.dataaccesstools.cli.applications;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.HashSet;
@@ -14,6 +15,7 @@ import net.datafaker.Faker;
 
 public final class ApplicationRequestFactory {
 
+  private static final ObjectMapper JSON = new ObjectMapper();
   private static final String REFERENCE_PATTERN =
       "L-[0-9ABCDEFHJKLMNPRTUVWXY]{3}-[0-9ABCDEFHJKLMNPRTUVWXY]{3}";
 
@@ -124,16 +126,16 @@ public final class ApplicationRequestFactory {
   }
 
   private String randomOpponent() {
-    OpponentType type =
-        opponentType != null ? opponentType : faker.options().option(OpponentType.class);
-    return switch (type) {
+    var type = opponentType != null ? opponentType : faker.options().option(OpponentType.class);
+    var opponent = JSON.createObjectNode().put("opponentType", type.name());
+    switch (type) {
       case INDIVIDUAL ->
-          "{\"opponentType\":\"INDIVIDUAL\",\"firstName\":\"%s\",\"lastName\":\"%s\"}"
-              .formatted(faker.name().firstName(), faker.name().lastName());
-      case ORGANISATION ->
-          "{\"opponentType\":\"ORGANISATION\",\"organisationName\":\"%s\"}"
-              .formatted(faker.company().name().replace("\"", "\\\""));
-    };
+          opponent
+              .put("firstName", faker.name().firstName())
+              .put("lastName", faker.name().lastName());
+      case ORGANISATION -> opponent.put("organisationName", faker.company().name());
+    }
+    return opponent.toString();
   }
 
   private String generateReference() {
