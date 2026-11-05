@@ -159,7 +159,7 @@ public class WorkListProjection {
               items.save(item);
             },
             () ->
-                log.warn(
+                log.error(
                     "Cannot assign missing work-list item: id={}, type={}",
                     event.workItemId(),
                     event.workItemType()));
@@ -181,7 +181,7 @@ public class WorkListProjection {
               items.save(item);
             },
             () ->
-                log.warn(
+                log.error(
                     "Cannot unassign missing work-list item: id={}, type={}",
                     event.workItemId(),
                     event.workItemType()));

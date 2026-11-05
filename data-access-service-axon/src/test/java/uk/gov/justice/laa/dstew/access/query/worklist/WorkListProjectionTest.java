@@ -425,7 +425,7 @@ class WorkListProjectionTest {
   }
 
   @Test
-  void givenMissingWorkItem_whenAssigned_thenLogsWarningAndDoesNotSave() {
+  void givenMissingWorkItem_whenAssigned_thenLogsErrorAndDoesNotSave() {
     UUID itemId = UUID.randomUUID();
     when(items.findById(itemId)).thenReturn(Optional.empty());
     Logger logger = (Logger) LoggerFactory.getLogger(WorkListProjection.class);
@@ -442,12 +442,14 @@ class WorkListProjectionTest {
       assertThat(logEvents.list)
           .singleElement()
           .satisfies(
-              event ->
-                  assertThat(event.getFormattedMessage())
-                      .isEqualTo(
-                          "Cannot assign missing work-list item: id="
-                              + itemId
-                              + ", type=APPLICATION"));
+              event -> {
+                assertThat(event.getLevel()).isEqualTo(ch.qos.logback.classic.Level.ERROR);
+                assertThat(event.getFormattedMessage())
+                    .isEqualTo(
+                        "Cannot assign missing work-list item: id="
+                            + itemId
+                            + ", type=APPLICATION");
+              });
     } finally {
       logger.detachAppender(logEvents);
       logEvents.stop();
@@ -457,7 +459,7 @@ class WorkListProjectionTest {
   }
 
   @Test
-  void givenMissingWorkItem_whenUnassigned_thenLogsWarningAndDoesNotSave() {
+  void givenMissingWorkItem_whenUnassigned_thenLogsErrorAndDoesNotSave() {
     UUID itemId = UUID.randomUUID();
     when(items.findById(itemId)).thenReturn(Optional.empty());
     Logger logger = (Logger) LoggerFactory.getLogger(WorkListProjection.class);
@@ -473,12 +475,14 @@ class WorkListProjectionTest {
       assertThat(logEvents.list)
           .singleElement()
           .satisfies(
-              event ->
-                  assertThat(event.getFormattedMessage())
-                      .isEqualTo(
-                          "Cannot unassign missing work-list item: id="
-                              + itemId
-                              + ", type=APPLICATION"));
+              event -> {
+                assertThat(event.getLevel()).isEqualTo(ch.qos.logback.classic.Level.ERROR);
+                assertThat(event.getFormattedMessage())
+                    .isEqualTo(
+                        "Cannot unassign missing work-list item: id="
+                            + itemId
+                            + ", type=APPLICATION");
+              });
     } finally {
       logger.detachAppender(logEvents);
       logEvents.stop();

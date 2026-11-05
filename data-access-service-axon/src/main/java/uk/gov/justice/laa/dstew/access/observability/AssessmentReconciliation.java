@@ -88,6 +88,10 @@ public class AssessmentReconciliation {
       meterRegistry
           .counter("application.assessment.reconciliation", "outcome", "failure")
           .increment();
+      // Single report point: this runs on a @Scheduled thread with no HTTP caller, so the log
+      // route is the only way Sentry sees this failure. Rethrow afterwards only so Spring's
+      // own scheduler error handler marks the run as failed for metrics/monitoring purposes;
+      // do not add any further ERROR logging for this exception further up the call stack.
       LOG.error("Automatic-assessment reconciliation failed", exception);
       throw exception;
     }

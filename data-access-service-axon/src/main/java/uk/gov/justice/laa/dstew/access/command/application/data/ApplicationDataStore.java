@@ -154,6 +154,12 @@ public class ApplicationDataStore {
     try {
       return operation.get();
     } catch (RuntimeException exception) {
+      // Intentional ERROR log + rethrow: this is the only place the identifiers and the
+      // Jackson-specific failure detail are available, and callers include both
+      // request-triggered command handlers and event-handler projections that have no HTTP
+      // caller to report to. Any ERROR log subsequently emitted by LoggingAspects for the same
+      // exception on a request-triggered path reports the same stack trace, which Sentry
+      // groups into a single issue, so this is not treated as duplicate noise.
       JacksonExceptionMessageBuilder.findJacksonException(exception)
           .ifPresentOrElse(
               jacksonException ->

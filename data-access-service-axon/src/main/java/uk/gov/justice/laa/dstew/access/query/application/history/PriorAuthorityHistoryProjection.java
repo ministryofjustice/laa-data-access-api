@@ -65,7 +65,7 @@ public class PriorAuthorityHistoryProjection {
 
     PriorAuthorityRef ref = lookupPriorAuthorityRef(event.workItemId(), event.itemVersion());
     if (ref == null) {
-      log.warn(
+      log.error(
           "Prior authority data not found for PA assignment event: priorAuthorityId={}, version={}",
           event.workItemId(),
           event.itemVersion());
@@ -91,7 +91,7 @@ public class PriorAuthorityHistoryProjection {
 
     PriorAuthorityRef ref = lookupPriorAuthorityRef(event.workItemId(), event.itemVersion());
     if (ref == null) {
-      log.warn(
+      log.error(
           "Prior authority data not found for PA unassignment event: priorAuthorityId={}, version={}",
           event.workItemId(),
           event.itemVersion());
