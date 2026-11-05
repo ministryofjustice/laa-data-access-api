@@ -228,6 +228,8 @@ class AxonArchitectureTest {
         .that()
         .doNotHaveSimpleName("ApplicationGroupRouteResolver")
         .and()
+        .doNotHaveSimpleName("LinkedApplicationGroupWriteAccessResolver")
+        .and()
         .doNotHaveSimpleName(ApplicationGroupRouteProjection.class.getSimpleName())
         .should()
         .callMethodWhere(
