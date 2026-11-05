@@ -173,7 +173,7 @@ class ApplicationProjectionSequencingIntegrationTest {
       gate.awaitBlocked();
       commands.sendAndWait(
           new EstablishLinkedApplicationGroupCommand(
-              groupId, leadId, List.of(leadId, applicationId), Instant.now()));
+              groupId, leadId, applicationId, Instant.now()));
       assertThat(gate.observedWhileBlocked()).isFalse();
     } finally {
       gate.release();
@@ -205,7 +205,7 @@ class ApplicationProjectionSequencingIntegrationTest {
       gate.awaitBlocked();
       commands.sendAndWait(
           new EstablishLinkedApplicationGroupCommand(
-              groupId, leadId, List.of(leadId, applicationId), Instant.now()));
+              groupId, leadId, applicationId, Instant.now()));
       assertThat(gate.observedWhileBlocked()).isFalse();
     } finally {
       gate.release();
@@ -239,13 +239,13 @@ class ApplicationProjectionSequencingIntegrationTest {
     try {
       commands.sendAndWait(
           new EstablishLinkedApplicationGroupCommand(
-              firstGroup, firstLead, List.of(firstLead, applicationId), Instant.now()));
+              firstGroup, firstLead, applicationId, Instant.now()));
       gate.awaitBlocked();
       commands.sendAndWait(
           new RemoveApplicationFromLinkedGroupCommand(firstGroup, applicationId, 0, Instant.now()));
       commands.sendAndWait(
           new EstablishLinkedApplicationGroupCommand(
-              secondGroup, secondLead, List.of(secondLead, applicationId), Instant.now()));
+              secondGroup, secondLead, applicationId, Instant.now()));
       assertThat(gate.observedWhileBlocked()).isFalse();
     } finally {
       gate.release();
@@ -278,7 +278,7 @@ class ApplicationProjectionSequencingIntegrationTest {
       gate.awaitBlocked();
       commands.sendAndWait(
           new EstablishLinkedApplicationGroupCommand(
-              groupId, leadId, List.of(leadId, applicationId), Instant.now()));
+              groupId, leadId, applicationId, Instant.now()));
       assertThat(gate.observedWhileBlocked()).isFalse();
     } finally {
       gate.release();
@@ -316,13 +316,13 @@ class ApplicationProjectionSequencingIntegrationTest {
     try {
       commands.sendAndWait(
           new EstablishLinkedApplicationGroupCommand(
-              firstGroup, firstLead, List.of(firstLead, applicationId), Instant.now()));
+              firstGroup, firstLead, applicationId, Instant.now()));
       gate.awaitBlocked();
       commands.sendAndWait(
           new RemoveApplicationFromLinkedGroupCommand(firstGroup, applicationId, 0, Instant.now()));
       commands.sendAndWait(
           new EstablishLinkedApplicationGroupCommand(
-              secondGroup, secondLead, List.of(secondLead, applicationId), Instant.now()));
+              secondGroup, secondLead, applicationId, Instant.now()));
       assertThat(gate.observedWhileBlocked()).isFalse();
     } finally {
       gate.release();

@@ -29,8 +29,6 @@ paths:
     $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1application-drafts"
   /api/v0/application-drafts/{applicationId}/submit:
     $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1application-drafts~1{applicationId}~1submit"
-  /api/v0/individuals:
-    $ref: "./open-api-individuals/resources.yml#/paths/~1api~1v0~1individuals"
   /api/v0/applications/{id}/notes:
     $ref: "./open-api-applications/resources.yml#/paths/~1api~1v0~1applications~1{id}~1notes"
   /api/v0/applications/{id}/documents:
@@ -89,10 +87,6 @@ components:
       $ref: "./open-api-applications/components.yml#/components/schemas/MakeDecisionRequest"
     AutoGrantOutcomeRequest:
       $ref: "./open-api-applications/components.yml#/components/schemas/AutoGrantOutcomeRequest"
-    IndividualResponse:
-      $ref: "./open-api-individuals/components.yml#/components/schemas/IndividualResponse"
-    IndividualsResponse:
-      $ref: "./open-api-individuals/components.yml#/components/schemas/IndividualsResponse"
     CreateNoteRequest:
       $ref: "./open-api-applications/components.yml#/components/schemas/CreateNoteRequest"
     ApplicationNoteResponse:

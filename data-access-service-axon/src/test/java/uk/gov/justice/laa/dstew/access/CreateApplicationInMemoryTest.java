@@ -46,7 +46,6 @@ import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantedOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatusResponse;
 import uk.gov.justice.laa.dstew.access.model.DomainEventType;
-import uk.gov.justice.laa.dstew.access.model.IndividualsResponse;
 import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatusResponse;
 import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
@@ -144,8 +143,7 @@ class CreateApplicationInMemoryTest {
             applicationPath + "/history-search",
             applicationPath + "/notes",
             applicationPath + "/documents/" + UUID.randomUUID(),
-            "/api/v0/work-list",
-            "/api/v0/individuals")) {
+            "/api/v0/work-list")) {
       assertThat(
               restTemplate
                   .exchange(path, HttpMethod.GET, new HttpEntity<>(serviceHeaders), String.class)
@@ -269,7 +267,7 @@ class CreateApplicationInMemoryTest {
     assertThat(response.getBody())
         .contains("\"openapi\":\"3.1")
         .contains("\"/api/v0/applications\"")
-        .contains("\"/api/v0/individuals\"");
+        .doesNotContain("\"/api/v0/individuals\"");
 
     JsonNode openApi = new ObjectMapper().readTree(response.getBody());
     assertThat(openApi.at("/components/securitySchemes/BearerAuth/type").asText())
@@ -277,8 +275,16 @@ class CreateApplicationInMemoryTest {
     assertThat(openApi.at("/components/securitySchemes/BearerAuth/scheme").asText())
         .isEqualTo("bearer");
     assertThat(openApi.at("/components/securitySchemes/bearerAuth").isMissingNode()).isTrue();
-    assertThat(openApi.at("/paths/~1api~1v0~1individuals/get/security/0/BearerAuth").isArray())
-        .isTrue();
+    assertThat(openApi.at("/paths/~1api~1v0~1individuals").isMissingNode()).isTrue();
+  }
+
+  @Test
+  void givenAuthorizedCaseworker_whenCallingRemovedIndividualsEndpoint_thenReturnsNotFound() {
+    ResponseEntity<String> response =
+        restTemplate.exchange(
+            "/api/v0/individuals", HttpMethod.GET, new HttpEntity<>(headers()), String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
   }
 
   @Test
@@ -382,54 +388,6 @@ class CreateApplicationInMemoryTest {
             String.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-  }
-
-  @Test
-  void givenCreatedApplication_whenGetIndividualsForApplication_thenReturnsEmptyIndividuals() {
-    UUID applicationId = UUID.randomUUID();
-    applicationId(
-        restTemplate.postForEntity(
-            "/api/v0/applications",
-            new HttpEntity<>(
-                validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers()),
-            Void.class));
-    awaitProjection(applicationId);
-
-    ResponseEntity<IndividualsResponse> response =
-        restTemplate.exchange(
-            "/api/v0/individuals?applicationId=" + applicationId + "&individualType=CLIENT",
-            HttpMethod.GET,
-            new HttpEntity<>(headers()),
-            IndividualsResponse.class);
-
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-    assertThat(response.getBody()).isNotNull();
-    assertThat(response.getBody().getIndividuals())
-        .singleElement()
-        .satisfies(
-            individual -> {
-              assertThat(individual.getFirstName()).isEqualTo("Ada");
-              assertThat(individual.getLastName()).isEqualTo("Lovelace");
-              assertThat(individual.getType().name()).isEqualTo("CLIENT");
-            });
-    assertThat(response.getBody().getPaging().getPage()).isEqualTo(1);
-    assertThat(response.getBody().getPaging().getPageSize()).isEqualTo(20);
-    assertThat(response.getBody().getPaging().getTotalRecords()).isEqualTo(1);
-    assertThat(response.getBody().getPaging().getItemsReturned()).isEqualTo(1);
-  }
-
-  @Test
-  void givenClientDetailsWithoutApplicationId_whenGetIndividuals_thenReturnsBadRequest() {
-    ResponseEntity<String> response =
-        restTemplate.exchange(
-            "/api/v0/individuals?include=CLIENT_DETAILS",
-            HttpMethod.GET,
-            new HttpEntity<>(headers()),
-            String.class);
-
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-    assertThat(response.getBody())
-        .contains("Application ID is required when included data is CLIENT_DETAILS");
   }
 
   @Test

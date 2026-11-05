@@ -11,8 +11,6 @@ final class PactStates {
 
   // Applications
   static final String APPLICATIONS_EXIST = "applications exist";
-  static final String CLIENT_INDIVIDUAL_EXISTS_FOR_APPLICATION_001 =
-      "a client individual exists for application 00000000-0000-0000-0000-000000000001";
   static final String NO_MATCHING_SCA_APPLICATION_EXISTS =
       "that no matching special children act application already exists";
   static final String APPLICATION_SUBMITTED_EXISTS =

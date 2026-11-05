@@ -10,7 +10,7 @@ sequenceDiagram
     actor Client
     participant Controller as ApplicationCommandController
     participant UseCase as UnlinkApplicationUseCase
-    participant Handler as UnlinkApplicationCommandHandler
+    participant Handler as UnlinkApplicationCoordinator
     participant Resolver as ApplicationGroupRouteResolver
     participant Dispatcher as RetryingCommandDispatcher
     participant Aggregate as LinkedApplicationGroupAggregate

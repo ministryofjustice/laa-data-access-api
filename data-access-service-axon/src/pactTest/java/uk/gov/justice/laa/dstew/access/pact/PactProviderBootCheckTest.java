@@ -39,7 +39,6 @@ class PactProviderBootCheckTest extends AbstractProviderPactTests {
   @Test
   void everyApplicationStateCanBeSeeded() {
     states.applicationsExist();
-    states.clientIndividualExistsForApplication001();
     states.noMatchingSpecialChildrenActApplicationExists();
     states.submittedApplicationExists();
     states.applicationAssignedExists();

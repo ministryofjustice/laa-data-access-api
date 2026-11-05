@@ -27,13 +27,4 @@ class AxonEventProcessingConfigTest {
     assertThat(definition.name()).isEqualTo("application-group-route");
     assertThat(definition.mode()).isEqualTo(EventProcessorSettings.ProcessorMode.SUBSCRIBING);
   }
-
-  @Test
-  void linkedGroupAssignmentProcessorBeanUsesSubscribingWithCorrectNamespace() {
-    EventProcessorDefinition definition = config.linkedGroupAssignmentProcessor();
-
-    assertThat(definition).isNotNull();
-    assertThat(definition.name()).isEqualTo("linkedGroupAssignment");
-    assertThat(definition.mode()).isEqualTo(EventProcessorSettings.ProcessorMode.SUBSCRIBING);
-  }
 }

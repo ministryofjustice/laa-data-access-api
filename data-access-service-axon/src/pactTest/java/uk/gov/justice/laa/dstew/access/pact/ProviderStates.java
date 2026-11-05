@@ -45,13 +45,6 @@ class ProviderStates {
     applications.awaitListed(PactIds.APPLICATION_001);
   }
 
-  /** Application 001 with client Alice Anderson. */
-  void clientIndividualExistsForApplication001() {
-    log.info("State: {}", PactStates.CLIENT_INDIVIDUAL_EXISTS_FOR_APPLICATION_001);
-    applications.ensureSubmitted(submittedApplication001());
-    applications.awaitClientIndividual(PactIds.APPLICATION_001);
-  }
-
   /** Nothing to set up: the consumer supplies an ID the database has never seen. */
   void noMatchingSpecialChildrenActApplicationExists() {
     log.info("State: {}", PactStates.NO_MATCHING_SCA_APPLICATION_EXISTS);
