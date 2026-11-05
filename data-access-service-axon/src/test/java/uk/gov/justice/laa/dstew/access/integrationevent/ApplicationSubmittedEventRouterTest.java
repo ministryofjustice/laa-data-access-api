@@ -26,6 +26,7 @@ import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
+import uk.gov.justice.laa.dstew.access.observability.ErrorReporter;
 
 @ExtendWith(OutputCaptureExtension.class)
 class ApplicationSubmittedEventRouterTest {
@@ -142,6 +143,30 @@ class ApplicationSubmittedEventRouterTest {
     assertThat(output)
         .contains("Failed to publish ApplicationSubmitted event after commit")
         .contains("SNS unavailable");
+  }
+
+  @Test
+  void givenPublishFailsAfterCommit_whenCallbackRuns_thenReportsToSentry() {
+    ApplicationSubmittedPublisher publisher = mock(ApplicationSubmittedPublisher.class);
+    IllegalStateException failure = new IllegalStateException("SNS unavailable");
+    doThrow(failure).when(publisher).publish(any());
+    ErrorReporter errorReporter = mock(ErrorReporter.class);
+    ApplicationSubmittedEventRouter router =
+        new ApplicationSubmittedEventRouter(
+            publisher,
+            Clock.fixed(COMMITTED_AT, ZoneOffset.UTC),
+            new SimpleMeterRegistry(),
+            errorReporter);
+    ProcessingLifecycle lifecycle = mock(ProcessingLifecycle.class);
+    router.on(createdEvent("APPLICATION_SUBMITTED"), eventMessage(Map.of()), lifecycle);
+    ArgumentCaptor<Consumer<ProcessingContext>> callback = consumerCaptor();
+    verify(lifecycle).runOnAfterCommit(callback.capture());
+
+    callback.getValue().accept(mock(ProcessingContext.class));
+
+    verify(errorReporter)
+        .report(
+            org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.same(failure));
   }
 
   @Test

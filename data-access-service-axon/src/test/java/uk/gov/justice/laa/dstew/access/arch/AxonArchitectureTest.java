@@ -186,4 +186,72 @@ class AxonArchitectureTest {
             .allowEmptyShould(true);
     rule.check(classes);
   }
+
+  @Test
+  void onlyErrorReporterMayLogAtErrorLevel() {
+    ArchCondition<JavaClass> callLoggerErrorMethod =
+        new ArchCondition<>("call Logger.error(..)") {
+          @Override
+          public void check(JavaClass javaClass, ConditionEvents events) {
+            javaClass.getMethodCallsFromSelf().stream()
+                .filter(call -> call.getTarget().getName().equals("error"))
+                .filter(call -> call.getTarget().getOwner().isAssignableTo(org.slf4j.Logger.class))
+                .forEach(
+                    call ->
+                        events.add(
+                            SimpleConditionEvent.satisfied(
+                                javaClass,
+                                String.format(
+                                    "Method <%s> calls <%s>",
+                                    call.getOriginOwner().getFullName() + "." + call.getName(),
+                                    call.getTarget().getFullName()))));
+          }
+        };
+
+    // All ERROR-level reporting must flow through ErrorReporter so that every failure is
+    // routed to Sentry exactly once and in a consistent format. Two classes are deliberate,
+    // documented exceptions:
+    //  - Axon event-processing code: command-side subscribing processors still use
+    //    PropagatingErrorHandler directly (see AxonEventProcessingConfig), so their failures
+    //    propagate back through the HTTP call stack and are reported at the controller boundary;
+    //    pooled-streaming (projection) processors instead go through ReportingErrorHandler, which
+    //    itself calls ErrorReporter. Neither route calls Logger.error directly.
+    //  - LoggingAspects (data-access-shared): a generic cross-cutting AOP aspect around
+    //    @LogMethodArguments/@LogMethodResponse-annotated methods. It classifies the thrown
+    //    exception's severity (see isClientFacing) and only calls log.error for genuinely
+    //    unexpected, non-client-facing failures; sentry-logback then turns that single,
+    //    severity-filtered ERROR log into the Sentry event for exceptions that occur outside
+    //    an ErrorReporter-aware call site.
+    ArchRule rule =
+        noClasses()
+            .that()
+            .doNotHaveFullyQualifiedName(
+                "uk.gov.justice.laa.dstew.access.observability.ErrorReporter")
+            .and()
+            .doNotHaveFullyQualifiedName(
+                "uk.gov.justice.laa.dstew.access.shared.logging.aspects.LoggingAspects")
+            .should(callLoggerErrorMethod)
+            .allowEmptyShould(true);
+    rule.check(classes);
+  }
+
+  @Test
+  void dataStoreClassesMustDependOnErrorReporter() {
+    // *DataStore classes read JSON payload columns (e.g. @JdbcTypeCode(SqlTypes.JSON)) and must
+    // report repository/deserialization failures via ErrorReporter so every DataStore reports
+    // consistently to Sentry, rather than relying on individual authors to remember to wire it up
+    // when adding a new sibling class (see PriorAuthorityDataStore, which was missed for this
+    // reason until this rule was introduced).
+    ArchRule rule =
+        classes()
+            .that()
+            .resideInAPackage("..command..data..")
+            .and()
+            .haveSimpleNameEndingWith("DataStore")
+            .should()
+            .dependOnClassesThat()
+            .areAssignableTo(uk.gov.justice.laa.dstew.access.observability.ErrorReporter.class)
+            .allowEmptyShould(true);
+    rule.check(classes);
+  }
 }

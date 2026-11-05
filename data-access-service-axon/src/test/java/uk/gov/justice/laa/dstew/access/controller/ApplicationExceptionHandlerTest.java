@@ -1,6 +1,11 @@
 package uk.gov.justice.laa.dstew.access.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.same;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
@@ -13,7 +18,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpInputMessage;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.oauth2.client.ClientAuthorizationException;
 import org.springframework.security.oauth2.core.OAuth2Error;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationLinkConflictException;
@@ -31,12 +38,15 @@ import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityVersionConflictEx
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.exception.VirusDetectedException;
 import uk.gov.justice.laa.dstew.access.exception.VirusScanException;
+import uk.gov.justice.laa.dstew.access.observability.ErrorReporter;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryIntegrityException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 class ApplicationExceptionHandlerTest {
 
-  private final ApplicationExceptionHandler handler = new ApplicationExceptionHandler();
+  private final ErrorReporter errorReporter = mock(ErrorReporter.class);
+  private final ApplicationExceptionHandler handler =
+      new ApplicationExceptionHandler(errorReporter);
   private final Logger logger = (Logger) LoggerFactory.getLogger(ApplicationExceptionHandler.class);
   private final ListAppender<ILoggingEvent> logEvents = new ListAppender<>();
 
@@ -53,15 +63,15 @@ class ApplicationExceptionHandlerTest {
   }
 
   /**
-   * Asserts the logging rule from {@code docs/observability-sentry-policy.md}: handlers that return
-   * a 4xx response must log at {@code WARN} only (breadcrumb, no Sentry event), while handlers that
-   * return a 5xx response must log at {@code ERROR} (Sentry event).
+   * Asserts the logging rule from {@code docs/observability-sentry-policy.md} for handlers that log
+   * directly: a handler returning a 4xx response must log at {@code WARN} only (breadcrumb, no
+   * Sentry event). Handlers that return a 5xx response report via {@link ErrorReporter} instead of
+   * logging directly (see the {@code *AndReports} tests below).
    */
-  private void assertLoggedAtSeverityForStatus(org.springframework.http.HttpStatusCode status) {
+  private void assertLoggedAtWarnForClientError() {
     assertThat(logEvents.list).isNotEmpty();
-    Level expected = status.is5xxServerError() ? Level.ERROR : Level.WARN;
     assertThat(logEvents.list)
-        .allSatisfy(event -> assertThat(event.getLevel()).isEqualTo(expected));
+        .allSatisfy(event -> assertThat(event.getLevel()).isEqualTo(Level.WARN));
   }
 
   @Test
@@ -71,7 +81,7 @@ class ApplicationExceptionHandlerTest {
             new ValidationException(List.of("Exactly one application ID must be provided")));
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-    assertLoggedAtSeverityForStatus(response.getStatusCode());
+    assertLoggedAtWarnForClientError();
     assertThat(response.getBody().getDetail()).isEqualTo("Generic Validation Error");
     assertThat(response.getBody().getProperties())
         .containsEntry("errors", List.of("Exactly one application ID must be provided"));
@@ -85,7 +95,7 @@ class ApplicationExceptionHandlerTest {
             new IllegalArgumentException("pageSize cannot be more than 100"));
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-    assertLoggedAtSeverityForStatus(response.getStatusCode());
+    assertLoggedAtWarnForClientError();
     assertThat(response.getBody().getProperties())
         .containsEntry("errors", List.of("pageSize cannot be more than 100"));
   }
@@ -99,7 +109,7 @@ class ApplicationExceptionHandlerTest {
             new ResourceNotFoundException("No application found with id: " + applicationId));
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-    assertLoggedAtSeverityForStatus(response.getStatusCode());
+    assertLoggedAtWarnForClientError();
     assertThat(response.getBody().getDetail())
         .isEqualTo("No application found with id: " + applicationId)
         .doesNotContain("Axon", "aggregate", "event store");
@@ -110,7 +120,7 @@ class ApplicationExceptionHandlerTest {
     var response = handler.handleAggregateNotFoundException();
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-    assertLoggedAtSeverityForStatus(response.getStatusCode());
+    assertLoggedAtWarnForClientError();
     assertThat(response.getBody().getDetail())
         .isEqualTo("The requested application was not found")
         .doesNotContain("Axon", "aggregate", "event store");
@@ -125,7 +135,7 @@ class ApplicationExceptionHandlerTest {
             new ApplicationVersionConflictException(applicationId, 4L));
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-    assertLoggedAtSeverityForStatus(response.getStatusCode());
+    assertLoggedAtWarnForClientError();
     assertThat(response.getBody().getDetail())
         .isEqualTo("Application with id " + applicationId + " and version 4 not found");
   }
@@ -139,7 +149,7 @@ class ApplicationExceptionHandlerTest {
             new LinkedApplicationGroupVersionConflictException(applicationId));
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-    assertLoggedAtSeverityForStatus(response.getStatusCode());
+    assertLoggedAtWarnForClientError();
     assertThat(response.getBody().getDetail())
         .isEqualTo(
             "Linked group of application "
@@ -154,7 +164,7 @@ class ApplicationExceptionHandlerTest {
             new WorkItemAssignmentConflictException(UUID.randomUUID(), "it is already assigned"));
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-    assertLoggedAtSeverityForStatus(response.getStatusCode());
+    assertLoggedAtWarnForClientError();
   }
 
   @Test
@@ -166,7 +176,7 @@ class ApplicationExceptionHandlerTest {
             new ApplicationCreationConflictException(applicationId));
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-    assertLoggedAtSeverityForStatus(response.getStatusCode());
+    assertLoggedAtWarnForClientError();
     assertThat(response.getBody().getDetail())
         .isEqualTo(
             "Application ID " + applicationId + " already exists with different creation data");
@@ -182,7 +192,7 @@ class ApplicationExceptionHandlerTest {
                 "Application " + applicationId + " already belongs to a different linked group"));
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-    assertLoggedAtSeverityForStatus(response.getStatusCode());
+    assertLoggedAtWarnForClientError();
     assertThat(response.getBody().getDetail())
         .isEqualTo("Application " + applicationId + " already belongs to a different linked group");
   }
@@ -196,7 +206,7 @@ class ApplicationExceptionHandlerTest {
             new ApplicationAutoGrantOutcomeConflictException(applicationId));
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-    assertLoggedAtSeverityForStatus(response.getStatusCode());
+    assertLoggedAtWarnForClientError();
     assertThat(response.getBody().getDetail())
         .isEqualTo(
             "Application " + applicationId + " already has an incompatible auto-grant outcome");
@@ -211,7 +221,7 @@ class ApplicationExceptionHandlerTest {
             new InvalidApplicationStateException(applicationId, "APPLICATION_IN_PROGRESS"));
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT);
-    assertLoggedAtSeverityForStatus(response.getStatusCode());
+    assertLoggedAtWarnForClientError();
     assertThat(response.getBody().getDetail())
         .isEqualTo(
             "Application "
@@ -228,7 +238,7 @@ class ApplicationExceptionHandlerTest {
             new PriorAuthorityCreationConflictException(priorAuthorityId));
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-    assertLoggedAtSeverityForStatus(response.getStatusCode());
+    assertLoggedAtWarnForClientError();
     assertThat(response.getBody().getDetail())
         .isEqualTo("Prior authority submission ID " + priorAuthorityId + " already exists");
   }
@@ -242,7 +252,7 @@ class ApplicationExceptionHandlerTest {
             new PriorAuthorityStatusConflictException(submissionId, "DECIDED"));
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-    assertLoggedAtSeverityForStatus(response.getStatusCode());
+    assertLoggedAtWarnForClientError();
     assertThat(response.getBody().getDetail())
         .isEqualTo("Prior authority " + submissionId + " cannot be decided from status DECIDED");
   }
@@ -256,7 +266,7 @@ class ApplicationExceptionHandlerTest {
             new PriorAuthorityVersionConflictException(submissionId, 3L));
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-    assertLoggedAtSeverityForStatus(response.getStatusCode());
+    assertLoggedAtWarnForClientError();
     assertThat(response.getBody().getDetail())
         .isEqualTo(
             "Prior authority with submission id " + submissionId + " and version 3 not found");
@@ -269,7 +279,7 @@ class ApplicationExceptionHandlerTest {
             new FileConflictException("File already exists in SDS"));
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-    assertLoggedAtSeverityForStatus(response.getStatusCode());
+    assertLoggedAtWarnForClientError();
     assertThat(response.getBody().getDetail()).isEqualTo("File already exists in SDS");
   }
 
@@ -280,43 +290,66 @@ class ApplicationExceptionHandlerTest {
             new FileLengthRequiredException("File content length is required"));
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.LENGTH_REQUIRED);
-    assertLoggedAtSeverityForStatus(response.getStatusCode());
+    assertLoggedAtWarnForClientError();
     assertThat(response.getBody().getDetail()).isEqualTo("File content length is required");
   }
 
   @Test
-  void givenVirusDetected_whenHandled_thenReturnsBadRequest() {
+  void givenVirusDetected_whenHandled_thenReturnsBadRequestWithoutReportingToSentry() {
     var response =
         handler.handleVirusDetectedException(
             new VirusDetectedException("Virus detected in uploaded file"));
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-    assertLoggedAtSeverityForStatus(response.getStatusCode());
+    assertLoggedAtWarnForClientError();
     assertThat(response.getBody().getDetail()).isEqualTo("Virus detected in uploaded file");
+    verifyNoInteractions(errorReporter);
   }
 
   @Test
-  void givenVirusScanError_whenHandled_thenReturnsInternalServerError() {
-    var response =
-        handler.handleVirusScanException(
-            new VirusScanException("Virus scan gave a non-standard result"));
+  void givenVirusScanError_whenHandled_thenReturnsInternalServerErrorAndReportsToSentry() {
+    var exception = new VirusScanException("Virus scan gave a non-standard result");
+    var response = handler.handleVirusScanException(exception);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
-    assertLoggedAtSeverityForStatus(response.getStatusCode());
     assertThat(response.getBody().getDetail()).isEqualTo("Virus scan gave a non-standard result");
+    verify(errorReporter).report(anyString(), same(exception));
   }
 
   @Test
-  void givenOauthClientAuthorizationFailure_whenHandled_thenReturnsInternalServerError() {
-    var response =
-        handler.handleClientAuthorizationException(
-            new ClientAuthorizationException(
-                new OAuth2Error("invalid_client", "invalid credentials", null), "sds-client"));
+  void givenOauthClientAuthorizationFailure_whenHandled_thenReturnsInternalServerErrorAndReports() {
+    var exception =
+        new ClientAuthorizationException(
+            new OAuth2Error("invalid_client", "invalid credentials", null), "sds-client");
+    var response = handler.handleClientAuthorizationException(exception);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
-    assertLoggedAtSeverityForStatus(response.getStatusCode());
     assertThat(response.getBody().getDetail())
         .isEqualTo("Failed to obtain access token for an external service");
+    verify(errorReporter).report(anyString(), same(exception));
+  }
+
+  @Test
+  void givenUnmappedException_whenHandled_thenReturnsGenericInternalServerErrorAndReports() {
+    var exception = new IllegalStateException("something nobody anticipated");
+    var response = handler.handleUnexpectedException(exception);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+    assertThat(response.getBody().getDetail()).isEqualTo("An unexpected error occurred");
+    assertThat(response.getBody().toString()).doesNotContain("nobody anticipated");
+    verify(errorReporter).report(anyString(), same(exception));
+  }
+
+  @Test
+  void givenJsonDeserializationFailure_whenHandled_thenReturnsBadRequestWithoutReporting() {
+    var httpInputMessage = mock(HttpInputMessage.class);
+    var exception =
+        new HttpMessageNotReadableException("Invalid JSON: unknown enum value", httpInputMessage);
+    var response = handler.handleHttpMessageNotReadableException(exception);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(response.getBody().getDetail()).isEqualTo("Generic Validation Error");
+    verifyNoInteractions(errorReporter);
   }
 
   @Test
@@ -332,7 +365,6 @@ class ApplicationExceptionHandlerTest {
     var response = handler.handleApplicationHistoryIntegrityException(integrityException);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
-    assertLoggedAtSeverityForStatus(response.getStatusCode());
     assertThat(response.getBody().getDetail())
         .isEqualTo("Application history data is inconsistent");
     assertThat(response.getBody().getInstance()).isEqualTo(URI.create("about:blank"));
@@ -340,18 +372,19 @@ class ApplicationExceptionHandlerTest {
         .doesNotContain(applicationId.toString())
         .doesNotContain(priorAuthorityId.toString())
         .doesNotContain("conflicting");
+    verify(errorReporter).report(anyString(), same(integrityException));
   }
 
   @Test
-  void givenClientAuthorizationFailure_whenHandled_thenReturnsInternalServerError() {
-    var response =
-        handler.handleClientAuthorizationException(
-            new ClientAuthorizationException(
-                new OAuth2Error("invalid_token"), "sds-client", "Token request failed"));
+  void givenClientAuthorizationFailure_whenHandled_thenReturnsInternalServerErrorAndReports() {
+    var exception =
+        new ClientAuthorizationException(
+            new OAuth2Error("invalid_token"), "sds-client", "Token request failed");
+    var response = handler.handleClientAuthorizationException(exception);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
-    assertLoggedAtSeverityForStatus(response.getStatusCode());
     assertThat(response.getBody().getDetail())
         .isEqualTo("Failed to obtain access token for an external service");
+    verify(errorReporter).report(anyString(), same(exception));
   }
 }

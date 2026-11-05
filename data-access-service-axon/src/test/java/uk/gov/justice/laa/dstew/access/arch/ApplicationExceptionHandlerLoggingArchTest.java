@@ -17,10 +17,15 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 
 /**
  * Enforces the Sentry reporting rule documented in {@code docs/observability-sentry-policy.md}:
- * every {@code ApplicationExceptionHandler} method must explicitly log the outcome at {@code WARN}
- * or {@code ERROR} rather than relying solely on upstream aspect classification, so a handler added
- * without a deliberate severity choice fails this test instead of silently reaching Sentry with the
- * wrong (or no) severity.
+ * every {@code ApplicationExceptionHandler} method must explicitly choose its reporting severity -
+ * either by logging at {@code WARN} (client-caused, breadcrumb-only) or {@code ERROR}, or by
+ * delegating to {@link uk.gov.justice.laa.dstew.access.observability.ErrorReporter} (unexpected,
+ * Sentry event) - rather than relying solely on upstream aspect classification. A handful of
+ * handlers are deliberately exempt: {@code handleAggregateNotFoundException} logs unconditionally
+ * at WARN with no exception argument (Axon's exception has no usable message), and {@code
+ * handleHttpMessageNotReadableException} deliberately neither logs nor reports because malformed
+ * request bodies are an expected, high-volume client error that would otherwise be noisy even as a
+ * breadcrumb.
  */
 class ApplicationExceptionHandlerLoggingArchTest {
 
@@ -31,29 +36,37 @@ class ApplicationExceptionHandlerLoggingArchTest {
 
   private static final Set<String> LOG_METHOD_NAMES = Set.of("warn", "error");
 
+  private static final Set<String> EXEMPT_METHOD_NAMES =
+      Set.of("handleAggregateNotFoundException", "handleHttpMessageNotReadableException");
+
   @Test
-  void exceptionHandlerMethodsMustExplicitlyLogAtWarnOrError() {
-    ArchCondition<com.tngtech.archunit.core.domain.JavaMethod> logAtWarnOrError =
-        new ArchCondition<>("log at WARN or ERROR") {
+  void exceptionHandlerMethodsMustExplicitlyChooseReportingSeverity() {
+    ArchCondition<com.tngtech.archunit.core.domain.JavaMethod> logOrReport =
+        new ArchCondition<>("log at WARN/ERROR or report via ErrorReporter") {
           @Override
           public void check(
               com.tngtech.archunit.core.domain.JavaMethod method, ConditionEvents events) {
-            boolean logsAtExpectedSeverity =
+            if (EXEMPT_METHOD_NAMES.contains(method.getName())) {
+              return;
+            }
+            boolean choosesSeverity =
                 method.getMethodCallsFromSelf().stream()
                     .map(JavaMethodCall::getTarget)
                     .anyMatch(
                         target ->
-                            isSlf4jLogger(target.getOwner())
-                                && LOG_METHOD_NAMES.contains(target.getName()));
+                            (isSlf4jLogger(target.getOwner())
+                                    && LOG_METHOD_NAMES.contains(target.getName()))
+                                || (target.getOwner().getSimpleName().equals("ErrorReporter")
+                                    && target.getName().equals("report")));
 
-            if (!logsAtExpectedSeverity) {
+            if (!choosesSeverity) {
               events.add(
                   SimpleConditionEvent.violated(
                       method,
                       String.format(
-                          "Method <%s> does not call log.warn(...) or log.error(...); every"
-                              + " exception-handler method must explicitly choose a Sentry"
-                              + " reporting severity",
+                          "Method <%s> does not call log.warn(...), log.error(...), or"
+                              + " ErrorReporter.report(...); every exception-handler method must"
+                              + " explicitly choose a Sentry reporting severity",
                           method.getFullName())));
             }
           }
@@ -66,7 +79,7 @@ class ApplicationExceptionHandlerLoggingArchTest {
             .and()
             .areDeclaredInClassesThat()
             .haveSimpleName("ApplicationExceptionHandler")
-            .should(logAtWarnOrError);
+            .should(logOrReport);
     rule.check(classes);
   }
 

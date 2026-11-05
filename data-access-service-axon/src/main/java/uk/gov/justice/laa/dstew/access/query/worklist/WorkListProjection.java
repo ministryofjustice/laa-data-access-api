@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Stream;
-import lombok.extern.slf4j.Slf4j;
 import org.axonframework.messaging.core.annotation.Namespace;
 import org.axonframework.messaging.eventhandling.EventMessage;
 import org.axonframework.messaging.eventhandling.annotation.EventHandler;
@@ -28,24 +27,27 @@ import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationRead
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
+import uk.gov.justice.laa.dstew.access.observability.ErrorReporter;
 
 /** Replayable projection of active work; it is never consulted to route a command. */
 @Component
 @Namespace("work-list-projection")
-@Slf4j
 public class WorkListProjection {
   private final WorkListItemReadRepository items;
   private final ApplicationDataStore applicationDataStore;
   private final PriorAuthorityDataStore priorAuthorityDataStore;
+  private final ErrorReporter errorReporter;
 
   /** Creates a projection backed by its read repository and event data stores. */
   public WorkListProjection(
       WorkListItemReadRepository items,
       ApplicationDataStore applicationDataStore,
-      PriorAuthorityDataStore priorAuthorityDataStore) {
+      PriorAuthorityDataStore priorAuthorityDataStore,
+      ErrorReporter errorReporter) {
     this.items = items;
     this.applicationDataStore = applicationDataStore;
     this.priorAuthorityDataStore = priorAuthorityDataStore;
+    this.errorReporter = errorReporter;
   }
 
   /** Returns a database-filtered page of active work, oldest submission first. */
@@ -159,10 +161,11 @@ public class WorkListProjection {
               items.save(item);
             },
             () ->
-                log.error(
-                    "Cannot assign missing work-list item: id={}, type={}",
-                    event.workItemId(),
-                    event.workItemType()));
+                errorReporter.report(
+                    "Cannot assign missing work-list item",
+                    new IllegalStateException(
+                        "Missing work-list item for assignment: id=%s, type=%s"
+                            .formatted(event.workItemId(), event.workItemType()))));
   }
 
   /** Applies a generic direct unassignment to the event's immutable work-item identity. */
@@ -181,10 +184,11 @@ public class WorkListProjection {
               items.save(item);
             },
             () ->
-                log.error(
-                    "Cannot unassign missing work-list item: id={}, type={}",
-                    event.workItemId(),
-                    event.workItemType()));
+                errorReporter.report(
+                    "Cannot unassign missing work-list item",
+                    new IllegalStateException(
+                        "Missing work-list item for unassignment: id=%s, type=%s"
+                            .formatted(event.workItemId(), event.workItemType()))));
   }
 
   /** Deletes all disposable rows before event-stream replay. */
