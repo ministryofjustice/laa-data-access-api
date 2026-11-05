@@ -4,6 +4,7 @@ import jakarta.persistence.criteria.Predicate;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.data.jpa.domain.Specification;
+import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 
 /** Database predicates for {@link FindWorkListItemsQuery}. */
 public final class WorkListItemSpecification {
@@ -27,6 +28,11 @@ public final class WorkListItemSpecification {
       } else {
         predicates.add(criteriaBuilder.isNull(root.get("assigneeId")));
       }
+
+      predicates.add(
+          criteriaBuilder.or(
+              criteriaBuilder.isNull(root.get("autoGranted")),
+              criteriaBuilder.notEqual(root.get("autoGranted"), AutoGrantedState.PENDING)));
       return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
     };
   }
