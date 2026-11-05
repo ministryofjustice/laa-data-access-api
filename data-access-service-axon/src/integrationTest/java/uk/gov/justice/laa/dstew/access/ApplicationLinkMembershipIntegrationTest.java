@@ -665,7 +665,7 @@ public class ApplicationLinkMembershipIntegrationTest {
     assertThat(results)
         .extracting(ResponseEntity::getStatusCode)
         .contains(HttpStatus.NO_CONTENT)
-        .containsOnly(HttpStatus.NO_CONTENT, HttpStatus.CONFLICT);
+        .containsOnly(HttpStatus.NO_CONTENT);
     var groupId = awaitRoute(sourceId, ApplicationGroupRouteKind.LINKED_GROUP).getGroupId();
     assertThat(countDomainEvents(groupId, LinkedApplicationGroupCreatedEvent.class)).isOne();
     assertThat(countAllDomainEvents(LinkedApplicationGroupCreatedEvent.class))

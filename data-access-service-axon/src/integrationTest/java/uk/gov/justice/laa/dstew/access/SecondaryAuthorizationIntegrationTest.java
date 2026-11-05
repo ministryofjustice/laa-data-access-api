@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreateRequestFixture.validCreateApplicationRequest;
 
 import java.util.Map;
 import java.util.UUID;
@@ -35,7 +36,13 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 import org.testcontainers.utility.MountableFile;
+import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
+import uk.gov.justice.laa.dstew.access.model.AutoGrantedOutcomeRequest;
+import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityDraftRequest;
+import uk.gov.justice.laa.dstew.access.model.PriorAuthorityType;
+import uk.gov.justice.laa.dstew.access.model.SavePriorAuthorityDraftResponse;
 import uk.gov.justice.laa.dstew.access.security.AllowApiSecondaryAuthorizationTest;
+import util.ProjectionAwaiter;
 
 @Testcontainers
 @SpringBootTest(
@@ -86,6 +93,8 @@ class SecondaryAuthorizationIntegrationTest {
   @Autowired private TestRestTemplate restTemplate;
 
   @Autowired private RestTemplateBuilder restTemplateBuilder;
+
+  @Autowired private org.axonframework.messaging.queryhandling.gateway.QueryGateway queryGateway;
 
   @Test
   void givenSignedAutoGrantTokenWithoutScopes_whenCallingMappedOperations_thenReachesApplication() {
@@ -174,11 +183,68 @@ class SecondaryAuthorizationIntegrationTest {
         .isEqualTo(HttpStatus.OK);
   }
 
+  @Test
+  void
+      givenProviderTokenAndXAuthorizationOfficeEntitlement_whenCreateGrantedApplicationAndPriorAuthority_thenCreatesPriorAuthority() {
+    HttpHeaders headers = primaryAuthorizationHeaders();
+    headers.set("X-Authorization", clientCredentialsToken("secondary-client"));
+    UUID applicationId = UUID.randomUUID();
+
+    var createApplicationResponse =
+        restTemplate.postForEntity(
+            applicationUrl(),
+            new HttpEntity<>(
+                validCreateApplicationRequest(applicationId, UUID.randomUUID()), headers),
+            Void.class);
+    assertThat(createApplicationResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    projectionAwaiter().awaitApplication(applicationId);
+
+    var grantResponse =
+        restTemplate.exchange(
+            applicationUrl() + "/" + applicationId + "/auto-grant-outcome",
+            HttpMethod.PATCH,
+            new HttpEntity<>(
+                new AutoGrantedOutcomeRequest(
+                    AutoGrantOutcome.AUTOGRANTED, Map.of("certificateNumber", "PA-CERT-001")),
+                headers),
+            Void.class);
+    assertThat(grantResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    projectionAwaiter().awaitApplicationVersion(applicationId, 1L);
+
+    var priorAuthorityResponse =
+        restTemplate.postForEntity(
+            priorAuthoritiesUrl(),
+            new HttpEntity<>(
+                CreatePriorAuthorityDraftRequest.builder()
+                    .applicationId(applicationId)
+                    .priorAuthorityType(PriorAuthorityType.EXPERT)
+                    .build(),
+                headers),
+            SavePriorAuthorityDraftResponse.class);
+
+    assertThat(priorAuthorityResponse.getStatusCode())
+        .isIn(HttpStatus.CREATED, HttpStatus.ACCEPTED);
+    assertThat(priorAuthorityResponse.getBody()).isNotNull();
+    assertThat(priorAuthorityResponse.getBody().getPriorAuthorityId()).isNotNull();
+  }
+
   private HttpHeaders primaryAuthorizationHeaders() {
     HttpHeaders headers = new HttpHeaders();
     headers.set("X-Service-Name", "CIVIL_APPLY");
     headers.setBearerAuth(clientCredentialsToken("primary-client"));
     return headers;
+  }
+
+  private ProjectionAwaiter projectionAwaiter() {
+    return new ProjectionAwaiter(queryGateway);
+  }
+
+  private String applicationUrl() {
+    return "http://localhost:" + port + "/api/v0/applications";
+  }
+
+  private String priorAuthoritiesUrl() {
+    return "http://localhost:" + port + "/api/v0/prior-authorities";
   }
 
   private String secondaryAuthorizationEndpoint() {

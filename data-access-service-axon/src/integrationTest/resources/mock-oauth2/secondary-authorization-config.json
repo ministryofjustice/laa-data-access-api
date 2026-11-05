@@ -44,7 +44,8 @@
             "sub": "integration-test-user",
             "aud": ["laa-data-access-api"],
             "oid": "00000000-0000-0000-0000-000000000001",
-            "LAA_APP_ROLES": ["SECONDARY_AUTHORIZATION_TEST"]
+            "LAA_APP_ROLES": ["SECONDARY_AUTHORIZATION_TEST"],
+            "LAA_ACCOUNTS": ["1A001B"]
           }
         }
       ]
