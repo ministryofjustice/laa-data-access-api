@@ -21,6 +21,7 @@ import uk.gov.justice.laa.dstew.access.model.CreateNoteRequest;
 import uk.gov.justice.laa.dstew.access.model.LinkedGroupChangeRequest;
 import uk.gov.justice.laa.dstew.access.model.MakeDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.ServiceName;
+import uk.gov.justice.laa.dstew.access.security.AuthenticatedCallerFactory;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedUserId;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodArguments;
 import uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse;
@@ -43,6 +44,7 @@ public class ApplicationCommandController implements ApplicationCommandApi {
   private final LinkApplicationCommandMapper linkCommandMapper;
   private final MakeApplicationLeadCommandMapper makeApplicationLeadCommandMapper;
   private final UnlinkApplicationCommandMapper unlinkApplicationCommandMapper;
+  private final AuthenticatedCallerFactory authenticatedCallerFactory;
   private final AuthenticatedUserId authenticatedUserId;
 
   /** Creates the command adapter. */
@@ -61,6 +63,7 @@ public class ApplicationCommandController implements ApplicationCommandApi {
       LinkApplicationCommandMapper linkCommandMapper,
       MakeApplicationLeadCommandMapper makeApplicationLeadCommandMapper,
       UnlinkApplicationCommandMapper unlinkApplicationCommandMapper,
+      AuthenticatedCallerFactory authenticatedCallerFactory,
       AuthenticatedUserId authenticatedUserId) {
     this.createApplicationUseCase = createApplicationUseCase;
     this.makeDecisionUseCase = makeDecisionUseCase;
@@ -76,6 +79,7 @@ public class ApplicationCommandController implements ApplicationCommandApi {
     this.linkCommandMapper = linkCommandMapper;
     this.makeApplicationLeadCommandMapper = makeApplicationLeadCommandMapper;
     this.unlinkApplicationCommandMapper = unlinkApplicationCommandMapper;
+    this.authenticatedCallerFactory = authenticatedCallerFactory;
     this.authenticatedUserId = authenticatedUserId;
   }
 
@@ -85,7 +89,8 @@ public class ApplicationCommandController implements ApplicationCommandApi {
   @LogMethodResponse
   public ResponseEntity<Void> linkApplication(
       ServiceName serviceName, UUID id, ApplicationLinkRequest request) {
-    linkApplicationUseCase.execute(linkCommandMapper.toCommand(id, request));
+    linkApplicationUseCase.execute(
+        linkCommandMapper.toCommand(id, request, authenticatedCallerFactory.currentCaller()));
     return ResponseEntity.noContent().build();
   }
 
@@ -95,7 +100,9 @@ public class ApplicationCommandController implements ApplicationCommandApi {
   @LogMethodResponse
   public ResponseEntity<Void> makeApplicationLead(
       ServiceName serviceName, UUID id, LinkedGroupChangeRequest request) {
-    makeApplicationLeadUseCase.execute(makeApplicationLeadCommandMapper.toCommand(id, request));
+    makeApplicationLeadUseCase.execute(
+        makeApplicationLeadCommandMapper.toCommand(
+            id, request, authenticatedCallerFactory.currentCaller()));
     return ResponseEntity.noContent().build();
   }
 
@@ -105,7 +112,9 @@ public class ApplicationCommandController implements ApplicationCommandApi {
   @LogMethodResponse
   public ResponseEntity<Void> unlinkApplication(
       ServiceName serviceName, UUID id, LinkedGroupChangeRequest request) {
-    unlinkApplicationUseCase.execute(unlinkApplicationCommandMapper.toCommand(id, request));
+    unlinkApplicationUseCase.execute(
+        unlinkApplicationCommandMapper.toCommand(
+            id, request, authenticatedCallerFactory.currentCaller()));
     return ResponseEntity.noContent().build();
   }
 

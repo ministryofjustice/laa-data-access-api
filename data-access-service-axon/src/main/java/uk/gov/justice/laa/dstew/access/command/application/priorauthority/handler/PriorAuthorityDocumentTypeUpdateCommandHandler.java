@@ -13,8 +13,9 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.security.AuthenticatedCallerResource;
-import uk.gov.justice.laa.dstew.access.security.OfficeCodeResource;
-import uk.gov.justice.laa.dstew.access.security.RequireOfficeCodeWriteAccess;
+import uk.gov.justice.laa.dstew.access.security.OfficeCodeResourceWriteAccessResolver;
+import uk.gov.justice.laa.dstew.access.security.RequireWriteAccess;
+import uk.gov.justice.laa.dstew.access.security.WriteAccessResolverResource;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /** Handles updates to document types in prior-authority drafts. */
@@ -23,11 +24,11 @@ public class PriorAuthorityDocumentTypeUpdateCommandHandler {
 
   /** Updates the document type for a document in the prior-authority draft and emits the event. */
   @CommandHandler
-  @RequireOfficeCodeWriteAccess
+  @RequireWriteAccess(resolver = OfficeCodeResourceWriteAccessResolver.class)
   public UUID handle(
       @AuthenticatedCallerResource PriorAuthorityDocumentTypeUpdateCommand command,
       PriorAuthorityDraftStore draftStore,
-      @InjectEntity(idProperty = "priorAuthorityId") @OfficeCodeResource
+      @InjectEntity(idProperty = "priorAuthorityId") @WriteAccessResolverResource
           PriorAuthorityAggregate priorAuthority,
       EventAppender eventAppender) {
 
