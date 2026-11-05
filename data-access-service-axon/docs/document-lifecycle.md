@@ -15,9 +15,11 @@ upload, update, and delete routes have been removed. Axon Application uploads us
 - Upload events persist the non-sensitive suffix as `fileSuffix`. Aggregate state and projected
   `DocumentMetadata` retain it independently of sensitive content. Null means a historical unknown
   suffix; an empty string means a known extensionless upload.
-- Upload command handlers persist the full original filename under
-  `documentFilenames[documentId]` in sensitive draft content. Submission preserves that map in
-  immutable content storage. Filenames do not appear in domain events or projected document metadata.
+- Application upload events carry the full original filename as erasable event content, stored in
+  `axon.event_content` apart from the kept event fields. Prior Authority upload command handlers
+  persist it under `documentFilenames[documentId]` in sensitive draft content. Submission
+  preserves the filenames in immutable content storage. Filenames do not appear in kept event
+  fields or projected `DocumentMetadata`.
 - GET and delete prefer the recorded suffix even when the full filename is missing or differs.
   Only historical uploads with null suffix fall back to the original filename, or the bare UUID
   when no filename is available. Download responses use the document ID as a missing attachment
@@ -74,7 +76,7 @@ sequenceDiagram
     participant UseCase as Upload use case
     participant SDS
     participant Command as Command handler
-    participant Draft as Sensitive draft store
+    participant Draft as Draft check
     participant Events as Event store
     participant Projection
     Client->>HTTP: POST document with file
@@ -86,14 +88,15 @@ sequenceDiagram
     SDS-->>UseCase: Checksum
     UseCase->>Command: Upload command including full original filename
     Command->>Command: Check draft lifecycle and unique document ID
-    Command->>Draft: Persist full original filename by document ID
-    Command->>Events: Append filename-free upload event with exact fileSuffix
-    Note over Draft,Events: Draft write and event append share the command transaction
+    Command->>Events: Append upload event; filename and fileSuffix stored as erasable content
+    Note over Command,Events: PA writes the filename to its draft store in the same transaction instead
     Events-->>Projection: Eventually project document metadata
     UseCase-->>HTTP: Shared upload result
     HTTP-->>Client: 201 Created
 ```
 
+The Application draft check is `ApplicationDraftExistsQuery`, answered by loading the aggregate; an
+erased draft counts as absent. Prior Authority still checks and writes its sensitive draft store.
 Application upload assigns `documentType` immediately. Prior Authority upload leaves it unset for
 the separate type-update endpoint. Full filename persistence already occurs during upload; the
 optional `fileSuffix` is now also persisted in both upload events. There is no suffix-normalisation
@@ -132,7 +135,9 @@ flowchart TD
     Exists -->|Yes| Stream[200 streamed resource with metadata headers]
 ```
 
-For drafts, query handlers read the mutable draft filename map. For submitted owners, they read the
+For Application drafts, the query handler reads the filenames the Application projection records
+from upload event content in `draft_document_filenames`, until submission clears them. For Prior
+Authority drafts, it reads the mutable draft filename map. For submitted owners, they read the
 content version referenced by the projection. Prior Authority also uses that version after a
 decision. Unknown or deleted documents are rejected before SDS is called.
 

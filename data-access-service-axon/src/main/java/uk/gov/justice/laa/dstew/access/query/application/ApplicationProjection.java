@@ -4,6 +4,7 @@ import static uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationStat
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -31,8 +32,6 @@ import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftPayload;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftStartedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
@@ -62,7 +61,6 @@ public class ApplicationProjection {
 
   private final ApplicationReadRepository applicationReadRepository;
   private final ApplicationDataStore applicationDataStore;
-  private final ApplicationDraftStore draftStore;
   private final ApplicationReadQueryGateway applicationReadQueryGateway;
   private final ApplicationCurrentStateAccessPolicy currentStateAccessPolicy;
   private final ApplicationListIndexAccessPolicy listIndexAccessPolicy;
@@ -93,7 +91,10 @@ public class ApplicationProjection {
         query.applicationId());
   }
 
-  /** Returns a live document with its filename hydrated when available, or null if absent. */
+  /**
+   * Returns a live document with its filename hydrated when available, or null if absent. A draft's
+   * filenames are projected from its upload events until submission.
+   */
   @QueryHandler
   public @Nullable EvidenceDocument handle(FindApplicationDocumentQuery query) {
     return applicationReadRepository
@@ -406,6 +407,18 @@ public class ApplicationProjection {
             false,
             event.fileSuffix().orElse(null)));
     application.setUploadedDocuments(List.copyOf(documents));
+    if (application.getSubmittedAt() == null) {
+      String originalFilename = event.originalFilename().orElse(null);
+      if (originalFilename != null) {
+        Map<UUID, String> filenames =
+            new HashMap<>(
+                application.getDraftDocumentFilenames() == null
+                    ? Map.of()
+                    : application.getDraftDocumentFilenames());
+        filenames.put(event.documentId(), originalFilename);
+        application.setDraftDocumentFilenames(Map.copyOf(filenames));
+      }
+    }
     if (event.applicationDataVersion() != null) {
       application.setApplicationDataVersion(event.applicationDataVersion());
     }
@@ -504,15 +517,12 @@ public class ApplicationProjection {
         new ApplicationDataId(
             application.getApplicationId(), application.getApplicationDataVersion());
     ApplicationDataPayload data = applicationDataStore.getAll(List.of(id)).get(id);
+    if (data != null) {
+      return Optional.ofNullable(data.documentFilenames().get(documentId));
+    }
     // Drafts have no immutable content until submission.
-    Map<UUID, java.lang.String> filenames =
-        data != null
-            ? data.documentFilenames()
-            : draftStore
-                .find(application.getApplicationId())
-                .map(ApplicationDraftPayload::documentFilenames)
-                .orElse(Map.of());
-    return java.util.Optional.ofNullable(filenames.get(documentId));
+    Map<UUID, String> filenames = application.getDraftDocumentFilenames();
+    return Optional.ofNullable(filenames == null ? null : filenames.get(documentId));
   }
 
   private EvidenceDocument evidenceDocument(DocumentMetadata document, String fileName) {
