@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.command.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationCreationDetails;
 
@@ -8,6 +9,7 @@ import java.lang.reflect.RecordComponent;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
@@ -18,7 +20,11 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.MakeDecision
 import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftStartedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentChange;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
@@ -28,6 +34,223 @@ import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 class ApplicationDeciderTest {
 
   private static final Instant TIMESTAMP = Instant.parse("2026-07-28T10:00:00Z");
+
+  @Test
+  void givenManualUndecidedState_whenIsActiveWorkItem_thenReturnsTrue() {
+    var state = new ApplicationState();
+    state.autoGranted = AutoGrantedState.MANUAL;
+
+    assertThat(ApplicationDecider.isActiveWorkItem(state)).isTrue();
+  }
+
+  @Test
+  void givenNonManualOrDecidedState_whenIsActiveWorkItem_thenReturnsFalse() {
+    var pending = new ApplicationState();
+    var decided = new ApplicationState();
+    decided.autoGranted = AutoGrantedState.MANUAL;
+    decided.overallDecision = "GRANTED";
+
+    assertThat(ApplicationDecider.isActiveWorkItem(pending)).isFalse();
+    assertThat(ApplicationDecider.isActiveWorkItem(decided)).isFalse();
+  }
+
+  @Test
+  void givenValidWorkItem_whenValidateDirectWorkItem_thenReturnsNormally() {
+    var workItemId = UUID.randomUUID();
+    var state = new ApplicationState();
+    state.applicationId = workItemId;
+    state.autoGranted = AutoGrantedState.MANUAL;
+    state.assignmentVersion = 2L;
+
+    ApplicationDecider.validateDirectWorkItem(state, workItemId, 2L);
+  }
+
+  @Test
+  void givenMissingApplication_whenValidateDirectWorkItem_thenUsesExistingWorkItemMessage() {
+    var workItemId = UUID.randomUUID();
+    var state = new ApplicationState();
+
+    assertThatThrownBy(() -> ApplicationDecider.validateDirectWorkItem(state, workItemId, 0L))
+        .isInstanceOf(ResourceNotFoundException.class)
+        .hasMessage("No application work item found with id: " + workItemId);
+  }
+
+  @Test
+  void givenDifferentApplicationId_whenValidateDirectWorkItem_thenThrowsNotFound() {
+    var workItemId = UUID.randomUUID();
+    var state = new ApplicationState();
+    state.applicationId = UUID.randomUUID();
+
+    assertThatThrownBy(() -> ApplicationDecider.validateDirectWorkItem(state, workItemId, 0L))
+        .isInstanceOf(ResourceNotFoundException.class)
+        .hasMessage("No application work item found with id: " + workItemId);
+  }
+
+  @Test
+  void givenInactiveApplication_whenValidateDirectWorkItem_thenThrowsNotFound() {
+    var workItemId = UUID.randomUUID();
+    var state = new ApplicationState();
+    state.applicationId = workItemId;
+
+    assertThatThrownBy(() -> ApplicationDecider.validateDirectWorkItem(state, workItemId, 0L))
+        .isInstanceOf(ResourceNotFoundException.class)
+        .hasMessage("Application work item is not active: " + workItemId);
+  }
+
+  @Test
+  void givenStaleAssignmentVersion_whenValidateDirectWorkItem_thenThrowsConflict() {
+    var workItemId = UUID.randomUUID();
+    var state = new ApplicationState();
+    state.applicationId = workItemId;
+    state.autoGranted = AutoGrantedState.MANUAL;
+    state.assignmentVersion = 1L;
+
+    assertThatThrownBy(() -> ApplicationDecider.validateDirectWorkItem(state, workItemId, 0L))
+        .isInstanceOf(WorkItemAssignmentConflictException.class)
+        .hasMessage(
+            "Work item " + workItemId + " cannot be updated: the assignment version is stale");
+  }
+
+  @Test
+  void givenMissingState_whenValidateDirectWorkItem_thenThrowsNotFound() {
+    var workItemId = UUID.randomUUID();
+
+    assertThatThrownBy(() -> ApplicationDecider.validateDirectWorkItem(null, workItemId, 0L))
+        .isInstanceOf(ResourceNotFoundException.class)
+        .hasMessage("No application work item found with id: " + workItemId);
+  }
+
+  @Test
+  void givenActiveUnassignedItem_whenValidateAssignable_thenReturnsNormally() {
+    var workItemId = UUID.randomUUID();
+    var state = ApplicationStateEvents.stateOf(ApplicationStateEvents.activeUnassigned(workItemId));
+
+    assertThatCode(() -> ApplicationDecider.validateAssignable(state, workItemId, 0L))
+        .doesNotThrowAnyException();
+  }
+
+  @Test
+  void givenAssignedItem_whenValidateAssignable_thenThrowsAlreadyAssigned() {
+    var workItemId = UUID.randomUUID();
+    var state =
+        ApplicationStateEvents.stateOf(
+            ApplicationStateEvents.activeAssigned(workItemId, UUID.randomUUID()));
+
+    assertThatThrownBy(() -> ApplicationDecider.validateAssignable(state, workItemId, 1L))
+        .isInstanceOf(WorkItemAssignmentConflictException.class)
+        .hasMessage("Work item " + workItemId + " cannot be updated: it is already assigned");
+  }
+
+  @Test
+  void givenAssignedItem_whenValidateUnassignable_thenReturnsNormally() {
+    var workItemId = UUID.randomUUID();
+    var state =
+        ApplicationStateEvents.stateOf(
+            ApplicationStateEvents.activeAssigned(workItemId, UUID.randomUUID()));
+
+    assertThatCode(() -> ApplicationDecider.validateUnassignable(state, workItemId, 1L))
+        .doesNotThrowAnyException();
+  }
+
+  @Test
+  void givenUnassignedItem_whenValidateUnassignable_thenThrowsAlreadyUnassigned() {
+    var workItemId = UUID.randomUUID();
+    var state = ApplicationStateEvents.stateOf(ApplicationStateEvents.activeUnassigned(workItemId));
+
+    assertThatThrownBy(() -> ApplicationDecider.validateUnassignable(state, workItemId, 0L))
+        .isInstanceOf(WorkItemAssignmentConflictException.class)
+        .hasMessage("Work item " + workItemId + " cannot be updated: it is already unassigned");
+  }
+
+  @Test
+  void givenUnassignedItem_whenDecideAssign_thenAssignsAtNextAssignmentVersion() {
+    var workItemId = UUID.randomUUID();
+    var caseworkerId = UUID.randomUUID();
+    var state = ApplicationStateEvents.stateOf(ApplicationStateEvents.activeUnassigned(workItemId));
+
+    assertThat(ApplicationDecider.decideAssign(state, caseworkerId, TIMESTAMP))
+        .isEqualTo(
+            new WorkItemAssigned(
+                workItemId, WorkItemType.APPLICATION, 1L, 1L, caseworkerId, TIMESTAMP));
+  }
+
+  @Test
+  void givenAssignedItem_whenDecideUnassign_thenUnassignsAtNextAssignmentVersion() {
+    var workItemId = UUID.randomUUID();
+    var state =
+        ApplicationStateEvents.stateOf(
+            ApplicationStateEvents.activeAssigned(workItemId, UUID.randomUUID()));
+
+    assertThat(ApplicationDecider.decideUnassign(state, TIMESTAMP))
+        .isEqualTo(new WorkItemUnassigned(workItemId, WorkItemType.APPLICATION, 1L, 2L, TIMESTAMP));
+  }
+
+  @Test
+  void givenUnchangedAssignment_whenDecideAssignmentChange_thenReturnsEmpty() {
+    var applicationId = UUID.randomUUID();
+    var caseworkerId = UUID.randomUUID();
+
+    assertThat(
+            ApplicationDecider.decideAssignmentChange(
+                applicationId, 4L, 3L, caseworkerId, caseworkerId, TIMESTAMP))
+        .isEmpty();
+  }
+
+  @Test
+  void givenUnassignedItem_whenDecideAssignmentChange_thenReturnsAssignedEvent() {
+    var applicationId = UUID.randomUUID();
+    var caseworkerId = UUID.randomUUID();
+
+    assertThat(
+            ApplicationDecider.decideAssignmentChange(
+                applicationId, 4L, 3L, null, caseworkerId, TIMESTAMP))
+        .contains(
+            new WorkItemAssigned(
+                applicationId, WorkItemType.APPLICATION, 4L, 4L, caseworkerId, TIMESTAMP));
+  }
+
+  @Test
+  void givenAssignedItem_whenDecideAssignmentChange_thenReturnsUnassignedEvent() {
+    var applicationId = UUID.randomUUID();
+    var caseworkerId = UUID.randomUUID();
+
+    assertThat(
+            ApplicationDecider.decideAssignmentChange(
+                applicationId, 4L, 3L, caseworkerId, null, TIMESTAMP))
+        .contains(
+            new WorkItemUnassigned(applicationId, WorkItemType.APPLICATION, 4L, 4L, TIMESTAMP));
+  }
+
+  @Test
+  void givenDifferentCaseworkers_whenDecideAssignmentChange_thenReturnsReassignmentEvent() {
+    var applicationId = UUID.randomUUID();
+    var currentCaseworkerId = UUID.randomUUID();
+    var targetCaseworkerId = UUID.randomUUID();
+
+    assertThat(
+            ApplicationDecider.decideAssignmentChange(
+                applicationId, 4L, 3L, currentCaseworkerId, targetCaseworkerId, TIMESTAMP))
+        .contains(
+            new WorkItemAssigned(
+                applicationId, WorkItemType.APPLICATION, 4L, 4L, targetCaseworkerId, TIMESTAMP));
+  }
+
+  @Test
+  void givenUnassignedItem_whenDecideAssignmentChange_thenReturnsTypedAssignmentChange() {
+    Optional<WorkItemAssignmentChange> change =
+        ApplicationDecider.decideAssignmentChange(
+            UUID.randomUUID(), 1L, 0L, null, UUID.randomUUID(), TIMESTAMP);
+
+    assertThat(change).containsInstanceOf(WorkItemAssigned.class);
+  }
+
+  @Test
+  void givenInactiveApplication_whenDecideGroupMemberAssignment_thenReturnsEmpty() {
+    var state = new ApplicationState();
+
+    assertThat(ApplicationDecider.decideGroupMemberAssignment(state, UUID.randomUUID(), TIMESTAMP))
+        .isEmpty();
+  }
 
   // ── decideCreate ───────────────────────────────────────────────────────────────
 

@@ -435,6 +435,7 @@ class PostgresAxonIntegrationTest {
             "prior_authority_history",
             "token_entry",
             "work_item_route",
+            "work_list_group_member",
             "work_list_item");
     assertThat(sequences).containsExactly("aggregate-event-global-index-sequence");
     assertThat(applicationHistoryColumns)
@@ -1443,7 +1444,6 @@ class PostgresAxonIntegrationTest {
     UUID applicationId = UUID.randomUUID();
 
     assertUnauthorized(HttpMethod.GET, "/api/v0/applications", null);
-    assertUnauthorized(HttpMethod.GET, "/api/v0/individuals", null);
     assertUnauthorized(HttpMethod.GET, "/api/v0/applications/" + applicationId, null);
     assertUnauthorized(
         HttpMethod.GET, "/api/v0/applications/" + applicationId + "/certificate", null);
@@ -1472,7 +1472,6 @@ class PostgresAxonIntegrationTest {
   void givenUnknownToken_whenCallingSecuredEndpoints_thenReturnsForbidden() {
     UUID applicationId = UUID.randomUUID();
     assertForbidden(HttpMethod.GET, "/api/v0/applications", null);
-    assertForbidden(HttpMethod.GET, "/api/v0/individuals", null);
     assertForbidden(HttpMethod.GET, "/api/v0/applications/" + applicationId, null);
     assertForbidden(HttpMethod.GET, "/api/v0/applications/" + applicationId + "/certificate", null);
     assertForbidden(HttpMethod.GET, "/api/v0/applications/" + applicationId + "/notes", null);

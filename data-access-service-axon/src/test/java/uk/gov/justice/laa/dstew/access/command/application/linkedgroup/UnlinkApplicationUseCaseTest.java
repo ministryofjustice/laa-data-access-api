@@ -14,7 +14,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class UnlinkApplicationUseCaseTest {
 
-  @Mock private UnlinkApplicationCommandHandler commandHandler;
+  @Mock private UnlinkApplicationCoordinator coordinator;
 
   @InjectMocks private UnlinkApplicationUseCase useCase;
 
@@ -29,7 +29,7 @@ class UnlinkApplicationUseCaseTest {
 
     useCase.execute(command);
 
-    verify(commandHandler).handle(command);
-    verifyNoMoreInteractions(commandHandler);
+    verify(coordinator).handle(command);
+    verifyNoMoreInteractions(coordinator);
   }
 }
