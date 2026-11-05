@@ -9,6 +9,9 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
@@ -22,6 +25,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -32,6 +36,10 @@ import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupDissolvedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAddedToGroupEvent;
+import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberRemovedFromGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthoritySubmittedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
@@ -42,23 +50,22 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
-import uk.gov.justice.laa.dstew.access.observability.ErrorReporter;
 
 class WorkListProjectionTest {
   private WorkListItemReadRepository items;
+  private WorkListGroupMemberReadRepository groupMembers;
   private ApplicationDataStore applicationDataStore;
   private PriorAuthorityDataStore priorAuthorityDataStore;
-  private ErrorReporter errorReporter;
   private WorkListProjection projection;
 
   @BeforeEach
   void setUp() {
     items = mock(WorkListItemReadRepository.class);
+    groupMembers = mock(WorkListGroupMemberReadRepository.class);
     applicationDataStore = mock(ApplicationDataStore.class);
     priorAuthorityDataStore = mock(PriorAuthorityDataStore.class);
-    errorReporter = mock(ErrorReporter.class);
     projection =
-        new WorkListProjection(items, applicationDataStore, priorAuthorityDataStore, errorReporter);
+        new WorkListProjection(items, groupMembers, applicationDataStore, priorAuthorityDataStore);
   }
 
   @Test
@@ -425,30 +432,65 @@ class WorkListProjectionTest {
   }
 
   @Test
-  void givenMissingWorkItem_whenAssigned_thenReportsAndDoesNotSave() {
+  void givenMissingWorkItem_whenAssigned_thenLogsWarningAndDoesNotSave() {
     UUID itemId = UUID.randomUUID();
     when(items.findById(itemId)).thenReturn(Optional.empty());
+    Logger logger = (Logger) LoggerFactory.getLogger(WorkListProjection.class);
+    ListAppender<ILoggingEvent> logEvents = new ListAppender<>();
+    logEvents.start();
+    logger.addAppender(logEvents);
 
-    projection.on(
-        new WorkItemAssigned(
-            itemId, WorkItemType.APPLICATION, 1L, 1L, UUID.randomUUID(), Instant.now()),
-        message());
+    try {
+      projection.on(
+          new WorkItemAssigned(
+              itemId, WorkItemType.APPLICATION, 1L, 1L, UUID.randomUUID(), Instant.now()),
+          message());
 
-    verify(errorReporter)
-        .report(ArgumentMatchers.eq("Cannot assign missing work-list item"), any());
+      assertThat(logEvents.list)
+          .singleElement()
+          .satisfies(
+              event ->
+                  assertThat(event.getFormattedMessage())
+                      .isEqualTo(
+                          "Cannot assign missing work-list item: id="
+                              + itemId
+                              + ", type=APPLICATION"));
+    } finally {
+      logger.detachAppender(logEvents);
+      logEvents.stop();
+    }
+
     verify(items, never()).save(any());
   }
 
   @Test
-  void givenMissingWorkItem_whenUnassigned_thenReportsAndDoesNotSave() {
+  void givenMissingWorkItem_whenUnassigned_thenLogsWarningAndDoesNotSave() {
     UUID itemId = UUID.randomUUID();
     when(items.findById(itemId)).thenReturn(Optional.empty());
+    Logger logger = (Logger) LoggerFactory.getLogger(WorkListProjection.class);
+    ListAppender<ILoggingEvent> logEvents = new ListAppender<>();
+    logEvents.start();
+    logger.addAppender(logEvents);
 
-    projection.on(
-        new WorkItemUnassigned(itemId, WorkItemType.APPLICATION, 1L, 1L, Instant.now()), message());
+    try {
+      projection.on(
+          new WorkItemUnassigned(itemId, WorkItemType.APPLICATION, 1L, 1L, Instant.now()),
+          message());
 
-    verify(errorReporter)
-        .report(ArgumentMatchers.eq("Cannot unassign missing work-list item"), any());
+      assertThat(logEvents.list)
+          .singleElement()
+          .satisfies(
+              event ->
+                  assertThat(event.getFormattedMessage())
+                      .isEqualTo(
+                          "Cannot unassign missing work-list item: id="
+                              + itemId
+                              + ", type=APPLICATION"));
+    } finally {
+      logger.detachAppender(logEvents);
+      logEvents.stop();
+    }
+
     verify(items, never()).save(any());
   }
 
@@ -513,6 +555,147 @@ class WorkListProjectionTest {
     projection.reset();
 
     verify(items).deleteAllInBatch();
+    verify(groupMembers).deleteAllInBatch();
+  }
+
+  @Test
+  void givenLinkedApplication_whenReadyProjected_thenUsesLinkedGroupBoundary() {
+    UUID applicationId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    WorkListItemReadModel existing = applicationRow(applicationId);
+    when(items.findById(applicationId)).thenReturn(Optional.of(existing));
+    when(applicationDataStore.get(applicationId, 5L))
+        .thenReturn(mock(ApplicationDataPayload.class));
+    when(groupMembers.findById(applicationId))
+        .thenReturn(Optional.of(new WorkListGroupMemberReadModel(applicationId, groupId)));
+
+    projection.on(
+        new ApplicationReadyForManualAssessmentEvent(applicationId, 3L, 5L, Instant.now()),
+        message());
+
+    verify(items).save(existing);
+    assertLinkedGroupBoundary(existing, groupId);
+  }
+
+  @Test
+  void givenActiveApplications_whenGroupCreated_thenMembersUseLinkedGroupBoundary() {
+    UUID leadId = UUID.randomUUID();
+    UUID memberId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    WorkListItemReadModel lead = applicationRow(leadId);
+    WorkListItemReadModel member = applicationRow(memberId);
+    when(items.findById(leadId)).thenReturn(Optional.of(lead));
+    when(items.findById(memberId)).thenReturn(Optional.of(member));
+
+    projection.on(
+        new LinkedApplicationGroupCreatedEvent(
+            groupId, leadId, List.of(leadId, memberId), Instant.now()),
+        message());
+
+    assertLinkedGroupBoundary(lead, groupId);
+    assertLinkedGroupBoundary(member, groupId);
+    verify(groupMembers, times(2)).save(any(WorkListGroupMemberReadModel.class));
+    verify(items).save(lead);
+    verify(items).save(member);
+  }
+
+  @Test
+  void givenNotYetReadyApplication_whenAddedToGroup_thenRecordsMembershipOnly() {
+    UUID memberId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    when(items.findById(memberId)).thenReturn(Optional.empty());
+
+    projection.on(
+        new MemberAddedToGroupEvent(groupId, UUID.randomUUID(), memberId, Instant.now()),
+        message());
+
+    ArgumentCaptor<WorkListGroupMemberReadModel> captor =
+        ArgumentCaptor.forClass(WorkListGroupMemberReadModel.class);
+    verify(groupMembers).save(captor.capture());
+    assertThat(captor.getValue().getApplicationId()).isEqualTo(memberId);
+    assertThat(captor.getValue().getGroupId()).isEqualTo(groupId);
+    verify(items, never()).save(any());
+  }
+
+  @Test
+  void givenGroupedApplication_whenRemovedFromGroup_thenUsesDirectBoundary() {
+    UUID memberId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    WorkListItemReadModel member = applicationRow(memberId);
+    member.useLinkedGroupBoundary(groupId);
+    when(items.findById(memberId)).thenReturn(Optional.of(member));
+
+    projection.on(
+        new MemberRemovedFromGroupEvent(groupId, UUID.randomUUID(), memberId, 2L, Instant.now()),
+        message());
+
+    assertDirectBoundary(member);
+    verify(groupMembers).deleteById(memberId);
+    verify(items).save(member);
+  }
+
+  @Test
+  void givenGroupedApplications_whenGroupDissolved_thenEveryMemberUsesDirectBoundary() {
+    UUID leadId = UUID.randomUUID();
+    UUID removedId = UUID.randomUUID();
+    UUID groupId = UUID.randomUUID();
+    WorkListItemReadModel lead = applicationRow(leadId);
+    lead.useLinkedGroupBoundary(groupId);
+    WorkListItemReadModel removed = applicationRow(removedId);
+    removed.useLinkedGroupBoundary(groupId);
+    when(items.findById(leadId)).thenReturn(Optional.of(lead));
+    when(items.findById(removedId)).thenReturn(Optional.of(removed));
+    when(groupMembers.findAllByGroupId(groupId))
+        .thenReturn(List.of(new WorkListGroupMemberReadModel(leadId, groupId)));
+
+    projection.on(
+        new LinkedApplicationGroupDissolvedEvent(
+            groupId, leadId, removedId, List.of(leadId), 1L, Instant.now()),
+        message());
+
+    assertDirectBoundary(lead);
+    assertDirectBoundary(removed);
+    verify(groupMembers).deleteById(leadId);
+    verify(groupMembers).deleteById(removedId);
+  }
+
+  @Test
+  void givenGroupedPriorAuthorityId_whenGroupCreated_thenLeavesPriorAuthorityDirect() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    WorkListItemReadModel row =
+        new WorkListItemReadModel(
+            WorkItemType.PRIOR_AUTHORITY,
+            priorAuthorityId,
+            UUID.randomUUID(),
+            Instant.now(),
+            1L,
+            0L);
+    when(items.findById(priorAuthorityId)).thenReturn(Optional.of(row));
+
+    projection.on(
+        new LinkedApplicationGroupCreatedEvent(
+            UUID.randomUUID(), priorAuthorityId, List.of(priorAuthorityId), Instant.now()),
+        message());
+
+    assertDirectBoundary(row);
+    verify(items, never()).save(any());
+  }
+
+  private static WorkListItemReadModel applicationRow(UUID applicationId) {
+    return new WorkListItemReadModel(
+        WorkItemType.APPLICATION, applicationId, null, Instant.now(), 1L, 0L);
+  }
+
+  private static void assertLinkedGroupBoundary(WorkListItemReadModel row, UUID groupId) {
+    assertThat(row.getAssignmentBoundaryType()).isEqualTo("LINKED_GROUP");
+    assertThat(row.getAssignmentBoundaryId()).isEqualTo(groupId);
+    assertThat(row.getGroupId()).isEqualTo(groupId);
+  }
+
+  private static void assertDirectBoundary(WorkListItemReadModel row) {
+    assertThat(row.getAssignmentBoundaryType()).isEqualTo("DIRECT");
+    assertThat(row.getAssignmentBoundaryId()).isEqualTo(row.getId());
+    assertThat(row.getGroupId()).isNull();
   }
 
   private static EventMessage message() {

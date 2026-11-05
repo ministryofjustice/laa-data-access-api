@@ -7,9 +7,10 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class UnlinkApplicationUseCase {
-  private final UnlinkApplicationCommandHandler commandHandler;
+  private final UnlinkApplicationCoordinator coordinator;
 
+  /** Executes the explicit application-unlink command. */
   public void execute(UnlinkApplicationCommand command) {
-    commandHandler.handle(command);
+    coordinator.handle(command);
   }
 }

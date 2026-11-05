@@ -5,18 +5,11 @@ import org.axonframework.messaging.eventhandling.processing.errorhandling.Propag
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
-import uk.gov.justice.laa.dstew.access.observability.ReportingErrorHandler;
 
 /** Defines isolated processors for projections and synchronous command-side route updates. */
 @Configuration
 @ExcludeFromGeneratedCodeCoverage
 public class AxonEventProcessingConfig {
-
-  private final ReportingErrorHandler reportingErrorHandler;
-
-  public AxonEventProcessingConfig(ReportingErrorHandler reportingErrorHandler) {
-    this.reportingErrorHandler = reportingErrorHandler;
-  }
 
   @Bean
   EventProcessorDefinition applicationProjectionProcessor() {
@@ -75,22 +68,9 @@ public class AxonEventProcessingConfig {
             configuration -> configuration.errorHandler(PropagatingErrorHandler.instance()));
   }
 
-  /** Handles linked group assignment synchronization synchronously within the event transaction. */
-  @Bean
-  EventProcessorDefinition linkedGroupAssignmentProcessor() {
-    return EventProcessorDefinition.subscribingMatching("linkedGroupAssignment")
-        .customized(
-            configuration -> configuration.errorHandler(PropagatingErrorHandler.instance()));
-  }
-
-  /**
-   * Pooled-streaming processors run on background threads with no HTTP caller to propagate failures
-   * back to, so they use {@link ReportingErrorHandler} to report unexpected failures to Sentry
-   * (with retry-storm protection) before delegating to Axon's normal rethrow/retry/abort handling —
-   * see {@link ReportingErrorHandler}'s javadoc for details.
-   */
   private EventProcessorDefinition pooledStreamingProcessor(String processingGroup) {
     return EventProcessorDefinition.pooledStreamingMatching(processingGroup)
-        .customized(configuration -> configuration.errorHandler(reportingErrorHandler));
+        .customized(
+            configuration -> configuration.errorHandler(PropagatingErrorHandler.instance()));
   }
 }
