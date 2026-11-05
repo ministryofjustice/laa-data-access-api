@@ -4,7 +4,6 @@ import java.util.Locale;
 import java.util.concurrent.Callable;
 import picocli.CommandLine;
 import uk.gov.justice.laa.dstew.dataaccesstools.cli.applications.ApplicationCreationWorkflow.Outcome;
-import uk.gov.justice.laa.dstew.dataaccesstools.cli.applications.ApplicationRequestFactory.OpponentType;
 
 @CommandLine.Command(
     name = "create",
@@ -32,33 +31,16 @@ public final class CreateApplicationsCommand implements Callable<Integer> {
       description = "Provider office code to use for every created application.")
   private String officeCode;
 
-  @CommandLine.Option(
-      names = "--opponent-count",
-      defaultValue = "1",
-      description = "Number of opponents to create on each application, 0 or more (default: 1).")
-  private int opponentCount;
-
-  @CommandLine.Option(
-      names = "--opponent-type",
-      converter = OpponentTypeConverter.class,
-      description = "Force every opponent to be INDIVIDUAL or ORGANISATION (default: random).")
-  private OpponentType opponentType;
+  @CommandLine.Mixin private OpponentOptions opponents;
 
   @Override
   public Integer call() {
     if (count < 1) {
       throw new CommandLine.ParameterException(new CommandLine(this), "--count must be positive");
     }
-    if (opponentCount < 0) {
-      throw new CommandLine.ParameterException(
-          new CommandLine(this), "--opponent-count must not be negative");
-    }
     return applications
         .root()
-        .print(
-            applications
-                .creationWorkflow(officeCode, opponentCount, opponentType)
-                .create(count, outcome));
+        .print(applications.creationWorkflow(officeCode, opponents).create(count, outcome));
   }
 
   static final class OutcomeConverter implements CommandLine.ITypeConverter<Outcome> {

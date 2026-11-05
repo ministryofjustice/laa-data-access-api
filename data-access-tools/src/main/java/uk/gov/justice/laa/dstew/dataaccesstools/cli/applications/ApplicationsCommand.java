@@ -22,18 +22,13 @@ public final class ApplicationsCommand {
   }
 
   ApplicationCreationWorkflow creationWorkflow() {
-    return creationWorkflow(null);
+    return creationWorkflow(null, new OpponentOptions());
   }
 
-  ApplicationCreationWorkflow creationWorkflow(String officeCode) {
-    return creationWorkflow(officeCode, 1, null);
-  }
-
-  ApplicationCreationWorkflow creationWorkflow(
-      String officeCode, int opponentCount, ApplicationRequestFactory.OpponentType opponentType) {
+  ApplicationCreationWorkflow creationWorkflow(String officeCode, OpponentOptions opponents) {
     return new ApplicationCreationWorkflow(
         root.client(),
-        new ApplicationRequestFactory(root.seed(), officeCode, opponentCount, opponentType),
+        new ApplicationRequestFactory(root.seed(), officeCode, opponents.count(), opponents.type()),
         new DecisionRequestFactory());
   }
 }
