@@ -153,6 +153,32 @@ projection was not visible before the timeout.
 
 ## Data and transaction rules
 
+### Linked-group assignment locks
+
+Linked-group assignment and membership writers lock the relevant `application_group_route` rows
+with `PESSIMISTIC_WRITE`, in ascending application ID order, in one statement. They re-read
+membership after acquiring the locks. If membership changed while waiting, they return 409 rather
+than taking additional locks in another pass. A coordinator then dispatches one command; its
+handler loads the aggregate state, calls a pure decider and appends all resulting events together.
+
+Do not lock `work_item_route` before appending to an application. A decision appends to the
+application stream before its route projection removes the work-item route. Taking the route lock
+first could deadlock against that event append.
+
+The enforcement is part of the implementation:
+
+- The ArchUnit rule permits route `…ForUpdate` queries only in `ApplicationGroupRouteResolver` and
+  `ApplicationGroupRouteProjection`.
+- A second ArchUnit rule permits only `*Coordinator` classes to send the commands that rely on
+  route locks: establish, add, remove and change lead; linked-group assign and unassign; direct
+  application assign and unassign; and readiness. Each coordinator must call the resolver before
+  sending, in the same transaction.
+
+Add any new command that reads or changes a linked group's membership or an application's
+assignment to `ROUTE_LOCKED_COMMANDS` in `AxonArchitectureTest`, and send it from a coordinator.
+Tests may send these commands directly when they deliberately bypass coordinators. Route locking is still required when a handler only reads a
+member's state and does not append to that member's stream.
+
 ### Append; never update `application_data`
 
 Each detailed change creates a complete next version. PostgreSQL rejects update, direct delete, and

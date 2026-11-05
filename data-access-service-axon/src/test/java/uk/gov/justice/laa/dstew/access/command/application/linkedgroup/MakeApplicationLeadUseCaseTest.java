@@ -14,7 +14,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class MakeApplicationLeadUseCaseTest {
 
-  @Mock private MakeApplicationLeadCommandHandler commandHandler;
+  @Mock private MakeApplicationLeadCoordinator coordinator;
 
   @InjectMocks private MakeApplicationLeadUseCase useCase;
 
@@ -28,7 +28,7 @@ class MakeApplicationLeadUseCaseTest {
 
     useCase.execute(command);
 
-    verify(commandHandler).handle(command);
-    verifyNoMoreInteractions(commandHandler);
+    verify(coordinator).handle(command);
+    verifyNoMoreInteractions(coordinator);
   }
 }
