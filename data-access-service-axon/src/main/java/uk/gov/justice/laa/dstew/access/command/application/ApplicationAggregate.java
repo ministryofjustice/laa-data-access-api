@@ -12,7 +12,6 @@ import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationRead
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
-import uk.gov.justice.laa.dstew.access.command.worklist.assign.DirectGroupWorkItemAssignmentCommand;
 import uk.gov.justice.laa.dstew.access.security.OfficeCodeOwned;
 
 /** Event-sourced consistency boundary for an Application and its owned child state. */
