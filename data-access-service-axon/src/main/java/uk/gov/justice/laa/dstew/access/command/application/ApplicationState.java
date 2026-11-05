@@ -2,11 +2,15 @@ package uk.gov.justice.laa.dstew.access.command.application;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
+import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
+import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 
 /** State object reconstructed by folding an aggregate's event stream. */
 @Getter
@@ -25,4 +29,11 @@ public class ApplicationState {
   UUID caseworkerId;
   long assignmentVersion;
   List<DocumentMetadata> uploadedDocuments = new ArrayList<>();
+  String laaReference;
+  // Draft content, held only until submission.
+  String draftStatus;
+  Erasable<Map<String, Object>> draftApplicationContent = Erasable.erased();
+  Erasable<String> draftSerialisedRequest = Erasable.erased();
+  Erasable<List<PotentialDuplicate>> draftPotentialDuplicates = Erasable.erased();
+  Map<UUID, Erasable<String>> draftDocumentFilenames = new LinkedHashMap<>();
 }

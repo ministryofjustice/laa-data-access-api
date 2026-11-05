@@ -1,6 +1,5 @@
 package uk.gov.justice.laa.dstew.access.command.application;
 
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -183,51 +182,47 @@ public final class ApplicationDecider {
   }
 
   /**
-   * Decides whether to start an Application draft or treat the command as an idempotent retry.
+   * Decides whether a repeated draft start is an idempotent retry.
    *
-   * <p>Returns an {@link ApplicationDraftStartedEvent} for a new draft, an empty list for an
-   * identical retry while the Application remains in draft, or throws {@link
-   * ApplicationCreationConflictException} for a conflicting retry or when the Application has
-   * already been fully created.
+   * <p>Returns an empty list for an identical retry while the Application remains in draft, or
+   * throws {@link ApplicationCreationConflictException} for a conflicting retry or when the
+   * Application has already been fully created.
+   *
+   * @throws IllegalStateException if the Application does not exist yet
    */
   public static List<Object> decideStartDraft(
-      ApplicationState state,
-      UUID applicationId,
-      int schemaVersion,
-      String fingerprint,
-      Instant occurredAt) {
-    return decideStartDraft(state, applicationId, schemaVersion, fingerprint, occurredAt, null);
+      ApplicationState state, int schemaVersion, String fingerprint) {
+    if (state.applicationId == null) {
+      throw new IllegalStateException("No Application draft to compare a retry against");
+    }
+    return decideExistingDraft(state, schemaVersion, fingerprint);
   }
 
   /**
    * Decides whether to start an Application draft or treat the command as an idempotent retry.
    *
-   * <p>Returns an {@link ApplicationDraftStartedEvent} for a new draft, an empty list for an
-   * identical retry while the Application remains in draft, or throws {@link
-   * ApplicationCreationConflictException} for a conflicting retry or when the Application has
-   * already been fully created.
+   * <p>Returns {@code draft} for a new draft, an empty list for an identical retry while the
+   * Application remains in draft, or throws {@link ApplicationCreationConflictException} for a
+   * conflicting retry or when the Application has already been fully created. Only kept fields of
+   * {@code draft} are compared, so the decision is the same once its content is erased.
    */
   public static List<Object> decideStartDraft(
-      ApplicationState state,
-      UUID applicationId,
-      int schemaVersion,
-      String fingerprint,
-      Instant occurredAt,
-      String officeCode) {
-
+      ApplicationState state, ApplicationDraftStartedEvent draft) {
     if (state.applicationId != null) {
-      boolean stillDraft = state.status == null;
-      if (stillDraft
-          && Objects.equals(state.requestFingerprint, fingerprint)
-          && state.schemaVersion == schemaVersion) {
-        return Collections.emptyList();
-      }
-      throw new ApplicationCreationConflictException(state.applicationId);
+      return decideExistingDraft(state, draft.schemaVersion(), draft.requestFingerprint());
     }
+    return List.of(draft);
+  }
 
-    return List.of(
-        new ApplicationDraftStartedEvent(
-            applicationId, schemaVersion, fingerprint, occurredAt, officeCode));
+  private static List<Object> decideExistingDraft(
+      ApplicationState state, int schemaVersion, String fingerprint) {
+    boolean stillDraft = state.status == null;
+    if (stillDraft
+        && Objects.equals(state.requestFingerprint, fingerprint)
+        && state.schemaVersion == schemaVersion) {
+      return Collections.emptyList();
+    }
+    throw new ApplicationCreationConflictException(state.applicationId);
   }
 
   /**

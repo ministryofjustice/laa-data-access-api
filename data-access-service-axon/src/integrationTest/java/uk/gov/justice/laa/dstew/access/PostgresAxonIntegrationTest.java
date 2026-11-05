@@ -207,22 +207,14 @@ class PostgresAxonIntegrationTest {
               assertThat(event.get("payload").toString())
                   .doesNotContain("originalFilename.pdf", "originalFilename", "fileName")
                   .doesNotContain("fileSuffix");
-              assertThat(event.get("content").toString()).doesNotContain("originalFilename");
-              assertThat(
-                      objectMapper
-                          .readTree(event.get("content").toString())
-                          .get("fileSuffix")
-                          .asString())
-                  .isEqualTo(".pdf");
+              var content = objectMapper.readTree(event.get("content").toString());
+              assertThat(content.get("fileSuffix").asString()).isEqualTo(".pdf");
+              assertThat(content.get("originalFilename").asString())
+                  .isEqualTo("originalFilename.pdf");
             });
 
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT payload -> 'documentFilenames' ->> ? FROM axon.application_draft WHERE application_id = ?",
-                String.class,
-                documentId.toString(),
-                applicationId))
-        .isEqualTo("originalFilename.pdf");
+    assertThat(uploadedFilenames(applicationId, documentId))
+        .containsExactly("originalFilename.pdf");
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM axon.application_data WHERE application_id = ?",
@@ -265,12 +257,6 @@ class PostgresAxonIntegrationTest {
         .contains(documentId.toString())
         .contains("fileSuffix", ".pdf")
         .doesNotContain("originalFilename.pdf", "fileName");
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.application_draft WHERE application_id = ?",
-                Integer.class,
-                applicationId))
-        .isZero();
     assertThatThrownBy(
             () ->
                 commandGateway.sendAndWait(
@@ -292,7 +278,7 @@ class PostgresAxonIntegrationTest {
   }
 
   @Test
-  void givenDocumentEventAppendFails_whenUploaded_thenDraftFilenameRollsBack() {
+  void givenDocumentEventAppendFails_whenUploaded_thenFilenameContentRollsBack() {
     UUID applicationId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
     createDocumentDraft(applicationId);
@@ -341,13 +327,7 @@ class PostgresAxonIntegrationTest {
                 Integer.class,
                 applicationId))
         .isZero();
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT payload -> 'documentFilenames' ->> ? FROM axon.application_draft WHERE application_id = ?",
-                String.class,
-                documentId.toString(),
-                applicationId))
-        .isNull();
+    assertThat(uploadedFilenames(applicationId, documentId)).isEmpty();
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM axon.domain_event_entry WHERE aggregate_identifier = ?",
@@ -356,14 +336,19 @@ class PostgresAxonIntegrationTest {
         .isEqualTo(1);
 
     commandGateway.sendAndWait(command);
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT payload -> 'documentFilenames' ->> ? FROM axon.application_draft "
-                    + "WHERE application_id = ?",
-                String.class,
-                documentId.toString(),
-                applicationId))
-        .isEqualTo("client-report.pdf");
+    assertThat(uploadedFilenames(applicationId, documentId)).containsExactly("client-report.pdf");
+  }
+
+  private List<String> uploadedFilenames(UUID applicationId, UUID documentId) {
+    return jdbcTemplate.queryForList(
+        "SELECT c.content ->> 'originalFilename' FROM axon.domain_event_entry e"
+            + " JOIN axon.event_content c ON c.event_id = e.event_identifier"
+            + " WHERE e.aggregate_identifier = ?"
+            + " AND e.payload_type = 'access.ApplicationDocumentUploaded'"
+            + " AND convert_from(e.payload, 'UTF8')::jsonb ->> 'documentId' = ?",
+        String.class,
+        applicationId.toString(),
+        documentId.toString());
   }
 
   private void createDocumentDraft(UUID applicationId) {
@@ -427,7 +412,6 @@ class PostgresAxonIntegrationTest {
         .containsExactly(
             "application_current_state",
             "application_data",
-            "application_draft",
             "application_group_route",
             "application_history",
             "application_list_index",

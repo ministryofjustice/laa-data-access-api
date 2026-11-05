@@ -18,6 +18,7 @@ import org.axonframework.messaging.eventhandling.annotation.EventHandler;
 import org.axonframework.messaging.eventhandling.replay.annotation.ResetHandler;
 import org.axonframework.messaging.queryhandling.QueryUpdateEmitter;
 import org.axonframework.messaging.queryhandling.annotation.QueryHandler;
+import org.axonframework.modelling.annotation.InjectEntity;
 import org.jspecify.annotations.Nullable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -26,14 +27,13 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
+import uk.gov.justice.laa.dstew.access.command.application.ApplicationAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftPayload;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftStartedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
@@ -63,7 +63,6 @@ public class ApplicationProjection {
 
   private final ApplicationReadRepository applicationReadRepository;
   private final ApplicationDataStore applicationDataStore;
-  private final ApplicationDraftStore draftStore;
   private final ApplicationReadQueryGateway applicationReadQueryGateway;
   private final ApplicationCurrentStateAccessPolicy currentStateAccessPolicy;
   private final ApplicationListIndexAccessPolicy listIndexAccessPolicy;
@@ -87,9 +86,14 @@ public class ApplicationProjection {
     return applicationReadRepository.existsById(query.applicationId());
   }
 
-  /** Returns a live document with its filename hydrated when available, or null if absent. */
+  /**
+   * Returns a live document with its filename hydrated when available, or null if absent. A draft's
+   * filenames are read from its aggregate, which is the only place they are held before submission.
+   */
   @QueryHandler
-  public @Nullable EvidenceDocument handle(FindApplicationDocumentQuery query) {
+  public @Nullable EvidenceDocument handle(
+      FindApplicationDocumentQuery query,
+      @InjectEntity(idProperty = "applicationId") @Nullable ApplicationAggregate aggregate) {
     return applicationReadRepository
         .findById(query.applicationId())
         .flatMap(
@@ -102,7 +106,8 @@ public class ApplicationProjection {
                         document ->
                             evidenceDocument(
                                 document,
-                                documentFilename(application, document.documentId()).orElse(null))))
+                                documentFilename(application, aggregate, document.documentId())
+                                    .orElse(null))))
         .orElse(null);
   }
 
@@ -512,20 +517,21 @@ public class ApplicationProjection {
             });
   }
 
-  private Optional<String> documentFilename(ApplicationReadModel application, UUID documentId) {
+  private Optional<String> documentFilename(
+      ApplicationReadModel application, @Nullable ApplicationAggregate aggregate, UUID documentId) {
     ApplicationDataId id =
         new ApplicationDataId(
             application.getApplicationId(), application.getApplicationDataVersion());
     ApplicationDataPayload data = applicationDataStore.getAll(List.of(id)).get(id);
-    // Drafts have no immutable content until submission.
-    Map<UUID, java.lang.String> filenames =
-        data != null
-            ? data.documentFilenames()
-            : draftStore
-                .find(application.getApplicationId())
-                .map(ApplicationDraftPayload::documentFilenames)
-                .orElse(Map.of());
-    return java.util.Optional.ofNullable(filenames.get(documentId));
+    if (data != null) {
+      return Optional.ofNullable(data.documentFilenames().get(documentId));
+    }
+    // Until submission, draft filenames are held only in the aggregate's events.
+    if (aggregate == null) {
+      return Optional.empty();
+    }
+    return Optional.ofNullable(aggregate.getState().getDraftDocumentFilenames().get(documentId))
+        .map(filename -> filename.orElse(null));
   }
 
   private EvidenceDocument evidenceDocument(DocumentMetadata document, String fileName) {

@@ -74,7 +74,7 @@ sequenceDiagram
     participant UseCase as Upload use case
     participant SDS
     participant Command as Command handler
-    participant Draft as Sensitive draft store
+    participant Draft as Draft check
     participant Events as Event store
     participant Projection
     Client->>HTTP: POST document with file
@@ -86,14 +86,15 @@ sequenceDiagram
     SDS-->>UseCase: Checksum
     UseCase->>Command: Upload command including full original filename
     Command->>Command: Check draft lifecycle and unique document ID
-    Command->>Draft: Persist full original filename by document ID
-    Command->>Events: Append filename-free upload event with exact fileSuffix
-    Note over Draft,Events: Draft write and event append share the command transaction
+    Command->>Events: Append upload event; filename and fileSuffix stored as erasable content
+    Note over Command,Events: PA writes the filename to its draft store in the same transaction instead
     Events-->>Projection: Eventually project document metadata
     UseCase-->>HTTP: Shared upload result
     HTTP-->>Client: 201 Created
 ```
 
+The Application draft check is `ApplicationDraftExistsQuery`, answered by loading the aggregate; an
+erased draft counts as absent. Prior Authority still checks and writes its sensitive draft store.
 Application upload assigns `documentType` immediately. Prior Authority upload leaves it unset for
 the separate type-update endpoint. Full filename persistence already occurs during upload; the
 optional `fileSuffix` is now also persisted in both upload events. There is no suffix-normalisation

@@ -18,7 +18,6 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import org.axonframework.eventsourcing.configuration.EventSourcedEntityModule;
 import org.axonframework.eventsourcing.configuration.EventSourcingConfigurer;
@@ -31,12 +30,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.mockito.ArgumentCaptor;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftPayload;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeDecisionProceeding;
@@ -68,6 +64,7 @@ import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConf
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException;
 import uk.gov.justice.laa.dstew.access.exception.InvalidApplicationStateException;
+import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
@@ -79,8 +76,7 @@ class ApplicationAggregateTest {
     String officeCode = "1A001B";
 
     ApplicationAggregate aggregate = new ApplicationAggregate();
-    aggregate.on(
-        new ApplicationDraftStartedEvent(applicationId, 1, "hash", Instant.now(), officeCode));
+    aggregate.on(draftStartedEvent(applicationId, officeCode));
 
     assertThat(aggregate.getApplicationId()).isEqualTo(applicationId);
     assertThat(aggregate.getOfficeCode()).isEqualTo(officeCode);
@@ -133,14 +129,12 @@ class ApplicationAggregateTest {
 
   private AxonTestFixture fixture;
   private ApplicationDataStore applicationDataStore;
-  private ApplicationDraftStore draftStore;
   private ApplicationUpdateDetailsFactory updateDetailsFactory;
 
   @BeforeEach
   void setUp() {
     final ApplicationCreationDetailsFactory factory = mock(ApplicationCreationDetailsFactory.class);
     applicationDataStore = mock(ApplicationDataStore.class);
-    draftStore = mock(ApplicationDraftStore.class);
     updateDetailsFactory = mock(ApplicationUpdateDetailsFactory.class);
     when(factory.prepare(any(CreateApplicationCommand.class)))
         .thenAnswer(
@@ -614,8 +608,6 @@ class ApplicationAggregateTest {
             "checksum",
             "CIVIL_APPLY",
             "originalFilename.pdf");
-    when(draftStore.find(applicationId)).thenReturn(java.util.Optional.of(draftPayload()));
-
     fixture
         .given()
         .events(draftStartedEvent(applicationId))
@@ -634,13 +626,8 @@ class ApplicationAggregateTest {
                 "checksum",
                 "CIVIL_APPLY",
                 null,
-                ".pdf"));
-
-    ArgumentCaptor<ApplicationDraftPayload> payload =
-        ArgumentCaptor.forClass(ApplicationDraftPayload.class);
-    verify(draftStore).upsert(eq(applicationId), payload.capture(), eq("{}"), eq(uploadedAt));
-    assertThat(payload.getValue().documentFilenames())
-        .containsEntry(documentId, "originalFilename.pdf");
+                ".pdf",
+                "originalFilename.pdf"));
   }
 
   @Test
@@ -648,9 +635,6 @@ class ApplicationAggregateTest {
     UUID applicationId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
     Instant uploadedAt = Instant.parse("2026-09-28T15:10:27.430Z");
-    when(draftStore.find(applicationId))
-        .thenReturn(Optional.of(draftPayload().withDocumentFilename(documentId, "original.pdf")));
-
     fixture
         .given()
         .events(
@@ -681,7 +665,6 @@ class ApplicationAggregateTest {
         .noEvents();
 
     verify(applicationDataStore, never()).append(any(), anyLong(), any(), any(), any());
-    verify(draftStore, never()).upsert(any(), any(), any(), any());
   }
 
   @ParameterizedTest
@@ -722,7 +705,6 @@ class ApplicationAggregateTest {
         .then()
         .exception(ValidationException.class)
         .noEvents();
-    verify(draftStore, never()).upsert(any(), any(), any(), any());
   }
 
   @ParameterizedTest
@@ -758,10 +740,6 @@ class ApplicationAggregateTest {
     UUID applicationId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
     Instant uploadedAt = Instant.parse("2026-09-28T15:10:27.430Z");
-    when(draftStore.find(applicationId))
-        .thenReturn(
-            java.util.Optional.of(draftPayload().withDocumentFilename(documentId, "original.pdf")));
-
     fixture
         .given()
         .events(
@@ -792,19 +770,26 @@ class ApplicationAggregateTest {
         .noEvents();
 
     verify(applicationDataStore, never()).append(any(), anyLong(), any(), any(), any());
-    verify(draftStore, never()).upsert(any(), any(), any(), any());
   }
 
   @Test
-  void givenDraftWriteFailure_whenDocumentUploaded_thenDoesNotEmitEvent() {
+  void givenDraftContentErased_whenDocumentUploaded_thenNotFoundWithoutEvent() {
     UUID applicationId = UUID.randomUUID();
-    when(draftStore.find(applicationId)).thenReturn(java.util.Optional.of(draftPayload()));
-    when(draftStore.upsert(any(), any(), any(), any()))
-        .thenThrow(new IllegalStateException("storage failure"));
 
     fixture
         .given()
-        .events(draftStartedEvent(applicationId))
+        .events(
+            new ApplicationDraftStartedEvent(
+                applicationId,
+                1,
+                "hash",
+                Instant.parse("2026-10-02T09:00:00Z"),
+                null,
+                "APPLICATION_SUBMITTED",
+                "LAA-123",
+                Erasable.erased(),
+                Erasable.erased(),
+                Erasable.erased()))
         .when()
         .command(
             new ApplicationDocumentUploadCommand(
@@ -818,7 +803,7 @@ class ApplicationAggregateTest {
                 "CIVIL_APPLY",
                 "original.pdf"))
         .then()
-        .exception(IllegalStateException.class)
+        .exception(ResourceNotFoundException.class)
         .noEvents();
   }
 
@@ -928,7 +913,6 @@ class ApplicationAggregateTest {
                             configuration -> creationDetailsFactory)
                         .registerComponent(
                             ApplicationDataStore.class, configuration -> applicationDataStore)
-                        .registerComponent(ApplicationDraftStore.class, configuration -> draftStore)
                         .registerComponent(
                             ApplicationUpdateDetailsFactory.class,
                             configuration -> updateDetailsFactory)
@@ -942,13 +926,21 @@ class ApplicationAggregateTest {
   }
 
   private ApplicationDraftStartedEvent draftStartedEvent(UUID applicationId) {
-    return new ApplicationDraftStartedEvent(
-        applicationId, 1, "hash", Instant.parse("2026-10-02T09:00:00Z"), null);
+    return draftStartedEvent(applicationId, null);
   }
 
-  private ApplicationDraftPayload draftPayload() {
-    return new ApplicationDraftPayload(
-        "APPLICATION_SUBMITTED", "LAA-123", Map.of(), "{}", List.of());
+  private ApplicationDraftStartedEvent draftStartedEvent(UUID applicationId, String officeCode) {
+    return new ApplicationDraftStartedEvent(
+        applicationId,
+        1,
+        "hash",
+        Instant.parse("2026-10-02T09:00:00Z"),
+        officeCode,
+        "APPLICATION_SUBMITTED",
+        "LAA-123",
+        Map.of(),
+        "{}",
+        List.of());
   }
 
   private MakeApplicationDecisionCommand decisionCommand(

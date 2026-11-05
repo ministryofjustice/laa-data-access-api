@@ -9,6 +9,7 @@ import java.lang.reflect.RecordComponent;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -346,17 +347,31 @@ class ApplicationDeciderTest {
     UUID applicationId = UUID.randomUUID();
     String fingerprint = ApplicationDataStore.fingerprint("{}");
 
-    List<Object> events =
-        ApplicationDecider.decideStartDraft(state, applicationId, 1, fingerprint, TIMESTAMP);
+    ApplicationDraftStartedEvent draft =
+        new ApplicationDraftStartedEvent(
+            applicationId,
+            1,
+            fingerprint,
+            TIMESTAMP,
+            null,
+            "APPLICATION_SUBMITTED",
+            "LAA-123",
+            Map.of("key", "value"),
+            "{}",
+            List.of());
 
-    assertThat(events).hasSize(1);
-    assertThat(events.getFirst()).isInstanceOf(ApplicationDraftStartedEvent.class);
-    ApplicationDraftStartedEvent event = (ApplicationDraftStartedEvent) events.getFirst();
-    assertThat(event.applicationId()).isEqualTo(applicationId);
-    assertThat(event.schemaVersion()).isEqualTo(1);
-    assertThat(event.officeCode()).isNull();
-    assertThat(event.requestFingerprint()).isEqualTo(fingerprint);
-    assertThat(event.occurredAt()).isEqualTo(TIMESTAMP);
+    List<Object> events = ApplicationDecider.decideStartDraft(state, draft);
+
+    assertThat(events).containsExactly(draft);
+  }
+
+  @Test
+  void givenEmptyState_whenDecideStartDraftRetry_thenThrows() {
+    assertThatThrownBy(
+            () ->
+                ApplicationDecider.decideStartDraft(
+                    new ApplicationState(), 1, ApplicationDataStore.fingerprint("{}")))
+        .isInstanceOf(IllegalStateException.class);
   }
 
   @Test
@@ -365,8 +380,7 @@ class ApplicationDeciderTest {
     String fingerprint = ApplicationDataStore.fingerprint("{}");
     ApplicationState state = stateAfterStartDraft(applicationId, fingerprint, 1);
 
-    List<Object> events =
-        ApplicationDecider.decideStartDraft(state, applicationId, 1, fingerprint, TIMESTAMP);
+    List<Object> events = ApplicationDecider.decideStartDraft(state, 1, fingerprint);
 
     assertThat(events).isEmpty();
   }
@@ -378,10 +392,7 @@ class ApplicationDeciderTest {
     ApplicationState state = stateAfterStartDraft(applicationId, originalFingerprint, 1);
     String differentFingerprint = ApplicationDataStore.fingerprint("{\"different\":true}");
 
-    assertThatThrownBy(
-            () ->
-                ApplicationDecider.decideStartDraft(
-                    state, applicationId, 1, differentFingerprint, TIMESTAMP))
+    assertThatThrownBy(() -> ApplicationDecider.decideStartDraft(state, 1, differentFingerprint))
         .isInstanceOf(ApplicationCreationConflictException.class);
   }
 
@@ -391,10 +402,7 @@ class ApplicationDeciderTest {
     String fingerprint = ApplicationDataStore.fingerprint("{}");
     ApplicationState state = stateAfterStartDraft(applicationId, fingerprint, 1);
 
-    assertThatThrownBy(
-            () ->
-                ApplicationDecider.decideStartDraft(
-                    state, applicationId, 2, fingerprint, TIMESTAMP))
+    assertThatThrownBy(() -> ApplicationDecider.decideStartDraft(state, 2, fingerprint))
         .isInstanceOf(ApplicationCreationConflictException.class);
   }
 
@@ -405,10 +413,7 @@ class ApplicationDeciderTest {
     ApplicationState state = stateAfterCreate(applicationId, fingerprint, 1);
     state.status = "APPLICATION_SUBMITTED";
 
-    assertThatThrownBy(
-            () ->
-                ApplicationDecider.decideStartDraft(
-                    state, applicationId, 1, fingerprint, TIMESTAMP))
+    assertThatThrownBy(() -> ApplicationDecider.decideStartDraft(state, 1, fingerprint))
         .isInstanceOf(ApplicationCreationConflictException.class);
   }
 

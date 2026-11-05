@@ -36,14 +36,15 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.command.application.ApplicationAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.ApplicationEvolve;
+import uk.gov.justice.laa.dstew.access.command.application.ApplicationState;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftPayload;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftStore;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationNote;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftStartedEvent;
@@ -76,7 +77,6 @@ class ApplicationProjectionTest {
   @Mock private ApplicationDataStore applicationDataStore;
   @Mock private ApplicationListIndexReadRepository listIndexRepository;
   @Mock private PriorAuthorityReadRepository priorAuthorityReadRepository;
-  @Mock private ApplicationDraftStore draftStore;
   @Mock private ApplicationReadQueryGateway applicationReadQueryGateway;
   @Mock private ApplicationCurrentStateAccessPolicy currentStateAccessPolicy;
   @Mock private ApplicationListIndexAccessPolicy listIndexAccessPolicy;
@@ -88,7 +88,6 @@ class ApplicationProjectionTest {
         new ApplicationProjection(
             applicationReadRepository,
             applicationDataStore,
-            draftStore,
             applicationReadQueryGateway,
             currentStateAccessPolicy,
             listIndexAccessPolicy,
@@ -161,9 +160,12 @@ class ApplicationProjectionTest {
     ApplicationReadModel application =
         documentReadModel(applicationId, uploadedDocument(documentId, uploadedAt, false));
     when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(application));
-    givenDocumentFilenames(application, submitted, Map.of(documentId, "original evidence.pdf"));
+    ApplicationAggregate aggregate =
+        givenDocumentFilenames(application, submitted, Map.of(documentId, "original evidence.pdf"));
 
-    assertThat(projection.handle(new FindApplicationDocumentQuery(applicationId, documentId)))
+    assertThat(
+            projection.handle(
+                new FindApplicationDocumentQuery(applicationId, documentId), aggregate))
         .isEqualTo(
             new EvidenceDocument(
                 documentId,
@@ -192,7 +194,7 @@ class ApplicationProjectionTest {
     when(applicationReadRepository.findById(applicationId))
         .thenReturn(
             "missing application".equals(scenario) ? Optional.empty() : Optional.of(application));
-    assertThat(projection.handle(new FindApplicationDocumentQuery(applicationId, documentId)))
+    assertThat(projection.handle(new FindApplicationDocumentQuery(applicationId, documentId), null))
         .isNull();
   }
 
@@ -206,16 +208,31 @@ class ApplicationProjectionTest {
             applicationId,
             uploadedDocument(documentId, Instant.now(), false).withFileSuffix(".PDF"));
     when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(application));
-    givenDocumentFilenames(application, submitted, Map.of());
+    ApplicationAggregate aggregate = givenDocumentFilenames(application, submitted, Map.of());
 
     EvidenceDocument document =
-        projection.handle(new FindApplicationDocumentQuery(applicationId, documentId));
+        projection.handle(new FindApplicationDocumentQuery(applicationId, documentId), aggregate);
 
     assertThat(document).isNotNull();
     assertThat(document.documentId()).isEqualTo(documentId);
     assertThat(document.fileName()).isNull();
     assertThat(document.fileSuffix()).isEqualTo(".PDF");
     assertThat(document.storageFilename()).isEqualTo(documentId + ".PDF");
+  }
+
+  private ApplicationDraftStartedEvent draftStarted(
+      UUID applicationId, Instant occurredAt, String officeCode) {
+    return new ApplicationDraftStartedEvent(
+        applicationId,
+        3,
+        "fingerprint",
+        occurredAt,
+        officeCode,
+        "APPLICATION_SUBMITTED",
+        "LAA-123",
+        Map.of(),
+        "{}",
+        List.of());
   }
 
   private ApplicationReadModel documentReadModel(UUID applicationId, DocumentMetadata document) {
@@ -238,21 +255,36 @@ class ApplicationProjectionTest {
         deleted);
   }
 
-  private void givenDocumentFilenames(
+  private ApplicationAggregate givenDocumentFilenames(
       ApplicationReadModel application, boolean submitted, Map<UUID, String> filenames) {
     ApplicationDataId id = dataId(application);
     if (submitted) {
       ApplicationDataPayload payload = mock(ApplicationDataPayload.class);
       when(payload.documentFilenames()).thenReturn(filenames);
       when(applicationDataStore.getAll(List.of(id))).thenReturn(Map.of(id, payload));
-    } else {
-      when(applicationDataStore.getAll(List.of(id))).thenReturn(Map.of());
-      when(draftStore.find(application.getApplicationId()))
-          .thenReturn(
-              Optional.of(
-                  new ApplicationDraftPayload(
-                      "APPLICATION_SUBMITTED", "LAA-123", Map.of(), "{}", List.of(), filenames)));
+      return null;
     }
+    when(applicationDataStore.getAll(List.of(id))).thenReturn(Map.of());
+    ApplicationState state = new ApplicationState();
+    filenames.forEach(
+        (documentId, filename) ->
+            ApplicationEvolve.apply(
+                state,
+                new ApplicationDocumentUploadedEvent(
+                    application.getApplicationId(),
+                    documentId,
+                    "GATEWAY_EVIDENCE",
+                    Instant.now(),
+                    12L,
+                    "application/pdf",
+                    "checksum",
+                    "CIVIL_APPLY",
+                    null,
+                    ".pdf",
+                    filename)));
+    ApplicationAggregate aggregate = mock(ApplicationAggregate.class);
+    when(aggregate.getState()).thenReturn(state);
+    return aggregate;
   }
 
   @Test
@@ -263,9 +295,7 @@ class ApplicationProjectionTest {
     when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.empty());
     when(applicationReadRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-    projection.on(
-        new ApplicationDraftStartedEvent(applicationId, 3, "fingerprint", occurredAt, officeCode),
-        queryUpdateEmitter);
+    projection.on(draftStarted(applicationId, occurredAt, officeCode), queryUpdateEmitter);
 
     ArgumentCaptor<ApplicationReadModel> saved =
         ArgumentCaptor.forClass(ApplicationReadModel.class);
@@ -291,9 +321,7 @@ class ApplicationProjectionTest {
     when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.empty());
     when(applicationReadRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-    projection.on(
-        new ApplicationDraftStartedEvent(applicationId, 1, "fingerprint", Instant.now(), "1A001B"),
-        queryUpdateEmitter);
+    projection.on(draftStarted(applicationId, Instant.now(), "1A001B"), queryUpdateEmitter);
     ArgumentCaptor<ApplicationReadModel> draft =
         ArgumentCaptor.forClass(ApplicationReadModel.class);
     verify(applicationReadRepository).save(draft.capture());
@@ -340,9 +368,7 @@ class ApplicationProjectionTest {
         ApplicationDataPayload.from(applicationCreationDetails(applicationId));
     when(applicationDataStore.get(applicationId, event.applicationDataVersion())).thenReturn(data);
 
-    projection.on(
-        new ApplicationDraftStartedEvent(applicationId, 1, "fingerprint", draftStartedAt, null),
-        queryUpdateEmitter);
+    projection.on(draftStarted(applicationId, draftStartedAt, null), queryUpdateEmitter);
     ApplicationReadModel savedDraft = draft[0];
     when(applicationReadRepository.findById(applicationId)).thenReturn(Optional.of(savedDraft));
 

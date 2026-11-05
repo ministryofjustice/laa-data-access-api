@@ -10,8 +10,7 @@ import uk.gov.justice.laa.dstew.access.command.application.ApplicationAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreationDetailsFactory;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDecider;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationState;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftPayload;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftStore;
+import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftStartedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.draft.CreateApplicationDraftCommand;
 import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
@@ -26,39 +25,30 @@ public class CreateApplicationDraftCommandHandler {
       CreateApplicationDraftCommand command,
       @InjectEntity(idProperty = "applicationId") @Nullable ApplicationAggregate application,
       ApplicationCreationDetailsFactory factory,
-      ApplicationDraftStore draftStore,
       JsonSchemaValidator jsonSchemaValidator,
       EventAppender eventAppender) {
     jsonSchemaValidator.validate(
         command.applicationContent(), command.schemaName(), command.schemaVersion());
-    if (application == null) {
+    String fingerprint = PayloadFingerprint.compute(command.serialisedRequest());
+    if (application == null || application.getApplicationId() == null) {
       factory.validate(command.applicationContent());
-      ApplicationDraftPayload payload =
-          new ApplicationDraftPayload(
-              command.status(),
-              command.laaReference(),
-              command.applicationContent(),
-              command.serialisedRequest(),
-              command.potentialDuplicates());
-      String fingerprint =
-          draftStore.upsert(
-              command.applicationId(), payload, command.serialisedRequest(), command.occurredAt());
       ApplicationDecider.decideStartDraft(
               new ApplicationState(),
-              command.applicationId(),
-              command.schemaVersion(),
-              fingerprint,
-              command.occurredAt(),
-              ApplicationCommandHandlerSupport.officeCode(command.applicationContent()))
+              new ApplicationDraftStartedEvent(
+                  command.applicationId(),
+                  command.schemaVersion(),
+                  fingerprint,
+                  command.occurredAt(),
+                  ApplicationCommandHandlerSupport.officeCode(command.applicationContent()),
+                  command.status(),
+                  command.laaReference(),
+                  command.applicationContent(),
+                  command.serialisedRequest(),
+                  command.potentialDuplicates()))
           .forEach(eventAppender::append);
     } else {
-      String fingerprint = PayloadFingerprint.compute(command.serialisedRequest());
       ApplicationDecider.decideStartDraft(
-          application.getState(),
-          command.applicationId(),
-          command.schemaVersion(),
-          fingerprint,
-          command.occurredAt());
+          application.getState(), command.schemaVersion(), fingerprint);
     }
     return command.applicationId();
   }

@@ -37,7 +37,9 @@ class EventContentArchitectureTest {
   /**
    * Content may be read only by evolve functions, whose erasure is covered by ErasureReplayTest,
    * and by the processors in RegisteredContentReaders. Subscribing processors receive events with
-   * content attached, so this rule, not delivery, is what keeps them from reading it.
+   * content attached, so this rule, not delivery, is what keeps them from reading it. The one
+   * command-side reader is ApplicationCommandHandlerSupport, which reads draft content for submit
+   * and treats erased draft content as no draft.
    */
   @Test
   void onlyEvolveAndRegisteredProjectionsReadContent() {
@@ -51,6 +53,9 @@ class EventContentArchitectureTest {
         .and()
         .doNotHaveFullyQualifiedName(
             ROOT + ".query.application.priorauthority.PriorAuthorityProjection")
+        .and()
+        .doNotHaveFullyQualifiedName(
+            ROOT + ".command.application.handler.ApplicationCommandHandlerSupport")
         .should()
         .callMethodWhere(
             target(owner(describe("Erasable", owner -> owner.isEquivalentTo(Erasable.class))))

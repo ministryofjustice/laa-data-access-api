@@ -18,7 +18,8 @@ public record ApplicationDocumentUploadedEvent(
     String checksum,
     Erasable<String> sourceService,
     Long applicationDataVersion,
-    Erasable<String> fileSuffix) {
+    Erasable<String> fileSuffix,
+    Erasable<String> originalFilename) {
 
   /** Treats absent content as erased so a stored event without its content row still loads. */
   public ApplicationDocumentUploadedEvent {
@@ -27,9 +28,37 @@ public record ApplicationDocumentUploadedEvent(
     contentType = Erasable.orErased(contentType);
     sourceService = Erasable.orErased(sourceService);
     fileSuffix = Erasable.orErased(fileSuffix);
+    originalFilename = Erasable.orErased(originalFilename);
   }
 
-  /** Creates the event from plain content values. */
+  /** Creates the event from plain content values, including the original filename. */
+  public ApplicationDocumentUploadedEvent(
+      UUID applicationId,
+      UUID documentId,
+      String documentType,
+      Instant uploadedAt,
+      Long size,
+      String contentType,
+      String checksum,
+      String sourceService,
+      Long applicationDataVersion,
+      String fileSuffix,
+      String originalFilename) {
+    this(
+        applicationId,
+        documentId,
+        Erasable.of(documentType),
+        uploadedAt,
+        Erasable.of(size),
+        Erasable.of(contentType),
+        checksum,
+        Erasable.of(sourceService),
+        applicationDataVersion,
+        Erasable.of(fileSuffix),
+        Erasable.of(originalFilename));
+  }
+
+  /** Creates the event from plain content values without an original filename. */
   public ApplicationDocumentUploadedEvent(
       UUID applicationId,
       UUID documentId,
@@ -44,14 +73,15 @@ public record ApplicationDocumentUploadedEvent(
     this(
         applicationId,
         documentId,
-        Erasable.of(documentType),
+        documentType,
         uploadedAt,
-        Erasable.of(size),
-        Erasable.of(contentType),
+        size,
+        contentType,
         checksum,
-        Erasable.of(sourceService),
+        sourceService,
         applicationDataVersion,
-        Erasable.of(fileSuffix));
+        fileSuffix,
+        (String) null);
   }
 
   /** Creates the historical event shape with a data-version pointer but no recorded suffix. */

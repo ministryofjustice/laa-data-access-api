@@ -8,6 +8,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -19,6 +20,7 @@ import uk.gov.justice.laa.dstew.access.command.application.ApplicationEvolve;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationState;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
+import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftStartedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDecider;
@@ -71,7 +73,8 @@ class ErasureReplayTest {
                 "checksum",
                 Erasable.of("CIVIL_APPLY"),
                 0L,
-                Erasable.of(".pdf")),
+                Erasable.of(".pdf"),
+                Erasable.of("evidence.pdf")),
             new WorkItemAssigned(applicationId, WorkItemType.APPLICATION, 0L, 1L, caseworkerId, AT),
             new NoteCreatedEvent(applicationId, 1L, AT));
 
@@ -81,7 +84,7 @@ class ErasureReplayTest {
     assertThat(erased.getUploadedDocuments()).hasSize(1);
     assertThat(erased)
         .usingRecursiveComparison()
-        .ignoringFields("uploadedDocuments")
+        .ignoringFields("uploadedDocuments", "draftDocumentFilenames")
         .isEqualTo(full);
     assertThat(erased.getUploadedDocuments())
         .isEqualTo(full.getUploadedDocuments().stream().map(this::withoutContent).toList());
@@ -98,6 +101,55 @@ class ErasureReplayTest {
         state ->
             ApplicationDecider.decideNote(
                 state, new CreateNoteCommand(applicationId, "note", "{}", AT)));
+  }
+
+  @Test
+  void givenDraftHistory_whenContentErased_thenOnlyContentFieldsDifferAndDecisionsMatch() {
+    List<Object> history =
+        List.of(
+            draftStarted("fingerprint"),
+            new ApplicationDocumentUploadedEvent(
+                applicationId,
+                documentId,
+                Erasable.of("GATEWAY_EVIDENCE"),
+                AT,
+                Erasable.of(12L),
+                Erasable.of("application/pdf"),
+                "checksum",
+                Erasable.of("CIVIL_APPLY"),
+                null,
+                Erasable.of(".pdf"),
+                Erasable.of("evidence.pdf")));
+
+    ApplicationState full = fold(new ApplicationState(), ApplicationEvolve.class, history);
+    ApplicationState erased = fold(new ApplicationState(), ApplicationEvolve.class, erase(history));
+
+    assertThat(erased)
+        .usingRecursiveComparison()
+        .ignoringFields(
+            "uploadedDocuments",
+            "draftApplicationContent",
+            "draftSerialisedRequest",
+            "draftPotentialDuplicates",
+            "draftDocumentFilenames")
+        .isEqualTo(full);
+    assertThat(erased.getDraftApplicationContent().isErased()).isTrue();
+    assertThat(erased.getDraftSerialisedRequest().isErased()).isTrue();
+    assertThat(erased.getDraftPotentialDuplicates().isErased()).isTrue();
+    assertThat(erased.getDraftDocumentFilenames())
+        .containsOnlyKeys(documentId)
+        .allSatisfy((id, filename) -> assertThat(filename.isErased()).isTrue());
+
+    assertSameDecision(
+        full, erased, state -> ApplicationDecider.decideStartDraft(state, 1, "fingerprint"));
+    assertSameDecision(
+        full, erased, state -> ApplicationDecider.decideStartDraft(state, 1, "different"));
+    assertSameDecision(
+        full, erased, state -> ApplicationDecider.decideStartDraft(state, 2, "fingerprint"));
+    assertSameDecision(
+        full,
+        erased,
+        state -> ApplicationDecider.decideStartDraft(state, draftStarted("fingerprint")));
   }
 
   @Test
@@ -187,6 +239,20 @@ class ErasureReplayTest {
         Erasable.of(List.of(new PotentialDuplicate("LAA-456"))),
         "1A234B",
         "LAA-123");
+  }
+
+  private ApplicationDraftStartedEvent draftStarted(String fingerprint) {
+    return new ApplicationDraftStartedEvent(
+        applicationId,
+        1,
+        fingerprint,
+        AT,
+        "1A234B",
+        "APPLICATION_SUBMITTED",
+        "LAA-123",
+        Map.<String, Object>of("applicant", "Jane Doe"),
+        "{\"applicant\":\"Jane Doe\"}",
+        List.of(new PotentialDuplicate("LAA-456")));
   }
 
   private PriorAuthorityDraftStartedEvent started() {

@@ -8,10 +8,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -25,8 +24,7 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadCommand;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftPayload;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftStore;
+import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftExistsQuery;
 import uk.gov.justice.laa.dstew.access.document.DocumentUploadResult;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
@@ -37,7 +35,7 @@ class UploadDocumentUseCaseTest {
 
   @Mock private SdsService sdsService;
   @Mock private RetryingCommandDispatcher dispatcher;
-  @Mock private ApplicationDraftStore draftStore;
+  @Mock private QueryGateway queryGateway;
 
   @InjectMocks private UploadDocumentUseCase uploadDocumentUseCase;
 
@@ -47,7 +45,7 @@ class UploadDocumentUseCaseTest {
     UUID applicationId = UUID.randomUUID();
     MockMultipartFile file =
         new MockMultipartFile("file", "report.pdf", "application/pdf", new byte[12]);
-    when(draftStore.find(applicationId)).thenReturn(Optional.empty());
+    givenDraftExists(applicationId, false);
 
     assertThatThrownBy(
             () -> {
@@ -70,15 +68,15 @@ class UploadDocumentUseCaseTest {
         new MockMultipartFile(
             "file", "test-file.pdf", "application/pdf", "test content".getBytes());
     SdsUploadResult expectedResponse = mock(SdsUploadResult.class);
-    when(draftStore.find(applicationId)).thenReturn(Optional.of(draftPayload()));
+    givenDraftExists(applicationId, true);
     when(sdsService.saveFile(applicationId, file)).thenReturn(expectedResponse);
 
     SdsUploadResult actualResponse = uploadDocumentUseCase.execute(applicationId, file);
 
     assertThat(actualResponse).isEqualTo(expectedResponse);
     verify(sdsService).saveFile(applicationId, file);
-    var order = inOrder(draftStore, sdsService);
-    order.verify(draftStore).find(applicationId);
+    var order = inOrder(queryGateway, sdsService);
+    order.verify(queryGateway).query(new ApplicationDraftExistsQuery(applicationId), Boolean.class);
     order.verify(sdsService).saveFile(applicationId, file);
     verifyNoInteractions(dispatcher);
   }
@@ -90,7 +88,7 @@ class UploadDocumentUseCaseTest {
         new MockMultipartFile(
             "file", "test-file.pdf", "application/pdf", "test content".getBytes());
     SdsUploadResult response = new SdsUploadResult(null, null, "checksum");
-    when(draftStore.find(applicationId)).thenReturn(Optional.of(draftPayload()));
+    givenDraftExists(applicationId, true);
     when(sdsService.saveEvidenceFile(
             ArgumentMatchers.eq(applicationId),
             ArgumentMatchers.any(UUID.class),
@@ -103,8 +101,8 @@ class UploadDocumentUseCaseTest {
     ArgumentCaptor<ApplicationDocumentUploadCommand> commandCaptor =
         ArgumentCaptor.forClass(ApplicationDocumentUploadCommand.class);
     verify(dispatcher).dispatch(commandCaptor.capture());
-    var order = inOrder(draftStore, dispatcher, sdsService);
-    order.verify(draftStore).find(applicationId);
+    var order = inOrder(queryGateway, dispatcher, sdsService);
+    order.verify(queryGateway).query(new ApplicationDraftExistsQuery(applicationId), Boolean.class);
     order.verify(sdsService).saveEvidenceFile(applicationId, result.documentId(), file);
     order.verify(dispatcher).dispatch(commandCaptor.getValue());
     assertThat(commandCaptor.getValue())
@@ -152,7 +150,7 @@ class UploadDocumentUseCaseTest {
     MultipartFile blankContentType = multipartFile(" ");
     MultipartFile slashlessContentType = multipartFile("pdf");
     SdsUploadResult response = new SdsUploadResult(null, null, "checksum");
-    when(draftStore.find(applicationId)).thenReturn(Optional.of(draftPayload()));
+    givenDraftExists(applicationId, true);
     when(sdsService.saveEvidenceFile(
             org.mockito.ArgumentMatchers.eq(applicationId),
             org.mockito.ArgumentMatchers.any(UUID.class),
@@ -182,8 +180,8 @@ class UploadDocumentUseCaseTest {
     return file;
   }
 
-  private ApplicationDraftPayload draftPayload() {
-    return new ApplicationDraftPayload(
-        "APPLICATION_SUBMITTED", "LAA-123", Map.of(), "{}", List.of());
+  private void givenDraftExists(UUID applicationId, boolean exists) {
+    when(queryGateway.query(new ApplicationDraftExistsQuery(applicationId), Boolean.class))
+        .thenReturn(CompletableFuture.completedFuture(exists));
   }
 }

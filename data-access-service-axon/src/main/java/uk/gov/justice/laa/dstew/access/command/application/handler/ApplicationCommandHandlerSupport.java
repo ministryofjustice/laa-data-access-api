@@ -1,11 +1,13 @@
 package uk.gov.justice.laa.dstew.access.command.application.handler;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationAggregate;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftPayload;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftStore;
+import uk.gov.justice.laa.dstew.access.command.application.ApplicationState;
+import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftContent;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
@@ -28,14 +30,51 @@ final class ApplicationCommandHandlerSupport {
     }
   }
 
-  static ApplicationDraftPayload requireDraft(
-      UUID requestedApplicationId, ApplicationDraftStore draftStore) {
-    return draftStore
-        .find(requestedApplicationId)
+  /**
+   * Returns the open draft's content, or throws not-found if there is no open draft. A draft whose
+   * content has been erased is treated as missing.
+   */
+  static ApplicationDraftContent requireDraft(
+      ApplicationAggregate application, UUID requestedApplicationId) {
+    return findDraft(application)
         .orElseThrow(
             () ->
                 new ResourceNotFoundException(
                     "No application draft found with Application ID: " + requestedApplicationId));
+  }
+
+  /**
+   * Returns the open draft's content: empty once the Application is submitted, if it does not
+   * exist, or if its draft content has been erased. This is the one place outside evolve functions
+   * and registered projections where Application content is read.
+   */
+  static Optional<ApplicationDraftContent> findDraft(ApplicationAggregate application) {
+    if (application == null || application.getApplicationId() == null) {
+      return Optional.empty();
+    }
+    ApplicationState state = application.getState();
+    if (state.getStatus() != null
+        || state.getDraftApplicationContent().isErased()
+        || state.getDraftSerialisedRequest().isErased()) {
+      return Optional.empty();
+    }
+    Map<UUID, String> filenames = new LinkedHashMap<>();
+    state
+        .getDraftDocumentFilenames()
+        .forEach(
+            (documentId, filename) -> {
+              if (!filename.isErased()) {
+                filenames.put(documentId, filename.value());
+              }
+            });
+    return Optional.of(
+        new ApplicationDraftContent(
+            state.getDraftStatus(),
+            state.getLaaReference(),
+            state.getDraftApplicationContent().value(),
+            state.getDraftSerialisedRequest().value(),
+            state.getDraftPotentialDuplicates().orElse(null),
+            filenames));
   }
 
   @SuppressWarnings("unchecked")

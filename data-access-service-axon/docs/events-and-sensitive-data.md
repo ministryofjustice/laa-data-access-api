@@ -48,12 +48,15 @@ Application document uploads are allowed only in the separate draft lifecycle, b
 status is `APPLICATION_IN_PROGRESS`. The draft payload's intended submission status is not the
 lifecycle guard: the aggregate tracks the draft lifecycle with `state.status == null`.
 
-The only document-specific sensitive value in draft content is `documentFilenames`, a map from
-document ID to original filename. Uploads update that map in `application_draft` and emit filename-free
-metadata events without a data-version pointer. Neither aggregate state nor the persisted document
-metadata projection contains the filename. Submission copies the map into version 0 of immutable
-`application_data` before emitting `ApplicationCreatedEvent` and deleting the draft row. Subsequent
-immutable content updates preserve the filename map.
+Application draft content is held only in events. `ApplicationDraftStartedEvent` carries the
+draft's application content, request JSON and potential duplicates, and each
+`ApplicationDocumentUploadedEvent` carries the document's original filename. All of these are stored
+as erasable content in `axon.event_content`, apart from the kept event fields (see
+[Event-scoped PII spike](spikes/event-scoped-pii.md)). Aggregate state folds them as `Erasable`
+values. Submission reads the draft and its filenames from the aggregate, and copies them into
+version 0 of immutable `application_data` before emitting `ApplicationCreatedEvent`. Subsequent
+immutable content updates preserve the filename map. The persisted document metadata projection
+does not contain the filename.
 
 The exact file suffix, such as `.PDF`, is non-sensitive storage metadata. Application and Prior
 Authority upload events persist it as optional `fileSuffix`; aggregate state and projected
@@ -62,15 +65,14 @@ record an empty string. Historical events without this field retain null (unknow
 fallback when available. No MIME-based inference is used. This allows SDS retrieval and deletion
 without retaining or hydrating the sensitive filename. See [Document lifecycle](document-lifecycle.md).
 
-Both upload entry points look up the draft directly in `ApplicationDraftStore` before SDS is called.
-An absent draft returns a not-found error without calling SDS or dispatching an upload command.
-This is an existence check against authoritative draft storage, not a projection lookup or a guarantee
-that the draft remains open throughout the external call. The upload command checks the aggregate
-lifecycle before recording metadata, so submitting during an external upload
-cannot attach a new document to the created Application. Any upload command whose document ID is
-already recorded is rejected, including an identical retry, without writing draft content or emitting
-an event. Draft content is written before the event in the shared database transaction. SDS remains
-outside that transaction;
+Both upload entry points check that the draft exists, with `ApplicationDraftExistsQuery`, before SDS
+is called. The query handler loads the aggregate from its events. An absent draft, or a draft whose
+content has been erased, returns a not-found error without calling SDS or dispatching an upload
+command. This check does not guarantee that the draft remains open throughout the external call. The
+upload command checks the aggregate lifecycle before recording metadata, so submitting during an
+external upload cannot attach a new document to the created Application. Any upload command whose
+document ID is already recorded is rejected, including an identical retry, without emitting an event.
+The filename is written with its event in the same transaction. SDS remains outside that transaction;
 a race or command failure after SDS acceptance can still leave an external file needing cleanup.
 
 Historical upload events with a data-version pointer still advance that version during replay.

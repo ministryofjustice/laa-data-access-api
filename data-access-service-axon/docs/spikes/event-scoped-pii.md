@@ -905,6 +905,44 @@ Split into two steps:
       `ApplicationSubmittedLocalStackIntegrationTest`, which could not pull
       the LocalStack image (environmental). Main Checkstyle is clean, and test
       Checkstyle is below its baseline.
+  - **4b-2 implemented, 2026-11-05.** Application drafts are stored only in
+    events. No change to API behaviour, except as noted below.
+    - **Draft content in events:** `ApplicationDraftStartedEvent` now carries
+      `applicationContent`, `serialisedRequest` and `potentialDuplicates` as
+      content, and keeps `status` and `laaReference`. The upload event carries
+      `originalFilename` as content. `ApplicationDraftStore`, its payload and
+      repository are removed, and `V30` drops `axon.application_draft`.
+    - **`serialisedRequest` kept (decided 2026-11-05):** stored as content
+      next to `applicationContent` for now; revisit in 4b-3, when
+      `ApplicationDataStore` goes.
+    - **Erased draft returns 404 (decided 2026-11-05):** submit and upload
+      against a draft whose content is erased give the same 404 as a missing
+      draft. This is the one agreed case where command handling looks at
+      content, and it only asks whether content is present. Decider rules
+      still compare kept fields only: start-draft retry and conflict use
+      `applicationId`, `schemaVersion` and `requestFingerprint`.
+    - **Single command-side reader:** `ApplicationCommandHandlerSupport`
+      (`findDraft`, `requireDraft`) is the only command-side class allowed to
+      unwrap draft content. It is added to the architecture rule's allowlist.
+      Submit reads the draft from aggregate state and still writes
+      `ApplicationDataStore` version 0 until 4b-3.
+    - **First production query handler that loads the aggregate:** the upload
+      use case checks the draft exists, before calling SDS, with
+      `ApplicationDraftExistsQuery`. `ApplicationDraftQueryHandler` answers it
+      using `@InjectEntity`. The document GET does the same to read a draft's
+      filenames; submitted filenames still come from `ApplicationDataStore`.
+    - **Tests:** `ErasureReplayTest` adds a draft history (draft start plus an
+      upload with a filename). States match apart from draft content and
+      filenames, and the start-draft retry, conflict and new-draft outcomes are
+      identical. Fixture tests cover erased-draft upload and submit (404) and
+      an identical retry after erasure (idempotent). Integration tests read
+      filenames from `axon.event_content`, and race tests gate on the upload
+      command handler instead of the removed store.
+    - **Validation:** unit tests 1346/1346 and integration tests 272/272 pass;
+      Checkstyle main is clean and test/integration warnings match HEAD (43/49).
+    - **Pitfall:** the plain 10-arg `ApplicationDocumentUploadedEvent`
+      constructor ends `(dataVersion, fileSuffix)`; a filename passed there
+      silently becomes the suffix. Use the 11-arg form.
 
 ### Remaining gates
 1. Choose the declaration design: hash-bound review (recommended by the review)

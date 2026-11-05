@@ -8,6 +8,7 @@ import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventF
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -101,7 +102,17 @@ class ApplicationProjectionSequencingIntegrationTest {
 
     applicationProjection.reset();
     applicationProjection.on(
-        new ApplicationDraftStartedEvent(applicationId, 1, "fingerprint", draftStartedAt, null),
+        new ApplicationDraftStartedEvent(
+            applicationId,
+            1,
+            "fingerprint",
+            draftStartedAt,
+            null,
+            "APPLICATION_SUBMITTED",
+            "LAA-123",
+            Map.of(),
+            "{}",
+            List.of()),
         queryUpdateEmitter);
     applicationProjection.on(event, queryUpdateEmitter);
 
