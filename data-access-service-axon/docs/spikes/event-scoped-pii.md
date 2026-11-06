@@ -1052,7 +1052,42 @@ Split into two steps:
       | List page | Summary |
       | Stalled assessments (status scan) | Summary |
       | Access policy | Summary |
-      | Create/Submit use cases awaiting the row | To resolve: wait on the summary, or drop the wait |
+      | Create/Submit use cases awaiting the row | Wait dropped (see below) |
+
+    - **Create and Submit stop waiting for a projection (decided
+      2026-11-06).** They return 201 once the command commits. The 202
+      ("not yet readable; poll Location") stays in the spec but is no longer
+      used: Location points to GET by ID, which reads the aggregate and so
+      is readable at commit. The old wait never guaranteed list visibility
+      either, because the list index is a separate processor.
+    - **History reads a genesis stream (decided 2026-11-06).** History is a
+      presentation of the events in a case, not a store of facts. It no
+      longer copies or hydrates content:
+      - **Genesis ID:** every event carries the ID of the root application
+        it relates to (`genesisId`). Events that span several applications
+        (group events) carry each member's ID. A `GenesisScoped` interface
+        (`genesisIds()`) is implemented by every `@Event` type, and a unit
+        test fails when one does not. Gaps today: `WorkItemAssigned`,
+        `WorkItemUnassigned` and `PriorAuthorityDocumentTypeUpdatedEvent`.
+        Existing data is deleted, so the field is required and nothing is
+        backfilled.
+      - **Genesis stream:** one processor handles all events and writes a
+        pointer row for each genesis ID (`genesis_id`, event identifier,
+        global position, `occurredAt`, event type). It holds no content, so
+        erasure needs nothing extra, and it rebuilds by replay.
+      - **History:** reads the pointers in order, loads the events and maps
+        each to an entry. Descriptions (note text, decision description)
+        come from each event's own erasable fields; erased content gives a
+        null description. This replaces the history table and its
+        `dataVersion` lookup into `application_data`.
+      - **Why not Axon tags:** the store is `AggregateBasedJpaEventStorageEngine`
+        (one aggregate identifier per event, no multi-tag queries), and adding
+        the application tag key to group or work-item events would pull them
+        into the application aggregate's consistency boundary.
+      - **To check before building:** efficient loading of events by
+        identifier or global position from the JPA store.
+      - **Scheduling:** a separate step after (i); step (i) does not touch
+        history.
 
 ### Remaining gates
 1. Choose the declaration design: hash-bound review (recommended by the review)
