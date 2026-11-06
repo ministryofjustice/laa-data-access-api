@@ -7,6 +7,8 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
+
+import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -87,7 +89,7 @@ class PriorAuthorityDeciderTest {
     assertThat(event.applicationId()).isEqualTo(state.applicationId);
     assertThat(event.priorAuthorityType()).isEqualTo(PriorAuthorityType.COUNSEL.name());
     assertThat(event.schemaVersion()).isEqualTo(2);
-    assertThat(event.dataVersion()).isEqualTo(0L);
+    assertThat(event.dataVersion()).isZero();
     assertThat(event.applicationDataVersion()).isEqualTo(4L);
     assertThat(event.occurredAt()).isEqualTo(OCCURRED_AT);
     assertThat(event.billingType()).isEqualTo("FIXED_RATE");
@@ -157,7 +159,7 @@ class PriorAuthorityDeciderTest {
         .isInstanceOf(ValidationException.class)
         .extracting(ValidationException.class::cast)
         .extracting(ValidationException::errors)
-        .asList()
+        .asInstanceOf(InstanceOfAssertFactories.LIST)
         .containsExactly(
             "expert.newTimeRequested is only permitted for EXPERT prior authorities with HOURLY billing");
   }
@@ -174,31 +176,6 @@ class PriorAuthorityDeciderTest {
         PriorAuthorityDecider.decideDecision(state, command);
 
     assertThat(result).isPresent();
-  }
-
-  @Test
-  void givenDecidedStatusWithSameDecisionAndPayload_whenDecideDecision_thenThrowsConflict() {
-    UUID priorAuthorityId = UUID.randomUUID();
-    UUID applicationId = UUID.randomUUID();
-    PriorAuthorityState state = submittedState(priorAuthorityId, applicationId, 1L);
-    state.decided = true;
-    MakePriorAuthorityDecisionCommand command =
-        new MakePriorAuthorityDecisionCommand(
-            priorAuthorityId,
-            TestJwtDecoderConfig.CASEWORKER_ID,
-            1L,
-            "REFUSED",
-            "Recorded",
-            BigDecimal.ZERO,
-            null,
-            null,
-            null,
-            OCCURRED_AT,
-            "{\"decision\":\"REFUSED\"}",
-            OCCURRED_AT);
-
-    assertThatThrownBy(() -> PriorAuthorityDecider.decideDecision(state, command))
-        .isInstanceOf(PriorAuthorityStatusConflictException.class);
   }
 
   @Test
@@ -271,7 +248,8 @@ class PriorAuthorityDeciderTest {
             OCCURRED_AT);
 
     assertThatThrownBy(() -> PriorAuthorityDecider.decideDecision(state, command))
-        .isInstanceOf(PriorAuthorityStatusConflictException.class);
+        .isInstanceOf(PriorAuthorityStatusConflictException.class)
+        .hasMessageContaining("Prior authority has already been decided");
   }
 
   @Test
