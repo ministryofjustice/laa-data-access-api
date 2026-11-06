@@ -1,9 +1,11 @@
 package uk.gov.justice.laa.dstew.access.command.application.note;
 
 import java.time.Instant;
+import java.util.Set;
 import java.util.UUID;
 import org.axonframework.eventsourcing.annotation.EventTag;
 import org.axonframework.messaging.eventhandling.annotation.Event;
+import uk.gov.justice.laa.dstew.access.command.GenesisScoped;
 import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 
 /** Records that a note was added to an Application. The note text is erasable content. */
@@ -12,7 +14,8 @@ public record NoteCreatedEvent(
     @EventTag(key = "ApplicationAggregate") UUID applicationId,
     long applicationDataVersion,
     Instant occurredAt,
-    Erasable<String> noteText) {
+    Erasable<String> noteText)
+    implements GenesisScoped {
 
   public NoteCreatedEvent {
     noteText = Erasable.orErased(noteText);
@@ -27,5 +30,10 @@ public record NoteCreatedEvent(
   /** Creates the event without note text. */
   public NoteCreatedEvent(UUID applicationId, long applicationDataVersion, Instant occurredAt) {
     this(applicationId, applicationDataVersion, occurredAt, Erasable.<String>erased());
+  }
+
+  @Override
+  public Set<UUID> genesisIds() {
+    return GenesisScoped.ids(applicationId);
   }
 }

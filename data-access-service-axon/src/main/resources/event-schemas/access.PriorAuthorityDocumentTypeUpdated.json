@@ -15,12 +15,17 @@
     "occurredAt": {
       "type": "string",
       "format": "date-time"
+    },
+    "parentApplicationId": {
+      "type": "string",
+      "format": "uuid"
     }
   },
   "required": [
     "priorAuthorityId",
     "documentId",
-    "occurredAt"
+    "occurredAt",
+    "parentApplicationId"
   ],
   "additionalProperties": false
 }

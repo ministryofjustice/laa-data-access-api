@@ -162,11 +162,12 @@ public final class PriorAuthorityDecider {
 
   /** Returns the persisted event for setting or replacing a document type. */
   public static PriorAuthorityDocumentTypeUpdatedEvent decideDocumentTypeUpdated(
-      PriorAuthorityDocumentTypeUpdateCommand command) {
+      PriorAuthorityDocumentTypeUpdateCommand command, UUID applicationId) {
     return new PriorAuthorityDocumentTypeUpdatedEvent(
         command.priorAuthorityId(),
         command.documentId(),
         command.documentType(),
-        command.occurredAt());
+        command.occurredAt(),
+        applicationId);
   }
 }

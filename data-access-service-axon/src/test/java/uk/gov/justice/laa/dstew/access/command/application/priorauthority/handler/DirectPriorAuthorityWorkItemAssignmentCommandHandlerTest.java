@@ -29,6 +29,7 @@ class DirectPriorAuthorityWorkItemAssignmentCommandHandlerTest {
 
   @Test
   void givenValidPriorAuthority_whenHandle_thenAssignsWorkItem() {
+    UUID applicationId = UUID.randomUUID();
     UUID workItemId = UUID.randomUUID();
     UUID caseworkerId = UUID.randomUUID();
     DirectPriorAuthorityWorkItemAssignmentCommand command =
@@ -39,6 +40,7 @@ class DirectPriorAuthorityWorkItemAssignmentCommandHandlerTest {
     when(priorAuthority.getAssignmentVersion()).thenReturn(0L);
     when(priorAuthority.getCaseworkerId()).thenReturn(null);
     when(priorAuthority.getDataVersion()).thenReturn(2L);
+    when(priorAuthority.getApplicationId()).thenReturn(applicationId);
 
     new DirectPriorAuthorityWorkItemAssignmentCommandHandler()
         .handle(command, priorAuthority, eventAppender);
@@ -46,7 +48,13 @@ class DirectPriorAuthorityWorkItemAssignmentCommandHandlerTest {
     verify(eventAppender)
         .append(
             new WorkItemAssigned(
-                workItemId, WorkItemType.PRIOR_AUTHORITY, 2L, 1L, caseworkerId, OCCURRED_AT));
+                workItemId,
+                WorkItemType.PRIOR_AUTHORITY,
+                applicationId,
+                2L,
+                1L,
+                caseworkerId,
+                OCCURRED_AT));
   }
 
   @Test

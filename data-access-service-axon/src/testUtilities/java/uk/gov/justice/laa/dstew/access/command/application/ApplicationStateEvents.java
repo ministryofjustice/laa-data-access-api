@@ -116,6 +116,7 @@ public final class ApplicationStateEvents {
     return new WorkItemAssigned(
         applicationId,
         WorkItemType.APPLICATION,
+        applicationId,
         itemVersion,
         assignmentVersion,
         caseworkerId,

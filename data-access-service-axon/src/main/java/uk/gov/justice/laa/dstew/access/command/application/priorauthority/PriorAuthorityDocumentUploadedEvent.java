@@ -1,9 +1,11 @@
 package uk.gov.justice.laa.dstew.access.command.application.priorauthority;
 
 import java.time.Instant;
+import java.util.Set;
 import java.util.UUID;
 import org.axonframework.eventsourcing.annotation.EventTag;
 import org.axonframework.messaging.eventhandling.annotation.Event;
+import uk.gov.justice.laa.dstew.access.command.GenesisScoped;
 import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 
 /** Persisted event emitted when a prior-authority document is uploaded and finalised. */
@@ -17,7 +19,8 @@ public record PriorAuthorityDocumentUploadedEvent(
     String checksum,
     UUID parentApplicationId,
     Erasable<String> sourceService,
-    Erasable<String> fileSuffix) {
+    Erasable<String> fileSuffix)
+    implements GenesisScoped {
 
   /** Treats absent content as erased so a stored event without its content row still loads. */
   public PriorAuthorityDocumentUploadedEvent {
@@ -70,5 +73,10 @@ public record PriorAuthorityDocumentUploadedEvent(
         parentApplicationId,
         sourceService,
         (String) null);
+  }
+
+  @Override
+  public Set<UUID> genesisIds() {
+    return GenesisScoped.ids(parentApplicationId);
   }
 }

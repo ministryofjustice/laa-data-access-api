@@ -175,7 +175,7 @@ class ApplicationDeciderTest {
     assertThat(ApplicationDecider.decideAssign(state, caseworkerId, TIMESTAMP))
         .isEqualTo(
             new WorkItemAssigned(
-                workItemId, WorkItemType.APPLICATION, 1L, 1L, caseworkerId, TIMESTAMP));
+                workItemId, WorkItemType.APPLICATION, workItemId, 1L, 1L, caseworkerId, TIMESTAMP));
   }
 
   @Test
@@ -186,7 +186,9 @@ class ApplicationDeciderTest {
             ApplicationStateEvents.activeAssigned(workItemId, UUID.randomUUID()));
 
     assertThat(ApplicationDecider.decideUnassign(state, TIMESTAMP))
-        .isEqualTo(new WorkItemUnassigned(workItemId, WorkItemType.APPLICATION, 1L, 2L, TIMESTAMP));
+        .isEqualTo(
+            new WorkItemUnassigned(
+                workItemId, WorkItemType.APPLICATION, workItemId, 1L, 2L, TIMESTAMP));
   }
 
   @Test
@@ -210,7 +212,13 @@ class ApplicationDeciderTest {
                 applicationId, 4L, 3L, null, caseworkerId, TIMESTAMP))
         .contains(
             new WorkItemAssigned(
-                applicationId, WorkItemType.APPLICATION, 4L, 4L, caseworkerId, TIMESTAMP));
+                applicationId,
+                WorkItemType.APPLICATION,
+                applicationId,
+                4L,
+                4L,
+                caseworkerId,
+                TIMESTAMP));
   }
 
   @Test
@@ -222,7 +230,8 @@ class ApplicationDeciderTest {
             ApplicationDecider.decideAssignmentChange(
                 applicationId, 4L, 3L, caseworkerId, null, TIMESTAMP))
         .contains(
-            new WorkItemUnassigned(applicationId, WorkItemType.APPLICATION, 4L, 4L, TIMESTAMP));
+            new WorkItemUnassigned(
+                applicationId, WorkItemType.APPLICATION, applicationId, 4L, 4L, TIMESTAMP));
   }
 
   @Test
@@ -236,7 +245,13 @@ class ApplicationDeciderTest {
                 applicationId, 4L, 3L, currentCaseworkerId, targetCaseworkerId, TIMESTAMP))
         .contains(
             new WorkItemAssigned(
-                applicationId, WorkItemType.APPLICATION, 4L, 4L, targetCaseworkerId, TIMESTAMP));
+                applicationId,
+                WorkItemType.APPLICATION,
+                applicationId,
+                4L,
+                4L,
+                targetCaseworkerId,
+                TIMESTAMP));
   }
 
   @Test

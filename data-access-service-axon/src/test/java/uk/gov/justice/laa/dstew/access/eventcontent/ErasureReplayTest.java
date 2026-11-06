@@ -84,7 +84,8 @@ class ErasureReplayTest {
                 0L,
                 Erasable.of(".pdf"),
                 Erasable.of("evidence.pdf")),
-            new WorkItemAssigned(applicationId, WorkItemType.APPLICATION, 0L, 1L, caseworkerId, AT),
+            new WorkItemAssigned(
+                applicationId, WorkItemType.APPLICATION, applicationId, 0L, 1L, caseworkerId, AT),
             new NoteCreatedEvent(applicationId, 1L, AT, "private note"));
 
     ApplicationState full = fold(new ApplicationState(), ApplicationEvolve.class, history);
@@ -214,13 +215,19 @@ class ErasureReplayTest {
             uploaded(documentId),
             uploaded(deletedDocumentId),
             new PriorAuthorityDocumentTypeUpdatedEvent(
-                priorAuthorityId, documentId, Erasable.of("GATEWAY_EVIDENCE"), AT),
+                priorAuthorityId, documentId, Erasable.of("GATEWAY_EVIDENCE"), AT, applicationId),
             new PriorAuthorityDocumentDeletedEvent(
                 priorAuthorityId, deletedDocumentId, AT, applicationId),
             new PriorAuthoritySubmittedEvent(
                 priorAuthorityId, applicationId, "EXPERT", 1, 0L, 3L, AT),
             new WorkItemAssigned(
-                priorAuthorityId, WorkItemType.PRIOR_AUTHORITY, 0L, 1L, caseworkerId, AT));
+                priorAuthorityId,
+                WorkItemType.PRIOR_AUTHORITY,
+                applicationId,
+                0L,
+                1L,
+                caseworkerId,
+                AT));
 
     PriorAuthorityState full =
         fold(new PriorAuthorityState(), PriorAuthorityEvolve.class, submitted);
@@ -248,7 +255,13 @@ class ErasureReplayTest {
             new PriorAuthoritySubmittedEvent(
                 priorAuthorityId, applicationId, "EXPERT", 1, 0L, 3L, AT),
             new WorkItemAssigned(
-                priorAuthorityId, WorkItemType.PRIOR_AUTHORITY, 0L, 1L, caseworkerId, AT),
+                priorAuthorityId,
+                WorkItemType.PRIOR_AUTHORITY,
+                applicationId,
+                0L,
+                1L,
+                caseworkerId,
+                AT),
             new PriorAuthorityDecisionMadeEvent(
                 priorAuthorityId,
                 applicationId,

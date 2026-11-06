@@ -2,10 +2,12 @@ package uk.gov.justice.laa.dstew.access.command.application.update;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.axonframework.eventsourcing.annotation.EventTag;
 import org.axonframework.messaging.eventhandling.annotation.Event;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ParsedAppContentDetails;
+import uk.gov.justice.laa.dstew.access.command.GenesisScoped;
 import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 
 /**
@@ -22,7 +24,8 @@ public record ApplicationUpdatedEvent(
     Instant occurredAt,
     List<UUID> proceedingIds,
     Erasable<ParsedAppContentDetails> content,
-    Erasable<String> serialisedRequest) {
+    Erasable<String> serialisedRequest)
+    implements GenesisScoped {
 
   /** Normalises missing content to erased. */
   public ApplicationUpdatedEvent {
@@ -77,5 +80,10 @@ public record ApplicationUpdatedEvent(
   public boolean enteredSubmitted() {
     return !"APPLICATION_SUBMITTED".equals(previousStatus)
         && "APPLICATION_SUBMITTED".equals(status);
+  }
+
+  @Override
+  public Set<UUID> genesisIds() {
+    return GenesisScoped.ids(applicationId);
   }
 }

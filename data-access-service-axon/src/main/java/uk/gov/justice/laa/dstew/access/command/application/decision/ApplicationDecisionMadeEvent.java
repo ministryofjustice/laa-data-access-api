@@ -4,9 +4,11 @@ import java.time.Instant;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.axonframework.eventsourcing.annotation.EventTag;
 import org.axonframework.messaging.eventhandling.annotation.Event;
+import uk.gov.justice.laa.dstew.access.command.GenesisScoped;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationMeritsDecision;
 import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
@@ -31,7 +33,8 @@ public record ApplicationDecisionMadeEvent(
     Erasable<Map<UUID, ApplicationMeritsDecision>> meritsDecisions,
     Erasable<Map<String, Object>> certificate,
     Erasable<String> serialisedRequest,
-    Erasable<String> eventDescription) {
+    Erasable<String> eventDescription)
+    implements GenesisScoped {
 
   /** Normalises missing content to erased. */
   public ApplicationDecisionMadeEvent {
@@ -102,5 +105,10 @@ public record ApplicationDecisionMadeEvent(
       meritsDecisions.forEach((id, merits) -> decisions.put(id, merits.decision()));
     }
     return decisions;
+  }
+
+  @Override
+  public Set<UUID> genesisIds() {
+    return GenesisScoped.ids(applicationId);
   }
 }

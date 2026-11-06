@@ -18,6 +18,10 @@
         "PRIOR_AUTHORITY"
       ]
     },
+    "applicationId": {
+      "type": "string",
+      "format": "uuid"
+    },
     "itemVersion": {
       "type": "integer"
     },
@@ -39,6 +43,7 @@
   "required": [
     "workItemId",
     "workItemType",
+    "applicationId",
     "itemVersion",
     "assignmentVersion",
     "caseworkerId",

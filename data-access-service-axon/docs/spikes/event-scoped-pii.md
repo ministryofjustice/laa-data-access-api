@@ -1085,7 +1085,44 @@ Split into two steps:
         the application tag key to group or work-item events would pull them
         into the application aggregate's consistency boundary.
       - **To check before building:** efficient loading of events by
-        identifier or global position from the JPA store.
+        identifier or global position from the JPA store. **Checked
+        (2026-11-06):** `global_index` is the primary key and
+        `event_identifier` is unique, so batch loads are indexed. Axon has
+        no load-by-identifier API, so a loader in `eventcontent` decodes
+        stored events by `@Event` name and rejoins content in one batch;
+        it is a listed content reader.
+      - **Refinements (decided 2026-11-06):**
+        - `genesisIds()` derives from existing fields; no separate
+          `genesisId` field. Only the three gap events gain a field
+          (`applicationId` on work-item events, `parentApplicationId` on
+          `PriorAuthorityDocumentTypeUpdatedEvent`, matching the other Prior
+          Authority document events).
+        - History orders by `occurredAt` (then by pointer, for ties), not
+          by commit position. History must accept events from other systems
+          in future, is not transactional with commands, and is not used
+          for command-side decisions (except perhaps deletion), and may be
+          extracted into another service.
+        - Pointers therefore reference events by source and event
+          identifier, not by `global_index`, which exists only in this
+          store. One source (this event store) exists today.
+        - Built in three commits: genesis IDs, genesis stream, history.
+      - **Commit 1, genesis IDs (done 2026-11-06):**
+        - `command.GenesisScoped` has `Set<UUID> genesisIds()`. All 21
+          `@Event` records implement it. A null ID fails fast.
+        - Groups name every affected application:
+          - Created: members and lead.
+          - Member added or removed: lead and member.
+          - Dissolved: members, former lead and removed.
+          - Lead changed: previous and new lead.
+        - `WorkItemAssigned` and `WorkItemUnassigned` gain `applicationId`.
+          For an application work item it equals `workItemId`; for a Prior
+          Authority it is the parent application.
+        - `PriorAuthorityDocumentTypeUpdatedEvent` gains
+          `parentApplicationId`. Schemas are updated.
+        - `GenesisScopeArchitectureTest` requires every `@Event` class to
+          implement `GenesisScoped`.
+        - Unit tests 1425/1425 and integration tests 313/313 pass.
+          Checkstyle stays at baseline (0/37/53).
       - **Scheduling:** a separate step after (i); step (i) does not touch
         history.
   - **4b-3b(i) single-application reads from the aggregate (done

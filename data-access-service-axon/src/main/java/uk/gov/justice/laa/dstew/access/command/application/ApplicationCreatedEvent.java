@@ -2,10 +2,12 @@ package uk.gov.justice.laa.dstew.access.command.application;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.axonframework.eventsourcing.annotation.EventTag;
 import org.axonframework.messaging.eventhandling.annotation.Event;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ParsedAppContentDetails;
+import uk.gov.justice.laa.dstew.access.command.GenesisScoped;
 import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 
@@ -26,7 +28,8 @@ public record ApplicationCreatedEvent(
     String laaReference,
     List<UUID> proceedingIds,
     Erasable<ParsedAppContentDetails> content,
-    Erasable<String> serialisedRequest) {
+    Erasable<String> serialisedRequest)
+    implements GenesisScoped {
 
   /** Normalises missing content to erased. */
   public ApplicationCreatedEvent {
@@ -115,5 +118,10 @@ public record ApplicationCreatedEvent(
         List.of(),
         null,
         null);
+  }
+
+  @Override
+  public Set<UUID> genesisIds() {
+    return GenesisScoped.ids(applicationId);
   }
 }

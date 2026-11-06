@@ -1,9 +1,11 @@
 package uk.gov.justice.laa.dstew.access.command.application;
 
 import java.time.Instant;
+import java.util.Set;
 import java.util.UUID;
 import org.axonframework.eventsourcing.annotation.EventTag;
 import org.axonframework.messaging.eventhandling.annotation.Event;
+import uk.gov.justice.laa.dstew.access.command.GenesisScoped;
 import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 
 /** Persisted event emitted after an application document upload completes. */
@@ -19,7 +21,8 @@ public record ApplicationDocumentUploadedEvent(
     Erasable<String> sourceService,
     Long applicationDataVersion,
     Erasable<String> fileSuffix,
-    Erasable<String> originalFilename) {
+    Erasable<String> originalFilename)
+    implements GenesisScoped {
 
   /** Treats absent content as erased so a stored event without its content row still loads. */
   public ApplicationDocumentUploadedEvent {
@@ -128,5 +131,10 @@ public record ApplicationDocumentUploadedEvent(
         checksum,
         sourceService,
         (Long) null);
+  }
+
+  @Override
+  public Set<UUID> genesisIds() {
+    return GenesisScoped.ids(applicationId);
   }
 }
