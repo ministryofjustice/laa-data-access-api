@@ -1036,6 +1036,10 @@ Split into two steps:
         type are Prior Authority data and move with Prior Authority content
         later. Rejected: copying into a per-application work-list table, and
         keeping category and matter types as event fields.
+    - **GET details after erasure returns 404 (decided 2026-11-06).** Details
+      load the aggregate; when its content is erased the response is 404, as
+      today. Returning the kept fields (200 with an erased marker, or 410)
+      would change the API contract, and is left as a later API decision.
     - **`application_current_state` merges into the summary (decided
       2026-11-06).** After 4b-3b it would hold only status, office,
       caseworker, group, timestamps and `autoGranted`, which the summary
