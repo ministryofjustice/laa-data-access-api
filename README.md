@@ -183,6 +183,7 @@ curl -X POST "http://localhost:8080/api/v0/prior-authorities/{priorAuthorityId}/
 
 - `gateway_evidence`
 - `merits_report`
+- `means_report`
 - `statement_of_case`
 - `court_application`
 - `court_order`
