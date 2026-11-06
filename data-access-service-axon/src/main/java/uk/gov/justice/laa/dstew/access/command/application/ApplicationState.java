@@ -40,6 +40,8 @@ public class ApplicationState {
   // Kept linking keys and decision fingerprint, available after content is erased.
   List<UUID> proceedingIds = new ArrayList<>();
   String decisionRequestFingerprint;
+  // Kept decision value per proceeding, merged across decisions; informs retention schedules.
+  Map<UUID, String> proceedingDecisions = new LinkedHashMap<>();
   // Current submitted content, folded from event content; erased if any part of it is erased.
   Erasable<ApplicationDataPayload> content = Erasable.erased();
 }

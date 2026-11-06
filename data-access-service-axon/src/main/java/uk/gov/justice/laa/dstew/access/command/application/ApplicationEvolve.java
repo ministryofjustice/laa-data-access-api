@@ -37,6 +37,7 @@ public final class ApplicationEvolve {
     state.proceedingIds.clear();
     state.proceedingIds.addAll(event.proceedingIds());
     state.decisionRequestFingerprint = null;
+    state.proceedingDecisions.clear();
     state.content = createdContent(state, event);
     state.draftStatus = null;
     state.draftApplicationContent = Erasable.erased();
@@ -68,6 +69,7 @@ public final class ApplicationEvolve {
     state.proceedingIds.addAll(event.proceedingIds());
     if (event.enteredSubmitted()) {
       state.decisionRequestFingerprint = null;
+      state.proceedingDecisions.clear();
     }
     state.content =
         state.content.isErased()
@@ -106,6 +108,7 @@ public final class ApplicationEvolve {
     state.autoGranted = event.autoGranted();
     state.overallDecision = event.overallDecision();
     state.decisionRequestFingerprint = event.decisionRequestFingerprint();
+    state.proceedingDecisions.putAll(event.proceedingDecisions());
     // The request is always present with decision content; the other parts may be null.
     state.content =
         state.content.isErased() || event.serialisedRequest().isErased()

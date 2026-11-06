@@ -818,7 +818,9 @@ Split into two steps:
       3. values that decide access or work allocation, now or planned:
          `officeCode`, `priorAuthorityType` and `workItemType`;
       4. the event's own timestamp (`occurredAt`, or `uploadedAt` /
-         `deletedAt` on document events).
+         `deletedAt` on document events);
+      5. non-personal outcomes that inform retention schedules (added
+         2026-11-06): decision outcomes, including per proceeding.
 
       Everything else is content. Usefulness after erasure is not a reason to
       keep a field; if data is needed after deletion, that needs its own
@@ -974,13 +976,21 @@ Split into two steps:
       `ApplicationCommandHandlerSupport.currentContent`, which throws if it
       is erased. That path exists only to keep writing the store, and goes
       away in 4b-3b, when no handler needs content.
-    - **Merits decisions are content (open):** the per-proceeding decision
-      value is treated as content along with reason and justification. To be
-      confirmed.
+    - **Per-proceeding decision kept (decided 2026-11-06):** the decision
+      value for each proceeding is not personal data and informs retention
+      schedules, so it is not erased. DecisionMade keeps `proceedingDecisions`
+      (proceeding ID → decision), and state merges them across decisions,
+      clearing them when an update re-enters submitted (as the store does).
+      Reason and justification stay content. For now `meritsDecisions` in
+      content still repeats the decision value, so the store payload can be
+      built unchanged; this can be slimmed in 4b-3b.
     - **Tests:** `ErasureReplayTest` now uses content-bearing Created, Note
       and Decision events. States match apart from `content`. Decisions with
       a known proceeding, an unknown proceeding or a stale version, and
-      auto-grant same/different-request matching, give identical outcomes.
+      auto-grant same/different-request matching, give identical outcomes,
+      and `proceedingDecisions` survives erasure. The Postgres decision test
+      checks that the per-proceeding decision is in the kept payload and the
+      justification only in `axon.event_content`.
       `ApplicationEvolveTest` checks that the folded content equals the
       payload the handlers write to the store.
     - **Validation:** unit tests 1347/1347 and integration tests 272/272 pass;

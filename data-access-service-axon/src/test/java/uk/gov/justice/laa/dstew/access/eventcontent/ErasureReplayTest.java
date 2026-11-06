@@ -190,6 +190,7 @@ class ErasureReplayTest {
     ApplicationState erased = fold(new ApplicationState(), ApplicationEvolve.class, erase(history));
 
     assertThat(erased).usingRecursiveComparison().ignoringFields("content").isEqualTo(full);
+    assertThat(erased.getProceedingDecisions()).containsExactly(Map.entry(proceedingId, "GRANTED"));
     assertThat(full.getContent().isErased()).isFalse();
     assertThat(erased.getContent().isErased()).isTrue();
     assertSameDecision(

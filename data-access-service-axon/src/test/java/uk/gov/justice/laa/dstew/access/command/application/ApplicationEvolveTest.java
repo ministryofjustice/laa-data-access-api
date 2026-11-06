@@ -275,5 +275,8 @@ class ApplicationEvolveTest {
                     "second"));
     assertThat(state.proceedingIds).containsExactly(firstProceedingId);
     assertThat(state.decisionRequestFingerprint).isEqualTo("fp2");
+    assertThat(state.proceedingDecisions)
+        .containsExactlyInAnyOrderEntriesOf(
+            Map.of(firstProceedingId, "GRANTED", secondProceedingId, "REFUSED"));
   }
 }

@@ -40,6 +40,18 @@
         "string",
         "null"
       ]
+    },
+    "proceedingDecisions": {
+      "type": "object",
+      "propertyNames": {
+        "format": "uuid"
+      },
+      "additionalProperties": {
+        "type": [
+          "string",
+          "null"
+        ]
+      }
     }
   },
   "required": [
@@ -49,7 +61,8 @@
     "overallDecision",
     "autoGranted",
     "occurredAt",
-    "decisionRequestFingerprint"
+    "decisionRequestFingerprint",
+    "proceedingDecisions"
   ],
   "additionalProperties": false
 }

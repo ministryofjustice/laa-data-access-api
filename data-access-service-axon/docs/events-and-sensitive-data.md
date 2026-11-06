@@ -64,7 +64,9 @@ application content and request JSON, `NoteCreatedEvent` the note text, and
 `ApplicationDecisionMadeEvent` the merits decisions, certificate, request JSON and description.
 Proceeding IDs are kept fields on Created and Updated, and the decision request fingerprint is a
 kept field on DecisionMade, so decision validation and auto-grant retry matching still work after
-content is erased. Aggregate state folds the current payload as an `Erasable`. Command handlers
+content is erased. DecisionMade also keeps the decision value for each proceeding
+(`proceedingDecisions`): it is not personal data and informs retention schedules. Merits reasons
+and justifications remain content. Aggregate state folds the current payload as an `Erasable`. Command handlers
 read it from there instead of from `application_data`, but still write each new version to
 `application_data` for the read side until readers move to event content.
 
