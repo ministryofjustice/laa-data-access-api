@@ -28,7 +28,10 @@ fields must not be relied on until the application and list-index processors hav
 their event times and codes have been checked against the creation events and event-versioned
 proceedings.
 
-Migration V31 adds assignment_version to application_current_state and prior_authority_current_state. The value is set from the absolute assignmentVersion carried by WorkItemAssigned and WorkItemUnassigned, making event replay idempotent. Notes and decisions do not change the value.
+Migration V31 adds `assignment_version` to `application_current_state` and
+`prior_authority_current_state`. The value is set from the absolute `assignmentVersion` carried by
+`WorkItemAssigned` and `WorkItemUnassigned`, making event replay idempotent. Notes and decisions do
+not change the value.
 
 Tracking processors maintain tokens and run independently of the command thread. A failure stops
 token progress past the failing event, allowing recovery without silently skipping it. The
