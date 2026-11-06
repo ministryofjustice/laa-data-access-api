@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.shared.logging.aspects;
 
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.JoinPoint;
@@ -10,7 +11,10 @@ import org.aspectj.lang.annotation.AfterThrowing;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Before;
 import org.slf4j.MDC;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Component;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import uk.gov.justice.laa.dstew.access.shared.logging.ClientFacingException;
 
 /** AspectJ implementation for @LogMethodArguments and @LogMethodResponse annotations. */
 @Aspect
@@ -19,6 +23,17 @@ import org.springframework.stereotype.Component;
 public class LoggingAspects {
 
   private static final String CORRELATION_ID_KEY = "correlationId";
+
+  /**
+   * Fully-qualified names of third-party exception types that represent expected, client-caused
+   * failures but cannot implement {@link ClientFacingException} directly (they are defined outside
+   * this codebase). Matched by name so this shared module does not need a compile-time dependency
+   * on every framework that defines a "not found"/"conflict" style exception.
+   */
+  private static final Set<String> CLIENT_FACING_FRAMEWORK_TYPE_NAMES =
+      Set.of(
+          "org.axonframework.modelling.repository.EntityNotFoundException",
+          "org.axonframework.modelling.entity.EntityMissingForInstanceCommandHandlerException");
 
   /**
    * Before advice for @LogMethodArguments aspect. Logs method entry with arguments in structured
@@ -88,6 +103,21 @@ public class LoggingAspects {
   public void logMethodExceptionAdvice(JoinPoint joinPoint, Throwable exception) {
     String correlationId = getCorrelationId();
 
+    if (isClientFacing(exception)) {
+      // Expected, client-caused outcome (maps to an HTTP 4xx response): breadcrumb-level only,
+      // not a Sentry event. See ClientFacingException for the agreed reporting rule.
+      log.warn(
+          "Method rejected request: class={}, method={}, exceptionType={}, exceptionMessage={},"
+              + " correlationId={}",
+          joinPoint.getSignature().getDeclaringTypeName(),
+          joinPoint.getSignature().getName(),
+          exception.getClass().getSimpleName(),
+          exception.getMessage(),
+          correlationId);
+      return;
+    }
+
+    // Unexpected/operator-actionable failure: ERROR triggers a Sentry event via the log route.
     log.error(
         "Method failed: class={}, method={}, exceptionType={}, exceptionMessage={}, correlationId={}",
         joinPoint.getSignature().getDeclaringTypeName(),
@@ -96,6 +126,21 @@ public class LoggingAspects {
         exception.getMessage(),
         correlationId,
         exception);
+  }
+
+  /**
+   * Decides whether a thrown exception represents an expected, client-caused failure that should
+   * not be escalated to {@code ERROR}/Sentry. See {@link ClientFacingException} for the rule.
+   *
+   * @param exception the exception thrown by the annotated method
+   * @return true if the exception is client-facing and should be logged at {@code WARN}
+   */
+  private boolean isClientFacing(Throwable exception) {
+    return exception instanceof ClientFacingException
+        || exception instanceof IllegalArgumentException
+        || exception instanceof AccessDeniedException
+        || exception instanceof MethodArgumentNotValidException
+        || CLIENT_FACING_FRAMEWORK_TYPE_NAMES.contains(exception.getClass().getName());
   }
 
   /**
