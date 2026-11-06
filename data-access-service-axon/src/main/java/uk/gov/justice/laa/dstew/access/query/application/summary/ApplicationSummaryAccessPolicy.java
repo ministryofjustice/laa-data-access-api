@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.query.application.listindex;
+package uk.gov.justice.laa.dstew.access.query.application.summary;
 
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Component;
@@ -6,12 +6,12 @@ import uk.gov.justice.laa.dstew.access.query.utils.security.OfficeCodeReadAccess
 import uk.gov.justice.laa.dstew.access.query.utils.security.ReadAccessPolicy;
 import uk.gov.justice.laa.dstew.access.query.utils.security.ReadAccessScope;
 
-/** Maps provider-office access scopes to the Application list-index projection. */
+/** Maps provider-office access scopes to the Application summary projection. */
 @Component
-public class ApplicationListIndexAccessPolicy
-    implements ReadAccessPolicy<ApplicationListIndexReadModel> {
+public class ApplicationSummaryAccessPolicy
+    implements ReadAccessPolicy<ApplicationSummaryReadModel> {
   @Override
-  public Specification<ApplicationListIndexReadModel> restrictionFor(ReadAccessScope scope) {
+  public Specification<ApplicationSummaryReadModel> restrictionFor(ReadAccessScope scope) {
     if (!(scope instanceof OfficeCodeReadAccessScope officeScope)) {
       return (root, query, cb) -> cb.conjunction();
     }

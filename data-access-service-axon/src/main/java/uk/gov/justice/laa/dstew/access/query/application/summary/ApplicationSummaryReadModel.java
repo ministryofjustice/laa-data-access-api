@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.query.application.listindex;
+package uk.gov.justice.laa.dstew.access.query.application.summary;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -8,33 +8,32 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import uk.gov.justice.laa.dstew.access.ExcludeFromGeneratedCodeCoverage;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 
 /**
- * Replayable list-index read model used exclusively for filtering, sorting, counting, and paging
- * the {@code GET /applications} endpoint.
- *
- * <p>All columns are persisted — there are no {@code @Transient} fields. The minimum PII needed for
- * client-name, date-of-birth, and office-code access filters ({@code client_first_name}, {@code
- * client_last_name}, {@code client_date_of_birth}, {@code office_code}) is stored here so filters
- * can be pushed entirely to the database. Rich response-only fields (proceedings, certificate,
- * application content, etc.) are not duplicated into this table; they are bulk-loaded from {@code
- * application_data} for the result page only, after paging has been applied.
+ * The application summary: the one read model holding descriptive and filterable facts about each
+ * application. It is built from event content by {@link ApplicationSummaryProjection}, so erasure
+ * plus a rebuild only has to reach this table. Other read sides look facts up through {@link
+ * ApplicationSummaries}; only the list page queries it directly, because it filters and sorts on
+ * these fields. Workflow-only state, such as assignment versions, does not belong here.
  */
 @Entity
-@Table(name = "application_list_index")
+@Table(name = "application_summary")
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @ExcludeFromGeneratedCodeCoverage
-public class ApplicationListIndexReadModel {
+public class ApplicationSummaryReadModel {
 
   @Id
   @Column(name = "application_id")
@@ -52,6 +51,21 @@ public class ApplicationListIndexReadModel {
   @Column(name = "matter_type")
   private String matterType;
 
+  @Column(name = "category_of_law")
+  private String categoryOfLaw;
+
+  @Column(name = "used_delegated_functions")
+  private Boolean usedDelegatedFunctions;
+
+  /** Distinct proceeding matter types, paired by position with {@link #matterTypeCodes}. */
+  @JdbcTypeCode(SqlTypes.JSON)
+  @Column(name = "matter_types")
+  private List<String> matterTypes;
+
+  @JdbcTypeCode(SqlTypes.JSON)
+  @Column(name = "matter_type_codes")
+  private List<String> matterTypeCodes;
+
   @Column(name = "category_of_law_code")
   private String categoryOfLawCode;
 
@@ -67,6 +81,9 @@ public class ApplicationListIndexReadModel {
 
   @Column(name = "modified_at", nullable = false)
   private Instant modifiedAt;
+
+  @Column(name = "linked_group_id")
+  private UUID linkedGroupId;
 
   @Column(name = "lead_application_id")
   private UUID leadApplicationId;

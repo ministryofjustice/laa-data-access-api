@@ -1,8 +1,10 @@
-package uk.gov.justice.laa.dstew.access.query.application.listindex;
+package uk.gov.justice.laa.dstew.access.query.application.summary;
 
 import java.time.Instant;
-import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.axonframework.messaging.core.annotation.Namespace;
 import org.axonframework.messaging.core.annotation.SequencingPolicy;
 import org.axonframework.messaging.eventhandling.EventMessage;
@@ -11,11 +13,11 @@ import org.axonframework.messaging.eventhandling.replay.annotation.ResetHandler;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
 import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
+import uk.gov.justice.laa.dstew.access.applicationcontent.ParsedAppContentDetails;
+import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupDissolvedEvent;
@@ -28,81 +30,58 @@ import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpd
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
+import uk.gov.justice.laa.dstew.access.eventcontent.RegisteredContentReaders;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
 
 /**
- * Independently replayable tracking projection that maintains {@code application_list_index}.
- *
- * <p>This projection writes PII filter columns ({@code client_first_name}, {@code
- * client_last_name}, {@code client_date_of_birth}) and other filter/sort fields into the index row
- * at event-handling time, reading them once from {@code application_data}. This means the list
- * query can push all filters and paging to the database and only bulk-load {@code application_data}
- * payloads for the page of results returned to the caller.
- *
- * <p>Each event handler reads from {@link ApplicationDataStore} at most once per event. There is no
- * N+1 risk: the query path reads {@code application_data} only for the page, not for every
- * candidate row.
+ * Builds the application summary from events. It is a registered content reader: descriptive facts
+ * come from each event's erasable content, so erased content leaves those fields empty while kept
+ * fields (status, office, caseworker, group, timestamps) remain.
  */
 @Component
 @SequencingPolicy
-@Namespace("application-list-index-projection")
-public class ApplicationListIndexProjection {
+@Namespace(RegisteredContentReaders.APPLICATION_SUMMARY)
+public class ApplicationSummaryProjection {
 
-  private final ApplicationListIndexReadRepository listIndexRepository;
-  private final ApplicationDataStore applicationDataStore;
+  private final ApplicationSummaryReadRepository summaryRepository;
 
-  /** Constructs the projection with its repository and data store. */
-  public ApplicationListIndexProjection(
-      ApplicationListIndexReadRepository listIndexRepository,
-      ApplicationDataStore applicationDataStore) {
-    this.listIndexRepository = listIndexRepository;
-    this.applicationDataStore = applicationDataStore;
+  /** Constructs the projection with its repository. */
+  public ApplicationSummaryProjection(ApplicationSummaryReadRepository summaryRepository) {
+    this.summaryRepository = summaryRepository;
   }
 
-  /**
-   * Inserts the initial index row from an Application's creation event.
-   *
-   * <p>Reads the referenced {@code application_data} version once to populate PII filter columns
-   * and filter fields that are not carried on the thin event.
-   */
+  /** Inserts the summary row from an Application's creation event. */
   @EventHandler
   public void on(ApplicationCreatedEvent event, EventMessage message) {
-    ApplicationDataPayload data =
-        applicationDataStore.get(event.applicationId(), event.applicationDataVersion());
-
-    ApplicationClient client = data.client();
-
-    listIndexRepository.save(
-        ApplicationListIndexReadModel.builder()
+    ApplicationSummaryReadModel row =
+        ApplicationSummaryReadModel.builder()
             .applicationId(event.applicationId())
             .status(event.status())
-            .laaReference(data.laaReference())
+            .laaReference(event.laaReference())
+            .officeCode(event.officeCode())
             .caseworkerId(null)
-            .matterType(data.matterType() == null ? null : data.matterType())
-            .categoryOfLawCode(data.categoryOfLawCode())
-            .matterTypeCode(data.matterTypeCode())
             .autoGranted(AutoGrantedState.PENDING)
             .submittedAt(event.occurredAt())
             .modifiedAt(event.occurredAt())
+            .linkedGroupId(null)
             .leadApplicationId(null)
-            .clientFirstName(client != null ? client.getFirstName() : null)
-            .clientLastName(client != null ? client.getLastName() : null)
-            .clientDateOfBirth(client != null ? client.getDateOfBirth() : null)
-            .officeCode(officeCode(data))
             .streamVersion(0L)
             .projectionPosition(message.identifier().hashCode())
-            .build());
+            .build();
+    applyContent(row, event.content().orElse(null));
+    summaryRepository.save(row);
   }
 
-  /** Updates application index rows when a linked group is established explicitly. */
+  /** Records group membership when a linked group is established explicitly. */
   @EventHandler
   public void on(LinkedApplicationGroupCreatedEvent event, EventMessage message) {
     event
         .memberApplicationIds()
         .forEach(
             memberApplicationId ->
-                updateLeadApplicationId(
+                updateGroup(
                     memberApplicationId,
+                    event.groupId(),
                     memberApplicationId.equals(event.leadApplicationId())
                         ? null
                         : event.leadApplicationId(),
@@ -110,44 +89,42 @@ public class ApplicationListIndexProjection {
                     message));
   }
 
-  /** Updates the added member index row when it joins an existing linked group explicitly. */
+  /** Records group membership when a member joins an existing linked group. */
   @EventHandler
   public void on(MemberAddedToGroupEvent event, EventMessage message) {
-    updateLeadApplicationId(
-        event.memberId(), event.leadApplicationId(), event.occurredAt(), message);
+    updateGroup(
+        event.memberId(), event.groupId(), event.leadApplicationId(), event.occurredAt(), message);
   }
 
-  /** Updates every list-index row affected by a linked-group lead change. */
+  /** Moves the lead reference for every application in the changed group. */
   @EventHandler
   public void on(LinkedApplicationGroupLeadChangedEvent event, EventMessage message) {
-    var members =
-        new ArrayList<>(
-            listIndexRepository.findAllByLeadApplicationId(event.previousLeadApplicationId()));
-    listIndexRepository.findById(event.previousLeadApplicationId()).ifPresent(members::add);
-    members.forEach(
-        row -> {
-          row.setLeadApplicationId(
-              row.getApplicationId().equals(event.newLeadApplicationId())
-                  ? null
-                  : event.newLeadApplicationId());
-          row.setModifiedAt(event.occurredAt());
-          row.setProjectionPosition(message.identifier().hashCode());
-          listIndexRepository.save(row);
-        });
+    summaryRepository
+        .findAllByLinkedGroupId(event.groupId())
+        .forEach(
+            row -> {
+              row.setLeadApplicationId(
+                  row.getApplicationId().equals(event.newLeadApplicationId())
+                      ? null
+                      : event.newLeadApplicationId());
+              row.setModifiedAt(event.occurredAt());
+              row.setProjectionPosition(message.identifier().hashCode());
+              summaryRepository.save(row);
+            });
   }
 
-  /** Clears the list-index lead reference when a member leaves a group. */
+  /** Clears group membership when a member leaves a group. */
   @EventHandler
   public void on(MemberRemovedFromGroupEvent event, EventMessage message) {
-    updateLeadApplicationId(event.memberId(), null, event.occurredAt(), message);
+    updateGroup(event.memberId(), null, null, event.occurredAt(), message);
   }
 
-  /** Clears list-index lead references when a group is dissolved. */
+  /** Clears group membership from every member when a group is dissolved. */
   @EventHandler
   public void on(LinkedApplicationGroupDissolvedEvent event, EventMessage message) {
     event
         .memberApplicationIds()
-        .forEach(memberId -> updateLeadApplicationId(memberId, null, event.occurredAt(), message));
+        .forEach(memberId -> updateGroup(memberId, null, null, event.occurredAt(), message));
   }
 
   /**
@@ -166,7 +143,7 @@ public class ApplicationListIndexProjection {
               ? ApplicationStatus.APPLICATION_REFUSED
               : ApplicationStatus.APPLICATION_GRANTED;
     }
-    listIndexRepository
+    summaryRepository
         .findById(event.applicationId())
         .ifPresent(
             row -> {
@@ -175,14 +152,14 @@ public class ApplicationListIndexProjection {
               row.setStreamVersion(event.applicationVersion());
               row.setModifiedAt(event.occurredAt());
               row.setProjectionPosition(message.identifier().hashCode());
-              listIndexRepository.save(row);
+              summaryRepository.save(row);
             });
   }
 
   /** Records that automatic assessment completed with a manual-assessment outcome. */
   @EventHandler
   public void on(ApplicationReadyForManualAssessmentEvent event, EventMessage message) {
-    listIndexRepository
+    summaryRepository
         .findById(event.applicationId())
         .ifPresent(
             row -> {
@@ -190,34 +167,26 @@ public class ApplicationListIndexProjection {
               row.setStreamVersion(event.applicationVersion());
               row.setModifiedAt(event.occurredAt());
               row.setProjectionPosition(message.identifier().hashCode());
-              listIndexRepository.save(row);
+              summaryRepository.save(row);
             });
   }
 
-  /** Refreshes filter and sort fields from the new immutable application-data version. */
+  /** Refreshes descriptive facts from the replacement content. */
   @EventHandler
   public void on(ApplicationUpdatedEvent event, EventMessage message) {
-    listIndexRepository
+    summaryRepository
         .findById(event.applicationId())
         .ifPresent(
             row -> {
-              ApplicationDataPayload data =
-                  applicationDataStore.get(event.applicationId(), event.applicationDataVersion());
-              ApplicationClient client = data.client();
               row.setStatus(event.status());
-              row.setLaaReference(data.laaReference());
-              row.setMatterType(data.matterType() == null ? null : data.matterType());
-              row.setCategoryOfLawCode(data.categoryOfLawCode());
-              row.setMatterTypeCode(data.matterTypeCode());
-              row.setAutoGranted(data.autoGranted());
-              row.setClientFirstName(client != null ? client.getFirstName() : null);
-              row.setClientLastName(client != null ? client.getLastName() : null);
-              row.setClientDateOfBirth(client != null ? client.getDateOfBirth() : null);
-              row.setOfficeCode(officeCode(data));
+              if (event.enteredSubmitted()) {
+                row.setAutoGranted(AutoGrantedState.PENDING);
+              }
+              applyContent(row, event.content().orElse(null));
               row.setStreamVersion(event.applicationVersion());
               row.setModifiedAt(event.occurredAt());
               row.setProjectionPosition(message.identifier().hashCode());
-              listIndexRepository.save(row);
+              summaryRepository.save(row);
             });
   }
 
@@ -229,7 +198,7 @@ public class ApplicationListIndexProjection {
     if (event.workItemType() != WorkItemType.APPLICATION) {
       return;
     }
-    listIndexRepository
+    summaryRepository
         .findById(event.workItemId())
         .ifPresent(
             row -> {
@@ -237,7 +206,7 @@ public class ApplicationListIndexProjection {
               row.setStreamVersion(event.itemVersion());
               row.setModifiedAt(event.occurredAt());
               row.setProjectionPosition(message.identifier().hashCode());
-              listIndexRepository.save(row);
+              summaryRepository.save(row);
             });
   }
 
@@ -249,7 +218,7 @@ public class ApplicationListIndexProjection {
     if (event.workItemType() != WorkItemType.APPLICATION) {
       return;
     }
-    listIndexRepository
+    summaryRepository
         .findById(event.workItemId())
         .ifPresent(
             row -> {
@@ -257,7 +226,7 @@ public class ApplicationListIndexProjection {
               row.setStreamVersion(event.itemVersion());
               row.setModifiedAt(event.occurredAt());
               row.setProjectionPosition(message.identifier().hashCode());
-              listIndexRepository.save(row);
+              summaryRepository.save(row);
             });
   }
 
@@ -269,49 +238,86 @@ public class ApplicationListIndexProjection {
    */
   @EventHandler
   public void on(NoteCreatedEvent event, EventMessage message) {
-    listIndexRepository
+    summaryRepository
         .findById(event.applicationId())
         .ifPresent(
             row -> {
               row.setModifiedAt(event.occurredAt());
               row.setProjectionPosition(message.identifier().hashCode());
-              listIndexRepository.save(row);
+              summaryRepository.save(row);
             });
   }
 
   /** Updates application list ordering after an upload without loading filenames. */
   @EventHandler
   public void on(ApplicationDocumentUploadedEvent event, EventMessage message) {
-    listIndexRepository
+    summaryRepository
         .findById(event.applicationId())
         .ifPresent(
             row -> {
               row.setModifiedAt(event.uploadedAt());
               row.setProjectionPosition(message.identifier().hashCode());
-              listIndexRepository.save(row);
+              summaryRepository.save(row);
             });
   }
 
-  private void updateLeadApplicationId(
-      UUID applicationId, UUID leadApplicationId, Instant occurredAt, EventMessage message) {
-    listIndexRepository
+  private void updateGroup(
+      UUID applicationId,
+      UUID linkedGroupId,
+      UUID leadApplicationId,
+      Instant occurredAt,
+      EventMessage message) {
+    summaryRepository
         .findById(applicationId)
         .ifPresent(
             row -> {
+              row.setLinkedGroupId(linkedGroupId);
               row.setLeadApplicationId(leadApplicationId);
               row.setModifiedAt(occurredAt);
               row.setProjectionPosition(message.identifier().hashCode());
-              listIndexRepository.save(row);
+              summaryRepository.save(row);
             });
   }
 
-  /** Clears the disposable index table before replay. */
-  @ResetHandler
-  public void reset() {
-    listIndexRepository.deleteAllInBatch();
+  /**
+   * Copies descriptive facts from content. Erased content clears them; the office code falls back
+   * to the row's kept value so office access still applies.
+   */
+  private static void applyContent(
+      ApplicationSummaryReadModel row, ParsedAppContentDetails content) {
+    record MatterPair(String name, String code) {}
+
+    ApplicationClient client = content == null ? null : content.client();
+    row.setClientFirstName(client == null ? null : client.getFirstName());
+    row.setClientLastName(client == null ? null : client.getLastName());
+    row.setClientDateOfBirth(client == null ? null : client.getDateOfBirth());
+    row.setCategoryOfLaw(content == null ? null : content.categoryOfLaw());
+    row.setCategoryOfLawCode(content == null ? null : content.categoryOfLawCode());
+    row.setMatterType(content == null ? null : content.matterType());
+    row.setMatterTypeCode(content == null ? null : content.matterTypeCode());
+    row.setUsedDelegatedFunctions(content == null ? null : content.usedDelegatedFunctions());
+    List<MatterPair> matterPairs =
+        (content == null || content.proceedings() == null
+                ? Stream.<Proceeding>empty()
+                : content.proceedings().stream())
+            .filter(Objects::nonNull)
+            .map(
+                proceeding ->
+                    new MatterPair(proceeding.getMatterType(), proceeding.getMatterTypeCode()))
+            .distinct()
+            .toList();
+    row.setMatterTypes(matterPairs.stream().map(MatterPair::name).toList());
+    row.setMatterTypeCodes(matterPairs.stream().map(MatterPair::code).toList());
+    if (content != null
+        && content.provider() != null
+        && content.provider().getOfficeCode() != null) {
+      row.setOfficeCode(content.provider().getOfficeCode());
+    }
   }
 
-  private static String officeCode(ApplicationDataPayload data) {
-    return data == null || data.provider() == null ? null : data.provider().getOfficeCode();
+  /** Clears the summary before replay. */
+  @ResetHandler
+  public void reset() {
+    summaryRepository.deleteAllInBatch();
   }
 }

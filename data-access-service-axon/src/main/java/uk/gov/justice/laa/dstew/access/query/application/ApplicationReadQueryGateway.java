@@ -7,15 +7,15 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Component;
-import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadModel;
-import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadRepository;
+import uk.gov.justice.laa.dstew.access.query.application.summary.ApplicationSummaryReadModel;
+import uk.gov.justice.laa.dstew.access.query.application.summary.ApplicationSummaryReadRepository;
 import uk.gov.justice.laa.dstew.access.query.utils.security.AccessAwareQueryExecutor;
 
 /** Repository-selection boundary for protected Application read models. */
 @Component
 public class ApplicationReadQueryGateway {
   private final ApplicationReadRepository applicationReadRepository;
-  private final ApplicationListIndexReadRepository listIndexRepository;
+  private final ApplicationSummaryReadRepository summaryRepository;
   private final AccessAwareQueryExecutor executor;
 
   /**
@@ -23,15 +23,15 @@ public class ApplicationReadQueryGateway {
    * access restrictions.
    *
    * @param applicationReadRepository - application read model repository
-   * @param listIndexRepository - application list index read repository
+   * @param summaryRepository - application list index read repository
    * @param executor - query executor that applies security filtering
    */
   public ApplicationReadQueryGateway(
       ApplicationReadRepository applicationReadRepository,
-      ApplicationListIndexReadRepository listIndexRepository,
+      ApplicationSummaryReadRepository summaryRepository,
       AccessAwareQueryExecutor executor) {
     this.applicationReadRepository = applicationReadRepository;
-    this.listIndexRepository = listIndexRepository;
+    this.summaryRepository = summaryRepository;
     this.executor = executor;
   }
 
@@ -46,10 +46,10 @@ public class ApplicationReadQueryGateway {
         applicationReadRepository, (root, query, cb) -> root.get("applicationId").in(ids), access);
   }
 
-  public Page<ApplicationListIndexReadModel> findApplicationIndexPage(
-      Specification<ApplicationListIndexReadModel> functional,
+  public Page<ApplicationSummaryReadModel> findApplicationIndexPage(
+      Specification<ApplicationSummaryReadModel> functional,
       Pageable pageable,
-      Specification<ApplicationListIndexReadModel> access) {
-    return executor.findAll(listIndexRepository, functional, pageable, access);
+      Specification<ApplicationSummaryReadModel> access) {
+    return executor.findAll(summaryRepository, functional, pageable, access);
   }
 }

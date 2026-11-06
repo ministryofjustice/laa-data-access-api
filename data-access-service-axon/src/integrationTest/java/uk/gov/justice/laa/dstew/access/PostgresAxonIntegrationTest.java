@@ -401,7 +401,7 @@ class PostgresAxonIntegrationTest {
             "application_current_state",
             "application_data",
             "application_group_route",
-            "application_list_index",
+            "application_summary",
             "domain_event_entry",
             "event_content",
             "flyway_schema_history",

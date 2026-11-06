@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.query.application.listindex;
+package uk.gov.justice.laa.dstew.access.query.application.summary;
 
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Predicate;
@@ -15,12 +15,12 @@ import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsQuer
  * entirely in PostgreSQL before any rows are returned to the application. Client-name predicates
  * use {@code lower()} to match the functional indexes created by the V15 migration.
  */
-public final class ApplicationListIndexSpecification {
+public final class ApplicationSummarySpecification {
 
-  private ApplicationListIndexSpecification() {}
+  private ApplicationSummarySpecification() {}
 
   /** Returns a {@link Specification} that applies every non-null filter in the query. */
-  public static Specification<ApplicationListIndexReadModel> from(FindAllApplicationsQuery query) {
+  public static Specification<ApplicationSummaryReadModel> from(FindAllApplicationsQuery query) {
     return (root, criteriaQuery, cb) -> {
       List<Predicate> predicates = new ArrayList<>();
 
@@ -55,7 +55,7 @@ public final class ApplicationListIndexSpecification {
    * indexes created in the V15 migration.
    */
   private static Predicate likeIgnoreCase(
-      CriteriaBuilder cb, Root<ApplicationListIndexReadModel> root, String field, String value) {
+      CriteriaBuilder cb, Root<ApplicationSummaryReadModel> root, String field, String value) {
     return cb.like(cb.lower(root.get(field)), value.toLowerCase() + "%");
   }
 }

@@ -27,6 +27,16 @@ public class AxonEventProcessingConfig {
         RegisteredContentReaders.APPLICATION_PROJECTION, separator, store, converter);
   }
 
+  /** Builds the application summary from event content. */
+  @Bean
+  EventProcessorDefinition applicationSummaryProcessor(
+      ObjectProvider<EventContentSeparator> separator,
+      ObjectProvider<EventContentStore> store,
+      ObjectProvider<EventConverter> converter) {
+    return contentReadingProcessor(
+        RegisteredContentReaders.APPLICATION_SUMMARY, separator, store, converter);
+  }
+
   /** Writes genesis stream pointers; it needs no content, only IDs and timestamps. */
   @Bean
   EventProcessorDefinition genesisStreamProcessor() {

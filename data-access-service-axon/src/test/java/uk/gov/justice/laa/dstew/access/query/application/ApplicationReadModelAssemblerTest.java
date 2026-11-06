@@ -12,6 +12,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -23,16 +25,16 @@ import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataP
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
-import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadModel;
-import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadRepository;
+import uk.gov.justice.laa.dstew.access.query.application.summary.ApplicationSummaries;
+import uk.gov.justice.laa.dstew.access.query.application.summary.ApplicationSummaryReadModel;
 
 @ExtendWith(MockitoExtension.class)
 class ApplicationReadModelAssemblerTest {
 
   @Mock private ApplicationDataStore applicationDataStore;
   @Mock private LinkedApplicationGroupReadRepository groupReadRepository;
-  @Mock private ApplicationListIndexReadRepository listIndexRepository;
+  @Mock private ApplicationSummaries applicationSummaries;
   @Mock private PriorAuthorityReadRepository priorAuthorityReadRepository;
   @Mock private ApplicationDataPayload payloadWithoutProvider;
   @InjectMocks private ApplicationReadModelAssembler assembler;
@@ -117,23 +119,24 @@ class ApplicationReadModelAssemblerTest {
     when(groupReadRepository.findById(groupId)).thenReturn(Optional.of(group));
     when(priorAuthorityReadRepository.findAllByApplicationIdIn(List.of(applicationId)))
         .thenReturn(List.of());
-    when(listIndexRepository.findAllById(List.of(applicationId, linkedApplicationId)))
+    when(applicationSummaries.findByIds(List.of(applicationId, linkedApplicationId)))
         .thenReturn(
-            List.of(
-                ApplicationListIndexReadModel.builder()
-                    .applicationId(applicationId)
-                    .laaReference("LAA-APPLICATION")
-                    .status("APPLICATION_SUBMITTED")
-                    .clientFirstName("Ada")
-                    .clientLastName("Lovelace")
-                    .build(),
-                ApplicationListIndexReadModel.builder()
-                    .applicationId(linkedApplicationId)
-                    .laaReference("LAA-LINKED")
-                    .status("APPLICATION_SUBMITTED")
-                    .clientFirstName("Grace")
-                    .clientLastName("Hopper")
-                    .build()));
+            byId(
+                List.of(
+                    ApplicationSummaryReadModel.builder()
+                        .applicationId(applicationId)
+                        .laaReference("LAA-APPLICATION")
+                        .status("APPLICATION_SUBMITTED")
+                        .clientFirstName("Ada")
+                        .clientLastName("Lovelace")
+                        .build(),
+                    ApplicationSummaryReadModel.builder()
+                        .applicationId(linkedApplicationId)
+                        .laaReference("LAA-LINKED")
+                        .status("APPLICATION_SUBMITTED")
+                        .clientFirstName("Grace")
+                        .clientLastName("Hopper")
+                        .build())));
 
     var result = assembler.assembleDetail(application);
 
@@ -162,30 +165,31 @@ class ApplicationReadModelAssemblerTest {
             LinkedApplicationGroupReadModel.builder()
                 .memberIds(List.of(sharedId, secondId))
                 .build());
-    when(listIndexRepository.findAllById(List.of(firstId, sharedId, secondId)))
+    when(applicationSummaries.findByIds(List.of(firstId, sharedId, secondId)))
         .thenReturn(
-            List.of(
-                ApplicationListIndexReadModel.builder()
-                    .applicationId(firstId)
-                    .laaReference("LAA-FIRST")
-                    .status("APPLICATION_SUBMITTED")
-                    .clientFirstName("First")
-                    .clientLastName("Member")
-                    .build(),
-                ApplicationListIndexReadModel.builder()
-                    .applicationId(sharedId)
-                    .laaReference("LAA-SHARED")
-                    .status("APPLICATION_SUBMITTED")
-                    .clientFirstName("Shared")
-                    .clientLastName("Member")
-                    .build(),
-                ApplicationListIndexReadModel.builder()
-                    .applicationId(secondId)
-                    .laaReference("LAA-SECOND")
-                    .status("APPLICATION_SUBMITTED")
-                    .clientFirstName("Second")
-                    .clientLastName("Member")
-                    .build()));
+            byId(
+                List.of(
+                    ApplicationSummaryReadModel.builder()
+                        .applicationId(firstId)
+                        .laaReference("LAA-FIRST")
+                        .status("APPLICATION_SUBMITTED")
+                        .clientFirstName("First")
+                        .clientLastName("Member")
+                        .build(),
+                    ApplicationSummaryReadModel.builder()
+                        .applicationId(sharedId)
+                        .laaReference("LAA-SHARED")
+                        .status("APPLICATION_SUBMITTED")
+                        .clientFirstName("Shared")
+                        .clientLastName("Member")
+                        .build(),
+                    ApplicationSummaryReadModel.builder()
+                        .applicationId(secondId)
+                        .laaReference("LAA-SECOND")
+                        .status("APPLICATION_SUBMITTED")
+                        .clientFirstName("Second")
+                        .clientLastName("Member")
+                        .build())));
 
     assertThat(assembler.fetchLinkedMemberDetails(groups))
         .contains(
@@ -206,14 +210,14 @@ class ApplicationReadModelAssemblerTest {
   @Test
   void givenNoGroups_whenFetchingLinkedMemberDetails_thenSkipsLookup() {
     assertThat(assembler.fetchLinkedMemberDetails(List.of())).isEmpty();
-    verifyNoInteractions(listIndexRepository);
+    verifyNoInteractions(applicationSummaries);
   }
 
   @Test
   void givenMissingLinkedMemberDetails_whenFetching_thenRejectsIncompleteMember() {
     UUID memberId = UUID.randomUUID();
     var group = LinkedApplicationGroupReadModel.builder().memberIds(List.of(memberId)).build();
-    when(listIndexRepository.findAllById(List.of(memberId))).thenReturn(List.of());
+    when(applicationSummaries.findByIds(List.of(memberId))).thenReturn(byId(List.of()));
 
     assertThatThrownBy(() -> assembler.fetchLinkedMemberDetails(List.of(group)))
         .isInstanceOf(IllegalStateException.class)
@@ -224,14 +228,15 @@ class ApplicationReadModelAssemblerTest {
   void givenLinkedMemberWithoutRequiredName_whenFetching_thenRejectsIncompleteMember() {
     UUID memberId = UUID.randomUUID();
     var group = LinkedApplicationGroupReadModel.builder().memberIds(List.of(memberId)).build();
-    when(listIndexRepository.findAllById(List.of(memberId)))
+    when(applicationSummaries.findByIds(List.of(memberId)))
         .thenReturn(
-            List.of(
-                ApplicationListIndexReadModel.builder()
-                    .applicationId(memberId)
-                    .laaReference("LAA-MEMBER")
-                    .clientLastName("Member")
-                    .build()));
+            byId(
+                List.of(
+                    ApplicationSummaryReadModel.builder()
+                        .applicationId(memberId)
+                        .laaReference("LAA-MEMBER")
+                        .clientLastName("Member")
+                        .build())));
 
     assertThatThrownBy(() -> assembler.fetchLinkedMemberDetails(List.of(group)))
         .isInstanceOf(IllegalStateException.class)
@@ -249,7 +254,7 @@ class ApplicationReadModelAssemblerTest {
 
     assertThat(result.linkedGroup()).isNull();
     assertThat(result.linkedMemberDetails()).isEmpty();
-    verifyNoInteractions(groupReadRepository, listIndexRepository);
+    verifyNoInteractions(groupReadRepository, applicationSummaries);
   }
 
   @Test
@@ -274,5 +279,12 @@ class ApplicationReadModelAssemblerTest {
 
   private static ApplicationDataPayload payload(UUID applicationId) {
     return ApplicationDataPayload.from(applicationCreationDetails(applicationId));
+  }
+
+  private static Map<UUID, ApplicationSummaryReadModel> byId(
+      List<ApplicationSummaryReadModel> summaries) {
+    return summaries.stream()
+        .collect(
+            Collectors.toMap(ApplicationSummaryReadModel::getApplicationId, Function.identity()));
   }
 }

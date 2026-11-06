@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.query.application.listindex;
+package uk.gov.justice.laa.dstew.access.query.application.summary;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -8,8 +8,6 @@ import static org.mockito.Mockito.when;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationCreatedEvent;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationCreationDetails;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -27,12 +25,12 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
 import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.applicationcontent.ParsedAppContentDetails;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreationDetails;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupDissolvedEvent;
@@ -41,17 +39,17 @@ import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberAdd
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.MemberRemovedFromGroupEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
+import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 
 @ExtendWith(MockitoExtension.class)
-class ApplicationListIndexProjectionTest {
+class ApplicationSummaryProjectionTest {
 
-  @Mock private ApplicationListIndexReadRepository listIndexRepository;
-  @Mock private ApplicationDataStore applicationDataStore;
-  private ApplicationListIndexProjection projection;
+  @Mock private ApplicationSummaryReadRepository summaryRepository;
+  private ApplicationSummaryProjection projection;
 
   @BeforeEach
   void setUp() {
-    projection = new ApplicationListIndexProjection(listIndexRepository, applicationDataStore);
+    projection = new ApplicationSummaryProjection(summaryRepository);
   }
 
   private static EventMessage anyMessage() {
@@ -59,34 +57,16 @@ class ApplicationListIndexProjectionTest {
         "test-id", new MessageType(String.class), "test", Map.of(), Instant.now());
   }
 
-  private static ApplicationDataPayload payloadWithoutMatterType(UUID applicationId) {
-    ApplicationDataPayload payload =
-        ApplicationDataPayload.from(applicationCreationDetails(applicationId));
-    return payload.withApplicationUpdate(
-        payload.client(),
-        payload.provider(),
-        payload.opponents(),
-        payload.submittedAt(),
-        payload.usedDelegatedFunctions(),
-        payload.categoryOfLaw(),
-        null,
-        payload.categoryOfLawCode(),
-        payload.matterTypeCode(),
-        List.of(),
-        "{}",
-        false);
-  }
-
   @Test
   void givenDocumentUpload_whenHandled_thenUpdatesSortTimestampWithoutContentLookup() {
     UUID applicationId = UUID.randomUUID();
     Instant uploadedAt = Instant.parse("2026-09-28T15:10:27.430Z");
-    ApplicationListIndexReadModel row =
-        ApplicationListIndexReadModel.builder()
+    ApplicationSummaryReadModel row =
+        ApplicationSummaryReadModel.builder()
             .applicationId(applicationId)
             .streamVersion(7L)
             .build();
-    when(listIndexRepository.findById(applicationId)).thenReturn(Optional.of(row));
+    when(summaryRepository.findById(applicationId)).thenReturn(Optional.of(row));
 
     projection.on(
         new ApplicationDocumentUploadedEvent(
@@ -101,10 +81,9 @@ class ApplicationListIndexProjectionTest {
             1L),
         anyMessage());
 
-    verify(listIndexRepository).save(row);
+    verify(summaryRepository).save(row);
     assertThat(row.getModifiedAt()).isEqualTo(uploadedAt);
     assertThat(row.getStreamVersion()).isEqualTo(7L);
-    verify(applicationDataStore, never()).get(any(), any(Long.class));
   }
 
   // -------------------------------------------------------------------------
@@ -112,82 +91,57 @@ class ApplicationListIndexProjectionTest {
   // -------------------------------------------------------------------------
 
   @Test
-  void givenCreatedEvent_whenHandled_thenInsertsIndexRowWithStatusAndLaaReference() {
+  void givenCreatedEvent_whenHandled_thenInsertsRowFromKeptFieldsAndContent() {
     UUID applicationId = UUID.randomUUID();
     ApplicationCreatedEvent event = applicationCreatedEvent(applicationId);
-    ApplicationDataPayload payload = payloadWithoutMatterType(applicationId);
-    when(applicationDataStore.get(applicationId, event.applicationDataVersion()))
-        .thenReturn(payload);
 
-    projection.on(event, anyMessage());
-
-    ArgumentCaptor<ApplicationListIndexReadModel> captor =
-        ArgumentCaptor.forClass(ApplicationListIndexReadModel.class);
-    verify(listIndexRepository).save(captor.capture());
-    ApplicationListIndexReadModel saved = captor.getValue();
+    ApplicationSummaryReadModel saved = savedOnCreate(event);
 
     assertThat(saved.getApplicationId()).isEqualTo(applicationId);
     assertThat(saved.getStatus()).isEqualTo(event.status());
-    assertThat(saved.getLaaReference()).isEqualTo(payload.laaReference());
+    assertThat(saved.getLaaReference()).isEqualTo("LAA-123");
+    assertThat(saved.getOfficeCode()).isEqualTo("1A001B");
     assertThat(saved.getCaseworkerId()).isNull();
-    assertThat(saved.getMatterType()).isNull();
+    assertThat(saved.getLinkedGroupId()).isNull();
+    assertThat(saved.getCategoryOfLaw()).isEqualTo("Family");
+    assertThat(saved.getCategoryOfLawCode()).isEqualTo("MAT");
+    assertThat(saved.getMatterType()).isEqualTo("special children act (SCA)");
+    assertThat(saved.getMatterTypeCode()).isEqualTo("KPBLW");
+    assertThat(saved.getUsedDelegatedFunctions()).isFalse();
     assertThat(saved.getStreamVersion()).isZero();
   }
 
   @Test
   void givenContentSubmittedAtDiffersFromEvent_whenProjected_thenUsesEventTimestamp() {
-    UUID applicationId = UUID.randomUUID();
-    ApplicationCreatedEvent event = applicationCreatedEvent(applicationId);
-    ApplicationDataPayload payload = payloadWithoutMatterType(applicationId);
-    when(applicationDataStore.get(applicationId, event.applicationDataVersion()))
-        .thenReturn(payload);
+    ApplicationCreatedEvent event = applicationCreatedEvent(UUID.randomUUID());
 
-    projection.on(event, anyMessage());
-
-    ArgumentCaptor<ApplicationListIndexReadModel> captor =
-        ArgumentCaptor.forClass(ApplicationListIndexReadModel.class);
-    verify(listIndexRepository).save(captor.capture());
-    assertThat(captor.getValue().getSubmittedAt()).isEqualTo(event.occurredAt());
-    assertThat(payload.submittedAt()).isNotEqualTo(event.occurredAt());
+    assertThat(savedOnCreate(event).getSubmittedAt()).isEqualTo(event.occurredAt());
+    assertThat(event.content().value().submittedAt()).isNotEqualTo(event.occurredAt());
   }
 
   @Test
-  void givenLegacyPayload_whenReplayed_thenRestoresLeadCodes() throws Exception {
+  void givenProceedings_whenProjected_thenKeepsDistinctMatterTypePairsInOrder() {
     UUID applicationId = UUID.randomUUID();
-    ApplicationCreatedEvent event = applicationCreatedEvent(applicationId);
-    ObjectMapper mapper = new ObjectMapper().findAndRegisterModules();
-    ObjectNode json =
-        mapper.valueToTree(ApplicationDataPayload.from(applicationCreationDetails(applicationId)));
-    json.set(
-        "proceedings",
-        mapper.valueToTree(
-            List.of(
-                Proceeding.builder()
-                    .id(UUID.randomUUID())
-                    .leadProceeding(true)
-                    .code("SE003")
-                    .description("Care order")
-                    .categoryOfLawCode("MAT")
-                    .matterTypeCode("KPBLW")
-                    .build())));
-    ApplicationDataPayload payload = mapper.treeToValue(json, ApplicationDataPayload.class);
-    when(applicationDataStore.get(applicationId, event.applicationDataVersion()))
-        .thenReturn(payload);
+    ApplicationCreationDetails base = applicationCreationDetails(applicationId);
+    List<Proceeding> proceedings =
+        List.of(
+            proceeding("special children act (SCA)", "KPBLW"),
+            proceeding("domestic abuse", "MINJN"),
+            proceeding("special children act (SCA)", "KPBLW"));
 
-    projection.on(event, anyMessage());
+    ApplicationSummaryReadModel saved =
+        savedOnCreate(
+            applicationCreatedEvent(applicationId, details(base, base.client(), proceedings)));
 
-    ArgumentCaptor<ApplicationListIndexReadModel> captor =
-        ArgumentCaptor.forClass(ApplicationListIndexReadModel.class);
-    verify(listIndexRepository).save(captor.capture());
-    assertThat(captor.getValue().getCategoryOfLawCode()).isEqualTo("MAT");
-    assertThat(captor.getValue().getMatterTypeCode()).isEqualTo("KPBLW");
+    assertThat(saved.getMatterTypes())
+        .containsExactly("special children act (SCA)", "domestic abuse");
+    assertThat(saved.getMatterTypeCodes()).containsExactly("KPBLW", "MINJN");
   }
 
   @Test
-  void givenCreatedEventWithClient_whenHandled_thenPopulatesPiiColumns() {
+  void givenCreatedEventWithClient_whenHandled_thenPopulatesClientColumns() {
     UUID applicationId = UUID.randomUUID();
-    ApplicationCreatedEvent event = applicationCreatedEvent(applicationId);
-
+    ApplicationCreationDetails base = applicationCreationDetails(applicationId);
     ApplicationClient client =
         ApplicationClient.builder()
             .firstName("Jane")
@@ -196,41 +150,10 @@ class ApplicationListIndexProjectionTest {
             .appliedPreviously(false)
             .addresses(List.of())
             .build();
-    ApplicationDataPayload basePayload =
-        ApplicationDataPayload.from(applicationCreationDetails(applicationId));
-    ApplicationDataPayload payloadWithClient =
-        new ApplicationDataPayload(
-            basePayload.laaReference(),
-            client,
-            basePayload.provider(),
-            basePayload.opponents(),
-            basePayload.submittedAt(),
-            basePayload.usedDelegatedFunctions(),
-            basePayload.categoryOfLaw(),
-            basePayload.matterType(),
-            basePayload.categoryOfLawCode(),
-            basePayload.matterTypeCode(),
-            basePayload.proceedings(),
-            basePayload.serialisedRequest(),
-            basePayload.overallDecision(),
-            basePayload.autoGranted(),
-            basePayload.meritsDecisions(),
-            basePayload.certificate(),
-            basePayload.decisionSerialisedRequest(),
-            basePayload.decisionEventDescription(),
-            basePayload.assignmentEventDescription(),
-            basePayload.notes(),
-            basePayload.documentFilenames());
 
-    when(applicationDataStore.get(applicationId, event.applicationDataVersion()))
-        .thenReturn(payloadWithClient);
-
-    projection.on(event, anyMessage());
-
-    ArgumentCaptor<ApplicationListIndexReadModel> captor =
-        ArgumentCaptor.forClass(ApplicationListIndexReadModel.class);
-    verify(listIndexRepository).save(captor.capture());
-    ApplicationListIndexReadModel saved = captor.getValue();
+    ApplicationSummaryReadModel saved =
+        savedOnCreate(
+            applicationCreatedEvent(applicationId, details(base, client, base.proceedings())));
 
     assertThat(saved.getClientFirstName()).isEqualTo("Jane");
     assertThat(saved.getClientLastName()).isEqualTo("Smith");
@@ -238,24 +161,71 @@ class ApplicationListIndexProjectionTest {
   }
 
   @Test
-  void givenCreatedEventWithNoClient_whenHandled_thenPiiColumnsAreNull() {
-    UUID applicationId = UUID.randomUUID();
-    ApplicationCreatedEvent event = applicationCreatedEvent(applicationId);
-    ApplicationDataPayload payload =
-        ApplicationDataPayload.from(applicationCreationDetails(applicationId));
-    when(applicationDataStore.get(applicationId, event.applicationDataVersion()))
-        .thenReturn(payload);
+  void givenErasedContent_whenCreated_thenKeepsKeptFieldsAndLeavesContentFieldsEmpty() {
+    ApplicationCreatedEvent event = erased(applicationCreatedEvent(UUID.randomUUID()));
 
-    projection.on(event, anyMessage());
+    ApplicationSummaryReadModel saved = savedOnCreate(event);
 
-    ArgumentCaptor<ApplicationListIndexReadModel> captor =
-        ArgumentCaptor.forClass(ApplicationListIndexReadModel.class);
-    verify(listIndexRepository).save(captor.capture());
-    ApplicationListIndexReadModel saved = captor.getValue();
-
-    assertThat(saved.getClientFirstName()).isNull();
+    assertThat(saved.getLaaReference()).isEqualTo("LAA-123");
+    assertThat(saved.getOfficeCode()).isEqualTo(event.officeCode());
+    assertThat(saved.getStatus()).isEqualTo(event.status());
     assertThat(saved.getClientLastName()).isNull();
-    assertThat(saved.getClientDateOfBirth()).isNull();
+    assertThat(saved.getCategoryOfLaw()).isNull();
+    assertThat(saved.getMatterTypeCode()).isNull();
+    assertThat(saved.getMatterTypes()).isEmpty();
+  }
+
+  private ApplicationSummaryReadModel savedOnCreate(ApplicationCreatedEvent event) {
+    projection.on(event, anyMessage());
+    ArgumentCaptor<ApplicationSummaryReadModel> captor =
+        ArgumentCaptor.forClass(ApplicationSummaryReadModel.class);
+    verify(summaryRepository).save(captor.capture());
+    return captor.getValue();
+  }
+
+  private static ApplicationCreatedEvent erased(ApplicationCreatedEvent event) {
+    return new ApplicationCreatedEvent(
+        event.applicationId(),
+        event.applicationDataVersion(),
+        event.requestFingerprint(),
+        event.status(),
+        event.schemaVersion(),
+        event.occurredAt(),
+        Erasable.erased(),
+        event.officeCode(),
+        event.laaReference(),
+        event.proceedingIds(),
+        Erasable.erased(),
+        Erasable.erased());
+  }
+
+  private static ApplicationCreationDetails details(
+      ApplicationCreationDetails base, ApplicationClient client, List<Proceeding> proceedings) {
+    return new ApplicationCreationDetails(
+        base.status(),
+        base.laaReference(),
+        client,
+        base.provider(),
+        base.opponents(),
+        base.schemaVersion(),
+        base.submittedAt(),
+        base.usedDelegatedFunctions(),
+        base.categoryOfLaw(),
+        base.matterType(),
+        base.categoryOfLawCode(),
+        base.matterTypeCode(),
+        proceedings,
+        base.serialisedRequest(),
+        base.occurredAt(),
+        base.potentialDuplicates());
+  }
+
+  private static Proceeding proceeding(String matterType, String matterTypeCode) {
+    return Proceeding.builder()
+        .id(UUID.randomUUID())
+        .matterType(matterType)
+        .matterTypeCode(matterTypeCode)
+        .build();
   }
 
   // -------------------------------------------------------------------------
@@ -267,27 +237,31 @@ class ApplicationListIndexProjectionTest {
     UUID leadApplicationId = UUID.randomUUID();
     UUID memberApplicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-07-15T08:00:00Z");
-    ApplicationListIndexReadModel lead =
-        ApplicationListIndexReadModel.builder().applicationId(leadApplicationId).build();
-    ApplicationListIndexReadModel member =
-        ApplicationListIndexReadModel.builder().applicationId(memberApplicationId).build();
-    when(listIndexRepository.findById(leadApplicationId)).thenReturn(Optional.of(lead));
-    when(listIndexRepository.findById(memberApplicationId)).thenReturn(Optional.of(member));
+    ApplicationSummaryReadModel lead =
+        ApplicationSummaryReadModel.builder().applicationId(leadApplicationId).build();
+    ApplicationSummaryReadModel member =
+        ApplicationSummaryReadModel.builder().applicationId(memberApplicationId).build();
+    when(summaryRepository.findById(leadApplicationId)).thenReturn(Optional.of(lead));
+    when(summaryRepository.findById(memberApplicationId)).thenReturn(Optional.of(member));
 
+    UUID groupId = UUID.randomUUID();
     projection.on(
         new LinkedApplicationGroupCreatedEvent(
-            UUID.randomUUID(),
+            groupId,
             leadApplicationId,
             List.of(leadApplicationId, memberApplicationId),
             occurredAt),
         anyMessage());
 
+    assertThat(List.of(lead, member))
+        .extracting(ApplicationSummaryReadModel::getLinkedGroupId)
+        .containsOnly(groupId);
     assertThat(lead.getLeadApplicationId()).isNull();
     assertThat(lead.getModifiedAt()).isEqualTo(occurredAt);
     assertThat(member.getLeadApplicationId()).isEqualTo(leadApplicationId);
     assertThat(member.getModifiedAt()).isEqualTo(occurredAt);
-    verify(listIndexRepository).save(lead);
-    verify(listIndexRepository).save(member);
+    verify(summaryRepository).save(lead);
+    verify(summaryRepository).save(member);
   }
 
   @Test
@@ -295,9 +269,9 @@ class ApplicationListIndexProjectionTest {
     UUID leadApplicationId = UUID.randomUUID();
     UUID memberApplicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-07-15T09:00:00Z");
-    ApplicationListIndexReadModel member =
-        ApplicationListIndexReadModel.builder().applicationId(memberApplicationId).build();
-    when(listIndexRepository.findById(memberApplicationId)).thenReturn(Optional.of(member));
+    ApplicationSummaryReadModel member =
+        ApplicationSummaryReadModel.builder().applicationId(memberApplicationId).build();
+    when(summaryRepository.findById(memberApplicationId)).thenReturn(Optional.of(member));
 
     projection.on(
         new MemberAddedToGroupEvent(
@@ -306,20 +280,20 @@ class ApplicationListIndexProjectionTest {
 
     assertThat(member.getLeadApplicationId()).isEqualTo(leadApplicationId);
     assertThat(member.getModifiedAt()).isEqualTo(occurredAt);
-    verify(listIndexRepository).save(member);
+    verify(summaryRepository).save(member);
   }
 
   @Test
   void givenMemberAddedToGroupEventForUnknownApplication_whenHandled_thenDoesNothing() {
     UUID memberApplicationId = UUID.randomUUID();
-    when(listIndexRepository.findById(memberApplicationId)).thenReturn(Optional.empty());
+    when(summaryRepository.findById(memberApplicationId)).thenReturn(Optional.empty());
 
     projection.on(
         new MemberAddedToGroupEvent(
             UUID.randomUUID(), UUID.randomUUID(), memberApplicationId, Instant.now()),
         anyMessage());
 
-    verify(listIndexRepository, never()).save(any());
+    verify(summaryRepository, never()).save(any());
   }
 
   @Test
@@ -330,21 +304,23 @@ class ApplicationListIndexProjectionTest {
     UUID otherMemberId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-07-15T10:00:00Z");
     EventMessage message = anyMessage();
-    ApplicationListIndexReadModel previousLead =
-        ApplicationListIndexReadModel.builder().applicationId(previousLeadId).build();
-    ApplicationListIndexReadModel newLead =
-        ApplicationListIndexReadModel.builder()
+    ApplicationSummaryReadModel previousLead =
+        ApplicationSummaryReadModel.builder()
+            .applicationId(previousLeadId)
+            .linkedGroupId(groupId)
+            .build();
+    ApplicationSummaryReadModel newLead =
+        ApplicationSummaryReadModel.builder()
             .applicationId(newLeadId)
             .leadApplicationId(previousLeadId)
             .build();
-    ApplicationListIndexReadModel otherMember =
-        ApplicationListIndexReadModel.builder()
+    ApplicationSummaryReadModel otherMember =
+        ApplicationSummaryReadModel.builder()
             .applicationId(otherMemberId)
             .leadApplicationId(previousLeadId)
             .build();
-    when(listIndexRepository.findAllByLeadApplicationId(previousLeadId))
-        .thenReturn(List.of(newLead, otherMember));
-    when(listIndexRepository.findById(previousLeadId)).thenReturn(Optional.of(previousLead));
+    when(summaryRepository.findAllByLinkedGroupId(groupId))
+        .thenReturn(List.of(previousLead, newLead, otherMember));
 
     projection.on(
         new LinkedApplicationGroupLeadChangedEvent(
@@ -360,20 +336,20 @@ class ApplicationListIndexProjectionTest {
               assertThat(row.getModifiedAt()).isEqualTo(occurredAt);
               assertThat(row.getProjectionPosition()).isEqualTo(message.identifier().hashCode());
             });
-    verify(listIndexRepository).save(previousLead);
-    verify(listIndexRepository).save(newLead);
-    verify(listIndexRepository).save(otherMember);
+    verify(summaryRepository).save(previousLead);
+    verify(summaryRepository).save(newLead);
+    verify(summaryRepository).save(otherMember);
   }
 
   @Test
   void givenMemberRemovedEvent_whenHandled_thenClearsItsLeadIndex() {
     UUID memberId = UUID.randomUUID();
-    ApplicationListIndexReadModel member =
-        ApplicationListIndexReadModel.builder()
+    ApplicationSummaryReadModel member =
+        ApplicationSummaryReadModel.builder()
             .applicationId(memberId)
             .leadApplicationId(UUID.randomUUID())
             .build();
-    when(listIndexRepository.findById(memberId)).thenReturn(Optional.of(member));
+    when(summaryRepository.findById(memberId)).thenReturn(Optional.of(member));
     Instant occurredAt = Instant.parse("2026-07-15T11:00:00Z");
 
     projection.on(
@@ -383,22 +359,22 @@ class ApplicationListIndexProjectionTest {
 
     assertThat(member.getLeadApplicationId()).isNull();
     assertThat(member.getModifiedAt()).isEqualTo(occurredAt);
-    verify(listIndexRepository).save(member);
+    verify(summaryRepository).save(member);
   }
 
   @Test
   void givenDissolvedEvent_whenHandled_thenClearsEveryMemberLeadIndex() {
     UUID leadId = UUID.randomUUID();
     UUID removedId = UUID.randomUUID();
-    ApplicationListIndexReadModel lead =
-        ApplicationListIndexReadModel.builder().applicationId(leadId).build();
-    ApplicationListIndexReadModel removed =
-        ApplicationListIndexReadModel.builder()
+    ApplicationSummaryReadModel lead =
+        ApplicationSummaryReadModel.builder().applicationId(leadId).build();
+    ApplicationSummaryReadModel removed =
+        ApplicationSummaryReadModel.builder()
             .applicationId(removedId)
             .leadApplicationId(leadId)
             .build();
-    when(listIndexRepository.findById(leadId)).thenReturn(Optional.of(lead));
-    when(listIndexRepository.findById(removedId)).thenReturn(Optional.of(removed));
+    when(summaryRepository.findById(leadId)).thenReturn(Optional.of(lead));
+    when(summaryRepository.findById(removedId)).thenReturn(Optional.of(removed));
     Instant occurredAt = Instant.parse("2026-07-15T11:00:00Z");
 
     projection.on(
@@ -408,8 +384,8 @@ class ApplicationListIndexProjectionTest {
 
     assertThat(lead.getLeadApplicationId()).isNull();
     assertThat(removed.getLeadApplicationId()).isNull();
-    verify(listIndexRepository).save(lead);
-    verify(listIndexRepository).save(removed);
+    verify(summaryRepository).save(lead);
+    verify(summaryRepository).save(removed);
   }
 
   // -------------------------------------------------------------------------
@@ -419,13 +395,13 @@ class ApplicationListIndexProjectionTest {
   @Test
   void givenDecisionEvent_whenHandled_thenUpdatesStatusAndAutoGrantedAndStreamVersion() {
     UUID applicationId = UUID.randomUUID();
-    ApplicationListIndexReadModel existing =
-        ApplicationListIndexReadModel.builder()
+    ApplicationSummaryReadModel existing =
+        ApplicationSummaryReadModel.builder()
             .applicationId(applicationId)
             .status("APPLICATION_SUBMITTED")
             .streamVersion(0L)
             .build();
-    when(listIndexRepository.findById(applicationId)).thenReturn(Optional.of(existing));
+    when(summaryRepository.findById(applicationId)).thenReturn(Optional.of(existing));
 
     projection.on(
         new ApplicationDecisionMadeEvent(
@@ -435,19 +411,19 @@ class ApplicationListIndexProjectionTest {
     assertThat(existing.getStatus()).isEqualTo(ApplicationStatus.APPLICATION_GRANTED.name());
     assertThat(existing.getAutoGranted()).isEqualTo(AutoGrantedState.AUTOGRANTED);
     assertThat(existing.getStreamVersion()).isEqualTo(3L);
-    verify(listIndexRepository).save(existing);
+    verify(summaryRepository).save(existing);
   }
 
   @Test
   void givenDecisionEventWithNullDecision_whenHandled_thenKeepsExistingStatus() {
     UUID applicationId = UUID.randomUUID();
-    ApplicationListIndexReadModel existing =
-        ApplicationListIndexReadModel.builder()
+    ApplicationSummaryReadModel existing =
+        ApplicationSummaryReadModel.builder()
             .applicationId(applicationId)
             .status("APPLICATION_SUBMITTED")
             .streamVersion(0L)
             .build();
-    when(listIndexRepository.findById(applicationId)).thenReturn(Optional.of(existing));
+    when(summaryRepository.findById(applicationId)).thenReturn(Optional.of(existing));
 
     projection.on(
         new ApplicationDecisionMadeEvent(
@@ -455,7 +431,7 @@ class ApplicationListIndexProjectionTest {
         anyMessage());
 
     assertThat(existing.getStatus()).isEqualTo("APPLICATION_SUBMITTED");
-    verify(listIndexRepository).save(existing);
+    verify(summaryRepository).save(existing);
   }
 
   // -------------------------------------------------------------------------
@@ -465,14 +441,14 @@ class ApplicationListIndexProjectionTest {
   @Test
   void givenNoteCreatedEvent_whenHandled_thenSavesRowWithoutChangingFilterFields() {
     UUID applicationId = UUID.randomUUID();
-    ApplicationListIndexReadModel existing =
-        ApplicationListIndexReadModel.builder()
+    ApplicationSummaryReadModel existing =
+        ApplicationSummaryReadModel.builder()
             .applicationId(applicationId)
             .status("APPLICATION_SUBMITTED")
             .clientFirstName("Jane")
             .streamVersion(1L)
             .build();
-    when(listIndexRepository.findById(applicationId)).thenReturn(Optional.of(existing));
+    when(summaryRepository.findById(applicationId)).thenReturn(Optional.of(existing));
 
     projection.on(new NoteCreatedEvent(applicationId, 2L, Instant.now()), anyMessage());
 
@@ -480,7 +456,7 @@ class ApplicationListIndexProjectionTest {
     assertThat(existing.getStatus()).isEqualTo("APPLICATION_SUBMITTED");
     assertThat(existing.getClientFirstName()).isEqualTo("Jane");
     assertThat(existing.getStreamVersion()).isEqualTo(1L);
-    verify(listIndexRepository).save(existing);
+    verify(summaryRepository).save(existing);
   }
 
   // -------------------------------------------------------------------------
@@ -491,7 +467,7 @@ class ApplicationListIndexProjectionTest {
   void givenResetCalled_whenHandled_thenDeletesAllIndexRows() {
     projection.reset();
 
-    verify(listIndexRepository).deleteAllInBatch();
+    verify(summaryRepository).deleteAllInBatch();
   }
 
   // -------------------------------------------------------------------------
@@ -499,63 +475,81 @@ class ApplicationListIndexProjectionTest {
   // -------------------------------------------------------------------------
 
   @Test
-  void givenUpdatedEvent_whenHandled_thenRefreshesFilterFieldsFromDataStore() {
-    UUID applicationId = UUID.randomUUID();
-    ApplicationListIndexReadModel existing =
-        ApplicationListIndexReadModel.builder()
-            .applicationId(applicationId)
-            .status("APPLICATION_SUBMITTED")
-            .streamVersion(1L)
-            .build();
-    when(listIndexRepository.findById(applicationId)).thenReturn(Optional.of(existing));
-    ApplicationDataPayload payload = payloadWithoutMatterType(applicationId);
-    when(applicationDataStore.get(applicationId, 3L)).thenReturn(payload);
-
-    projection.on(
-        new ApplicationUpdatedEvent(
-            applicationId, 2L, 3L, "APPLICATION_SUBMITTED", "APPLICATION_UPDATED", Instant.now()),
-        anyMessage());
-
-    assertThat(existing.getStatus()).isEqualTo("APPLICATION_UPDATED");
-    assertThat(existing.getMatterType()).isNull();
-    assertThat(existing.getStreamVersion()).isEqualTo(2L);
-    verify(listIndexRepository).save(existing);
-  }
-
-  @Test
-  void givenUpdatedContent_whenProjected_thenKeepsOriginalSubmittedAt() {
+  void givenUpdatedEvent_whenHandled_thenRefreshesFactsFromContentAndKeepsSubmittedAt() {
     UUID applicationId = UUID.randomUUID();
     Instant originalSubmittedAt = Instant.parse("2026-07-15T08:00:00Z");
-    ApplicationListIndexReadModel existing =
-        ApplicationListIndexReadModel.builder()
+    ApplicationSummaryReadModel existing =
+        ApplicationSummaryReadModel.builder()
             .applicationId(applicationId)
+            .status("APPLICATION_SUBMITTED")
+            .laaReference("LAA-123")
+            .officeCode("OLD")
+            .autoGranted(AutoGrantedState.MANUAL)
             .submittedAt(originalSubmittedAt)
             .streamVersion(1L)
             .build();
-    when(listIndexRepository.findById(applicationId)).thenReturn(Optional.of(existing));
-    ApplicationDataPayload payload =
-        ApplicationDataPayload.from(applicationCreationDetails(applicationId));
-    when(applicationDataStore.get(applicationId, 3L)).thenReturn(payload);
+    when(summaryRepository.findById(applicationId)).thenReturn(Optional.of(existing));
+    ParsedAppContentDetails content = applicationCreatedEvent(applicationId).content().value();
 
     projection.on(
         new ApplicationUpdatedEvent(
-            applicationId, 2L, 3L, "APPLICATION_SUBMITTED", "APPLICATION_UPDATED", Instant.now()),
+            applicationId,
+            2L,
+            3L,
+            "APPLICATION_SUBMITTED",
+            "APPLICATION_UPDATED",
+            Instant.now(),
+            List.of(),
+            content,
+            "{}"),
         anyMessage());
 
+    assertThat(existing.getStatus()).isEqualTo("APPLICATION_UPDATED");
+    assertThat(existing.getCategoryOfLaw()).isEqualTo("Family");
+    assertThat(existing.getOfficeCode()).isEqualTo("1A001B");
+    assertThat(existing.getLaaReference()).isEqualTo("LAA-123");
+    assertThat(existing.getAutoGranted()).isEqualTo(AutoGrantedState.MANUAL);
     assertThat(existing.getSubmittedAt()).isEqualTo(originalSubmittedAt);
-    assertThat(payload.submittedAt()).isNotEqualTo(originalSubmittedAt);
+    assertThat(existing.getStreamVersion()).isEqualTo(2L);
+    verify(summaryRepository).save(existing);
+  }
+
+  @Test
+  void givenUpdateEnteringSubmitted_whenHandled_thenAssessmentIsPendingAgain() {
+    UUID applicationId = UUID.randomUUID();
+    ApplicationSummaryReadModel existing =
+        ApplicationSummaryReadModel.builder()
+            .applicationId(applicationId)
+            .officeCode("1A001B")
+            .autoGranted(AutoGrantedState.MANUAL)
+            .build();
+    when(summaryRepository.findById(applicationId)).thenReturn(Optional.of(existing));
+
+    projection.on(
+        new ApplicationUpdatedEvent(
+            applicationId,
+            2L,
+            3L,
+            "APPLICATION_IN_PROGRESS",
+            "APPLICATION_SUBMITTED",
+            Instant.now()),
+        anyMessage());
+
+    assertThat(existing.getAutoGranted()).isEqualTo(AutoGrantedState.PENDING);
+    assertThat(existing.getOfficeCode()).isEqualTo("1A001B");
+    assertThat(existing.getCategoryOfLaw()).isNull();
   }
 
   @Test
   void givenUpdatedEventForUnknownApplication_whenHandled_thenDoesNothing() {
     UUID applicationId = UUID.randomUUID();
-    when(listIndexRepository.findById(applicationId)).thenReturn(Optional.empty());
+    when(summaryRepository.findById(applicationId)).thenReturn(Optional.empty());
 
     projection.on(
         new ApplicationUpdatedEvent(applicationId, 2L, 3L, "prev", "new", Instant.now()),
         anyMessage());
 
-    verify(listIndexRepository, never()).save(any());
+    verify(summaryRepository, never()).save(any());
   }
 
   // -------------------------------------------------------------------------
@@ -565,13 +559,13 @@ class ApplicationListIndexProjectionTest {
   @Test
   void givenRefusedDecision_whenHandled_thenStatusIsApplicationRefused() {
     UUID applicationId = UUID.randomUUID();
-    ApplicationListIndexReadModel existing =
-        ApplicationListIndexReadModel.builder()
+    ApplicationSummaryReadModel existing =
+        ApplicationSummaryReadModel.builder()
             .applicationId(applicationId)
             .status("APPLICATION_SUBMITTED")
             .streamVersion(0L)
             .build();
-    when(listIndexRepository.findById(applicationId)).thenReturn(Optional.of(existing));
+    when(summaryRepository.findById(applicationId)).thenReturn(Optional.of(existing));
 
     projection.on(
         new ApplicationDecisionMadeEvent(
@@ -579,6 +573,6 @@ class ApplicationListIndexProjectionTest {
         anyMessage());
 
     assertThat(existing.getStatus()).isEqualTo("APPLICATION_REFUSED");
-    verify(listIndexRepository).save(existing);
+    verify(summaryRepository).save(existing);
   }
 }

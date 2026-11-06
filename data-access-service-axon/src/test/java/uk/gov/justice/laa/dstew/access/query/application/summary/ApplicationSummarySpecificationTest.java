@@ -1,4 +1,4 @@
-package uk.gov.justice.laa.dstew.access.query.application.listindex;
+package uk.gov.justice.laa.dstew.access.query.application.summary;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -21,9 +21,9 @@ import org.springframework.data.jpa.domain.Specification;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.query.application.FindAllApplicationsQuery;
 
-class ApplicationListIndexSpecificationTest {
+class ApplicationSummarySpecificationTest {
 
-  private Root<ApplicationListIndexReadModel> root;
+  private Root<ApplicationSummaryReadModel> root;
   private CriteriaQuery<?> criteriaQuery;
   private CriteriaBuilder cb;
 
@@ -56,8 +56,7 @@ class ApplicationListIndexSpecificationTest {
     FindAllApplicationsQuery query =
         new FindAllApplicationsQuery(null, null, null, null, null, null, null, null, 1, 20);
 
-    Specification<ApplicationListIndexReadModel> spec =
-        ApplicationListIndexSpecification.from(query);
+    Specification<ApplicationSummaryReadModel> spec = ApplicationSummarySpecification.from(query);
     Predicate result = spec.toPredicate(root, criteriaQuery, cb);
 
     assertThat(result).isNotNull();
@@ -71,7 +70,7 @@ class ApplicationListIndexSpecificationTest {
         new FindAllApplicationsQuery(
             "APPLICATION_SUBMITTED", null, null, null, null, null, null, null, 1, 20);
 
-    ApplicationListIndexSpecification.from(query).toPredicate(root, criteriaQuery, cb);
+    ApplicationSummarySpecification.from(query).toPredicate(root, criteriaQuery, cb);
 
     verify(root).get("status");
     verify(cb).equal(any(), eq("APPLICATION_SUBMITTED"));
@@ -82,7 +81,7 @@ class ApplicationListIndexSpecificationTest {
     FindAllApplicationsQuery query =
         new FindAllApplicationsQuery(null, "LAA-123", null, null, null, null, null, null, 1, 20);
 
-    ApplicationListIndexSpecification.from(query).toPredicate(root, criteriaQuery, cb);
+    ApplicationSummarySpecification.from(query).toPredicate(root, criteriaQuery, cb);
 
     verify(root).get("laaReference");
     verify(cb).equal(any(), eq("LAA-123"));
@@ -93,7 +92,7 @@ class ApplicationListIndexSpecificationTest {
     FindAllApplicationsQuery query =
         new FindAllApplicationsQuery(null, null, "MAT-123", null, null, null, null, null, 1, 20);
 
-    ApplicationListIndexSpecification.from(query).toPredicate(root, criteriaQuery, cb);
+    ApplicationSummarySpecification.from(query).toPredicate(root, criteriaQuery, cb);
 
     verify(root).get("matterTypeCode");
     verify(root, never()).get("matterType");
@@ -105,7 +104,7 @@ class ApplicationListIndexSpecificationTest {
     FindAllApplicationsQuery query =
         new FindAllApplicationsQuery(null, null, null, "Jane", null, null, null, null, 1, 20);
 
-    ApplicationListIndexSpecification.from(query).toPredicate(root, criteriaQuery, cb);
+    ApplicationSummarySpecification.from(query).toPredicate(root, criteriaQuery, cb);
 
     verify(root).get("clientFirstName");
     verify(cb).lower(any());
@@ -117,7 +116,7 @@ class ApplicationListIndexSpecificationTest {
     FindAllApplicationsQuery query =
         new FindAllApplicationsQuery(null, null, null, null, "Smith", null, null, null, 1, 20);
 
-    ApplicationListIndexSpecification.from(query).toPredicate(root, criteriaQuery, cb);
+    ApplicationSummarySpecification.from(query).toPredicate(root, criteriaQuery, cb);
 
     verify(root).get("clientLastName");
     verify(cb).lower(any());
@@ -130,7 +129,7 @@ class ApplicationListIndexSpecificationTest {
     FindAllApplicationsQuery query =
         new FindAllApplicationsQuery(null, null, null, null, null, dob, null, null, 1, 20);
 
-    ApplicationListIndexSpecification.from(query).toPredicate(root, criteriaQuery, cb);
+    ApplicationSummarySpecification.from(query).toPredicate(root, criteriaQuery, cb);
 
     verify(root).get("clientDateOfBirth");
     verify(cb).equal(any(), eq(dob));
@@ -142,7 +141,7 @@ class ApplicationListIndexSpecificationTest {
         new FindAllApplicationsQuery(
             null, null, null, null, null, null, AutoGrantedState.MANUAL, null, null, 1, 20);
 
-    ApplicationListIndexSpecification.from(query).toPredicate(root, criteriaQuery, cb);
+    ApplicationSummarySpecification.from(query).toPredicate(root, criteriaQuery, cb);
 
     verify(root).get("autoGranted");
     verify(cb).equal(any(), eq(AutoGrantedState.MANUAL));
@@ -163,7 +162,7 @@ class ApplicationListIndexSpecificationTest {
             1,
             20);
 
-    ApplicationListIndexSpecification.from(query).toPredicate(root, criteriaQuery, cb);
+    ApplicationSummarySpecification.from(query).toPredicate(root, criteriaQuery, cb);
 
     // Three filters: status, laaReference, matterType + clientLastName = 4 predicates
     verify(cb).equal(any(), eq("APPLICATION_SUBMITTED"));

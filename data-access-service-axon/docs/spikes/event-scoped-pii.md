@@ -1225,6 +1225,44 @@ Split into two steps:
       - `pactBootCheck` fails 6/7 with `Schema "AXON" not found` (H2), the
         same as at the previous commit.
 
+  - **4b-3b(ii) commit 1, the application summary reads event content
+    (done 2026-11-07):**
+    - **Rename:** the list index is now the application summary (package
+      `query.application.summary`, `ApplicationSummary*` classes). V35
+      renames `application_list_index` to `application_summary`, empties it
+      and deletes the old processor's token, so the new `application-summary`
+      processor rebuilds it. Index names (`idx_ali_*`) are kept.
+    - **Content reader:** the projection reads `ParsedAppContentDetails`
+      from `ApplicationCreatedEvent` and `ApplicationUpdatedEvent` instead of
+      `ApplicationDataStore`. It is registered as `application-summary` in
+      `RegisteredContentReaders`, gets an explicit processor bean, and is a
+      listed content reader in `EventContentArchitectureTest`.
+    - **New columns:** `category_of_law`, `used_delegated_functions`,
+      `matter_types` and `matter_type_codes` (JSONB lists of the distinct
+      pairs from the proceedings, in order) and `linked_group_id` (indexed).
+      The single lead `matter_type` and `matter_type_code` stay for the list
+      page's filter and sort.
+    - **Kept versus content fields:** LAA reference, office, status and
+      timestamps come from kept event fields. When content is erased the
+      descriptive fields are empty and the row stays. The content's provider
+      office code overrides the kept one when present, matching (i).
+    - **Updates:** `autoGranted` returns to PENDING only when the update
+      enters submitted, as in `ApplicationEvolve`; otherwise it is kept.
+    - **Groups:** group events set or clear `linkedGroupId` and
+      `leadApplicationId`. A lead change updates every row in the group,
+      found by `linkedGroupId`.
+    - **Port:** `ApplicationSummaries.findByIds` returns detached summary
+      rows by ID. `ApplicationReadModelAssembler` uses it for linked-member
+      details instead of the repository.
+    - **Open question, unchanged behaviour:** linked-member details throw
+      (500) when a member's summary row is missing or its LAA reference or
+      client name is empty. That happens while the summary lags or after
+      one member is erased. `LinkedApplicationSummaryResponse` requires
+      those fields, so returning empty values needs an API decision.
+    - **Validation:** unit tests 1378/1378 and integration tests 312/312
+      pass. Checkstyle main is clean, test warnings stay at 37 and
+      integration warnings fall to 52.
+
 ### Remaining gates
 1. Choose the declaration design: hash-bound review (recommended by the review)
    or persisted candidate. Agree version/hash transport, stale-response handling,

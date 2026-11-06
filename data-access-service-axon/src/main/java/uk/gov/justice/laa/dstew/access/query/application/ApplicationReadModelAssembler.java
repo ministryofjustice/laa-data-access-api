@@ -19,10 +19,10 @@ import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataP
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
-import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadModel;
-import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadRepository;
+import uk.gov.justice.laa.dstew.access.query.application.summary.ApplicationSummaries;
+import uk.gov.justice.laa.dstew.access.query.application.summary.ApplicationSummaryReadModel;
 import uk.gov.justice.laa.dstew.access.query.utils.security.ReadAccessScope;
 
 /**
@@ -37,7 +37,7 @@ public class ApplicationReadModelAssembler {
   private final ApplicationDataStore applicationDataStore;
   private final ApplicationReadRepository applicationReadRepository;
   private final LinkedApplicationGroupReadRepository groupReadRepository;
-  private final ApplicationListIndexReadRepository listIndexRepository;
+  private final ApplicationSummaries applicationSummaries;
   private final PriorAuthorityReadRepository priorAuthorityReadRepository;
 
   /**
@@ -173,25 +173,21 @@ public class ApplicationReadModelAssembler {
     if (memberIds.isEmpty()) {
       return Map.of();
     }
-    Map<UUID, ApplicationListIndexReadModel> membersById =
-        listIndexRepository.findAllById(memberIds).stream()
-            .collect(
-                Collectors.toMap(
-                    ApplicationListIndexReadModel::getApplicationId, Function.identity()));
+    Map<UUID, ApplicationSummaryReadModel> membersById = applicationSummaries.findByIds(memberIds);
     return memberIds.stream()
         .map(memberId -> toMemberDetailsEntry(memberId, membersById))
         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
   }
 
   private Map.Entry<UUID, LinkedApplicationMemberDetails> toMemberDetailsEntry(
-      UUID memberId, Map<UUID, ApplicationListIndexReadModel> membersById) {
-    ApplicationListIndexReadModel member = membersById.get(memberId);
+      UUID memberId, Map<UUID, ApplicationSummaryReadModel> membersById) {
+    ApplicationSummaryReadModel member = membersById.get(memberId);
     if (member == null
         || member.getLaaReference() == null
         || member.getClientFirstName() == null
         || member.getClientLastName() == null) {
       throw new IllegalStateException(
-          "Linked application list-index details are incomplete for " + memberId);
+          "Linked application summary details are incomplete for " + memberId);
     }
     return Map.entry(
         memberId,

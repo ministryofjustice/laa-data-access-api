@@ -50,9 +50,9 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.EvidenceDocument;
 import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
-import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexAccessPolicy;
-import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadModel;
-import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexSpecification;
+import uk.gov.justice.laa.dstew.access.query.application.summary.ApplicationSummaryAccessPolicy;
+import uk.gov.justice.laa.dstew.access.query.application.summary.ApplicationSummaryReadModel;
+import uk.gov.justice.laa.dstew.access.query.application.summary.ApplicationSummarySpecification;
 
 /** Independently replayable projection of the current state of each Application. */
 @Component
@@ -65,7 +65,7 @@ public class ApplicationProjection {
   private final ApplicationDataStore applicationDataStore;
   private final ApplicationReadQueryGateway applicationReadQueryGateway;
   private final ApplicationCurrentStateAccessPolicy currentStateAccessPolicy;
-  private final ApplicationListIndexAccessPolicy listIndexAccessPolicy;
+  private final ApplicationSummaryAccessPolicy summaryAccessPolicy;
   private final ApplicationReadModelAssembler assembler;
 
   /** Returns the Application and its related data, or {@code null} if absent or not visible. */
@@ -125,27 +125,25 @@ public class ApplicationProjection {
    * Returns a paginated, filtered list of Application projections.
    *
    * <p>Filtering, sorting, counting, and paging are pushed entirely to the database via {@code
-   * application_list_index}. After a page of index rows is returned, {@code application_data}
-   * payloads are bulk-loaded for only those application IDs, avoiding N+1 lookups. Group membership
-   * and linked prior authorities are similarly batch-fetched for the page and returned so the
-   * response mapper can populate {@code linkedApplications} and prior-authority summaries without
-   * additional queries.
+   * application_summary}. After a page of index rows is returned, {@code application_data} payloads
+   * are bulk-loaded for only those application IDs, avoiding N+1 lookups. Group membership and
+   * linked prior authorities are similarly batch-fetched for the page and returned so the response
+   * mapper can populate {@code linkedApplications} and prior-authority summaries without additional
+   * queries.
    */
   @QueryHandler
   public FindAllApplicationsResult handle(FindAllApplicationsQuery query) {
     Sort sort = buildSort(query.sortBy(), query.orderBy());
     Pageable pageable = PageRequest.of(Math.max(0, query.page() - 1), query.pageSize(), sort);
 
-    Page<ApplicationListIndexReadModel> indexPage =
+    Page<ApplicationSummaryReadModel> indexPage =
         applicationReadQueryGateway.findApplicationIndexPage(
-            ApplicationListIndexSpecification.from(query),
+            ApplicationSummarySpecification.from(query),
             pageable,
-            listIndexAccessPolicy.restrictionFor(query.accessScope()));
+            summaryAccessPolicy.restrictionFor(query.accessScope()));
 
     List<UUID> pageIds =
-        indexPage.getContent().stream()
-            .map(ApplicationListIndexReadModel::getApplicationId)
-            .toList();
+        indexPage.getContent().stream().map(ApplicationSummaryReadModel::getApplicationId).toList();
 
     Map<UUID, ApplicationReadModel> stateById =
         applicationReadQueryGateway

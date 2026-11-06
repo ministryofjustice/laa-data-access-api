@@ -257,8 +257,7 @@ class GenerateAxonMassDataDumpTest extends AbstractApplicationTestSeederIntegrat
         jdbcTemplate.queryForObject(
             "SELECT COUNT(*) FROM axon.application_current_state", Long.class),
         jdbcTemplate.queryForObject("SELECT COUNT(*) FROM axon.genesis_stream", Long.class),
-        jdbcTemplate.queryForObject(
-            "SELECT COUNT(*) FROM axon.application_list_index", Long.class));
+        jdbcTemplate.queryForObject("SELECT COUNT(*) FROM axon.application_summary", Long.class));
   }
 
   private void writeDumpAndMetadata(
@@ -297,7 +296,7 @@ class GenerateAxonMassDataDumpTest extends AbstractApplicationTestSeederIntegrat
     metadata.put("domainEventEntryCount", counts.domainEventEntry());
     metadata.put("applicationCurrentStateCount", counts.applicationCurrentState());
     metadata.put("genesisStreamCount", counts.genesisStream());
-    metadata.put("applicationListIndexCount", counts.applicationListIndex());
+    metadata.put("applicationSummaryCount", counts.applicationSummary());
     metadata.put("postgresImage", "postgres:17-alpine");
     metadata.put("schema", "axon");
     Files.writeString(
@@ -316,7 +315,7 @@ class GenerateAxonMassDataDumpTest extends AbstractApplicationTestSeederIntegrat
       long domainEventEntry,
       long applicationCurrentState,
       long genesisStream,
-      long applicationListIndex) {}
+      long applicationSummary) {}
 
   private record WorkerSettings(
       int requestedWorkers,

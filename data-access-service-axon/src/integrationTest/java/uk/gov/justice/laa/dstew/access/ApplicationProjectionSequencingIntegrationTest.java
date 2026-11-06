@@ -49,8 +49,8 @@ import uk.gov.justice.laa.dstew.access.query.application.ApplicationProjection;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModelAssembler;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadRepository;
-import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexProjection;
-import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadRepository;
+import uk.gov.justice.laa.dstew.access.query.application.summary.ApplicationSummaryProjection;
+import uk.gov.justice.laa.dstew.access.query.application.summary.ApplicationSummaryReadRepository;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 
 @Testcontainers
@@ -70,7 +70,7 @@ class ApplicationProjectionSequencingIntegrationTest {
 
   @Autowired private TestRestTemplate restTemplate;
   @Autowired private ApplicationReadRepository applications;
-  @Autowired private ApplicationListIndexReadRepository listIndex;
+  @Autowired private ApplicationSummaryReadRepository summaries;
   @Autowired private ApplicationProjection applicationProjection;
   @Autowired private ApplicationDataStore applicationDataStore;
   @Autowired private ApplicationReadModelAssembler assembler;
@@ -280,7 +280,7 @@ class ApplicationProjectionSequencingIntegrationTest {
     createApplication(leadId);
 
     gate.arm(
-        ApplicationListIndexProjection.class,
+        ApplicationSummaryProjection.class,
         ApplicationCreatedEvent.class,
         applicationId,
         LinkedApplicationGroupCreatedEvent.class,
@@ -300,7 +300,7 @@ class ApplicationProjectionSequencingIntegrationTest {
         .atMost(15, TimeUnit.SECONDS)
         .untilAsserted(
             () ->
-                assertThat(listIndex.findById(applicationId).orElseThrow().getLeadApplicationId())
+                assertThat(summaries.findById(applicationId).orElseThrow().getLeadApplicationId())
                     .isEqualTo(leadId));
   }
 
@@ -317,10 +317,10 @@ class ApplicationProjectionSequencingIntegrationTest {
     createApplication(secondLead);
     await()
         .atMost(15, TimeUnit.SECONDS)
-        .untilAsserted(() -> assertThat(listIndex.findById(applicationId)).isPresent());
+        .untilAsserted(() -> assertThat(summaries.findById(applicationId)).isPresent());
 
     gate.arm(
-        ApplicationListIndexProjection.class,
+        ApplicationSummaryProjection.class,
         LinkedApplicationGroupCreatedEvent.class,
         firstGroup,
         LinkedApplicationGroupCreatedEvent.class,
@@ -344,7 +344,7 @@ class ApplicationProjectionSequencingIntegrationTest {
         .atMost(15, TimeUnit.SECONDS)
         .untilAsserted(
             () ->
-                assertThat(listIndex.findById(applicationId).orElseThrow().getLeadApplicationId())
+                assertThat(summaries.findById(applicationId).orElseThrow().getLeadApplicationId())
                     .isEqualTo(secondLead));
   }
 
@@ -412,7 +412,7 @@ class ApplicationProjectionSequencingIntegrationTest {
 
     @Around(
         "execution(* uk.gov.justice.laa.dstew.access.query.application.ApplicationProjection.on(..))"
-            + " || execution(* uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexProjection.on(..))")
+            + " || execution(* uk.gov.justice.laa.dstew.access.query.application.summary.ApplicationSummaryProjection.on(..))")
     Object intercept(ProceedingJoinPoint invocation) throws Throwable {
       if (!projectionType.isInstance(invocation.getTarget())) {
         return invocation.proceed();

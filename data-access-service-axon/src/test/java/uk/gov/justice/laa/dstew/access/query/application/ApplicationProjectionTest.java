@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.axonframework.messaging.queryhandling.QueryUpdateEmitter;
 import org.junit.jupiter.api.BeforeEach;
@@ -58,11 +59,11 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.EvidenceDocument;
 import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
-import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexAccessPolicy;
-import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadModel;
-import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadRepository;
+import uk.gov.justice.laa.dstew.access.query.application.summary.ApplicationSummaryAccessPolicy;
+import uk.gov.justice.laa.dstew.access.query.application.summary.ApplicationSummaryReadModel;
+import uk.gov.justice.laa.dstew.access.query.application.summary.ApplicationSummaryReadRepository;
 import uk.gov.justice.laa.dstew.access.query.utils.security.OfficeCodeReadAccessScope;
 
 @ExtendWith(MockitoExtension.class)
@@ -72,11 +73,11 @@ class ApplicationProjectionTest {
   @Mock private LinkedApplicationGroupReadRepository groupReadRepository;
   @Mock private QueryUpdateEmitter queryUpdateEmitter;
   @Mock private ApplicationDataStore applicationDataStore;
-  @Mock private ApplicationListIndexReadRepository listIndexRepository;
+  @Mock private ApplicationSummaryReadRepository summaryRepository;
   @Mock private PriorAuthorityReadRepository priorAuthorityReadRepository;
   @Mock private ApplicationReadQueryGateway applicationReadQueryGateway;
   @Mock private ApplicationCurrentStateAccessPolicy currentStateAccessPolicy;
-  @Mock private ApplicationListIndexAccessPolicy listIndexAccessPolicy;
+  @Mock private ApplicationSummaryAccessPolicy summaryAccessPolicy;
   private ApplicationProjection projection;
 
   @BeforeEach
@@ -87,12 +88,17 @@ class ApplicationProjectionTest {
             applicationDataStore,
             applicationReadQueryGateway,
             currentStateAccessPolicy,
-            listIndexAccessPolicy,
+            summaryAccessPolicy,
             new ApplicationReadModelAssembler(
                 applicationDataStore,
                 applicationReadRepository,
                 groupReadRepository,
-                listIndexRepository,
+                ids ->
+                    summaryRepository.findAllById(ids).stream()
+                        .collect(
+                            Collectors.toMap(
+                                ApplicationSummaryReadModel::getApplicationId,
+                                Function.identity())),
                 priorAuthorityReadRepository));
   }
 
@@ -766,8 +772,8 @@ class ApplicationProjectionTest {
   @SuppressWarnings("unchecked")
   void givenIndexReturnsPage_whenFindAllApplicationsQuery_thenBatchLoadsBothSourcesAndAssembles() {
     UUID appId = UUID.randomUUID();
-    ApplicationListIndexReadModel indexRow =
-        ApplicationListIndexReadModel.builder().applicationId(appId).build();
+    ApplicationSummaryReadModel indexRow =
+        ApplicationSummaryReadModel.builder().applicationId(appId).build();
 
     when(applicationReadQueryGateway.findApplicationIndexPage(any(), any(), any()))
         .thenReturn(new PageImpl<>(List.of(indexRow)));
@@ -841,10 +847,10 @@ class ApplicationProjectionTest {
         .thenReturn(
             new PageImpl<>(
                 List.of(
-                    ApplicationListIndexReadModel.builder()
+                    ApplicationSummaryReadModel.builder()
                         .applicationId(applicationIdWithPriorAuthority)
                         .build(),
-                    ApplicationListIndexReadModel.builder()
+                    ApplicationSummaryReadModel.builder()
                         .applicationId(applicationIdWithout)
                         .build())));
 
@@ -988,8 +994,8 @@ class ApplicationProjectionTest {
   void givenApplicationWithGroupId_whenFindAllQuery_thenFetchesGroupAndMemberDetails() {
     UUID appId = UUID.randomUUID();
     UUID groupId = UUID.randomUUID();
-    ApplicationListIndexReadModel indexRow =
-        ApplicationListIndexReadModel.builder().applicationId(appId).build();
+    ApplicationSummaryReadModel indexRow =
+        ApplicationSummaryReadModel.builder().applicationId(appId).build();
     when(applicationReadQueryGateway.findApplicationIndexPage(any(), any(), any()))
         .thenReturn(new PageImpl<>(List.of(indexRow)));
 
@@ -1015,10 +1021,10 @@ class ApplicationProjectionTest {
             .memberIds(List.of(appId))
             .build();
     when(groupReadRepository.findAllById(groupIdsCaptor.capture())).thenReturn(List.of(group));
-    when(listIndexRepository.findAllById(List.of(appId)))
+    when(summaryRepository.findAllById(List.of(appId)))
         .thenReturn(
             List.of(
-                ApplicationListIndexReadModel.builder()
+                ApplicationSummaryReadModel.builder()
                     .applicationId(appId)
                     .laaReference("LAA-123")
                     .status("APPLICATION_SUBMITTED")
@@ -1044,8 +1050,8 @@ class ApplicationProjectionTest {
   @SuppressWarnings("unchecked")
   void givenDataMissingForStateRow_whenFindAllQuery_thenExcludesFromResult() {
     UUID appId = UUID.randomUUID();
-    ApplicationListIndexReadModel indexRow =
-        ApplicationListIndexReadModel.builder().applicationId(appId).build();
+    ApplicationSummaryReadModel indexRow =
+        ApplicationSummaryReadModel.builder().applicationId(appId).build();
     when(applicationReadQueryGateway.findApplicationIndexPage(any(), any(), any()))
         .thenReturn(new PageImpl<>(List.of(indexRow)));
 
@@ -1093,17 +1099,17 @@ class ApplicationProjectionTest {
     UUID groupId = application.getLinkedGroupId();
     group.setGroupId(groupId);
     when(groupReadRepository.findById(groupId)).thenReturn(Optional.of(group));
-    when(listIndexRepository.findAllById(List.of(applicationId, linkedApplicationId)))
+    when(summaryRepository.findAllById(List.of(applicationId, linkedApplicationId)))
         .thenReturn(
             List.of(
-                ApplicationListIndexReadModel.builder()
+                ApplicationSummaryReadModel.builder()
                     .applicationId(applicationId)
                     .laaReference("LAA-APPLICATION")
                     .status("APPLICATION_SUBMITTED")
                     .clientFirstName("Ada")
                     .clientLastName("Lovelace")
                     .build(),
-                ApplicationListIndexReadModel.builder()
+                ApplicationSummaryReadModel.builder()
                     .applicationId(linkedApplicationId)
                     .laaReference("LAA-LINKED")
                     .status("APPLICATION_SUBMITTED")
@@ -1142,17 +1148,17 @@ class ApplicationProjectionTest {
     group.setGroupId(application.getLinkedGroupId());
     when(groupReadRepository.findById(application.getLinkedGroupId()))
         .thenReturn(Optional.of(group));
-    when(listIndexRepository.findAllById(List.of(leadApplicationId, applicationId)))
+    when(summaryRepository.findAllById(List.of(leadApplicationId, applicationId)))
         .thenReturn(
             List.of(
-                ApplicationListIndexReadModel.builder()
+                ApplicationSummaryReadModel.builder()
                     .applicationId(leadApplicationId)
                     .laaReference("LAA-LEAD")
                     .status("APPLICATION_SUBMITTED")
                     .clientFirstName("Ada")
                     .clientLastName("Lovelace")
                     .build(),
-                ApplicationListIndexReadModel.builder()
+                ApplicationSummaryReadModel.builder()
                     .applicationId(applicationId)
                     .laaReference("LAA-MEMBER")
                     .status("APPLICATION_SUBMITTED")
