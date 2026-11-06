@@ -996,6 +996,38 @@ Split into two steps:
     - **Validation:** unit tests 1347/1347 and integration tests 272/272 pass;
       Checkstyle main is clean, test warnings fall to 40 and integration
       warnings stay at 49.
+  - **4b-3b plan (decided 2026-11-06):** three steps: (i) single-application
+    reads, (ii) list, work-list, group-route and individuals projections,
+    (iii) stop writing the store, drop `application_data` and switch Prior
+    Authority off `latestVersion`.
+    - **List source: list index only (option A).** The list page is built
+      from `application_list_index` plus the existing group and Prior
+      Authority lookups. The index gains `categoryOfLaw`,
+      `usedDelegatedFunctions` and `linkedGroupId`. Rejected: loading the
+      aggregate per row (up to 100 stream loads per page, against gate 2),
+      and a content column on `application_current_state` (duplicates the
+      index). The index already copies client names and DOB, so this adds no
+      new kind of exposure. After erasure and a rebuild, rows remain with
+      null content columns.
+    - **List index becomes a content reader.** It is a streaming processor
+      (`application-list-index-projection`) handling application lifecycle,
+      assignment, linked-group, note and document events. Today it reads
+      content from `application_data` on Created and Updated; it moves to
+      event content and joins `RegisteredContentReaders`.
+    - **`application_current_state` narrows to kept fields.** Each current
+      reader is reviewed for whether the aggregate serves it better:
+
+      | Reader | Source after 4b-3b |
+      |---|---|
+      | GET details, GET by ID, notes, document download | Aggregate |
+      | `LinkedGroupAssignmentDispatcher` (caseworker lookup) | Aggregate; a command-side decision should not use an eventually consistent read model |
+      | List page | List index |
+      | Stalled assessments (status scan) | Read model (status, `submittedAt`, `autoGranted`) |
+      | Access policy, including individuals | Kept columns |
+      | Create/Submit use cases awaiting the row | To resolve: wait on the list index, or drop the wait |
+
+      The table keeps only kept fields (status, office, caseworker, group,
+      timestamps, `autoGranted`) and no content.
 
 ### Remaining gates
 1. Choose the declaration design: hash-bound review (recommended by the review)
