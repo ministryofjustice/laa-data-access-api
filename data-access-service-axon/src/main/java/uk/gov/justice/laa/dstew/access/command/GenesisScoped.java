@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.command;
 
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashSet;
@@ -15,6 +16,9 @@ public interface GenesisScoped {
 
   /** Returns the root application IDs this event relates to; never empty. */
   Set<UUID> genesisIds();
+
+  /** Returns when the event happened in the domain; history orders by this. */
+  Instant occurredAt();
 
   /**
    * Collects IDs, dropping duplicates.

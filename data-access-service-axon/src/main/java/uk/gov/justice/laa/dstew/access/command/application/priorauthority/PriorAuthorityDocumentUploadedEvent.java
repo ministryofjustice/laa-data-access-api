@@ -79,4 +79,9 @@ public record PriorAuthorityDocumentUploadedEvent(
   public Set<UUID> genesisIds() {
     return GenesisScoped.ids(parentApplicationId);
   }
+
+  @Override
+  public Instant occurredAt() {
+    return uploadedAt;
+  }
 }

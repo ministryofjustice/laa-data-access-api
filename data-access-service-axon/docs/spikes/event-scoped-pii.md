@@ -1123,6 +1123,28 @@ Split into two steps:
           implement `GenesisScoped`.
         - Unit tests 1425/1425 and integration tests 313/313 pass.
           Checkstyle stays at baseline (0/37/53).
+      - **Commit 2, genesis stream (done 2026-11-06):**
+        - `GenesisScoped` also has `Instant occurredAt()`. The three
+          document events without that field derive it from `uploadedAt` or
+          `deletedAt`.
+        - `genesis_stream` (V33) has one row per event per genesis ID:
+          `genesis_id`, `source`, `event_identifier`, `event_name`
+          (`access.*`) and `occurred_at`. The `id BIGSERIAL` breaks ties in
+          the order rows were written. The row is unique on genesis ID,
+          source and identifier, and has no foreign key. Reads use an index
+          on `(genesis_id, occurred_at, id)`.
+        - `GenesisStreamProjection` (processor `genesis-stream`, pooled
+          streaming) has one handler per event type, each delegating to
+          `record`. Axon 5 annotated handlers match by event name, so one
+          catch-all handler is not possible. `GenesisScopeArchitectureTest`
+          requires a handler for every `@Event` class.
+        - The processor reads no content: genesis IDs and `occurredAt` are
+          kept fields. It is not a content reader.
+        - A redelivered event is skipped when its pointer exists. A reset
+          clears the table.
+        - The source for this store is `data-access-api`.
+        - Unit tests 1429/1429 and integration tests 314/314 pass.
+          Checkstyle stays at baseline (0/37/53).
       - **Scheduling:** a separate step after (i); step (i) does not touch
         history.
   - **4b-3b(i) single-application reads from the aggregate (done

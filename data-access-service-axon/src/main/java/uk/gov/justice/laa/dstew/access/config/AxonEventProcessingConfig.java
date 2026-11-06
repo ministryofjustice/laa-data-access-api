@@ -11,6 +11,7 @@ import uk.gov.justice.laa.dstew.access.eventcontent.EventContentSeparator;
 import uk.gov.justice.laa.dstew.access.eventcontent.EventContentStore;
 import uk.gov.justice.laa.dstew.access.eventcontent.RegisteredContentReaders;
 import uk.gov.justice.laa.dstew.access.eventcontent.axon.ContentReadingEventSource;
+import uk.gov.justice.laa.dstew.access.query.genesis.GenesisStreamProjection;
 
 /** Defines isolated processors for projections and synchronous command-side route updates. */
 @Configuration
@@ -29,6 +30,12 @@ public class AxonEventProcessingConfig {
   @Bean
   EventProcessorDefinition applicationHistoryProjectionProcessor() {
     return pooledStreamingProcessor("application-history-projection");
+  }
+
+  /** Writes genesis stream pointers; it needs no content, only IDs and timestamps. */
+  @Bean
+  EventProcessorDefinition genesisStreamProcessor() {
+    return pooledStreamingProcessor(GenesisStreamProjection.PROCESSING_GROUP);
   }
 
   @Bean

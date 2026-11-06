@@ -418,6 +418,7 @@ class PostgresAxonIntegrationTest {
             "domain_event_entry",
             "event_content",
             "flyway_schema_history",
+            "genesis_stream",
             "linked_application_group_current_state",
             "prior_authority_current_state",
             "prior_authority_data",
@@ -427,7 +428,8 @@ class PostgresAxonIntegrationTest {
             "work_item_route",
             "work_list_group_member",
             "work_list_item");
-    assertThat(sequences).containsExactly("aggregate-event-global-index-sequence");
+    assertThat(sequences)
+        .containsExactly("aggregate-event-global-index-sequence", "genesis_stream_id_seq");
     assertThat(applicationHistoryColumns)
         .contains("data_version")
         .doesNotContain("request_payload");
