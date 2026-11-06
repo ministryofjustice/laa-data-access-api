@@ -1,6 +1,7 @@
 package uk.gov.justice.laa.dstew.access.command.application;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -44,4 +45,10 @@ public class ApplicationState {
   Map<UUID, String> proceedingDecisions = new LinkedHashMap<>();
   // Current submitted content, folded from event content; erased if any part of it is erased.
   Erasable<ApplicationDataPayload> content = Erasable.erased();
+  // Potential duplicates recorded at submission.
+  Erasable<List<PotentialDuplicate>> potentialDuplicates = Erasable.erased();
+  // Kept lifecycle timestamps, taken from the events' own times.
+  Instant createdAt;
+  Instant submittedAt;
+  Instant modifiedAt;
 }

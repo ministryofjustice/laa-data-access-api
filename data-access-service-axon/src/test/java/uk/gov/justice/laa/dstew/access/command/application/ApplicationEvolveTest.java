@@ -5,6 +5,7 @@ import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventF
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -16,9 +17,11 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationStatus;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationMeritsDecision;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
+import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftStartedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
+import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 
 /** Unit tests for {@link ApplicationEvolve} decision-fold behaviour. */
 class ApplicationEvolveTest {
@@ -206,6 +209,37 @@ class ApplicationEvolveTest {
         .extracting(DocumentMetadata::documentId)
         .containsExactly(firstDocumentId, secondDocumentId);
     assertThat(state.uploadedDocuments.getFirst().documentType()).isEqualTo("GATEWAY_EVIDENCE");
+  }
+
+  @Test
+  void givenDraftThenSubmitThenNote_whenFolded_thenKeepsDraftCreatedAtAndTracksTimestamps() {
+    UUID applicationId = UUID.randomUUID();
+    Instant draftStartedAt = Instant.parse("2026-11-01T09:00:00Z");
+    Instant noteAt = Instant.parse("2026-11-03T12:00:00Z");
+    ApplicationState state = new ApplicationState();
+
+    ApplicationEvolve.apply(
+        state,
+        new ApplicationDraftStartedEvent(
+            applicationId,
+            1,
+            "fingerprint",
+            draftStartedAt,
+            null,
+            "APPLICATION_SUBMITTED",
+            "LAA-123",
+            Erasable.of(Map.of()),
+            Erasable.of("{}"),
+            Erasable.of(List.of())));
+    ApplicationCreatedEvent created =
+        ApplicationDecider.decideSubmitDraft(
+            applicationId, 0L, "fingerprint", applicationCreationDetails(applicationId));
+    ApplicationEvolve.apply(state, created);
+    ApplicationEvolve.apply(state, new NoteCreatedEvent(applicationId, 1L, noteAt, "note"));
+
+    assertThat(state.getCreatedAt()).isEqualTo(draftStartedAt);
+    assertThat(state.getSubmittedAt()).isEqualTo(created.occurredAt());
+    assertThat(state.getModifiedAt()).isEqualTo(noteAt);
   }
 
   @Test

@@ -93,8 +93,10 @@ class ErasureReplayTest {
     assertThat(erased.getUploadedDocuments()).hasSize(1);
     assertThat(erased)
         .usingRecursiveComparison()
-        .ignoringFields("uploadedDocuments", "draftDocumentFilenames", "content")
+        .ignoringFields(
+            "uploadedDocuments", "draftDocumentFilenames", "content", "potentialDuplicates")
         .isEqualTo(full);
+    assertThat(erased.getPotentialDuplicates().isErased()).isTrue();
     assertThat(full.getContent().isErased()).isFalse();
     assertThat(erased.getContent().isErased()).isTrue();
     assertThat(erased.getProceedingIds()).containsExactly(proceedingId);
@@ -189,7 +191,11 @@ class ErasureReplayTest {
     ApplicationState full = fold(new ApplicationState(), ApplicationEvolve.class, history);
     ApplicationState erased = fold(new ApplicationState(), ApplicationEvolve.class, erase(history));
 
-    assertThat(erased).usingRecursiveComparison().ignoringFields("content").isEqualTo(full);
+    assertThat(erased)
+        .usingRecursiveComparison()
+        .ignoringFields("content", "potentialDuplicates")
+        .isEqualTo(full);
+    assertThat(erased.getPotentialDuplicates().isErased()).isTrue();
     assertThat(erased.getProceedingDecisions()).containsExactly(Map.entry(proceedingId, "GRANTED"));
     assertThat(full.getContent().isErased()).isFalse();
     assertThat(erased.getContent().isErased()).isTrue();

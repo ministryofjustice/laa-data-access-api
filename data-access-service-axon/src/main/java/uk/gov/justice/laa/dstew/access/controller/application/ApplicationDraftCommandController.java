@@ -58,10 +58,8 @@ public class ApplicationDraftCommandController implements ApplicationDraftsApi {
     SaveApplicationDraftResponse response =
         new SaveApplicationDraftResponse(
             command.applicationId(), OffsetDateTime.now(ZoneOffset.UTC));
-    boolean projected = createUseCase.execute(command);
-    return projected
-        ? ResponseEntity.created(location).body(response)
-        : ResponseEntity.accepted().location(location).body(response);
+    createUseCase.execute(command);
+    return ResponseEntity.created(location).body(response);
   }
 
   /** Submits an in-progress Application draft, promoting it to a fully created Application. */
@@ -78,9 +76,7 @@ public class ApplicationDraftCommandController implements ApplicationDraftsApi {
             .toUri();
     SubmitApplicationDraftResponse response =
         new SubmitApplicationDraftResponse(applicationId, OffsetDateTime.now(ZoneOffset.UTC));
-    boolean projected = submitUseCase.submit(command);
-    return projected
-        ? ResponseEntity.ok().location(location).body(response)
-        : ResponseEntity.accepted().location(location).body(response);
+    submitUseCase.submit(command);
+    return ResponseEntity.ok().location(location).body(response);
   }
 }

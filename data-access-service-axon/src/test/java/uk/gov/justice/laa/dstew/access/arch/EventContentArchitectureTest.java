@@ -39,7 +39,9 @@ class EventContentArchitectureTest {
    * and by the processors in RegisteredContentReaders. Subscribing processors receive events with
    * content attached, so this rule, not delivery, is what keeps them from reading it. The one
    * command-side reader is ApplicationCommandHandlerSupport, which reads draft content for submit
-   * and treats erased draft content as no draft.
+   * and treats erased draft content as no draft. ApplicationReadModelAssembler reads content from
+   * the sourced application aggregate for single-application reads and treats erased content as not
+   * found.
    */
   @Test
   void onlyEvolveAndRegisteredProjectionsReadContent() {
@@ -50,6 +52,8 @@ class EventContentArchitectureTest {
         .haveSimpleNameNotEndingWith("Evolve")
         .and()
         .doNotHaveFullyQualifiedName(ROOT + ".query.application.ApplicationProjection")
+        .and()
+        .doNotHaveFullyQualifiedName(ROOT + ".query.application.ApplicationReadModelAssembler")
         .and()
         .doNotHaveFullyQualifiedName(
             ROOT + ".query.application.priorauthority.PriorAuthorityProjection")

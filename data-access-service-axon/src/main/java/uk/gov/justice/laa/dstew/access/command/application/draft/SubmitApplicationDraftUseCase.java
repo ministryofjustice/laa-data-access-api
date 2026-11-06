@@ -2,38 +2,21 @@ package uk.gov.justice.laa.dstew.access.command.application.draft;
 
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
-import uk.gov.justice.laa.dstew.access.query.SubscriptionProjectionGateway;
-import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
-import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
 
-/**
- * Dispatches a submit-application-draft command, waiting for the projection to confirm the
- * Application is readable.
- */
+/** Dispatches a submit-application-draft command. */
 @Component
 public class SubmitApplicationDraftUseCase {
 
   private final RetryingCommandDispatcher dispatcher;
-  private final SubscriptionProjectionGateway projectionGateway;
 
-  public SubmitApplicationDraftUseCase(
-      RetryingCommandDispatcher dispatcher, SubscriptionProjectionGateway projectionGateway) {
+  public SubmitApplicationDraftUseCase(RetryingCommandDispatcher dispatcher) {
     this.dispatcher = dispatcher;
-    this.projectionGateway = projectionGateway;
   }
 
-  /**
-   * Dispatches the submit command and waits for the projection to become readable.
-   *
-   * @return {@code true} when the projection confirms the application within the configured
-   *     timeout; {@code false} on timeout — the command has still committed.
-   */
+  /** Dispatches the command; the Application is readable from its aggregate once it commits. */
   @AllowApiCaseworker
-  public boolean submit(SubmitApplicationDraftCommand command) {
-    return projectionGateway.awaitProjection(
-        new FindApplicationByIdQuery(command.applicationId()),
-        ApplicationReadModel.class,
-        () -> dispatcher.dispatch(command));
+  public void submit(SubmitApplicationDraftCommand command) {
+    dispatcher.dispatch(command);
   }
 }

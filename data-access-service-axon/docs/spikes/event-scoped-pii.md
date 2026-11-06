@@ -1088,6 +1088,52 @@ Split into two steps:
         identifier or global position from the JPA store.
       - **Scheduling:** a separate step after (i); step (i) does not touch
         history.
+  - **4b-3b(i) single-application reads from the aggregate (done
+    2026-11-07):**
+    - **Reads:** GET details, `FindApplicationByIdQuery`, notes and document
+      download take the sourced `ApplicationAggregate` (`@InjectEntity`)
+      instead of `application_current_state` and `application_data`.
+      `ApplicationReadModelAssembler.fromAggregate` builds the detached read
+      model from state and content. It returns nothing for a missing
+      aggregate, a draft (no status), erased content, or an office outside
+      the caller's scope (`ReadAccessScope.permitsOfficeCode`).
+    - **State additions:** `ApplicationState` now keeps `createdAt` (from
+      the draft when there is one), `submittedAt`, `modifiedAt` and the
+      erasable `potentialDuplicates`. `ErasureReplayTest` treats
+      `potentialDuplicates` as content.
+    - **Still read from `application_current_state` until (ii):**
+      `linkedGroupId` and `leadApplicationId` (the group read model's
+      `member_ids` is unindexed JSONB), and `modifiedAt` from group events
+      (the later of state and row is used).
+    - **Wait dropped:** Create, draft create and draft submit return once the
+      command commits (201, or 200 for draft submit). The
+      `ApplicationProjectionExistsQuery` handler, the emits and the use-case
+      wait tests are removed. `SubscriptionProjectionGateway` remains for
+      the Prior Authority draft create and submit.
+    - **Content readers:** `EventContentArchitectureTest` registers
+      `ApplicationReadModelAssembler` as a content reader.
+    - **Known gaps, left as they were:**
+      - Document download still has no office access check.
+      - `ApplicationEvolve` does not update `state.officeCode` on
+        `ApplicationUpdatedEvent`, while the projection re-derives it from
+        content. The read side therefore prefers the content's provider office
+        code. This is a command-side inconsistency to fix separately.
+      - The 202 response stays in the OpenAPI spec but is no longer
+        returned.
+      - Deleting a row from `application_data` for retention no longer hides
+        details, because content comes from the events. Erasure is through
+        event content, and the table goes in (iii).
+    - **Tests whose expectations changed:**
+      - Reads during projection lag (`ProjectionTimeoutInMemoryTest` and the
+        paused-upload download) are now current rather than stale or 404.
+      - `ProjectionAwaiter` polls of `FindApplicationByIdQuery` now return
+        straight away. No races appeared, so it is unchanged.
+    - **Validation:**
+      - Unit tests 1422/1422 and integration tests 313/313 pass.
+      - Checkstyle main is clean; test warnings stay at 37 and integration
+        warnings at 53.
+      - `pactBootCheck` fails 6/7 with `Schema "AXON" not found` (H2), the
+        same as at the previous commit.
 
 ### Remaining gates
 1. Choose the declaration design: hash-bound review (recommended by the review)

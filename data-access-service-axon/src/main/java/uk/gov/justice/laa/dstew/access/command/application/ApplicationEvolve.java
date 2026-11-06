@@ -44,6 +44,10 @@ public final class ApplicationEvolve {
     state.draftSerialisedRequest = Erasable.erased();
     state.draftPotentialDuplicates = Erasable.erased();
     state.draftDocumentFilenames.clear();
+    state.potentialDuplicates = event.potentialDuplicates();
+    state.createdAt = state.createdAt == null ? event.occurredAt() : state.createdAt;
+    state.submittedAt = event.occurredAt();
+    state.modifiedAt = event.occurredAt();
   }
 
   /** Applies an {@link ApplicationDraftStartedEvent} to the given state. */
@@ -57,6 +61,8 @@ public final class ApplicationEvolve {
     state.draftApplicationContent = event.applicationContent();
     state.draftSerialisedRequest = event.serialisedRequest();
     state.draftPotentialDuplicates = event.potentialDuplicates();
+    state.createdAt = state.createdAt == null ? event.occurredAt() : state.createdAt;
+    state.modifiedAt = event.occurredAt();
   }
 
   /** Applies an {@link ApplicationUpdatedEvent} to the given state. */
@@ -64,6 +70,7 @@ public final class ApplicationEvolve {
     state.status = event.status();
     state.applicationVersion = event.applicationVersion();
     state.applicationDataVersion = event.applicationDataVersion();
+    state.modifiedAt = event.occurredAt();
     state.autoGranted = event.enteredSubmitted() ? AutoGrantedState.PENDING : state.autoGranted;
     state.proceedingIds.clear();
     state.proceedingIds.addAll(event.proceedingIds());
@@ -107,6 +114,7 @@ public final class ApplicationEvolve {
     state.applicationDataVersion = event.applicationDataVersion();
     state.autoGranted = event.autoGranted();
     state.overallDecision = event.overallDecision();
+    state.modifiedAt = event.occurredAt();
     state.decisionRequestFingerprint = event.decisionRequestFingerprint();
     state.proceedingDecisions.putAll(event.proceedingDecisions());
     // The request is always present with decision content; the other parts may be null.
@@ -131,6 +139,7 @@ public final class ApplicationEvolve {
     state.applicationVersion = event.applicationVersion();
     state.applicationDataVersion = event.applicationDataVersion();
     state.autoGranted = AutoGrantedState.MANUAL;
+    state.modifiedAt = event.occurredAt();
     state.content = state.content.map(ApplicationDataPayload::withManualAssessmentRequired);
   }
 
@@ -138,18 +147,21 @@ public final class ApplicationEvolve {
   public static void apply(ApplicationState state, WorkItemAssigned event) {
     state.assignmentVersion = event.assignmentVersion();
     state.caseworkerId = event.caseworkerId();
+    state.modifiedAt = event.occurredAt();
   }
 
   /** Applies a generic direct unassignment event to the owning application state. */
   public static void apply(ApplicationState state, WorkItemUnassigned event) {
     state.assignmentVersion = event.assignmentVersion();
     state.caseworkerId = null;
+    state.modifiedAt = event.occurredAt();
   }
 
   /** Applies a {@link NoteCreatedEvent} to the given state. */
   public static void apply(ApplicationState state, NoteCreatedEvent event) {
     state.applicationDataVersion = event.applicationDataVersion();
     // applicationVersion intentionally not updated — notes are decoupled from optimistic locking
+    state.modifiedAt = event.occurredAt();
     state.content =
         state.content.isErased() || event.noteText().isErased()
             ? Erasable.erased()
@@ -171,6 +183,7 @@ public final class ApplicationEvolve {
             false,
             event.fileSuffix().orElse(null)));
     state.draftDocumentFilenames.put(event.documentId(), event.originalFilename());
+    state.modifiedAt = event.uploadedAt();
     if (event.applicationDataVersion() != null) {
       state.applicationDataVersion = event.applicationDataVersion();
     }

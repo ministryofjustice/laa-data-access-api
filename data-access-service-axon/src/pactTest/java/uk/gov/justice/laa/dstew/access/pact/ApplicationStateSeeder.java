@@ -108,12 +108,7 @@ class ApplicationStateSeeder {
     if (existing != null) {
       return existing;
     }
-    boolean projected =
-        createApplicationUseCase.execute(createApplicationCommandMapper.toCommand(request, 1));
-    if (!projected) {
-      throw new IllegalStateException(
-          "Projection for application " + request.getId() + " did not become readable in time");
-    }
+    createApplicationUseCase.execute(createApplicationCommandMapper.toCommand(request, 1));
     return awaitApplication(request.getId(), Objects::nonNull);
   }
 

@@ -173,23 +173,12 @@ class ApplicationCommandControllerTest {
   }
 
   @Test
-  void givenProjectedResult_whenCreateApplication_thenDelegatesToUseCaseAndReturns201() {
+  void givenRequest_whenCreateApplication_thenDelegatesToUseCaseAndReturns201() {
     CreateApplicationCommand command = stubCreateCommand();
     when(commandMapper.toCommand(any(), anyInt())).thenReturn(command);
-    when(createApplicationUseCase.execute(command)).thenReturn(true);
     ResponseEntity<Void> response = controller.createApplication(null, null, 1);
     verify(createApplicationUseCase).execute(command);
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-  }
-
-  @Test
-  void givenTimeoutResult_whenCreateApplication_thenDelegatesToUseCaseAndReturns202() {
-    CreateApplicationCommand command = stubCreateCommand();
-    when(commandMapper.toCommand(any(), anyInt())).thenReturn(command);
-    when(createApplicationUseCase.execute(command)).thenReturn(false);
-    ResponseEntity<Void> response = controller.createApplication(null, null, 1);
-    verify(createApplicationUseCase).execute(command);
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
   }
 
   @Test

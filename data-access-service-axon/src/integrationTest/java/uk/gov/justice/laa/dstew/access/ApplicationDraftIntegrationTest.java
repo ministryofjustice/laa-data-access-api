@@ -772,8 +772,7 @@ class ApplicationDraftIntegrationTest {
   }
 
   @Test
-  void givenUploadProjectionPaused_whenDownloaded_thenNotFoundUntilMetadataIsProjected()
-      throws Exception {
+  void givenUploadProjectionPaused_whenDownloaded_thenServedFromAggregate() throws Exception {
     UUID applicationId = saveValidDraft();
     when(sdsService.saveEvidenceFile(any(), any(), any()))
         .thenReturn(new SdsUploadResult(null, null, "checksum"));
@@ -797,31 +796,19 @@ class ApplicationDraftIntegrationTest {
       when(sdsService.getEvidenceFile(applicationId, documentId, documentId + ".PDF"))
           .thenReturn(new ByteArrayResource(content));
 
-      ResponseEntity<byte[]> pending =
+      ResponseEntity<byte[]> duringLag =
           restTemplate.exchange(
               documentUrl(applicationId, documentId),
               HttpMethod.GET,
               new HttpEntity<>(headers()),
               byte[].class);
-      assertThat(pending.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-      verify(sdsService, never()).getEvidenceFile(any(), any(), any());
 
-      releaseProjection.countDown();
-      await()
-          .atMost(Duration.ofSeconds(10))
-          .untilAsserted(
-              () -> {
-                ResponseEntity<byte[]> projected =
-                    restTemplate.exchange(
-                        documentUrl(applicationId, documentId),
-                        HttpMethod.GET,
-                        new HttpEntity<>(headers()),
-                        byte[].class);
-                assertThat(projected.getStatusCode()).isEqualTo(HttpStatus.OK);
-                assertThat(projected.getHeaders().getContentDisposition().getFilename())
-                    .isEqualTo("projected.PDF");
-                assertThat(projected.getBody()).containsExactly(content);
-              });
+      assertThat(projectionStarted.getCount()).isZero();
+      assertThat(releaseProjection.getCount()).isEqualTo(1);
+      assertThat(duringLag.getStatusCode()).isEqualTo(HttpStatus.OK);
+      assertThat(duringLag.getHeaders().getContentDisposition().getFilename())
+          .isEqualTo("projected.PDF");
+      assertThat(duringLag.getBody()).containsExactly(content);
       verify(sdsService).getEvidenceFile(applicationId, documentId, documentId + ".PDF");
     } finally {
       releaseProjection.countDown();

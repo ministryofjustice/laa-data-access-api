@@ -493,7 +493,8 @@ class PostgresAxonIntegrationTest {
             HttpMethod.GET,
             new HttpEntity<>(headers()),
             String.class);
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    // Details read the aggregate, whose content comes from the events, not application_data.
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
 
     List<String> currentStateColumns =
         jdbcTemplate.queryForList(
