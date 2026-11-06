@@ -13,7 +13,6 @@ import static uk.gov.justice.laa.dstew.access.command.application.ApplicationSta
 import static uk.gov.justice.laa.dstew.access.command.application.ApplicationStateEvents.notReady;
 import static uk.gov.justice.laa.dstew.access.command.application.ApplicationStateEvents.resubmittedAfterAssignment;
 import static uk.gov.justice.laa.dstew.access.command.application.ApplicationStateEvents.stateOf;
-import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationCreationDetails;
 
 import java.time.Instant;
 import java.util.List;
@@ -29,7 +28,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationState;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupState;
@@ -184,8 +182,6 @@ class MarkApplicationReadyGroupAssignmentTest {
   }
 
   private void givenDataStore(long dataVersion) {
-    when(applicationDataStore.get(APPLICATION_ID, dataVersion))
-        .thenReturn(ApplicationDataPayload.from(applicationCreationDetails(APPLICATION_ID)));
     when(applicationDataStore.append(any(), anyLong(), any(), any(), any())).thenReturn("hash");
   }
 

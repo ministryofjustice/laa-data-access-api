@@ -866,7 +866,7 @@ Split into two steps:
       `eventcontent.jdbc` and `eventcontent.axon` hold the adapters. A storage
       engine decorator splits content on append and joins it back on read.
       Content goes in `axon.event_content`, keyed by event identifier
-      (migration `V29`).
+      (migration `V31`, renumbered from `V29` after rebasing onto main).
     - **Event names:** all 21 stored types carry
       `@Event(namespace = "access")`; the payload type is now `access.<Name>`
       rather than the Java class name. Each has a schema
@@ -913,7 +913,7 @@ Split into two steps:
       `applicationContent`, `serialisedRequest` and `potentialDuplicates` as
       content, and keeps `status` and `laaReference`. The upload event carries
       `originalFilename` as content. `ApplicationDraftStore`, its payload and
-      repository are removed, and `V30` drops `axon.application_draft`.
+      repository are removed, and `V32` (renumbered from `V30`) drops `axon.application_draft`.
     - **`serialisedRequest` kept (decided 2026-11-05):** stored as content
       next to `applicationContent` for now; revisit in 4b-3, when
       `ApplicationDataStore` goes.
@@ -1020,10 +1020,10 @@ Split into two steps:
       | Reader | Source after 4b-3b |
       |---|---|
       | GET details, GET by ID, notes, document download | Aggregate |
-      | `LinkedGroupAssignmentDispatcher` (caseworker lookup) | Aggregate; a command-side decision should not use an eventually consistent read model |
+      | `LinkedGroupAssignmentDispatcher` (caseworker lookup) | Removed on main (#593): group assignment now decides from loaded aggregates, so no command-side read of this table remains |
       | List page | List index |
       | Stalled assessments (status scan) | Read model (status, `submittedAt`, `autoGranted`) |
-      | Access policy, including individuals | Kept columns |
+      | Access policy | Kept columns (the individuals endpoint was removed on main, #599) |
       | Create/Submit use cases awaiting the row | To resolve: wait on the list index, or drop the wait |
 
       The table keeps only kept fields (status, office, caseworker, group,

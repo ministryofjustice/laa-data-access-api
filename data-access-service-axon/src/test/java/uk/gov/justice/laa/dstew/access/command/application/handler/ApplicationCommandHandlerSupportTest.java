@@ -242,3 +242,4 @@ class ApplicationCommandHandlerSupportTest {
     when(state.getStatus()).thenReturn(status);
     return application;
   }
+}

@@ -30,6 +30,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import uk.gov.justice.laa.dstew.access.applicationcontent.ParsedAppContentDetails;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
@@ -85,7 +86,11 @@ class WorkListProjectionTest {
             1,
             submittedAt,
             List.of(),
-            "1A"),
+            "1A",
+            null,
+            List.of(),
+            (ParsedAppContentDetails) null,
+            (String) null),
         message());
 
     ArgumentCaptor<WorkListItemReadModel> captor =
