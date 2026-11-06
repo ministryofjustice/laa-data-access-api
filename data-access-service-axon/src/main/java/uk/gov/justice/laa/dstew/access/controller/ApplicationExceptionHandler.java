@@ -8,12 +8,14 @@ import org.axonframework.modelling.repository.EntityNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.oauth2.client.ClientAuthorizationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import tools.jackson.core.JacksonException;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationLinkConflictException;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConflictException;
@@ -67,6 +69,35 @@ public class ApplicationExceptionHandler {
                     "%s: %s".formatted(error.getField(), error.getDefaultMessage()))
             .toList();
     return validationError(errors);
+  }
+
+  /** Returns a validation problem when the request body is missing, malformed or mistyped. */
+  @ExceptionHandler(HttpMessageNotReadableException.class)
+  ResponseEntity<ProblemDetail> handleHttpMessageNotReadableException(
+      HttpMessageNotReadableException exception) {
+    return validationError(List.of(unreadableBodyMessage(exception)));
+  }
+
+  private static String unreadableBodyMessage(HttpMessageNotReadableException exception) {
+    if (exception.getMostSpecificCause() instanceof JacksonException jacksonException
+        && !jacksonException.getPath().isEmpty()) {
+      var path = new StringBuilder();
+      jacksonException
+          .getPath()
+          .forEach(
+              reference -> {
+                if (reference.getPropertyName() == null) {
+                  path.append("[").append(reference.getIndex()).append("]");
+                } else {
+                  if (!path.isEmpty()) {
+                    path.append(".");
+                  }
+                  path.append(reference.getPropertyName());
+                }
+              });
+      return path + ": invalid value";
+    }
+    return "Request body is missing or malformed";
   }
 
   /** Returns a conflict when linked-application membership is incompatible with current state. */

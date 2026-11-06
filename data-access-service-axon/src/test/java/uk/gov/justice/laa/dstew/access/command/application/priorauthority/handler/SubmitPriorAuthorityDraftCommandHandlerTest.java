@@ -7,12 +7,17 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
@@ -27,8 +32,12 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.Submit
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.BillingType;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.ExpertCosts;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.ExpertDetails;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.TimeRequested;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.validation.JsonSchemaValidator;
 
@@ -95,7 +104,8 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
                 1,
                 0L,
                 3L,
-                OCCURRED_AT));
+                OCCURRED_AT,
+                null));
     verify(draftStore).delete(priorAuthorityId);
   }
 
@@ -162,8 +172,126 @@ class SubmitPriorAuthorityDraftCommandHandlerTest {
                 4,
                 0L,
                 4L,
-                OCCURRED_AT));
+                OCCURRED_AT,
+                null));
     verify(jsonSchemaValidator).validate(content, "PriorAuthority.json", 4);
+  }
+
+  @Test
+  void givenHourlyExpertDraft_whenHandle_thenEmitsSubmittedEventWithBillingType() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    PriorAuthorityContent content =
+        new PriorAuthorityContent(
+            PriorAuthorityType.EXPERT,
+            "Need review",
+            new ExpertDetails(
+                "Type",
+                "Name",
+                "SW1A 1AA",
+                new ExpertCosts(
+                    BillingType.HOURLY,
+                    BigDecimal.TEN,
+                    new TimeRequested(2, 30),
+                    BigDecimal.valueOf(25),
+                    false,
+                    null)),
+            null,
+            null);
+    PriorAuthorityDataPayload payload =
+        new PriorAuthorityDataPayload(priorAuthorityId, applicationId, content, "{}", OCCURRED_AT);
+    SubmitPriorAuthorityDraftCommand command =
+        new SubmitPriorAuthorityDraftCommand(priorAuthorityId, OCCURRED_AT);
+    PriorAuthorityState state =
+        startedState(priorAuthorityId, applicationId, PriorAuthorityType.EXPERT, 1);
+
+    when(draftStore.find(priorAuthorityId)).thenReturn(Optional.of(payload));
+    when(priorAuthority.getApplicationId()).thenReturn(applicationId);
+    when(priorAuthority.getState()).thenReturn(state);
+    when(applicationDataStore.latestVersion(applicationId)).thenReturn(3L);
+
+    new SubmitPriorAuthorityDraftCommandHandler()
+        .handle(
+            command,
+            draftStore,
+            dataStore,
+            applicationDataStore,
+            jsonSchemaValidator,
+            priorAuthority,
+            eventAppender);
+
+    verify(eventAppender)
+        .append(
+            new PriorAuthoritySubmittedEvent(
+                priorAuthorityId,
+                applicationId,
+                PriorAuthorityType.EXPERT.name(),
+                1,
+                0L,
+                3L,
+                OCCURRED_AT,
+                BillingType.HOURLY.name()));
+  }
+
+  @ParameterizedTest
+  @MethodSource("contentsWithoutExpertBillingType")
+  void givenContentWithoutExpertBillingType_whenHandle_thenEmitsNullBillingType(
+      PriorAuthorityContent content) {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
+    PriorAuthorityDataPayload payload =
+        new PriorAuthorityDataPayload(priorAuthorityId, applicationId, content, "{}", OCCURRED_AT);
+    SubmitPriorAuthorityDraftCommand command =
+        new SubmitPriorAuthorityDraftCommand(priorAuthorityId, OCCURRED_AT);
+    PriorAuthorityState state =
+        startedState(priorAuthorityId, applicationId, PriorAuthorityType.EXPERT, 1);
+
+    when(draftStore.find(priorAuthorityId)).thenReturn(Optional.of(payload));
+    when(priorAuthority.getApplicationId()).thenReturn(applicationId);
+    when(priorAuthority.getState()).thenReturn(state);
+    when(applicationDataStore.latestVersion(applicationId)).thenReturn(3L);
+
+    new SubmitPriorAuthorityDraftCommandHandler()
+        .handle(
+            command,
+            draftStore,
+            dataStore,
+            applicationDataStore,
+            jsonSchemaValidator,
+            priorAuthority,
+            eventAppender);
+    var eventCaptor = ArgumentCaptor.forClass(PriorAuthoritySubmittedEvent.class);
+    verify(eventAppender).append(eventCaptor.capture());
+    assertThat(eventCaptor.getValue().billingType()).isNull();
+  }
+
+  private static Stream<Arguments> contentsWithoutExpertBillingType() {
+    return Stream.of(
+        Arguments.of((PriorAuthorityContent) null),
+        Arguments.of(
+            new PriorAuthorityContent(
+                PriorAuthorityType.EXPERT,
+                "Need review",
+                new ExpertDetails("Type", "Name", "SW1A 1AA", null),
+                null,
+                null)),
+        Arguments.of(
+            new PriorAuthorityContent(
+                PriorAuthorityType.EXPERT,
+                "Need review",
+                new ExpertDetails(
+                    "Type",
+                    "Name",
+                    "SW1A 1AA",
+                    new ExpertCosts(
+                        null,
+                        BigDecimal.TEN,
+                        new TimeRequested(2, 30),
+                        BigDecimal.valueOf(25),
+                        false,
+                        null)),
+                null,
+                null)));
   }
 
   private static PriorAuthorityState startedState(

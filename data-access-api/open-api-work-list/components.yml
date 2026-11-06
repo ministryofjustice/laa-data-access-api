@@ -35,7 +35,8 @@ components:
           format: date-time
           description: When this work item was first submitted (application creation, or prior authority submission)
         autoGranted:
-          $ref: "../open-api-applications/components.yml#/components/schemas/AutoGranted"
+          allOf:
+            - $ref: "../open-api-applications/components.yml#/components/schemas/AutoGranted"
           description: Auto-grant state of an application item; omitted for prior-authority items, which never go through the auto-grant check
         laaReference:
           type: string
@@ -62,7 +63,8 @@ components:
         applicationStatus:
           $ref: "../open-api-common/components.yml#/components/schemas/ApplicationStatus"
         priorAuthorityType:
-          $ref: "../open-api-prior-authority/components.yml#/components/schemas/PriorAuthorityType"
+          allOf:
+            - $ref: "../open-api-prior-authority/components.yml#/components/schemas/PriorAuthorityType"
           description: Prior-authority type; null for application items
         expertType:
           type: string

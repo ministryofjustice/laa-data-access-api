@@ -1,16 +1,24 @@
 package uk.gov.justice.laa.dstew.access.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowable;
 
 import java.net.URI;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.mock.http.MockHttpInputMessage;
 import org.springframework.security.oauth2.client.ClientAuthorizationException;
 import org.springframework.security.oauth2.core.OAuth2Error;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.exc.MismatchedInputException;
+import tools.jackson.databind.json.JsonMapper;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationLinkConflictException;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConflictException;
+import uk.gov.justice.laa.dstew.access.config.jackson.DecisionTimeRequestedMixin;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationAutoGrantOutcomeConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictException;
 import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException;
@@ -24,6 +32,8 @@ import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityVersionConflictEx
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.exception.VirusDetectedException;
 import uk.gov.justice.laa.dstew.access.exception.VirusScanException;
+import uk.gov.justice.laa.dstew.access.model.DecisionTimeRequested;
+import uk.gov.justice.laa.dstew.access.model.MakePriorAuthorityDecisionRequest;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryIntegrityException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
@@ -42,6 +52,79 @@ class ApplicationExceptionHandlerTest {
     assertThat(response.getBody().getProperties())
         .containsEntry("errors", List.of("Exactly one application ID must be provided"));
     assertThat(response.getBody().toString()).doesNotContain("Axon");
+  }
+
+  @Test
+  void givenUnreadableBodyWithPath_whenHandled_thenReturnsValidationProblemWithFieldPath() {
+    var mapper =
+        JsonMapper.builder()
+            .addMixIn(DecisionTimeRequested.class, DecisionTimeRequestedMixin.class)
+            .build();
+    var cause =
+        catchThrowable(
+            () ->
+                mapper.readValue(
+                    "{\"expert\":{\"newTimeRequested\":{\"hours\":2.5,\"minutes\":0}}}",
+                    MakePriorAuthorityDecisionRequest.class));
+    assertThat(cause).isInstanceOf(MismatchedInputException.class);
+
+    var exception =
+        new HttpMessageNotReadableException("bad", cause, new MockHttpInputMessage(new byte[0]));
+    var response = handler.handleHttpMessageNotReadableException(exception);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(response.getBody().getDetail()).isEqualTo("Generic Validation Error");
+    assertThat(response.getBody().getProperties())
+        .containsEntry("errors", List.of("expert.newTimeRequested.hours: invalid value"));
+  }
+
+  @Test
+  void givenUnreadableBodyWithoutPath_whenHandled_thenReturnsGenericMessage() {
+    var exception =
+        new HttpMessageNotReadableException("bad", null, new MockHttpInputMessage(new byte[0]));
+
+    var response = handler.handleHttpMessageNotReadableException(exception);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(response.getBody().getProperties())
+        .containsEntry("errors", List.of("Request body is missing or malformed"));
+  }
+
+  @Test
+  void givenUnreadableBodyWithArrayIndex_whenHandled_thenFormatsPathWithoutExtraDot() {
+    var mapper =
+        JsonMapper.builder()
+            .addMixIn(DecisionTimeRequested.class, DecisionTimeRequestedMixin.class)
+            .build();
+    var cause =
+        catchThrowable(
+            () ->
+                mapper.readValue(
+                    "[{\"hours\":2.5,\"minutes\":0}",
+                    new TypeReference<List<DecisionTimeRequested>>() {}));
+    assertThat(cause).isInstanceOf(MismatchedInputException.class);
+
+    var exception =
+        new HttpMessageNotReadableException("bad", cause, new MockHttpInputMessage(new byte[0]));
+    var response = handler.handleHttpMessageNotReadableException(exception);
+
+    assertThat(response.getBody().getProperties())
+        .containsEntry("errors", List.of("[0].hours: invalid value"));
+  }
+
+  @Test
+  void givenUnreadableBodyWithEmptyPath_whenHandled_thenReturnsGenericMessage() {
+    var mapper = JsonMapper.builder().build();
+    var cause =
+        catchThrowable(() -> mapper.readValue("{", MakePriorAuthorityDecisionRequest.class));
+    assertThat(cause).isInstanceOf(JacksonException.class);
+    var exception =
+        new HttpMessageNotReadableException("bad", cause, new MockHttpInputMessage(new byte[0]));
+
+    var response = handler.handleHttpMessageNotReadableException(exception);
+
+    assertThat(response.getBody().getProperties())
+        .containsEntry("errors", List.of("Request body is missing or malformed"));
   }
 
   @Test

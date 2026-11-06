@@ -9,7 +9,9 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.Disbur
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.ExpertFeeInformation;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.ApportionmentInformation;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.MakePriorAuthorityDecisionCommand;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.TimeRequested;
 import uk.gov.justice.laa.dstew.access.model.ApportionmentMakePriorAuthorityDecisionRequest;
+import uk.gov.justice.laa.dstew.access.model.DecisionTimeRequested;
 import uk.gov.justice.laa.dstew.access.model.DisbursementMakePriorAuthorityDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.ExpertMakePriorAuthorityDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.MakePriorAuthorityDecisionRequest;
@@ -68,7 +70,12 @@ public class MakePriorAuthorityDecisionCommandMapper {
         : ExpertFeeInformation.builder()
             .newFixedRateAmount(value.getNewFixedRateAmount())
             .newHourlyRateAmount(value.getNewHourlyRateAmount())
+            .newTimeRequested(toTimeRequested(value.getNewTimeRequested()))
             .build();
+  }
+
+  private TimeRequested toTimeRequested(DecisionTimeRequested value) {
+    return value == null ? null : new TimeRequested(value.getHours(), value.getMinutes());
   }
 
   private String decisionJustification(MakePriorAuthorityDecisionRequest request) {

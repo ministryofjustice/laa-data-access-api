@@ -13,8 +13,10 @@ import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.MakePriorAuthorityDecisionCommand;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.TimeRequested;
 import uk.gov.justice.laa.dstew.access.model.ApportionmentMakePriorAuthorityDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
+import uk.gov.justice.laa.dstew.access.model.DecisionTimeRequested;
 import uk.gov.justice.laa.dstew.access.model.DisbursementMakePriorAuthorityDecisionRequest;
 import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
 import uk.gov.justice.laa.dstew.access.model.ExpertMakePriorAuthorityDecisionRequest;
@@ -72,6 +74,7 @@ class MakePriorAuthorityDecisionCommandMapperTest {
         .isEqualByComparingTo(BigDecimal.valueOf(450.25));
     assertThat(command.expertFee().getNewHourlyRateAmount())
         .isEqualByComparingTo(BigDecimal.valueOf(125.75));
+    assertThat(command.expertFee().getNewTimeRequested()).isNull();
     assertThat(command.disbursementInformation()).isNotNull();
     assertThat(command.disbursementInformation().getNewAmount())
         .isEqualByComparingTo(BigDecimal.valueOf(300.00));
@@ -116,6 +119,30 @@ class MakePriorAuthorityDecisionCommandMapperTest {
     assertThat(command.apportionmentInformation()).isNull();
     assertThat(command.serialisedRequest()).contains("\"newFixedRateAmount\":null");
     assertThat(command.serialisedRequest()).contains("\"newHourlyRateAmount\":125.75");
+  }
+
+  @Test
+  void givenNewTimeRequested_whenMapped_thenStoresTimeOverride() {
+    when(authenticatedUserId.get()).thenReturn(TestJwtDecoderConfig.CASEWORKER_ID);
+    MakePriorAuthorityDecisionRequest request =
+        MakePriorAuthorityDecisionRequest.builder()
+            .priorAuthorityVersion(7L)
+            .decision(DecisionStatus.GRANTED)
+            .amountGranted(BigDecimal.valueOf(1200.50))
+            .dateGranted(OffsetDateTime.parse("2026-09-08T12:30:00Z"))
+            .eventHistory(
+                EventHistoryRequest.builder().eventDescription("Decision recorded").build())
+            .expert(
+                ExpertMakePriorAuthorityDecisionRequest.builder()
+                    .newTimeRequested(DecisionTimeRequested.builder().hours(3).minutes(15).build())
+                    .build())
+            .build();
+
+    MakePriorAuthorityDecisionCommand command = mapper.toCommand(UUID.randomUUID(), request);
+
+    assertThat(command.expertFee().getNewTimeRequested()).isEqualTo(new TimeRequested(3, 15));
+    assertThat(command.serialisedRequest())
+        .contains("\"newTimeRequested\":{\"hours\":3,\"minutes\":15}");
   }
 
   @Test
