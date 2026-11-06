@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.command.application.priorauthority.data;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.HashMap;
@@ -13,6 +14,7 @@ import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityCont
 
 /** Sensitive data associated with one prior-authority submission. */
 @With
+@JsonIgnoreProperties(ignoreUnknown = true)
 public record PriorAuthorityDataPayload(
     UUID priorAuthorityId,
     UUID applicationId,

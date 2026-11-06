@@ -121,15 +121,20 @@ commands retain lifecycle and ownership checks, while REST binding rejects unkno
 The `document` package owns shared `DocumentMetadata` and `DocumentUploadResult` records;
 `content.priorauthority` owns `EvidenceDocument`, and `query.application.priorauthority` owns
 `EvidenceDocumentDownload`. Prior Authority query use cases live in `usecase.application.priorauthority`.
-Persisted metadata remains filename-free; document query handlers hydrate filenames from sensitive
-content storage. Both Application and Prior Authority use dedicated document queries. An active,
+Persisted metadata remains filename-free; document query handlers hydrate filenames from
+`axon.document_filename` by the document IDs selected from event-derived document state. Do not
+enumerate filename rows to determine membership, filter hydration by filename-row deletion status,
+or fall back to legacy payload maps. Both Application and Prior Authority use dedicated document queries. An active,
 owned document remains downloadable when its filename is missing: SDS lookup uses the persisted
 `fileSuffix`, while the HTTP attachment name falls back to the document ID. Older uploads with
 an unknown suffix fall back to the filename or bare ID. Application-specific queries and authorization stay in
 their owning use cases. SDS document responses use internal records rather than generated API DTOs.
 
 Persist the full original filename in sensitive draft content during upload and preserve it on
-submission. SDS upload, download, and deletion must use the same exact suffix, including case,
+submission. During PR 1 of ADR 0005, also record it in `axon.document_filename` in the same
+transaction. Query hydration now requires the V31 backfill and uses only the table; legacy map
+writes remain until their separate removal.
+SDS upload, download, and deletion must use the same exact suffix, including case,
 rather than infer an extension from content type. Persist the non-sensitive `fileSuffix` in upload
 events and `DocumentMetadata`, including an empty string for extensionless uploads. Missing historical
 suffixes remain null. Prior Authority deletion uses the suffix returned from aggregate metadata,

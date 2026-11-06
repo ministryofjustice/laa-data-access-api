@@ -426,6 +426,7 @@ class PostgresAxonIntegrationTest {
             "application_group_route",
             "application_history",
             "application_list_index",
+            "document_filename",
             "domain_event_entry",
             "flyway_schema_history",
             "linked_application_group_current_state",

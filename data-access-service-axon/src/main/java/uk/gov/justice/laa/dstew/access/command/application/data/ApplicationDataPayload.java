@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.command.application.data;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -17,6 +18,7 @@ import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 
 /** Sensitive application data stored outside the Axon event stream. */
 @ExcludeFromGeneratedCodeCoverage
+@JsonIgnoreProperties(ignoreUnknown = true)
 public record ApplicationDataPayload(
     String laaReference,
     ApplicationClient client,

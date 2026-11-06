@@ -55,6 +55,15 @@ metadata projection contains the filename. Submission copies the map into versio
 `application_data` before emitting `ApplicationCreatedEvent` and deleting the draft row. Subsequent
 immutable content updates preserve the filename map.
 
+From PR 1 of [ADR 0005](adr/0005-store-document-filenames-in-a-dedicated-table.md), uploads also write
+the filename to the `axon.document_filename` table, keyed by `document_id`, in the same transaction.
+Deletion marks that row with `deleted_at` rather than removing it. Query hydration reads only the
+table, using primary-key lookups for the non-deleted document IDs in the event-derived projection.
+It does not filter by the filename row's `deleted_at` or fall back to legacy payload maps. The
+legacy map is still written; removing those writes is a separate change. V31 backfills the table
+from drafts and the latest immutable version of each owner and must complete before table-only
+reads are deployed. The retention function deletes table rows with their owner.
+
 The exact file suffix, such as `.PDF`, is non-sensitive storage metadata. Application and Prior
 Authority upload events persist it as optional `fileSuffix`; aggregate state and projected
 `DocumentMetadata` retain it independently of the original filename. New extensionless uploads

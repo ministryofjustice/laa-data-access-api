@@ -7,7 +7,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -29,12 +28,10 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftPayload;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftStore;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
+import uk.gov.justice.laa.dstew.access.command.application.document.DocumentFilenameStore;
 import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftStartedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupDissolvedEvent;
@@ -63,11 +60,11 @@ public class ApplicationProjection {
 
   private final ApplicationReadRepository applicationReadRepository;
   private final ApplicationDataStore applicationDataStore;
-  private final ApplicationDraftStore draftStore;
   private final ApplicationReadQueryGateway applicationReadQueryGateway;
   private final ApplicationCurrentStateAccessPolicy currentStateAccessPolicy;
   private final ApplicationListIndexAccessPolicy listIndexAccessPolicy;
   private final ApplicationReadModelAssembler assembler;
+  private final DocumentFilenameStore documentFilenameStore;
 
   /** Returns the hydrated Application and its related data, or {@code null} if absent. */
   @QueryHandler
@@ -102,7 +99,9 @@ public class ApplicationProjection {
                         document ->
                             evidenceDocument(
                                 document,
-                                documentFilename(application, document.documentId()).orElse(null))))
+                                documentFilenameStore
+                                    .findAllByIds(List.of(document.documentId()))
+                                    .get(document.documentId()))))
         .orElse(null);
   }
 
@@ -510,22 +509,6 @@ public class ApplicationProjection {
                   query -> query.applicationId().equals(applicationId),
                   saved);
             });
-  }
-
-  private Optional<String> documentFilename(ApplicationReadModel application, UUID documentId) {
-    ApplicationDataId id =
-        new ApplicationDataId(
-            application.getApplicationId(), application.getApplicationDataVersion());
-    ApplicationDataPayload data = applicationDataStore.getAll(List.of(id)).get(id);
-    // Drafts have no immutable content until submission.
-    Map<UUID, java.lang.String> filenames =
-        data != null
-            ? data.documentFilenames()
-            : draftStore
-                .find(application.getApplicationId())
-                .map(ApplicationDraftPayload::documentFilenames)
-                .orElse(Map.of());
-    return java.util.Optional.ofNullable(filenames.get(documentId));
   }
 
   private EvidenceDocument evidenceDocument(DocumentMetadata document, String fileName) {

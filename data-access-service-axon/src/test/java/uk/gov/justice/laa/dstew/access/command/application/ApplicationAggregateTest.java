@@ -41,6 +41,7 @@ import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationD
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeDecisionProceeding;
 import uk.gov.justice.laa.dstew.access.command.application.decision.RecordAutoGrantedOutcomeCommand;
+import uk.gov.justice.laa.dstew.access.command.application.document.DocumentFilenameStore;
 import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftStartedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.handler.ApplicationDocumentUploadCommandHandler;
 import uk.gov.justice.laa.dstew.access.command.application.handler.CreateApplicationCommandHandler;
@@ -132,6 +133,7 @@ class ApplicationAggregateTest {
   private AxonTestFixture fixture;
   private ApplicationDataStore applicationDataStore;
   private ApplicationDraftStore draftStore;
+  private DocumentFilenameStore documentFilenameStore;
   private ApplicationUpdateDetailsFactory updateDetailsFactory;
 
   @BeforeEach
@@ -139,6 +141,7 @@ class ApplicationAggregateTest {
     final ApplicationCreationDetailsFactory factory = mock(ApplicationCreationDetailsFactory.class);
     applicationDataStore = mock(ApplicationDataStore.class);
     draftStore = mock(ApplicationDraftStore.class);
+    documentFilenameStore = mock(DocumentFilenameStore.class);
     updateDetailsFactory = mock(ApplicationUpdateDetailsFactory.class);
     when(factory.prepare(any(CreateApplicationCommand.class)))
         .thenAnswer(
@@ -926,6 +929,8 @@ class ApplicationAggregateTest {
                         .registerComponent(
                             ApplicationDataStore.class, configuration -> applicationDataStore)
                         .registerComponent(ApplicationDraftStore.class, configuration -> draftStore)
+                        .registerComponent(
+                            DocumentFilenameStore.class, configuration -> documentFilenameStore)
                         .registerComponent(
                             ApplicationUpdateDetailsFactory.class,
                             configuration -> updateDetailsFactory)

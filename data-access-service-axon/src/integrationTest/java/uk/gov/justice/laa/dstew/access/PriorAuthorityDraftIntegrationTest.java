@@ -814,9 +814,10 @@ class PriorAuthorityDraftIntegrationTest {
     awaitDocument(priorAuthorityId, documentId);
     updateDocumentType(priorAuthorityId, documentId);
     if (missingFilename) {
-      jdbcTemplate.update(
-          "UPDATE axon.prior_authority_draft SET payload = jsonb_set(payload, '{documentFilenames}', '{}'::jsonb) WHERE prior_authority_id = ?",
-          priorAuthorityId);
+      assertThat(
+              jdbcTemplate.update(
+                  "DELETE FROM axon.document_filename WHERE document_id = ?", documentId))
+          .isEqualTo(1);
     }
     if (submitted) {
       submitDraft(priorAuthorityId);

@@ -39,6 +39,7 @@ import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataP
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftStore;
+import uk.gov.justice.laa.dstew.access.command.application.document.DocumentFilenameStore;
 import uk.gov.justice.laa.dstew.access.command.application.handler.ApplicationDocumentUploadCommandHandler;
 import uk.gov.justice.laa.dstew.access.command.application.handler.CreateApplicationDraftCommandHandler;
 import uk.gov.justice.laa.dstew.access.command.application.handler.SubmitApplicationDraftCommandHandler;
@@ -56,6 +57,7 @@ class ApplicationAggregateDraftTest {
 
   private AxonTestFixture fixture;
   @Mock private ApplicationDraftStore draftStore;
+  @Mock private DocumentFilenameStore documentFilenameStore;
   @Mock private ApplicationDataStore applicationDataStore;
   @Mock private ApplicationCreationDetailsFactory creationDetailsFactory;
   @Mock private JsonSchemaValidator jsonSchemaValidator;
@@ -84,6 +86,8 @@ class ApplicationAggregateDraftTest {
                         registry
                             .registerComponent(
                                 ApplicationDraftStore.class, configuration -> draftStore)
+                            .registerComponent(
+                                DocumentFilenameStore.class, configuration -> documentFilenameStore)
                             .registerComponent(
                                 ApplicationDataStore.class, configuration -> applicationDataStore)
                             .registerComponent(
