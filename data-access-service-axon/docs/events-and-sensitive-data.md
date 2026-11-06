@@ -31,7 +31,7 @@ event.applicationDataVersion = application_data.version
 
 For example, a decision command:
 
-1. loads the payload referenced by the aggregate's current `applicationDataVersion`;
+1. takes the current payload from aggregate state, which folds it from event content;
 2. creates a complete updated payload rather than a partial patch;
 3. appends it as the next version in `application_data`;
 4. emits `ApplicationDecisionMadeEvent` containing the new version number and non-sensitive
@@ -57,6 +57,16 @@ values. Submission reads the draft and its filenames from the aggregate, and cop
 version 0 of immutable `application_data` before emitting `ApplicationCreatedEvent`. Subsequent
 immutable content updates preserve the filename map. The persisted document metadata projection
 does not contain the filename.
+
+Submitted Application content is also carried in events, as a delta: each event holds only the
+content it introduces. `ApplicationCreatedEvent` and `ApplicationUpdatedEvent` carry the parsed
+application content and request JSON, `NoteCreatedEvent` the note text, and
+`ApplicationDecisionMadeEvent` the merits decisions, certificate, request JSON and description.
+Proceeding IDs are kept fields on Created and Updated, and the decision request fingerprint is a
+kept field on DecisionMade, so decision validation and auto-grant retry matching still work after
+content is erased. Aggregate state folds the current payload as an `Erasable`. Command handlers
+read it from there instead of from `application_data`, but still write each new version to
+`application_data` for the read side until readers move to event content.
 
 The exact file suffix, such as `.PDF`, is non-sensitive storage metadata. Application and Prior
 Authority upload events persist it as optional `fileSuffix`; aggregate state and projected
@@ -126,9 +136,9 @@ product decisions are recorded in
 
 ## Replay and failure behaviour
 
-Aggregates rebuild identifiers, versions, assignment state, and other control fields from thin
-events. They do not query `application_data` during event replay. A command handler queries it only
-when the new decision needs the complete current payload.
+Aggregates rebuild identifiers, versions, assignment state, and other control fields from kept
+event fields, and the current payload from event content. They do not query `application_data`
+during event replay, and command handlers no longer read it.
 
 Projections are different: replaying `ApplicationProjection` or `ApplicationHistoryProjection` may
 need the referenced `application_data` versions to return fully hydrated results. See

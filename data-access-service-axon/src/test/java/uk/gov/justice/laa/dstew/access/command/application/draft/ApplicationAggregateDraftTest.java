@@ -31,6 +31,7 @@ import uk.gov.justice.laa.dstew.access.command.application.ApplicationAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreationDetails;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreationDetailsFactory;
+import uk.gov.justice.laa.dstew.access.command.application.ApplicationDecider;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadCommand;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
@@ -166,17 +167,7 @@ class ApplicationAggregateDraftTest {
         .command(new SubmitApplicationDraftCommand(applicationId, occurredAt.plusSeconds(1)))
         .then()
         .resultMessagePayload(applicationId)
-        .events(
-            new ApplicationCreatedEvent(
-                applicationId,
-                0L,
-                "hash",
-                details.status(),
-                details.schemaVersion(),
-                details.occurredAt(),
-                details.potentialDuplicates(),
-                details.provider().getOfficeCode(),
-                "LAA-123"));
+        .events(ApplicationDecider.decideSubmitDraft(applicationId, 0L, "hash", details));
 
     ArgumentCaptor<ApplicationDataPayload> payload =
         ArgumentCaptor.forClass(ApplicationDataPayload.class);
@@ -439,17 +430,7 @@ class ApplicationAggregateDraftTest {
         .command(new SubmitApplicationDraftCommand(applicationId, submittedAt))
         .then()
         .resultMessagePayload(applicationId)
-        .events(
-            new ApplicationCreatedEvent(
-                applicationId,
-                0L,
-                fingerprint,
-                details.status(),
-                details.schemaVersion(),
-                details.occurredAt(),
-                details.potentialDuplicates(),
-                details.provider().getOfficeCode(),
-                "LAA-123"));
+        .events(ApplicationDecider.decideSubmitDraft(applicationId, 0L, fingerprint, details));
 
     verify(applicationDataStore)
         .append(

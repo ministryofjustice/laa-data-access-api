@@ -943,6 +943,49 @@ Split into two steps:
     - **Pitfall:** the plain 10-arg `ApplicationDocumentUploadedEvent`
       constructor ends `(dataVersion, fileSuffix)`; a filename passed there
       silently becomes the suffix. Use the 11-arg form.
+  - **4b-3 split (decided 2026-11-06):** 4b-3a moves submitted content into
+    events and has command handling read it from the aggregate, while still
+    writing `ApplicationDataStore` for readers. 4b-3b moves readers off the
+    store and drops `application_data`.
+  - **4b-3a implemented, 2026-11-06.** No change to API behaviour.
+    - **Delta content (decided 2026-11-06):** each event carries only the
+      content it introduces, not a snapshot. `ApplicationCreatedEvent` and
+      `ApplicationUpdatedEvent` carry the parsed application content and
+      `serialisedRequest`; `NoteCreatedEvent` carries `noteText`;
+      `ApplicationDecisionMadeEvent` carries `meritsDecisions` (this
+      decision's proceedings only), `certificate`, `serialisedRequest` and
+      `eventDescription`. Three types move from "keep everything" to
+      content-bearing.
+    - **Kept `proceedingIds` (decided 2026-11-06):** on Created and Updated.
+      Proceedings and their IDs are used for linking and tracing and must
+      survive deletion (identity/linking rule 1). Decision validation now
+      checks proceeding IDs against kept state, so an unknown proceeding is
+      still rejected after erasure.
+    - **Kept `decisionRequestFingerprint` (decided 2026-11-06):** on
+      DecisionMade, a SHA-256 of the decision request (rule 2). The auto-grant
+      retry compares fingerprints instead of the stored request, so retry and
+      conflict outcomes are the same after erasure. It is cleared when an
+      update re-enters submitted.
+    - **`applicationDataVersion` stays** as a kept counter.
+    - **Evolve folds content:** `ApplicationState.content` holds an
+      `Erasable<ApplicationDataPayload>` built with the same `with*` methods
+      the store path uses. If any part is erased (for example one note), the
+      whole folded content is erased. Command handlers get it only via
+      `ApplicationCommandHandlerSupport.currentContent`, which throws if it
+      is erased. That path exists only to keep writing the store, and goes
+      away in 4b-3b, when no handler needs content.
+    - **Merits decisions are content (open):** the per-proceeding decision
+      value is treated as content along with reason and justification. To be
+      confirmed.
+    - **Tests:** `ErasureReplayTest` now uses content-bearing Created, Note
+      and Decision events. States match apart from `content`. Decisions with
+      a known proceeding, an unknown proceeding or a stale version, and
+      auto-grant same/different-request matching, give identical outcomes.
+      `ApplicationEvolveTest` checks that the folded content equals the
+      payload the handlers write to the store.
+    - **Validation:** unit tests 1347/1347 and integration tests 272/272 pass;
+      Checkstyle main is clean, test warnings fall to 40 and integration
+      warnings stay at 49.
 
 ### Remaining gates
 1. Choose the declaration design: hash-bound review (recommended by the review)

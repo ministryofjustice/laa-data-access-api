@@ -7,6 +7,7 @@ import java.util.Optional;
 import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationState;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftContent;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
@@ -75,6 +76,21 @@ final class ApplicationCommandHandlerSupport {
             state.getDraftSerialisedRequest().value(),
             state.getDraftPotentialDuplicates().orElse(null),
             filenames));
+  }
+
+  /**
+   * Returns the Application's current submitted content, folded from its events. Used only to keep
+   * writing {@code application_data} until the readers move to events.
+   *
+   * @throws IllegalStateException if the content has been erased
+   */
+  static ApplicationDataPayload currentContent(ApplicationAggregate application) {
+    var content = application.getState().getContent();
+    if (content.isErased()) {
+      throw new IllegalStateException(
+          "Application content has been erased: " + application.getApplicationId());
+    }
+    return content.value();
   }
 
   @SuppressWarnings("unchecked")

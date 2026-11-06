@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "access.ApplicationDecisionMade kept fields",
-  "description": "Fields kept on the stored event. Every other field is content, stored apart so that it can be erased.",
+  "description": "Fields kept on the stored event. Every other field is content, stored apart so that it can be erased. Content: certificate, eventDescription, meritsDecisions, serialisedRequest.",
   "type": "object",
   "properties": {
     "applicationId": {
@@ -34,6 +34,12 @@
     "occurredAt": {
       "type": "string",
       "format": "date-time"
+    },
+    "decisionRequestFingerprint": {
+      "type": [
+        "string",
+        "null"
+      ]
     }
   },
   "required": [
@@ -42,7 +48,8 @@
     "applicationDataVersion",
     "overallDecision",
     "autoGranted",
-    "occurredAt"
+    "occurredAt",
+    "decisionRequestFingerprint"
   ],
   "additionalProperties": false
 }

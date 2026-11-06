@@ -13,13 +13,19 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
+import uk.gov.justice.laa.dstew.access.applicationcontent.ApplicationClient;
+import uk.gov.justice.laa.dstew.access.applicationcontent.ParsedAppContentDetails;
+import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDecider;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationEvolve;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationState;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationMeritsDecision;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
+import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
+import uk.gov.justice.laa.dstew.access.command.application.decision.MakeDecisionProceeding;
 import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftStartedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.note.CreateNoteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
@@ -40,6 +46,7 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 import uk.gov.justice.laa.dstew.access.testutils.EventTypeNames;
+import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 
 /**
  * With all content erased, every aggregate must load, and every command must decide the same way.
@@ -49,6 +56,7 @@ import uk.gov.justice.laa.dstew.access.testutils.EventTypeNames;
 class ErasureReplayTest {
 
   private static final Instant AT = Instant.parse("2026-11-02T10:00:00Z");
+  private static final String DECISION_REQUEST = "{\"overallDecision\":\"GRANTED\"}";
 
   private final EventContentSeparator separator = new EventContentSeparator(new EventJson());
 
@@ -57,6 +65,7 @@ class ErasureReplayTest {
   private final UUID documentId = UUID.randomUUID();
   private final UUID deletedDocumentId = UUID.randomUUID();
   private final UUID caseworkerId = UUID.randomUUID();
+  private final UUID proceedingId = UUID.randomUUID();
 
   @Test
   void givenApplicationHistory_whenContentErased_thenOnlyContentFieldsDifferAndDecisionsMatch() {
@@ -76,7 +85,7 @@ class ErasureReplayTest {
                 Erasable.of(".pdf"),
                 Erasable.of("evidence.pdf")),
             new WorkItemAssigned(applicationId, WorkItemType.APPLICATION, 0L, 1L, caseworkerId, AT),
-            new NoteCreatedEvent(applicationId, 1L, AT));
+            new NoteCreatedEvent(applicationId, 1L, AT, "private note"));
 
     ApplicationState full = fold(new ApplicationState(), ApplicationEvolve.class, history);
     ApplicationState erased = fold(new ApplicationState(), ApplicationEvolve.class, erase(history));
@@ -84,8 +93,11 @@ class ErasureReplayTest {
     assertThat(erased.getUploadedDocuments()).hasSize(1);
     assertThat(erased)
         .usingRecursiveComparison()
-        .ignoringFields("uploadedDocuments", "draftDocumentFilenames")
+        .ignoringFields("uploadedDocuments", "draftDocumentFilenames", "content")
         .isEqualTo(full);
+    assertThat(full.getContent().isErased()).isFalse();
+    assertThat(erased.getContent().isErased()).isTrue();
+    assertThat(erased.getProceedingIds()).containsExactly(proceedingId);
     assertThat(erased.getUploadedDocuments())
         .isEqualTo(full.getUploadedDocuments().stream().map(this::withoutContent).toList());
 
@@ -101,6 +113,9 @@ class ErasureReplayTest {
         state ->
             ApplicationDecider.decideNote(
                 state, new CreateNoteCommand(applicationId, "note", "{}", AT)));
+    assertSameDecision(full, erased, state -> decide(state, 1L, proceedingId));
+    assertSameDecision(full, erased, state -> decide(state, 1L, UUID.randomUUID()));
+    assertSameDecision(full, erased, state -> decide(state, 0L, proceedingId));
   }
 
   @Test
@@ -153,17 +168,35 @@ class ErasureReplayTest {
   }
 
   @Test
-  void givenDecidedApplicationHistory_whenContentErased_thenStateMatches() {
+  void givenDecidedApplicationHistory_whenContentErased_thenStateAndAutoGrantMatchingMatch() {
     List<Object> history =
         List.of(
             created(),
             new ApplicationReadyForManualAssessmentEvent(applicationId, 1L, 1L, AT),
             new ApplicationDecisionMadeEvent(
-                applicationId, 2L, 2L, "GRANTED", AutoGrantedState.MANUAL, AT));
+                applicationId,
+                2L,
+                2L,
+                "GRANTED",
+                AutoGrantedState.AUTOGRANTED,
+                AT,
+                PayloadFingerprint.compute(DECISION_REQUEST),
+                Map.of(proceedingId, new ApplicationMeritsDecision("GRANTED", "reason", "why")),
+                Map.of("reference", "CERT-1"),
+                DECISION_REQUEST,
+                "Auto-granted"));
 
-    assertThat(fold(new ApplicationState(), ApplicationEvolve.class, erase(history)))
-        .usingRecursiveComparison()
-        .isEqualTo(fold(new ApplicationState(), ApplicationEvolve.class, history));
+    ApplicationState full = fold(new ApplicationState(), ApplicationEvolve.class, history);
+    ApplicationState erased = fold(new ApplicationState(), ApplicationEvolve.class, erase(history));
+
+    assertThat(erased).usingRecursiveComparison().ignoringFields("content").isEqualTo(full);
+    assertThat(full.getContent().isErased()).isFalse();
+    assertThat(erased.getContent().isErased()).isTrue();
+    assertSameDecision(
+        full, erased, state -> ApplicationDecider.isSameAutoGrantRequest(state, DECISION_REQUEST));
+    assertSameDecision(
+        full, erased, state -> ApplicationDecider.isSameAutoGrantRequest(state, "{\"other\":1}"));
+    assertSameDecision(full, erased, state -> decide(state, 2L, proceedingId));
   }
 
   @Test
@@ -236,9 +269,31 @@ class ErasureReplayTest {
         "APPLICATION_SUBMITTED",
         1,
         AT,
-        Erasable.of(List.of(new PotentialDuplicate("LAA-456"))),
+        List.of(new PotentialDuplicate("LAA-456")),
         "1A234B",
-        "LAA-123");
+        "LAA-123",
+        List.of(proceedingId),
+        ParsedAppContentDetails.builder()
+            .client(ApplicationClient.builder().firstName("Jane").lastName("Doe").build())
+            .proceedings(
+                List.of(Proceeding.builder().id(proceedingId).leadProceeding(true).build()))
+            .build(),
+        "{\"client\":\"Jane Doe\"}");
+  }
+
+  private Object decide(ApplicationState state, long expectedVersion, UUID decidedProceedingId) {
+    return ApplicationDecider.decideDecision(
+        state,
+        new MakeApplicationDecisionCommand(
+            applicationId,
+            caseworkerId,
+            expectedVersion,
+            "REFUSED",
+            List.of(new MakeDecisionProceeding(decidedProceedingId, "REFUSED", "reason", "why")),
+            null,
+            DECISION_REQUEST,
+            "Refused",
+            AT));
   }
 
   private ApplicationDraftStartedEvent draftStarted(String fingerprint) {

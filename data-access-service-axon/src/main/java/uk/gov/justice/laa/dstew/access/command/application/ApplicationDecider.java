@@ -2,8 +2,10 @@ package uk.gov.justice.laa.dstew.access.command.application;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -13,8 +15,9 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
+import uk.gov.justice.laa.dstew.access.applicationcontent.ParsedAppContentDetails;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
+import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationMeritsDecision;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeApplicationDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.decision.MakeDecisionProceeding;
@@ -35,6 +38,7 @@ import uk.gov.justice.laa.dstew.access.exception.ApplicationCreationConflictExce
 import uk.gov.justice.laa.dstew.access.exception.ApplicationVersionConflictException;
 import uk.gov.justice.laa.dstew.access.exception.InvalidApplicationStateException;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
+import uk.gov.justice.laa.dstew.access.util.PayloadFingerprint;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 /** Decision functions: derive events from current state and command inputs. */
@@ -239,14 +243,12 @@ public final class ApplicationDecider {
   }
 
   /**
-   * Validates the command and returns an {@link ApplicationDecisionMadeEvent}.
-   *
-   * @param current the current application-data payload
+   * Validates the command and returns an {@link ApplicationDecisionMadeEvent}. Proceedings are
+   * checked against the kept proceeding IDs, so the decision is the same once content is erased.
    */
   public static ApplicationDecisionMadeEvent decideDecision(
       ApplicationState state,
       MakeApplicationDecisionCommand command,
-      ApplicationDataPayload current,
       AutoGrantedState autoGranted) {
 
     if (command.expectedApplicationVersion() != state.applicationVersion) {
@@ -255,8 +257,7 @@ public final class ApplicationDecider {
     }
     validateDecision(command);
 
-    Set<UUID> linkedProceedingIds =
-        current.proceedings().stream().map(Proceeding::getId).collect(Collectors.toSet());
+    Set<UUID> linkedProceedingIds = new HashSet<>(state.proceedingIds);
     List<UUID> unknownProceedingIds =
         command.proceedings().stream()
             .map(MakeDecisionProceeding::proceedingId)
@@ -268,21 +269,47 @@ public final class ApplicationDecider {
           "No proceeding found with id: "
               + unknownProceedingIds.stream().map(UUID::toString).collect(Collectors.joining(",")));
     }
+    Map<UUID, ApplicationMeritsDecision> meritsDecisions = new HashMap<>();
+    command
+        .proceedings()
+        .forEach(
+            proceeding ->
+                meritsDecisions.put(
+                    proceeding.proceedingId(),
+                    new ApplicationMeritsDecision(
+                        proceeding.decision(), proceeding.reason(), proceeding.justification())));
     return new ApplicationDecisionMadeEvent(
         state.applicationId,
         state.applicationVersion + 1,
         state.applicationDataVersion + 1,
         command.overallDecision(),
         autoGranted,
-        command.occurredAt());
+        command.occurredAt(),
+        fingerprint(command.serialisedRequest()),
+        Map.copyOf(meritsDecisions),
+        DecisionValue.GRANTED.name().equals(command.overallDecision())
+            ? command.certificate()
+            : null,
+        command.serialisedRequest(),
+        command.eventDescription());
   }
 
   /** Validates an ordinary decision, which always records manual assessment. */
   public static ApplicationDecisionMadeEvent decideDecision(
-      ApplicationState state,
-      MakeApplicationDecisionCommand command,
-      ApplicationDataPayload current) {
-    return decideDecision(state, command, current, AutoGrantedState.MANUAL);
+      ApplicationState state, MakeApplicationDecisionCommand command) {
+    return decideDecision(state, command, AutoGrantedState.MANUAL);
+  }
+
+  /**
+   * Returns whether an automatic grant has already been recorded for the same request, compared by
+   * the kept fingerprint so that the answer is the same once content is erased.
+   */
+  public static boolean isSameAutoGrantRequest(ApplicationState state, String serialisedRequest) {
+    return Objects.equals(state.decisionRequestFingerprint, fingerprint(serialisedRequest));
+  }
+
+  private static String fingerprint(String serialisedRequest) {
+    return serialisedRequest == null ? null : PayloadFingerprint.compute(serialisedRequest);
   }
 
   /** Ensures a standalone manual decision is made by its current assignment owner. */
@@ -319,7 +346,10 @@ public final class ApplicationDecider {
   /** Returns a {@link NoteCreatedEvent}. */
   public static NoteCreatedEvent decideNote(ApplicationState state, CreateNoteCommand command) {
     return new NoteCreatedEvent(
-        state.applicationId, state.applicationDataVersion + 1, command.occurredAt());
+        state.applicationId,
+        state.applicationDataVersion + 1,
+        command.occurredAt(),
+        command.noteText());
   }
 
   /** Validates an idempotent transition to manual-assessment readiness. */
@@ -344,7 +374,7 @@ public final class ApplicationDecider {
 
   /** Returns the next replayable state transition for an Application update. */
   public static ApplicationUpdatedEvent decideUpdate(
-      ApplicationState state, UpdateApplicationCommand command) {
+      ApplicationState state, UpdateApplicationCommand command, ParsedAppContentDetails content) {
     String nextStatus = command.status() == null ? state.status : command.status();
     return new ApplicationUpdatedEvent(
         state.applicationId,
@@ -352,7 +382,10 @@ public final class ApplicationDecider {
         state.applicationDataVersion + 1,
         state.status,
         nextStatus,
-        command.occurredAt());
+        command.occurredAt(),
+        proceedingIds(content.proceedings()),
+        content,
+        command.serialisedRequest());
   }
 
   /** Validates that the application holds an overall decision of {@code GRANTED}. */
@@ -404,6 +437,26 @@ public final class ApplicationDecider {
         details.occurredAt(),
         details.potentialDuplicates(),
         details.provider() == null ? null : details.provider().getOfficeCode(),
-        details.laaReference());
+        details.laaReference(),
+        proceedingIds(details.proceedings()),
+        ParsedAppContentDetails.builder()
+            .client(details.client())
+            .provider(details.provider())
+            .opponents(details.opponents())
+            .categoryOfLaw(details.categoryOfLaw())
+            .matterType(details.matterType())
+            .categoryOfLawCode(details.categoryOfLawCode())
+            .matterTypeCode(details.matterTypeCode())
+            .submittedAt(details.submittedAt())
+            .usedDelegatedFunctions(details.usedDelegatedFunctions())
+            .proceedings(details.proceedings())
+            .build(),
+        details.serialisedRequest());
+  }
+
+  private static List<UUID> proceedingIds(List<Proceeding> proceedings) {
+    return proceedings == null
+        ? List.of()
+        : proceedings.stream().filter(Objects::nonNull).map(Proceeding::getId).toList();
   }
 }
