@@ -203,6 +203,37 @@ conflict, and `411` when the request has no content length.
 You can also use the Swagger UI to execute endpoints, which is described below in the
 [API documentation](#api-documentation) section.
 
+#### Making a Prior Authority decision
+
+Submit a decision with `PATCH
+/api/v0/prior-authorities/{priorAuthorityId}/decision`. For an expert decision, the optional
+`newTimeRequested` value can be included alongside other expert fee overrides:
+
+```json
+{
+  "decision": "GRANTED",
+  "decisionJustification": "Granted",
+  "amountGranted": 200,
+  "dateGranted": "2026-11-06T10:00:00Z",
+  "eventHistory": {},
+  "priorAuthorityVersion": 0,
+  "expert": {
+    "newHourlyRateAmount": 95.00,
+    "newTimeRequested": {
+      "hours": 3,
+      "minutes": 15
+    }
+  }
+}
+```
+
+- The time override is optional and is permitted only for EXPERT prior authorities with HOURLY
+  billing; otherwise the request returns `400`.
+- `hours` must be an integer greater than or equal to 0, and `minutes` must be an integer from 0 to
+  59. Non-integer values are rejected with a `400 ProblemDetail`.
+- The provider's original `timeRequested` is retained. The override is returned in
+  `decisionDetails.expert.newTimeRequested`.
+
 #### Getting tokens from local mock-oauth2-server
 
 You can use the helper script to fetch a token from the local mock-oauth2-server:

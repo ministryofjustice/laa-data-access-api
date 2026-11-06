@@ -24,5 +24,6 @@ public class PriorAuthorityState {
   UUID caseworkerId;
   long assignmentVersion;
   String priorAuthorityType;
+  String billingType;
   List<DocumentMetadata> uploadedDocuments = new ArrayList<>();
 }

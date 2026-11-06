@@ -58,6 +58,8 @@ components:
         newHourlyRateAmount:
           type: number
           description: New hourly rate amount if applicable
+        newTimeRequested:
+          $ref: "#/components/schemas/DecisionTimeRequested"
 
     PriorAuthorityResponse:
       type: object
@@ -264,6 +266,21 @@ components:
           exclusiveMinimum: true
 
     SubmitTimeRequested:
+      type: object
+      additionalProperties: false
+      required:
+        - hours
+        - minutes
+      properties:
+        hours:
+          type: integer
+          minimum: 0
+        minutes:
+          type: integer
+          minimum: 0
+          maximum: 59
+
+    DecisionTimeRequested:
       type: object
       additionalProperties: false
       required:
@@ -545,6 +562,8 @@ components:
         newHourlyRateAmount:
           type: number
           description: New hourly rate amount if applicable
+        newTimeRequested:
+          $ref: "#/components/schemas/TimeRequested"
 
     DisbursementInformation:
       type: object

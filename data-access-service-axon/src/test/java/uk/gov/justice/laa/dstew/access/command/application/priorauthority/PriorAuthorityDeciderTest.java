@@ -8,10 +8,14 @@ import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.MakePriorAuthorityDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.BillingType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityContent;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.TimeRequested;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityStatusConflictException;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityVersionConflictException;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
@@ -76,7 +80,8 @@ class PriorAuthorityDeciderTest {
     SubmitPriorAuthorityDraftCommand command =
         new SubmitPriorAuthorityDraftCommand(priorAuthorityId, OCCURRED_AT);
 
-    PriorAuthoritySubmittedEvent event = PriorAuthorityDecider.decideSubmit(command, state, 4L);
+    PriorAuthoritySubmittedEvent event =
+        PriorAuthorityDecider.decideSubmit(command, state, 4L, "FIXED_RATE");
 
     assertThat(event.priorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(event.applicationId()).isEqualTo(state.applicationId);
@@ -85,6 +90,7 @@ class PriorAuthorityDeciderTest {
     assertThat(event.dataVersion()).isEqualTo(0L);
     assertThat(event.applicationDataVersion()).isEqualTo(4L);
     assertThat(event.occurredAt()).isEqualTo(OCCURRED_AT);
+    assertThat(event.billingType()).isEqualTo("FIXED_RATE");
   }
 
   @Test
@@ -116,6 +122,58 @@ class PriorAuthorityDeciderTest {
     assertThat(result.get().priorAuthorityType()).isEqualTo(PriorAuthorityType.EXPERT.name());
     assertThat(result.get().dataVersion()).isEqualTo(5L);
     assertThat(result.get().overallDecision()).isEqualTo("GRANTED");
+  }
+
+  @Test
+  void givenHourlyExpert_whenDecideDecisionWithTimeOverride_thenReturnsEvent() {
+    PriorAuthorityState state = submittedState(UUID.randomUUID(), UUID.randomUUID(), 4L);
+    state.billingType = BillingType.HOURLY.name();
+    MakePriorAuthorityDecisionCommand command =
+        decisionCommand(
+            state,
+            ExpertFeeInformation.builder().newTimeRequested(new TimeRequested(3, 15)).build());
+
+    Optional<PriorAuthorityDecisionMadeEvent> result =
+        PriorAuthorityDecider.decideDecision(state, command);
+
+    assertThat(result).isPresent();
+  }
+
+  @ParameterizedTest
+  @CsvSource(
+      value = {"EXPERT,FIXED_RATE", "EXPERT,NULL", "DISBURSEMENT,NULL", "COUNSEL,NULL"},
+      nullValues = "NULL")
+  void givenNonHourlyExpert_whenDecideDecisionWithTimeOverride_thenThrowsValidation(
+      String priorAuthorityType, String billingType) {
+    PriorAuthorityState state = submittedState(UUID.randomUUID(), UUID.randomUUID(), 4L);
+    state.priorAuthorityType = priorAuthorityType;
+    state.billingType = billingType;
+    MakePriorAuthorityDecisionCommand command =
+        decisionCommand(
+            state,
+            ExpertFeeInformation.builder().newTimeRequested(new TimeRequested(3, 15)).build());
+
+    assertThatThrownBy(() -> PriorAuthorityDecider.decideDecision(state, command))
+        .isInstanceOf(ValidationException.class)
+        .extracting(ValidationException.class::cast)
+        .extracting(ValidationException::errors)
+        .asList()
+        .containsExactly(
+            "expert.newTimeRequested is only permitted for EXPERT prior authorities with HOURLY billing");
+  }
+
+  @Test
+  void givenFixedRateExpertWithoutTimeOverride_whenDecideDecision_thenReturnsEvent() {
+    PriorAuthorityState state = submittedState(UUID.randomUUID(), UUID.randomUUID(), 4L);
+    state.billingType = BillingType.FIXED_RATE.name();
+    MakePriorAuthorityDecisionCommand command =
+        decisionCommand(
+            state, ExpertFeeInformation.builder().newFixedRateAmount(BigDecimal.TEN).build());
+
+    Optional<PriorAuthorityDecisionMadeEvent> result =
+        PriorAuthorityDecider.decideDecision(state, command);
+
+    assertThat(result).isPresent();
   }
 
   @Test
@@ -366,6 +424,23 @@ class PriorAuthorityDeciderTest {
     state.caseworkerId = TestJwtDecoderConfig.CASEWORKER_ID;
     state.submitted = false;
     return state;
+  }
+
+  private static MakePriorAuthorityDecisionCommand decisionCommand(
+      PriorAuthorityState state, ExpertFeeInformation expertFee) {
+    return new MakePriorAuthorityDecisionCommand(
+        state.priorAuthorityId,
+        TestJwtDecoderConfig.CASEWORKER_ID,
+        state.dataVersion,
+        "GRANTED",
+        "Recorded",
+        BigDecimal.valueOf(350.0),
+        expertFee,
+        null,
+        null,
+        OCCURRED_AT,
+        "{\"decision\":\"GRANTED\"}",
+        OCCURRED_AT);
   }
 
   @Test

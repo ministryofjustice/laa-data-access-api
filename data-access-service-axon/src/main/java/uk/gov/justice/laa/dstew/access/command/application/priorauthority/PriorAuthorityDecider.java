@@ -8,7 +8,9 @@ import lombok.NoArgsConstructor;
 import uk.gov.justice.laa.dstew.access.applicationcontent.DecisionValue;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.MakePriorAuthorityDecisionCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.BillingType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityStatus;
+import uk.gov.justice.laa.dstew.access.content.priorauthority.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.document.DocumentFileSuffix;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityStatusConflictException;
 import uk.gov.justice.laa.dstew.access.exception.PriorAuthorityVersionConflictException;
@@ -41,11 +43,13 @@ public final class PriorAuthorityDecider {
    *
    * @param applicationDataVersion the parent application's current data version, pinned into the
    *     event so the work-list projection hydrates parent fields deterministically on replay
+   * @param billingType the expert billing type from the validated submitted content, or null
    */
   public static PriorAuthoritySubmittedEvent decideSubmit(
       SubmitPriorAuthorityDraftCommand command,
       PriorAuthorityState state,
-      long applicationDataVersion) {
+      long applicationDataVersion,
+      String billingType) {
     return new PriorAuthoritySubmittedEvent(
         command.priorAuthorityId(),
         state.applicationId,
@@ -53,7 +57,8 @@ public final class PriorAuthorityDecider {
         state.schemaVersion,
         0L,
         applicationDataVersion,
-        command.occurredAt());
+        command.occurredAt(),
+        billingType);
   }
 
   /**
@@ -74,6 +79,7 @@ public final class PriorAuthorityDecider {
   public static Optional<PriorAuthorityDecisionMadeEvent> decideDecision(
       PriorAuthorityState state, MakePriorAuthorityDecisionCommand command) {
     validateDecision(command);
+    validateTimeRequestedOverride(state, command);
     validateDecisionAssignment(state, command);
 
     if (command.expectedPriorAuthorityVersion() != state.dataVersion) {
@@ -121,6 +127,20 @@ public final class PriorAuthorityDecider {
     if (!DecisionValue.GRANTED.name().equals(command.overallDecision())
         && !DecisionValue.REFUSED.name().equals(command.overallDecision())) {
       throw new ValidationException(List.of("overallDecision must be one of: GRANTED, REFUSED"));
+    }
+  }
+
+  /** Allows a time override only for EXPERT prior authorities billed HOURLY. */
+  private static void validateTimeRequestedOverride(
+      PriorAuthorityState state, MakePriorAuthorityDecisionCommand command) {
+    if (command.expertFee() == null || command.expertFee().getNewTimeRequested() == null) {
+      return;
+    }
+    if (!PriorAuthorityType.EXPERT.name().equals(state.priorAuthorityType)
+        || !BillingType.HOURLY.name().equals(state.billingType)) {
+      throw new ValidationException(
+          List.of(
+              "expert.newTimeRequested is only permitted for EXPERT prior authorities with HOURLY billing"));
     }
   }
 
