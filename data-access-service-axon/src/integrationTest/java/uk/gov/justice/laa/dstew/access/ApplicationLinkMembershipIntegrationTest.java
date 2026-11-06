@@ -64,6 +64,8 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationSummary;
 import uk.gov.justice.laa.dstew.access.model.ApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.LinkedApplicationSummaryResponse;
 import uk.gov.justice.laa.dstew.access.model.LinkedGroupChangeRequest;
+import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryResult;
+import uk.gov.justice.laa.dstew.access.query.application.history.FindApplicationHistoryQuery;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
 import uk.gov.justice.laa.dstew.access.query.genesis.GenesisStreamProjection;
@@ -1330,11 +1332,13 @@ public class ApplicationLinkMembershipIntegrationTest {
   }
 
   private long historyCount(UUID applicationId, String eventType) {
-    return jdbcTemplate.queryForObject(
-        "SELECT COUNT(*) FROM axon.application_history WHERE application_id = ? AND event_type = ?",
-        Long.class,
-        applicationId,
-        eventType);
+    return queryGateway
+        .query(
+            new FindApplicationHistoryQuery(applicationId, List.of(eventType)),
+            ApplicationHistoryResult.class)
+        .join()
+        .applicationHistoryEvents()
+        .size();
   }
 
   private List<String> genesisStream(UUID applicationId) {

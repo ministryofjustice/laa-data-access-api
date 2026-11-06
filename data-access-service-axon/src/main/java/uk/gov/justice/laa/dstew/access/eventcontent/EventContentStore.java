@@ -22,4 +22,7 @@ public interface EventContentStore {
   Map<String, ObjectNode> findByTags(Collection<String> tags);
 
   Optional<ObjectNode> findByEventId(String eventId);
+
+  /** Returns content keyed by event id for the given events; events without content are absent. */
+  Map<String, ObjectNode> findByEventIds(Collection<String> eventIds);
 }

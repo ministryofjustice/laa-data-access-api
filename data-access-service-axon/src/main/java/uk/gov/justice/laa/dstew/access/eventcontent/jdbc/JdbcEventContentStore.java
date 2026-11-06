@@ -82,6 +82,28 @@ public final class JdbcEventContentStore implements EventContentStore {
         .map(this::read);
   }
 
+  @Override
+  public Map<String, ObjectNode> findByEventIds(Collection<String> eventIds) {
+    Map<String, ObjectNode> content = new HashMap<>();
+    if (eventIds.isEmpty()) {
+      return content;
+    }
+    jdbc.query(
+        connection -> {
+          var statement =
+              connection.prepareStatement(
+                  "SELECT event_id, content::text AS content FROM "
+                      + table
+                      + " WHERE event_id = ANY (?)");
+          statement.setArray(1, connection.createArrayOf("varchar", eventIds.toArray()));
+          return statement;
+        },
+        row -> {
+          content.put(row.getString("event_id"), read(row.getString("content")));
+        });
+    return content;
+  }
+
   private ObjectNode read(String json) {
     return (ObjectNode) mapper.readTree(json);
   }

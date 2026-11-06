@@ -66,6 +66,9 @@ class GenesisStreamProjectionTest {
     when(repository.existsByGenesisIdAndSourceAndEventIdentifier(
             previousLead, GenesisStreamProjection.LOCAL_SOURCE, "event-1"))
         .thenReturn(true);
+    when(repository.existsByGenesisIdAndSourceAndEventIdentifier(
+            newLead, GenesisStreamProjection.LOCAL_SOURCE, "event-1"))
+        .thenReturn(false);
 
     projection.on(event, message);
 

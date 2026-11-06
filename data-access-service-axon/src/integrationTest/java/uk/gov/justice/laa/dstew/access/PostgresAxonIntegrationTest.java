@@ -10,7 +10,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.OffsetDateTime;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -71,6 +71,7 @@ import uk.gov.justice.laa.dstew.access.model.CreateNoteRequest;
 import uk.gov.justice.laa.dstew.access.model.CreatePriorAuthorityDraftRequest;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.DecisionStatusResponse;
+import uk.gov.justice.laa.dstew.access.model.DomainEventType;
 import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
 import uk.gov.justice.laa.dstew.access.model.ExpertCosts;
 import uk.gov.justice.laa.dstew.access.model.ExpertDetails;
@@ -89,9 +90,9 @@ import uk.gov.justice.laa.dstew.access.model.ScopeLimitationResponse;
 import uk.gov.justice.laa.dstew.access.model.WorkListAssignRequest;
 import uk.gov.justice.laa.dstew.access.model.WorkListUnassignRequest;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
-import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadModel;
-import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadRepository;
-import uk.gov.justice.laa.dstew.access.query.application.history.PriorAuthorityHistoryReadRepository;
+import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryEventResult;
+import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryResult;
+import uk.gov.justice.laa.dstew.access.query.application.history.FindApplicationHistoryQuery;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 import util.ProjectionAwaiter;
@@ -117,10 +118,6 @@ class PostgresAxonIntegrationTest {
   @Autowired private EventStorageEngine eventStorageEngine;
 
   @Autowired private JdbcTemplate jdbcTemplate;
-
-  @Autowired private ApplicationHistoryReadRepository applicationHistoryReadRepository;
-
-  @Autowired private PriorAuthorityHistoryReadRepository priorAuthorityHistoryReadRepository;
 
   @Autowired private CommandGateway commandGateway;
 
@@ -397,15 +394,6 @@ class PostgresAxonIntegrationTest {
             ORDER BY sequence_name
             """,
             String.class);
-    List<String> applicationHistoryColumns =
-        jdbcTemplate.queryForList(
-            """
-            SELECT column_name
-            FROM information_schema.columns
-            WHERE table_schema = 'axon'
-              AND table_name = 'application_history'
-            """,
-            String.class);
 
     assertThat(appliedVersions).containsExactlyElementsOf(expectedMigrationVersions());
     assertThat(tables)
@@ -413,7 +401,6 @@ class PostgresAxonIntegrationTest {
             "application_current_state",
             "application_data",
             "application_group_route",
-            "application_history",
             "application_list_index",
             "domain_event_entry",
             "event_content",
@@ -423,16 +410,12 @@ class PostgresAxonIntegrationTest {
             "prior_authority_current_state",
             "prior_authority_data",
             "prior_authority_draft",
-            "prior_authority_history",
             "token_entry",
             "work_item_route",
             "work_list_group_member",
             "work_list_item");
     assertThat(sequences)
         .containsExactly("aggregate-event-global-index-sequence", "genesis_stream_id_seq");
-    assertThat(applicationHistoryColumns)
-        .contains("data_version")
-        .doesNotContain("request_payload");
     assertThat(
             jdbcTemplate.queryForObject(
                 """
@@ -555,9 +538,8 @@ class PostgresAxonIntegrationTest {
         .singleElement()
         .satisfies(
             history -> {
-              assertThat(history.getEventType()).isEqualTo("APPLICATION_CREATED");
-              assertThat(history.getDataVersion()).isZero();
-              assertThat(history.getServiceName()).isEqualTo("CIVIL_APPLY");
+              assertThat(history.eventType()).isEqualTo("APPLICATION_CREATED");
+              assertThat(history.serviceName()).isEqualTo("CIVIL_APPLY");
             });
 
     assertThat(
@@ -1111,7 +1093,7 @@ class PostgresAxonIntegrationTest {
     UUID createdApplicationId = applicationId(firstResponse);
     assertThat(awaitHistory(createdApplicationId, 1))
         .singleElement()
-        .satisfies(h -> assertThat(h.getEventType()).isEqualTo("APPLICATION_CREATED"));
+        .satisfies(h -> assertThat(h.eventType()).isEqualTo("APPLICATION_CREATED"));
 
     List<Map<String, Object>> events =
         jdbcTemplate.queryForList(
@@ -1641,10 +1623,6 @@ class PostgresAxonIntegrationTest {
               assertThat(event.getEventDescription()).isEqualTo("Integration test note");
               assertThat(event.getCaseworkerId()).isEqualTo(TestJwtDecoderConfig.CASEWORKER_ID);
             });
-    assertThat(awaitHistoryTypes(applicationId, "APPLICATION_CREATED", "APPLICATION_NOTE_CREATED"))
-        .filteredOn(history -> history.getEventType().equals("APPLICATION_NOTE_CREATED"))
-        .singleElement()
-        .satisfies(history -> assertThat(history.getDataVersion()).isEqualTo(1L));
   }
 
   @Test
@@ -1788,11 +1766,7 @@ class PostgresAxonIntegrationTest {
     await()
         .atMost(10, TimeUnit.SECONDS)
         .pollInterval(50, TimeUnit.MILLISECONDS)
-        .until(
-            () ->
-                priorAuthorityHistoryReadRepository.findAllByApplicationIdOrderByOccurredAtAsc(
-                    applicationId),
-            rows -> rows.size() == 1);
+        .until(() -> priorAuthorityHistoryEvents(applicationId), rows -> rows.size() == 1);
 
     ResponseEntity<ApplicationHistoryResponse> historyResponse =
         restTemplate.exchange(
@@ -1870,11 +1844,7 @@ class PostgresAxonIntegrationTest {
     await()
         .atMost(10, TimeUnit.SECONDS)
         .pollInterval(50, TimeUnit.MILLISECONDS)
-        .until(
-            () ->
-                priorAuthorityHistoryReadRepository.findAllByApplicationIdOrderByOccurredAtAsc(
-                    applicationId),
-            rows -> rows.size() == 2);
+        .until(() -> priorAuthorityHistoryEvents(applicationId), rows -> rows.size() == 2);
 
     ResponseEntity<ApplicationHistoryResponse> historyResponse =
         restTemplate.exchange(
@@ -1963,11 +1933,7 @@ class PostgresAxonIntegrationTest {
     await()
         .atMost(10, TimeUnit.SECONDS)
         .pollInterval(50, TimeUnit.MILLISECONDS)
-        .until(
-            () ->
-                priorAuthorityHistoryReadRepository.findAllByApplicationIdOrderByOccurredAtAsc(
-                    applicationId),
-            rows -> rows.size() == 3);
+        .until(() -> priorAuthorityHistoryEvents(applicationId), rows -> rows.size() == 3);
 
     ResponseEntity<ApplicationHistoryResponse> historyResponse =
         restTemplate.exchange(
@@ -2083,11 +2049,7 @@ class PostgresAxonIntegrationTest {
     await()
         .atMost(10, TimeUnit.SECONDS)
         .pollInterval(50, TimeUnit.MILLISECONDS)
-        .until(
-            () ->
-                priorAuthorityHistoryReadRepository.findAllByApplicationIdOrderByOccurredAtAsc(
-                    applicationId),
-            rows -> rows.size() == 4);
+        .until(() -> priorAuthorityHistoryEvents(applicationId), rows -> rows.size() == 4);
 
     ResponseEntity<ApplicationHistoryResponse> historyResponse =
         restTemplate.exchange(
@@ -2200,11 +2162,7 @@ class PostgresAxonIntegrationTest {
     await()
         .atMost(10, TimeUnit.SECONDS)
         .pollInterval(50, TimeUnit.MILLISECONDS)
-        .until(
-            () ->
-                priorAuthorityHistoryReadRepository.findAllByApplicationIdOrderByOccurredAtAsc(
-                    applicationId),
-            rows -> rows.size() == 3);
+        .until(() -> priorAuthorityHistoryEvents(applicationId), rows -> rows.size() == 3);
 
     ResponseEntity<ApplicationHistoryResponse> historyResponse =
         restTemplate.exchange(
@@ -2245,135 +2203,6 @@ class PostgresAxonIntegrationTest {
     assertThat(untouchedGroup.getEvents()).hasSize(1);
     assertThat(untouchedGroup.getEvents().getFirst().getEventType())
         .isEqualTo("PRIOR_AUTHORITY_SUBMITTED");
-  }
-
-  @Test
-  void
-      givenConflictingPriorAuthorityTypeRowsInDb_whenGetHistory_thenReturnsHttp500WithStableProblemDetail() {
-    UUID applicationId = UUID.randomUUID();
-    UUID priorAuthorityId = UUID.randomUUID();
-
-    jdbcTemplate.update(
-        """
-        INSERT INTO axon.prior_authority_history
-            (event_id, application_id, prior_authority_id, prior_authority_type,
-             event_type, item_version, service_name, occurred_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        "conflict-evt-1",
-        applicationId,
-        priorAuthorityId,
-        "EXPERT",
-        "PRIOR_AUTHORITY_SUBMITTED",
-        2L,
-        "CIVIL_APPLY",
-        OffsetDateTime.parse("2026-08-01T09:00:00Z"));
-
-    jdbcTemplate.update(
-        """
-        INSERT INTO axon.prior_authority_history
-            (event_id, application_id, prior_authority_id, prior_authority_type,
-             event_type, item_version, service_name, occurred_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        "conflict-evt-2",
-        applicationId,
-        priorAuthorityId,
-        "COUNSEL",
-        "PRIOR_AUTHORITY_SUBMITTED",
-        2L,
-        "CIVIL_APPLY",
-        OffsetDateTime.parse("2026-08-01T10:00:00Z"));
-
-    try {
-      ResponseEntity<String> response =
-          restTemplate.exchange(
-              "http://localhost:"
-                  + port
-                  + "/api/v0/applications/"
-                  + applicationId
-                  + "/history-search",
-              HttpMethod.GET,
-              new HttpEntity<>(headers()),
-              String.class);
-
-      assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
-      var responseBody = objectMapper.readTree(response.getBody());
-      assertThat(responseBody.get("status").asInt()).isEqualTo(500);
-      assertThat(responseBody.get("detail").asText())
-          .isEqualTo("Application history data is inconsistent");
-      assertThat(response.getBody()).doesNotContain(applicationId.toString());
-      assertThat(response.getBody()).doesNotContain(priorAuthorityId.toString());
-      assertThat(response.getBody()).doesNotContain("conflicting");
-    } finally {
-      jdbcTemplate.update(
-          "DELETE FROM axon.prior_authority_history WHERE event_id IN (?, ?)",
-          "conflict-evt-1",
-          "conflict-evt-2");
-    }
-  }
-
-  @Test
-  void
-      givenSubmittedPriorAuthorityWithUploadedDocument_whenGetHistory_thenIncludesDocumentUploadedEvent() {
-    UUID applicationId = UUID.randomUUID();
-    UUID priorAuthorityId = UUID.randomUUID();
-
-    jdbcTemplate.update(
-        """
-        INSERT INTO axon.prior_authority_history
-            (event_id, application_id, prior_authority_id, prior_authority_type,
-             event_type, item_version, service_name, occurred_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        "pa-submit-evt-1",
-        applicationId,
-        priorAuthorityId,
-        "EXPERT",
-        "PRIOR_AUTHORITY_SUBMITTED",
-        2L,
-        "CIVIL_APPLY",
-        OffsetDateTime.parse("2026-09-18T10:00:00Z"));
-
-    jdbcTemplate.update(
-        """
-        INSERT INTO axon.prior_authority_history
-            (event_id, application_id, prior_authority_id, prior_authority_type,
-             event_type, item_version, service_name, occurred_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        "pa-upload-evt-1",
-        applicationId,
-        priorAuthorityId,
-        "EXPERT",
-        "PRIOR_AUTHORITY_DOCUMENT_UPLOADED",
-        2L,
-        "CIVIL_APPLY",
-        OffsetDateTime.parse("2026-09-18T11:00:00Z"));
-
-    ResponseEntity<ApplicationHistoryResponse> historyResponse =
-        restTemplate.exchange(
-            "http://localhost:"
-                + port
-                + "/api/v0/applications/"
-                + applicationId
-                + "/history-search",
-            HttpMethod.GET,
-            new HttpEntity<>(headers()),
-            ApplicationHistoryResponse.class);
-    assertThat(historyResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-
-    assertThat(historyResponse.getBody().getPriorAuthorities()).hasSize(1);
-    PriorAuthorityHistoryGroup group = historyResponse.getBody().getPriorAuthorities().get(0);
-    assertThat(group.getPriorAuthorityId()).isEqualTo(priorAuthorityId);
-    assertThat(group.getPriorAuthorityType()).isEqualTo(PriorAuthorityType.EXPERT);
-    assertThat(group.getEvents())
-        .extracting(event -> event.getEventType())
-        .contains("PRIOR_AUTHORITY_SUBMITTED", "PRIOR_AUTHORITY_DOCUMENT_UPLOADED");
-    assertThat(group.getEvents())
-        .filteredOn(event -> event.getEventType().equals("PRIOR_AUTHORITY_DOCUMENT_UPLOADED"))
-        .singleElement()
-        .satisfies(event -> assertThat(event.getCaseworkerId()).isNull());
   }
 
   private CreatePriorAuthorityDraftRequest fixedRateExpertDraftRequest(UUID applicationId) {
@@ -2467,39 +2296,49 @@ class PostgresAxonIntegrationTest {
         response.getStatusCode());
   }
 
-  private List<ApplicationHistoryReadModel> awaitHistory(UUID applicationId, int expectedCount) {
+  private List<ApplicationHistoryEventResult> awaitHistory(UUID applicationId, int expectedCount) {
     return await()
-        .alias(
-            "application history projection to contain "
-                + expectedCount
-                + " events for "
-                + applicationId)
+        .alias("application history to contain " + expectedCount + " events for " + applicationId)
         .atMost(10, TimeUnit.SECONDS)
         .pollInterval(50, TimeUnit.MILLISECONDS)
-        .until(
-            () ->
-                applicationHistoryReadRepository.findAllByApplicationIdOrderByOccurredAtAsc(
-                    applicationId),
-            history -> history.size() == expectedCount);
+        .until(() -> history(applicationId), history -> history.size() == expectedCount);
   }
 
-  private List<ApplicationHistoryReadModel> awaitHistoryTypes(
+  private List<ApplicationHistoryEventResult> awaitHistoryTypes(
       UUID applicationId, String... expectedEventTypes) {
     List<String> expected = List.of(expectedEventTypes);
     return await()
-        .alias("application history projection to contain " + expected + " for " + applicationId)
+        .alias("application history to contain " + expected + " for " + applicationId)
         .atMost(10, TimeUnit.SECONDS)
         .pollInterval(50, TimeUnit.MILLISECONDS)
         .until(
-            () ->
-                applicationHistoryReadRepository.findAllByApplicationIdOrderByOccurredAtAsc(
-                    applicationId),
+            () -> history(applicationId),
             history -> {
               List<String> actual =
-                  history.stream().map(ApplicationHistoryReadModel::getEventType).toList();
+                  history.stream().map(ApplicationHistoryEventResult::eventType).toList();
               return actual.size() == expected.size()
                   && new HashSet<>(actual).equals(new HashSet<>(expected));
             });
+  }
+
+  private ApplicationHistoryResult historyResult(UUID applicationId) {
+    return queryGateway
+        .query(
+            new FindApplicationHistoryQuery(
+                applicationId,
+                Arrays.stream(DomainEventType.values()).map(DomainEventType::getValue).toList()),
+            ApplicationHistoryResult.class)
+        .join();
+  }
+
+  private List<ApplicationHistoryEventResult> history(UUID applicationId) {
+    return historyResult(applicationId).applicationHistoryEvents();
+  }
+
+  private List<?> priorAuthorityHistoryEvents(UUID applicationId) {
+    return historyResult(applicationId).priorAuthorityHistoryGroups().stream()
+        .flatMap(group -> group.events().stream())
+        .toList();
   }
 
   private static List<String> expectedMigrationVersions() throws IOException {

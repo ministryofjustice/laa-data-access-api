@@ -41,7 +41,8 @@ class EventContentArchitectureTest {
    * command-side reader is ApplicationCommandHandlerSupport, which reads draft content for submit
    * and treats erased draft content as no draft. ApplicationReadModelAssembler reads content from
    * the sourced application aggregate for single-application reads and treats erased content as not
-   * found.
+   * found. ApplicationHistoryMapper reads note text and decision descriptions from events loaded
+   * through StoredEvents under the application-history reader, and shows erased content as absent.
    */
   @Test
   void onlyEvolveAndRegisteredProjectionsReadContent() {
@@ -60,6 +61,8 @@ class EventContentArchitectureTest {
         .and()
         .doNotHaveFullyQualifiedName(
             ROOT + ".command.application.handler.ApplicationCommandHandlerSupport")
+        .and()
+        .doNotHaveFullyQualifiedName(ROOT + ".query.application.history.ApplicationHistoryMapper")
         .should()
         .callMethodWhere(
             target(owner(describe("Erasable", owner -> owner.isEquivalentTo(Erasable.class))))

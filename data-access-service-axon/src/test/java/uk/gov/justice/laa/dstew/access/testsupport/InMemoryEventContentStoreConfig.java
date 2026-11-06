@@ -45,5 +45,12 @@ public class InMemoryEventContentStoreConfig {
     public Optional<ObjectNode> findByEventId(String eventId) {
       return Optional.ofNullable(rows.get(eventId)).map(row -> row.content().deepCopy());
     }
+
+    @Override
+    public Map<String, ObjectNode> findByEventIds(Collection<String> eventIds) {
+      return eventIds.stream()
+          .filter(rows::containsKey)
+          .collect(Collectors.toMap(id -> id, id -> rows.get(id).content().deepCopy()));
+    }
   }
 }

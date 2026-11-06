@@ -40,8 +40,8 @@ import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.CreateApplicationDraftRequest;
 import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadRepository;
-import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
+import uk.gov.justice.laa.dstew.access.query.genesis.GenesisStreamRepository;
 import uk.gov.justice.laa.dstew.access.testsupport.InMemoryEventContentStoreConfig;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 
@@ -70,7 +70,7 @@ class EventProcessorRecoveryInMemoryTest {
   @Autowired private EventStore eventStore;
   @Autowired private CommandGateway commandGateway;
   @Autowired private ApplicationReadRepository applicationReadRepository;
-  @Autowired private ApplicationHistoryReadRepository applicationHistoryReadRepository;
+  @Autowired private GenesisStreamRepository genesisStreamRepository;
   @Autowired private LinkedApplicationGroupReadRepository groupReadRepository;
   @Autowired private FailOnceProjection failOnceProjection;
   @Autowired private PermanentlyFailingProjection permanentlyFailingProjection;
@@ -114,10 +114,10 @@ class EventProcessorRecoveryInMemoryTest {
         .until(
             () ->
                 applicationReadRepository.existsById(applicationId)
-                    && applicationHistoryReadRepository
-                            .findAllByApplicationIdOrderByOccurredAtAsc(applicationId)
+                    && genesisStreamRepository
+                            .findAllByGenesisIdOrderByOccurredAtAscIdAsc(applicationId)
                             .size()
-                        == 1
+                        > 0
                     && groupReadRepository.count() == 0);
 
     assertThat(
@@ -164,17 +164,26 @@ class EventProcessorRecoveryInMemoryTest {
                           assertThat(document.getFileName()).isEqualTo("client-report.pdf");
                         }));
 
+    final int pointers =
+        await()
+            .atMost(Duration.ofSeconds(5))
+            .until(
+                () ->
+                    genesisStreamRepository
+                        .findAllByGenesisIdOrderByOccurredAtAscIdAsc(applicationId)
+                        .size(),
+                count -> count > 0);
     var processors =
         List.of(
             processor("application-projection"),
-            processor("application-history-projection"),
+            processor("genesis-stream"),
             processor("linked-application-group-projection"));
     processors.forEach(processor -> processor.shutdown().join());
     applicationReadRepository.deleteAllInBatch();
-    applicationHistoryReadRepository.deleteAllInBatch();
+    genesisStreamRepository.deleteAllInBatch();
     groupReadRepository.deleteAllInBatch();
     assertThat(applicationReadRepository.existsById(applicationId)).isFalse();
-    assertThat(applicationHistoryReadRepository.count()).isZero();
+    assertThat(genesisStreamRepository.count()).isZero();
     assertThat(groupReadRepository.count()).isZero();
 
     processors.forEach(processor -> processor.resetTokens().join());
@@ -185,10 +194,10 @@ class EventProcessorRecoveryInMemoryTest {
         .until(
             () ->
                 applicationReadRepository.existsById(applicationId)
-                    && applicationHistoryReadRepository
-                            .findAllByApplicationIdOrderByOccurredAtAsc(applicationId)
+                    && genesisStreamRepository
+                            .findAllByGenesisIdOrderByOccurredAtAscIdAsc(applicationId)
                             .size()
-                        == 1
+                        == pointers
                     && groupReadRepository.count() == 0);
     assertThat(
             restTemplate

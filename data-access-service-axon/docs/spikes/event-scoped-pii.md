@@ -1145,6 +1145,37 @@ Split into two steps:
         - The source for this store is `data-access-api`.
         - Unit tests 1429/1429 and integration tests 314/314 pass.
           Checkstyle stays at baseline (0/37/53).
+      - **Commit 3, history reads the stream (done 2026-11-06):**
+        - `eventcontent.StoredEvents` loads events by identifier. Its
+          Axon implementation queries `AggregateEventEntry` in one batch,
+          rejoins content in one `event_content` query, and decodes by
+          `@Event` name. Callers must be in `RegisteredContentReaders`;
+          history is registered as `application-history`.
+        - `FindApplicationHistoryQuery` reads the application's pointers in
+          stream order, loads their events and maps them. A missing event
+          is an integrity failure. The mapper holds no state between
+          requests; a Prior Authority's type for assignment entries comes
+          from its submitted event in the same stream.
+        - Notes and decision descriptions come from event content. Erased
+          content gives no description. `ApplicationHistoryMapper` is a
+          listed content reader in `EventContentArchitectureTest`.
+        - Removed: both history projections, assemblers, read models and
+          repositories, and the `application-history-projection`
+          processor. V34 drops `application_history` and
+          `prior_authority_history` and their tokens.
+        - Integration tests now read history through the query, not the
+          tables. Two tests that inserted conflicting rows into
+          `prior_authority_history` are replaced by
+          `ApplicationHistoryMapperTest`. One of them expected
+          `PRIOR_AUTHORITY_DOCUMENT_UPLOADED` entries, which no projection
+          ever wrote.
+        - The API response is unchanged. Only the tables' internal
+          `data_version` column, used to look up `application_data`, is
+          gone.
+        - Fixed an ordering flake in `GenesisStreamProjectionTest` (genesis
+          IDs are a set, so either lead may be checked first).
+        - Unit tests 1378/1378 and integration tests 312/312 pass.
+          Checkstyle stays at baseline (0/37/53).
       - **Scheduling:** a separate step after (i); step (i) does not touch
         history.
   - **4b-3b(i) single-application reads from the aggregate (done

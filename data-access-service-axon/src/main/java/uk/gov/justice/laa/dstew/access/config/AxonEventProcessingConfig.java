@@ -27,11 +27,6 @@ public class AxonEventProcessingConfig {
         RegisteredContentReaders.APPLICATION_PROJECTION, separator, store, converter);
   }
 
-  @Bean
-  EventProcessorDefinition applicationHistoryProjectionProcessor() {
-    return pooledStreamingProcessor("application-history-projection");
-  }
-
   /** Writes genesis stream pointers; it needs no content, only IDs and timestamps. */
   @Bean
   EventProcessorDefinition genesisStreamProcessor() {
