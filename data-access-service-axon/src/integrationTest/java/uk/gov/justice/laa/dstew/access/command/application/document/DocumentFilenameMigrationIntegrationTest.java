@@ -115,7 +115,7 @@ class DocumentFilenameMigrationIntegrationTest extends BaseIntegrationTest {
         .hasMessageContaining("more than one owner");
     assertThat(
             template.queryForObject(
-                "SELECT to_regclass('" + SCHEMA + ".document_filename') IS NULL", Boolean.class))
+                "SELECT to_regclass(?) IS NULL", Boolean.class, SCHEMA + ".document_filename"))
         .isTrue();
   }
 
