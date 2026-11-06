@@ -54,6 +54,6 @@ class LinkApplicationCoordinatorSecurityTest extends BaseSecuredUseCaseTest {
 
   private LinkApplicationCommand linkCommand() {
     return new LinkApplicationCommand(
-        UUID.randomUUID(), UUID.randomUUID(), LinkType.FAMILY, null, Instant.now());
+        UUID.randomUUID(), UUID.randomUUID(), LinkType.FAMILY, null, Instant.now(), null);
   }
 }

@@ -78,7 +78,7 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
     assertThat(payloadCaptor.getValue().serialisedRequest()).isEqualTo("{}");
     assertThat(payloadCaptor.getValue().submittedAt()).isEqualTo(OCCURRED_AT);
     assertThat(payloadCaptor.getValue().officeCode()).isEqualTo("1A001B");
-    verify(writeAccessPolicy).requireWriteAccess(eq("1A001B"), isNull());
+    verify(writeAccessPolicy).requireOfficeCodeWriteAccess(eq("1A001B"), isNull());
     verify(eventAppender)
         .append(
             new PriorAuthorityDraftStartedEvent(
@@ -153,7 +153,7 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
             eq("{}"),
             eq(OCCURRED_AT));
     assertThat(payloadCaptor.getValue().officeCode()).isNull();
-    verify(writeAccessPolicy).requireWriteAccess(isNull(), isNull());
+    verify(writeAccessPolicy).requireOfficeCodeWriteAccess(isNull(), isNull());
     verify(eventAppender)
         .append(
             new PriorAuthorityDraftStartedEvent(
@@ -249,7 +249,7 @@ class CreatePriorAuthorityDraftCommandHandlerTest {
     when(dataStore.exists(priorAuthorityId)).thenReturn(false);
     doThrow(new AccessDeniedException("Caller is not authorised to write this resource"))
         .when(writeAccessPolicy)
-        .requireWriteAccess(eq("1A001B"), isNull());
+        .requireOfficeCodeWriteAccess(eq("1A001B"), isNull());
 
     assertThatThrownBy(
             () ->

@@ -7,8 +7,10 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.model.ApplicationStatus;
+import uk.gov.justice.laa.dstew.access.model.AutoGranted;
 import uk.gov.justice.laa.dstew.access.model.PriorAuthorityType;
 import uk.gov.justice.laa.dstew.access.query.worklist.FindWorkListItemsResult;
 import uk.gov.justice.laa.dstew.access.query.worklist.WorkListItemReadModel;
@@ -78,6 +80,7 @@ class WorkListResponseMapperTest {
     item.setMatterTypes(List.of("Special Children Act"));
     item.setMatterTypeCodes(List.of("SCA"));
     item.setApplicationStatus("APPLICATION_SUBMITTED");
+    item.setAutoGranted(AutoGrantedState.PENDING);
 
     var response =
         new WorkListResponseMapper()
@@ -96,6 +99,7 @@ class WorkListResponseMapperTest {
                   .isEqualTo(Instant.parse("2026-09-01T10:00:00Z").atOffset(ZoneOffset.UTC));
               assertThat(mapped.getApplicationStatus())
                   .isEqualTo(ApplicationStatus.APPLICATION_SUBMITTED);
+              assertThat(mapped.getAutoGranted()).isEqualTo(AutoGranted.PENDING);
               assertThat(mapped.getPriorAuthorityType()).isNull();
               assertThat(mapped.getExpertType()).isNull();
             });
@@ -155,5 +159,6 @@ class WorkListResponseMapperTest {
     assertThat(mapped.getCategoryOfLawCode()).isNull();
     assertThat(mapped.getMatterTypes()).containsExactly("First", "Second");
     assertThat(mapped.getMatterTypeCodes()).containsExactly("M-1", "M-2");
+    assertThat(mapped.getAutoGranted()).isNull();
   }
 }
