@@ -997,37 +997,58 @@ Split into two steps:
       Checkstyle main is clean, test warnings fall to 40 and integration
       warnings stay at 49.
   - **4b-3b plan (decided 2026-11-06):** three steps: (i) single-application
-    reads, (ii) list, work-list, group-route and individuals projections,
+    reads, (ii) the application summary and the projections that use it,
     (iii) stop writing the store, drop `application_data` and switch Prior
-    Authority off `latestVersion`.
-    - **List source: list index only (option A).** The list page is built
-      from `application_list_index` plus the existing group and Prior
-      Authority lookups. The index gains `categoryOfLaw`,
-      `usedDelegatedFunctions` and `linkedGroupId`. Rejected: loading the
-      aggregate per row (up to 100 stream loads per page, against gate 2),
-      and a content column on `application_current_state` (duplicates the
-      index). The index already copies client names and DOB, so this adds no
-      new kind of exposure. After erasure and a rebuild, rows remain with
-      null content columns.
-    - **List index becomes a content reader.** It is a streaming processor
-      (`application-list-index-projection`) handling application lifecycle,
-      assignment, linked-group, note and document events. Today it reads
-      content from `application_data` on Created and Updated; it moves to
-      event content and joins `RegisteredContentReaders`.
-    - **`application_current_state` narrows to kept fields.** Each current
-      reader is reviewed for whether the aggregate serves it better:
+    Authority off `latestVersion`. The individuals endpoint was removed on
+    main (#599), so it needs no read model.
+    - **Application summary is the one source of application facts
+      (decided 2026-11-06).** The list index becomes the application summary
+      (to be renamed). It is the only application read model that reads
+      event content and joins `RegisteredContentReaders`; no other read
+      model copies application content. Erasure plus a rebuild therefore
+      only has to reach this table, and a new field touches one handler.
+      - **Holds:** descriptive facts (LAA reference, client name and DOB,
+        category of law name and code, matter types and codes, delegated
+        functions, office) and filterable lifecycle facts (status,
+        `submittedAt`, `modifiedAt`, caseworker, `autoGranted`, linked
+        group). Not workflow-only state such as assignment versions or
+        work-item boundaries. Today it is missing `categoryOfLaw`,
+        `usedDelegatedFunctions`, `linkedGroupId` and the matter-type lists.
+      - **Interface:** an `ApplicationSummaries` query port with batch
+        lookups (`findByIds`). Other read sides call it for display fields.
+        SQL joins are used only where a query filters or sorts on summary
+        fields, which today is only the list page the summary owns.
+      - **Missing rows:** the summary and its callers are separate
+        processors, so a summary row can briefly lag. The lookup returns
+        nothing for that ID and callers show empty fields; they do not wait.
+      - **List page:** built from the summary alone, plus the existing group
+        and Prior Authority lookups. Prior Authority appears only as a nested
+        list per application, so it does not affect filtering or paging.
+        Rejected: loading the aggregate per row (up to 100 stream loads per
+        page, against gate 2). After erasure and a rebuild, rows remain with
+        empty content fields.
+      - **Work list:** drops its six copied application columns and its
+        store reads. Its own filters and sort (item type, assignee,
+        `autoGranted`, `submittedAt`) stay; application fields come from the
+        summary by application ID (`parentApplicationId` for Prior Authority
+        rows). The summary keeps rows after a decision, so Prior Authority
+        rows can still find their parent. Prior Authority type and expert
+        type are Prior Authority data and move with Prior Authority content
+        later. Rejected: copying into a per-application work-list table, and
+        keeping category and matter types as event fields.
+    - **`application_current_state` merges into the summary (decided
+      2026-11-06).** After 4b-3b it would hold only status, office,
+      caseworker, group, timestamps and `autoGranted`, which the summary
+      already has. Readers move as follows:
 
       | Reader | Source after 4b-3b |
       |---|---|
       | GET details, GET by ID, notes, document download | Aggregate |
-      | `LinkedGroupAssignmentDispatcher` (caseworker lookup) | Removed on main (#593): group assignment now decides from loaded aggregates, so no command-side read of this table remains |
-      | List page | List index |
-      | Stalled assessments (status scan) | Read model (status, `submittedAt`, `autoGranted`) |
-      | Access policy | Kept columns (the individuals endpoint was removed on main, #599) |
-      | Create/Submit use cases awaiting the row | To resolve: wait on the list index, or drop the wait |
-
-      The table keeps only kept fields (status, office, caseworker, group,
-      timestamps, `autoGranted`) and no content.
+      | `LinkedGroupAssignmentDispatcher` (caseworker lookup) | Removed on main (#593): group assignment now decides from loaded aggregates |
+      | List page | Summary |
+      | Stalled assessments (status scan) | Summary |
+      | Access policy | Summary |
+      | Create/Submit use cases awaiting the row | To resolve: wait on the summary, or drop the wait |
 
 ### Remaining gates
 1. Choose the declaration design: hash-bound review (recommended by the review)
