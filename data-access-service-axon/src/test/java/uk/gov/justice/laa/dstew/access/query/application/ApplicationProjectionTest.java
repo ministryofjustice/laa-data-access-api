@@ -8,6 +8,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationCreatedEvent;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationCreationDetails;
@@ -42,10 +43,9 @@ import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftPayload;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftStore;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationNote;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
+import uk.gov.justice.laa.dstew.access.command.application.document.DocumentFilenameStore;
 import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftStartedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupDissolvedEvent;
@@ -76,10 +76,10 @@ class ApplicationProjectionTest {
   @Mock private ApplicationDataStore applicationDataStore;
   @Mock private ApplicationListIndexReadRepository listIndexRepository;
   @Mock private PriorAuthorityReadRepository priorAuthorityReadRepository;
-  @Mock private ApplicationDraftStore draftStore;
   @Mock private ApplicationReadQueryGateway applicationReadQueryGateway;
   @Mock private ApplicationCurrentStateAccessPolicy currentStateAccessPolicy;
   @Mock private ApplicationListIndexAccessPolicy listIndexAccessPolicy;
+  @Mock private DocumentFilenameStore documentFilenameStore;
   private ApplicationProjection projection;
 
   @BeforeEach
@@ -88,7 +88,6 @@ class ApplicationProjectionTest {
         new ApplicationProjection(
             applicationReadRepository,
             applicationDataStore,
-            draftStore,
             applicationReadQueryGateway,
             currentStateAccessPolicy,
             listIndexAccessPolicy,
@@ -96,7 +95,9 @@ class ApplicationProjectionTest {
                 applicationDataStore,
                 groupReadRepository,
                 listIndexRepository,
-                priorAuthorityReadRepository));
+                priorAuthorityReadRepository,
+                documentFilenameStore),
+            documentFilenameStore);
   }
 
   @Test
@@ -153,8 +154,7 @@ class ApplicationProjectionTest {
 
   @ParameterizedTest
   @ValueSource(booleans = {true, false})
-  void givenProjectedDocument_whenFound_thenHydratesFilenameFromSubmittedOrDraftContent(
-      boolean submitted) {
+  void givenProjectedDocument_whenFound_thenHydratesFilenameFromTable(boolean submitted) {
     UUID applicationId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
     Instant uploadedAt = Instant.parse("2026-09-28T15:10:27.430Z");
@@ -175,6 +175,7 @@ class ApplicationProjectionTest {
                 uploadedAt,
                 "CIVIL_APPLY",
                 "checksum"));
+    verifyNoInteractions(applicationDataStore);
   }
 
   @ParameterizedTest
@@ -194,6 +195,7 @@ class ApplicationProjectionTest {
             "missing application".equals(scenario) ? Optional.empty() : Optional.of(application));
     assertThat(projection.handle(new FindApplicationDocumentQuery(applicationId, documentId)))
         .isNull();
+    verifyNoInteractions(documentFilenameStore, applicationDataStore);
   }
 
   @ParameterizedTest
@@ -240,19 +242,13 @@ class ApplicationProjectionTest {
 
   private void givenDocumentFilenames(
       ApplicationReadModel application, boolean submitted, Map<UUID, String> filenames) {
-    ApplicationDataId id = dataId(application);
-    if (submitted) {
-      ApplicationDataPayload payload = mock(ApplicationDataPayload.class);
-      when(payload.documentFilenames()).thenReturn(filenames);
-      when(applicationDataStore.getAll(List.of(id))).thenReturn(Map.of(id, payload));
-    } else {
-      when(applicationDataStore.getAll(List.of(id))).thenReturn(Map.of());
-      when(draftStore.find(application.getApplicationId()))
-          .thenReturn(
-              Optional.of(
-                  new ApplicationDraftPayload(
-                      "APPLICATION_SUBMITTED", "LAA-123", Map.of(), "{}", List.of(), filenames)));
-    }
+    application.setStatus(
+        submitted
+            ? ApplicationStatus.APPLICATION_SUBMITTED.getValue()
+            : ApplicationStatus.APPLICATION_IN_PROGRESS.getValue());
+    when(documentFilenameStore.findAllByIds(
+            application.getUploadedDocuments().stream().map(DocumentMetadata::documentId).toList()))
+        .thenReturn(filenames);
   }
 
   @Test
@@ -378,13 +374,14 @@ class ApplicationProjectionTest {
   }
 
   @Test
-  void givenDocumentFilenamePayload_whenDetailQueried_thenHydratesReferencedVersion() {
+  void givenProjectedDocument_whenDetailQueried_thenHydratesFilenameFromTable() {
     UUID applicationId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
     ApplicationReadModel application =
         ApplicationReadModel.builder()
             .applicationId(applicationId)
             .applicationDataVersion(2L)
+            .uploadedDocuments(List.of(uploadedDocument(documentId, Instant.now(), false)))
             .build();
     ApplicationDataId dataId = new ApplicationDataId(applicationId, 2L);
     when(applicationReadQueryGateway.findApplication(any(), any()))
@@ -395,12 +392,14 @@ class ApplicationProjectionTest {
                 dataId,
                 ApplicationDataPayload.from(applicationCreationDetails(applicationId))
                     .withDocumentFilename(documentId, "client-report.pdf")));
+    when(documentFilenameStore.findAllByIds(List.of(documentId)))
+        .thenReturn(Map.of(documentId, "table-report.pdf"));
 
     ApplicationDetailResult result =
         projection.handle(new FindApplicationDetailQuery(applicationId));
 
     assertThat(result.application().getDocumentFilenames())
-        .containsEntry(documentId, "client-report.pdf");
+        .containsEntry(documentId, "table-report.pdf");
     verify(applicationDataStore).getAll(List.of(dataId));
   }
 

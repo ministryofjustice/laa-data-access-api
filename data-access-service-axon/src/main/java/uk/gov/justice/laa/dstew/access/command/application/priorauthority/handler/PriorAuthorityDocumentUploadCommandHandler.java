@@ -6,6 +6,7 @@ import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import org.axonframework.modelling.annotation.InjectEntity;
 import org.springframework.stereotype.Component;
+import uk.gov.justice.laa.dstew.access.command.application.document.DocumentFilenameStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDecider;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentUploadCommand;
@@ -28,6 +29,7 @@ public class PriorAuthorityDocumentUploadCommandHandler {
   public UUID handle(
       @AuthenticatedCallerResource PriorAuthorityDocumentUploadCommand command,
       PriorAuthorityDraftStore draftStore,
+      DocumentFilenameStore documentFilenameStore,
       @InjectEntity(idProperty = "priorAuthorityId") @WriteAccessResolverResource
           PriorAuthorityAggregate priorAuthority,
       EventAppender eventAppender) {
@@ -44,6 +46,11 @@ public class PriorAuthorityDocumentUploadCommandHandler {
     PriorAuthorityDataPayload existingDraft = requireDraft(command.priorAuthorityId(), draftStore);
     PriorAuthorityDataPayload updatedPayload =
         existingDraft.withDocumentFilename(command.documentId(), command.originalFilename());
+    documentFilenameStore.record(
+        command.priorAuthorityId(),
+        command.documentId(),
+        command.originalFilename(),
+        command.occurredAt());
     draftStore.upsert(
         command.priorAuthorityId(),
         existingDraft.applicationId(),

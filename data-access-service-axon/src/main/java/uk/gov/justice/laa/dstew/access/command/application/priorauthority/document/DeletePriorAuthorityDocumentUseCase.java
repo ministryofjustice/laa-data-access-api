@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
+import uk.gov.justice.laa.dstew.access.command.application.document.DocumentFilenameStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentDeleteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
@@ -23,15 +24,18 @@ public class DeletePriorAuthorityDocumentUseCase {
   private final PriorAuthorityDraftStore draftStore;
   private final RetryingCommandDispatcher dispatcher;
   private final SdsService sdsService;
+  private final DocumentFilenameStore documentFilenameStore;
 
-  /** Creates the use case with draft lookup, command dispatch, and SDS dependencies. */
+  /** Creates the use case with draft lookup, command dispatch, SDS, and filename dependencies. */
   public DeletePriorAuthorityDocumentUseCase(
       PriorAuthorityDraftStore draftStore,
       RetryingCommandDispatcher dispatcher,
-      SdsService sdsService) {
+      SdsService sdsService,
+      DocumentFilenameStore documentFilenameStore) {
     this.draftStore = draftStore;
     this.dispatcher = dispatcher;
     this.sdsService = sdsService;
+    this.documentFilenameStore = documentFilenameStore;
   }
 
   /** Records the deletion durably before attempting best-effort SDS deletion. */
@@ -44,12 +48,16 @@ public class DeletePriorAuthorityDocumentUseCase {
                 () ->
                     new ResourceNotFoundException(
                         "Prior Authority %s not found".formatted(priorAuthorityId)));
-    String originalFileName = draft.documentFilenames().get(documentId);
+    String legacyFileName = draft.documentFilenames().get(documentId);
     DocumentMetadata document =
         dispatcher.dispatch(
             new PriorAuthorityDocumentDeleteCommand(
                 priorAuthorityId, documentId, Instant.now(), caller),
             DocumentMetadata.class);
+    String originalFileName =
+        documentFilenameStore
+            .findIncludingDeleted(priorAuthorityId, documentId)
+            .orElse(legacyFileName);
     String storageFilename =
         document.fileSuffix() == null ? originalFileName : documentId + document.fileSuffix();
 

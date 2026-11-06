@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.command.application.data;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -14,6 +15,7 @@ import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
  * submitted.
  */
 @ExcludeFromGeneratedCodeCoverage
+@JsonIgnoreProperties(ignoreUnknown = true)
 public record ApplicationDraftPayload(
     String status,
     String laaReference,

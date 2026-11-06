@@ -30,7 +30,9 @@ public record PriorAuthorityResult(
    * may be a partial draft when the status is {@code DRAFT}.
    */
   public static PriorAuthorityResult from(
-      PriorAuthorityReadModel priorAuthority, PriorAuthorityDataPayload payload) {
+      PriorAuthorityReadModel priorAuthority,
+      PriorAuthorityDataPayload payload,
+      Map<UUID, String> documentFilenames) {
     PriorAuthorityContent content = payload.content();
     PriorAuthorityType priorAuthorityType = content.priorAuthorityType();
     return new PriorAuthorityResult(
@@ -48,7 +50,7 @@ public record PriorAuthorityResult(
             ? toDisbursementDetails(content)
             : null,
         priorAuthority.getUploadedDocuments(),
-        payload.documentFilenames(),
+        documentFilenames,
         payload.decisionDetails());
   }
 

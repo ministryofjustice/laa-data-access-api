@@ -20,11 +20,13 @@ import org.axonframework.messaging.queryhandling.QueryUpdateEmitter;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import uk.gov.justice.laa.dstew.access.command.application.document.DocumentFilenameStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.DisbursementInformation;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentDeletedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentTypeUpdatedEvent;
@@ -57,6 +59,7 @@ class PriorAuthorityProjectionTest {
   @Mock private PriorAuthorityCurrentStateAccessPolicy accessPolicy;
   @Mock private PriorAuthorityDataStore dataStore;
   @Mock private PriorAuthorityDraftStore draftStore;
+  @Mock private DocumentFilenameStore documentFilenameStore;
   @Mock private QueryUpdateEmitter queryUpdateEmitter;
   @InjectMocks private PriorAuthorityProjection projection;
 
@@ -126,12 +129,16 @@ class PriorAuthorityProjectionTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"DRAFT", "SUBMITTED"})
-  void givenProjectedDocuments_whenQueryHandled_thenCombinesMetadataWithPayloadFilenames(
-      String status) {
+  @CsvSource({
+    "DRAFT, table.pdf", "SUBMITTED, table.pdf", "DECIDED, table.pdf",
+    "DRAFT, ", "SUBMITTED, ", "DECIDED, "
+  })
+  void givenProjectedDocuments_whenQueryHandled_thenHydratesOnlyTheirTableFilenames(
+      String status, String tableFilename) {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID applicationId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
+    UUID deletedId = UUID.randomUUID();
     DocumentMetadata document =
         new DocumentMetadata(
             documentId,
@@ -142,13 +149,23 @@ class PriorAuthorityProjectionTest {
             "checksum",
             "CIVIL_APPLY",
             false);
+    DocumentMetadata deletedDocument =
+        new DocumentMetadata(
+            deletedId,
+            null,
+            Instant.now(),
+            12L,
+            "application/pdf",
+            "checksum",
+            "CIVIL_APPLY",
+            true);
     PriorAuthorityReadModel model =
         PriorAuthorityReadModel.builder()
             .priorAuthorityId(priorAuthorityId)
             .applicationId(applicationId)
             .dataVersion(0L)
             .status(status)
-            .uploadedDocuments(List.of(document))
+            .uploadedDocuments(List.of(document, deletedDocument))
             .build();
     PriorAuthorityDataPayload payload =
         new PriorAuthorityDataPayload(
@@ -157,8 +174,11 @@ class PriorAuthorityProjectionTest {
                 new PriorAuthorityContent(EXPERT, "Expert required", null, null, null),
                 "{}",
                 Instant.now())
-            .withDocumentFilename(documentId, "evidence.pdf");
+            .withDocumentFilename(documentId, "legacy.pdf")
+            .withDocumentFilename(UUID.randomUUID(), "unrelated.pdf");
     when(readQueryGateway.findPriorAuthority(any(), any())).thenReturn(Optional.of(model));
+    when(documentFilenameStore.findAllByIds(List.of(documentId)))
+        .thenReturn(tableFilename == null ? Map.of() : Map.of(documentId, tableFilename));
     if ("DRAFT".equals(status)) {
       when(draftStore.find(priorAuthorityId)).thenReturn(Optional.of(payload));
     } else {
@@ -168,9 +188,10 @@ class PriorAuthorityProjectionTest {
     PriorAuthorityResult result =
         projection.handle(new FindPriorAuthorityByPriorAuthorityIdQuery(priorAuthorityId));
 
-    assertThat(result.uploadedDocuments()).containsExactly(document);
+    assertThat(result.uploadedDocuments()).containsExactly(document, deletedDocument);
     assertThat(result.documentFilenames())
-        .containsExactlyEntriesOf(Map.of(documentId, "evidence.pdf"));
+        .isEqualTo(tableFilename == null ? Map.of() : Map.of(documentId, tableFilename));
+    verify(documentFilenameStore).findAllByIds(List.of(documentId));
   }
 
   private static PriorAuthorityDocumentUploadedEvent uploaded(
@@ -209,15 +230,9 @@ class PriorAuthorityProjectionTest {
             .dataVersion(2L)
             .uploadedDocuments(List.of(metadata.withFileSuffix(".PDF")))
             .build();
-    PriorAuthorityDataPayload payload =
-        new PriorAuthorityDataPayload(priorAuthorityId, UUID.randomUUID(), null, "{}", uploadedAt)
-            .withDocumentFilename(documentId, "evidence.PDF");
     when(repository.findById(priorAuthorityId)).thenReturn(Optional.of(model));
-    if ("DRAFT".equals(status)) {
-      when(draftStore.find(priorAuthorityId)).thenReturn(Optional.of(payload));
-    } else {
-      when(dataStore.get(priorAuthorityId, 2L)).thenReturn(payload);
-    }
+    when(documentFilenameStore.findAllByIds(List.of(documentId)))
+        .thenReturn(Map.of(documentId, "evidence.PDF"));
 
     assertThat(projection.handle(new FindPriorAuthorityDocumentQuery(priorAuthorityId, documentId)))
         .isEqualTo(
@@ -232,6 +247,48 @@ class PriorAuthorityProjectionTest {
                 "CIVIL_APPLY",
                 "checksum",
                 ".PDF"));
+    verifyNoInteractions(draftStore, dataStore);
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "DRAFT, table.PDF, table.PDF",
+    "SUBMITTED, table.PDF, table.PDF",
+    "DECIDED, table.PDF, table.PDF",
+    "DRAFT, , ",
+    "SUBMITTED, , ",
+    "DECIDED, , "
+  })
+  void givenTableFilename_whenDocumentQueried_thenNeverReadsLegacyPayloads(
+      String status, String tableFilename, String expectedFilename) {
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    Instant uploadedAt = Instant.parse("2026-09-10T09:00:00Z");
+    DocumentMetadata metadata =
+        new DocumentMetadata(
+            documentId,
+            "EXPERT_REPORT",
+            uploadedAt,
+            12L,
+            "application/pdf",
+            "checksum",
+            "CIVIL_APPLY",
+            false);
+    PriorAuthorityReadModel model =
+        PriorAuthorityReadModel.builder()
+            .priorAuthorityId(priorAuthorityId)
+            .status(status)
+            .dataVersion(2L)
+            .uploadedDocuments(List.of(metadata.withFileSuffix(".PDF")))
+            .build();
+    when(repository.findById(priorAuthorityId)).thenReturn(Optional.of(model));
+    when(documentFilenameStore.findAllByIds(List.of(documentId)))
+        .thenReturn(tableFilename == null ? Map.of() : Map.of(documentId, tableFilename));
+
+    assertThat(projection.handle(new FindPriorAuthorityDocumentQuery(priorAuthorityId, documentId)))
+        .extracting(EvidenceDocument::fileName)
+        .isEqualTo(expectedFilename);
+    verifyNoInteractions(draftStore, dataStore);
   }
 
   @ParameterizedTest
@@ -261,7 +318,7 @@ class PriorAuthorityProjectionTest {
 
     assertThat(projection.handle(new FindPriorAuthorityDocumentQuery(priorAuthorityId, documentId)))
         .isNull();
-    verifyNoInteractions(draftStore, dataStore);
+    verifyNoInteractions(draftStore, dataStore, documentFilenameStore);
   }
 
   @ParameterizedTest
@@ -288,14 +345,6 @@ class PriorAuthorityProjectionTest {
             .uploadedDocuments(List.of(metadata))
             .build();
     when(repository.findById(priorAuthorityId)).thenReturn(Optional.of(model));
-    if ("DRAFT".equals(status)) {
-      when(draftStore.find(priorAuthorityId)).thenReturn(Optional.empty());
-    } else {
-      when(dataStore.get(priorAuthorityId, 2L))
-          .thenReturn(
-              new PriorAuthorityDataPayload(
-                  priorAuthorityId, UUID.randomUUID(), null, "{}", Instant.now()));
-    }
 
     EvidenceDocument document =
         projection.handle(new FindPriorAuthorityDocumentQuery(priorAuthorityId, documentId));
@@ -305,6 +354,7 @@ class PriorAuthorityProjectionTest {
     assertThat(document.fileName()).isNull();
     assertThat(document.fileSuffix()).isEqualTo(".PDF");
     assertThat(document.storageFilename()).isEqualTo(documentId + ".PDF");
+    verifyNoInteractions(draftStore, dataStore);
   }
 
   @Test

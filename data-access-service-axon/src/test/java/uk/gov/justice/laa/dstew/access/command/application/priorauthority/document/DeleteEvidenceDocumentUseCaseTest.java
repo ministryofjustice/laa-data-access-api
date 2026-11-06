@@ -16,6 +16,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
@@ -23,6 +24,7 @@ import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
+import uk.gov.justice.laa.dstew.access.command.application.document.DocumentFilenameStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentDeleteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
@@ -37,13 +39,15 @@ class DeleteEvidenceDocumentUseCaseTest {
   @Mock private PriorAuthorityDraftStore draftStore;
   @Mock private RetryingCommandDispatcher dispatcher;
   @Mock private SdsService sdsService;
+  @Mock private DocumentFilenameStore documentFilenameStore;
 
   @ParameterizedTest
   @NullAndEmptySource
   @ValueSource(strings = {"evidence.pdf", "evidence.PDF", "evidence.png", "evidence"})
   void givenDraftExists_whenExecute_thenDispatchesBeforeDeletingTheSdsFile(String filename) {
     DeletePriorAuthorityDocumentUseCase useCase =
-        new DeletePriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService);
+        new DeletePriorAuthorityDocumentUseCase(
+            draftStore, dispatcher, sdsService, documentFilenameStore);
     UUID priorAuthorityId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
     var draft = draft(priorAuthorityId);
@@ -69,7 +73,8 @@ class DeleteEvidenceDocumentUseCaseTest {
   @Test
   void givenSdsDeletionFails_whenExecute_thenDoesNotPropagateTheFailure() {
     DeletePriorAuthorityDocumentUseCase useCase =
-        new DeletePriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService);
+        new DeletePriorAuthorityDocumentUseCase(
+            draftStore, dispatcher, sdsService, documentFilenameStore);
     UUID priorAuthorityId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
     when(draftStore.find(priorAuthorityId))
@@ -90,7 +95,8 @@ class DeleteEvidenceDocumentUseCaseTest {
   @Test
   void givenDraftMissing_whenExecute_thenThrowsNotFoundWithoutDeletingFromSds() {
     DeletePriorAuthorityDocumentUseCase useCase =
-        new DeletePriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService);
+        new DeletePriorAuthorityDocumentUseCase(
+            draftStore, dispatcher, sdsService, documentFilenameStore);
     UUID priorAuthorityId = UUID.randomUUID();
     when(draftStore.find(priorAuthorityId)).thenReturn(Optional.empty());
 
@@ -98,6 +104,34 @@ class DeleteEvidenceDocumentUseCaseTest {
         .isThrownBy(() -> useCase.execute(priorAuthorityId, UUID.randomUUID()));
 
     verifyNoInteractions(dispatcher, sdsService);
+  }
+
+  @ParameterizedTest
+  @CsvSource({"post-dispatch.PDF, file.PDF, post-dispatch.PDF", ", file.PDF, file.PDF"})
+  void givenDispatchedDelete_whenExecute_thenUsesStoredFilenameOrLegacyFallback(
+      String storedFilename, String legacyFilename, String expectedFilename) {
+    DeletePriorAuthorityDocumentUseCase useCase =
+        new DeletePriorAuthorityDocumentUseCase(
+            draftStore, dispatcher, sdsService, documentFilenameStore);
+    UUID priorAuthorityId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    when(draftStore.find(priorAuthorityId))
+        .thenReturn(
+            Optional.of(draft(priorAuthorityId).withDocumentFilename(documentId, legacyFilename)));
+    when(dispatcher.dispatch(
+            any(PriorAuthorityDocumentDeleteCommand.class), eq(DocumentMetadata.class)))
+        .thenReturn(pdfDocument(documentId));
+    when(documentFilenameStore.findIncludingDeleted(priorAuthorityId, documentId))
+        .thenReturn(Optional.ofNullable(storedFilename));
+
+    useCase.execute(priorAuthorityId, documentId);
+
+    InOrder calls = inOrder(dispatcher, documentFilenameStore, sdsService);
+    calls
+        .verify(dispatcher)
+        .dispatch(any(PriorAuthorityDocumentDeleteCommand.class), eq(DocumentMetadata.class));
+    calls.verify(documentFilenameStore).findIncludingDeleted(priorAuthorityId, documentId);
+    calls.verify(sdsService).deleteEvidenceFile(priorAuthorityId, documentId, expectedFilename);
   }
 
   private PriorAuthorityDataPayload draft(UUID priorAuthorityId) {
@@ -119,7 +153,8 @@ class DeleteEvidenceDocumentUseCaseTest {
             any(PriorAuthorityDocumentDeleteCommand.class), eq(DocumentMetadata.class)))
         .thenReturn(pdfDocument(documentId).withFileSuffix(suffix));
 
-    new DeletePriorAuthorityDocumentUseCase(draftStore, dispatcher, sdsService)
+    new DeletePriorAuthorityDocumentUseCase(
+            draftStore, dispatcher, sdsService, documentFilenameStore)
         .execute(ownerId, documentId);
 
     verify(sdsService).deleteEvidenceFile(ownerId, documentId, documentId + suffix);

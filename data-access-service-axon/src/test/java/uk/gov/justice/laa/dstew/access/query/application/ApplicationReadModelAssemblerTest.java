@@ -4,6 +4,7 @@ import static java.time.Instant.parse;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.entry;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture.applicationCreationDetails;
@@ -14,6 +15,8 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -21,6 +24,8 @@ import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
+import uk.gov.justice.laa.dstew.access.command.application.document.DocumentFilenameStore;
+import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadModel;
@@ -34,6 +39,7 @@ class ApplicationReadModelAssemblerTest {
   @Mock private LinkedApplicationGroupReadRepository groupReadRepository;
   @Mock private ApplicationListIndexReadRepository listIndexRepository;
   @Mock private PriorAuthorityReadRepository priorAuthorityReadRepository;
+  @Mock private DocumentFilenameStore documentFilenameStore;
   @Mock private ApplicationDataPayload payloadWithoutProvider;
   @InjectMocks private ApplicationReadModelAssembler assembler;
 
@@ -99,6 +105,58 @@ class ApplicationReadModelAssemblerTest {
     assertThat(hydrated.getSubmittedAt()).isEqualTo(eventSubmittedAt);
     assertThat(hydrated.getCategoryOfLawCode()).isEqualTo("MAT");
     assertThat(hydrated.getMatterTypeCode()).isEqualTo("KPBLW");
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void givenProjectedDocuments_whenHydrated_thenUsesOnlyTableFilenames(boolean filenamePresent) {
+    UUID applicationId = UUID.randomUUID();
+    UUID documentId = UUID.randomUUID();
+    UUID deletedId = UUID.randomUUID();
+    UUID unrelatedId = UUID.randomUUID();
+    DocumentMetadata document =
+        new DocumentMetadata(
+            documentId,
+            null,
+            parse("2026-09-10T09:00:00Z"),
+            12L,
+            "application/pdf",
+            "checksum",
+            "CIVIL_APPLY",
+            false);
+    DocumentMetadata deletedDocument =
+        new DocumentMetadata(
+            deletedId,
+            null,
+            parse("2026-09-10T09:00:00Z"),
+            12L,
+            "application/pdf",
+            "checksum",
+            "CIVIL_APPLY",
+            true);
+    var application =
+        ApplicationReadModel.builder()
+            .applicationId(applicationId)
+            .applicationDataVersion(0L)
+            .uploadedDocuments(List.of(document, deletedDocument))
+            .build();
+    ApplicationDataId dataId = new ApplicationDataId(applicationId, 0L);
+    when(applicationDataStore.getAll(List.of(dataId)))
+        .thenReturn(
+            Map.of(
+                dataId,
+                payload(applicationId)
+                    .withDocumentFilename(documentId, "legacy.pdf")
+                    .withDocumentFilename(unrelatedId, "unrelated.pdf")));
+    when(documentFilenameStore.findAllByIds(List.of(documentId)))
+        .thenReturn(filenamePresent ? Map.of(documentId, "table.pdf") : Map.of());
+
+    ApplicationReadModel hydrated = assembler.hydrate(application).orElseThrow();
+
+    assertThat(hydrated.getUploadedDocuments()).containsExactly(document, deletedDocument);
+    assertThat(hydrated.getDocumentFilenames())
+        .isEqualTo(filenamePresent ? Map.of(documentId, "table.pdf") : Map.of());
+    verify(documentFilenameStore).findAllByIds(List.of(documentId));
   }
 
   @Test
