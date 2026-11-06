@@ -736,6 +736,7 @@ class ApplicationProjectionTest {
             applicationId, WorkItemType.APPLICATION, 1L, 1L, caseworkerId, occurredAt));
 
     assertThat(existing.getCaseworkerId()).isEqualTo(caseworkerId);
+    assertThat(existing.getAssignmentVersion()).isEqualTo(1L);
     assertThat(existing.getApplicationVersion()).isEqualTo(1L);
     assertThat(existing.getApplicationDataVersion()).isEqualTo(1L);
     assertThat(existing.getModifiedAt()).isEqualTo(occurredAt);
@@ -760,6 +761,7 @@ class ApplicationProjectionTest {
         new WorkItemUnassigned(applicationId, WorkItemType.APPLICATION, 1L, 2L, occurredAt));
 
     assertThat(existing.getCaseworkerId()).isNull();
+    assertThat(existing.getAssignmentVersion()).isEqualTo(2L);
     assertThat(existing.getApplicationVersion()).isEqualTo(1L);
     assertThat(existing.getApplicationDataVersion()).isEqualTo(1L);
     assertThat(existing.getModifiedAt()).isEqualTo(occurredAt);

@@ -70,6 +70,9 @@ public class ApplicationReadModel {
   @Column(name = "caseworker_id")
   private UUID caseworkerId;
 
+  @Column(name = "assignment_version", nullable = false)
+  private long assignmentVersion;
+
   @Column(name = "submitted_at")
   private Instant submittedAt;
 

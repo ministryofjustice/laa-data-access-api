@@ -1020,6 +1020,7 @@ class PostgresAxonIntegrationTest {
             .decisionStatus(DecisionStatusResponse.PENDING)
             .client(actual.getClient())
             .version(0L)
+            .assignmentVersion(0L)
             .provider(
                 ProviderResponse.builder()
                     .officeCode("1A001B")

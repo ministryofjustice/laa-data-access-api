@@ -349,6 +349,7 @@ public class ApplicationProjection {
         .ifPresent(
             application -> {
               application.setCaseworkerId(event.caseworkerId());
+              application.setAssignmentVersion(event.assignmentVersion());
               application.setModifiedAt(event.occurredAt());
               applicationReadRepository.save(application);
             });
@@ -365,6 +366,7 @@ public class ApplicationProjection {
         .ifPresent(
             application -> {
               application.setCaseworkerId(null);
+              application.setAssignmentVersion(event.assignmentVersion());
               application.setModifiedAt(event.occurredAt());
               applicationReadRepository.save(application);
             });

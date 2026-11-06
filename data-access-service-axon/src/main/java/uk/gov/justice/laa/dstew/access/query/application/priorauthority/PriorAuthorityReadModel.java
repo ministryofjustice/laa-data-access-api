@@ -52,6 +52,9 @@ public class PriorAuthorityReadModel {
 
   private String decision;
 
+  @Column(name = "assignment_version", nullable = false)
+  private long assignmentVersion;
+
   @Builder.Default
   @Column(name = "uploaded_documents", nullable = false)
   @JdbcTypeCode(SqlTypes.JSON)

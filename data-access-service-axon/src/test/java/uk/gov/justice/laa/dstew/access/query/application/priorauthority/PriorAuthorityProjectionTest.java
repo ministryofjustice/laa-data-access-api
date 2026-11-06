@@ -2,6 +2,7 @@ package uk.gov.justice.laa.dstew.access.query.application.priorauthority;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -35,6 +36,9 @@ import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.P
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDataStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.data.PriorAuthorityDraftStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.decision.PriorAuthorityDecisionMadeEvent;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
+import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.Apportionment;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.BillingType;
 import uk.gov.justice.laa.dstew.access.content.priorauthority.CounselDetails;
@@ -59,6 +63,67 @@ class PriorAuthorityProjectionTest {
   @Mock private PriorAuthorityDraftStore draftStore;
   @Mock private QueryUpdateEmitter queryUpdateEmitter;
   @InjectMocks private PriorAuthorityProjection projection;
+
+  @Test
+  void givenPriorAuthorityAssignedThenUnassigned_whenReplayedTwice_thenAssignmentVersionIsLatest() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    Instant assignedAt = Instant.parse("2026-09-10T09:00:00Z");
+    Instant unassignedAt = assignedAt.plusSeconds(60);
+    PriorAuthorityReadModel model =
+        PriorAuthorityReadModel.builder()
+            .priorAuthorityId(priorAuthorityId)
+            .applicationId(UUID.randomUUID())
+            .status("SUBMITTED")
+            .dataVersion(1L)
+            .build();
+    when(repository.findById(priorAuthorityId)).thenReturn(Optional.of(model));
+    var assigned =
+        new WorkItemAssigned(
+            priorAuthorityId, WorkItemType.PRIOR_AUTHORITY, 1L, 1L, UUID.randomUUID(), assignedAt);
+    var unassigned =
+        new WorkItemUnassigned(
+            priorAuthorityId, WorkItemType.PRIOR_AUTHORITY, 1L, 2L, unassignedAt);
+
+    for (int replay = 0; replay < 2; replay++) {
+      projection.on(assigned);
+      assertThat(model.getAssignmentVersion()).isEqualTo(1L);
+      projection.on(unassigned);
+      assertThat(model.getAssignmentVersion()).isEqualTo(2L);
+    }
+
+    assertThat(model.getDataVersion()).isEqualTo(1L);
+    assertThat(model.getModifiedAt()).isEqualTo(unassignedAt);
+  }
+
+  @Test
+  void givenApplicationWorkItemEvents_whenHandled_thenPriorAuthorityProjectionIgnoresThem() {
+    UUID applicationId = UUID.randomUUID();
+
+    projection.on(
+        new WorkItemAssigned(
+            applicationId, WorkItemType.APPLICATION, 1L, 1L, UUID.randomUUID(), Instant.now()));
+    projection.on(
+        new WorkItemUnassigned(applicationId, WorkItemType.APPLICATION, 1L, 2L, Instant.now()));
+
+    verifyNoInteractions(repository);
+  }
+
+  @Test
+  void givenUnknownPriorAuthority_whenAssigned_thenNothingIsSaved() {
+    UUID priorAuthorityId = UUID.randomUUID();
+    when(repository.findById(priorAuthorityId)).thenReturn(Optional.empty());
+
+    projection.on(
+        new WorkItemAssigned(
+            priorAuthorityId,
+            WorkItemType.PRIOR_AUTHORITY,
+            1L,
+            1L,
+            UUID.randomUUID(),
+            Instant.now()));
+
+    verify(repository, never()).save(any());
+  }
 
   @Test
   void givenDocumentEvents_whenReplayedTwice_thenProjectsMetadataOnceWithTypeAndDeletedFlag() {

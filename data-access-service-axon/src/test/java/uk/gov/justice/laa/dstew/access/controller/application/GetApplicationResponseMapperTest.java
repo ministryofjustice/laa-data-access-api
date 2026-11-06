@@ -188,6 +188,7 @@ class GetApplicationResponseMapperTest {
         baseReadModel()
             .applicationId(applicationId)
             .caseworkerId(caseworkerId)
+            .assignmentVersion(4L)
             .submittedAt(submittedAt)
             .modifiedAt(modifiedAt)
             .decisionStatus("GRANTED")
@@ -205,6 +206,8 @@ class GetApplicationResponseMapperTest {
     assertThat(response.getSubmittedAt())
         .isEqualTo(OffsetDateTime.ofInstant(submittedAt, ZoneOffset.UTC));
     assertThat(response.getAssignedTo()).isEqualTo(caseworkerId);
+    assertThat(response.getVersion()).isEqualTo(1L);
+    assertThat(response.getAssignmentVersion()).isEqualTo(4L);
     assertThat(response.getDecisionStatus()).isEqualTo(DecisionStatusResponse.GRANTED);
     assertThat(response.getProvider().getOfficeCode()).isEqualTo("0B839E");
     assertThat(response.getProvider().getContactEmail()).isEqualTo("firm@example.com");
