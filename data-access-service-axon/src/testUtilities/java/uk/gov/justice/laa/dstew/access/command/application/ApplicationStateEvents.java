@@ -4,11 +4,14 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import uk.gov.justice.laa.dstew.access.command.application.decision.ApplicationDecisionMadeEvent;
+import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftStartedEvent;
+import uk.gov.justice.laa.dstew.access.command.application.note.NoteCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.ready.ApplicationReadyForManualAssessmentEvent;
 import uk.gov.justice.laa.dstew.access.command.application.update.ApplicationUpdatedEvent;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssigned;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemUnassigned;
+import uk.gov.justice.laa.dstew.access.testutils.ApplicationCreatedEventFixture;
 
 /** Builds common application event histories for linked-group tests. */
 public final class ApplicationStateEvents {
@@ -58,30 +61,50 @@ public final class ApplicationStateEvents {
         created(applicationId),
         ready(applicationId),
         assigned(applicationId, caseworkerId, 1L, 1L),
-        new ApplicationUpdatedEvent(
-            applicationId, 2L, 2L, "APPLICATION_GRANTED", "APPLICATION_SUBMITTED", OCCURRED_AT));
+        resubmitted(applicationId));
   }
 
   /** Folds an application event history into its current state. */
   public static ApplicationState stateOf(List<Object> events) {
+    return aggregateOf(events).getState();
+  }
+
+  /** Folds an application event history into an aggregate. */
+  public static ApplicationAggregate aggregateOf(List<Object> events) {
     var application = new ApplicationAggregate();
     for (var event : events) {
       switch (event) {
+        case ApplicationDraftStartedEvent draftStarted -> application.on(draftStarted);
         case ApplicationCreatedEvent created -> application.on(created);
         case ApplicationReadyForManualAssessmentEvent ready -> application.on(ready);
         case ApplicationDecisionMadeEvent decision -> application.on(decision);
         case ApplicationUpdatedEvent updated -> application.on(updated);
+        case ApplicationDocumentUploadedEvent uploaded -> application.on(uploaded);
+        case NoteCreatedEvent note -> application.on(note);
         case WorkItemAssigned assigned -> application.on(assigned);
         case WorkItemUnassigned unassigned -> application.on(unassigned);
         default -> throw new IllegalArgumentException("Unsupported application event: " + event);
       }
     }
-    return application.getState();
+    return application;
   }
 
   private static ApplicationCreatedEvent created(UUID applicationId) {
-    return new ApplicationCreatedEvent(
-        applicationId, 0L, "hash", "APPLICATION_SUBMITTED", 1, OCCURRED_AT, null, null);
+    return ApplicationCreatedEventFixture.applicationCreatedEvent(applicationId);
+  }
+
+  private static ApplicationUpdatedEvent resubmitted(UUID applicationId) {
+    var created = created(applicationId);
+    return new ApplicationUpdatedEvent(
+        applicationId,
+        2L,
+        2L,
+        "APPLICATION_GRANTED",
+        "APPLICATION_SUBMITTED",
+        OCCURRED_AT,
+        created.proceedingIds(),
+        created.content(),
+        created.serialisedRequest());
   }
 
   private static ApplicationReadyForManualAssessmentEvent ready(UUID applicationId) {
@@ -93,6 +116,7 @@ public final class ApplicationStateEvents {
     return new WorkItemAssigned(
         applicationId,
         WorkItemType.APPLICATION,
+        applicationId,
         itemVersion,
         assignmentVersion,
         caseworkerId,

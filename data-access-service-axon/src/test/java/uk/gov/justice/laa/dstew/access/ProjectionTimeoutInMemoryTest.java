@@ -34,16 +34,17 @@ import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionDetailsRequest;
 import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatus;
 import uk.gov.justice.laa.dstew.access.model.WorkListAssignRequest;
+import uk.gov.justice.laa.dstew.access.testsupport.InMemoryEventContentStoreConfig;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 
 /**
- * Verifies that when the application-projection tracking processor is stopped the controller
- * returns 202 Accepted with a deterministic Location header after the short configured timeout, and
- * does not block for the full default five-second projection wait.
+ * Verifies behaviour while the application-projection tracking processor is stopped. Create does
+ * not wait for the projection, and single-application reads come from the sourced aggregate, so
+ * they reflect accepted commands even while the projection lags. Repeated command delivery is still
+ * idempotent or rejected without appending a second event.
  *
- * <p>Uses a separate Spring context with a 200 ms projection timeout so the test completes in well
- * under one second. {@code @DirtiesContext} discards the stopped processor after the class so it
- * cannot leak into other test contexts.
+ * <p>{@code @DirtiesContext} discards the stopped processor after each method so it cannot leak
+ * into other test contexts.
  */
 @SpringBootTest(
     classes = DataAccessServiceAxonApplication.class,
@@ -57,7 +58,7 @@ import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
       "application.projection.timeout=200ms"
     })
 @AutoConfigureTestRestTemplate
-@Import(TestJwtDecoderConfig.class)
+@Import({TestJwtDecoderConfig.class, InMemoryEventContentStoreConfig.class})
 @DirtiesContext(methodMode = DirtiesContext.MethodMode.AFTER_METHOD)
 class ProjectionTimeoutInMemoryTest {
 
@@ -68,8 +69,7 @@ class ProjectionTimeoutInMemoryTest {
   @Autowired private JdbcTemplate jdbcTemplate;
 
   @Test
-  void givenStoppedProjectionProcessor_whenPostApplication_thenReturnsAcceptedWithLocation() {
-    // Stop the projection processor so no QueryUpdateEmitter.emit can be called for this command.
+  void givenStoppedProjectionProcessor_whenPostApplication_thenReturnsCreatedAndIsReadable() {
     StreamingEventProcessor processor =
         axonConfiguration
             .getComponents(StreamingEventProcessor.class)
@@ -79,58 +79,32 @@ class ProjectionTimeoutInMemoryTest {
     UUID applicationId = UUID.randomUUID();
     ApplicationCreateRequest request =
         validCreateApplicationRequest(applicationId, UUID.randomUUID());
-    HttpHeaders headers = new HttpHeaders();
-    headers.set("X-Service-Name", "CIVIL_APPLY");
-    headers.set("X-Schema-Version", "1");
-    headers.setBearerAuth(TestJwtDecoderConfig.BEARER_TOKEN);
+    HttpHeaders headers = headers();
 
-    long startMs = System.currentTimeMillis();
     ResponseEntity<Void> response =
         restTemplate.postForEntity(
             "/api/v0/applications", new HttpEntity<>(request, headers), Void.class);
-    long elapsedMs = System.currentTimeMillis() - startMs;
 
-    // Command committed → 202 because projection never appeared within the 200 ms timeout.
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
     assertThat(response.getHeaders().getLocation()).isNotNull();
     assertThat(response.getHeaders().getLocation().getPath())
         .isEqualTo("/api/v0/applications/" + applicationId);
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM domain_event_entry "
-                    + "WHERE aggregate_identifier = ? AND sequence_number = 0",
-                Integer.class,
-                applicationId.toString()))
-        .isEqualTo(1);
 
-    // The test must complete well below the full 5-second default timeout.
-    assertThat(elapsedMs).isLessThan(3_000L);
-
-    ResponseEntity<String> readBeforeProjection =
-        restTemplate.exchange(
-            "/api/v0/applications/" + applicationId,
-            HttpMethod.GET,
-            new HttpEntity<>(headers),
-            String.class);
-
-    assertThat(readBeforeProjection.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-
-    processor.start().join();
-    awaitApplicationProjection(applicationId, headers);
-    ResponseEntity<ApplicationResponse> readAfterProjection =
+    ResponseEntity<ApplicationResponse> readDuringLag =
         restTemplate.exchange(
             "/api/v0/applications/" + applicationId,
             HttpMethod.GET,
             new HttpEntity<>(headers),
             ApplicationResponse.class);
 
-    assertThat(readAfterProjection.getStatusCode()).isEqualTo(HttpStatus.OK);
-    assertThat(readAfterProjection.getBody()).isNotNull();
-    assertThat(readAfterProjection.getBody().getApplicationId()).isEqualTo(applicationId);
+    assertThat(readDuringLag.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(readDuringLag.getBody()).isNotNull();
+    assertThat(readDuringLag.getBody().getApplicationId()).isEqualTo(applicationId);
   }
 
   @Test
-  void givenProjectionLagAfterManualReadiness_whenDeliveryIsRepeated_thenNoSecondEventIsAppended() {
+  void
+      givenProjectionLagAfterManualReadiness_whenDeliveryIsRepeated_thenReadIsCurrentAndNoEventIsAdded() {
     UUID applicationId = UUID.randomUUID();
     ApplicationCreateRequest createRequest =
         validCreateApplicationRequest(applicationId, UUID.randomUUID());
@@ -140,7 +114,7 @@ class ProjectionTimeoutInMemoryTest {
                 .postForEntity(
                     "/api/v0/applications", new HttpEntity<>(createRequest, headers), Void.class)
                 .getStatusCode())
-        .isIn(HttpStatus.CREATED, HttpStatus.ACCEPTED);
+        .isEqualTo(HttpStatus.CREATED);
     awaitApplicationProjection(applicationId, headers);
 
     StreamingEventProcessor processor =
@@ -157,7 +131,7 @@ class ProjectionTimeoutInMemoryTest {
             HttpMethod.PATCH,
             readyEntity,
             Void.class);
-    ResponseEntity<ApplicationResponse> staleRead =
+    ResponseEntity<ApplicationResponse> readDuringLag =
         restTemplate.exchange(
             "/api/v0/applications/" + applicationId,
             HttpMethod.GET,
@@ -171,9 +145,9 @@ class ProjectionTimeoutInMemoryTest {
             Void.class);
 
     assertThat(first.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-    assertThat(staleRead.getBody()).isNotNull();
-    assertThat(staleRead.getBody().getAutoGranted())
-        .isEqualTo(uk.gov.justice.laa.dstew.access.model.AutoGranted.PENDING);
+    assertThat(readDuringLag.getBody()).isNotNull();
+    assertThat(readDuringLag.getBody().getAutoGranted())
+        .isEqualTo(uk.gov.justice.laa.dstew.access.model.AutoGranted.MANUAL);
     assertThat(repeated.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(
             jdbcTemplate.queryForObject(
@@ -211,7 +185,7 @@ class ProjectionTimeoutInMemoryTest {
                 .postForEntity(
                     "/api/v0/applications", new HttpEntity<>(createRequest, headers), Void.class)
                 .getStatusCode())
-        .isIn(HttpStatus.CREATED, HttpStatus.ACCEPTED);
+        .isEqualTo(HttpStatus.CREATED);
     awaitApplicationProjection(applicationId, headers);
     ApplicationResponse created =
         restTemplate
@@ -293,7 +267,7 @@ class ProjectionTimeoutInMemoryTest {
             HttpMethod.PATCH,
             decisionEntity,
             Void.class);
-    ResponseEntity<ApplicationResponse> staleRead =
+    ResponseEntity<ApplicationResponse> readDuringLag =
         restTemplate.exchange(
             "/api/v0/applications/" + applicationId,
             HttpMethod.GET,
@@ -307,8 +281,8 @@ class ProjectionTimeoutInMemoryTest {
             Void.class);
 
     assertThat(first.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-    assertThat(staleRead.getBody()).isNotNull();
-    assertThat(staleRead.getBody().getAutoGranted())
+    assertThat(readDuringLag.getBody()).isNotNull();
+    assertThat(readDuringLag.getBody().getAutoGranted())
         .isEqualTo(uk.gov.justice.laa.dstew.access.model.AutoGranted.MANUAL);
     assertThat(repeated.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
     assertThat(

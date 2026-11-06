@@ -37,9 +37,7 @@ public class MarkApplicationReadyCommandHandler {
       return result;
     }
 
-    var current =
-        applicationDataStore.get(
-            command.applicationId(), application.getState().getApplicationDataVersion());
+    var current = ApplicationCommandHandlerSupport.currentContent(application);
     long nextApplicationVersion = application.getState().getApplicationVersion() + 1;
     long nextDataVersion = application.getState().getApplicationDataVersion() + 1;
     applicationDataStore.append(

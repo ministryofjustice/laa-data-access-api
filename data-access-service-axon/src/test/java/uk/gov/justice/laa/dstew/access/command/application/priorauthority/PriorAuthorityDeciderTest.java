@@ -389,11 +389,11 @@ class PriorAuthorityDeciderTest {
     assertThat(event.priorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(event.documentId()).isEqualTo(documentId);
     assertThat(event.uploadedAt()).isEqualTo(OCCURRED_AT);
-    assertThat(event.size()).isEqualTo(7L);
-    assertThat(event.contentType()).isEqualTo("application/pdf");
+    assertThat(event.size().value()).isEqualTo(7L);
+    assertThat(event.contentType().value()).isEqualTo("application/pdf");
     assertThat(event.checksum()).isEqualTo("abc123");
     assertThat(event.parentApplicationId()).isEqualTo(applicationId);
-    assertThat(event.sourceService()).isEqualTo("CIVIL_APPLY");
+    assertThat(event.sourceService().value()).isEqualTo("CIVIL_APPLY");
     assertThat(event.toString()).doesNotContain("evidence.pdf");
   }
 
@@ -418,17 +418,19 @@ class PriorAuthorityDeciderTest {
   void givenDocumentTypeUpdateCommand_whenDecideDocumentTypeUpdated_thenMapsUpdateFields() {
     UUID priorAuthorityId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
+    UUID applicationId = UUID.randomUUID();
     PriorAuthorityDocumentTypeUpdateCommand command =
         new PriorAuthorityDocumentTypeUpdateCommand(
             priorAuthorityId, documentId, "GATEWAY_EVIDENCE", "{}", OCCURRED_AT);
 
     PriorAuthorityDocumentTypeUpdatedEvent event =
-        PriorAuthorityDecider.decideDocumentTypeUpdated(command);
+        PriorAuthorityDecider.decideDocumentTypeUpdated(command, applicationId);
 
     assertThat(event.priorAuthorityId()).isEqualTo(priorAuthorityId);
     assertThat(event.documentId()).isEqualTo(documentId);
-    assertThat(event.documentType()).isEqualTo("GATEWAY_EVIDENCE");
+    assertThat(event.documentType().value()).isEqualTo("GATEWAY_EVIDENCE");
     assertThat(event.occurredAt()).isEqualTo(OCCURRED_AT);
+    assertThat(event.parentApplicationId()).isEqualTo(applicationId);
   }
 
   @Test

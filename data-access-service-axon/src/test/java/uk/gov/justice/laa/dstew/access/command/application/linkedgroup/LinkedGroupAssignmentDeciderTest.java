@@ -455,11 +455,17 @@ class LinkedGroupAssignmentDeciderTest {
   private static WorkItemAssigned assigned(
       UUID id, long itemVersion, long assignmentVersion, UUID caseworkerId) {
     return new WorkItemAssigned(
-        id, WorkItemType.APPLICATION, itemVersion, assignmentVersion, caseworkerId, OCCURRED_AT);
+        id,
+        WorkItemType.APPLICATION,
+        id,
+        itemVersion,
+        assignmentVersion,
+        caseworkerId,
+        OCCURRED_AT);
   }
 
   private static WorkItemUnassigned unassigned(UUID id, long itemVersion, long assignmentVersion) {
     return new WorkItemUnassigned(
-        id, WorkItemType.APPLICATION, itemVersion, assignmentVersion, OCCURRED_AT);
+        id, WorkItemType.APPLICATION, id, itemVersion, assignmentVersion, OCCURRED_AT);
   }
 }

@@ -66,7 +66,13 @@ class LinkedApplicationGroupAssignmentHandlerWiringTest {
             new LinkedApplicationGroupCreatedEvent(
                 GROUP_ID, LEAD_ID, List.of(LEAD_ID, MEMBER_ID), OCCURRED_AT),
             new WorkItemAssigned(
-                MEMBER_ID, WorkItemType.APPLICATION, 1L, 1L, CASEWORKER_ID, OCCURRED_AT));
+                MEMBER_ID,
+                WorkItemType.APPLICATION,
+                MEMBER_ID,
+                1L,
+                1L,
+                CASEWORKER_ID,
+                OCCURRED_AT));
   }
 
   @Test
@@ -87,7 +93,7 @@ class LinkedApplicationGroupAssignmentHandlerWiringTest {
             new LinkedApplicationGroupCreatedEvent(
                 GROUP_ID, LEAD_ID, List.of(LEAD_ID, MEMBER_ID), OCCURRED_AT),
             new WorkItemAssigned(
-                LEAD_ID, WorkItemType.APPLICATION, 1L, 1L, CASEWORKER_ID, OCCURRED_AT));
+                LEAD_ID, WorkItemType.APPLICATION, LEAD_ID, 1L, 1L, CASEWORKER_ID, OCCURRED_AT));
   }
 
   @Test
@@ -111,7 +117,13 @@ class LinkedApplicationGroupAssignmentHandlerWiringTest {
         .containsExactly(
             new MemberAddedToGroupEvent(GROUP_ID, LEAD_ID, JOINING_ID, OCCURRED_AT),
             new WorkItemAssigned(
-                JOINING_ID, WorkItemType.APPLICATION, 1L, 1L, CASEWORKER_ID, OCCURRED_AT));
+                JOINING_ID,
+                WorkItemType.APPLICATION,
+                JOINING_ID,
+                1L,
+                1L,
+                CASEWORKER_ID,
+                OCCURRED_AT));
   }
 
   @Test
@@ -136,9 +148,15 @@ class LinkedApplicationGroupAssignmentHandlerWiringTest {
         .containsExactly(
             new MemberAddedToGroupEvent(GROUP_ID, LEAD_ID, JOINING_ID, OCCURRED_AT),
             new WorkItemAssigned(
-                LEAD_ID, WorkItemType.APPLICATION, 1L, 1L, CASEWORKER_ID, OCCURRED_AT),
+                LEAD_ID, WorkItemType.APPLICATION, LEAD_ID, 1L, 1L, CASEWORKER_ID, OCCURRED_AT),
             new WorkItemAssigned(
-                MEMBER_ID, WorkItemType.APPLICATION, 1L, 1L, CASEWORKER_ID, OCCURRED_AT));
+                MEMBER_ID,
+                WorkItemType.APPLICATION,
+                MEMBER_ID,
+                1L,
+                1L,
+                CASEWORKER_ID,
+                OCCURRED_AT));
   }
 
   private void givenApplication(

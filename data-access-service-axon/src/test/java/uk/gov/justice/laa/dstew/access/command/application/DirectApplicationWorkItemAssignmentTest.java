@@ -23,6 +23,7 @@ import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemAssignmentConfli
 import uk.gov.justice.laa.dstew.access.command.worklist.WorkItemType;
 import uk.gov.justice.laa.dstew.access.command.worklist.assign.DirectWorkItemAssignmentCommand;
 import uk.gov.justice.laa.dstew.access.command.worklist.unassign.DirectWorkItemUnassignmentCommand;
+import uk.gov.justice.laa.dstew.access.eventcontent.Erasable;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 
 class DirectApplicationWorkItemAssignmentTest {
@@ -64,7 +65,7 @@ class DirectApplicationWorkItemAssignmentTest {
         .when()
         .command(new DirectWorkItemAssignmentCommand(id, caseworkerId, 0L, "{}", "Assigned", when))
         .then()
-        .events(new WorkItemAssigned(id, WorkItemType.APPLICATION, 1L, 1L, caseworkerId, when));
+        .events(new WorkItemAssigned(id, WorkItemType.APPLICATION, id, 1L, 1L, caseworkerId, when));
     verifyNoInteractions(dataStore);
   }
 
@@ -101,7 +102,7 @@ class DirectApplicationWorkItemAssignmentTest {
     ApplicationAggregate active = new ApplicationAggregate();
     active.on(created(id, when));
     active.on(new ApplicationReadyForManualAssessmentEvent(id, 1L, 1L, when));
-    active.on(new WorkItemAssigned(id, WorkItemType.APPLICATION, 1L, 1L, caseworkerId, when));
+    active.on(new WorkItemAssigned(id, WorkItemType.APPLICATION, id, 1L, 1L, caseworkerId, when));
     assertThatThrownBy(
             () ->
                 new DirectApplicationWorkItemAssignmentCommandHandler()
@@ -141,6 +142,6 @@ class DirectApplicationWorkItemAssignmentTest {
 
   private ApplicationCreatedEvent created(UUID id, Instant occurredAt) {
     return new ApplicationCreatedEvent(
-        id, 0L, "hash", "APPLICATION_SUBMITTED", 1, occurredAt, null, null);
+        id, 0L, "hash", "APPLICATION_SUBMITTED", 1, occurredAt, Erasable.erased(), null, "LAA-123");
   }
 }

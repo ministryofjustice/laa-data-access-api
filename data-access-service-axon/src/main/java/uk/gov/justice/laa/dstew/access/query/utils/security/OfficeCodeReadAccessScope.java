@@ -8,4 +8,9 @@ public record OfficeCodeReadAccessScope(Set<String> permittedOfficeCodes)
   public OfficeCodeReadAccessScope {
     permittedOfficeCodes = Set.copyOf(permittedOfficeCodes);
   }
+
+  @Override
+  public boolean permitsOfficeCode(String officeCode) {
+    return officeCode != null && permittedOfficeCodes.contains(officeCode);
+  }
 }

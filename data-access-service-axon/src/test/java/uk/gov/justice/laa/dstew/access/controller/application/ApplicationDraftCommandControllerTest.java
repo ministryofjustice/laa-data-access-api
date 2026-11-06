@@ -73,7 +73,6 @@ class ApplicationDraftCommandControllerTest {
             Instant.now(),
             List.of());
     when(saveCommandMapper.toCreateCommand(request, 1)).thenReturn(command);
-    when(createUseCase.execute(command)).thenReturn(true);
 
     ResponseEntity<SaveApplicationDraftResponse> response =
         controller.saveApplicationDraft(null, request, 1);
@@ -89,43 +88,11 @@ class ApplicationDraftCommandControllerTest {
   }
 
   @Test
-  void givenTimeoutResult_whenSaveApplicationDraft_thenReturnsAcceptedResponse() {
-    UUID applicationId = UUID.randomUUID();
-    CreateApplicationDraftRequest request =
-        new CreateApplicationDraftRequest(
-            ApplicationStatus.APPLICATION_SUBMITTED,
-            Map.of("key", "value"),
-            "LAA-123",
-            applicationId);
-    CreateApplicationDraftCommand command =
-        new CreateApplicationDraftCommand(
-            applicationId,
-            null,
-            null,
-            Map.of(),
-            "{}",
-            1,
-            "BaseCivilApplication.json",
-            Instant.now(),
-            List.of());
-    when(saveCommandMapper.toCreateCommand(request, 1)).thenReturn(command);
-    when(createUseCase.execute(command)).thenReturn(false);
-
-    ResponseEntity<SaveApplicationDraftResponse> response =
-        controller.saveApplicationDraft(null, request, 1);
-
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
-    assertThat(response.getHeaders().getLocation()).isNotNull();
-    verify(createUseCase).execute(command);
-  }
-
-  @Test
-  void givenProjectionConfirmed_whenSubmitApplicationDraft_thenReturnsOkResponse() {
+  void givenRequest_whenSubmitApplicationDraft_thenReturnsOkResponse() {
     UUID applicationId = UUID.randomUUID();
     SubmitApplicationDraftCommand command =
         new SubmitApplicationDraftCommand(applicationId, Instant.now());
     when(submitCommandMapper.toSubmitCommand(applicationId)).thenReturn(command);
-    when(submitUseCase.submit(command)).thenReturn(true);
 
     ResponseEntity<SubmitApplicationDraftResponse> response =
         controller.submitApplicationDraft(null, applicationId);
@@ -137,19 +104,5 @@ class ApplicationDraftCommandControllerTest {
     assertThat(response.getHeaders().getLocation()).isNotNull();
     assertThat(response.getHeaders().getLocation().getPath())
         .isEqualTo("/api/v0/applications/" + applicationId);
-  }
-
-  @Test
-  void givenProjectionTimeout_whenSubmitApplicationDraft_thenReturnsAcceptedResponse() {
-    UUID applicationId = UUID.randomUUID();
-    SubmitApplicationDraftCommand command =
-        new SubmitApplicationDraftCommand(applicationId, Instant.now());
-    when(submitCommandMapper.toSubmitCommand(applicationId)).thenReturn(command);
-    when(submitUseCase.submit(command)).thenReturn(false);
-
-    ResponseEntity<SubmitApplicationDraftResponse> response =
-        controller.submitApplicationDraft(null, applicationId);
-
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
   }
 }

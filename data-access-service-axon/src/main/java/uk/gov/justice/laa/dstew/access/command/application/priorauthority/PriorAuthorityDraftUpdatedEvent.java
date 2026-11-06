@@ -1,8 +1,11 @@
 package uk.gov.justice.laa.dstew.access.command.application.priorauthority;
 
 import java.time.Instant;
+import java.util.Set;
 import java.util.UUID;
 import org.axonframework.eventsourcing.annotation.EventTag;
+import org.axonframework.messaging.eventhandling.annotation.Event;
+import uk.gov.justice.laa.dstew.access.command.GenesisScoped;
 
 /**
  * Persisted event emitted on every prior-authority draft-body mutation.
@@ -12,7 +15,15 @@ import org.axonframework.eventsourcing.annotation.EventTag;
  * (draft edit vs document upload, or edit vs edit) serialise and retry-converge instead of silently
  * last-write-wins dropping a change.
  */
+@Event(namespace = "access", name = "PriorAuthorityDraftUpdated")
 public record PriorAuthorityDraftUpdatedEvent(
     @EventTag(key = "PriorAuthorityAggregate") UUID priorAuthorityId,
     UUID parentApplicationId,
-    Instant occurredAt) {}
+    Instant occurredAt)
+    implements GenesisScoped {
+
+  @Override
+  public Set<UUID> genesisIds() {
+    return GenesisScoped.ids(parentApplicationId);
+  }
+}

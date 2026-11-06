@@ -11,25 +11,23 @@ import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreationDe
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDecider;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftPayload;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftStore;
+import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftContent;
 import uk.gov.justice.laa.dstew.access.command.application.draft.SubmitApplicationDraftCommand;
 
 /** Handles submission of application drafts. */
 @Component
 public class SubmitApplicationDraftCommandHandler {
 
-  /** Submits an application draft and emits the application-created event. */
+  /** Submits a draft, read from its events, and emits the application-created event. */
   @CommandHandler
   public UUID handle(
       SubmitApplicationDraftCommand command,
       @InjectEntity(idProperty = "applicationId") ApplicationAggregate application,
-      ApplicationDraftStore draftStore,
       ApplicationCreationDetailsFactory detailsFactory,
       ApplicationDataStore applicationDataStore,
       EventAppender eventAppender) {
-    ApplicationDraftPayload draft =
-        ApplicationCommandHandlerSupport.requireDraft(command.applicationId(), draftStore);
+    ApplicationDraftContent draft =
+        ApplicationCommandHandlerSupport.requireDraft(application, command.applicationId());
     ApplicationCreationDetails details =
         detailsFactory.prepare(
             draft.status(),
@@ -53,7 +51,6 @@ public class SubmitApplicationDraftCommandHandler {
     eventAppender.append(
         ApplicationDecider.decideSubmitDraft(
             command.applicationId(), applicationDataVersion, fingerprint, details));
-    draftStore.delete(command.applicationId());
     return command.applicationId();
   }
 }

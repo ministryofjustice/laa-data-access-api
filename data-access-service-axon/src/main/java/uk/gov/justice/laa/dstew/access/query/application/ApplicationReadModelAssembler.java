@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.query.application;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -9,7 +10,10 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Component;
+import uk.gov.justice.laa.dstew.access.command.application.ApplicationAggregate;
+import uk.gov.justice.laa.dstew.access.command.application.ApplicationState;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
@@ -19,19 +23,65 @@ import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationLi
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadRepository;
+import uk.gov.justice.laa.dstew.access.query.utils.security.ReadAccessScope;
 
 /**
- * Hydrates current-state rows with their referenced {@code application_data} version and
- * batch-loads the related read models needed to build Application query results.
+ * Builds Application read models from the aggregate (single reads) or by hydrating current-state
+ * rows with their referenced {@code application_data} version (list reads), and batch-loads the
+ * related read models needed to build Application query results.
  */
 @Component
 @RequiredArgsConstructor
 public class ApplicationReadModelAssembler {
 
   private final ApplicationDataStore applicationDataStore;
+  private final ApplicationReadRepository applicationReadRepository;
   private final LinkedApplicationGroupReadRepository groupReadRepository;
   private final ApplicationListIndexReadRepository listIndexRepository;
   private final PriorAuthorityReadRepository priorAuthorityReadRepository;
+
+  /**
+   * Builds a detached read model from a submitted Application's aggregate. Returns empty when the
+   * aggregate is absent, still a draft, outside the caller's access, or its content is erased.
+   * Group links, and changes made only by group events, still come from the current-state row.
+   */
+  public Optional<ApplicationReadModel> fromAggregate(
+      @Nullable ApplicationAggregate aggregate, ReadAccessScope accessScope) {
+    if (aggregate == null) {
+      return Optional.empty();
+    }
+    ApplicationState state = aggregate.getState();
+    if (state.getStatus() == null || state.getContent().isErased()) {
+      return Optional.empty();
+    }
+    ApplicationDataPayload data = state.getContent().value();
+    String officeCode = officeCode(data) != null ? officeCode(data) : state.getOfficeCode();
+    if (!accessScope.permitsOfficeCode(officeCode)) {
+      return Optional.empty();
+    }
+    ApplicationReadModel row =
+        applicationReadRepository.findById(state.getApplicationId()).orElse(null);
+    ApplicationReadModel application =
+        ApplicationReadModel.builder()
+            .applicationId(state.getApplicationId())
+            .status(state.getStatus())
+            .applicationDataVersion(state.getApplicationDataVersion())
+            .applicationVersion(state.getApplicationVersion())
+            .schemaVersion(state.getSchemaVersion())
+            .officeCode(officeCode)
+            .caseworkerId(state.getCaseworkerId())
+            .createdAt(state.getCreatedAt())
+            .submittedAt(state.getSubmittedAt())
+            .modifiedAt(latest(state.getModifiedAt(), row == null ? null : row.getModifiedAt()))
+            .linkedGroupId(row == null ? null : row.getLinkedGroupId())
+            .leadApplicationId(row == null ? null : row.getLeadApplicationId())
+            .uploadedDocuments(List.copyOf(state.getUploadedDocuments()))
+            .potentialDuplicates(state.getPotentialDuplicates().orElse(null))
+            .build();
+    hydrate(application, data);
+    application.setOfficeCode(officeCode);
+    return Optional.of(application);
+  }
 
   /** Hydrates a single row, or returns empty if its referenced data version is missing. */
   public Optional<ApplicationReadModel> hydrate(ApplicationReadModel application) {
@@ -150,6 +200,13 @@ public class ApplicationReadModelAssembler {
             member.getStatus(),
             member.getClientFirstName(),
             member.getClientLastName()));
+  }
+
+  private static @Nullable Instant latest(@Nullable Instant first, @Nullable Instant second) {
+    if (first == null) {
+      return second;
+    }
+    return second == null || first.isAfter(second) ? first : second;
   }
 
   static String officeCode(ApplicationDataPayload data) {

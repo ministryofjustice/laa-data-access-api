@@ -30,6 +30,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import uk.gov.justice.laa.dstew.access.applicationcontent.ParsedAppContentDetails;
 import uk.gov.justice.laa.dstew.access.applicationcontent.Proceeding;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.AutoGrantedState;
@@ -85,7 +86,11 @@ class WorkListProjectionTest {
             1,
             submittedAt,
             List.of(),
-            "1A"),
+            "1A",
+            null,
+            List.of(),
+            (ParsedAppContentDetails) null,
+            (String) null),
         message());
 
     ArgumentCaptor<WorkListItemReadModel> captor =
@@ -400,7 +405,13 @@ class WorkListProjectionTest {
 
     projection.on(
         new WorkItemAssigned(
-            applicationId, WorkItemType.APPLICATION, 2L, 1L, caseworkerId, occurredAt),
+            applicationId,
+            WorkItemType.APPLICATION,
+            applicationId,
+            2L,
+            1L,
+            caseworkerId,
+            occurredAt),
         message());
 
     assertThat(row.getAssigneeId()).isEqualTo(caseworkerId);
@@ -421,7 +432,8 @@ class WorkListProjectionTest {
     when(items.findById(itemId)).thenReturn(Optional.of(row));
 
     projection.on(
-        new WorkItemUnassigned(itemId, WorkItemType.APPLICATION, 2L, 2L, occurredAt), message());
+        new WorkItemUnassigned(itemId, WorkItemType.APPLICATION, itemId, 2L, 2L, occurredAt),
+        message());
 
     assertThat(row.getAssigneeId()).isNull();
     assertThat(row.getItemVersion()).isEqualTo(2L);
@@ -443,7 +455,7 @@ class WorkListProjectionTest {
     try {
       projection.on(
           new WorkItemAssigned(
-              itemId, WorkItemType.APPLICATION, 1L, 1L, UUID.randomUUID(), Instant.now()),
+              itemId, WorkItemType.APPLICATION, itemId, 1L, 1L, UUID.randomUUID(), Instant.now()),
           message());
 
       assertThat(logEvents.list)
@@ -474,7 +486,7 @@ class WorkListProjectionTest {
 
     try {
       projection.on(
-          new WorkItemUnassigned(itemId, WorkItemType.APPLICATION, 1L, 1L, Instant.now()),
+          new WorkItemUnassigned(itemId, WorkItemType.APPLICATION, itemId, 1L, 1L, Instant.now()),
           message());
 
       assertThat(logEvents.list)
@@ -507,6 +519,7 @@ class WorkListProjectionTest {
                     new WorkItemAssigned(
                         itemId,
                         WorkItemType.PRIOR_AUTHORITY,
+                        UUID.randomUUID(),
                         1L,
                         1L,
                         UUID.randomUUID(),

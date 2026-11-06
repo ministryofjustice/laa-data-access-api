@@ -139,7 +139,7 @@ public class ApplicationCommandController implements ApplicationCommandApi {
     return ResponseEntity.noContent().build();
   }
 
-  /** Dispatches create directly to Axon and returns 201 once the projection is readable. */
+  /** Dispatches create directly to Axon and returns 201 once the command commits. */
   @Override
   @LogMethodArguments
   @LogMethodResponse
@@ -151,10 +151,8 @@ public class ApplicationCommandController implements ApplicationCommandApi {
             .path("/{id}")
             .buildAndExpand(command.applicationId())
             .toUri();
-    boolean projected = createApplicationUseCase.execute(command);
-    return projected
-        ? ResponseEntity.created(location).build()
-        : ResponseEntity.accepted().location(location).build();
+    createApplicationUseCase.execute(command);
+    return ResponseEntity.created(location).build();
   }
 
   /** Replaces an existing Application's content and optional status. */

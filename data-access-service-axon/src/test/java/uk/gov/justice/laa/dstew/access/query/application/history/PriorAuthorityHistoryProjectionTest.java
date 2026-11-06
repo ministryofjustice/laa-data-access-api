@@ -180,6 +180,7 @@ class PriorAuthorityHistoryProjectionTest {
         new WorkItemAssigned(
             priorAuthorityId,
             WorkItemType.PRIOR_AUTHORITY,
+            applicationId,
             2L,
             1L,
             assigneeCaseworkerId,
@@ -213,6 +214,7 @@ class PriorAuthorityHistoryProjectionTest {
         new WorkItemAssigned(
             priorAuthorityId,
             WorkItemType.PRIOR_AUTHORITY,
+            applicationId,
             1L,
             1L,
             UUID.randomUUID(),
@@ -236,6 +238,7 @@ class PriorAuthorityHistoryProjectionTest {
         new WorkItemAssigned(
             priorAuthorityId,
             WorkItemType.PRIOR_AUTHORITY,
+            applicationId,
             1L,
             1L,
             UUID.randomUUID(),
@@ -260,6 +263,7 @@ class PriorAuthorityHistoryProjectionTest {
         new WorkItemAssigned(
             priorAuthorityId,
             WorkItemType.PRIOR_AUTHORITY,
+            applicationId,
             1L,
             1L,
             UUID.randomUUID(),
@@ -281,7 +285,13 @@ class PriorAuthorityHistoryProjectionTest {
     Instant occurredAt = Instant.parse("2026-08-05T11:00:00Z");
     WorkItemAssigned event =
         new WorkItemAssigned(
-            applicationId, WorkItemType.APPLICATION, 1L, 1L, ACTOR_CASEWORKER_ID, occurredAt);
+            applicationId,
+            WorkItemType.APPLICATION,
+            applicationId,
+            1L,
+            1L,
+            ACTOR_CASEWORKER_ID,
+            occurredAt);
 
     projection.on(event, message(event, "app-assign-event-id"));
 
@@ -297,6 +307,7 @@ class PriorAuthorityHistoryProjectionTest {
         new WorkItemAssigned(
             priorAuthorityId,
             WorkItemType.PRIOR_AUTHORITY,
+            UUID.randomUUID(),
             1L,
             1L,
             ACTOR_CASEWORKER_ID,
@@ -315,7 +326,8 @@ class PriorAuthorityHistoryProjectionTest {
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-05T12:00:00Z");
     WorkItemUnassigned event =
-        new WorkItemUnassigned(priorAuthorityId, WorkItemType.PRIOR_AUTHORITY, 2L, 2L, occurredAt);
+        new WorkItemUnassigned(
+            priorAuthorityId, WorkItemType.PRIOR_AUTHORITY, applicationId, 2L, 2L, occurredAt);
     when(paDataRepository.findById(new PriorAuthorityDataId(priorAuthorityId, 2L)))
         .thenReturn(
             Optional.of(paData(priorAuthorityId, applicationId, PriorAuthorityType.EXPERT)));
@@ -340,7 +352,8 @@ class PriorAuthorityHistoryProjectionTest {
     UUID applicationId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-05T12:00:00Z");
     WorkItemUnassigned event =
-        new WorkItemUnassigned(applicationId, WorkItemType.APPLICATION, 1L, 2L, occurredAt);
+        new WorkItemUnassigned(
+            applicationId, WorkItemType.APPLICATION, applicationId, 1L, 2L, occurredAt);
 
     projection.on(event, message(event, "app-unassign-event-id"));
 
@@ -353,7 +366,8 @@ class PriorAuthorityHistoryProjectionTest {
     UUID priorAuthorityId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-08-05T12:00:00Z");
     WorkItemUnassigned event =
-        new WorkItemUnassigned(priorAuthorityId, WorkItemType.PRIOR_AUTHORITY, 1L, 2L, occurredAt);
+        new WorkItemUnassigned(
+            priorAuthorityId, WorkItemType.PRIOR_AUTHORITY, UUID.randomUUID(), 1L, 2L, occurredAt);
     when(paDataRepository.findById(new PriorAuthorityDataId(priorAuthorityId, 1L)))
         .thenReturn(Optional.empty());
 

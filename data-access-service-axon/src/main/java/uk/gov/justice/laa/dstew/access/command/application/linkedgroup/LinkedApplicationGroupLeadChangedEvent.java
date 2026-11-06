@@ -1,15 +1,24 @@
 package uk.gov.justice.laa.dstew.access.command.application.linkedgroup;
 
 import java.time.Instant;
+import java.util.Set;
 import java.util.UUID;
 import org.axonframework.eventsourcing.annotation.EventTag;
 import org.axonframework.messaging.eventhandling.annotation.Event;
+import uk.gov.justice.laa.dstew.access.command.GenesisScoped;
 
 /** Emitted when the lead of a linked application group changes. */
-@Event
+@Event(namespace = "access", name = "LinkedApplicationGroupLeadChanged")
 public record LinkedApplicationGroupLeadChangedEvent(
     @EventTag(key = "LinkedApplicationGroupAggregate") UUID groupId,
     UUID previousLeadApplicationId,
     UUID newLeadApplicationId,
     long groupVersion,
-    Instant occurredAt) {}
+    Instant occurredAt)
+    implements GenesisScoped {
+
+  @Override
+  public Set<UUID> genesisIds() {
+    return GenesisScoped.ids(previousLeadApplicationId, newLeadApplicationId);
+  }
+}

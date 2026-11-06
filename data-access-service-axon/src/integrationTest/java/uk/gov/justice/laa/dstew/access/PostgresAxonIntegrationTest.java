@@ -159,7 +159,11 @@ class PostgresAxonIntegrationTest {
     assertThat(
             environment.getProperty("spring.main.allow-circular-references", Boolean.class, false))
         .isFalse();
-    assertThat(eventStorageEngine).isInstanceOf(AggregateBasedJpaEventStorageEngine.class);
+    assertThat(eventStorageEngine.getClass().getSimpleName())
+        .isEqualTo("ContentSeparatingStorageEngine");
+    assertThat(eventStorageEngine)
+        .extracting("delegate")
+        .isInstanceOf(AggregateBasedJpaEventStorageEngine.class);
     assertThat(axonTables).containsExactly("domain_event_entry", "token_entry");
   }
 
@@ -185,9 +189,11 @@ class PostgresAxonIntegrationTest {
 
     List<Map<String, Object>> events =
         jdbcTemplate.queryForList(
-            "SELECT aggregate_identifier, payload_type, sequence_number, convert_from(payload, 'UTF8') AS payload "
-                + "FROM axon.domain_event_entry "
-                + "WHERE aggregate_identifier = ? ORDER BY sequence_number",
+            "SELECT e.aggregate_identifier, e.payload_type, e.sequence_number, "
+                + "convert_from(e.payload, 'UTF8') AS payload, c.content::text AS content "
+                + "FROM axon.domain_event_entry e "
+                + "LEFT JOIN axon.event_content c ON c.event_id = e.event_identifier "
+                + "WHERE e.aggregate_identifier = ? ORDER BY e.sequence_number",
             applicationId.toString());
 
     assertThat(events)
@@ -196,28 +202,19 @@ class PostgresAxonIntegrationTest {
         .satisfies(
             event -> {
               assertThat(event.get("aggregate_identifier")).isEqualTo(applicationId.toString());
-              assertThat(event.get("payload_type"))
-                  .isEqualTo(
-                      "uk.gov.justice.laa.dstew.access.command.application"
-                          + ".ApplicationDocumentUploadedEvent");
+              assertThat(event.get("payload_type")).isEqualTo("access.ApplicationDocumentUploaded");
               assertThat(event.get("sequence_number")).isEqualTo(1L);
               assertThat(event.get("payload").toString())
-                  .doesNotContain("originalFilename.pdf", "originalFilename", "fileName");
-              assertThat(
-                      objectMapper
-                          .readTree(event.get("payload").toString())
-                          .get("fileSuffix")
-                          .asString())
-                  .isEqualTo(".pdf");
+                  .doesNotContain("originalFilename.pdf", "originalFilename", "fileName")
+                  .doesNotContain("fileSuffix");
+              var content = objectMapper.readTree(event.get("content").toString());
+              assertThat(content.get("fileSuffix").asString()).isEqualTo(".pdf");
+              assertThat(content.get("originalFilename").asString())
+                  .isEqualTo("originalFilename.pdf");
             });
 
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT payload -> 'documentFilenames' ->> ? FROM axon.application_draft WHERE application_id = ?",
-                String.class,
-                documentId.toString(),
-                applicationId))
-        .isEqualTo("originalFilename.pdf");
+    assertThat(uploadedFilenames(applicationId, documentId))
+        .containsExactly("originalFilename.pdf");
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM axon.application_data WHERE application_id = ?",
@@ -260,12 +257,6 @@ class PostgresAxonIntegrationTest {
         .contains(documentId.toString())
         .contains("fileSuffix", ".pdf")
         .doesNotContain("originalFilename.pdf", "fileName");
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.application_draft WHERE application_id = ?",
-                Integer.class,
-                applicationId))
-        .isZero();
     assertThatThrownBy(
             () ->
                 commandGateway.sendAndWait(
@@ -287,7 +278,7 @@ class PostgresAxonIntegrationTest {
   }
 
   @Test
-  void givenDocumentEventAppendFails_whenUploaded_thenDraftFilenameRollsBack() {
+  void givenDocumentEventAppendFails_whenUploaded_thenFilenameContentRollsBack() {
     UUID applicationId = UUID.randomUUID();
     UUID documentId = UUID.randomUUID();
     createDocumentDraft(applicationId);
@@ -336,13 +327,7 @@ class PostgresAxonIntegrationTest {
                 Integer.class,
                 applicationId))
         .isZero();
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT payload -> 'documentFilenames' ->> ? FROM axon.application_draft WHERE application_id = ?",
-                String.class,
-                documentId.toString(),
-                applicationId))
-        .isNull();
+    assertThat(uploadedFilenames(applicationId, documentId)).isEmpty();
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM axon.domain_event_entry WHERE aggregate_identifier = ?",
@@ -351,14 +336,19 @@ class PostgresAxonIntegrationTest {
         .isEqualTo(1);
 
     commandGateway.sendAndWait(command);
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT payload -> 'documentFilenames' ->> ? FROM axon.application_draft "
-                    + "WHERE application_id = ?",
-                String.class,
-                documentId.toString(),
-                applicationId))
-        .isEqualTo("client-report.pdf");
+    assertThat(uploadedFilenames(applicationId, documentId)).containsExactly("client-report.pdf");
+  }
+
+  private List<String> uploadedFilenames(UUID applicationId, UUID documentId) {
+    return jdbcTemplate.queryForList(
+        "SELECT c.content ->> 'originalFilename' FROM axon.domain_event_entry e"
+            + " JOIN axon.event_content c ON c.event_id = e.event_identifier"
+            + " WHERE e.aggregate_identifier = ?"
+            + " AND e.payload_type = 'access.ApplicationDocumentUploaded'"
+            + " AND convert_from(e.payload, 'UTF8')::jsonb ->> 'documentId' = ?",
+        String.class,
+        applicationId.toString(),
+        documentId.toString());
   }
 
   private void createDocumentDraft(UUID applicationId) {
@@ -422,11 +412,11 @@ class PostgresAxonIntegrationTest {
         .containsExactly(
             "application_current_state",
             "application_data",
-            "application_draft",
             "application_group_route",
             "application_history",
             "application_list_index",
             "domain_event_entry",
+            "event_content",
             "flyway_schema_history",
             "linked_application_group_current_state",
             "prior_authority_current_state",
@@ -503,7 +493,8 @@ class PostgresAxonIntegrationTest {
             HttpMethod.GET,
             new HttpEntity<>(headers()),
             String.class);
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    // Details read the aggregate, whose content comes from the events, not application_data.
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
 
     List<String> currentStateColumns =
         jdbcTemplate.queryForList(
@@ -584,9 +575,7 @@ class PostgresAxonIntegrationTest {
         .singleElement()
         .satisfies(
             event -> {
-              assertThat(event.get("payload_type"))
-                  .isEqualTo(
-                      "uk.gov.justice.laa.dstew.access.command.application.ApplicationCreatedEvent");
+              assertThat(event.get("payload_type")).isEqualTo("access.ApplicationCreated");
               assertThat(event.get("sequence_number")).isEqualTo(0L);
             });
   }
@@ -619,7 +608,7 @@ class PostgresAxonIntegrationTest {
                 applicationId.toString()))
         .satisfies(
             event -> {
-              assertThat(event.get("payload_type").toString()).endsWith("ApplicationUpdatedEvent");
+              assertThat(event.get("payload_type").toString()).endsWith("ApplicationUpdated");
               assertThat(event.get("payload").toString())
                   .contains("applicationDataVersion", "APPLICATION_SUBMITTED")
                   .doesNotContain(
@@ -735,14 +724,25 @@ class PostgresAxonIntegrationTest {
                 String.class,
                 applicationId))
         .isEqualTo("REFUSED");
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT convert_from(payload, 'UTF8') FROM axon.domain_event_entry "
-                    + "WHERE aggregate_identifier = ? AND sequence_number = 3",
-                String.class,
-                applicationId.toString()))
+    Map<String, Object> decisionEvent =
+        jdbcTemplate.queryForMap(
+            "SELECT convert_from(e.payload, 'UTF8') AS payload, c.content::text AS content "
+                + "FROM axon.domain_event_entry e "
+                + "JOIN axon.event_content c ON c.event_id = e.event_identifier "
+                + "WHERE e.aggregate_identifier = ? AND e.sequence_number = 3",
+            applicationId.toString());
+    assertThat(decisionEvent.get("payload").toString())
         .contains("applicationDataVersion", "REFUSED")
         .doesNotContain("Insufficient evidence", "The evidence did not meet the test");
+    assertThat(
+            objectMapper
+                .readTree(decisionEvent.get("payload").toString())
+                .get("proceedingDecisions")
+                .get(proceedingId.toString())
+                .asString())
+        .isEqualTo("REFUSED");
+    assertThat(decisionEvent.get("content").toString())
+        .contains("The evidence did not meet the test");
 
     assertThat(
             awaitHistoryTypes(
@@ -860,7 +860,7 @@ class PostgresAxonIntegrationTest {
         .satisfies(
             event -> {
               assertThat(event.get("payload_type").toString())
-                  .endsWith("ApplicationReadyForManualAssessmentEvent");
+                  .endsWith("ApplicationReadyForManualAssessment");
               assertThat(event.get("payload").toString())
                   .contains("applicationDataVersion")
                   .doesNotContain("applicationContent", "LAA-123");
@@ -1285,7 +1285,7 @@ class PostgresAxonIntegrationTest {
         .singleElement()
         .satisfies(
             event -> {
-              assertThat(event.get("payload_type")).asString().contains("ApplicationCreatedEvent");
+              assertThat(event.get("payload_type")).asString().contains("ApplicationCreated");
               assertThat(event.get("sequence_number")).isEqualTo(0L);
             });
   }

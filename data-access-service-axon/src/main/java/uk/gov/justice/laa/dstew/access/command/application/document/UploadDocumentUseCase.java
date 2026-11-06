@@ -2,11 +2,12 @@ package uk.gov.justice.laa.dstew.access.command.application.document;
 
 import java.time.Instant;
 import java.util.UUID;
+import org.axonframework.messaging.queryhandling.gateway.QueryGateway;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 import uk.gov.justice.laa.dstew.access.command.RetryingCommandDispatcher;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadCommand;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftStore;
+import uk.gov.justice.laa.dstew.access.command.application.draft.ApplicationDraftExistsQuery;
 import uk.gov.justice.laa.dstew.access.document.DocumentUploadResult;
 import uk.gov.justice.laa.dstew.access.exception.ResourceNotFoundException;
 import uk.gov.justice.laa.dstew.access.security.AllowApiCaseworker;
@@ -19,16 +20,14 @@ public class UploadDocumentUseCase {
 
   private final SdsService sdsService;
   private final RetryingCommandDispatcher dispatcher;
-  private final ApplicationDraftStore draftStore;
+  private final QueryGateway queryGateway;
 
-  /** Constructs the upload use case with direct draft lookup and command dispatch. */
+  /** Constructs the upload use case with an aggregate-backed draft check and command dispatch. */
   public UploadDocumentUseCase(
-      SdsService sdsService,
-      RetryingCommandDispatcher dispatcher,
-      ApplicationDraftStore draftStore) {
+      SdsService sdsService, RetryingCommandDispatcher dispatcher, QueryGateway queryGateway) {
     this.sdsService = sdsService;
     this.dispatcher = dispatcher;
-    this.draftStore = draftStore;
+    this.queryGateway = queryGateway;
   }
 
   /**
@@ -40,12 +39,7 @@ public class UploadDocumentUseCase {
    */
   @AllowApiCaseworker
   public SdsUploadResult execute(UUID applicationId, MultipartFile file) {
-    draftStore
-        .find(applicationId)
-        .orElseThrow(
-            () ->
-                new ResourceNotFoundException(
-                    "No application draft found with Application ID: " + applicationId));
+    requireDraft(applicationId);
     return sdsService.saveFile(applicationId, file);
   }
 
@@ -53,12 +47,7 @@ public class UploadDocumentUseCase {
   @AllowApiCaseworker
   public DocumentUploadResult execute(
       UUID applicationId, MultipartFile file, String documentType, String sourceService) {
-    draftStore
-        .find(applicationId)
-        .orElseThrow(
-            () ->
-                new ResourceNotFoundException(
-                    "No application draft found with Application ID: " + applicationId));
+    requireDraft(applicationId);
     UUID documentId = UUID.randomUUID();
     Instant uploadedAt = Instant.now();
     SdsUploadResult response = sdsService.saveEvidenceFile(applicationId, documentId, file);
@@ -82,6 +71,13 @@ public class UploadDocumentUseCase {
         uploadedAt,
         sourceService,
         response.checksum());
+  }
+
+  private void requireDraft(UUID applicationId) {
+    if (!queryGateway.query(new ApplicationDraftExistsQuery(applicationId), Boolean.class).join()) {
+      throw new ResourceNotFoundException(
+          "No application draft found with Application ID: " + applicationId);
+    }
   }
 
   private String fileType(String contentType) {

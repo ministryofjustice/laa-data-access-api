@@ -283,7 +283,13 @@ class ApplicationHistoryProjectionTest {
     Instant occurredAt = Instant.parse("2026-07-20T08:00:00Z");
     WorkItemAssigned event =
         new WorkItemAssigned(
-            applicationId, WorkItemType.APPLICATION, 1L, 1L, eventCaseworkerId, occurredAt);
+            applicationId,
+            WorkItemType.APPLICATION,
+            applicationId,
+            1L,
+            1L,
+            eventCaseworkerId,
+            occurredAt);
 
     projection.on(event, messageWithCaseworker(event, "assignment-event", metadataCaseworkerId));
 
@@ -300,7 +306,12 @@ class ApplicationHistoryProjectionTest {
     UUID caseworkerId = UUID.randomUUID();
     WorkItemUnassigned event =
         new WorkItemUnassigned(
-            applicationId, WorkItemType.APPLICATION, 1L, 2L, Instant.parse("2026-07-20T09:00:00Z"));
+            applicationId,
+            WorkItemType.APPLICATION,
+            applicationId,
+            1L,
+            2L,
+            Instant.parse("2026-07-20T09:00:00Z"));
 
     projection.on(event, messageWithCaseworker(event, "unassignment-event", caseworkerId));
 

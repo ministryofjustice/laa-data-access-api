@@ -67,6 +67,7 @@ import uk.gov.justice.laa.dstew.access.model.LinkedGroupChangeRequest;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
+import uk.gov.justice.laa.dstew.access.testutils.EventTypeNames;
 import uk.gov.justice.laa.dstew.access.version.VersionToken;
 import util.ProjectionAwaiter;
 
@@ -1290,14 +1291,14 @@ public class ApplicationLinkMembershipIntegrationTest {
                 """,
         Long.class,
         groupId.toString(),
-        eventType.getName());
+        EventTypeNames.of(eventType));
   }
 
   private long countAllDomainEvents(Class<?> eventType) {
     return jdbcTemplate.queryForObject(
         "SELECT COUNT(*) FROM axon.domain_event_entry WHERE payload_type = ?",
         Long.class,
-        eventType.getName());
+        EventTypeNames.of(eventType));
   }
 
   private static String token(UUID groupId, long version) {

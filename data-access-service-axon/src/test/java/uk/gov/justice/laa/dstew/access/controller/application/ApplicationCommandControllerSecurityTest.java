@@ -120,7 +120,7 @@ class ApplicationCommandControllerSecurityTest {
   }
 
   @Test
-  void givenAuthenticatedJwtUser_whenCreateApplication_thenReturnsAccepted() {
+  void givenAuthenticatedJwtUser_whenCreateApplication_thenReturnsCreated() {
     when(commandMapper.toCommand(any(), anyInt())).thenReturn(validCommand());
 
     HttpHeaders headers = new HttpHeaders();
@@ -132,9 +132,9 @@ class ApplicationCommandControllerSecurityTest {
         restTemplate.exchange(
             url(), HttpMethod.POST, new HttpEntity<>(validRequest(), headers), String.class);
 
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
 
-    verifyNoInteractions(dispatcher);
+    verify(dispatcher).dispatch(any(Object.class));
   }
 
   @Test

@@ -1,0 +1,53 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "access.ApplicationDraftStarted kept fields",
+  "description": "Fields kept on the stored event. Every other field is content, stored apart so that it can be erased. Content: applicationContent, potentialDuplicates, serialisedRequest.",
+  "type": "object",
+  "properties": {
+    "applicationId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "schemaVersion": {
+      "type": "integer"
+    },
+    "requestFingerprint": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "officeCode": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "status": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "laaReference": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "applicationId",
+    "schemaVersion",
+    "requestFingerprint",
+    "occurredAt",
+    "officeCode",
+    "status",
+    "laaReference"
+  ],
+  "additionalProperties": false
+}

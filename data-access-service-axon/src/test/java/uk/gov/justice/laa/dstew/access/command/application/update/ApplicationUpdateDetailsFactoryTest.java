@@ -43,7 +43,8 @@ class ApplicationUpdateDetailsFactoryTest {
     ApplicationDataPayload current =
         ApplicationDataPayload.from(applicationCreationDetails(applicationId));
 
-    ApplicationDataPayload updated = factory.prepare(command, current, false);
+    ApplicationDataPayload updated =
+        factory.prepare(factory.parse(command), command, current, false);
 
     assertThat(updated.categoryOfLawCode()).isEqualTo("MAT");
     assertThat(updated.matterTypeCode()).isEqualTo("KPBLW");

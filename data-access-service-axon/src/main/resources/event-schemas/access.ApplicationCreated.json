@@ -1,0 +1,63 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "access.ApplicationCreated kept fields",
+  "description": "Fields kept on the stored event. Every other field is content, stored apart so that it can be erased. Content: content, potentialDuplicates, serialisedRequest.",
+  "type": "object",
+  "properties": {
+    "applicationId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "applicationDataVersion": {
+      "type": "integer"
+    },
+    "requestFingerprint": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "status": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "schemaVersion": {
+      "type": "integer"
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "officeCode": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "laaReference": {
+      "type": "string",
+      "minLength": 1
+    },
+    "proceedingIds": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "uuid"
+      }
+    }
+  },
+  "required": [
+    "applicationId",
+    "applicationDataVersion",
+    "requestFingerprint",
+    "status",
+    "schemaVersion",
+    "occurredAt",
+    "officeCode",
+    "laaReference",
+    "proceedingIds"
+  ],
+  "additionalProperties": false
+}

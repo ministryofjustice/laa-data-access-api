@@ -42,6 +42,7 @@ import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
+import uk.gov.justice.laa.dstew.access.testsupport.InMemoryEventContentStoreConfig;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 
 /** Verifies replay and transient-failure recovery using real tracking event processors. */
@@ -56,7 +57,11 @@ import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
       "spring.datasource.url=jdbc:h2:mem:axon-recovery;DB_CLOSE_DELAY=-1"
     })
 @AutoConfigureTestRestTemplate
-@Import({EventProcessorRecoveryInMemoryTest.RecoveryConfig.class, TestJwtDecoderConfig.class})
+@Import({
+  EventProcessorRecoveryInMemoryTest.RecoveryConfig.class,
+  TestJwtDecoderConfig.class,
+  InMemoryEventContentStoreConfig.class
+})
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class EventProcessorRecoveryInMemoryTest {
 
