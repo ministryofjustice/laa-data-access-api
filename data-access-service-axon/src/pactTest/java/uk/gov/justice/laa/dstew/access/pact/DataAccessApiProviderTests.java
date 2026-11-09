@@ -111,14 +111,16 @@ public class DataAccessApiProviderTests extends AbstractProviderPactTests {
     states.noApplicationWithId();
   }
 
-  /**
-   * POST application-drafts/{id}/submit, POST applications/{id}/documents on a draft. Creates a
-   * fresh draft and returns its generated {@code applicationId} for injection, so no two
-   * interactions that change a draft share one.
-   */
-  @State(PactStates.NEW_APPLICATION_DRAFT_EXISTS)
-  public Map<String, Object> newApplicationDraftExists() {
-    return states.newApplicationDraftExists();
+  /** POST application-drafts/00000000-0000-0000-0000-000000000011/submit. */
+  @State(PactStates.APPLICATION_DRAFT_TO_SUBMIT_EXISTS)
+  public void applicationDraftToSubmitExists() {
+    states.applicationDraftToSubmitExists();
+  }
+
+  /** POST applications/00000000-0000-0000-0000-000000000012/documents. */
+  @State(PactStates.APPLICATION_DRAFT_FOR_DOCUMENTS_EXISTS)
+  public void applicationDraftForDocumentsExists() {
+    states.applicationDraftForDocumentsExists();
   }
 
   /** POST applications expecting 202. */

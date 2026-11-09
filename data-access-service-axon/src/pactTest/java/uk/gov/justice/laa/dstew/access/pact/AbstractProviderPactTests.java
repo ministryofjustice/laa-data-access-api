@@ -101,6 +101,7 @@ public abstract class AbstractProviderPactTests {
    */
   @MockitoBean protected SdsService sdsService;
 
+  protected ApplicationStateSeeder applications;
   protected ProviderStates states;
 
   /**
@@ -113,7 +114,7 @@ public abstract class AbstractProviderPactTests {
     SecurityContextHolder.getContext().setAuthentication(stateSetupAuthentication());
     stubSecureDocumentStorage();
 
-    ApplicationStateSeeder applications =
+    applications =
         new ApplicationStateSeeder(
             queryGateway,
             workListItemReadRepository,

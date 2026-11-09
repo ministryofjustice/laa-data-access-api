@@ -31,9 +31,13 @@ final class PactStates {
   static final String NO_APPLICATION_WITH_ID =
       "no application exists with id 00000000-0000-0000-0000-00000000dead";
   static final String APPLICATION_READ_MODEL_LAGGING = "the application read model is lagging";
-  // Fresh draft per interaction, identifier injected: for requests that submit a draft or upload
-  // to it.
-  static final String NEW_APPLICATION_DRAFT_EXISTS = "a new application draft exists";
+  // Application drafts. Each fixed ID serves one kind of changing request, because submitting
+  // removes the draft for the rest of the run: 011 is for the request that submits, 012 for
+  // document uploads.
+  static final String APPLICATION_DRAFT_TO_SUBMIT_EXISTS =
+      "an application draft 00000000-0000-0000-0000-000000000011 exists";
+  static final String APPLICATION_DRAFT_FOR_DOCUMENTS_EXISTS =
+      "an application draft 00000000-0000-0000-0000-000000000012 exists";
 
   // Work list
   static final String WORK_LIST_ITEMS_EXIST = "work list items exist";

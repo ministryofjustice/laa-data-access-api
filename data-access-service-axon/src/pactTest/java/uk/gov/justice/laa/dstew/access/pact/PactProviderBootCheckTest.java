@@ -1,6 +1,8 @@
 package uk.gov.justice.laa.dstew.access.pact;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static uk.gov.justice.laa.dstew.access.pact.PactApplicationFixtures.applicationDraft;
 
 import au.com.dius.pact.provider.junitsupport.State;
 import au.com.dius.pact.provider.junitsupport.StateChangeAction;
@@ -50,7 +52,8 @@ class PactProviderBootCheckTest extends AbstractProviderPactTests {
     states.applicationsLinked();
     states.noApplicationWithId();
     states.workListItemsExist();
-    assertThat(states.newApplicationDraftExists()).containsKey("applicationId");
+    states.applicationDraftToSubmitExists();
+    states.applicationDraftForDocumentsExists();
   }
 
   @Test
@@ -70,14 +73,28 @@ class PactProviderBootCheckTest extends AbstractProviderPactTests {
   }
 
   @Test
-  void freshApplicationDraftStateCreatesAnotherDraftEveryTime() {
-    // Consumers submit and upload against it, so no two interactions may share one.
-    UUID first = applicationDraft(states.newApplicationDraftExists());
-    UUID second = applicationDraft(states.newApplicationDraftExists());
+  void applicationDraftStatesSeedTheirOwnDraftsOnce() {
+    states.applicationDraftToSubmitExists();
+    states.applicationDraftToSubmitExists();
+    states.applicationDraftForDocumentsExists();
 
-    assertThat(first).isNotEqualTo(second);
-    assertThat(applicationDraftStore.find(first)).isPresent();
-    assertThat(applicationDraftStore.find(second)).isPresent();
+    assertThat(applicationDraftStore.find(PactIds.APPLICATION_DRAFT_TO_SUBMIT)).isPresent();
+    assertThat(applicationDraftStore.find(PactIds.APPLICATION_DRAFT_FOR_DOCUMENTS)).isPresent();
+  }
+
+  @Test
+  void applicationDraftSeedingRefusesAnIdAlreadySubmittedInThisRun() {
+    // A submitted application can never be a draft again, so the seeder says so up front rather
+    // than letting the replayed request fail with 404. Checked against 002, which another state
+    // submits, so the draft IDs themselves stay usable by the other tests in this class.
+    states.submittedApplicationExists();
+
+    assertThatThrownBy(
+            () ->
+                applications.ensureDraft(
+                    applicationDraft(PactIds.APPLICATION_SUBMITTED, "LAA-REF-0002", "Sam", "Sent")))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("already submitted");
   }
 
   @Test
@@ -143,10 +160,6 @@ class PactProviderBootCheckTest extends AbstractProviderPactTests {
 
   private PriorAuthorityResult priorAuthority(Map<String, Object> injected) {
     return find(UUID.fromString((String) injected.get("priorAuthorityId")));
-  }
-
-  private static UUID applicationDraft(Map<String, Object> injected) {
-    return UUID.fromString((String) injected.get("applicationId"));
   }
 
   private PriorAuthorityResult find(UUID priorAuthorityId) {

@@ -32,9 +32,8 @@ each state through the real use cases, and `DataAccessApiProviderTests` replays 
    cannot be guaranteed. Express an empty result with a filter nothing matches, or use a reserved
    missing ID for 404 cases.
 6. **Generated identifiers are injected.** The service generates document identifiers, and the
-   "new" states (`a new prior authority draft ...`, `a new application draft exists`) generate the
-   prior authority or application identifier too. The handler returns them and your pact uses
-   Pact's provider-state injected value for each (see below).
+   "new prior authority" states generate the prior authority identifier too. The handler returns
+   them and your pact uses Pact's provider-state injected value for each (see below).
 7. **Fixed-ID prior authority states are for reads only.** A request that changes a prior authority
    (PUT draft, POST submit, POST documents, PATCH or DELETE a document) must use one of the
    `a new prior authority draft ...` states, which create a fresh prior authority for that one
@@ -42,7 +41,11 @@ each state through the real use cases, and `DataAccessApiProviderTests` replays 
    authority cannot be put back: once `…a001` is submitted, its draft is gone for the rest of the
    run and the identifier can never be created again, so every later interaction on it fails. A
    deleted document stays deleted in the same way.
-8. **Agree a new state before publishing a pact that needs it.** A state with no handler fails
+8. **Each application draft state serves one kind of request.** Submitting removes a draft for
+   the rest of the run and the identifier can never be a draft again, so `…0011` is for the
+   interaction that submits and `…0012` for document uploads. Only one interaction per run may
+   submit `…0011`; a second one fails in state setup with an explanation.
+9. **Agree a new state before publishing a pact that needs it.** A state with no handler fails
    verification with "missing state". Raise it with the Data Access team and the handler lands with
    your pact.
 
@@ -60,7 +63,8 @@ each state through the real use cases, and `DataAccessApiProviderTests` replays 
 | `applications 00000000-0000-0000-0000-000000000007 and 00000000-0000-0000-0000-000000000008 are linked with 007 as lead` | Both submitted, one family group, `…0007` is lead, `…0008` is member, linked group version 0 | | GET by id with linked group, POST unlink, POST make-lead |
 | `no application exists with id 00000000-0000-0000-0000-00000000dead` | That ID is never created | | Any application endpoint expecting 404 |
 | `the application read model is lagging` | The application projection is paused for this interaction, so POST applications returns 202 with a Location after the configured wait | | POST applications expecting 202 |
-| `a new application draft exists` | A draft created for this interaction only, under a generated identifier: in the draft store, submittable, accepts document uploads, content schema version 1, office code `1A001B`, status on submission `APPLICATION_SUBMITTED`. Not returned by GET application by id until submitted. Returns `applicationId` as an injected value (see "Using injected identifiers") | Anything time-based | POST application-drafts/{id}/submit, POST applications/{id}/documents |
+| `an application draft 00000000-0000-0000-0000-000000000011 exists` | A draft in the draft store, complete enough to submit: content schema version 1, office code `1A001B`, status on submission `APPLICATION_SUBMITTED`. Not returned by GET application by id until submitted | Anything time-based. One interaction per run may submit it (rule 8) | POST application-drafts/…0011/submit |
+| `an application draft 00000000-0000-0000-0000-000000000012 exists` | As `…0011`, but never submitted, so it is always there to receive documents | Anything time-based. Do not submit it | POST applications/…0012/documents |
 
 ## Work list
 
@@ -133,35 +137,6 @@ builder
 Assert on the response by type for these, not by the example identifier, because every
 verification sees a different one. A request body that needs the parent application can use the
 fixed `00000000-0000-0000-0000-000000000009`, which is also returned as `applicationId`.
-
-`a new application draft exists` works the same way for applications: the handler creates a fresh
-draft and returns its `applicationId`, so the request path takes it from the provider state. In
-Pact JVM:
-
-```java
-builder
-    .given("a new application draft exists")
-    .uponReceiving("submit an application draft")
-    .pathFromProviderState(
-        "/api/v0/application-drafts/${applicationId}/submit",
-        "/api/v0/application-drafts/74c694d7-1a96-4c1f-8adc-f2160f1c9c82/submit")
-    .method("POST")
-```
-
-and in pact-ruby (2.x), where the generator is `generate_from_provider_state`:
-
-```ruby
-new_interaction
-  .given("a new application draft exists")
-  .upon_receiving("a request to submit an application draft")
-  .with_request(
-    method: :post,
-    path: generate_from_provider_state(
-      expression: "/api/v0/application-drafts/${applicationId}/submit",
-      example: "/api/v0/application-drafts/74c694d7-1a96-4c1f-8adc-f2160f1c9c82/submit",
-    ),
-  )
-```
 
 ## Running verification
 

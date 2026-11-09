@@ -1,5 +1,6 @@
 package uk.gov.justice.laa.dstew.access.pact;
 
+import static uk.gov.justice.laa.dstew.access.pact.PactApplicationFixtures.applicationDraft;
 import static uk.gov.justice.laa.dstew.access.pact.PactApplicationFixtures.submittedApplication;
 import static uk.gov.justice.laa.dstew.access.pact.PactApplicationFixtures.submittedApplication001;
 
@@ -100,14 +101,21 @@ class ProviderStates {
   }
 
   /**
-   * A draft created fresh for this one interaction, so submitting it or uploading to it cannot
-   * affect any other interaction in the run. Returns the generated {@code applicationId} for
-   * injection.
+   * Application draft 011: in the draft store, submittable, for the one interaction that submits
+   * it. Submitting removes the draft for the rest of the run, so document uploads use {@link
+   * #applicationDraftForDocumentsExists()} instead.
    */
-  Map<String, Object> newApplicationDraftExists() {
-    log.info("State: {}", PactStates.NEW_APPLICATION_DRAFT_EXISTS);
-    UUID applicationId = applications.newDraft();
-    return Map.of("applicationId", applicationId.toString());
+  void applicationDraftToSubmitExists() {
+    log.info("State: {}", PactStates.APPLICATION_DRAFT_TO_SUBMIT_EXISTS);
+    applications.ensureDraft(
+        applicationDraft(PactIds.APPLICATION_DRAFT_TO_SUBMIT, "LAA-REF-0011", "Dee", "Draft"));
+  }
+
+  /** Application draft 012: in the draft store, only ever uploaded to, never submitted. */
+  void applicationDraftForDocumentsExists() {
+    log.info("State: {}", PactStates.APPLICATION_DRAFT_FOR_DOCUMENTS_EXISTS);
+    applications.ensureDraft(
+        applicationDraft(PactIds.APPLICATION_DRAFT_FOR_DOCUMENTS, "LAA-REF-0012", "Dom", "Draft"));
   }
 
   /**
