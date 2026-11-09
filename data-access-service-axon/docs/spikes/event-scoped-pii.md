@@ -1036,6 +1036,15 @@ Split into two steps:
         type are Prior Authority data and move with Prior Authority content
         later. Rejected: copying into a per-application work-list table, and
         keeping category and matter types as event fields.
+      - **Amended 2026-11-09: the work list keeps its copied columns.**
+        Slimming it is not needed to prove the approach, and the work list
+        will filter on these fields later, which a read-time lookup can't
+        support. The six fields (LAA reference, delegated functions,
+        category of law and code, matter types and codes) are not personal
+        data, so a disposable projection may copy them; erasure does not
+        need to reach them. In (iii) the work list reads them from event
+        content instead of `application_data`. Slimming via the summary
+        remains an option if the copies prove a maintenance cost.
     - **GET details after erasure returns 404 (decided 2026-11-06).** Details
       load the aggregate; when its content is erased the response is 404, as
       today. Returning the kept fields (200 with an erased marker, or 410)
