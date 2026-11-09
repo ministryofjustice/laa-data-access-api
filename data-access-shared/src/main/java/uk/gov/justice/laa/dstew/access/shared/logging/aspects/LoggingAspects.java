@@ -51,15 +51,12 @@ public class LoggingAspects {
               .map(this::sanitizeForLogging)
               .collect(Collectors.joining(",", "[", "]"));
 
-      String correlationId = getCorrelationId();
-
-      // Structured log with key-value pairs including correlation ID
+      // Structured log with key-value pairs
       log.info(
-          "Method invoked: class={}, method={}, arguments={}, correlationId={}",
+          "Method invoked: class={}, method={}, arguments={}",
           joinPoint.getSignature().getDeclaringTypeName(),
           joinPoint.getSignature().getName(),
-          allMethodArguments,
-          correlationId);
+          allMethodArguments);
     }
   }
 
@@ -77,14 +74,12 @@ public class LoggingAspects {
   public void logMethodResponseAdvice(JoinPoint joinPoint, Object methodResponse) {
     if (log.isInfoEnabled()) {
       String sanitizedResponse = sanitizeForLogging(methodResponse);
-      String correlationId = getCorrelationId();
 
       log.info(
-          "Method completed: class={}, method={}, response={}, correlationId={}",
+          "Method completed: class={}, method={}, response={}",
           joinPoint.getSignature().getDeclaringTypeName(),
           joinPoint.getSignature().getName(),
-          sanitizedResponse,
-          correlationId);
+          sanitizedResponse);
     }
   }
 
@@ -101,30 +96,26 @@ public class LoggingAspects {
               + "@annotation(uk.gov.justice.laa.dstew.access.shared.logging.aspects.LogMethodResponse)",
       throwing = "exception")
   public void logMethodExceptionAdvice(JoinPoint joinPoint, Throwable exception) {
-    String correlationId = getCorrelationId();
 
     if (isClientFacing(exception)) {
       // Expected, client-caused outcome (maps to an HTTP 4xx response): breadcrumb-level only,
       // not a Sentry event. See ClientFacingException for the agreed reporting rule.
       log.warn(
-          "Method rejected request: class={}, method={}, exceptionType={}, exceptionMessage={},"
-              + " correlationId={}",
+          "Method rejected request: class={}, method={}, exceptionType={}, exceptionMessage={}",
           joinPoint.getSignature().getDeclaringTypeName(),
           joinPoint.getSignature().getName(),
           exception.getClass().getSimpleName(),
-          exception.getMessage(),
-          correlationId);
+          exception.getMessage());
       return;
     }
 
     // Unexpected/operator-actionable failure: ERROR triggers a Sentry event via the log route.
     log.error(
-        "Method failed: class={}, method={}, exceptionType={}, exceptionMessage={}, correlationId={}",
+        "Method failed: class={}, method={}, exceptionType={}, exceptionMessage={}",
         joinPoint.getSignature().getDeclaringTypeName(),
         joinPoint.getSignature().getName(),
         exception.getClass().getSimpleName(),
         exception.getMessage(),
-        correlationId,
         exception);
   }
 

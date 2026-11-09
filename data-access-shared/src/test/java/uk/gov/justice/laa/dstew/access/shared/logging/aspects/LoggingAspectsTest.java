@@ -73,16 +73,14 @@ class LoggingAspectsTest {
   }
 
   @Test
-  void givenArguments_whenInvoked_thenLogsNonNullArgumentsAndCorrelationId() {
+  void givenArguments_whenInvoked_thenLogsNonNullArguments() {
     JoinPoint joinPoint = joinPoint();
     when(joinPoint.getArgs()).thenReturn(new Object[] {"first", null, 42});
-    MDC.put("correlationId", "request-123");
 
     aspects.logMethodArgumentsAdvice(joinPoint);
 
     assertInfoMessage(
-        "Method invoked: class=SomeController, method=someMethod, arguments=[first,42],"
-            + " correlationId=request-123");
+        "Method invoked: class=SomeController, method=someMethod, arguments=[first,42]");
   }
 
   @Test
@@ -92,8 +90,7 @@ class LoggingAspectsTest {
 
     aspects.logMethodArgumentsAdvice(joinPoint);
 
-    assertInfoMessage(
-        "Method invoked: class=SomeController, method=someMethod, arguments=[], correlationId=null");
+    assertInfoMessage("Method invoked: class=SomeController, method=someMethod, arguments=[]");
   }
 
   @Test
@@ -103,22 +100,17 @@ class LoggingAspectsTest {
 
     aspects.logMethodArgumentsAdvice(joinPoint);
 
-    assertInfoMessage(
-        "Method invoked: class=SomeController, method=someMethod, arguments=[], correlationId=null");
+    assertInfoMessage("Method invoked: class=SomeController, method=someMethod, arguments=[]");
   }
 
   @ParameterizedTest
   @NullSource
   @ValueSource(strings = {"result"})
-  void givenResponse_whenReturned_thenLogsResponseAndCorrelationId(String response) {
-    MDC.put("correlationId", "request-123");
-
+  void givenResponse_whenReturned_thenLogsResponse(String response) {
     aspects.logMethodResponseAdvice(joinPoint(), response);
 
     assertInfoMessage(
-        "Method completed: class=SomeController, method=someMethod, response="
-            + response
-            + ", correlationId=request-123");
+        "Method completed: class=SomeController, method=someMethod, response=" + response);
   }
 
   @ParameterizedTest
@@ -135,12 +127,8 @@ class LoggingAspectsTest {
     assertThat(logEvents.list)
         .extracting(ILoggingEvent::getFormattedMessage)
         .containsExactly(
-            "Method invoked: class=SomeController, method=someMethod, arguments=["
-                + expected
-                + "], correlationId=null",
-            "Method completed: class=SomeController, method=someMethod, response="
-                + expected
-                + ", correlationId=null");
+            "Method invoked: class=SomeController, method=someMethod, arguments=[" + expected + "]",
+            "Method completed: class=SomeController, method=someMethod, response=" + expected);
   }
 
   @Test
@@ -179,8 +167,7 @@ class LoggingAspectsTest {
                           + " exceptionType="
                           + exception.getClass().getSimpleName()
                           + ", exceptionMessage="
-                          + exception.getMessage()
-                          + ", correlationId=null");
+                          + exception.getMessage());
               assertThat(event.getThrowableProxy()).isNull();
             });
   }
@@ -228,7 +215,6 @@ class LoggingAspectsTest {
 
   @Test
   void givenUnclassifiedRuntimeException_whenThrown_thenLogsAtError() {
-    MDC.put("correlationId", "request-123");
     aspects.logMethodExceptionAdvice(joinPoint(), new RuntimeException("unexpected failure"));
 
     assertThat(logEvents.list)
@@ -239,8 +225,8 @@ class LoggingAspectsTest {
               assertThat(event.getFormattedMessage())
                   .isEqualTo(
                       "Method failed: class=SomeController, method=someMethod,"
-                          + " exceptionType=RuntimeException, exceptionMessage=unexpected failure,"
-                          + " correlationId=request-123");
+                          + " exceptionType=RuntimeException, exceptionMessage=unexpected"
+                          + " failure");
               assertThat(event.getThrowableProxy()).isNotNull();
               assertThat(event.getThrowableProxy().getClassName())
                   .isEqualTo(RuntimeException.class.getName());
