@@ -13,6 +13,8 @@ import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
+import uk.gov.justice.laa.dstew.access.command.application.document.DocumentFilenameStore;
+import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.listindex.ApplicationListIndexReadModel;
@@ -32,6 +34,7 @@ public class ApplicationReadModelAssembler {
   private final LinkedApplicationGroupReadRepository groupReadRepository;
   private final ApplicationListIndexReadRepository listIndexRepository;
   private final PriorAuthorityReadRepository priorAuthorityReadRepository;
+  private final DocumentFilenameStore documentFilenameStore;
 
   /** Hydrates a single row, or returns empty if its referenced data version is missing. */
   public Optional<ApplicationReadModel> hydrate(ApplicationReadModel application) {
@@ -72,7 +75,12 @@ public class ApplicationReadModelAssembler {
     application.setAutoGranted(data.autoGranted());
     application.setMeritsDecisions(data.meritsDecisions());
     application.setCertificate(data.certificate());
-    application.setDocumentFilenames(data.documentFilenames());
+    application.setDocumentFilenames(
+        documentFilenameStore.findAllByIds(
+            application.getUploadedDocuments().stream()
+                .filter(document -> !document.deleted())
+                .map(DocumentMetadata::documentId)
+                .toList()));
     return application;
   }
 

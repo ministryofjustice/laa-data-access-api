@@ -6,6 +6,7 @@ import org.axonframework.messaging.commandhandling.annotation.CommandHandler;
 import org.axonframework.messaging.eventhandling.gateway.EventAppender;
 import org.axonframework.modelling.annotation.InjectEntity;
 import org.springframework.stereotype.Component;
+import uk.gov.justice.laa.dstew.access.command.application.document.DocumentFilenameStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDecider;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentDeleteCommand;
@@ -29,13 +30,14 @@ public class PriorAuthorityDocumentDeleteCommandHandler {
   public DocumentMetadata handle(
       @AuthenticatedCallerResource PriorAuthorityDocumentDeleteCommand command,
       PriorAuthorityDraftStore draftStore,
+      DocumentFilenameStore documentFilenameStore,
       @InjectEntity(idProperty = "priorAuthorityId") @WriteAccessResolverResource
           PriorAuthorityAggregate priorAuthority,
       EventAppender eventAppender) {
 
     requireDraftLifecycle(priorAuthority);
     PriorAuthorityDataPayload existingDraft = requireDraft(command.priorAuthorityId(), draftStore);
-    DocumentMetadata document =
+    final DocumentMetadata document =
         priorAuthority.getState().getUploadedDocuments().stream()
             .filter(uploaded -> uploaded.documentId().equals(command.documentId()))
             .filter(uploaded -> !uploaded.deleted())
@@ -46,6 +48,8 @@ public class PriorAuthorityDocumentDeleteCommandHandler {
                         "Document %s not found for Prior Authority %s"
                             .formatted(command.documentId(), command.priorAuthorityId())));
 
+    documentFilenameStore.markDeleted(
+        command.priorAuthorityId(), command.documentId(), command.occurredAt());
     draftStore.upsert(
         command.priorAuthorityId(),
         existingDraft.applicationId(),

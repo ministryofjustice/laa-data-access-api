@@ -976,12 +976,13 @@ class ApplicationDraftIntegrationTest {
     UUID applicationId = saveValidDraft();
     when(sdsService.saveEvidenceFile(any(), any(), any()))
         .thenReturn(new SdsUploadResult(null, null, "checksum"));
-    final UUID documentId = uploadDocument(applicationId, "original evidence.pdf");
+    String originalFilename = "original evidence.pdf";
+    final UUID documentId = uploadDocument(applicationId, originalFilename);
     if (missingFilename) {
-      jdbcTemplate.update(
-          "UPDATE axon.application_draft SET payload = jsonb_set(payload, '{documentFilenames}', '{}'::jsonb)"
-              + " WHERE application_id = ?",
-          applicationId);
+      assertThat(
+              jdbcTemplate.update(
+                  "DELETE FROM axon.document_filename WHERE document_id = ?", documentId))
+          .isEqualTo(1);
     }
     if (submitted) {
       ResponseEntity<String> submitResponse =
@@ -1011,7 +1012,7 @@ class ApplicationDraftIntegrationTest {
     assertThat(response.getHeaders().getContentType()).isEqualTo(MediaType.APPLICATION_PDF);
     assertThat(response.getHeaders().getContentDisposition().getType()).isEqualTo("attachment");
     assertThat(response.getHeaders().getContentDisposition().getFilename())
-        .isEqualTo(missingFilename ? documentId.toString() : "original evidence.pdf");
+        .isEqualTo(missingFilename ? documentId.toString() : originalFilename);
     assertThat(response.getHeaders().getFirst("X-Document-Type")).isEqualTo("GATEWAY_EVIDENCE");
     assertThat(response.getBody()).containsExactly(content);
     verify(sdsService).getEvidenceFile(applicationId, documentId, documentId + ".pdf");

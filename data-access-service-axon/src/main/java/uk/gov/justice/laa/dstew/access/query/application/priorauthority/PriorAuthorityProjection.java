@@ -4,6 +4,7 @@ import jakarta.annotation.Nullable;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.UnaryOperator;
@@ -14,6 +15,7 @@ import org.axonframework.messaging.queryhandling.QueryUpdateEmitter;
 import org.axonframework.messaging.queryhandling.annotation.QueryHandler;
 import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Component;
+import uk.gov.justice.laa.dstew.access.command.application.document.DocumentFilenameStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentDeletedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentTypeUpdatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentUploadedEvent;
@@ -38,6 +40,7 @@ public class PriorAuthorityProjection {
   private final PriorAuthorityCurrentStateAccessPolicy accessPolicy;
   private final PriorAuthorityDataStore priorAuthorityDataStore;
   private final PriorAuthorityDraftStore priorAuthorityDraftStore;
+  private final DocumentFilenameStore documentFilenameStore;
 
   /**
    * Creates the prior-authority current-state projection.
@@ -45,18 +48,21 @@ public class PriorAuthorityProjection {
    * @param repository persistence for the projected current state
    * @param priorAuthorityDataStore storage for submitted prior-authority content
    * @param priorAuthorityDraftStore storage for in-progress draft content
+   * @param documentFilenameStore storage for document filenames
    */
   public PriorAuthorityProjection(
       PriorAuthorityReadRepository repository,
       PriorAuthorityReadQueryGateway readQueryGateway,
       PriorAuthorityCurrentStateAccessPolicy accessPolicy,
       PriorAuthorityDataStore priorAuthorityDataStore,
-      PriorAuthorityDraftStore priorAuthorityDraftStore) {
+      PriorAuthorityDraftStore priorAuthorityDraftStore,
+      DocumentFilenameStore documentFilenameStore) {
     this.repository = repository;
     this.readQueryGateway = readQueryGateway;
     this.accessPolicy = accessPolicy;
     this.priorAuthorityDataStore = priorAuthorityDataStore;
     this.priorAuthorityDraftStore = priorAuthorityDraftStore;
+    this.documentFilenameStore = documentFilenameStore;
   }
 
   /** Returns the hydrated current state for the requested prior-authority submission. */
@@ -89,7 +95,9 @@ public class PriorAuthorityProjection {
                             new EvidenceDocument(
                                 document.documentId(),
                                 document.documentType(),
-                                documentFilename(priorAuthority, document.documentId()),
+                                documentFilenameStore
+                                    .findAllByIds(List.of(document.documentId()))
+                                    .get(document.documentId()),
                                 null,
                                 document.contentType(),
                                 document.size(),
@@ -106,29 +114,28 @@ public class PriorAuthorityProjection {
     return repository.findById(query.priorAuthorityId()).map(this::isPending).orElse(false);
   }
 
-  private String documentFilename(PriorAuthorityReadModel priorAuthority, UUID documentId) {
-    if (PriorAuthorityStatus.DRAFT.name().equals(priorAuthority.getStatus())) {
-      return priorAuthorityDraftStore
-          .find(priorAuthority.getPriorAuthorityId())
-          .map(draft -> draft.documentFilenames().get(documentId))
-          .orElse(null);
-    }
-    PriorAuthorityDataPayload payload =
-        priorAuthorityDataStore.get(
-            priorAuthority.getPriorAuthorityId(), priorAuthority.getDataVersion());
-    return payload == null ? null : payload.documentFilenames().get(documentId);
-  }
-
   private Optional<@NonNull PriorAuthorityResult> hydrate(
       PriorAuthorityReadModel priorAuthority, UUID priorAuthorityId) {
     if (PriorAuthorityStatus.DRAFT.name().equals(priorAuthority.getStatus())) {
       return priorAuthorityDraftStore
           .find(priorAuthorityId)
-          .map(draft -> PriorAuthorityResult.from(priorAuthority, draft));
+          .map(
+              draft ->
+                  PriorAuthorityResult.from(
+                      priorAuthority, draft, documentFilenames(priorAuthority)));
     }
     PriorAuthorityDataPayload payload =
         priorAuthorityDataStore.get(priorAuthorityId, priorAuthority.getDataVersion());
-    return Optional.of(PriorAuthorityResult.from(priorAuthority, payload));
+    return Optional.of(
+        PriorAuthorityResult.from(priorAuthority, payload, documentFilenames(priorAuthority)));
+  }
+
+  private Map<UUID, String> documentFilenames(PriorAuthorityReadModel priorAuthority) {
+    return documentFilenameStore.findAllByIds(
+        priorAuthority.getUploadedDocuments().stream()
+            .filter(document -> !document.deleted())
+            .map(DocumentMetadata::documentId)
+            .toList());
   }
 
   /** Creates the current-state row when a prior-authority draft is started. */

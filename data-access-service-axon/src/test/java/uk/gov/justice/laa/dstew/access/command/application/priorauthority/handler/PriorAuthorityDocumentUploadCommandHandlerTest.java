@@ -22,6 +22,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import uk.gov.justice.laa.dstew.access.command.application.document.DocumentFilenameStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentUploadCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentUploadedEvent;
@@ -42,6 +43,7 @@ class PriorAuthorityDocumentUploadCommandHandlerTest {
   private static final Instant OCCURRED_AT = Instant.parse("2026-09-01T10:00:00Z");
 
   @Mock private PriorAuthorityDraftStore draftStore;
+  @Mock private DocumentFilenameStore documentFilenameStore;
   @Mock private PriorAuthorityAggregate priorAuthority;
   @Mock private EventAppender eventAppender;
 
@@ -76,7 +78,7 @@ class PriorAuthorityDocumentUploadCommandHandlerTest {
 
     UUID returnedDocumentId =
         new PriorAuthorityDocumentUploadCommandHandler()
-            .handle(command, draftStore, priorAuthority, eventAppender);
+            .handle(command, draftStore, documentFilenameStore, priorAuthority, eventAppender);
 
     assertThat(returnedDocumentId).isEqualTo(documentId);
     verify(draftStore)
@@ -135,7 +137,7 @@ class PriorAuthorityDocumentUploadCommandHandlerTest {
     when(priorAuthority.getState()).thenReturn(draftState(priorAuthorityId, applicationId));
 
     new PriorAuthorityDocumentUploadCommandHandler()
-        .handle(command, draftStore, priorAuthority, eventAppender);
+        .handle(command, draftStore, documentFilenameStore, priorAuthority, eventAppender);
 
     verify(draftStore)
         .upsert(
@@ -169,7 +171,8 @@ class PriorAuthorityDocumentUploadCommandHandlerTest {
     assertThatThrownBy(
             () ->
                 new PriorAuthorityDocumentUploadCommandHandler()
-                    .handle(command, draftStore, priorAuthority, eventAppender))
+                    .handle(
+                        command, draftStore, documentFilenameStore, priorAuthority, eventAppender))
         .isInstanceOf(ResourceNotFoundException.class)
         .hasMessage("Prior Authority draft not found: " + priorAuthorityId);
 
@@ -198,7 +201,8 @@ class PriorAuthorityDocumentUploadCommandHandlerTest {
     assertThatThrownBy(
             () ->
                 new PriorAuthorityDocumentUploadCommandHandler()
-                    .handle(command, draftStore, priorAuthority, eventAppender))
+                    .handle(
+                        command, draftStore, documentFilenameStore, priorAuthority, eventAppender))
         .isInstanceOf(ValidationException.class);
 
     verifyNoInteractions(draftStore, eventAppender);
@@ -236,7 +240,8 @@ class PriorAuthorityDocumentUploadCommandHandlerTest {
     assertThatThrownBy(
             () ->
                 new PriorAuthorityDocumentUploadCommandHandler()
-                    .handle(command, draftStore, priorAuthority, eventAppender))
+                    .handle(
+                        command, draftStore, documentFilenameStore, priorAuthority, eventAppender))
         .isInstanceOf(ValidationException.class);
 
     verifyNoInteractions(draftStore, eventAppender);
@@ -266,7 +271,8 @@ class PriorAuthorityDocumentUploadCommandHandlerTest {
     assertThatThrownBy(
             () ->
                 new PriorAuthorityDocumentUploadCommandHandler()
-                    .handle(command, draftStore, priorAuthority, eventAppender))
+                    .handle(
+                        command, draftStore, documentFilenameStore, priorAuthority, eventAppender))
         .isInstanceOf(ValidationException.class);
 
     verifyNoInteractions(draftStore, eventAppender);

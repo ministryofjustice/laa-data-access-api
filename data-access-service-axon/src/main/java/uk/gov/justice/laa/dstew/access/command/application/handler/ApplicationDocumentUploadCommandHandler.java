@@ -10,6 +10,7 @@ import uk.gov.justice.laa.dstew.access.command.application.ApplicationAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadCommand;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationDocumentUploadedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDraftStore;
+import uk.gov.justice.laa.dstew.access.command.application.document.DocumentFilenameStore;
 import uk.gov.justice.laa.dstew.access.document.DocumentFileSuffix;
 import uk.gov.justice.laa.dstew.access.document.DocumentMetadata;
 import uk.gov.justice.laa.dstew.access.validation.ValidationException;
@@ -24,6 +25,7 @@ public class ApplicationDocumentUploadCommandHandler {
       ApplicationDocumentUploadCommand command,
       @InjectEntity(idProperty = "applicationId") ApplicationAggregate application,
       ApplicationDraftStore draftStore,
+      DocumentFilenameStore documentFilenameStore,
       EventAppender eventAppender) {
     ApplicationCommandHandlerSupport.requireApplicationDraft(application);
     if (command.originalFilename() == null || command.originalFilename().isBlank()) {
@@ -39,6 +41,11 @@ public class ApplicationDocumentUploadCommandHandler {
       throw new ValidationException(List.of("Document ID already records a different upload"));
     }
 
+    documentFilenameStore.record(
+        command.applicationId(),
+        command.documentId(),
+        command.originalFilename(),
+        command.uploadedAt());
     draftStore.upsert(
         command.applicationId(),
         current.withDocumentFilename(command.documentId(), command.originalFilename()),

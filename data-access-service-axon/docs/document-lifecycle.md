@@ -18,6 +18,11 @@ upload, update, and delete routes have been removed. Axon Application uploads us
 - Upload command handlers persist the full original filename under
   `documentFilenames[documentId]` in sensitive draft content. Submission preserves that map in
   immutable content storage. Filenames do not appear in domain events or projected document metadata.
+- Filename hydration uses only `axon.document_filename` after the V31 backfill. The event-derived
+  document list determines membership and deletion: queries select its non-deleted document IDs,
+  batch-load filename rows by primary key, and map names onto those documents. Filename-row
+  `deleted_at` does not filter hydration, and legacy payload maps are never a query read fallback.
+  A missing filename row does not remove a document from the response.
 - GET and delete prefer the recorded suffix even when the full filename is missing or differs.
   Only historical uploads with null suffix fall back to the original filename, or the bare UUID
   when no filename is available. Download responses use the document ID as a missing attachment
@@ -117,7 +122,7 @@ flowchart TD
     Auth -->|Yes| Query[Dedicated owner-specific document query]
     Query --> Owned{Projected owner contains active document?}
     Owned -->|No| Missing[404 Not Found]
-    Owned -->|Yes| Hydrate[Read filename from sensitive content]
+    Owned -->|Yes| Hydrate[Read filename table by selected document ID]
     Hydrate --> Suffix{Persisted fileSuffix present?}
     Suffix -->|Yes, including empty| Recorded[Use document ID plus persisted suffix]
     Suffix -->|No, historical upload| Legacy{Original filename available?}
@@ -134,7 +139,8 @@ flowchart TD
 
 For drafts, query handlers read the mutable draft filename map. For submitted owners, they read the
 content version referenced by the projection. Prior Authority also uses that version after a
-decision. Unknown or deleted documents are rejected before SDS is called.
+decision. Unknown or deleted documents are rejected before SDS is called. During PR 1 of ADR 0005,
+handlers read `axon.document_filename` first and fall back to the map above.
 
 Both controllers return `Content-Disposition: attachment`, the stored content type (or
 `application/octet-stream` when absent or invalid), size when available, `X-Document-Uploaded-At`,

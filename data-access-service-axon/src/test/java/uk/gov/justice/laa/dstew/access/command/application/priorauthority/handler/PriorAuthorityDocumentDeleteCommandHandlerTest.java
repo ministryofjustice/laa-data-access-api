@@ -19,6 +19,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import uk.gov.justice.laa.dstew.access.command.application.document.DocumentFilenameStore;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentDeleteCommand;
 import uk.gov.justice.laa.dstew.access.command.application.priorauthority.PriorAuthorityDocumentDeletedEvent;
@@ -41,6 +42,7 @@ class PriorAuthorityDocumentDeleteCommandHandlerTest {
   private static final Instant OCCURRED_AT = Instant.parse("2026-09-01T10:00:00Z");
 
   @Mock private PriorAuthorityDraftStore draftStore;
+  @Mock private DocumentFilenameStore documentFilenameStore;
   @Mock private PriorAuthorityAggregate priorAuthority;
   @Mock private EventAppender eventAppender;
 
@@ -76,7 +78,7 @@ class PriorAuthorityDocumentDeleteCommandHandlerTest {
 
     DocumentMetadata returnedDocument =
         new PriorAuthorityDocumentDeleteCommandHandler()
-            .handle(command, draftStore, priorAuthority, eventAppender);
+            .handle(command, draftStore, documentFilenameStore, priorAuthority, eventAppender);
 
     assertThat(returnedDocument)
         .isEqualTo(
@@ -118,7 +120,8 @@ class PriorAuthorityDocumentDeleteCommandHandlerTest {
     assertThatThrownBy(
             () ->
                 new PriorAuthorityDocumentDeleteCommandHandler()
-                    .handle(command, draftStore, priorAuthority, eventAppender))
+                    .handle(
+                        command, draftStore, documentFilenameStore, priorAuthority, eventAppender))
         .isInstanceOf(ResourceNotFoundException.class)
         .hasMessage("Prior Authority draft not found: " + priorAuthorityId);
 
@@ -145,7 +148,8 @@ class PriorAuthorityDocumentDeleteCommandHandlerTest {
     assertThatThrownBy(
             () ->
                 new PriorAuthorityDocumentDeleteCommandHandler()
-                    .handle(command, draftStore, priorAuthority, eventAppender))
+                    .handle(
+                        command, draftStore, documentFilenameStore, priorAuthority, eventAppender))
         .isInstanceOf(ResourceNotFoundException.class)
         .hasMessage(
             "Document %s not found for Prior Authority %s".formatted(documentId, priorAuthorityId));
@@ -170,7 +174,8 @@ class PriorAuthorityDocumentDeleteCommandHandlerTest {
     assertThatThrownBy(
             () ->
                 new PriorAuthorityDocumentDeleteCommandHandler()
-                    .handle(command, draftStore, priorAuthority, eventAppender))
+                    .handle(
+                        command, draftStore, documentFilenameStore, priorAuthority, eventAppender))
         .isInstanceOf(ValidationException.class);
 
     verifyNoInteractions(draftStore, eventAppender);
@@ -206,7 +211,8 @@ class PriorAuthorityDocumentDeleteCommandHandlerTest {
     assertThatThrownBy(
             () ->
                 new PriorAuthorityDocumentDeleteCommandHandler()
-                    .handle(command, draftStore, priorAuthority, eventAppender))
+                    .handle(
+                        command, draftStore, documentFilenameStore, priorAuthority, eventAppender))
         .isInstanceOf(ResourceNotFoundException.class);
 
     verify(draftStore).find(priorAuthorityId);
