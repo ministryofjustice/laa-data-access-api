@@ -1,6 +1,10 @@
 package uk.gov.justice.laa.dstew.access.command.application.linkedgroup;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 import static uk.gov.justice.laa.dstew.access.command.application.ApplicationStateEvents.notReady;
 
 import java.time.Instant;
@@ -11,6 +15,9 @@ import org.axonframework.test.fixture.AxonTestFixture;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationLinkConflictException;
 import uk.gov.justice.laa.dstew.access.exception.LinkedApplicationGroupVersionConflictException;
 import uk.gov.justice.laa.dstew.access.testutils.LinkedGroupTestFixture;
@@ -18,11 +25,13 @@ import uk.gov.justice.laa.dstew.access.validation.ValidationException;
 
 class LinkedApplicationGroupAggregateTest {
 
+  private LinkedGroupJustificationStore justificationStore;
   private AxonTestFixture fixture;
 
   @BeforeEach
   void setUp() {
-    fixture = LinkedGroupTestFixture.linkedGroupFixture();
+    justificationStore = mock(LinkedGroupJustificationStore.class);
+    fixture = LinkedGroupTestFixture.linkedGroupFixture(justificationStore);
   }
 
   @Test
@@ -65,9 +74,10 @@ class LinkedApplicationGroupAggregateTest {
         .when()
         .command(
             new EstablishLinkedApplicationGroupCommand(
-                groupId, leadApplicationId, sourceApplicationId, occurredAt))
+                groupId, leadApplicationId, sourceApplicationId, occurredAt, "No-op"))
         .then()
         .noEvents();
+    verifyNoInteractions(justificationStore);
   }
 
   @Test
@@ -218,9 +228,12 @@ class LinkedApplicationGroupAggregateTest {
             new LinkedApplicationGroupCreatedEvent(
                 groupId, leadId, List.of(leadId, existingMemberId), occurredAt))
         .when()
-        .command(new AddApplicationToLinkedGroupCommand(groupId, existingMemberId, 1, occurredAt))
+        .command(
+            new AddApplicationToLinkedGroupCommand(
+                groupId, existingMemberId, 1, occurredAt, "No-op"))
         .then()
         .noEvents();
+    verifyNoInteractions(justificationStore);
   }
 
   @Test
@@ -296,27 +309,34 @@ class LinkedApplicationGroupAggregateTest {
         .noEvents();
   }
 
-  @Test
-  void givenAssociate_whenChangeLead_thenEmitsLeadChangedEvent() {
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(strings = "Lead reason")
+  void givenAssociate_whenChangeLead_thenEmitsLeadChangedEventReferencingStoredJustification(
+      String justification) {
     UUID groupId = UUID.randomUUID();
     UUID leadId = UUID.randomUUID();
     UUID associateId = UUID.randomUUID();
     List<UUID> members = List.of(leadId, associateId);
     Instant occurredAt = Instant.parse("2026-07-15T08:00:00Z");
+    UUID justificationId = justification == null ? null : UUID.randomUUID();
+    when(justificationStore.save(groupId, justification, occurredAt)).thenReturn(justificationId);
 
     fixture
         .given()
         .events(new LinkedApplicationGroupCreatedEvent(groupId, leadId, members, occurredAt))
         .when()
-        .command(new ChangeLinkedGroupLeadCommand(groupId, associateId, 0, occurredAt))
+        .command(
+            new ChangeLinkedGroupLeadCommand(groupId, associateId, 0, occurredAt, justification))
         .then()
         .events(
             new LinkedApplicationGroupLeadChangedEvent(
-                groupId, leadId, associateId, 1, occurredAt, members, null));
+                groupId, leadId, associateId, 1, occurredAt, members, justificationId));
+    verify(justificationStore).save(groupId, justification, occurredAt);
   }
 
   @Test
-  void givenCurrentLead_whenChangeLead_thenNoEvents() {
+  void givenCurrentLead_whenChangeLead_thenNoEventsAndNoStoredJustification() {
     UUID groupId = UUID.randomUUID();
     UUID leadId = UUID.randomUUID();
     Instant occurredAt = Instant.parse("2026-07-15T08:00:00Z");
@@ -327,9 +347,10 @@ class LinkedApplicationGroupAggregateTest {
             new LinkedApplicationGroupCreatedEvent(
                 groupId, leadId, List.of(leadId, UUID.randomUUID()), occurredAt))
         .when()
-        .command(new ChangeLinkedGroupLeadCommand(groupId, leadId, 42, occurredAt))
+        .command(new ChangeLinkedGroupLeadCommand(groupId, leadId, 42, occurredAt, "No-op"))
         .then()
         .noEvents();
+    verifyNoInteractions(justificationStore);
   }
 
   @Test

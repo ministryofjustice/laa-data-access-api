@@ -7,16 +7,16 @@ import static org.awaitility.Awaitility.await;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.axonframework.messaging.core.MessageType;
 import org.axonframework.messaging.eventhandling.GenericEventMessage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
-import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
@@ -39,6 +39,12 @@ import uk.gov.justice.laa.dstew.access.model.EventHistoryRequest;
 import uk.gov.justice.laa.dstew.access.model.LinkedGroupChangeRequest;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryProjection;
 
+/**
+ * Persistence and recovery guarantees for linked-group justifications: transactional rollback,
+ * shared references, append-only storage, data minimisation and direct projection replay. Ordinary
+ * endpoint no-op and omitted-history behaviour lives in the linking and membership integration
+ * slices.
+ */
 class LinkedGroupJustificationIntegrationTest extends AbstractLinkedGroupIntegrationTest {
   @Autowired private ObjectMapper objectMapper;
   @Autowired private ApplicationHistoryProjection historyProjection;
@@ -127,145 +133,10 @@ class LinkedGroupJustificationIntegrationTest extends AbstractLinkedGroupIntegra
     assertHistory(member, DomainEventType.APPLICATION_GROUP_DISSOLVED, "Dissolve reason");
   }
 
-  @Test
-  void givenNoEventHistory_whenActionsChangeState_thenNoDescriptionIsStored() {
-    var surname = uniqueLastName();
-    var lead = createApplication(surname);
-    var member = createApplication(surname);
-    assertThat(linkWithReason(member, lead, null, null).getStatusCode())
-        .isEqualTo(HttpStatus.NO_CONTENT);
-    var group = awaitRoute(lead, ApplicationGroupRouteKind.LINKED_GROUP);
-    assertHistory(lead, DomainEventType.APPLICATION_GROUP_CREATED, null);
-    assertHistory(member, DomainEventType.APPLICATION_GROUP_JOINED, null);
-    assertThat(payloadCount(group)).isZero();
-
-    assertThat(change(member, "make-lead", group, 0, null).getStatusCode())
-        .isEqualTo(HttpStatus.NO_CONTENT);
-    assertHistory(lead, DomainEventType.APPLICATION_GROUP_LEAD_CHANGED, null);
-    assertHistory(member, DomainEventType.APPLICATION_GROUP_LEAD_CHANGED, null);
-    assertThat(change(lead, "unlink", group, 1, null).getStatusCode())
-        .isEqualTo(HttpStatus.NO_CONTENT);
-    assertHistory(lead, DomainEventType.APPLICATION_GROUP_LEFT, null);
-    assertHistory(member, DomainEventType.APPLICATION_GROUP_DISSOLVED, null);
-    assertThat(payloadCount(group)).isZero();
-  }
-
   @ParameterizedTest
-  @CsvSource({
-    "link-lead, false",
-    "link-lead, true",
-    "link-member, false",
-    "link-member, true",
-    "make-lead, false",
-    "make-lead, true"
-  })
-  void givenNoOp_whenRepeated_thenNoContentAndAllPersistedHistoryIsUnchanged(
-      String operation, boolean suppliedHistory) {
-    var surname = uniqueLastName();
-    var lead = createApplication(surname);
-    var member = createApplication(surname);
-    var joining = createApplication(surname);
-    assertThat(linkWithReason(member, lead, null, "Original creation").getStatusCode())
-        .isEqualTo(HttpStatus.NO_CONTENT);
-    var group = awaitRoute(lead, ApplicationGroupRouteKind.LINKED_GROUP);
-    assertThat(
-            linkWithReason(joining, lead, groupToken(group, 0), "Original addition")
-                .getStatusCode())
-        .isEqualTo(HttpStatus.NO_CONTENT);
-    assertSharedReference(group, "Original creation", 2);
-    assertSharedReference(group, "Original addition", 3);
-    assertHistory(lead, DomainEventType.APPLICATION_GROUP_CREATED, "Original creation");
-    assertHistory(member, DomainEventType.APPLICATION_GROUP_JOINED, "Original creation");
-    assertHistory(lead, DomainEventType.APPLICATION_GROUP_MEMBER_ADDED, "Original addition");
-    assertHistory(member, DomainEventType.APPLICATION_GROUP_MEMBER_ADDED, "Original addition");
-    assertHistory(joining, DomainEventType.APPLICATION_GROUP_JOINED, "Original addition");
-
-    var applications = List.of(lead, member, joining);
-    var before = noOpSnapshot(group, applications);
-    assertThat(before.events()).isEqualTo(2);
-    assertThat(before.payloads()).isEqualTo(2);
-    assertNoOpSnapshotUnchanged(group, applications, before);
-
-    Map<String, Object> request = new LinkedHashMap<>();
-    request.put("linkedGroupVersion", groupToken(group, 1));
-    boolean makeLead = operation.equals("make-lead");
-    if (!makeLead) {
-      request.put("applicationId", operation.equals("link-lead") ? lead : member);
-      request.put("linkType", ApplicationLinkType.FAMILY.getValue());
-    }
-    if (suppliedHistory) {
-      request.put("eventHistory", Map.of("eventDescription", "Discard no-op description"));
-    }
-    var endpoint =
-        "/api/v0/applications/"
-            + (makeLead ? lead : joining)
-            + "/"
-            + (makeLead ? "make-lead" : "link");
-    for (int attempt = 0; attempt < 2; attempt++) {
-      var response =
-          restTemplate.exchange(
-              url(endpoint), HttpMethod.POST, new HttpEntity<>(request, headers()), String.class);
-      assertThat(response.getStatusCode())
-          .as("attempt %s", attempt + 1)
-          .isEqualTo(HttpStatus.NO_CONTENT);
-      assertNoOpSnapshotUnchanged(group, applications, before);
-    }
-  }
-
-  private NoOpSnapshot noOpSnapshot(UUID group, List<UUID> applications) {
-    Map<UUID, List<Map<String, Object>>> rows = new LinkedHashMap<>();
-    Map<UUID, Map<String, Long>> counts = new LinkedHashMap<>();
-    for (var application : applications) {
-      var history =
-          jdbcTemplate.queryForList(
-              "SELECT * FROM axon.application_history WHERE application_id = ? ORDER BY event_id",
-              application);
-      rows.put(application, history);
-      Map<String, Long> perType = new LinkedHashMap<>();
-      for (var type : DomainEventType.values()) {
-        perType.put(type.getValue(), 0L);
-      }
-      history.forEach(row -> perType.merge((String) row.get("event_type"), 1L, Long::sum));
-      counts.put(application, perType);
-    }
-    return new NoOpSnapshot(rows, counts, groupEventCount(group), payloadCount(group));
-  }
-
-  private void assertNoOpSnapshotUnchanged(
-      UUID group, List<UUID> applications, NoOpSnapshot before) {
-    assertNoOpSnapshotEquals(group, applications, before);
-    await()
-        .during(Duration.ofSeconds(1))
-        .atMost(Duration.ofSeconds(15))
-        .untilAsserted(() -> assertNoOpSnapshotEquals(group, applications, before));
-  }
-
-  private void assertNoOpSnapshotEquals(UUID group, List<UUID> applications, NoOpSnapshot before) {
-    var after = noOpSnapshot(group, applications);
-    assertThat(after.events()).as("linked-group events").isEqualTo(before.events());
-    assertThat(after.payloads()).as("justification payloads").isEqualTo(before.payloads());
-    for (var application : applications) {
-      assertThat(after.rows().get(application))
-          .as("total history for %s", application)
-          .hasSize(before.rows().get(application).size());
-      assertThat(after.counts().get(application))
-          .as("per-type history for %s", application)
-          .isEqualTo(before.counts().get(application));
-      assertThat(after.rows().get(application))
-          .as("exact history rows for %s", application)
-          .isEqualTo(before.rows().get(application));
-    }
-  }
-
-  private record NoOpSnapshot(
-      Map<UUID, List<Map<String, Object>>> rows,
-      Map<UUID, Map<String, Long>> counts,
-      long events,
-      long payloads) {}
-
-  @ParameterizedTest
-  @EnumSource(Action.class)
-  void givenEventAppendFailure_whenActionAttempted_thenPayloadAndEventsRollBack(Action action) {
+  @MethodSource("writeFailureCases")
+  void givenWriteFailure_whenActionAttempted_thenEventsPayloadsAndHistoryRollBack(
+      Action action, FailurePoint failurePoint) {
     var surname = uniqueLastName();
     var lead = createApplication(surname);
     var member = createApplication(surname);
@@ -276,27 +147,68 @@ class LinkedGroupJustificationIntegrationTest extends AbstractLinkedGroupIntegra
       assertThat(link(joining, lead, groupToken(group, 0)).getStatusCode())
           .isEqualTo(HttpStatus.NO_CONTENT);
     }
-    var before =
-        jdbcTemplate.queryForObject(
-            "SELECT COUNT(*) FROM axon.domain_event_entry WHERE aggregate_identifier = ?",
-            Long.class,
-            group.toString());
-    rejectEventsFor(group);
-    ResponseEntity<String> response =
-        switch (action) {
-          case ADD -> linkWithReason(joining, lead, groupToken(group, 0), "Rollback reason");
-          case LEAD -> change(member, "make-lead", group, 0, "Rollback reason");
-          case REMOVE -> change(joining, "unlink", group, 1, "Rollback reason");
-          case DISSOLVE -> change(member, "unlink", group, 0, "Rollback reason");
-        };
-    assertThat(response.getStatusCode().is5xxServerError()).isTrue();
-    assertThat(payloadCount(group)).isZero();
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.domain_event_entry WHERE aggregate_identifier = ?",
-                Long.class,
-                group.toString()))
-        .isEqualTo(before);
+    var eventsBefore = groupEventCount(group);
+    var payloadsBefore = payloadCount(group);
+    var historyWithTextBefore = historyRowsWithJustification();
+    injectFailure(failurePoint, group);
+    try {
+      ResponseEntity<String> response =
+          switch (action) {
+            case ADD -> linkWithReason(joining, lead, groupToken(group, 0), "Lost reason");
+            case LEAD -> change(member, "make-lead", group, 0, "Lost reason");
+            case REMOVE -> change(joining, "unlink", group, 1, "Lost reason");
+            case DISSOLVE -> change(member, "unlink", group, 0, "Lost reason");
+          };
+      assertThat(response.getStatusCode().is5xxServerError()).isTrue();
+      assertThat(payloadCount(group)).isEqualTo(payloadsBefore);
+      assertThat(groupEventCount(group)).isEqualTo(eventsBefore);
+      assertThat(historyRowsWithJustification()).isEqualTo(historyWithTextBefore);
+    } finally {
+      removeInjectedFailure(failurePoint);
+    }
+  }
+
+  private static Stream<Arguments> writeFailureCases() {
+    return Stream.of(Action.values())
+        .flatMap(
+            action -> Stream.of(FailurePoint.values()).map(point -> Arguments.of(action, point)));
+  }
+
+  /** Forces either the event append or the justification write to fail for this group. */
+  private void injectFailure(FailurePoint failurePoint, UUID group) {
+    if (failurePoint == FailurePoint.EVENT_APPEND) {
+      rejectEventsFor(group);
+      return;
+    }
+    jdbcTemplate.execute(
+        """
+        CREATE FUNCTION axon.reject_test_justification_write() RETURNS trigger AS $$
+        BEGIN
+          RAISE EXCEPTION 'forced justification write failure';
+        END;
+        $$ LANGUAGE plpgsql
+        """);
+    jdbcTemplate.execute(
+        """
+        CREATE TRIGGER reject_test_justification_write BEFORE INSERT ON axon.linked_group_justification
+        FOR EACH ROW EXECUTE FUNCTION axon.reject_test_justification_write()
+        """);
+  }
+
+  /** The event-append trigger is dropped by the superclass; the justification trigger is not. */
+  private void removeInjectedFailure(FailurePoint failurePoint) {
+    if (failurePoint == FailurePoint.JUSTIFICATION_WRITE) {
+      jdbcTemplate.execute(
+          "DROP TRIGGER reject_test_justification_write ON axon.linked_group_justification");
+      jdbcTemplate.execute("DROP FUNCTION axon.reject_test_justification_write()");
+    }
+  }
+
+  private long groupEventCount(UUID group) {
+    return jdbcTemplate.queryForObject(
+        "SELECT COUNT(*) FROM axon.domain_event_entry WHERE aggregate_identifier = ?",
+        Long.class,
+        group.toString());
   }
 
   @Test
@@ -412,62 +324,6 @@ class LinkedGroupJustificationIntegrationTest extends AbstractLinkedGroupIntegra
     assertSharedReference(group, "Immutable reason", 2);
   }
 
-  @ParameterizedTest
-  @EnumSource(Action.class)
-  void givenJustificationWriteFailure_whenActionAttempted_thenEventsAndHistoryRollBack(
-      Action action) {
-    var surname = uniqueLastName();
-    var lead = createApplication(surname);
-    var member = createApplication(surname);
-    assertThat(link(member, lead, null).getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-    var group = awaitRoute(lead, ApplicationGroupRouteKind.LINKED_GROUP);
-    var joining = createApplication(surname);
-    if (action == Action.REMOVE) {
-      assertThat(link(joining, lead, groupToken(group, 0)).getStatusCode())
-          .isEqualTo(HttpStatus.NO_CONTENT);
-    }
-    var eventsBefore = groupEventCount(group);
-    var payloadsBefore = payloadCount(group);
-    var historyWithTextBefore = historyRowsWithJustification();
-    jdbcTemplate.execute(
-        """
-        CREATE FUNCTION axon.reject_test_justification_write() RETURNS trigger AS $$
-        BEGIN
-          RAISE EXCEPTION 'forced justification write failure';
-        END;
-        $$ LANGUAGE plpgsql
-        """);
-    jdbcTemplate.execute(
-        """
-        CREATE TRIGGER reject_test_justification_write BEFORE INSERT ON axon.linked_group_justification
-        FOR EACH ROW EXECUTE FUNCTION axon.reject_test_justification_write()
-        """);
-    try {
-      ResponseEntity<String> response =
-          switch (action) {
-            case ADD -> linkWithReason(joining, lead, groupToken(group, 0), "Lost reason");
-            case LEAD -> change(member, "make-lead", group, 0, "Lost reason");
-            case REMOVE -> change(joining, "unlink", group, 1, "Lost reason");
-            case DISSOLVE -> change(member, "unlink", group, 0, "Lost reason");
-          };
-      assertThat(response.getStatusCode().is5xxServerError()).isTrue();
-      assertThat(payloadCount(group)).isEqualTo(payloadsBefore);
-      assertThat(groupEventCount(group)).isEqualTo(eventsBefore);
-      assertThat(historyRowsWithJustification()).isEqualTo(historyWithTextBefore);
-    } finally {
-      jdbcTemplate.execute(
-          "DROP TRIGGER reject_test_justification_write ON axon.linked_group_justification");
-      jdbcTemplate.execute("DROP FUNCTION axon.reject_test_justification_write()");
-    }
-  }
-
-  private long groupEventCount(UUID group) {
-    return jdbcTemplate.queryForObject(
-        "SELECT COUNT(*) FROM axon.domain_event_entry WHERE aggregate_identifier = ?",
-        Long.class,
-        group.toString());
-  }
-
   private long historyRowsWithJustification() {
     return jdbcTemplate.queryForObject(
         "SELECT COUNT(*) FROM axon.application_history WHERE justification_id IS NOT NULL",
@@ -564,5 +420,10 @@ class LinkedGroupJustificationIntegrationTest extends AbstractLinkedGroupIntegra
     LEAD,
     REMOVE,
     DISSOLVE
+  }
+
+  private enum FailurePoint {
+    EVENT_APPEND,
+    JUSTIFICATION_WRITE
   }
 }

@@ -57,6 +57,7 @@ import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.RemoveApp
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRoute;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteKind;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.route.ApplicationGroupRouteRepository;
+import uk.gov.justice.laa.dstew.access.model.ApplicationHistoryResponse;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkRequest;
 import uk.gov.justice.laa.dstew.access.model.ApplicationLinkType;
 import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
@@ -79,6 +80,8 @@ import util.ProjectionAwaiter;
 @Import(TestJwtDecoderConfig.class)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 public class ApplicationLinkMembershipIntegrationTest {
+
+  private static final String LINK_JUSTIFICATION = "Justification for linking";
 
   @Container @ServiceConnection
   static PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine");
@@ -122,21 +125,94 @@ public class ApplicationLinkMembershipIntegrationTest {
         .isEqualTo(leadChangedBefore + 1);
     awaitHistory(newLeadId, "APPLICATION_GROUP_LEAD_CHANGED");
     awaitHistory(group.leadId(), "APPLICATION_GROUP_LEAD_CHANGED");
+    assertDescriptionOnHistory(newLeadId, "APPLICATION_GROUP_LEAD_CHANGED", LINK_JUSTIFICATION);
+    assertDescriptionOnHistory(
+        group.leadId(), "APPLICATION_GROUP_LEAD_CHANGED", LINK_JUSTIFICATION);
     assertThat(application(newLeadId).getIsLead()).isTrue();
     assertThat(application(group.leadId()).getIsLead()).isFalse();
   }
 
   @Test
-  void givenCurrentLead_whenMadeLead_thenNoEventAppended() {
+  void givenAssociate_whenMadeLeadWithoutEventHistory_thenHistoryHasNoDescriptionOrPayload() {
     var group = createGroup(2);
-    long eventCount =
-        countDomainEvents(group.groupId(), LinkedApplicationGroupLeadChangedEvent.class);
+    UUID newLeadId = group.memberIds().get(1);
+    awaitHistory(group.leadId(), "APPLICATION_GROUP_CREATED");
+    awaitHistory(newLeadId, "APPLICATION_GROUP_JOINED");
+    assertDescriptionOnHistory(group.leadId(), "APPLICATION_GROUP_CREATED", null);
+    assertDescriptionOnHistory(newLeadId, "APPLICATION_GROUP_JOINED", null);
 
-    assertThat(makeLead(group.leadId(), token(group.groupId(), 99)).getStatusCode())
+    assertThat(
+            groupChangeWithoutEventHistory(
+                    newLeadId, token(group.groupId(), group.version()), "make-lead")
+                .getStatusCode())
         .isEqualTo(HttpStatus.NO_CONTENT);
 
-    assertThat(countDomainEvents(group.groupId(), LinkedApplicationGroupLeadChangedEvent.class))
-        .isEqualTo(eventCount);
+    awaitHistory(newLeadId, "APPLICATION_GROUP_LEAD_CHANGED");
+    awaitHistory(group.leadId(), "APPLICATION_GROUP_LEAD_CHANGED");
+    assertDescriptionOnHistory(newLeadId, "APPLICATION_GROUP_LEAD_CHANGED", null);
+    assertDescriptionOnHistory(group.leadId(), "APPLICATION_GROUP_LEAD_CHANGED", null);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM axon.application_history WHERE event_type = ?"
+                    + " AND application_id IN (?, ?) AND justification_id IS NULL",
+                Long.class,
+                "APPLICATION_GROUP_LEAD_CHANGED",
+                newLeadId,
+                group.leadId()))
+        .isEqualTo(2);
+
+    assertThat(
+            groupChangeWithoutEventHistory(
+                    group.leadId(), token(group.groupId(), group.version() + 1), "unlink")
+                .getStatusCode())
+        .isEqualTo(HttpStatus.NO_CONTENT);
+    awaitHistory(group.leadId(), "APPLICATION_GROUP_LEFT");
+    awaitHistory(newLeadId, "APPLICATION_GROUP_DISSOLVED");
+    assertDescriptionOnHistory(group.leadId(), "APPLICATION_GROUP_LEFT", null);
+    assertDescriptionOnHistory(newLeadId, "APPLICATION_GROUP_DISSOLVED", null);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM axon.application_history WHERE event_type IN (?, ?)"
+                    + " AND application_id IN (?, ?) AND justification_id IS NULL",
+                Long.class,
+                "APPLICATION_GROUP_LEFT",
+                "APPLICATION_GROUP_DISSOLVED",
+                newLeadId,
+                group.leadId()))
+        .isEqualTo(2);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM axon.linked_group_justification WHERE group_id = ?",
+                Long.class,
+                group.groupId()))
+        .isZero();
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void givenCurrentLead_whenMadeLead_thenNoEventOrHistoryOrPayloadChanges(boolean suppliedHistory) {
+    var group = createGroup(3);
+    var applications = group.memberIds();
+    awaitHistory(group.leadId(), "APPLICATION_GROUP_CREATED");
+    awaitHistory(applications.get(1), "APPLICATION_GROUP_JOINED");
+    UUID currentLead = applications.get(1);
+    assertThat(makeLead(currentLead, token(group.groupId(), group.version())).getStatusCode())
+        .isEqualTo(HttpStatus.NO_CONTENT);
+    for (var applicationId : applications) {
+      assertDescriptionOnHistory(
+          applicationId, "APPLICATION_GROUP_LEAD_CHANGED", LINK_JUSTIFICATION);
+    }
+    var before = LinkedGroupStateSnapshot.capture(jdbcTemplate, group.groupId(), applications);
+    assertThat(before.justificationPayloads()).isEqualTo(1);
+
+    var token = token(group.groupId(), 99);
+    var response =
+        suppliedHistory
+            ? makeLead(currentLead, token)
+            : groupChangeWithoutEventHistory(currentLead, token, "make-lead");
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    before.assertUnchangedAfterProjectionsSettle(jdbcTemplate, group.groupId(), applications);
   }
 
   @Test
@@ -1108,6 +1184,39 @@ public class ApplicationLinkMembershipIntegrationTest {
     return groupChange(applicationId, token, "make-lead");
   }
 
+  private ResponseEntity<Void> groupChangeWithoutEventHistory(
+      UUID applicationId, String token, String operation) {
+    return restTemplate.exchange(
+        "/api/v0/applications/" + applicationId + "/" + operation,
+        HttpMethod.POST,
+        new HttpEntity<>(Map.of("linkedGroupVersion", token), headers()),
+        Void.class);
+  }
+
+  private void assertDescriptionOnHistory(
+      UUID applicationId, String eventType, String description) {
+    await()
+        .atMost(15, TimeUnit.SECONDS)
+        .pollInterval(100, TimeUnit.MILLISECONDS)
+        .untilAsserted(
+            () -> {
+              var response =
+                  restTemplate.exchange(
+                      "/api/v0/applications/"
+                          + applicationId
+                          + "/history-search?eventType="
+                          + eventType,
+                      HttpMethod.GET,
+                      new HttpEntity<>(headers()),
+                      ApplicationHistoryResponse.class);
+              assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+              assertThat(response.getBody()).isNotNull();
+              assertThat(response.getBody().getEvents())
+                  .anySatisfy(
+                      event -> assertThat(event.getEventDescription()).isEqualTo(description));
+            });
+  }
+
   private ResponseEntity<Void> unlink(UUID applicationId, String token) {
     return groupChange(applicationId, token, "unlink");
   }
@@ -1118,8 +1227,7 @@ public class ApplicationLinkMembershipIntegrationTest {
         HttpMethod.POST,
         new HttpEntity<>(
             new LinkedGroupChangeRequest(token)
-                .eventHistory(
-                    new EventHistoryRequest().eventDescription("Justification for linking")),
+                .eventHistory(new EventHistoryRequest().eventDescription(LINK_JUSTIFICATION)),
             headers()),
         Void.class);
   }
