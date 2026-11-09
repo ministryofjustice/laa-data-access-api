@@ -1263,6 +1263,35 @@ Split into two steps:
       pass. Checkstyle main is clean, test warnings stay at 37 and
       integration warnings fall to 52.
 
+  - **4b-3b(ii) commit 2, application_current_state removed
+    (done 2026-11-07):**
+    - **Removed:** the current-state event handlers, the
+      `application-projection` processor and content reader,
+      `ApplicationReadRepository` and `ApplicationCurrentStateAccessPolicy`.
+      V36 drops `application_current_state` and deletes the old processor's
+      token. `ApplicationProjection` is renamed `ApplicationQueryHandler`; it
+      now only handles queries.
+    - **List page:** pages the summary and returns summary rows directly.
+      Groups and prior authorities are batch-loaded by the page's group and
+      application IDs. Rows no longer drop out when `application_data` is
+      missing, and client names and date of birth come from the summary.
+    - **Stalled assessments:** read from the summary (submitted, auto-grant
+      PENDING, submitted before the threshold). The summary's
+      `streamVersion` is the reported version; it is only logged.
+    - **Details:** `ApplicationReadModel` is a plain detached model built
+      from the aggregate. Its group ID, lead ID and latest `modifiedAt` come
+      from the summary through the `ApplicationSummaries` port; they are
+      empty while the summary lags.
+    - **Tests:** lag tests and the pact lagging state now stop
+      `application-summary`. The sequencing integration test is renamed
+      `ApplicationSummarySequencingIntegrationTest` and gates only the
+      summary; its current-state replay and race cases are removed, as the
+      summary already covers the group races.
+    - **Validation:** unit tests 1352/1352 and integration tests 308/308
+      pass (the event-handler and current-state tests went with the
+      handlers). Checkstyle main is clean; test warnings fall to 36 and
+      integration warnings to 50.
+
 ### Remaining gates
 1. Choose the declaration design: hash-bound review (recommended by the review)
    or persisted candidate. Agree version/hash transport, stale-response handling,

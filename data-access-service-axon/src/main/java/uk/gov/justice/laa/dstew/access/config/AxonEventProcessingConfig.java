@@ -18,15 +18,6 @@ import uk.gov.justice.laa.dstew.access.query.genesis.GenesisStreamProjection;
 @ExcludeFromGeneratedCodeCoverage
 public class AxonEventProcessingConfig {
 
-  @Bean
-  EventProcessorDefinition applicationProjectionProcessor(
-      ObjectProvider<EventContentSeparator> separator,
-      ObjectProvider<EventContentStore> store,
-      ObjectProvider<EventConverter> converter) {
-    return contentReadingProcessor(
-        RegisteredContentReaders.APPLICATION_PROJECTION, separator, store, converter);
-  }
-
   /** Builds the application summary from event content. */
   @Bean
   EventProcessorDefinition applicationSummaryProcessor(

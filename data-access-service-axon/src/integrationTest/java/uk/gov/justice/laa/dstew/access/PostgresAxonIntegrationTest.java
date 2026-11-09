@@ -246,14 +246,6 @@ class PostgresAxonIntegrationTest {
                       });
               assertThat(application.getVersion()).isZero();
             });
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT uploaded_documents::text FROM axon.application_current_state WHERE application_id = ?",
-                String.class,
-                applicationId))
-        .contains(documentId.toString())
-        .contains("fileSuffix", ".pdf")
-        .doesNotContain("originalFilename.pdf", "fileName");
     assertThatThrownBy(
             () ->
                 commandGateway.sendAndWait(
@@ -398,7 +390,6 @@ class PostgresAxonIntegrationTest {
     assertThat(appliedVersions).containsExactlyElementsOf(expectedMigrationVersions());
     assertThat(tables)
         .containsExactly(
-            "application_current_state",
             "application_data",
             "application_group_route",
             "application_summary",
@@ -465,12 +456,6 @@ class PostgresAxonIntegrationTest {
                 Integer.class,
                 applicationId))
         .isZero();
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM axon.application_current_state WHERE application_id = ?",
-                Integer.class,
-                applicationId))
-        .isEqualTo(1);
 
     ResponseEntity<String> response =
         restTemplate.exchange(
@@ -480,19 +465,10 @@ class PostgresAxonIntegrationTest {
             String.class);
     // Details read the aggregate, whose content comes from the events, not application_data.
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-
-    List<String> currentStateColumns =
-        jdbcTemplate.queryForList(
-            "SELECT column_name FROM information_schema.columns "
-                + "WHERE table_schema = 'axon' AND table_name = 'application_current_state'",
-            String.class);
-    assertThat(currentStateColumns)
-        .contains("application_data_version")
-        .doesNotContain("laa_reference", "application_content", "individuals", "proceedings");
   }
 
   @Test
-  void givenValidRequest_whenPostApplication_thenPersistsEventAndCurrentStateProjection() {
+  void givenValidRequest_whenPostApplication_thenPersistsEventAndServesApplication() {
     UUID applicationId = UUID.randomUUID();
     UUID applyProceedingId = UUID.randomUUID();
     HttpHeaders headers = new HttpHeaders();

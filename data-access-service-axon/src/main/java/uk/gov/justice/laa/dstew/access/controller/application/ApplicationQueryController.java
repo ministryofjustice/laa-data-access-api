@@ -104,7 +104,7 @@ public class ApplicationQueryController implements ApplicationQueryApi {
     return getAllResponseMapper.toResponse(result);
   }
 
-  /** Returns the current-state projection for the requested Application. */
+  /** Returns the requested Application, read from its aggregate. */
   @Override
   @LogMethodArguments
   @LogMethodResponse

@@ -51,12 +51,12 @@ import uk.gov.justice.laa.dstew.access.model.MeritsDecisionStatusResponse;
 import uk.gov.justice.laa.dstew.access.model.PotentialDuplicate;
 import uk.gov.justice.laa.dstew.access.model.WorkListResponse;
 import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadModel;
-import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.FindApplicationByIdQuery;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryEventResult;
 import uk.gov.justice.laa.dstew.access.query.application.history.ApplicationHistoryResult;
 import uk.gov.justice.laa.dstew.access.query.application.history.FindApplicationHistoryQuery;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
+import uk.gov.justice.laa.dstew.access.query.application.summary.ApplicationSummaryReadRepository;
 import uk.gov.justice.laa.dstew.access.testsupport.InMemoryEventContentStoreConfig;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 
@@ -79,7 +79,7 @@ class CreateApplicationInMemoryTest {
 
   @Autowired private TestRestTemplate restTemplate;
 
-  @Autowired private ApplicationReadRepository applicationReadRepository;
+  @Autowired private ApplicationSummaryReadRepository summaryRepository;
   @Autowired private LinkedApplicationGroupReadRepository groupReadRepository;
   @Autowired private ApplicationGroupRouteRepository routeRepository;
   @Autowired private AxonConfiguration axonConfiguration;
@@ -450,7 +450,7 @@ class CreateApplicationInMemoryTest {
             });
 
     var processors = axonConfiguration.getComponents(StreamingEventProcessor.class);
-    assertThat(processors.get("application-projection")).isNotNull();
+    assertThat(processors.get("application-summary")).isNotNull();
     assertThat(processors.get("genesis-stream")).isNotNull();
   }
 
@@ -703,7 +703,7 @@ class CreateApplicationInMemoryTest {
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     assertThat(response.getBody()).contains("Generic Validation Error");
-    assertThat(applicationReadRepository.findById(applicationId)).isEmpty();
+    assertThat(summaryRepository.findById(applicationId)).isEmpty();
   }
 
   @Test
@@ -999,7 +999,7 @@ class CreateApplicationInMemoryTest {
                 applicationId.toString()))
         .isZero();
     assertThat(applicationDataRepository.countByIdApplicationId(applicationId)).isZero();
-    assertThat(applicationReadRepository.findById(applicationId)).isEmpty();
+    assertThat(summaryRepository.findById(applicationId)).isEmpty();
     assertThat(history(applicationId)).isEmpty();
   }
 }

@@ -165,18 +165,18 @@ class GetApplicationsIntegrationTest {
     assertThat(detail).isNotNull();
     assertThat(detail.getApplicationId()).isEqualTo(applicationId);
     assertThat(detail.getLaaReference()).isEqualTo("DETAIL-" + applicationId);
-    Instant createdAt =
-        jdbcTemplate.queryForObject(
-            "SELECT created_at FROM axon.application_current_state WHERE application_id = ?",
-            Instant.class,
-            applicationId);
     Instant submittedAt =
-        jdbcTemplate.queryForObject(
-            "SELECT submitted_at FROM axon.application_current_state WHERE application_id = ?",
-            Instant.class,
-            applicationId);
-    assertThat(createdAt).isEqualTo(submittedAt);
-    assertThat(detail.getCreatedAt().toInstant()).isEqualTo(createdAt);
+        await()
+            .atMost(15, TimeUnit.SECONDS)
+            .until(
+                () ->
+                    jdbcTemplate.query(
+                        "SELECT submitted_at FROM axon.application_summary WHERE application_id = ?",
+                        (rs, row) -> rs.getTimestamp(1).toInstant(),
+                        applicationId),
+                rows -> !rows.isEmpty())
+            .getFirst();
+    assertThat(detail.getCreatedAt().toInstant()).isEqualTo(submittedAt);
     assertThat(detail.getSubmittedAt().toInstant()).isEqualTo(submittedAt);
     assertThat(detail.getClient().getFirstName()).isEqualTo("Ada");
     assertThat(detail.getClient().getLastName()).isEqualTo("Lovelace");

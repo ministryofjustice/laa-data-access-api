@@ -1,8 +1,5 @@
 package uk.gov.justice.laa.dstew.access.query.application;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -14,7 +11,6 @@ import uk.gov.justice.laa.dstew.access.query.utils.security.AccessAwareQueryExec
 /** Repository-selection boundary for protected Application read models. */
 @Component
 public class ApplicationReadQueryGateway {
-  private final ApplicationReadRepository applicationReadRepository;
   private final ApplicationSummaryReadRepository summaryRepository;
   private final AccessAwareQueryExecutor executor;
 
@@ -22,28 +18,13 @@ public class ApplicationReadQueryGateway {
    * creates the gateway wrapper around the repositories. Prevents use cases working around the
    * access restrictions.
    *
-   * @param applicationReadRepository - application read model repository
-   * @param summaryRepository - application list index read repository
+   * @param summaryRepository - application summary repository
    * @param executor - query executor that applies security filtering
    */
   public ApplicationReadQueryGateway(
-      ApplicationReadRepository applicationReadRepository,
-      ApplicationSummaryReadRepository summaryRepository,
-      AccessAwareQueryExecutor executor) {
-    this.applicationReadRepository = applicationReadRepository;
+      ApplicationSummaryReadRepository summaryRepository, AccessAwareQueryExecutor executor) {
     this.summaryRepository = summaryRepository;
     this.executor = executor;
-  }
-
-  public Optional<ApplicationReadModel> findApplication(
-      Specification<ApplicationReadModel> functional, Specification<ApplicationReadModel> access) {
-    return executor.findOne(applicationReadRepository, functional, access);
-  }
-
-  public List<ApplicationReadModel> findApplications(
-      Collection<java.util.UUID> ids, Specification<ApplicationReadModel> access) {
-    return executor.findAll(
-        applicationReadRepository, (root, query, cb) -> root.get("applicationId").in(ids), access);
   }
 
   public Page<ApplicationSummaryReadModel> findApplicationIndexPage(

@@ -9,9 +9,6 @@ import java.util.Set;
  */
 public final class RegisteredContentReaders {
 
-  /** Builds the application details read model, including potential duplicates and documents. */
-  public static final String APPLICATION_PROJECTION = "application-projection";
-
   /** Builds the prior authority read model, including documents and decision details. */
   public static final String PRIOR_AUTHORITY_PROJECTION = "prior-authority-projection";
 
@@ -29,11 +26,7 @@ public final class RegisteredContentReaders {
   public static final String APPLICATION_SUMMARY = "application-summary";
 
   public static final Set<String> NAMES =
-      Set.of(
-          APPLICATION_PROJECTION,
-          PRIOR_AUTHORITY_PROJECTION,
-          APPLICATION_HISTORY,
-          APPLICATION_SUMMARY);
+      Set.of(PRIOR_AUTHORITY_PROJECTION, APPLICATION_HISTORY, APPLICATION_SUMMARY);
 
   private RegisteredContentReaders() {}
 

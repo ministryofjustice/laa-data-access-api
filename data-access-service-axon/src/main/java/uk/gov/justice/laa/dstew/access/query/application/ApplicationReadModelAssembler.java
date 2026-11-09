@@ -14,9 +14,7 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Component;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationAggregate;
 import uk.gov.justice.laa.dstew.access.command.application.ApplicationState;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataId;
 import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataPayload;
-import uk.gov.justice.laa.dstew.access.command.application.data.ApplicationDataStore;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadModel;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.priorauthority.PriorAuthorityReadModel;
@@ -26,16 +24,13 @@ import uk.gov.justice.laa.dstew.access.query.application.summary.ApplicationSumm
 import uk.gov.justice.laa.dstew.access.query.utils.security.ReadAccessScope;
 
 /**
- * Builds Application read models from the aggregate (single reads) or by hydrating current-state
- * rows with their referenced {@code application_data} version (list reads), and batch-loads the
- * related read models needed to build Application query results.
+ * Builds Application read models from the aggregate, and batch-loads the related read models needed
+ * to build Application query results.
  */
 @Component
 @RequiredArgsConstructor
 public class ApplicationReadModelAssembler {
 
-  private final ApplicationDataStore applicationDataStore;
-  private final ApplicationReadRepository applicationReadRepository;
   private final LinkedApplicationGroupReadRepository groupReadRepository;
   private final ApplicationSummaries applicationSummaries;
   private final PriorAuthorityReadRepository priorAuthorityReadRepository;
@@ -43,7 +38,8 @@ public class ApplicationReadModelAssembler {
   /**
    * Builds a detached read model from a submitted Application's aggregate. Returns empty when the
    * aggregate is absent, still a draft, outside the caller's access, or its content is erased.
-   * Group links, and changes made only by group events, still come from the current-state row.
+   * Group links, and changes made only by group events, come from the application summary; while
+   * the summary lags they are empty.
    */
   public Optional<ApplicationReadModel> fromAggregate(
       @Nullable ApplicationAggregate aggregate, ReadAccessScope accessScope) {
@@ -59,8 +55,8 @@ public class ApplicationReadModelAssembler {
     if (!accessScope.permitsOfficeCode(officeCode)) {
       return Optional.empty();
     }
-    ApplicationReadModel row =
-        applicationReadRepository.findById(state.getApplicationId()).orElse(null);
+    ApplicationSummaryReadModel row =
+        applicationSummaries.findById(state.getApplicationId()).orElse(null);
     ApplicationReadModel application =
         ApplicationReadModel.builder()
             .applicationId(state.getApplicationId())
@@ -81,28 +77,6 @@ public class ApplicationReadModelAssembler {
     hydrate(application, data);
     application.setOfficeCode(officeCode);
     return Optional.of(application);
-  }
-
-  /** Hydrates a single row, or returns empty if its referenced data version is missing. */
-  public Optional<ApplicationReadModel> hydrate(ApplicationReadModel application) {
-    return hydrate(List.of(application)).stream().findFirst();
-  }
-
-  /**
-   * Hydrates rows with a single batch load, preserving input order and dropping rows whose
-   * referenced data version is missing.
-   */
-  public List<ApplicationReadModel> hydrate(List<ApplicationReadModel> applications) {
-    List<ApplicationDataId> ids = applications.stream().map(this::dataId).toList();
-    Map<ApplicationDataId, ApplicationDataPayload> dataById = applicationDataStore.getAll(ids);
-    return applications.stream()
-        .map(
-            application -> {
-              ApplicationDataPayload data = dataById.get(dataId(application));
-              return data == null ? null : hydrate(application, data);
-            })
-        .filter(Objects::nonNull)
-        .toList();
   }
 
   private ApplicationReadModel hydrate(
@@ -142,25 +116,17 @@ public class ApplicationReadModelAssembler {
         linkedGroup == null ? Map.of() : fetchLinkedMemberDetails(List.of(linkedGroup)));
   }
 
-  /** Batch-fetches linked group read models for the given Applications, keyed by group ID. */
-  public Map<UUID, LinkedApplicationGroupReadModel> fetchGroups(
-      List<ApplicationReadModel> applications) {
-    List<UUID> groupIds =
-        applications.stream()
-            .map(ApplicationReadModel::getLinkedGroupId)
-            .filter(Objects::nonNull)
-            .distinct()
-            .toList();
-    return groupReadRepository.findAllById(groupIds).stream()
+  /** Batch-fetches linked group read models, keyed by group ID. Null IDs are ignored. */
+  public Map<UUID, LinkedApplicationGroupReadModel> fetchGroups(Collection<UUID> groupIds) {
+    List<UUID> ids = groupIds.stream().filter(Objects::nonNull).distinct().toList();
+    return groupReadRepository.findAllById(ids).stream()
         .collect(
             Collectors.toMap(LinkedApplicationGroupReadModel::getGroupId, Function.identity()));
   }
 
   /** Batch-fetches prior authorities for the given Applications, keyed by Application ID. */
   public Map<UUID, List<PriorAuthorityReadModel>> fetchPriorAuthorities(
-      List<ApplicationReadModel> applications) {
-    List<UUID> applicationIds =
-        applications.stream().map(ApplicationReadModel::getApplicationId).toList();
+      Collection<UUID> applicationIds) {
     return priorAuthorityReadRepository.findAllByApplicationIdIn(applicationIds).stream()
         .collect(Collectors.groupingBy(PriorAuthorityReadModel::getApplicationId));
   }
@@ -205,12 +171,7 @@ public class ApplicationReadModelAssembler {
     return second == null || first.isAfter(second) ? first : second;
   }
 
-  static String officeCode(ApplicationDataPayload data) {
+  private static @Nullable String officeCode(ApplicationDataPayload data) {
     return data == null || data.provider() == null ? null : data.provider().getOfficeCode();
-  }
-
-  private ApplicationDataId dataId(ApplicationReadModel application) {
-    return new ApplicationDataId(
-        application.getApplicationId(), application.getApplicationDataVersion());
   }
 }

@@ -74,7 +74,7 @@ import uk.gov.justice.laa.dstew.access.model.SaveApplicationDraftResponse;
 import uk.gov.justice.laa.dstew.access.model.SubmitApplicationDraftResponse;
 import uk.gov.justice.laa.dstew.access.model.UploadApplicationDocumentResponse;
 import uk.gov.justice.laa.dstew.access.model.WorkListAssignRequest;
-import uk.gov.justice.laa.dstew.access.query.application.ApplicationProjection;
+import uk.gov.justice.laa.dstew.access.query.application.summary.ApplicationSummaryProjection;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsService;
 import uk.gov.justice.laa.dstew.access.service.sds.SdsUploadResult;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
@@ -109,7 +109,7 @@ class ApplicationDraftIntegrationTest {
 
   @MockitoSpyBean private ApplicationDataStore applicationDataStore;
 
-  @MockitoSpyBean private ApplicationProjection applicationProjection;
+  @MockitoSpyBean private ApplicationSummaryProjection summaryProjection;
 
   private ProjectionAwaiter projectionAwaiter;
 
@@ -787,8 +787,8 @@ class ApplicationDraftIntegrationTest {
               }
               return invocation.callRealMethod();
             })
-        .when(applicationProjection)
-        .on(any(ApplicationDocumentUploadedEvent.class));
+        .when(summaryProjection)
+        .on(any(ApplicationDocumentUploadedEvent.class), any());
     try {
       UUID documentId = uploadDocument(applicationId, "projected.PDF");
       assertThat(projectionStarted.await(10, TimeUnit.SECONDS)).isTrue();

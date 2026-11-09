@@ -38,9 +38,9 @@ import uk.gov.justice.laa.dstew.access.testsupport.InMemoryEventContentStoreConf
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
 
 /**
- * Verifies behaviour while the application-projection tracking processor is stopped. Create does
- * not wait for the projection, and single-application reads come from the sourced aggregate, so
- * they reflect accepted commands even while the projection lags. Repeated command delivery is still
+ * Verifies behaviour while the application-summary tracking processor is stopped. Create does not
+ * wait for the projection, and single-application reads come from the sourced aggregate, so they
+ * reflect accepted commands even while the projection lags. Repeated command delivery is still
  * idempotent or rejected without appending a second event.
  *
  * <p>{@code @DirtiesContext} discards the stopped processor after each method so it cannot leak
@@ -71,9 +71,7 @@ class ProjectionTimeoutInMemoryTest {
   @Test
   void givenStoppedProjectionProcessor_whenPostApplication_thenReturnsCreatedAndIsReadable() {
     StreamingEventProcessor processor =
-        axonConfiguration
-            .getComponents(StreamingEventProcessor.class)
-            .get("application-projection");
+        axonConfiguration.getComponents(StreamingEventProcessor.class).get("application-summary");
     processor.shutdown().join();
 
     UUID applicationId = UUID.randomUUID();
@@ -118,9 +116,7 @@ class ProjectionTimeoutInMemoryTest {
     awaitApplicationProjection(applicationId, headers);
 
     StreamingEventProcessor processor =
-        axonConfiguration
-            .getComponents(StreamingEventProcessor.class)
-            .get("application-projection");
+        axonConfiguration.getComponents(StreamingEventProcessor.class).get("application-summary");
     processor.shutdown().join();
     ManualOutcomeRequest readyRequest = new ManualOutcomeRequest(AutoGrantOutcome.MANUAL);
     HttpEntity<ManualOutcomeRequest> readyEntity = new HttpEntity<>(readyRequest, headers);
@@ -224,9 +220,7 @@ class ProjectionTimeoutInMemoryTest {
             });
 
     StreamingEventProcessor processor =
-        axonConfiguration
-            .getComponents(StreamingEventProcessor.class)
-            .get("application-projection");
+        axonConfiguration.getComponents(StreamingEventProcessor.class).get("application-summary");
     processor.shutdown().join();
     assertThat(
             restTemplate

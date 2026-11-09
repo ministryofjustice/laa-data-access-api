@@ -206,7 +206,7 @@ bean in `AxonEventProcessingConfig`. No change to aggregate or existing projecti
 | Evolve/state | Aggregate replay tests (fold an event list, then apply a command that depends on it) |
 | Command handler | Handler tests with mocked stores / Axon test fixtures |
 | Event shape | Old-JSON fixture deserialisation test; sensitive-field absence assertion |
-| Projection | Projection unit tests incl. reset/replay; `src/integrationTest` against PostgreSQL (`PostgresAxonIntegrationTest`, `ApplicationProjectionSequencingIntegrationTest`) |
+| Projection | Projection unit tests incl. reset/replay; `src/integrationTest` against PostgreSQL (`PostgresAxonIntegrationTest`, `ApplicationSummarySequencingIntegrationTest`) |
 | API behaviour | Controller tests, integration tests, Pact provider states (`pactTest`) |
 
 See [Testing Axon code](testing-axon-code.md), [Guardrails](guardrails.md),

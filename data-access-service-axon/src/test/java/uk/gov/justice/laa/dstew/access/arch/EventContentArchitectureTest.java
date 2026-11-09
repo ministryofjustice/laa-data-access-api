@@ -54,7 +54,7 @@ class EventContentArchitectureTest {
         .and()
         .haveSimpleNameNotEndingWith("Evolve")
         .and()
-        .doNotHaveFullyQualifiedName(ROOT + ".query.application.ApplicationProjection")
+        .doNotHaveFullyQualifiedName(ROOT + ".query.application.ApplicationQueryHandler")
         .and()
         .doNotHaveFullyQualifiedName(ROOT + ".query.application.ApplicationReadModelAssembler")
         .and()

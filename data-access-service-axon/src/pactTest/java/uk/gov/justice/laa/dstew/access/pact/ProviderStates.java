@@ -22,7 +22,7 @@ import uk.gov.justice.laa.dstew.access.model.DecisionStatus;
 class ProviderStates {
 
   private static final Logger log = LoggerFactory.getLogger(ProviderStates.class);
-  private static final String APPLICATION_PROJECTION = "application-projection";
+  private static final String APPLICATION_SUMMARY = "application-summary";
 
   private final ApplicationStateSeeder applications;
   private final PriorAuthorityStateSeeder priorAuthorities;
@@ -100,18 +100,18 @@ class ProviderStates {
   }
 
   /**
-   * Pauses the application projection so a create cannot observe its read model within the
+   * Pauses the application summary projection so a create cannot observe its read model within the
    * configured wait and returns 202 instead of 201. {@link #applicationReadModelCaughtUp()} must
    * run afterwards.
    */
   void applicationReadModelLagging() {
     log.info("State: {}", PactStates.APPLICATION_READ_MODEL_LAGGING);
-    applicationProjection().shutdown().join();
+    applicationSummaryProjection().shutdown().join();
   }
 
   /** Teardown for {@link #applicationReadModelLagging()}: restarts the projection. */
   void applicationReadModelCaughtUp() {
-    StreamingEventProcessor processor = applicationProjection();
+    StreamingEventProcessor processor = applicationSummaryProjection();
     if (!processor.isRunning()) {
       processor.start().join();
     }
@@ -237,11 +237,11 @@ class ProviderStates {
     return submittedApplication(id, "LAA-REF-" + referenceSuffix, firstName, lastName);
   }
 
-  private StreamingEventProcessor applicationProjection() {
+  private StreamingEventProcessor applicationSummaryProjection() {
     StreamingEventProcessor processor =
-        axonConfiguration.getComponents(StreamingEventProcessor.class).get(APPLICATION_PROJECTION);
+        axonConfiguration.getComponents(StreamingEventProcessor.class).get(APPLICATION_SUMMARY);
     if (processor == null) {
-      throw new IllegalStateException("No event processor named " + APPLICATION_PROJECTION);
+      throw new IllegalStateException("No event processor named " + APPLICATION_SUMMARY);
     }
     return processor;
   }

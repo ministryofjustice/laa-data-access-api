@@ -318,7 +318,7 @@ class WorkListIntegrationTest extends BaseIntegrationTest {
             () -> {
               assertThat(
                       jdbcTemplate.queryForObject(
-                          "SELECT status FROM axon.application_current_state WHERE application_id = ?",
+                          "SELECT status FROM axon.application_summary WHERE application_id = ?",
                           String.class,
                           applicationId))
                   .isEqualTo("APPLICATION_GRANTED");

@@ -39,8 +39,8 @@ import uk.gov.justice.laa.dstew.access.model.ApplicationResponse;
 import uk.gov.justice.laa.dstew.access.model.AutoGrantOutcome;
 import uk.gov.justice.laa.dstew.access.model.CreateApplicationDraftRequest;
 import uk.gov.justice.laa.dstew.access.model.ManualOutcomeRequest;
-import uk.gov.justice.laa.dstew.access.query.application.ApplicationReadRepository;
 import uk.gov.justice.laa.dstew.access.query.application.linkedgroup.LinkedApplicationGroupReadRepository;
+import uk.gov.justice.laa.dstew.access.query.application.summary.ApplicationSummaryReadRepository;
 import uk.gov.justice.laa.dstew.access.query.genesis.GenesisStreamRepository;
 import uk.gov.justice.laa.dstew.access.testsupport.InMemoryEventContentStoreConfig;
 import uk.gov.justice.laa.dstew.access.testsupport.TestJwtDecoderConfig;
@@ -69,7 +69,7 @@ class EventProcessorRecoveryInMemoryTest {
   @Autowired private AxonConfiguration axonConfiguration;
   @Autowired private EventStore eventStore;
   @Autowired private CommandGateway commandGateway;
-  @Autowired private ApplicationReadRepository applicationReadRepository;
+  @Autowired private ApplicationSummaryReadRepository summaryRepository;
   @Autowired private GenesisStreamRepository genesisStreamRepository;
   @Autowired private LinkedApplicationGroupReadRepository groupReadRepository;
   @Autowired private FailOnceProjection failOnceProjection;
@@ -113,7 +113,7 @@ class EventProcessorRecoveryInMemoryTest {
         .atMost(Duration.ofSeconds(5))
         .until(
             () ->
-                applicationReadRepository.existsById(applicationId)
+                summaryRepository.existsById(applicationId)
                     && genesisStreamRepository
                             .findAllByGenesisIdOrderByOccurredAtAscIdAsc(applicationId)
                             .size()
@@ -175,14 +175,14 @@ class EventProcessorRecoveryInMemoryTest {
                 count -> count > 0);
     var processors =
         List.of(
-            processor("application-projection"),
+            processor("application-summary"),
             processor("genesis-stream"),
             processor("linked-application-group-projection"));
     processors.forEach(processor -> processor.shutdown().join());
-    applicationReadRepository.deleteAllInBatch();
+    summaryRepository.deleteAllInBatch();
     genesisStreamRepository.deleteAllInBatch();
     groupReadRepository.deleteAllInBatch();
-    assertThat(applicationReadRepository.existsById(applicationId)).isFalse();
+    assertThat(summaryRepository.existsById(applicationId)).isFalse();
     assertThat(genesisStreamRepository.count()).isZero();
     assertThat(groupReadRepository.count()).isZero();
 
@@ -193,7 +193,7 @@ class EventProcessorRecoveryInMemoryTest {
         .atMost(Duration.ofSeconds(5))
         .until(
             () ->
-                applicationReadRepository.existsById(applicationId)
+                summaryRepository.existsById(applicationId)
                     && genesisStreamRepository
                             .findAllByGenesisIdOrderByOccurredAtAscIdAsc(applicationId)
                             .size()
