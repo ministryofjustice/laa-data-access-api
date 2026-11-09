@@ -7,6 +7,7 @@ import static org.awaitility.Awaitility.await;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -14,6 +15,7 @@ import org.axonframework.messaging.core.MessageType;
 import org.axonframework.messaging.eventhandling.GenericEventMessage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
@@ -21,6 +23,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.support.TransactionTemplate;
+import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupCreatedEvent;
 import uk.gov.justice.laa.dstew.access.command.application.linkedgroup.LinkedApplicationGroupDissolvedEvent;
@@ -125,7 +128,7 @@ class LinkedGroupJustificationIntegrationTest extends AbstractLinkedGroupIntegra
   }
 
   @Test
-  void givenOptionalTextAndNoOps_whenRequested_thenNoExtraPayloadOrHistory() {
+  void givenNoEventHistory_whenActionsChangeState_thenNoDescriptionIsStored() {
     var surname = uniqueLastName();
     var lead = createApplication(surname);
     var member = createApplication(surname);
@@ -133,13 +136,7 @@ class LinkedGroupJustificationIntegrationTest extends AbstractLinkedGroupIntegra
         .isEqualTo(HttpStatus.NO_CONTENT);
     var group = awaitRoute(lead, ApplicationGroupRouteKind.LINKED_GROUP);
     assertHistory(lead, DomainEventType.APPLICATION_GROUP_CREATED, null);
-    assertThat(payloadCount(group)).isZero();
-    assertThat(linkWithReason(member, lead, groupToken(group, 0), "Discard no-op").getStatusCode())
-        .isEqualTo(HttpStatus.NO_CONTENT);
-    assertThat(change(lead, "make-lead", group, 0, "Discard no-op").getStatusCode())
-        .isEqualTo(HttpStatus.NO_CONTENT);
-    assertThat(countDomainEvents(group, LinkedApplicationGroupCreatedEvent.class)).isEqualTo(1);
-    assertThat(countDomainEvents(group, LinkedApplicationGroupLeadChangedEvent.class)).isZero();
+    assertHistory(member, DomainEventType.APPLICATION_GROUP_JOINED, null);
     assertThat(payloadCount(group)).isZero();
 
     assertThat(change(member, "make-lead", group, 0, null).getStatusCode())
@@ -148,9 +145,123 @@ class LinkedGroupJustificationIntegrationTest extends AbstractLinkedGroupIntegra
     assertHistory(member, DomainEventType.APPLICATION_GROUP_LEAD_CHANGED, null);
     assertThat(change(lead, "unlink", group, 1, null).getStatusCode())
         .isEqualTo(HttpStatus.NO_CONTENT);
+    assertHistory(lead, DomainEventType.APPLICATION_GROUP_LEFT, null);
     assertHistory(member, DomainEventType.APPLICATION_GROUP_DISSOLVED, null);
     assertThat(payloadCount(group)).isZero();
   }
+
+  @ParameterizedTest
+  @CsvSource({
+    "link-lead, false",
+    "link-lead, true",
+    "link-member, false",
+    "link-member, true",
+    "make-lead, false",
+    "make-lead, true"
+  })
+  void givenNoOp_whenRepeated_thenNoContentAndAllPersistedHistoryIsUnchanged(
+      String operation, boolean suppliedHistory) {
+    var surname = uniqueLastName();
+    var lead = createApplication(surname);
+    var member = createApplication(surname);
+    var joining = createApplication(surname);
+    assertThat(linkWithReason(member, lead, null, "Original creation").getStatusCode())
+        .isEqualTo(HttpStatus.NO_CONTENT);
+    var group = awaitRoute(lead, ApplicationGroupRouteKind.LINKED_GROUP);
+    assertThat(
+            linkWithReason(joining, lead, groupToken(group, 0), "Original addition")
+                .getStatusCode())
+        .isEqualTo(HttpStatus.NO_CONTENT);
+    assertSharedReference(group, "Original creation", 2);
+    assertSharedReference(group, "Original addition", 3);
+    assertHistory(lead, DomainEventType.APPLICATION_GROUP_CREATED, "Original creation");
+    assertHistory(member, DomainEventType.APPLICATION_GROUP_JOINED, "Original creation");
+    assertHistory(lead, DomainEventType.APPLICATION_GROUP_MEMBER_ADDED, "Original addition");
+    assertHistory(member, DomainEventType.APPLICATION_GROUP_MEMBER_ADDED, "Original addition");
+    assertHistory(joining, DomainEventType.APPLICATION_GROUP_JOINED, "Original addition");
+
+    var applications = List.of(lead, member, joining);
+    var before = noOpSnapshot(group, applications);
+    assertThat(before.events()).isEqualTo(2);
+    assertThat(before.payloads()).isEqualTo(2);
+    assertNoOpSnapshotUnchanged(group, applications, before);
+
+    Map<String, Object> request = new LinkedHashMap<>();
+    request.put("linkedGroupVersion", groupToken(group, 1));
+    boolean makeLead = operation.equals("make-lead");
+    if (!makeLead) {
+      request.put("applicationId", operation.equals("link-lead") ? lead : member);
+      request.put("linkType", ApplicationLinkType.FAMILY.getValue());
+    }
+    if (suppliedHistory) {
+      request.put("eventHistory", Map.of("eventDescription", "Discard no-op description"));
+    }
+    var endpoint =
+        "/api/v0/applications/"
+            + (makeLead ? lead : joining)
+            + "/"
+            + (makeLead ? "make-lead" : "link");
+    for (int attempt = 0; attempt < 2; attempt++) {
+      var response =
+          restTemplate.exchange(
+              url(endpoint), HttpMethod.POST, new HttpEntity<>(request, headers()), String.class);
+      assertThat(response.getStatusCode())
+          .as("attempt %s", attempt + 1)
+          .isEqualTo(HttpStatus.NO_CONTENT);
+      assertNoOpSnapshotUnchanged(group, applications, before);
+    }
+  }
+
+  private NoOpSnapshot noOpSnapshot(UUID group, List<UUID> applications) {
+    Map<UUID, List<Map<String, Object>>> rows = new LinkedHashMap<>();
+    Map<UUID, Map<String, Long>> counts = new LinkedHashMap<>();
+    for (var application : applications) {
+      var history =
+          jdbcTemplate.queryForList(
+              "SELECT * FROM axon.application_history WHERE application_id = ? ORDER BY event_id",
+              application);
+      rows.put(application, history);
+      Map<String, Long> perType = new LinkedHashMap<>();
+      for (var type : DomainEventType.values()) {
+        perType.put(type.getValue(), 0L);
+      }
+      history.forEach(row -> perType.merge((String) row.get("event_type"), 1L, Long::sum));
+      counts.put(application, perType);
+    }
+    return new NoOpSnapshot(rows, counts, groupEventCount(group), payloadCount(group));
+  }
+
+  private void assertNoOpSnapshotUnchanged(
+      UUID group, List<UUID> applications, NoOpSnapshot before) {
+    assertNoOpSnapshotEquals(group, applications, before);
+    await()
+        .during(Duration.ofSeconds(1))
+        .atMost(Duration.ofSeconds(15))
+        .untilAsserted(() -> assertNoOpSnapshotEquals(group, applications, before));
+  }
+
+  private void assertNoOpSnapshotEquals(UUID group, List<UUID> applications, NoOpSnapshot before) {
+    var after = noOpSnapshot(group, applications);
+    assertThat(after.events()).as("linked-group events").isEqualTo(before.events());
+    assertThat(after.payloads()).as("justification payloads").isEqualTo(before.payloads());
+    for (var application : applications) {
+      assertThat(after.rows().get(application))
+          .as("total history for %s", application)
+          .hasSize(before.rows().get(application).size());
+      assertThat(after.counts().get(application))
+          .as("per-type history for %s", application)
+          .isEqualTo(before.counts().get(application));
+      assertThat(after.rows().get(application))
+          .as("exact history rows for %s", application)
+          .isEqualTo(before.rows().get(application));
+    }
+  }
+
+  private record NoOpSnapshot(
+      Map<UUID, List<Map<String, Object>>> rows,
+      Map<UUID, Map<String, Long>> counts,
+      long events,
+      long payloads) {}
 
   @ParameterizedTest
   @EnumSource(Action.class)
@@ -237,9 +348,12 @@ class LinkedGroupJustificationIntegrationTest extends AbstractLinkedGroupIntegra
         url("/api/v0/applications/" + source + "/link"),
         HttpMethod.POST,
         new HttpEntity<>(
-            new ApplicationLinkRequest(target, ApplicationLinkType.FAMILY)
-                .linkedGroupVersion(token)
-                .eventHistory(new EventHistoryRequest().eventDescription(text)),
+            requestBody(
+                new ApplicationLinkRequest(target, ApplicationLinkType.FAMILY)
+                    .linkedGroupVersion(token)
+                    .eventHistory(
+                        text == null ? null : new EventHistoryRequest().eventDescription(text)),
+                text),
             headers()),
         String.class);
   }
@@ -250,10 +364,21 @@ class LinkedGroupJustificationIntegrationTest extends AbstractLinkedGroupIntegra
         url("/api/v0/applications/" + application + "/" + operation),
         HttpMethod.POST,
         new HttpEntity<>(
-            new LinkedGroupChangeRequest(groupToken(group, version))
-                .eventHistory(new EventHistoryRequest().eventDescription(text)),
+            requestBody(
+                new LinkedGroupChangeRequest(groupToken(group, version))
+                    .eventHistory(
+                        text == null ? null : new EventHistoryRequest().eventDescription(text)),
+                text),
             headers()),
         String.class);
+  }
+
+  private Map<String, Object> requestBody(Object request, String text) {
+    var body = objectMapper.convertValue(request, new TypeReference<Map<String, Object>>() {});
+    if (text == null) {
+      body.remove("eventHistory");
+    }
+    return body;
   }
 
   private long payloadCount(UUID group) {
